@@ -12,7 +12,7 @@ use postgres_model::{
     operation::{AggregateQuery, CollectionQuery, PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
-    types::PostgresType,
+    types::{PostgresCompositeType, PostgresPrimitiveType},
 };
 
 use payas_sql::PhysicalTable;
@@ -42,7 +42,8 @@ pub fn build(
 
         ModelPostgresSystem {
             contexts: base_system.contexts.clone(),
-            postgres_types: building.postgres_types.values,
+            primitive_types: building.primitive_types.values,
+            entity_types: building.entity_types.values,
             aggregate_types: building.aggregate_types.values,
 
             order_by_types: building.order_by_types.values,
@@ -109,7 +110,8 @@ fn build_expanded(
 
 #[derive(Debug, Default)]
 pub struct SystemContextBuilding {
-    pub postgres_types: MappedArena<PostgresType>,
+    pub primitive_types: MappedArena<PostgresPrimitiveType>,
+    pub entity_types: MappedArena<PostgresCompositeType>,
 
     pub aggregate_types: MappedArena<AggregateType>,
 
@@ -120,14 +122,24 @@ pub struct SystemContextBuilding {
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
 
-    pub mutation_types: MappedArena<PostgresType>,
+    pub mutation_types: MappedArena<PostgresCompositeType>,
     pub mutations: MappedArena<PostgresMutation>,
     pub tables: MappedArena<PhysicalTable>,
 }
 
 impl SystemContextBuilding {
-    pub fn get_id(&self, name: &str) -> Option<SerializableSlabIndex<PostgresType>> {
-        self.postgres_types.get_id(name)
+    pub fn get_entity_type_id(
+        &self,
+        name: &str,
+    ) -> Option<SerializableSlabIndex<PostgresCompositeType>> {
+        self.entity_types.get_id(name)
+    }
+
+    pub fn get_primitive_type_id(
+        &self,
+        name: &str,
+    ) -> Option<SerializableSlabIndex<PostgresPrimitiveType>> {
+        self.primitive_types.get_id(name)
     }
 }
 

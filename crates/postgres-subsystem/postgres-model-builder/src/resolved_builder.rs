@@ -99,6 +99,16 @@ impl ResolvedFieldType {
             ResolvedFieldType::List(underlying) => underlying.get_is_underlying_primitive(),
         }
     }
+
+    /// The inner (nested) type if any
+    pub fn inner(&self) -> Option<&ResolvedFieldType> {
+        match &self {
+            ResolvedFieldType::Plain { .. } => None,
+            ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
+                Some(underlying)
+            }
+        }
+    }
 }
 
 impl ResolvedFieldType {

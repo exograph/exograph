@@ -7,10 +7,12 @@ use postgres_model::{
     operation::{OperationReturnType, PostgresMutation, PostgresMutationKind},
     relation::PostgresRelation,
     types::{
-        PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeKind,
+        PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeIndex,
         PostgresTypeModifier,
     },
 };
+
+use crate::{resolved_builder::ResolvedField, shallow::Shallow};
 
 use super::{
     builder::Builder,
@@ -53,25 +55,25 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
 }
 
 pub trait MutationBuilder {
-    fn single_mutation_name(model_type: &PostgresType) -> String;
+    fn single_mutation_name(model_type: &PostgresCompositeType) -> String;
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresType>,
-        model_type: &PostgresType,
+        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
+        model_type: &PostgresCompositeType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
     fn single_mutation_type_modifier() -> PostgresTypeModifier;
 
-    fn multi_mutation_name(model_type: &PostgresType) -> String;
+    fn multi_mutation_name(model_type: &PostgresCompositeType) -> String;
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresType>,
-        model_type: &PostgresType,
+        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
+        model_type: &PostgresCompositeType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
 
     fn build_mutations(
         &self,
-        model_type_id: SerializableSlabIndex<PostgresType>,
-        model_type: &PostgresType,
+        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
+        model_type: &PostgresCompositeType,
         building: &SystemContextBuilding,
     ) -> Vec<PostgresMutation> {
         let single_mutation = PostgresMutation {
@@ -105,7 +107,11 @@ pub trait DataParamBuilder<D> {
 
     fn base_data_type_name(model_type_name: &str) -> String;
 
-    fn data_param(model_type: &PostgresType, building: &SystemContextBuilding, array: bool) -> D;
+    fn data_param(
+        model_type: &PostgresCompositeType,
+        building: &SystemContextBuilding,
+        array: bool,
+    ) -> D;
 
     fn data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
         let base_name = Self::base_data_type_name(model_type_name);
@@ -117,7 +123,7 @@ pub trait DataParamBuilder<D> {
     fn compute_data_fields(
         &self,
         postgres_fields: &[PostgresField],
-        top_level_type: Option<&PostgresType>,
+        top_level_type: Option<&PostgresCompositeType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Vec<PostgresField> {
@@ -152,11 +158,31 @@ pub trait DataParamBuilder<D> {
                 };
 
                 // If the type is a list or a reference, we need to create a nested input type (one-to-many or one-to-zero-or-one)
-                if let ResolvedFieldType::List(_) | ResolvedFieldType::Optional(_) = field.typ {
-                    if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
-                        typ.deref_subsystem_type(resolved_types)
-                    {
+                if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
+                    typ.deref_subsystem_type(resolved_types)
+                {
+                    if let ResolvedFieldType::List(_) = field.typ {
+                        // If it is a list, we need to create a nested input type (one-to-many)
                         Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
+                    } else if let ResolvedFieldType::Optional(_) = field.typ {
+                        // Let's determine if it is one-to-zero_or_one (where we need to create a nested input type)
+                        // Or many-to-one_optional (Think Concert with an optional Venue, and Venue with multiple (possibly optional) concerts)
+                        match get_matching_field(field, resolved_types) {
+                            Some(matching_field) => {
+                                let inner_type = matching_field.typ.inner();
+                                if let Some(ResolvedFieldType::List(_)) = inner_type {
+                                    vec![]
+                                } else {
+                                    Self::data_param_field_one_to_many_type_names(
+                                        name,
+                                        resolved_composite_type,
+                                    )
+                                }
+                            }
+                            None => {
+                                vec![]
+                            }
+                        }
                     } else {
                         vec![]
                     }
@@ -180,7 +206,7 @@ pub trait DataParamBuilder<D> {
     fn compute_data_field(
         &self,
         field: &PostgresField,
-        top_level_type: Option<&PostgresType>,
+        top_level_type: Option<&PostgresCompositeType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<PostgresField> {
@@ -218,7 +244,7 @@ pub trait DataParamBuilder<D> {
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
                 let field_plain_type = PostgresFieldType::Reference {
                     type_name: field_type_name,
-                    type_id: field_type_id,
+                    type_id: PostgresTypeIndex::Composite(field_type_id),
                 };
                 let field_type = match field.typ {
                     PostgresFieldType::Reference { .. } => {
@@ -266,7 +292,7 @@ pub trait DataParamBuilder<D> {
             .and_then(|field_type_id| {
                 let field_plain_type = PostgresFieldType::Reference {
                     type_name: field_type_name,
-                    type_id: field_type_id,
+                    type_id: PostgresTypeIndex::Composite(field_type_id),
                 };
                 let field_type = PostgresFieldType::List(Box::new(field_plain_type));
 
@@ -288,13 +314,16 @@ pub trait DataParamBuilder<D> {
 
     fn expanded_data_type(
         &self,
-        model_type: &PostgresType,
+        model_type: &PostgresCompositeType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
-        top_level_type: Option<&PostgresType>,
-        container_type: Option<&PostgresType>,
-    ) -> Vec<(SerializableSlabIndex<PostgresType>, PostgresCompositeType)> {
-        if let PostgresTypeKind::Composite(PostgresCompositeType {
+        top_level_type: Option<&PostgresCompositeType>,
+        container_type: Option<&PostgresCompositeType>,
+    ) -> Vec<(
+        SerializableSlabIndex<PostgresCompositeType>,
+        PostgresCompositeType,
+    )> {
+        let PostgresCompositeType {
             fields,
             table_id,
             pk_query,
@@ -302,74 +331,78 @@ pub trait DataParamBuilder<D> {
             aggregate_query,
             access,
             ..
-        }) = &model_type.kind
-        {
-            let model_fields = fields;
+        } = &model_type;
 
-            let mut field_types: Vec<_> = model_fields
-                .iter()
-                .flat_map(|field| {
-                    let field_type = field.typ.base_type(&building.postgres_types.values);
-                    if let (PostgresTypeKind::Composite(_), PostgresRelation::OneToMany { .. }) =
-                        (&field_type.kind, &field.relation)
-                    {
-                        self.expand_one_to_many(
-                            model_type,
-                            field,
-                            field_type,
-                            resolved_env,
-                            building,
-                            top_level_type,
-                            Some(model_type),
-                        )
-                    } else {
-                        vec![]
-                    }
-                })
-                .collect();
+        let mut field_types: Vec<_> = fields
+            .iter()
+            .flat_map(|field| {
+                let field_type = field.typ.base_type(
+                    &building.primitive_types.values,
+                    &building.entity_types.values,
+                );
+                if let (PostgresType::Composite(field_type), PostgresRelation::OneToMany { .. }) =
+                    (&field_type, &field.relation)
+                {
+                    self.expand_one_to_many(
+                        model_type,
+                        field,
+                        field_type,
+                        resolved_env,
+                        building,
+                        top_level_type,
+                        Some(model_type),
+                    )
+                } else {
+                    vec![]
+                }
+            })
+            .collect();
 
-            let existing_type_name = Self::data_type_name(
-                model_type.name.as_str(),
-                container_type.map(|value| value.name.as_str()),
-            );
-            let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+        let existing_type_name = Self::data_type_name(
+            model_type.name.as_str(),
+            container_type.map(|value| value.name.as_str()),
+        );
+        let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-            let input_type_fields = self.compute_data_fields(
-                model_fields,
-                top_level_type,
-                Some(model_type.name.as_str()),
-                building,
-            );
-            field_types.push((
-                existing_type_id,
-                PostgresCompositeType {
-                    fields: input_type_fields,
-                    agg_fields: vec![],
-                    table_id: *table_id,
-                    pk_query: *pk_query,
-                    collection_query: *collection_query,
-                    aggregate_query: *aggregate_query,
-                    access: access.clone(),
-                },
-            ));
+        let input_type_fields = self.compute_data_fields(
+            fields,
+            top_level_type,
+            Some(model_type.name.as_str()),
+            building,
+        );
+        field_types.push((
+            existing_type_id,
+            PostgresCompositeType {
+                name: existing_type_name,
+                plural_name: "".to_string(), // unused // TODO: Fix by separating mutation types from entity types
+                fields: input_type_fields,
+                agg_fields: vec![],
+                table_id: *table_id,
+                pk_query: *pk_query,
+                collection_query: *collection_query,
+                aggregate_query: *aggregate_query,
+                access: access.clone(),
+                is_input: true,
+            },
+        ));
 
-            field_types
-        } else {
-            vec![]
-        }
+        field_types
     }
 
     #[allow(clippy::too_many_arguments)]
     fn expand_one_to_many(
         &self,
-        model_type: &PostgresType,
+        model_type: &PostgresCompositeType,
         _field: &PostgresField,
-        field_type: &PostgresType,
+        field_type: &PostgresCompositeType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
-        top_level_type: Option<&PostgresType>,
-        _container_type: Option<&PostgresType>,
-    ) -> Vec<(SerializableSlabIndex<PostgresType>, PostgresCompositeType)> {
+        top_level_type: Option<&PostgresCompositeType>,
+        _container_type: Option<&PostgresCompositeType>,
+    ) -> Vec<(
+        SerializableSlabIndex<PostgresCompositeType>,
+        PostgresCompositeType,
+    )> {
         let new_container_type = Some(model_type);
 
         let existing_type_name = Self::data_type_name(
@@ -377,13 +410,13 @@ pub trait DataParamBuilder<D> {
             new_container_type.map(|value| value.name.as_str()),
         );
 
-        if let PostgresTypeKind::Primitive = building
+        let existing = building
             .mutation_types
             .get_by_key(&existing_type_name)
-            .unwrap_or_else(|| panic!("Could not find type {} to expand", existing_type_name))
-            .kind
-        {
-            // If not already expanded (i.e. the kind is primitive)
+            .unwrap_or_else(|| panic!("Could not find type {} to expand", existing_type_name));
+
+        if existing.table_id == SerializableSlabIndex::shallow() {
+            // If not already expanded
             self.expanded_data_type(
                 field_type,
                 resolved_env,
@@ -413,5 +446,29 @@ fn data_type_name(base_name: &str, container_type: Option<&str>) -> String {
             format!("{}From{}", base_name, container_type)
         }
         None => base_name.to_owned(),
+    }
+}
+
+fn get_matching_field<'a>(
+    field: &'a ResolvedField,
+    types: &'a MappedArena<ResolvedType>,
+) -> Option<&'a ResolvedField> {
+    let field_typ = types
+        .get_by_key(field.typ.get_underlying_typename())
+        .unwrap();
+
+    if let ResolvedType::Composite(field_typ) = field_typ {
+        let matching_fields: Vec<_> = field_typ
+            .fields
+            .iter()
+            .filter(|f| field.column_name == f.column_name)
+            .collect();
+
+        match &matching_fields[..] {
+            [matching_field] => Some(matching_field),
+            _ => None,
+        }
+    } else {
+        None
     }
 }

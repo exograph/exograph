@@ -9,7 +9,7 @@ use postgres_model::{
     model::ModelPostgresSystem,
     operation::{CreateDataParameter, OperationReturnType},
     relation::PostgresRelation,
-    types::{PostgresCompositeType, PostgresField, PostgresType, PostgresTypeKind},
+    types::{PostgresCompositeType, PostgresField, PostgresType},
 };
 
 use crate::sql_mapper::SQLMapper;
@@ -52,7 +52,7 @@ impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
 }
 
 pub(crate) fn map_argument<'a>(
-    data_type: &'a PostgresType,
+    data_type: &'a PostgresCompositeType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<Vec<InsertionRow<'a>>, PostgresExecutionError> {
@@ -69,18 +69,11 @@ pub(crate) fn map_argument<'a>(
 
 /// Map a single item from the data parameter
 fn map_single<'a>(
-    data_type: &'a PostgresType,
+    data_type: &'a PostgresCompositeType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<InsertionRow<'a>, PostgresExecutionError> {
-    let fields = match &data_type.kind {
-        PostgresTypeKind::Primitive => {
-            return Err(PostgresExecutionError::Generic(
-                "Query attempted on a primitive type".into(),
-            ))
-        }
-        PostgresTypeKind::Composite(PostgresCompositeType { fields, .. }) => fields,
-    };
+    let fields = &data_type.fields;
 
     let row: Result<Vec<_>, _> = fields
         .iter()
@@ -111,7 +104,7 @@ fn map_self_column<'a>(
     let argument_value = match &field.relation {
         PostgresRelation::ManyToOne { other_type_id, .. } => {
             // TODO: Include enough information in the ManyToOne relation to not need this much logic here
-            let other_type = &subsystem.postgres_types[*other_type_id];
+            let other_type = &subsystem.entity_types[*other_type_id];
             let other_type_pk_field_name = other_type
                 .pk_column_id()
                 .map(|column_id| &column_id.get_column(subsystem).column_name)
@@ -146,24 +139,26 @@ fn map_self_column<'a>(
 fn map_foreign<'a>(
     field: &'a PostgresField,
     argument: &'a ConstValue,
-    parent_data_type: &'a PostgresType,
+    parent_data_type: &'a PostgresCompositeType,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<InsertionElement<'a>, PostgresExecutionError> {
     fn underlying_type<'a>(
-        data_type: &'a PostgresType,
+        data_type: &'a PostgresCompositeType,
         system: &'a ModelPostgresSystem,
-    ) -> &'a PostgresType {
-        // TODO: Unhack this. Most likely, we need to separate input types from output types and have input types carry
-        //       additional information (such as the associated type) so that we can get the id column more directly
-        match &data_type.kind {
-            PostgresTypeKind::Primitive => todo!(),
-            PostgresTypeKind::Composite(kind) => {
-                &system.postgres_types[system.pk_queries[kind.pk_query].return_type.type_id]
-            }
-        }
+    ) -> &'a PostgresCompositeType {
+        let return_type_id = system.pk_queries[data_type.pk_query].return_type.type_id;
+
+        &system.entity_types[return_type_id]
     }
 
-    let field_type = field.typ.base_type(&subsystem.mutation_types);
+    let field_type = field
+        .typ
+        .base_type(&subsystem.primitive_types, &subsystem.mutation_types);
+
+    let field_type = match field_type {
+        PostgresType::Composite(field_type) => field_type,
+        _ => todo!(""), // TODO: Handle this at type-level
+    };
 
     // TODO: Cleanup in the next round
 
@@ -173,16 +168,16 @@ fn map_foreign<'a>(
     // we need to create a column that evaluates to `select "venues"."id" from "venues"`
 
     let parent_type = underlying_type(parent_data_type, subsystem);
-    let parent_table = &subsystem.tables[parent_type.table_id().unwrap()];
+    let parent_table = &subsystem.tables[parent_type.table_id];
 
     let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(subsystem);
 
     // Find the column that the current entity refers to in the parent entity
     // In the above example, this would be "venue_id"
     let self_type = underlying_type(field_type, subsystem);
-    let self_table = &subsystem.tables[self_type.table_id().unwrap()];
+    let self_table = &subsystem.tables[self_type.table_id];
     let self_reference_column = self_type
-        .model_fields()
+        .fields
         .iter()
         .find(|self_field| match self_field.relation.self_column() {
             Some(column_id) => match &column_id.get_column(subsystem).typ {

@@ -24,7 +24,7 @@ use postgres_model::{
     order::OrderByParameter,
     predicate::PredicateParameter,
     relation::{PostgresRelation, RelationCardinality},
-    types::{PostgresField, PostgresType, PostgresTypeKind, PostgresTypeModifier},
+    types::{PostgresCompositeType, PostgresField, PostgresTypeModifier},
 };
 
 #[async_trait]
@@ -79,7 +79,7 @@ async fn compute_select<'content>(
     order_by: Option<AbstractOrderBy<'content>>,
     limit: Option<Limit>,
     offset: Option<Offset>,
-    return_type: &OperationReturnType,
+    return_type: &'content OperationReturnType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
@@ -106,14 +106,7 @@ async fn compute_select<'content>(
     )
     .await?;
 
-    let root_physical_table =
-        if let PostgresTypeKind::Composite(composite_root_type) = &return_postgres_type.kind {
-            &subsystem.tables[composite_root_type.table_id]
-        } else {
-            return Err(PostgresExecutionError::Generic(
-                "Expected a composite type".into(),
-            ));
-        };
+    let root_physical_table = &subsystem.tables[return_postgres_type.table_id];
 
     let selection_cardinality = match return_type.type_modifier {
         PostgresTypeModifier::Optional | PostgresTypeModifier::NonNull => SelectionCardinality::One,
@@ -146,7 +139,7 @@ fn compute_order_by<'content>(
 
 #[async_recursion]
 async fn content_select<'content>(
-    return_type: &PostgresType,
+    return_type: &PostgresCompositeType,
     fields: &'content [ValidatedField],
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
@@ -160,15 +153,15 @@ async fn content_select<'content>(
 }
 
 async fn map_field<'content>(
-    return_type: &PostgresType,
+    return_type: &PostgresCompositeType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
-        SelectionElement::Constant(return_type.name.clone())
+        SelectionElement::Constant(return_type.name.to_owned())
     } else {
-        let model_field = return_type.model_field(&field.name);
+        let model_field = return_type.field(&field.name);
 
         match model_field {
             Some(model_field) => {
@@ -188,7 +181,7 @@ async fn map_field<'content>(
 
 async fn map_persistent_field<'content>(
     model_field: &PostgresField,
-    return_type: &PostgresType,
+    return_type: &PostgresCompositeType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
@@ -203,16 +196,11 @@ async fn map_persistent_field<'content>(
             other_type_id,
             ..
         } => {
-            let other_type = &subsystem.postgres_types[*other_type_id];
-            let other_table = &subsystem.tables[other_type.table_id().unwrap()];
+            let other_type = &subsystem.entity_types[*other_type_id];
+            let other_table = &subsystem.tables[other_type.table_id];
 
-            let other_table_pk_query = match &other_type.kind {
-                PostgresTypeKind::Primitive => panic!(""),
-                PostgresTypeKind::Composite(kind) => &subsystem.pk_queries[kind.pk_query],
-            };
-            let self_table = &subsystem.tables[return_type
-                .table_id()
-                .expect("No table for a composite type")];
+            let other_table_pk_query = &subsystem.pk_queries[other_type.pk_query];
+            let self_table = &subsystem.tables[return_type.table_id];
             let relation_link = ColumnPathLink {
                 self_column: (column_id.get_column(subsystem), self_table),
                 linked_column: Some((
@@ -237,8 +225,8 @@ async fn map_persistent_field<'content>(
             other_type_id,
             cardinality,
         } => {
-            let other_type = &subsystem.postgres_types[*other_type_id];
-            let self_table = &subsystem.tables[return_type.table_id().unwrap()];
+            let other_type = &subsystem.entity_types[*other_type_id];
+            let self_table = &subsystem.tables[return_type.table_id];
             let self_table_pk_column = self_table
                 .get_pk_physical_column()
                 .expect("No primary key column found");
@@ -246,27 +234,25 @@ async fn map_persistent_field<'content>(
                 self_column: (self_table_pk_column, self_table),
                 linked_column: Some((
                     other_type_column_id.get_column(subsystem),
-                    &subsystem.tables[other_type.table_id().unwrap()],
+                    &subsystem.tables[other_type.table_id],
                 )),
             };
 
-            let nested_abstract_select = match &other_type.kind {
-                PostgresTypeKind::Primitive => panic!(""),
-                PostgresTypeKind::Composite(kind) => {
-                    // Get an appropriate query based on the cardinality of the relation
-                    if cardinality == &RelationCardinality::Unbounded {
-                        let collection_query = &subsystem.collection_queries[kind.collection_query];
+            let nested_abstract_select = {
+                // Get an appropriate query based on the cardinality of the relation
+                if cardinality == &RelationCardinality::Unbounded {
+                    let collection_query =
+                        &subsystem.collection_queries[other_type.collection_query];
 
-                        collection_query
-                            .resolve_select(field, request_context, subsystem)
-                            .await?
-                    } else {
-                        let pk_query = &subsystem.pk_queries[kind.pk_query];
+                    collection_query
+                        .resolve_select(field, request_context, subsystem)
+                        .await?
+                } else {
+                    let pk_query = &subsystem.pk_queries[other_type.pk_query];
 
-                        pk_query
-                            .resolve_select(field, request_context, subsystem)
-                            .await?
-                    }
+                    pk_query
+                        .resolve_select(field, request_context, subsystem)
+                        .await?
                 }
             };
 
@@ -280,7 +266,7 @@ async fn map_persistent_field<'content>(
 
 async fn map_aggregate_field<'content>(
     agg_field: &AggregateField,
-    return_type: &PostgresType,
+    return_type: &PostgresCompositeType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
@@ -292,8 +278,8 @@ async fn map_aggregate_field<'content>(
     }) = &agg_field.relation
     {
         // TODO: Avoid code duplication with map_persistent_field
-        let other_type = &subsystem.postgres_types[*other_type_id];
-        let self_table = &subsystem.tables[return_type.table_id().unwrap()];
+        let other_type = &subsystem.entity_types[*other_type_id];
+        let self_table = &subsystem.tables[return_type.table_id];
         let self_table_pk_column = self_table
             .get_pk_physical_column()
             .expect("No primary key column found");
@@ -301,27 +287,24 @@ async fn map_aggregate_field<'content>(
             self_column: (self_table_pk_column, self_table),
             linked_column: Some((
                 other_type_column_id.get_column(subsystem),
-                &subsystem.tables[other_type.table_id().unwrap()],
+                &subsystem.tables[other_type.table_id],
             )),
         };
 
-        let nested_abstract_select = match &other_type.kind {
-            PostgresTypeKind::Primitive => panic!(""),
-            PostgresTypeKind::Composite(kind) => {
-                // Aggregate is supported only for unbounded relations (i.e. not supported for one-to-one)
-                if cardinality == &RelationCardinality::Unbounded {
-                    let aggregate_query = &subsystem.aggregate_queries[kind.aggregate_query];
+        let nested_abstract_select = {
+            // Aggregate is supported only for unbounded relations (i.e. not supported for one-to-one)
+            if cardinality == &RelationCardinality::Unbounded {
+                let aggregate_query = &subsystem.aggregate_queries[other_type.aggregate_query];
 
-                    aggregate_query
-                        .resolve_select(field, request_context, subsystem)
-                        .await
-                } else {
-                    // Reaching this point means our validation logic failed
-                    Err(PostgresExecutionError::Generic(
-                        "Validation error: Aggregate is supported only for unbounded relations"
-                            .to_string(),
-                    ))
-                }
+                aggregate_query
+                    .resolve_select(field, request_context, subsystem)
+                    .await
+            } else {
+                // Reaching this point means our validation logic failed
+                Err(PostgresExecutionError::Generic(
+                    "Validation error: Aggregate is supported only for unbounded relations"
+                        .to_string(),
+                ))
             }
         }?;
 
