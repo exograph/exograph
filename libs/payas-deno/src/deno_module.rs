@@ -566,7 +566,7 @@ mod tests {
 
     #[op]
     fn rust_impl(arg: String) -> Result<String, AnyError> {
-        Ok(format!("Register Op: {}", arg))
+        Ok(format!("Register Op: {arg}"))
     }
 
     #[tokio::test]

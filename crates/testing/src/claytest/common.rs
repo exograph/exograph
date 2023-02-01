@@ -154,7 +154,7 @@ impl Drop for ServerInstance {
     fn drop(&mut self) {
         // kill the started server
         if let e @ Err(_) = self.server.kill() {
-            println!("Error killing server instance: {:?}", e)
+            println!("Error killing server instance: {e:?}")
         }
     }
 }
@@ -236,7 +236,7 @@ where
         .chars()
         .take_while(|c| c.is_ascii_digit())
         .collect();
-    let endpoint = format!("http://127.0.0.1:{}/graphql", port);
+    let endpoint = format!("http://127.0.0.1:{port}/graphql");
 
     Ok(ServerInstance {
         server,

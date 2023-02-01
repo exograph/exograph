@@ -370,7 +370,7 @@ fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Un
             source,
             source_span,
         ))),
-        o => panic!("unsupported declaration kind: {}", o),
+        o => panic!("unsupported declaration kind: {o}"),
     }
 }
 
@@ -464,7 +464,7 @@ fn convert_annotation_params(
 
             AstAnnotationParams::Map(exprs, spans)
         }
-        o => panic!("unsupported annotation params kind: {}", o),
+        o => panic!("unsupported annotation params kind: {o}"),
     }
 }
 
@@ -505,7 +505,7 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<U
             AstExpr::RelationalOp(convert_relational_op(first_child, source, source_span))
         }
         "selection" => AstExpr::FieldSelection(convert_selection(first_child, source, source_span)),
-        o => panic!("unsupported expression kind: {}", o),
+        o => panic!("unsupported expression kind: {o}"),
     }
 }
 
@@ -551,7 +551,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
             span_from_node(source_span, first_child),
             (),
         ),
-        o => panic!("unsupported logical op kind: {}", o),
+        o => panic!("unsupported logical op kind: {o}"),
     }
 }
 
@@ -578,7 +578,7 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
         "relational_gt" => RelationalOp::Gt(left_expr, right_expr, ()),
         "relational_gte" => RelationalOp::Gte(left_expr, right_expr, ()),
         "relational_in" => RelationalOp::In(left_expr, right_expr, ()),
-        o => panic!("unsupported relational op kind: {}", o),
+        o => panic!("unsupported relational op kind: {o}"),
     }
 }
 
@@ -610,7 +610,7 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
             ),
             (),
         ),
-        o => panic!("unsupported logical op kind: {}", o),
+        o => panic!("unsupported logical op kind: {o}"),
     }
 }
 

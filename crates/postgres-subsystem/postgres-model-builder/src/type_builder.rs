@@ -383,10 +383,10 @@ fn create_column(
                         format!("'{}'::text", string.replace('\'', "''"))
                     }
                     AstExpr::BooleanLiteral(boolean, _) => {
-                        format!("{}", boolean)
+                        format!("{boolean}")
                     }
                     AstExpr::NumberLiteral(val, _) => {
-                        format!("{}", val)
+                        format!("{val}")
                     }
                     _ => panic!("Invalid concrete value"),
                 }),

@@ -45,9 +45,9 @@ fn get_claypot_file_name() -> String {
             file_name
         } else if file_name.ends_with(".clay") {
             // $ clay-server concerts.clay
-            format!("{}pot", file_name)
+            format!("{file_name}pot")
         } else {
-            println!("The input file {} doesn't appear to be a claypot. You need build one with the 'clay build <model-file-name>' command.", file_name);
+            println!("The input file {file_name} doesn't appear to be a claypot. You need build one with the 'clay build <model-file-name>' command.");
             exit(1);
         }
     }

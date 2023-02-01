@@ -27,7 +27,7 @@ pub fn run(
         root_directory_str,
         pattern
             .as_ref()
-            .map(|p| format!("'with pattern {}'", p))
+            .map(|p| format!("'with pattern {p}'"))
             .unwrap_or_else(|| "".to_string()),
         ansi_term::Color::Blue.bold().paint("..."),
     );
@@ -38,12 +38,8 @@ pub fn run(
     let postgres_url =
         std::env::var("CLAY_TEST_POSTGRES_URL").expect("CLAY_TEST_POSTGRES_URL must be specified");
 
-    let testfiles = load_testfiles_from_dir(root_directory, pattern).with_context(|| {
-        format!(
-            "While loading testfiles from directory {}",
-            root_directory_str
-        )
-    })?;
+    let testfiles = load_testfiles_from_dir(root_directory, pattern)
+        .with_context(|| format!("While loading testfiles from directory {root_directory_str}"))?;
     let number_of_integration_tests = testfiles.len();
 
     // Work out which tests share a common clay file so we only build it once for all the
@@ -142,7 +138,7 @@ pub fn run(
     for result in test_results.iter() {
         match result {
             Ok(result) => {
-                println!("{}", result);
+                println!("{result}");
 
                 if result.is_success() {
                     number_of_succeeded_tests += 1;
@@ -154,10 +150,7 @@ pub fn run(
                     "{}",
                     ansi_term::Color::Red.paint("A testfile errored while running.")
                 );
-                println!(
-                    "{}\n",
-                    ansi_term::Color::Fixed(240).paint(format!("{:?}", e))
-                );
+                println!("{}\n", ansi_term::Color::Fixed(240).paint(format!("{e:?}")));
             }
         }
     }
@@ -176,7 +169,7 @@ pub fn run(
         status,
         ansi_term::Style::new()
             .bold()
-            .paint(format!("{} passed", number_of_succeeded_tests)),
+            .paint(format!("{number_of_succeeded_tests} passed")),
         number_of_tests,
         start_time.elapsed().as_secs(),
         cpus,

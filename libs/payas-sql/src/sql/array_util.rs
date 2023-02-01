@@ -129,7 +129,7 @@ mod tests {
     }
 
     fn to_debug_string(array: &Array<Box<dyn SQLParam>>) -> Vec<String> {
-        array.iter().map(|e| format!("{:?}", e)).collect()
+        array.iter().map(|e| format!("{e:?}")).collect()
     }
 
     #[test]

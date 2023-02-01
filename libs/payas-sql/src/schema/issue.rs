@@ -13,10 +13,10 @@ pub enum Issue {
 impl Display for Issue {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let str = match self {
-            Issue::Warning(msg) => format!("warning: {}", msg),
-            Issue::Hint(msg) => format!("hint: {}", msg),
+            Issue::Warning(msg) => format!("warning: {msg}"),
+            Issue::Hint(msg) => format!("hint: {msg}"),
         };
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 

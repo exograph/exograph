@@ -136,7 +136,7 @@ fn cast_string(
                     "NaN" => PgNumeric { n: None },
                     _ => PgNumeric {
                         n: Some(BigDecimal::from_str(string).map_err(|_| {
-                            CastError::Generic(format!("Could not parse {} into a decimal", string))
+                            CastError::Generic(format!("Could not parse {string} into a decimal"))
                         })?),
                     },
                 };
@@ -150,7 +150,7 @@ fn cast_string(
                 let datetime = DateTime::parse_from_rfc3339(string);
                 let naive_datetime = NaiveDateTime::parse_from_str(
                     string,
-                    &format!("{}T{}", NAIVE_DATE_FORMAT, NAIVE_TIME_FORMAT),
+                    &format!("{NAIVE_DATE_FORMAT}T{NAIVE_TIME_FORMAT}"),
                 );
 
                 // attempt to parse string as either datetime+offset or as a naive datetime
@@ -200,8 +200,7 @@ fn cast_string(
                             PhysicalColumnType::Timestamp { .. } => {
                                 // exhausted options for timestamp formats
                                 return Err(CastError::Generic(format!(
-                                    "Could not parse {} as a valid timestamp format",
-                                    string
+                                    "Could not parse {string} as a valid timestamp format"
                                 )));
                             }
                             PhysicalColumnType::Time { .. } => {
@@ -210,9 +209,8 @@ fn cast_string(
                                     .map_err(|e| {
                                         CastError::Date(
                                             format!(
-                                                "Could not parse {} as a valid time-only format",
-                                                string
-                                            ),
+                                            "Could not parse {string} as a valid time-only format"
+                                        ),
                                             e,
                                         )
                                     })?;
@@ -224,9 +222,8 @@ fn cast_string(
                                     .map_err(|e| {
                                         CastError::Date(
                                             format!(
-                                                "Could not parse {} as a valid date-only format",
-                                                string
-                                            ),
+                                            "Could not parse {string} as a valid date-only format"
+                                        ),
                                             e,
                                         )
                                     })?;

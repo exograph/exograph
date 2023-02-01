@@ -119,8 +119,7 @@ fn ordering(argument: &ConstValue) -> Result<Ordering, PostgresExecutionError> {
             Ok(Ordering::Desc)
         } else {
             Err(PostgresExecutionError::Generic(format!(
-                "Cannot match {} as valid ordering",
-                value
+                "Cannot match {value} as valid ordering",
             )))
         }
     }
@@ -129,8 +128,7 @@ fn ordering(argument: &ConstValue) -> Result<Ordering, PostgresExecutionError> {
         ConstValue::Enum(value) => str_ordering(value.as_str()),
         ConstValue::String(value) => str_ordering(value.as_str()), // Needed when processing values from variables (that don't get mapped to the Enum type)
         arg => Err(PostgresExecutionError::Generic(format!(
-            "Unable to process ordering argument {}",
-            arg
+            "Unable to process ordering argument {arg}",
         ))),
     }
 }

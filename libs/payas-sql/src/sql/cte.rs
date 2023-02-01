@@ -17,7 +17,7 @@ impl<'a> Expression for Cte<'a> {
             .iter()
             .map(|(name, operation)| {
                 let ParameterBinding { stmt, params } = operation.binding(expression_context);
-                (format!(r#""{}" AS ({})"#, name, stmt), params)
+                (format!(r#""{name}" AS ({stmt})"#), params)
             })
             .unzip();
 

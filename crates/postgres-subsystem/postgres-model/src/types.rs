@@ -75,7 +75,7 @@ pub struct PostgresCompositeType {
 }
 
 impl PostgresCompositeType {
-    pub fn field<'a>(&'a self, name: &str) -> Option<&PostgresField> {
+    pub fn field(&self, name: &str) -> Option<&PostgresField> {
         self.fields.iter().find(|field| field.name == name)
     }
 
@@ -90,7 +90,7 @@ impl PostgresCompositeType {
             .and_then(|pk_field| pk_field.relation.self_column())
     }
 
-    pub fn aggregate_field<'a>(&'a self, name: &str) -> Option<&AggregateField> {
+    pub fn aggregate_field(&self, name: &str) -> Option<&AggregateField> {
         self.agg_fields
             .iter()
             .find(|model_field| model_field.name == name)

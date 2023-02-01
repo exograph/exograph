@@ -14,7 +14,7 @@ impl ToPlural for str {
     }
 
     fn to_plural(&self) -> String {
-        format!("{}s", self)
+        format!("{self}s")
     }
 }
 
@@ -57,15 +57,15 @@ impl<T: ToPlural> ToPostgresQueryName for T {
 }
 
 fn to_create(name: &str) -> String {
-    format!("create{}", name)
+    format!("create{name}")
 }
 
 fn to_delete(name: &str) -> String {
-    format!("delete{}", name)
+    format!("delete{name}")
 }
 
 fn to_update(name: &str) -> String {
-    format!("update{}", name)
+    format!("update{name}")
 }
 
 /// A type that can generate GraphQL mutation names.
@@ -111,15 +111,15 @@ impl<T: ToPlural> ToPostgresMutationNames for T {
 }
 
 fn to_creation_type(name: &str) -> String {
-    format!("{}CreationInput", name)
+    format!("{name}CreationInput")
 }
 
 fn to_update_type(name: &str) -> String {
-    format!("{}UpdateInput", name)
+    format!("{name}UpdateInput")
 }
 
 fn to_reference_type(name: &str) -> String {
-    format!("{}ReferenceInput", name)
+    format!("{name}ReferenceInput")
 }
 
 /// A type that can generate GraphQL type names.

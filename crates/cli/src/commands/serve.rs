@@ -33,7 +33,7 @@ impl Command for ServeCommand {
                 match verification_result {
                     Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
                         println!("The schema of the current database is not compatible with the current model for the following reasons:");
-                        println!("{}", e);
+                        println!("{e}");
                         println!("Select an option:");
                         print!("[c]ontinue without fixing, (p)ause and fix manually: ");
                         stdout().flush()?;

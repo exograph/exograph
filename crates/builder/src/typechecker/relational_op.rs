@@ -59,20 +59,19 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
                         spans.push(SpanLabel {
                             span: *left.span(),
                             style: SpanStyle::Primary,
-                            label: Some(format!("got {}", left_typ)),
+                            label: Some(format!("got {left_typ}")),
                         });
 
                         spans.push(SpanLabel {
                             span: *right.span(),
                             style: SpanStyle::Primary,
-                            label: Some(format!("got {}", right_typ)),
+                            label: Some(format!("got {right_typ}")),
                         });
 
                         errors.push(Diagnostic {
                             level: Level::Error,
                             message: format!(
-                                "Mismatched types, comparing {} with {}",
-                                left_typ, right_typ
+                                "Mismatched types, comparing {left_typ} with {right_typ}"
                             ),
                             code: Some("C000".to_string()),
                             spans,
