@@ -15,23 +15,33 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PkQuery {
+pub struct Query<P>
+where
+    P: OperationParameter,
+{
     pub name: String,
-    pub parameter: PkQueryParameter,
+    pub parameter: P,
     pub return_type: OperationReturnType,
 }
+
+pub trait OperationParameter {
+    fn parameters(&self) -> Vec<&dyn Parameter>;
+}
+
+pub type PkQuery = Query<PkQueryParameter>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PkQueryParameter {
     pub predicate_param: PredicateParameter,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CollectionQuery {
-    pub name: String,
-    pub parameter: CollectionQueryParameter,
-    pub return_type: OperationReturnType,
+impl OperationParameter for PkQueryParameter {
+    fn parameters(&self) -> Vec<&dyn Parameter> {
+        vec![&self.predicate_param]
+    }
 }
+
+pub type CollectionQuery = Query<CollectionQueryParameter>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CollectionQueryParameter {
@@ -41,16 +51,28 @@ pub struct CollectionQueryParameter {
     pub offset_param: OffsetParameter,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AggregateQuery {
-    pub name: String,
-    pub parameter: AggregateQueryParameter,
-    pub return_type: OperationReturnType,
+impl OperationParameter for CollectionQueryParameter {
+    fn parameters(&self) -> Vec<&dyn Parameter> {
+        vec![
+            &self.predicate_param,
+            &self.order_by_param,
+            &self.limit_param,
+            &self.offset_param,
+        ]
+    }
 }
+
+pub type AggregateQuery = Query<AggregateQueryParameter>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AggregateQueryParameter {
     pub predicate_param: PredicateParameter,
+}
+
+impl OperationParameter for AggregateQueryParameter {
+    fn parameters(&self) -> Vec<&dyn Parameter> {
+        vec![&self.predicate_param]
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -140,58 +162,16 @@ impl Parameter for UpdateDataParameter {
     }
 }
 
-impl Operation for PkQuery {
+impl<P> Operation for Query<P>
+where
+    P: OperationParameter,
+{
     fn name(&self) -> &String {
         &self.name
     }
 
     fn parameters(&self) -> Vec<&dyn Parameter> {
-        let PkQueryParameter { predicate_param } = &self.parameter;
-        vec![predicate_param]
-    }
-
-    fn return_type_name(&self) -> &str {
-        &self.return_type.type_name
-    }
-
-    fn return_type_modifier(&self) -> TypeModifier {
-        (&self.return_type.type_modifier).into()
-    }
-}
-
-impl Operation for CollectionQuery {
-    fn name(&self) -> &String {
-        &self.name
-    }
-
-    fn parameters(&self) -> Vec<&dyn Parameter> {
-        let CollectionQueryParameter {
-            predicate_param,
-            order_by_param,
-            limit_param,
-            offset_param,
-        } = &self.parameter;
-
-        vec![predicate_param, order_by_param, limit_param, offset_param]
-    }
-
-    fn return_type_name(&self) -> &str {
-        &self.return_type.type_name
-    }
-
-    fn return_type_modifier(&self) -> TypeModifier {
-        (&self.return_type.type_modifier).into()
-    }
-}
-
-impl Operation for AggregateQuery {
-    fn name(&self) -> &String {
-        &self.name
-    }
-
-    fn parameters(&self) -> Vec<&dyn Parameter> {
-        let AggregateQueryParameter { predicate_param } = &self.parameter;
-        vec![predicate_param]
+        self.parameter.parameters()
     }
 
     fn return_type_name(&self) -> &str {
