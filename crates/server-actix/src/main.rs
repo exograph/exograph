@@ -3,7 +3,8 @@ use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use core_resolver::system_resolver::SystemResolver;
 use resolver::{
-    create_system_resolver_or_exit, get_endpoint_http_path, get_playground_http_path, graphiql,
+    allow_introspection, create_system_resolver_or_exit, get_endpoint_http_path,
+    get_playground_http_path, graphiql,
 };
 use server_actix::resolve;
 use tracing_actix_web::TracingLogger;
@@ -66,8 +67,10 @@ async fn main() -> std::io::Result<()> {
                 }
             };
 
-            println!("- Playground hosted at:");
-            print_all_addrs(get_playground_http_path());
+            if let Ok(true) = allow_introspection() {
+                println!("- Playground hosted at:");
+                print_all_addrs(get_playground_http_path());
+            }
 
             println!("- Endpoint hosted at:");
             print_all_addrs(get_endpoint_http_path());
