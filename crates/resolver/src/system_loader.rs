@@ -75,23 +75,25 @@ impl SystemLoader {
     ) -> Result<Option<Box<IntrospectionResolver>>, SystemLoadingError> {
         let schema = Schema::new_from_resolvers(subsystem_resolvers);
 
-        let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
-            Some(e) => match e.parse::<bool>() {
-                Ok(v) => Ok(v),
-                Err(_) => Err(SystemLoadingError::Config(
-                    "CLAY_INTROSPECTION env var must be set to either true or false".into(),
-                )),
-            },
-            None => Ok(false),
-        };
-
-        allow_introspection.map(|allow_introspection| {
+        allow_introspection().map(|allow_introspection| {
             if allow_introspection {
                 Some(Box::new(IntrospectionResolver::new(schema)))
             } else {
                 None
             }
         })
+    }
+}
+
+pub fn allow_introspection() -> Result<bool, SystemLoadingError> {
+    match std::env::var("CLAY_INTROSPECTION").ok() {
+        Some(e) => match e.parse::<bool>() {
+            Ok(v) => Ok(v),
+            Err(_) => Err(SystemLoadingError::Config(
+                "CLAY_INTROSPECTION env var must be set to either true or false".into(),
+            )),
+        },
+        None => Ok(false),
     }
 }
 

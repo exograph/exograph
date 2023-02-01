@@ -14,3 +14,4 @@ pub use root_resolver::get_endpoint_http_path;
 pub use root_resolver::get_playground_http_path;
 pub use root_resolver::init;
 pub use root_resolver::resolve;
+pub use system_loader::allow_introspection;
