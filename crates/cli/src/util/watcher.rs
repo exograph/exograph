@@ -62,7 +62,7 @@ where
         match build_result {
             Ok(()) => {
                 if let Err(e) = prestart_callback().await {
-                    println!("Error: {}", e);
+                    println!("Error: {e}");
                 }
 
                 let mut command = tokio::process::Command::new(&server_binary);

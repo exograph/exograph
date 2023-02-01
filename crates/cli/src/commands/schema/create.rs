@@ -24,7 +24,7 @@ impl Command for CreateCommand {
             &SchemaSpec::default(),
             &SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect()),
         ) {
-            writeln!(buffer, "{}\n", statement)?;
+            writeln!(buffer, "{statement}\n")?;
         }
 
         Ok(())

@@ -64,7 +64,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
 
                             errors.push(Diagnostic {
                                 level: Level::Error,
-                                message: format!("Reference to unknown context: {}", i),
+                                message: format!("Reference to unknown context: {i}"),
                                 code: Some("C000".to_string()),
                                 spans: vec![SpanLabel {
                                     span: *s,

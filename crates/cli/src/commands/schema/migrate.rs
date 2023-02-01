@@ -33,7 +33,7 @@ impl Command for MigrateCommand {
             let old_schema = SchemaSpec::from_db(&client).await?;
 
             for issue in &old_schema.issues {
-                eprintln!("{}", issue);
+                eprintln!("{issue}");
             }
 
             let new_postgres_subsystem = util::create_postgres_system(&self.model)?;
@@ -47,7 +47,7 @@ impl Command for MigrateCommand {
                 if is_destructive && self.comment_destructive_changes {
                     write!(buffer, "-- ")?;
                 }
-                write!(buffer, "{}", statement)?;
+                write!(buffer, "{statement}")?;
             }
 
             Ok(())

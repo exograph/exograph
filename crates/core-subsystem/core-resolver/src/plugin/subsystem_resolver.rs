@@ -111,10 +111,9 @@ pub enum SubsystemResolutionError {
 impl SubsystemResolutionError {
     pub fn user_error_message(&self) -> Option<String> {
         match self {
-            SubsystemResolutionError::InvalidField(field_name, container_type) => Some(format!(
-                "Invalid field {} for {}",
-                field_name, container_type
-            )),
+            SubsystemResolutionError::InvalidField(field_name, container_type) => {
+                Some(format!("Invalid field {field_name} for {container_type}"))
+            }
             SubsystemResolutionError::Authorization => Some("Not authorized".to_string()),
             SubsystemResolutionError::UserDisplayError(message) => Some(message.to_string()),
             SubsystemResolutionError::NoInterceptorFound => None,

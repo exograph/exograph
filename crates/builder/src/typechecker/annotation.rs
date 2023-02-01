@@ -114,7 +114,7 @@ impl TypecheckFrom<AstAnnotation<Untyped>> for AstAnnotation<Typed> {
 
                             errors.push(Diagnostic {
                                 level: Level::Error,
-                                message: format!("Duplicate definitions of parameter `{}`", name),
+                                message: format!("Duplicate definitions of parameter `{name}`"),
                                 code: Some("A000".to_string()),
                                 spans: span_labels,
                             });

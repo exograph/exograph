@@ -41,7 +41,7 @@ impl TypecheckFrom<AstFieldType<Untyped>> for AstFieldType<Typed> {
                         *ok = false;
                         errors.push(Diagnostic {
                             level: Level::Error,
-                            message: format!("Reference to unknown type: {}", name),
+                            message: format!("Reference to unknown type: {name}"),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
                                 span: *s,

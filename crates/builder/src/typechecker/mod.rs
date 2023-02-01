@@ -313,7 +313,7 @@ pub fn build(
             } else {
                 errors.push(Diagnostic {
                     level: Level::Error,
-                    message: format!("Type {} is not a model", typ),
+                    message: format!("Type {typ} is not a model"),
                     code: Some("C000".to_string()),
                     spans: vec![],
                 });

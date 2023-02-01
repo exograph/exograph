@@ -619,9 +619,9 @@ mod tests {
         let mut codemap = CodeMap::new();
         let subsystem_builders = load_subsystem_builders().unwrap();
         let parsed = parser::parse_str(src, &mut codemap, "input.clay")
-            .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
+            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
         let types = typechecker::build(&subsystem_builders, parsed)
-            .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
+            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
         let base_system = core_model_builder::builder::system_builder::build(&types)?;
 
         build(

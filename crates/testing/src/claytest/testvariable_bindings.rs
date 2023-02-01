@@ -245,7 +245,7 @@ mod tests {
         let create_log_id = resolve_testvariable("createLog_id", &response, &bindings).unwrap();
         let log1_ids = resolve_testvariable("log1_ids", &response, &bindings).unwrap();
 
-        println!("{:#?}", log1_ids);
+        println!("{log1_ids:#?}");
 
         assert_eq!(create_log_id, 1);
         assert_eq!(log1_ids, serde_json::to_value(vec![2, 3, 4]).unwrap());

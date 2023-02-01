@@ -162,37 +162,37 @@ impl<'a> Expression for Predicate<'a, Column<'a>> {
             Predicate::False => ParameterBinding::new("false".to_string(), vec![]),
             Predicate::Eq(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} = {}", stmt1, stmt2)
+                    format!("{stmt1} = {stmt2}")
                 })
             }
             Predicate::Neq(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} <> {}", stmt1, stmt2)
+                    format!("{stmt1} <> {stmt2}")
                 })
             }
             Predicate::Lt(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} < {}", stmt1, stmt2)
+                    format!("{stmt1} < {stmt2}")
                 })
             }
             Predicate::Lte(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} <= {}", stmt1, stmt2)
+                    format!("{stmt1} <= {stmt2}")
                 })
             }
             Predicate::Gt(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} > {}", stmt1, stmt2)
+                    format!("{stmt1} > {stmt2}")
                 })
             }
             Predicate::Gte(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} >= {}", stmt1, stmt2)
+                    format!("{stmt1} >= {stmt2}")
                 })
             }
             Predicate::In(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} IN ({})", stmt1, stmt2)
+                    format!("{stmt1} IN ({stmt2})")
                 })
             }
             Predicate::And(predicate1, predicate2) => {
@@ -205,7 +205,7 @@ impl<'a> Expression for Predicate<'a, Column<'a>> {
                         predicate1,
                         predicate2,
                         expression_context,
-                        |stmt1, stmt2| format!("({} AND {})", stmt1, stmt2),
+                        |stmt1, stmt2| format!("({stmt1} AND {stmt2})"),
                     ),
                 }
             }
@@ -213,7 +213,7 @@ impl<'a> Expression for Predicate<'a, Column<'a>> {
                 predicate1.as_ref(),
                 predicate2.as_ref(),
                 expression_context,
-                |stmt1, stmt2| format!("({} OR {})", stmt1, stmt2),
+                |stmt1, stmt2| format!("({stmt1} OR {stmt2})"),
             ),
             Predicate::Not(predicate) => {
                 let expr = predicate.binding(expression_context);
@@ -222,9 +222,9 @@ impl<'a> Expression for Predicate<'a, Column<'a>> {
             Predicate::StringLike(column1, column2, case_sensitivity) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     if *case_sensitivity == CaseSensitivity::Insensitive {
-                        format!("{} ILIKE {}", stmt1, stmt2)
+                        format!("{stmt1} ILIKE {stmt2}")
                     } else {
-                        format!("{} LIKE {}", stmt1, stmt2)
+                        format!("{stmt1} LIKE {stmt2}")
                     }
                 })
             }
@@ -232,37 +232,37 @@ impl<'a> Expression for Predicate<'a, Column<'a>> {
             // and column references
             Predicate::StringStartsWith(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} LIKE {} || '%'", stmt1, stmt2)
+                    format!("{stmt1} LIKE {stmt2} || '%'")
                 })
             }
             Predicate::StringEndsWith(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} LIKE '%' || {}", stmt1, stmt2)
+                    format!("{stmt1} LIKE '%' || {stmt2}")
                 })
             }
             Predicate::JsonContains(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} @> {}", stmt1, stmt2)
+                    format!("{stmt1} @> {stmt2}")
                 })
             }
             Predicate::JsonContainedBy(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} <@ {}", stmt1, stmt2)
+                    format!("{stmt1} <@ {stmt2}")
                 })
             }
             Predicate::JsonMatchKey(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} ? {}", stmt1, stmt2)
+                    format!("{stmt1} ? {stmt2}")
                 })
             }
             Predicate::JsonMatchAnyKey(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} ?| {}", stmt1, stmt2)
+                    format!("{stmt1} ?| {stmt2}")
                 })
             }
             Predicate::JsonMatchAllKeys(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{} ?& {}", stmt1, stmt2)
+                    format!("{stmt1} ?& {stmt2}")
                 })
             }
         }

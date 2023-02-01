@@ -53,7 +53,7 @@ pub(crate) fn run_testfile(
         let db = createdb_psql(&dbname, &bootstrap_dburl)?;
 
         // create the schema
-        println!("{} Initializing schema in {} ...", log_prefix, dbname);
+        println!("{log_prefix} Initializing schema in {dbname} ...");
 
         let cli_child = cmd("clay")
             .args(["schema", "create", &testfile.model_path_string()])
@@ -68,7 +68,7 @@ pub(crate) fn run_testfile(
         run_psql(query, &db)?;
 
         // spawn a clay instance
-        println!("{} Initializing clay-server ...", log_prefix);
+        println!("{log_prefix} Initializing clay-server ...");
 
         // Should have no effect so make it random
         let check_on_startup = if rand::random() { "true" } else { "false" };
@@ -110,11 +110,11 @@ pub(crate) fn run_testfile(
     };
 
     // run the init section
-    println!("{} Initializing database...", log_prefix);
+    println!("{log_prefix} Initializing database...");
     for operation in testfile.init_operations.iter() {
         let result = run_operation(operation, &mut ctx).with_context(|| {
             let output: String = ctx.server.output.lock().unwrap().clone();
-            println!("{}", output);
+            println!("{output}");
 
             format!(
                 "While initializing database for testfile {}",
@@ -131,7 +131,7 @@ pub(crate) fn run_testfile(
     }
 
     // run test
-    println!("{} Testing ...", log_prefix);
+    println!("{log_prefix} Testing ...");
 
     let mut fail = None;
     for operation in testfile.test_operation_stages.iter() {
@@ -220,7 +220,7 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
                     &EncodingKey::from_secret(ctx.jwtsecret.as_ref()),
                 )
                 .unwrap();
-                req = req.header("Authorization", format!("Bearer {}", token));
+                req = req.header("Authorization", format!("Bearer {token}"));
             };
 
             // add extra headers from testfile

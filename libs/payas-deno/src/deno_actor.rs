@@ -214,8 +214,7 @@ where
         // send it to the DenoModule thread
         self.call_sender.send(deno_call).await.map_err(|err| {
             DenoInternalError::Channel(format!(
-                "Could not send method call request to DenoActor thread: {}",
-                err
+                "Could not send method call request to DenoActor thread: {err}"
             ))
         })?;
 

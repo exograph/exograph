@@ -53,7 +53,7 @@ pub async fn resolve<'a, E: 'static>(
         .finalize(response.is_ok())
         .await
         .map_err(|e| {
-            SystemResolutionError::Generic(format!("Error while finalizing transaction: {}", e))
+            SystemResolutionError::Generic(format!("Error while finalizing transaction: {e}"))
         })
         .and(response);
 
@@ -158,7 +158,7 @@ pub fn create_system_resolver_or_exit(claypot_file: &str) -> SystemResolver {
     match create_system_resolver(claypot_file) {
         Ok(system_resolver) => system_resolver,
         Err(error) => {
-            println!("{}", error);
+            println!("{error}");
             exit(1);
         }
     }

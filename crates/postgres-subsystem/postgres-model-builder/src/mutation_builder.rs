@@ -413,7 +413,7 @@ pub trait DataParamBuilder<D> {
         let existing = building
             .mutation_types
             .get_by_key(&existing_type_name)
-            .unwrap_or_else(|| panic!("Could not find type {} to expand", existing_type_name));
+            .unwrap_or_else(|| panic!("Could not find type {existing_type_name} to expand"));
 
         if existing.table_id == SerializableSlabIndex::shallow() {
             // If not already expanded
@@ -443,7 +443,7 @@ pub fn update_data_type_name(model_type_name: &str, container_type: Option<&str>
 fn data_type_name(base_name: &str, container_type: Option<&str>) -> String {
     match container_type {
         Some(container_type) => {
-            format!("{}From{}", base_name, container_type)
+            format!("{base_name}From{container_type}")
         }
         None => base_name.to_owned(),
     }

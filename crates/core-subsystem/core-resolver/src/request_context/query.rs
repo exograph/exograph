@@ -45,10 +45,7 @@ impl ParsedContext for QueryExtractor<'_> {
             .ok()?;
 
         let (_, query_result) = result.iter().find(|(k, _)| k == key).unwrap_or_else(|| {
-            panic!(
-                "Could not find {} in results while processing @query context",
-                key
-            )
+            panic!("Could not find {key} in results while processing @query context")
         });
 
         Some(

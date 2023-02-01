@@ -68,7 +68,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                         spans: vec![SpanLabel {
                             span: *expr.span(),
                             style: SpanStyle::Primary,
-                            label: Some(format!("should be of type {}", types_allowed)),
+                            label: Some(format!("should be of type {types_allowed}")),
                         }],
                     });
                 }

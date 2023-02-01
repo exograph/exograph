@@ -89,7 +89,7 @@ fn matches_str(expr: &str, operation_name: &str, operation_kind: OperationKind) 
         OperationKind::Query => "query",
         OperationKind::Mutation => "mutation",
     };
-    wildmatch.matches(&format!("{} {}", input, operation_name))
+    wildmatch.matches(&format!("{input} {operation_name}"))
 }
 
 /// Determine the order and nesting for interceptors.

@@ -359,7 +359,7 @@ mod tests {
             }
         }
 
-        panic!("No such table {}", name)
+        panic!("No such table {name}")
     }
 
     fn get_column_from_table<'a>(name: &'a str, table: &'a PhysicalTable) -> &'a PhysicalColumn {
@@ -369,7 +369,7 @@ mod tests {
             }
         }
 
-        panic!("No such column {}", name)
+        panic!("No such column {name}")
     }
 
     fn create_system(src: &str) -> ModelPostgresSystem {

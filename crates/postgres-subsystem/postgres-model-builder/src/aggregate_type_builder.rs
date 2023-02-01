@@ -12,7 +12,7 @@ use super::system_builder::SystemContextBuilding;
 use super::type_builder::ResolvedTypeEnv;
 
 pub(super) fn aggregate_type_name(type_name: &str) -> String {
-    format!("{}Agg", type_name)
+    format!("{type_name}Agg")
 }
 
 pub(super) fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {

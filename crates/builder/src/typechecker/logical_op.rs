@@ -56,7 +56,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                                     spans: vec![SpanLabel {
                                         span: *v.span(),
                                         style: SpanStyle::Primary,
-                                        label: Some(format!("expected Boolean, got {}", other)),
+                                        label: Some(format!("expected Boolean, got {other}")),
                                     }],
                                 });
                             }
@@ -91,7 +91,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                                 spans.push(SpanLabel {
                                     span: *left.span(),
                                     style: SpanStyle::Primary,
-                                    label: Some(format!("expected Boolean, got {}", left_typ)),
+                                    label: Some(format!("expected Boolean, got {left_typ}")),
                                 })
                             }
 
@@ -101,7 +101,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                                 spans.push(SpanLabel {
                                     span: *right.span(),
                                     style: SpanStyle::Primary,
-                                    label: Some(format!("expected Boolean, got {}", right_typ)),
+                                    label: Some(format!("expected Boolean, got {right_typ}")),
                                 })
                             }
 
@@ -143,7 +143,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                                 spans.push(SpanLabel {
                                     span: *left.span(),
                                     style: SpanStyle::Primary,
-                                    label: Some(format!("expected Boolean, got {}", left_typ)),
+                                    label: Some(format!("expected Boolean, got {left_typ}")),
                                 })
                             }
 
@@ -153,7 +153,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                                 spans.push(SpanLabel {
                                     span: *right.span(),
                                     style: SpanStyle::Primary,
-                                    label: Some(format!("expected Boolean, got {}", right_typ)),
+                                    label: Some(format!("expected Boolean, got {right_typ}")),
                                 })
                             }
 

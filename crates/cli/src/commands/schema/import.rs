@@ -38,7 +38,7 @@ impl Command for ImportCommand {
         buffer.write_all(schema.value.to_model().value.as_bytes())?;
 
         for issue in &issues {
-            eprintln!("{}", issue);
+            eprintln!("{issue}");
         }
 
         if let Some(output) = &self.output {

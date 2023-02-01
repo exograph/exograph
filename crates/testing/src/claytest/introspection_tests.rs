@@ -18,7 +18,7 @@ const GRAPHQL_NODE_MODULE: Dir<'static> =
 pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     let log_prefix =
         ansi_term::Color::Purple.paint(format!("(introspection: {})\n :: ", model_path.display()));
-    println!("{} Running introspection tests...", log_prefix);
+    println!("{log_prefix} Running introspection tests...");
 
     build_claypot_file(model_path)?;
 

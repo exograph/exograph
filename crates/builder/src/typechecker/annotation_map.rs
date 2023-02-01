@@ -90,7 +90,7 @@ impl AnnotationMapImpl for AnnotationMap {
 
                 errors.push(Diagnostic {
                     level: Level::Error,
-                    message: format!("Duplicate definitions of annotation `{}`", name),
+                    message: format!("Duplicate definitions of annotation `{name}`"),
                     code: Some("A000".to_string()),
                     spans: span_labels,
                 });
@@ -106,7 +106,7 @@ impl AnnotationMapImpl for AnnotationMap {
                         let targets_str = util::join_strings(
                             &targets
                                 .iter()
-                                .map(|t| format!("{:?}", t).to_lowercase())
+                                .map(|t| format!("{t:?}").to_lowercase())
                                 .collect::<Vec<_>>(),
                             Some("or"),
                         );
@@ -117,7 +117,7 @@ impl AnnotationMapImpl for AnnotationMap {
                             code: Some("A000".to_string()),
                             spans: vec![SpanLabel {
                                 span: annotation.span,
-                                label: Some(format!("only applies to targets: {}", targets_str)),
+                                label: Some(format!("only applies to targets: {targets_str}")),
                                 style: SpanStyle::Primary,
                             }],
                         });

@@ -84,8 +84,7 @@ fn process_script(
         .output()
         .map_err(|err| {
             ModelBuildingError::Generic(format!(
-                "While trying to invoke `deno` in order to bundle .ts files: {}",
-                err
+                "While trying to invoke `deno` in order to bundle .ts files: {err}"
             ))
         })?;
 
