@@ -121,12 +121,12 @@ fn collect_parsing_errors(node: Node, source_span: Span, errors: &mut Vec<Diagno
 
             errors.push(Diagnostic {
                 level: Level::Error,
-                message: format!("Unexpected token: \"{}\"", tok),
+                message: format!("Unexpected token: \"{tok}\""),
                 code: Some("S000".to_string()),
                 spans: vec![SpanLabel {
                     span: span_from_node(source_span, expl).subspan(1, 1),
                     style: SpanStyle::Primary,
-                    label: Some(format!("unexpected \"{}\"", tok)),
+                    label: Some(format!("unexpected \"{tok}\"")),
                 }],
             })
         } else {

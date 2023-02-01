@@ -12,7 +12,7 @@ fn cast_to_i64(argument: &ConstValue) -> Result<i64, PostgresExecutionError> {
     match argument {
         ConstValue::Number(n) => n
             .as_i64()
-            .ok_or_else(|| PostgresExecutionError::Generic(format!("Could not cast {} to i64", n))),
+            .ok_or_else(|| PostgresExecutionError::Generic(format!("Could not cast {n} to i64"))),
         _ => Err(PostgresExecutionError::Generic("Not a number".into())),
     }
 }

@@ -91,7 +91,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 }
 
 pub fn get_parameter_type_name(model_type_name: &str) -> String {
-    format!("{}Filter", model_type_name)
+    format!("{model_type_name}Filter")
 }
 
 fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType {
@@ -267,7 +267,7 @@ fn create_composite_filter_type_kind(
                         .predicate_types
                         .get_id(&param_type_name)
                         .unwrap_or_else(|| {
-                            panic!("Could not find predicate type '{}'", param_type_name)
+                            panic!("Could not find predicate type '{param_type_name}'")
                         }),
                     type_modifier,
                 },

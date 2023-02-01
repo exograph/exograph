@@ -70,7 +70,7 @@ impl Command for YoloCommand {
             }?;
 
             for issue in &old_schema.issues {
-                println!("{}", issue);
+                println!("{issue}");
             }
 
             let new_postgres_subsystem = crate::schema::util::create_postgres_system(&self.model)?;
@@ -91,7 +91,7 @@ impl Command for YoloCommand {
             };
 
             if let Err(e) = result {
-                println!("Error while applying migration: {}", e);
+                println!("Error while applying migration: {e}");
                 println!("Choose an option:");
                 print!("[c]ontinue without applying, (r)ebuild docker, (p)ause for manual repair, or (e)xit: ");
                 std::io::stdout().flush()?;
@@ -174,7 +174,7 @@ impl PostgreSQLInstance {
                 "-e",
                 "POSTGRES_PASSWORD=clay",
                 "-p",
-                &format!("{}:5432", port),
+                &format!("{port}:5432"),
                 "postgres",
             ])
             .stdin(Stdio::null())
@@ -197,7 +197,7 @@ impl PostgreSQLInstance {
 
         Ok(PostgreSQLInstance {
             container_name,
-            connection_url: format!("postgresql://clay:clay@127.0.0.1:{}/postgres", port),
+            connection_url: format!("postgresql://clay:clay@127.0.0.1:{port}/postgres"),
         })
     }
 }

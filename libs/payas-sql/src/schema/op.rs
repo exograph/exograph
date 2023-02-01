@@ -113,11 +113,11 @@ impl SchemaOp<'_> {
                 ..Default::default()
             },
             SchemaOp::CreateExtension { extension } => SchemaStatement {
-                statement: format!("CREATE EXTENSION \"{}\";", extension),
+                statement: format!("CREATE EXTENSION \"{extension}\";"),
                 ..Default::default()
             },
             SchemaOp::RemoveExtension { extension } => SchemaStatement {
-                statement: format!("DROP EXTENSION \"{}\";", extension),
+                statement: format!("DROP EXTENSION \"{extension}\";"),
                 ..Default::default()
             },
             SchemaOp::CreateUniqueConstraint {

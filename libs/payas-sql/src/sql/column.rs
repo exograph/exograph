@@ -107,7 +107,7 @@ impl PhysicalColumnType {
                             dims = &dims[2..];
                             count += 1;
                         } else {
-                            return Err(DatabaseError::Validation(format!("unknown type {}", s)));
+                            return Err(DatabaseError::Validation(format!("unknown type {s}")));
                         }
                     } else {
                         break;
@@ -190,7 +190,7 @@ impl PhysicalColumnType {
 
                         PhysicalColumnType::Numeric { precision, scale }
                     } else {
-                        return Err(DatabaseError::Validation(format!("unknown type {}", s)));
+                        return Err(DatabaseError::Validation(format!("unknown type {s}")));
                     }
                 }
             }),
@@ -220,18 +220,18 @@ impl PhysicalColumnType {
 
             PhysicalColumnType::Numeric { precision, scale } => ("Numeric".to_string(), {
                 let precision_part = precision
-                    .map(|p| format!("@precision({})", p))
+                    .map(|p| format!("@precision({p})"))
                     .unwrap_or_default();
 
-                let scale_part = scale.map(|s| format!("@scale({})", s)).unwrap_or_default();
+                let scale_part = scale.map(|s| format!("@scale({s})")).unwrap_or_default();
 
-                format!(" {} {}", precision_part, scale_part)
+                format!(" {precision_part} {scale_part}")
             }),
 
             PhysicalColumnType::String { length } => (
                 "String".to_string(),
                 match length {
-                    Some(length) => format!(" @length({})", length),
+                    Some(length) => format!(" @length({length})"),
                     None => "".to_string(),
                 },
             ),
@@ -249,7 +249,7 @@ impl PhysicalColumnType {
                 }
                 .to_string(),
                 match precision {
-                    Some(precision) => format!(" @precision({})", precision),
+                    Some(precision) => format!(" @precision({precision})"),
                     None => "".to_string(),
                 },
             ),
@@ -257,7 +257,7 @@ impl PhysicalColumnType {
             PhysicalColumnType::Time { precision } => (
                 "LocalTime".to_string(),
                 match precision {
-                    Some(precision) => format!(" @precision({})", precision),
+                    Some(precision) => format!(" @precision({precision})"),
                     None => "".to_string(),
                 },
             ),
@@ -270,7 +270,7 @@ impl PhysicalColumnType {
 
             PhysicalColumnType::Array { typ } => {
                 let (data_type, annotations) = typ.to_model();
-                (format!("[{}]", data_type), annotations)
+                (format!("[{data_type}]"), annotations)
             }
 
             PhysicalColumnType::ColumnReference { ref_table_name, .. } => {
@@ -322,7 +322,7 @@ impl<'a> Expression for Column<'a> {
             }
             Column::Literal(value) => {
                 let param_index = expression_context.next_param();
-                ParameterBinding::new(format! {"${}", param_index}, vec![value.as_ref()])
+                ParameterBinding::new(format! {"${param_index}"}, vec![value.as_ref()])
             }
             Column::JsonObject(elems) => {
                 let (elem_stmt, elem_params): (Vec<_>, Vec<_>) = elems
@@ -337,11 +337,11 @@ impl<'a> Expression for Column<'a> {
                                 // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
                                 // need to filter out using translate(...) function
                                 PhysicalColumnType::Blob => {
-                                    format!("translate(encode({}, \'base64\'), E'\\n', '')", stmt)
+                                    format!("translate(encode({stmt}, \'base64\'), E'\\n', '')")
                                 }
 
                                 // numerics must be outputted as text to avoid any loss in precision
-                                PhysicalColumnType::Numeric { .. } => format!("{}::text", stmt),
+                                PhysicalColumnType::Numeric { .. } => format!("{stmt}::text"),
 
                                 _ => stmt,
                             }
@@ -365,7 +365,7 @@ impl<'a> Expression for Column<'a> {
                 let pb = selection_table.binding(expression_context);
                 ParameterBinding::new(format!("({})", pb.stmt), pb.params)
             }
-            Column::Constant(value) => ParameterBinding::new(format!("'{}'", value), vec![]),
+            Column::Constant(value) => ParameterBinding::new(format!("'{value}'"), vec![]),
             Column::Star => ParameterBinding::new("*".to_string(), vec![]),
             Column::Null => ParameterBinding::new("NULL".to_string(), vec![]),
         }

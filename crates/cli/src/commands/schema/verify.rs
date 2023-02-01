@@ -36,9 +36,9 @@ impl Command for VerifyCommand {
             Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
                 eprintln!("This model is not compatible with the current database schema. You may need to update your model to match, or perform a migration to update it.");
                 eprintln!("The following issues should be corrected:");
-                eprintln!("{}", e)
+                eprintln!("{e}")
             }
-            Err(e) => eprintln!("Error: {}", e),
+            Err(e) => eprintln!("Error: {e}"),
         }
 
         verification_result.map_err(|_| anyhow!("Incompatible model."))
@@ -54,11 +54,11 @@ pub enum VerificationErrors {
 impl Display for VerificationErrors {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VerificationErrors::PostgresError(e) => write!(f, "Postgres error: {}", e),
-            VerificationErrors::ParserError(e) => write!(f, "Error while parsing model: {}", e),
+            VerificationErrors::PostgresError(e) => write!(f, "Postgres error: {e}"),
+            VerificationErrors::ParserError(e) => write!(f, "Error while parsing model: {e}"),
             VerificationErrors::ModelNotCompatible(e) => {
                 for error in e.iter() {
-                    writeln!(f, "- {}", error)?
+                    writeln!(f, "- {error}")?
                 }
 
                 Ok(())
@@ -79,7 +79,7 @@ pub async fn verify(model: &Path, database: Option<&str>) -> Result<(), Verifica
         .await
         .map_err(VerificationErrors::PostgresError)?;
     for issue in &db_schema.issues {
-        println!("{}", issue);
+        println!("{issue}");
     }
 
     // parse provided model
@@ -98,7 +98,7 @@ pub async fn verify(model: &Path, database: Option<&str>) -> Result<(), Verifica
                     SchemaOp::CreateColumn { column } => errors.push(format!("The column `{}` in the table `{}` exists in the model, but does not exist in the database table.", column.column_name, column.table_name)),
                     SchemaOp::SetColumnDefaultValue { column, default_value } => errors.push(format!("The default value for column `{}` in table `{}` does not match `{}`", column.column_name, column.table_name, default_value)),
                     SchemaOp::UnsetColumnDefaultValue { column } => errors.push(format!("The column `{}` in table `{}` is not set in the model.", column.column_name, column.table_name)),
-                    SchemaOp::CreateExtension { extension } => errors.push(format!("The model requires the extension `{}`.", extension)),
+                    SchemaOp::CreateExtension { extension } => errors.push(format!("The model requires the extension `{extension}`.")),
                     SchemaOp::CreateUniqueConstraint { table, columns, constraint_name } => errors.push(format!("The model requires a unique constraint named `{}` for the following columns in table `{}`: {}", constraint_name, table.name, columns.join(", "))),
                     SchemaOp::SetNotNull { column } => errors.push(format!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.column_name, column.table_name)),
                     _ => {}

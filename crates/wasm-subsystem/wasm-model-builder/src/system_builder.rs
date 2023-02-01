@@ -73,8 +73,7 @@ fn process_script(
 ) -> Result<Vec<u8>, ModelBuildingError> {
     std::fs::read(module_fs_path).map_err(|err| {
         ModelBuildingError::Generic(format!(
-            "While trying to read bundled service module: {}",
-            err
+            "While trying to read bundled service module: {err}"
         ))
     })
 }

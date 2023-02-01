@@ -79,8 +79,7 @@ impl PhysicalColumn {
                     "
                     SELECT format_type(atttypid, atttypmod), attndims
                     FROM pg_attribute
-                    WHERE attrelid = '{}'::regclass AND attname = '{}'",
-                    table_name, column_name
+                    WHERE attrelid = '{table_name}'::regclass AND attname = '{column_name}'"
                 );
 
                 let rows = client.query(db_type_query.as_str(), &[]).await?;
@@ -98,8 +97,7 @@ impl PhysicalColumn {
                     Ok(t) => Some(t),
                     Err(e) => {
                         issues.push(Issue::Warning(format!(
-                            "skipped column `{}.{}` ({})",
-                            table_name, column_name, e
+                            "skipped column `{table_name}.{column_name}` ({e})"
                         )));
                         None
                     }
@@ -111,8 +109,7 @@ impl PhysicalColumn {
             "
             SELECT attnotnull
             FROM pg_attribute
-            WHERE attrelid = '{}'::regclass AND attname = '{}'",
-            table_name, column_name
+            WHERE attrelid = '{table_name}'::regclass AND attname = '{column_name}'"
         );
 
         let not_null: bool = client
@@ -129,8 +126,7 @@ impl PhysicalColumn {
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
 
-        let is_autoincrement =
-            serial_columns.contains(&format!("{}_{}_seq", table_name, column_name));
+        let is_autoincrement = serial_columns.contains(&format!("{table_name}_{column_name}_seq"));
 
         let default_value = if is_autoincrement {
             // if this column is autoincrement, then default value will be populated
@@ -183,7 +179,7 @@ impl PhysicalColumn {
             ""
         };
         let default_value_part = if let Some(default_value) = self.default_value.as_ref() {
-            format!(" DEFAULT {}", default_value)
+            format!(" DEFAULT {default_value}")
         } else {
             "".to_string()
         };
@@ -242,9 +238,9 @@ impl PhysicalColumnType {
                 statement: {
                     if let Some(p) = precision {
                         if let Some(s) = scale {
-                            format!("NUMERIC({}, {})", p, s)
+                            format!("NUMERIC({p}, {s})")
                         } else {
-                            format!("NUMERIC({})", p)
+                            format!("NUMERIC({p})")
                         }
                     } else {
                         assert!(scale.is_none()); // can't have a scale and no precision
@@ -257,7 +253,7 @@ impl PhysicalColumnType {
 
             PhysicalColumnType::String { length } => SchemaStatement {
                 statement: if let Some(length) = length {
-                    format!("VARCHAR({})", length)
+                    format!("VARCHAR({length})")
                 } else {
                     "TEXT".to_owned()
                 },
@@ -282,7 +278,7 @@ impl PhysicalColumnType {
                         "WITHOUT TIME ZONE"
                     };
                     let precision_option = if let Some(p) = precision {
-                        format!("({})", p)
+                        format!("({p})")
                     } else {
                         String::default()
                     };
@@ -294,7 +290,7 @@ impl PhysicalColumnType {
                     };
 
                     // e.g. "TIMESTAMP(3) WITH TIME ZONE"
-                    format!("{}{} {}", typ, precision_option, timezone_option)
+                    format!("{typ}{precision_option} {timezone_option}")
                 },
                 pre_statements: vec![],
                 post_statements: vec![],
@@ -302,7 +298,7 @@ impl PhysicalColumnType {
 
             PhysicalColumnType::Time { precision } => SchemaStatement {
                 statement: if let Some(p) = precision {
-                    format!("TIME({})", p)
+                    format!("TIME({p})")
                 } else {
                     "TIME".to_owned()
                 },
@@ -368,9 +364,6 @@ impl PhysicalColumnType {
                     ref_pk_type.to_sql(table_name, column_name, is_autoincrement);
                 let foreign_constraint = format!(
                     r#"ALTER TABLE "{table_name}" ADD CONSTRAINT "{table_name}_{column_name}_fk" FOREIGN KEY ("{column_name}") REFERENCES "{ref_table_name}";"#,
-                    table_name = table_name,
-                    column_name = column_name,
-                    ref_table_name = ref_table_name,
                 );
 
                 sql_statement.post_statements.push(foreign_constraint);

@@ -103,8 +103,7 @@ impl PhysicalTable {
     ) -> Result<WithIssues<PhysicalTable>, DatabaseError> {
         // Query to get a list of columns in the table
         let columns_query = format!(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = '{}'",
-            table_name
+            "SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
         );
 
         let mut issues = Vec::new();
@@ -198,7 +197,7 @@ impl PhysicalTable {
         for (unique_constraint_name, columns) in self.named_unique_constraints().iter() {
             let columns_part = columns
                 .iter()
-                .map(|c| format!("\"{}\"", c))
+                .map(|c| format!("\"{c}\""))
                 .collect::<Vec<_>>()
                 .join(", ");
 

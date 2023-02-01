@@ -321,7 +321,7 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
             let file = File::open(path)?;
             let reader = BufReader::new(file);
             let deserialized_initfile: InitFile =
-                serde_yaml::from_reader(reader).context(format!("Failed to parse {:?}", path))?;
+                serde_yaml::from_reader(reader).context(format!("Failed to parse {path:?}"))?;
 
             // validate GraphQL
             let gql_document =

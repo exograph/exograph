@@ -214,7 +214,7 @@ impl ResolvedType {
     pub fn as_primitive(&self) -> PrimitiveType {
         match &self {
             ResolvedType::Primitive(p) => p.clone(),
-            _ => panic!("Not a primitive: {:?}", self),
+            _ => panic!("Not a primitive: {self:?}"),
         }
     }
 
@@ -222,7 +222,7 @@ impl ResolvedType {
     pub fn as_composite(&self) -> &ResolvedCompositeType {
         match &self {
             ResolvedType::Composite(c) => c,
-            _ => panic!("Cannot get inner composite of type {:?}", self),
+            _ => panic!("Cannot get inner composite of type {self:?}"),
         }
     }
 }
@@ -359,8 +359,7 @@ fn resolve_field_default_type(
                         errors.push(Diagnostic {
                             level: Level::Error,
                             message: format!(
-                                "{}() can only be used on Ints",
-                                DEFAULT_FN_AUTOINCREMENT
+                                "{DEFAULT_FN_AUTOINCREMENT}() can only be used on Ints"
                             ),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
@@ -381,8 +380,7 @@ fn resolve_field_default_type(
                         errors.push(Diagnostic {
                             level: Level::Error,
                             message: format!(
-                                "{}() can only be used for time-related types",
-                                DEFAULT_FN_CURRENT_TIME
+                                "{DEFAULT_FN_CURRENT_TIME}() can only be used for time-related types"
                             ),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
@@ -403,8 +401,7 @@ fn resolve_field_default_type(
                         errors.push(Diagnostic {
                             level: Level::Error,
                             message: format!(
-                                "{}() can only be used on Uuids",
-                                DEFAULT_FN_GENERATE_UUID
+                                "{DEFAULT_FN_GENERATE_UUID}() can only be used on Uuids"
                             ),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
@@ -421,7 +418,7 @@ fn resolve_field_default_type(
             _ => {
                 errors.push(Diagnostic {
                     level: Level::Error,
-                    message: format!("Unknown function specified for default value: {}", fn_name),
+                    message: format!("Unknown function specified for default value: {fn_name}"),
                     code: Some("C000".to_string()),
                     spans: vec![SpanLabel {
                         span: default_value.span,
@@ -1276,9 +1273,9 @@ mod tests {
         let mut codemap = CodeMap::new();
         let subsystem_builders = load_subsystem_builders().unwrap();
         let parsed = parser::parse_str(src, &mut codemap, "input.clay")
-            .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
+            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
         let typechecked_system = typechecker::build(&subsystem_builders, parsed)
-            .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
+            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
 
         build(&typechecked_system)
     }

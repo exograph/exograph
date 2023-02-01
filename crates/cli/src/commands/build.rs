@@ -33,8 +33,8 @@ impl Error for BuildError {}
 impl Display for BuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            BuildError::ParserError(e) => writeln!(f, "Parser error: {}", e),
-            BuildError::UnrecoverableError(e) => writeln!(f, "{}", e),
+            BuildError::ParserError(e) => writeln!(f, "Parser error: {e}"),
+            BuildError::UnrecoverableError(e) => writeln!(f, "{e}"),
         }
     }
 }

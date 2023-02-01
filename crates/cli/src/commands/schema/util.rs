@@ -44,9 +44,6 @@ fn deserialize_postgres_subsystem(
         // If there is no database subsystem in the serialized system, create an empty one
         .unwrap_or_else(|| Ok(ModelPostgresSystem::default()))
         .map_err(|e| {
-            ParserError::Generic(format!(
-                "Error while deserializing database subsystem: {}",
-                e
-            ))
+            ParserError::Generic(format!("Error while deserializing database subsystem: {e}"))
         })
 }

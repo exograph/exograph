@@ -30,11 +30,11 @@ async fn main() -> std::io::Result<()> {
                 .expect("Failed to parse CLAY_SERVER_PORT")
         })
         .unwrap_or(9876);
-    let server_url = format!("0.0.0.0:{}", server_port);
+    let server_url = format!("0.0.0.0:{server_port}");
 
     let resolve_path = get_endpoint_http_path();
     let playground_path = get_playground_http_path();
-    let playground_path_subpaths = format!("{}/{{path:.*}}", playground_path);
+    let playground_path_subpaths = format!("{playground_path}/{{path:.*}}");
 
     let server = HttpServer::new(move || {
         let cors = cors_from_env();
@@ -62,7 +62,7 @@ async fn main() -> std::io::Result<()> {
 
             let print_all_addrs = |suffix| {
                 for addr in server.addrs() {
-                    println!("\thttp://{}{}", addr, suffix);
+                    println!("\thttp://{addr}{suffix}");
                 }
             };
 
@@ -76,9 +76,9 @@ async fn main() -> std::io::Result<()> {
         }
         Err(e) => {
             if e.kind() == ErrorKind::AddrInUse {
-                eprintln!("Error: Port {} is already in use. Check if there is another process running at that port.", server_port);
+                eprintln!("Error: Port {server_port} is already in use. Check if there is another process running at that port.");
             } else {
-                eprintln!("Error: Failed to start server: {}", e);
+                eprintln!("Error: Failed to start server: {e}");
             }
             exit(1);
         }
@@ -105,9 +105,9 @@ fn get_claypot_file_name() -> String {
             file_name
         } else if file_name.ends_with(".clay") {
             // $ clay-server concerts.clay
-            format!("{}pot", file_name)
+            format!("{file_name}pot")
         } else {
-            println!("The input file {} doesn't appear to be a claypot. You need build one with the 'clay build <model-file-name>' command.", file_name);
+            println!("The input file {file_name} doesn't appear to be a claypot. You need build one with the 'clay build <model-file-name>' command.");
             exit(1);
         }
     }

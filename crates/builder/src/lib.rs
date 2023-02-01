@@ -75,7 +75,7 @@ fn build_from_ast_system(
     codemap: CodeMap,
 ) -> Result<Vec<u8>, ParserError> {
     let subsystem_builders =
-        load_subsystem_builders().map_err(|e| ParserError::Generic(format!("{}", e)))?;
+        load_subsystem_builders().map_err(|e| ParserError::Generic(format!("{e}")))?;
 
     ast_system
         .and_then(|ast_system| typechecker::build(&subsystem_builders, ast_system))
