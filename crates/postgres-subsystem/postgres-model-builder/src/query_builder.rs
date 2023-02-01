@@ -9,7 +9,7 @@ use postgres_model::{
     },
     order::OrderByParameter,
     predicate::{PredicateParameter, PredicateParameterTypeWithModifier},
-    types::{PostgresCompositeType, PostgresTypeIndex, PostgresTypeModifier},
+    types::{EntityType, PostgresCompositeType, PostgresTypeIndex, PostgresTypeModifier},
 };
 
 use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
@@ -100,8 +100,8 @@ fn expanded_pk_query(
 }
 
 pub fn pk_predicate_param(
-    model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-    model_type: &PostgresCompositeType,
+    model_type_id: SerializableSlabIndex<EntityType>,
+    model_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
     let pk_field = model_type.pk_field().unwrap();
@@ -149,8 +149,8 @@ fn shallow_collection_query(
 }
 
 fn expanded_collection_query(
-    model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-    model_type: &PostgresCompositeType,
+    model_type_id: SerializableSlabIndex<EntityType>,
+    model_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> CollectionQuery {
     let operation_name = model_type.collection_query();
@@ -240,8 +240,8 @@ pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
 }
 
 pub fn collection_predicate_param(
-    model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-    model_type: &PostgresCompositeType,
+    model_type_id: SerializableSlabIndex<EntityType>,
+    model_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
     let param_type_name = predicate_builder::get_parameter_type_name(&model_type.name);

@@ -24,7 +24,7 @@ use postgres_model::{
     order::OrderByParameter,
     predicate::PredicateParameter,
     relation::{PostgresRelation, RelationCardinality},
-    types::{PostgresCompositeType, PostgresField, PostgresTypeModifier},
+    types::{EntityType, PostgresField, PostgresTypeModifier},
 };
 
 #[async_trait]
@@ -139,7 +139,7 @@ fn compute_order_by<'content>(
 
 #[async_recursion]
 async fn content_select<'content>(
-    return_type: &PostgresCompositeType,
+    return_type: &EntityType,
     fields: &'content [ValidatedField],
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
@@ -153,7 +153,7 @@ async fn content_select<'content>(
 }
 
 async fn map_field<'content>(
-    return_type: &PostgresCompositeType,
+    return_type: &EntityType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
@@ -181,7 +181,7 @@ async fn map_field<'content>(
 
 async fn map_persistent_field<'content>(
     model_field: &PostgresField,
-    return_type: &PostgresCompositeType,
+    return_type: &EntityType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
@@ -266,7 +266,7 @@ async fn map_persistent_field<'content>(
 
 async fn map_aggregate_field<'content>(
     agg_field: &AggregateField,
-    return_type: &PostgresCompositeType,
+    return_type: &EntityType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,

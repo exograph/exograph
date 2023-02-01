@@ -18,7 +18,9 @@ use core_plugin_interface::{
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression,
     column_path::{ColumnIdPath, ColumnIdPathLink},
-    types::{PostgresCompositeType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
+    types::{
+        EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType,
+    },
 };
 
 use super::column_path_utils;
@@ -32,10 +34,10 @@ enum PathSelection<'a> {
 
 pub fn compute_predicate_expression(
     expr: &AstExpr<Typed>,
-    self_type_info: Option<&PostgresCompositeType>,
+    self_type_info: Option<&EntityType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
-    subsystem_entity_types: &MappedArena<PostgresCompositeType>,
+    subsystem_entity_types: &MappedArena<EntityType>,
 ) -> Result<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
         AstExpr::FieldSelection(selection) => {
@@ -157,10 +159,10 @@ pub fn compute_predicate_expression(
 
 fn compute_primitive_expr(
     expr: &AstExpr<Typed>,
-    self_type_info: Option<&PostgresCompositeType>,
+    self_type_info: Option<&EntityType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
-    subsystem_entity_types: &MappedArena<PostgresCompositeType>,
+    subsystem_entity_types: &MappedArena<EntityType>,
 ) -> DatabaseAccessPrimitiveExpression {
     match expr {
         AstExpr::FieldSelection(selection) => {
@@ -196,10 +198,10 @@ fn compute_primitive_expr(
 
 fn compute_selection<'a>(
     selection: &FieldSelection<Typed>,
-    self_type_info: Option<&'a PostgresCompositeType>,
+    self_type_info: Option<&'a EntityType>,
     resolved_env: &'a ResolvedTypeEnv<'a>,
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
-    subsystem_entity_types: &'a MappedArena<PostgresCompositeType>,
+    subsystem_entity_types: &'a MappedArena<EntityType>,
 ) -> PathSelection<'a> {
     fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
         match selection {
@@ -213,8 +215,8 @@ fn compute_selection<'a>(
 
     fn get_column<'a>(
         field_name: &str,
-        self_type_info: &'a PostgresCompositeType,
-        subsystem_composite_types: &MappedArena<PostgresCompositeType>,
+        self_type_info: &'a EntityType,
+        entity_types: &MappedArena<EntityType>,
     ) -> (ColumnIdPathLink, &'a PostgresFieldType) {
         let get_field = |field_name: &str| {
             self_type_info.field(field_name).unwrap_or_else(|| {
@@ -224,7 +226,7 @@ fn compute_selection<'a>(
 
         let field = get_field(field_name);
         let column_path_link =
-            column_path_utils::column_path_link(self_type_info, field, subsystem_composite_types);
+            column_path_utils::column_path_link(self_type_info, field, entity_types);
 
         (column_path_link, &field.typ)
     }

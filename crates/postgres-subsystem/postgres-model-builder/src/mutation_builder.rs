@@ -7,8 +7,8 @@ use postgres_model::{
     operation::{OperationReturnType, PostgresMutation, PostgresMutationKind},
     relation::PostgresRelation,
     types::{
-        PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeIndex,
-        PostgresTypeModifier,
+        EntityType, PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType,
+        PostgresTypeIndex, PostgresTypeModifier,
     },
 };
 
@@ -55,25 +55,25 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
 }
 
 pub trait MutationBuilder {
-    fn single_mutation_name(model_type: &PostgresCompositeType) -> String;
+    fn single_mutation_name(model_type: &EntityType) -> String;
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-        model_type: &PostgresCompositeType,
+        model_type_id: SerializableSlabIndex<EntityType>,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
     fn single_mutation_type_modifier() -> PostgresTypeModifier;
 
-    fn multi_mutation_name(model_type: &PostgresCompositeType) -> String;
+    fn multi_mutation_name(model_type: &EntityType) -> String;
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-        model_type: &PostgresCompositeType,
+        model_type_id: SerializableSlabIndex<EntityType>,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
 
     fn build_mutations(
         &self,
-        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-        model_type: &PostgresCompositeType,
+        model_type_id: SerializableSlabIndex<EntityType>,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> Vec<PostgresMutation> {
         let single_mutation = PostgresMutation {
@@ -107,11 +107,7 @@ pub trait DataParamBuilder<D> {
 
     fn base_data_type_name(model_type_name: &str) -> String;
 
-    fn data_param(
-        model_type: &PostgresCompositeType,
-        building: &SystemContextBuilding,
-        array: bool,
-    ) -> D;
+    fn data_param(model_type: &EntityType, building: &SystemContextBuilding, array: bool) -> D;
 
     fn data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
         let base_name = Self::base_data_type_name(model_type_name);
@@ -123,7 +119,7 @@ pub trait DataParamBuilder<D> {
     fn compute_data_fields(
         &self,
         postgres_fields: &[PostgresField],
-        top_level_type: Option<&PostgresCompositeType>,
+        top_level_type: Option<&EntityType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Vec<PostgresField> {
@@ -206,7 +202,7 @@ pub trait DataParamBuilder<D> {
     fn compute_data_field(
         &self,
         field: &PostgresField,
-        top_level_type: Option<&PostgresCompositeType>,
+        top_level_type: Option<&EntityType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<PostgresField> {
@@ -314,16 +310,16 @@ pub trait DataParamBuilder<D> {
 
     fn expanded_data_type(
         &self,
-        model_type: &PostgresCompositeType,
+        model_type: &EntityType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
-        top_level_type: Option<&PostgresCompositeType>,
-        container_type: Option<&PostgresCompositeType>,
+        top_level_type: Option<&EntityType>,
+        container_type: Option<&EntityType>,
     ) -> Vec<(
         SerializableSlabIndex<PostgresCompositeType>,
         PostgresCompositeType,
     )> {
-        let PostgresCompositeType {
+        let EntityType {
             fields,
             table_id,
             pk_query,
@@ -392,13 +388,13 @@ pub trait DataParamBuilder<D> {
     #[allow(clippy::too_many_arguments)]
     fn expand_one_to_many(
         &self,
-        model_type: &PostgresCompositeType,
+        model_type: &EntityType,
         _field: &PostgresField,
-        field_type: &PostgresCompositeType,
+        field_type: &EntityType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
-        top_level_type: Option<&PostgresCompositeType>,
-        _container_type: Option<&PostgresCompositeType>,
+        top_level_type: Option<&EntityType>,
+        _container_type: Option<&EntityType>,
     ) -> Vec<(
         SerializableSlabIndex<PostgresCompositeType>,
         PostgresCompositeType,

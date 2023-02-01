@@ -6,7 +6,7 @@ use postgres_model::{
     operation::{PostgresMutationKind, UpdateDataParameter},
     relation::PostgresRelation,
     types::{
-        PostgresCompositeType, PostgresField, PostgresFieldType, PostgresTypeIndex,
+        EntityType, PostgresCompositeType, PostgresField, PostgresFieldType, PostgresTypeIndex,
         PostgresTypeModifier,
     },
 };
@@ -57,13 +57,13 @@ impl Builder for UpdateMutationBuilder {
 }
 
 impl MutationBuilder for UpdateMutationBuilder {
-    fn single_mutation_name(model_type: &PostgresCompositeType) -> String {
+    fn single_mutation_name(model_type: &EntityType) -> String {
         model_type.pk_update()
     }
 
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-        model_type: &PostgresCompositeType,
+        model_type_id: SerializableSlabIndex<EntityType>,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
@@ -76,13 +76,13 @@ impl MutationBuilder for UpdateMutationBuilder {
         PostgresTypeModifier::Optional // We return null if the specified id doesn't exist
     }
 
-    fn multi_mutation_name(model_type: &PostgresCompositeType) -> String {
+    fn multi_mutation_name(model_type: &EntityType) -> String {
         model_type.collection_update()
     }
 
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-        model_type: &PostgresCompositeType,
+        model_type_id: SerializableSlabIndex<EntityType>,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
@@ -110,7 +110,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
     }
 
     fn data_param(
-        model_type: &PostgresCompositeType,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
         _array: bool,
     ) -> UpdateDataParameter {
@@ -148,13 +148,13 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
     /// from the containing "update" type, we add a "Nested" suffix.
     fn expand_one_to_many(
         &self,
-        model_type: &PostgresCompositeType,
+        model_type: &EntityType,
         field: &PostgresField,
-        field_type: &PostgresCompositeType,
+        field_type: &EntityType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
-        top_level_type: Option<&PostgresCompositeType>,
-        container_type: Option<&PostgresCompositeType>,
+        top_level_type: Option<&EntityType>,
+        container_type: Option<&EntityType>,
     ) -> Vec<(
         SerializableSlabIndex<PostgresCompositeType>,
         PostgresCompositeType,
@@ -163,7 +163,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()));
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-        let PostgresCompositeType {
+        let EntityType {
             table_id,
             pk_query,
             collection_query,

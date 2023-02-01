@@ -21,14 +21,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum PostgresTypeIndex {
     Primitive(SerializableSlabIndex<PostgresPrimitiveType>),
-    Composite(SerializableSlabIndex<PostgresCompositeType>),
+    Composite(SerializableSlabIndex<EntityType>),
 }
 
 impl PostgresTypeIndex {
     pub fn to_type<'a>(
         &self,
         primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
-        entity_types: &'a SerializableSlab<PostgresCompositeType>,
+        entity_types: &'a SerializableSlab<EntityType>,
     ) -> PostgresType<'a> {
         match self {
             PostgresTypeIndex::Primitive(index) => {
@@ -42,7 +42,7 @@ impl PostgresTypeIndex {
 #[derive(Debug)]
 pub enum PostgresType<'a> {
     Primitive(&'a PostgresPrimitiveType),
-    Composite(&'a PostgresCompositeType),
+    Composite(&'a EntityType),
 }
 
 impl<'a> PostgresType<'a> {
@@ -60,6 +60,21 @@ pub struct PostgresPrimitiveType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EntityType {
+    pub name: String,
+    pub plural_name: String,
+    pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
+
+    pub fields: Vec<PostgresField>,
+    pub agg_fields: Vec<AggregateField>,
+    pub table_id: SerializableSlabIndex<PhysicalTable>,
+    pub pk_query: SerializableSlabIndex<PkQuery>,
+    pub collection_query: SerializableSlabIndex<CollectionQuery>,
+    pub aggregate_query: SerializableSlabIndex<AggregateQuery>,
+    pub access: Access,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresCompositeType {
     pub name: String,
     pub plural_name: String,
@@ -72,6 +87,29 @@ pub struct PostgresCompositeType {
     pub collection_query: SerializableSlabIndex<CollectionQuery>,
     pub aggregate_query: SerializableSlabIndex<AggregateQuery>,
     pub access: Access,
+}
+
+impl EntityType {
+    pub fn field<'a>(&'a self, name: &str) -> Option<&PostgresField> {
+        self.fields.iter().find(|field| field.name == name)
+    }
+
+    pub fn pk_field(&self) -> Option<&PostgresField> {
+        self.fields
+            .iter()
+            .find(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
+    }
+
+    pub fn pk_column_id(&self) -> Option<ColumnId> {
+        self.pk_field()
+            .and_then(|pk_field| pk_field.relation.self_column())
+    }
+
+    pub fn aggregate_field<'a>(&'a self, name: &str) -> Option<&AggregateField> {
+        self.agg_fields
+            .iter()
+            .find(|model_field| model_field.name == name)
+    }
 }
 
 impl PostgresCompositeType {
@@ -135,7 +173,7 @@ impl PostgresFieldType {
     pub fn base_type<'a>(
         &self,
         primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
-        entity_types: &'a SerializableSlab<PostgresCompositeType>,
+        entity_types: &'a SerializableSlab<EntityType>,
     ) -> PostgresType<'a> {
         match self {
             PostgresFieldType::Optional(underlying) | PostgresFieldType::List(underlying) => {
@@ -172,6 +210,46 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresPrimitiveType {
             name: default_positioned_name(&self.name),
             directives: vec![],
             kind: TypeKind::Scalar,
+        }
+    }
+}
+
+impl TypeDefinitionProvider<ModelPostgresSystem> for EntityType {
+    fn type_definition(&self, system: &ModelPostgresSystem) -> TypeDefinition {
+        let EntityType {
+            fields: model_fields,
+            agg_fields,
+            ..
+        } = self;
+
+        let kind = if self.is_input {
+            let fields = model_fields
+                .iter()
+                .map(|field| default_positioned(field.input_value()))
+                .collect();
+            TypeKind::InputObject(InputObjectType { fields })
+        } else {
+            let entity = model_fields
+                .iter()
+                .map(|field| default_positioned(field.field_definition(system)));
+
+            let agg_fields = agg_fields
+                .iter()
+                .map(|field| default_positioned(field.field_definition(system)));
+
+            let fields = entity.chain(agg_fields).collect();
+
+            TypeKind::Object(ObjectType {
+                implements: vec![],
+                fields,
+            })
+        };
+        TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(&self.name),
+            directives: vec![],
+            kind,
         }
     }
 }
