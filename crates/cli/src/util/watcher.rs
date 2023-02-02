@@ -29,7 +29,13 @@ where
     })?;
 
     // start watcher
-    println!("Watching: {:?}", &parent_dir);
+    println!(
+        "{} {}",
+        ansi_term::Color::Blue.bold().paint("Watching:"),
+        ansi_term::Color::Cyan
+            .bold()
+            .paint(&parent_dir.display().to_string())
+    );
 
     let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::channel(1);
     let mut debouncer =
@@ -62,7 +68,11 @@ where
         match build_result {
             Ok(()) => {
                 if let Err(e) = prestart_callback().await {
-                    println!("Error: {e}");
+                    println!(
+                        "{} {}",
+                        ansi_term::Color::Red.bold().paint("Error:"),
+                        ansi_term::Color::Red.bold().paint(e.to_string())
+                    );
                 }
 
                 let mut command = tokio::process::Command::new(&server_binary);
