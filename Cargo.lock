@@ -885,6 +885,7 @@ dependencies = [
 name = "cli"
 version = "0.1.0"
 dependencies = [
+ "ansi_term",
  "anyhow",
  "builder",
  "clap",
