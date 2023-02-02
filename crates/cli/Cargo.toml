@@ -8,6 +8,7 @@ name = "clay"
 path = "src/main.rs"
 
 [dependencies]
+ansi_term = "0.12"
 tokio = "1"
 anyhow = "1.0"
 clap = "4.0.18"
