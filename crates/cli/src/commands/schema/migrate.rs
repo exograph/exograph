@@ -14,7 +14,7 @@ pub struct MigrateCommand {
     pub model: PathBuf,
     pub database: Option<String>,
     pub output: Option<PathBuf>,
-    pub comment_destructive_changes: bool,
+    pub allow_destructive_changes: bool,
 }
 
 impl Command for MigrateCommand {
@@ -44,10 +44,10 @@ impl Command for MigrateCommand {
             let statements = migration_statements(&old_schema.value, &new_schema);
 
             for (statement, is_destructive) in statements {
-                if is_destructive && self.comment_destructive_changes {
+                if is_destructive && !self.allow_destructive_changes {
                     write!(buffer, "-- ")?;
                 }
-                write!(buffer, "{statement}")?;
+                writeln!(buffer, "{statement}")?;
             }
 
             Ok(())

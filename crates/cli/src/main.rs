@@ -206,7 +206,7 @@ fn main() -> Result<()> {
                 model: get_required(matches, "model")?,
                 database: get(matches, "database"),
                 output: get(matches, "output"),
-                comment_destructive_changes: !matches.contains_id("allow-destructive-changes"),
+                allow_destructive_changes: matches.get_flag("allow-destructive-changes"),
             }),
             _ => panic!("Unhandled command name"),
         },
