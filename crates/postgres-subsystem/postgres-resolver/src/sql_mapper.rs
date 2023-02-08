@@ -1,6 +1,6 @@
 use async_graphql_value::ConstValue;
 
-use postgres_model::model::ModelPostgresSystem;
+use postgres_model::subsystem::PostgresSubsystem;
 
 use crate::util::{find_arg, Arguments};
 
@@ -16,7 +16,7 @@ pub(crate) trait SQLMapper<'a, R> {
     fn to_sql(
         self,
         argument: &'a ConstValue,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<R, PostgresExecutionError>;
 
     fn param_name(&self) -> &str;
@@ -25,7 +25,7 @@ pub(crate) trait SQLMapper<'a, R> {
 pub(crate) fn extract_and_map<'a, P, R>(
     param: P,
     arguments: &'a Arguments,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Result<Option<R>, PostgresExecutionError>
 where
     P: SQLMapper<'a, R>,

@@ -15,7 +15,7 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 use payas_wasm::WasmExecutorPool;
-use wasm_model::{model::ModelWasmSystem, service::ServiceMethod};
+use wasm_model::{service::ServiceMethod, subsystem::WasmSubsystem};
 
 pub struct WasmSubsystemLoader {}
 core_plugin_interface::export_subsystem_loader!(WasmSubsystemLoader {});
@@ -29,7 +29,7 @@ impl SubsystemLoader for WasmSubsystemLoader {
         &self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
-        let subsystem = ModelWasmSystem::deserialize(serialized_subsystem)?;
+        let subsystem = WasmSubsystem::deserialize(serialized_subsystem)?;
 
         let executor = WasmExecutorPool::default();
 
@@ -43,7 +43,7 @@ impl SubsystemLoader for WasmSubsystemLoader {
 
 pub struct WasmSubsystemResolver {
     pub id: &'static str,
-    pub subsystem: ModelWasmSystem,
+    pub subsystem: WasmSubsystem,
     pub executor: WasmExecutorPool,
 }
 
@@ -125,7 +125,7 @@ impl SubsystemResolver for WasmSubsystemResolver {
 }
 
 pub(crate) fn create_wasm_operation<'a>(
-    system: &'a ModelWasmSystem,
+    system: &'a WasmSubsystem,
     method_id: &Option<SerializableSlabIndex<ServiceMethod>>,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,

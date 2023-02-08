@@ -10,8 +10,8 @@ use core_plugin_interface::core_resolver::{
 use payas_sql::{AbstractPredicate, PhysicalTable};
 use postgres_model::{
     column_path::{ColumnIdPath, ColumnIdPathLink},
-    model::ModelPostgresSystem,
     operation::{CollectionQuery, OperationReturnType, PkQuery},
+    subsystem::PostgresSubsystem,
 };
 
 pub type Arguments = IndexMap<String, ConstValue>;
@@ -21,7 +21,7 @@ pub type Arguments = IndexMap<String, ConstValue>;
 pub(crate) async fn check_access<'a>(
     return_type: &'a OperationReturnType,
     kind: &SQLOperationKind,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     let return_type = return_type.typ(subsystem);
@@ -89,7 +89,7 @@ pub(crate) fn get_argument_field<'a>(
 /// - A (table associated with the return type, pk query, collection query) tuple.
 pub(crate) fn return_type_info<'a>(
     return_type: &'a OperationReturnType,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> (&'a PhysicalTable, &'a PkQuery, &'a CollectionQuery) {
     let typ = return_type.typ(subsystem);
 

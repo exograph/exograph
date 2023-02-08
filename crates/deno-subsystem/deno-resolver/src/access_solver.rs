@@ -8,7 +8,7 @@ use core_plugin_interface::{
     },
 };
 
-use deno_model::{access::ServiceAccessPrimitiveExpression, model::ModelDenoSystem};
+use deno_model::{access::ServiceAccessPrimitiveExpression, subsystem::DenoSubsystem};
 
 use serde_json::Value;
 
@@ -43,13 +43,13 @@ impl<'a> AccessPredicate<'a> for ServiceAccessPredicateWrapper {
 
 pub struct DenoAccessSolver<'a> {
     request_context: &'a RequestContext<'a>,
-    system: &'a ModelDenoSystem,
+    system: &'a DenoSubsystem,
 }
 
 impl DenoAccessSolver<'_> {
     pub fn new<'a>(
         request_context: &'a RequestContext<'a>,
-        system: &'a ModelDenoSystem,
+        system: &'a DenoSubsystem,
     ) -> DenoAccessSolver<'a> {
         DenoAccessSolver {
             request_context,

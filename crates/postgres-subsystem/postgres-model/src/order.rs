@@ -1,4 +1,4 @@
-use crate::model::ModelPostgresSystem;
+use crate::subsystem::PostgresSubsystem;
 
 use super::{column_path::ColumnIdPathLink, types::PostgresTypeModifier};
 use async_graphql_parser::{
@@ -70,8 +70,8 @@ impl Parameter for OrderByParameter {
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for OrderByParameterType {
-    fn type_definition(&self, _system: &ModelPostgresSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
+    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
         match &self.kind {
             OrderByParameterTypeKind::Composite { parameters } => {
                 let fields = parameters

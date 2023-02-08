@@ -19,11 +19,11 @@ use payas_sql::{
 };
 use postgres_model::{
     aggregate::AggregateField,
-    model::ModelPostgresSystem,
     operation::{CollectionQuery, OperationReturnType, PkQuery},
     order::OrderByParameter,
     predicate::PredicateParameter,
     relation::{PostgresRelation, RelationCardinality},
+    subsystem::PostgresSubsystem,
     types::{EntityType, PostgresField, PostgresTypeModifier},
 };
 
@@ -33,7 +33,7 @@ impl OperationSelectionResolver for PkQuery {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
         compute_select(
             &self.parameter.predicate_param,
@@ -55,7 +55,7 @@ impl OperationSelectionResolver for CollectionQuery {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
         let parameter = &self.parameter;
 
@@ -81,7 +81,7 @@ async fn compute_select<'content>(
     offset: Option<Offset>,
     return_type: &'content OperationReturnType,
     field: &'content ValidatedField,
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect<'content>, PostgresExecutionError> {
     let access_predicate = check_access(
@@ -125,7 +125,7 @@ async fn compute_select<'content>(
 fn compute_order_by<'content>(
     param: &'content OrderByParameter,
     arguments: &'content Arguments,
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
 ) -> Result<Option<AbstractOrderBy<'content>>, PostgresExecutionError> {
     extract_and_map(
         OrderByParameterInput {
@@ -141,7 +141,7 @@ fn compute_order_by<'content>(
 async fn content_select<'content>(
     return_type: &EntityType,
     fields: &'content [ValidatedField],
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<Vec<ColumnSelection<'content>>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
@@ -155,7 +155,7 @@ async fn content_select<'content>(
 async fn map_field<'content>(
     return_type: &EntityType,
     field: &'content ValidatedField,
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
@@ -183,7 +183,7 @@ async fn map_persistent_field<'content>(
     entity_field: &PostgresField<EntityType>,
     return_type: &EntityType,
     field: &'content ValidatedField,
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement<'content>, PostgresExecutionError> {
     match &entity_field.relation {
@@ -268,7 +268,7 @@ async fn map_aggregate_field<'content>(
     agg_field: &AggregateField,
     return_type: &EntityType,
     field: &'content ValidatedField,
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement<'content>, PostgresExecutionError> {
     if let Some(PostgresRelation::OneToMany {

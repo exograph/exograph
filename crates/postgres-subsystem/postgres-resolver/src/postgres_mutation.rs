@@ -18,12 +18,12 @@ use payas_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractSelect, AbstractUpdate,
 };
 use postgres_model::{
-    model::ModelPostgresSystem,
     operation::{
         CreateDataParameter, OperationReturnType, PostgresMutation, PostgresMutationKind,
         UpdateDataParameter,
     },
     predicate::PredicateParameter,
+    subsystem::PostgresSubsystem,
     types::PostgresTypeModifier,
 };
 
@@ -33,7 +33,7 @@ impl OperationResolver for PostgresMutation {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
         let return_type = &self.return_type;
 
@@ -97,7 +97,7 @@ async fn create_operation<'content>(
     data_param: &'content CreateDataParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractInsert<'content>, PostgresExecutionError> {
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -127,7 +127,7 @@ async fn delete_operation<'content>(
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractDelete<'content>, PostgresExecutionError> {
     let (table, _, _) = return_type_info(return_type, subsystem);
@@ -156,7 +156,7 @@ async fn update_operation<'content>(
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractUpdate<'content>, PostgresExecutionError> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,

@@ -2,13 +2,13 @@ use payas_sql::{ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
 use postgres_model::{
     column_id::ColumnId,
     column_path::{ColumnIdPath, ColumnIdPathLink},
-    model::ModelPostgresSystem,
+    subsystem::PostgresSubsystem,
 };
 
 pub fn to_column_path<'a>(
     parent_column_id_path: &Option<ColumnIdPath>,
     next_column_id_path_link: &Option<ColumnIdPathLink>,
-    system: &'a ModelPostgresSystem,
+    system: &'a PostgresSubsystem,
 ) -> ColumnPath<'a> {
     let mut path: Vec<_> = match parent_column_id_path {
         Some(parent_column_id_path) => parent_column_id_path
@@ -28,7 +28,7 @@ pub fn to_column_path<'a>(
 
 fn to_column_table(
     column_id: ColumnId,
-    system: &ModelPostgresSystem,
+    system: &PostgresSubsystem,
 ) -> (&PhysicalColumn, &PhysicalTable) {
     let column = column_id.get_column(system);
     let table = &system
@@ -43,7 +43,7 @@ fn to_column_table(
 
 fn to_column_path_link<'a>(
     link: &ColumnIdPathLink,
-    system: &'a ModelPostgresSystem,
+    system: &'a PostgresSubsystem,
 ) -> ColumnPathLink<'a> {
     ColumnPathLink {
         self_column: to_column_table(link.self_column_id, system),
