@@ -7,12 +7,12 @@ use postgres_model::{
     operation::{OperationReturnType, PostgresMutation, PostgresMutationKind},
     relation::PostgresRelation,
     types::{
-        EntityType, PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType,
-        PostgresTypeIndex, PostgresTypeModifier,
+        EntityType, FieldType, MutationType, PostgresField, PostgresType, PostgresTypeModifier,
+        TypeIndex,
     },
 };
 
-use crate::{resolved_builder::ResolvedField, shallow::Shallow};
+use crate::{resolved_builder::ResolvedField, shallow::Shallow, utils::to_mutation_type};
 
 use super::{
     builder::Builder,
@@ -37,12 +37,15 @@ pub enum DataParamRole {
 // TODO: Abstract the concept of composite builders
 
 /// Build shallow mutation input types
-pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
-    ReferenceInputTypeBuilder {}.build_shallow(models, building);
+pub fn build_shallow(
+    resolved_types: &MappedArena<ResolvedType>,
+    building: &mut SystemContextBuilding,
+) {
+    ReferenceInputTypeBuilder {}.build_shallow(resolved_types, building);
 
-    CreateMutationBuilder {}.build_shallow(models, building);
-    UpdateMutationBuilder {}.build_shallow(models, building);
-    DeleteMutationBuilder {}.build_shallow(models, building);
+    CreateMutationBuilder {}.build_shallow(resolved_types, building);
+    UpdateMutationBuilder {}.build_shallow(resolved_types, building);
+    DeleteMutationBuilder {}.build_shallow(resolved_types, building);
 }
 
 /// Expand the mutation input types as well as build the mutation
@@ -55,43 +58,43 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
 }
 
 pub trait MutationBuilder {
-    fn single_mutation_name(model_type: &EntityType) -> String;
+    fn single_mutation_name(entity_type: &EntityType) -> String;
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<EntityType>,
-        model_type: &EntityType,
+        entity_type_id: SerializableSlabIndex<EntityType>,
+        entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
     fn single_mutation_type_modifier() -> PostgresTypeModifier;
 
-    fn multi_mutation_name(model_type: &EntityType) -> String;
+    fn multi_mutation_name(entity_type: &EntityType) -> String;
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<EntityType>,
-        model_type: &EntityType,
+        entity_type_id: SerializableSlabIndex<EntityType>,
+        entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
 
     fn build_mutations(
         &self,
-        model_type_id: SerializableSlabIndex<EntityType>,
-        model_type: &EntityType,
+        entity_type_id: SerializableSlabIndex<EntityType>,
+        entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> Vec<PostgresMutation> {
         let single_mutation = PostgresMutation {
-            name: Self::single_mutation_name(model_type),
-            kind: Self::single_mutation_kind(model_type_id, model_type, building),
+            name: Self::single_mutation_name(entity_type),
+            kind: Self::single_mutation_kind(entity_type_id, entity_type, building),
             return_type: OperationReturnType {
-                type_id: model_type_id,
-                type_name: model_type.name.clone(),
+                type_id: entity_type_id,
+                type_name: entity_type.name.clone(),
                 type_modifier: Self::single_mutation_type_modifier(),
             },
         };
 
         let multi_mutation = PostgresMutation {
-            name: Self::multi_mutation_name(model_type),
-            kind: Self::multi_mutation_kind(model_type_id, model_type, building),
+            name: Self::multi_mutation_name(entity_type),
+            kind: Self::multi_mutation_kind(entity_type_id, entity_type, building),
             return_type: OperationReturnType {
-                type_id: model_type_id,
-                type_name: model_type.name.clone(),
+                type_id: entity_type_id,
+                type_name: entity_type.name.clone(),
                 type_modifier: PostgresTypeModifier::List,
             },
         };
@@ -105,12 +108,12 @@ pub trait DataParamBuilder<D> {
         Self::base_data_type_name(&resolved_composite_type.name)
     }
 
-    fn base_data_type_name(model_type_name: &str) -> String;
+    fn base_data_type_name(entity_type_name: &str) -> String;
 
-    fn data_param(model_type: &EntityType, building: &SystemContextBuilding, array: bool) -> D;
+    fn data_param(entity_type: &EntityType, building: &SystemContextBuilding, array: bool) -> D;
 
-    fn data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
-        let base_name = Self::base_data_type_name(model_type_name);
+    fn data_type_name(entity_type_name: &str, container_type: Option<&str>) -> String {
+        let base_name = Self::base_data_type_name(entity_type_name);
         super::mutation_builder::data_type_name(&base_name, container_type)
     }
 
@@ -118,11 +121,11 @@ pub trait DataParamBuilder<D> {
 
     fn compute_data_fields(
         &self,
-        postgres_fields: &[PostgresField],
+        postgres_fields: &[PostgresField<EntityType>],
         top_level_type: Option<&EntityType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
-    ) -> Vec<PostgresField> {
+    ) -> Vec<PostgresField<MutationType>> {
         postgres_fields
             .iter()
             .flat_map(|field| {
@@ -201,11 +204,11 @@ pub trait DataParamBuilder<D> {
 
     fn compute_data_field(
         &self,
-        field: &PostgresField,
+        field: &PostgresField<EntityType>,
         top_level_type: Option<&EntityType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
-    ) -> Option<PostgresField> {
+    ) -> Option<PostgresField<MutationType>> {
         let optional = Self::mark_fields_optional() || field.has_default_value;
 
         match &field.relation {
@@ -216,8 +219,10 @@ pub trait DataParamBuilder<D> {
                     // as an optional field in the update mutation.
                     // See also https://github.com/payalabs/payas/issues/601
                     Some(PostgresField {
-                        typ: field.typ.optional(),
-                        ..field.clone()
+                        name: field.name.clone(),
+                        typ: to_mutation_type(&field.typ).optional(),
+                        relation: field.relation.clone(),
+                        has_default_value: field.has_default_value,
                     })
                 } else {
                     // TODO: Make this decision based on autoincrement/uuid etc of the id
@@ -225,12 +230,14 @@ pub trait DataParamBuilder<D> {
                 }
             }
             PostgresRelation::Scalar { .. } => Some(PostgresField {
+                name: field.name.clone(),
                 typ: if optional {
-                    field.typ.optional()
+                    to_mutation_type(&field.typ).optional()
                 } else {
-                    field.typ.clone()
+                    to_mutation_type(&field.typ)
                 },
-                ..field.clone()
+                relation: field.relation.clone(),
+                has_default_value: field.has_default_value,
             }),
             PostgresRelation::OneToMany { .. } => {
                 self.compute_one_to_many_data_field(field, container_type, building)
@@ -238,24 +245,20 @@ pub trait DataParamBuilder<D> {
             PostgresRelation::ManyToOne { .. } => {
                 let field_type_name = field.typ.type_name().reference_type();
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-                let field_plain_type = PostgresFieldType::Reference {
+                let field_plain_type = FieldType::Reference {
                     type_name: field_type_name,
-                    type_id: PostgresTypeIndex::Composite(field_type_id),
+                    type_id: TypeIndex::Composite(field_type_id),
                 };
                 let field_type = match field.typ {
-                    PostgresFieldType::Reference { .. } => {
+                    FieldType::Reference { .. } => {
                         if optional {
                             field_plain_type.optional()
                         } else {
                             field_plain_type
                         }
                     }
-                    PostgresFieldType::Optional(_) => {
-                        PostgresFieldType::Optional(Box::new(field_plain_type))
-                    }
-                    PostgresFieldType::List(_) => {
-                        PostgresFieldType::List(Box::new(field_plain_type))
-                    }
+                    FieldType::Optional(_) => FieldType::Optional(Box::new(field_plain_type)),
+                    FieldType::List(_) => FieldType::List(Box::new(field_plain_type)),
                 };
 
                 match &top_level_type {
@@ -273,12 +276,11 @@ pub trait DataParamBuilder<D> {
 
     fn compute_one_to_many_data_field(
         &self,
-        field: &PostgresField,
+        field: &PostgresField<EntityType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
-    ) -> Option<PostgresField> {
-        let optional =
-            matches!(field.typ, PostgresFieldType::Optional(_)) || Self::mark_fields_optional();
+    ) -> Option<PostgresField<MutationType>> {
+        let optional = matches!(field.typ, FieldType::Optional(_)) || Self::mark_fields_optional();
 
         let field_type_name = Self::data_type_name(field.typ.type_name(), container_type);
 
@@ -286,11 +288,11 @@ pub trait DataParamBuilder<D> {
             .mutation_types
             .get_id(&field_type_name)
             .and_then(|field_type_id| {
-                let field_plain_type = PostgresFieldType::Reference {
+                let field_plain_type = FieldType::Reference {
                     type_name: field_type_name,
-                    type_id: PostgresTypeIndex::Composite(field_type_id),
+                    type_id: TypeIndex::Composite(field_type_id),
                 };
-                let field_type = PostgresFieldType::List(Box::new(field_plain_type));
+                let field_type = FieldType::List(Box::new(field_plain_type));
 
                 match &container_type {
                     Some(value) if value == &field.typ.type_name() => None,
@@ -310,24 +312,13 @@ pub trait DataParamBuilder<D> {
 
     fn expanded_data_type(
         &self,
-        model_type: &EntityType,
+        entity_type: &EntityType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         container_type: Option<&EntityType>,
-    ) -> Vec<(
-        SerializableSlabIndex<PostgresCompositeType>,
-        PostgresCompositeType,
-    )> {
-        let EntityType {
-            fields,
-            table_id,
-            pk_query,
-            collection_query,
-            aggregate_query,
-            access,
-            ..
-        } = &model_type;
+    ) -> Vec<(SerializableSlabIndex<MutationType>, MutationType)> {
+        let EntityType { fields, .. } = &entity_type;
 
         let mut field_types: Vec<_> = fields
             .iter()
@@ -340,13 +331,13 @@ pub trait DataParamBuilder<D> {
                     (&field_type, &field.relation)
                 {
                     self.expand_one_to_many(
-                        model_type,
+                        entity_type,
                         field,
                         field_type,
                         resolved_env,
                         building,
                         top_level_type,
-                        Some(model_type),
+                        Some(entity_type),
                     )
                 } else {
                     vec![]
@@ -355,7 +346,7 @@ pub trait DataParamBuilder<D> {
             .collect();
 
         let existing_type_name = Self::data_type_name(
-            model_type.name.as_str(),
+            entity_type.name.as_str(),
             container_type.map(|value| value.name.as_str()),
         );
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
@@ -363,22 +354,15 @@ pub trait DataParamBuilder<D> {
         let input_type_fields = self.compute_data_fields(
             fields,
             top_level_type,
-            Some(model_type.name.as_str()),
+            Some(entity_type.name.as_str()),
             building,
         );
         field_types.push((
             existing_type_id,
-            PostgresCompositeType {
+            MutationType {
                 name: existing_type_name,
-                plural_name: "".to_string(), // unused // TODO: Fix by separating mutation types from entity types
                 fields: input_type_fields,
-                agg_fields: vec![],
-                table_id: *table_id,
-                pk_query: *pk_query,
-                collection_query: *collection_query,
-                aggregate_query: *aggregate_query,
-                access: access.clone(),
-                is_input: true,
+                entity_type: building.entity_types.get_id(&entity_type.name).unwrap(),
             },
         ));
 
@@ -388,18 +372,15 @@ pub trait DataParamBuilder<D> {
     #[allow(clippy::too_many_arguments)]
     fn expand_one_to_many(
         &self,
-        model_type: &EntityType,
-        _field: &PostgresField,
+        entity_type: &EntityType,
+        _field: &PostgresField<EntityType>,
         field_type: &EntityType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         _container_type: Option<&EntityType>,
-    ) -> Vec<(
-        SerializableSlabIndex<PostgresCompositeType>,
-        PostgresCompositeType,
-    )> {
-        let new_container_type = Some(model_type);
+    ) -> Vec<(SerializableSlabIndex<MutationType>, MutationType)> {
+        let new_container_type = Some(entity_type);
 
         let existing_type_name = Self::data_type_name(
             &field_type.name,
@@ -411,7 +392,7 @@ pub trait DataParamBuilder<D> {
             .get_by_key(&existing_type_name)
             .unwrap_or_else(|| panic!("Could not find type {existing_type_name} to expand"));
 
-        if existing.table_id == SerializableSlabIndex::shallow() {
+        if existing.entity_type == SerializableSlabIndex::shallow() {
             // If not already expanded
             self.expanded_data_type(
                 field_type,
@@ -426,13 +407,13 @@ pub trait DataParamBuilder<D> {
     }
 }
 
-pub fn create_data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
-    let base_name = model_type_name.creation_type();
+pub fn create_data_type_name(entity_type_name: &str, container_type: Option<&str>) -> String {
+    let base_name = entity_type_name.creation_type();
     data_type_name(&base_name, container_type)
 }
 
-pub fn update_data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
-    let base_name = model_type_name.update_type();
+pub fn update_data_type_name(entity_type_name: &str, container_type: Option<&str>) -> String {
+    let base_name = entity_type_name.update_type();
     data_type_name(&base_name, container_type)
 }
 

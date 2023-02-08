@@ -9,25 +9,26 @@ use postgres_model::{
     },
     order::OrderByParameter,
     predicate::{PredicateParameter, PredicateParameterTypeWithModifier},
-    types::{EntityType, PostgresCompositeType, PostgresTypeIndex, PostgresTypeModifier},
+    types::{EntityType, PostgresTypeModifier, TypeIndex},
 };
 
-use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
+use crate::{
+    aggregate_type_builder::aggregate_type_name, resolved_builder::ResolvedCompositeType,
+    shallow::Shallow,
+};
 
 use super::{
-    naming::ToPostgresQueryName,
-    order_by_type_builder, predicate_builder,
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
+    naming::ToPostgresQueryName, order_by_type_builder, predicate_builder,
+    resolved_builder::ResolvedType, system_builder::SystemContextBuilding,
 };
 
 pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, typ) in types.iter() {
         if let ResolvedType::Composite(c) = &typ {
-            let model_type_id = building.get_entity_type_id(c.name.as_str()).unwrap();
-            let shallow_query = shallow_pk_query(model_type_id, c);
-            let collection_query = shallow_collection_query(model_type_id, c);
-            let aggregate_query = shallow_aggregate_query(model_type_id, c);
+            let entity_type_id = building.get_entity_type_id(c.name.as_str()).unwrap();
+            let shallow_query = shallow_pk_query(entity_type_id, c);
+            let collection_query = shallow_collection_query(entity_type_id, c);
+            let aggregate_query = shallow_aggregate_query(entity_type_id, c);
 
             building
                 .pk_queries
@@ -43,19 +44,19 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (model_type_id, model_type) in building.entity_types.iter() {
+    for (entity_type_id, entity_type) in building.entity_types.iter() {
         {
-            let query = expanded_pk_query(model_type_id, model_type, building);
+            let query = expanded_pk_query(entity_type_id, entity_type, building);
             let existing_id = building.pk_queries.get_id(&query.name).unwrap();
             building.pk_queries[existing_id] = query;
         }
         {
-            let query = expanded_collection_query(model_type_id, model_type, building);
+            let query = expanded_collection_query(entity_type_id, entity_type, building);
             let existing_id = building.collection_queries.get_id(&query.name).unwrap();
             building.collection_queries[existing_id] = query;
         }
         {
-            let query = expanded_aggregate_query(model_type_id, model_type, building);
+            let query = expanded_aggregate_query(entity_type_id, entity_type, building);
             let existing_id = building.aggregate_queries.get_id(&query.name).unwrap();
             building.aggregate_queries[existing_id] = query;
         }
@@ -63,7 +64,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 }
 
 fn shallow_pk_query(
-    model_type_id: SerializableSlabIndex<PostgresCompositeType>,
+    entity_type_id: SerializableSlabIndex<EntityType>,
     typ: &ResolvedCompositeType,
 ) -> PkQuery {
     let operation_name = typ.pk_query();
@@ -73,7 +74,7 @@ fn shallow_pk_query(
             predicate_param: PredicateParameter::shallow(),
         },
         return_type: OperationReturnType {
-            type_id: model_type_id,
+            type_id: entity_type_id,
             type_name: typ.name.clone(),
             type_modifier: PostgresTypeModifier::NonNull,
         },
@@ -81,14 +82,14 @@ fn shallow_pk_query(
 }
 
 fn expanded_pk_query(
-    model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-    model_type: &PostgresCompositeType,
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PkQuery {
-    let operation_name = model_type.pk_query();
+    let operation_name = entity_type.pk_query();
     let existing_query = building.pk_queries.get_by_key(&operation_name).unwrap();
 
-    let pk_param = pk_predicate_param(model_type_id, model_type, building);
+    let pk_param = pk_predicate_param(entity_type_id, entity_type, building);
 
     PkQuery {
         name: operation_name,
@@ -100,11 +101,11 @@ fn expanded_pk_query(
 }
 
 pub fn pk_predicate_param(
-    model_type_id: SerializableSlabIndex<EntityType>,
-    model_type: &EntityType,
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
-    let pk_field = model_type.pk_field().unwrap();
+    let pk_field = entity_type.pk_field().unwrap();
 
     PredicateParameter {
         name: pk_field.name.to_string(),
@@ -123,15 +124,15 @@ pub fn pk_predicate_param(
                 self_column_id: column_id,
                 linked_column_id: None,
             }),
-        underlying_type_id: PostgresTypeIndex::Composite(model_type_id),
+        underlying_type_id: TypeIndex::Composite(entity_type_id),
     }
 }
 
 fn shallow_collection_query(
-    model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-    model: &ResolvedCompositeType,
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    resolved_entity_type: &ResolvedCompositeType,
 ) -> CollectionQuery {
-    let operation_name = model.collection_query();
+    let operation_name = resolved_entity_type.collection_query();
     CollectionQuery {
         name: operation_name,
         parameter: CollectionQueryParameter {
@@ -141,26 +142,26 @@ fn shallow_collection_query(
             offset_param: OffsetParameter::shallow(),
         },
         return_type: OperationReturnType {
-            type_id: model_type_id,
-            type_name: model.name.clone(),
+            type_id: entity_type_id,
+            type_name: resolved_entity_type.name.clone(),
             type_modifier: PostgresTypeModifier::List,
         },
     }
 }
 
 fn expanded_collection_query(
-    model_type_id: SerializableSlabIndex<EntityType>,
-    model_type: &EntityType,
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> CollectionQuery {
-    let operation_name = model_type.collection_query();
+    let operation_name = entity_type.collection_query();
     let existing_query = building
         .collection_queries
         .get_by_key(&operation_name)
         .unwrap();
 
-    let predicate_param = collection_predicate_param(model_type_id, model_type, building);
-    let order_by_param = order_by_type_builder::new_root_param(&model_type.name, false, building);
+    let predicate_param = collection_predicate_param(entity_type_id, entity_type, building);
+    let order_by_param = order_by_type_builder::new_root_param(&entity_type.name, false, building);
     let limit_param = limit_param(building);
     let offset_param = offset_param(building);
 
@@ -177,34 +178,34 @@ fn expanded_collection_query(
 }
 
 fn shallow_aggregate_query(
-    model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-    typ: &ResolvedCompositeType,
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    resolved_entity_type: &ResolvedCompositeType,
 ) -> AggregateQuery {
     AggregateQuery {
-        name: typ.aggregate_query(),
+        name: resolved_entity_type.aggregate_query(),
         parameter: AggregateQueryParameter {
             predicate_param: PredicateParameter::shallow(),
         },
         return_type: OperationReturnType {
-            type_id: model_type_id,
-            type_name: aggregate_type_name(&typ.name),
+            type_id: entity_type_id,
+            type_name: aggregate_type_name(&resolved_entity_type.name),
             type_modifier: PostgresTypeModifier::NonNull,
         },
     }
 }
 
 fn expanded_aggregate_query(
-    model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-    model_type: &PostgresCompositeType,
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> AggregateQuery {
-    let operation_name = model_type.aggregate_query();
+    let operation_name = entity_type.aggregate_query();
     let existing_query = building
         .aggregate_queries
         .get_by_key(&operation_name)
         .unwrap();
 
-    let predicate_param = collection_predicate_param(model_type_id, model_type, building);
+    let predicate_param = collection_predicate_param(entity_type_id, entity_type, building);
 
     AggregateQuery {
         name: operation_name.clone(),
@@ -240,11 +241,11 @@ pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
 }
 
 pub fn collection_predicate_param(
-    model_type_id: SerializableSlabIndex<EntityType>,
-    model_type: &EntityType,
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
-    let param_type_name = predicate_builder::get_parameter_type_name(&model_type.name);
+    let param_type_name = predicate_builder::get_parameter_type_name(&entity_type.name);
     PredicateParameter {
         name: "where".to_string(),
         type_name: param_type_name.clone(),
@@ -253,7 +254,7 @@ pub fn collection_predicate_param(
             type_modifier: PostgresTypeModifier::Optional,
         },
         column_path_link: None,
-        underlying_type_id: PostgresTypeIndex::Composite(model_type_id),
+        underlying_type_id: TypeIndex::Composite(entity_type_id),
     }
 }
 

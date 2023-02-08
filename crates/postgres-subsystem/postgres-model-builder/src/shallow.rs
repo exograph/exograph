@@ -1,5 +1,5 @@
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
-use postgres_model::types::PostgresTypeIndex;
+use postgres_model::types::TypeIndex;
 
 /// A trait that allows a default-like value during shallow building
 ///
@@ -16,8 +16,8 @@ impl<T> Shallow for SerializableSlabIndex<T> {
     }
 }
 
-impl Shallow for PostgresTypeIndex {
+impl<CT> Shallow for TypeIndex<CT> {
     fn shallow() -> Self {
-        PostgresTypeIndex::Primitive(SerializableSlabIndex::shallow())
+        TypeIndex::Primitive(SerializableSlabIndex::shallow())
     }
 }

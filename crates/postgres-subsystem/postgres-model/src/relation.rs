@@ -1,4 +1,4 @@
-use crate::types::{EntityType};
+use crate::types::EntityType;
 
 use super::column_id::ColumnId;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;

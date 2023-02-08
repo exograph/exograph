@@ -12,7 +12,7 @@ use postgres_model::{
     operation::{AggregateQuery, CollectionQuery, PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
-    types::{EntityType, PostgresCompositeType, PostgresPrimitiveType},
+    types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 
 use payas_sql::PhysicalTable;
@@ -122,7 +122,7 @@ pub struct SystemContextBuilding {
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
 
-    pub mutation_types: MappedArena<PostgresCompositeType>,
+    pub mutation_types: MappedArena<MutationType>,
     pub mutations: MappedArena<PostgresMutation>,
     pub tables: MappedArena<PhysicalTable>,
 }

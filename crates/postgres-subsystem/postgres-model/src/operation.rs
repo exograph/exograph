@@ -6,7 +6,7 @@ use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
 use crate::types::EntityType;
-use crate::{model::ModelPostgresSystem, types::PostgresCompositeType};
+use crate::{model::ModelPostgresSystem, types::MutationType};
 
 use super::{
     limit_offset::{LimitParameter, OffsetParameter},
@@ -103,13 +103,13 @@ pub struct CreateDataParameter {
 pub struct UpdateDataParameter {
     pub name: String,
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresCompositeType>,
+    pub type_id: SerializableSlabIndex<MutationType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateDataParameterTypeWithModifier {
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresCompositeType>,
+    pub type_id: SerializableSlabIndex<MutationType>,
     pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
 }
 

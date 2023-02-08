@@ -14,10 +14,8 @@ use payas_sql::{
     AbstractPredicate, AbstractSelect, ColumnSelection, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
-    model::ModelPostgresSystem,
-    operation::AggregateQuery,
-    relation::PostgresRelation,
-    types::{EntityType},
+    model::ModelPostgresSystem, operation::AggregateQuery, relation::PostgresRelation,
+    types::EntityType,
 };
 
 #[async_trait]

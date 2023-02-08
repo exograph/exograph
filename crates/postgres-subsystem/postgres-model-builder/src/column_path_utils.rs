@@ -7,7 +7,7 @@ use postgres_model::{
 
 pub fn column_path_link(
     container_type: &EntityType,
-    field: &PostgresField,
+    field: &PostgresField<EntityType>,
     entity_types: &MappedArena<EntityType>,
 ) -> ColumnIdPathLink {
     match &field.relation {

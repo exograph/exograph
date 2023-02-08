@@ -161,11 +161,11 @@ async fn map_field<'content>(
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.to_owned())
     } else {
-        let model_field = return_type.field(&field.name);
+        let entity_field = return_type.field(&field.name);
 
-        match model_field {
-            Some(model_field) => {
-                map_persistent_field(model_field, return_type, field, subsystem, request_context)
+        match entity_field {
+            Some(entity_field) => {
+                map_persistent_field(entity_field, return_type, field, subsystem, request_context)
                     .await?
             }
             None => {
@@ -180,13 +180,13 @@ async fn map_field<'content>(
 }
 
 async fn map_persistent_field<'content>(
-    model_field: &PostgresField,
+    entity_field: &PostgresField<EntityType>,
     return_type: &EntityType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement<'content>, PostgresExecutionError> {
-    match &model_field.relation {
+    match &entity_field.relation {
         PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
             let column = column_id.get_column(subsystem);
             Ok(SelectionElement::Physical(column))

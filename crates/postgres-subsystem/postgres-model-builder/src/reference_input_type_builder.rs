@@ -1,7 +1,12 @@
 //! Build the reference input type (used to refer to an entity by its pk)
 
 use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use postgres_model::{access::Access, relation::PostgresRelation, types::PostgresCompositeType};
+use postgres_model::{
+    relation::PostgresRelation,
+    types::{EntityType, MutationType, PostgresField},
+};
+
+use crate::utils::to_mutation_type;
 
 use super::{
     builder::Builder,
@@ -28,8 +33,8 @@ impl Builder for ReferenceInputTypeBuilder {
         _resolved_env: &ResolvedTypeEnv,
         building: &mut SystemContextBuilding,
     ) {
-        for (_, model_type) in building.entity_types.iter() {
-            for (existing_id, expanded_type) in expanded_reference_types(model_type, building) {
+        for (_, entity_type) in building.entity_types.iter() {
+            for (existing_id, expanded_type) in expanded_reference_types(entity_type, building) {
                 building.mutation_types[existing_id] = expanded_type;
             }
         }
@@ -37,50 +42,32 @@ impl Builder for ReferenceInputTypeBuilder {
 }
 
 fn expanded_reference_types(
-    model_type: &PostgresCompositeType,
+    entity_type: &EntityType,
     building: &SystemContextBuilding,
-) -> Vec<(
-    SerializableSlabIndex<PostgresCompositeType>,
-    PostgresCompositeType,
-)> {
-    let existing_type = model_type;
+) -> Vec<(SerializableSlabIndex<MutationType>, MutationType)> {
+    let reference_type_fields = entity_type
+        .fields
+        .iter()
+        .flat_map(|field| match &field.relation {
+            PostgresRelation::Pk { .. } => Some(PostgresField {
+                name: field.name.clone(),
+                typ: to_mutation_type(&field.typ),
+                relation: field.relation.clone(),
+                has_default_value: field.has_default_value,
+            }),
+            _ => None,
+        })
+        .collect();
 
-    let PostgresCompositeType {
-        ref fields,
-        pk_query,
-        collection_query,
-        aggregate_query,
-        table_id,
-        ..
-    } = &existing_type;
+    let existing_type_name = entity_type.reference_type();
+    let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-    {
-        let reference_type_fields = fields
-            .clone()
-            .into_iter()
-            .flat_map(|field| match &field.relation {
-                PostgresRelation::Pk { .. } => Some(field),
-                _ => None,
-            })
-            .collect();
-
-        let existing_type_name = model_type.reference_type();
-        let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
-
-        vec![(
-            existing_type_id,
-            PostgresCompositeType {
-                name: existing_type_name,
-                plural_name: "".to_owned(),
-                fields: reference_type_fields,
-                agg_fields: vec![],
-                pk_query: *pk_query,
-                collection_query: *collection_query,
-                aggregate_query: *aggregate_query,
-                table_id: *table_id,
-                access: Access::restrictive(),
-                is_input: true,
-            },
-        )]
-    }
+    vec![(
+        existing_type_id,
+        MutationType {
+            name: existing_type_name,
+            fields: reference_type_fields,
+            entity_type: building.entity_types.get_id(&entity_type.name).unwrap(),
+        },
+    )]
 }

@@ -2,16 +2,12 @@
 
 use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use postgres_model::{
-    access::Access,
     operation::{PostgresMutationKind, UpdateDataParameter},
     relation::PostgresRelation,
-    types::{
-        EntityType, PostgresCompositeType, PostgresField, PostgresFieldType, PostgresTypeIndex,
-        PostgresTypeModifier,
-    },
+    types::{EntityType, FieldType, MutationType, PostgresField, PostgresTypeModifier, TypeIndex},
 };
 
-use crate::{mutation_builder::DataParamRole, shallow::Shallow};
+use crate::{mutation_builder::DataParamRole, shallow::Shallow, utils::to_mutation_type};
 
 use super::{
     builder::Builder,
@@ -40,16 +36,20 @@ impl Builder for UpdateMutationBuilder {
 
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-        for (_, model_type) in building.entity_types.iter() {
-            for (existing_id, expanded_type) in
-                self.expanded_data_type(model_type, resolved_env, building, Some(model_type), None)
-            {
+        for (_, entity_type) in building.entity_types.iter() {
+            for (existing_id, expanded_type) in self.expanded_data_type(
+                entity_type,
+                resolved_env,
+                building,
+                Some(entity_type),
+                None,
+            ) {
                 building.mutation_types[existing_id] = expanded_type;
             }
         }
 
-        for (model_type_id, model_type) in building.entity_types.iter() {
-            for mutation in self.build_mutations(model_type_id, model_type, building) {
+        for (entity_type_id, entity_type) in building.entity_types.iter() {
+            for mutation in self.build_mutations(entity_type_id, entity_type, building) {
                 building.mutations.add(&mutation.name.to_owned(), mutation);
             }
         }
@@ -57,18 +57,22 @@ impl Builder for UpdateMutationBuilder {
 }
 
 impl MutationBuilder for UpdateMutationBuilder {
-    fn single_mutation_name(model_type: &EntityType) -> String {
-        model_type.pk_update()
+    fn single_mutation_name(entity_type: &EntityType) -> String {
+        entity_type.pk_update()
     }
 
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<EntityType>,
-        model_type: &EntityType,
+        entity_type_id: SerializableSlabIndex<EntityType>,
+        entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
-            data_param: Self::data_param(model_type, building, false),
-            predicate_param: query_builder::pk_predicate_param(model_type_id, model_type, building),
+            data_param: Self::data_param(entity_type, building, false),
+            predicate_param: query_builder::pk_predicate_param(
+                entity_type_id,
+                entity_type,
+                building,
+            ),
         }
     }
 
@@ -76,20 +80,20 @@ impl MutationBuilder for UpdateMutationBuilder {
         PostgresTypeModifier::Optional // We return null if the specified id doesn't exist
     }
 
-    fn multi_mutation_name(model_type: &EntityType) -> String {
-        model_type.collection_update()
+    fn multi_mutation_name(entity_type: &EntityType) -> String {
+        entity_type.collection_update()
     }
 
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<EntityType>,
-        model_type: &EntityType,
+        entity_type_id: SerializableSlabIndex<EntityType>,
+        entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
-            data_param: Self::data_param(model_type, building, true),
+            data_param: Self::data_param(entity_type, building, true),
             predicate_param: query_builder::collection_predicate_param(
-                model_type_id,
-                model_type,
+                entity_type_id,
+                entity_type,
                 building,
             ),
         }
@@ -101,8 +105,8 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         true
     }
 
-    fn base_data_type_name(model_type_name: &str) -> String {
-        model_type_name.update_type()
+    fn base_data_type_name(entity_type_name: &str) -> String {
+        entity_type_name.update_type()
     }
 
     fn data_param_role() -> DataParamRole {
@@ -110,11 +114,11 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
     }
 
     fn data_param(
-        model_type: &EntityType,
+        entity_type: &EntityType,
         building: &SystemContextBuilding,
         _array: bool,
     ) -> UpdateDataParameter {
-        let data_param_type_name = Self::base_data_type_name(&model_type.name);
+        let data_param_type_name = Self::base_data_type_name(&entity_type.name);
         let data_param_type_id = building
             .mutation_types
             .get_id(&data_param_type_name)
@@ -148,31 +152,21 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
     /// from the containing "update" type, we add a "Nested" suffix.
     fn expand_one_to_many(
         &self,
-        model_type: &EntityType,
-        field: &PostgresField,
+        entity_type: &EntityType,
+        field: &PostgresField<EntityType>,
         field_type: &EntityType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         container_type: Option<&EntityType>,
-    ) -> Vec<(
-        SerializableSlabIndex<PostgresCompositeType>,
-        PostgresCompositeType,
-    )> {
+    ) -> Vec<(SerializableSlabIndex<MutationType>, MutationType)> {
         let existing_type_name =
             Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()));
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-        let EntityType {
-            table_id,
-            pk_query,
-            collection_query,
-            aggregate_query,
-            ..
-        } = &model_type;
-
         // If not already expanded
-        if building.mutation_types[existing_type_id].table_id == SerializableSlabIndex::shallow() {
+        if building.mutation_types[existing_type_id].entity_type == SerializableSlabIndex::shallow()
+        {
             let fields_info = vec![
                 (
                     "create",
@@ -194,8 +188,8 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             let fields = fields_info
                 .into_iter()
                 .map(|(name, field_type_name)| {
-                    let plain_field_type = PostgresFieldType::Reference {
-                        type_id: PostgresTypeIndex::Composite(
+                    let plain_field_type = FieldType::Reference {
+                        type_id: TypeIndex::Composite(
                             building.mutation_types.get_id(&field_type_name).unwrap(),
                         ),
                         type_name: field_type_name,
@@ -203,9 +197,9 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     PostgresField {
                         name: name.to_string(),
                         // The nested "create", "update", and "delete" fields are all optional that take a list.
-                        typ: PostgresFieldType::Optional(Box::new(PostgresFieldType::List(
-                            Box::new(plain_field_type),
-                        ))),
+                        typ: FieldType::Optional(Box::new(FieldType::List(Box::new(
+                            plain_field_type,
+                        )))),
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
                     }
@@ -213,17 +207,10 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                 .collect();
             let mut types = vec![(
                 existing_type_id,
-                PostgresCompositeType {
+                MutationType {
                     name: existing_type_name.clone(),
-                    plural_name: "".to_string(), // unused. TODO: Fix this by separating mutation types from entity types.
                     fields,
-                    agg_fields: vec![],
-                    table_id: *table_id,
-                    pk_query: *pk_query,
-                    collection_query: *collection_query,
-                    aggregate_query: *aggregate_query,
-                    access: Access::restrictive(),
-                    is_input: true,
+                    entity_type: building.entity_types.get_id(&field_type.name).unwrap(),
                 },
             )];
 
@@ -252,15 +239,15 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                             .find(|f| matches!(f.relation, PostgresRelation::Pk { .. }));
 
                         // For a non-nested type ("base type"), we already have the PK field, but it is optional. So here
-                        // we make it required (by not wrapping the model_pk_field it as optional)
+                        // we make it required (by not wrapping the entity_pk_field it as optional)
                         if let Some(base_type_pk_field) = base_type_pk_field {
-                            let model_pk_field = model_type.pk_field().unwrap();
-                            base_type_pk_field.typ = model_pk_field.typ.clone();
+                            let entity_pk_field = entity_type.pk_field().unwrap();
+                            base_type_pk_field.typ = to_mutation_type(&entity_pk_field.typ);
                         } else {
                             panic!("Expected a PK field in the base type")
                         };
 
-                        let type_with_id = PostgresCompositeType {
+                        let type_with_id = MutationType {
                             name: nested_existing_type_name,
                             fields: base_type_fields,
                             ..base_type

@@ -4,7 +4,7 @@ use postgres_model::{
     column_path::ColumnIdPathLink,
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWithModifier},
-    types::{PostgresCompositeType, PostgresField, PostgresType, PostgresTypeModifier},
+    types::{EntityType, PostgresField, PostgresType, PostgresTypeModifier},
 };
 
 use crate::shallow::Shallow;
@@ -55,22 +55,22 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (_, model_type) in building.entity_types.iter() {
-        let param_type_name = get_parameter_type_name(&model_type.name, false);
+    for (_, entity_type) in building.entity_types.iter() {
+        let param_type_name = get_parameter_type_name(&entity_type.name, false);
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
         if let Some(existing_param_id) = existing_param_id {
-            let new_kind = expand_type(model_type, building);
+            let new_kind = expand_type(entity_type, building);
             building.order_by_types[existing_param_id].kind = new_kind;
         }
     }
 }
 
-fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> String {
+fn get_parameter_type_name(entity_type_name: &str, is_primitive: bool) -> String {
     if is_primitive {
         "Ordering".to_string()
     } else {
-        format!("{}Ordering", &model_type_name)
+        format!("{}Ordering", &entity_type_name)
     }
 }
 
@@ -85,14 +85,13 @@ fn create_shallow_type(typ: &ResolvedType) -> OrderByParameterType {
 }
 
 fn expand_type(
-    model_type: &PostgresCompositeType,
+    entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> OrderByParameterTypeKind {
-    let PostgresCompositeType { fields, .. } = model_type;
-
-    let parameters = fields
+    let parameters = entity_type
+        .fields
         .iter()
-        .map(|field| new_field_param(field, model_type, building))
+        .map(|field| new_field_param(field, entity_type, building))
         .collect();
 
     OrderByParameterTypeKind::Composite { parameters }
@@ -100,13 +99,13 @@ fn expand_type(
 
 fn new_param(
     name: &str,
-    model_type_name: &str,
+    entity_type_name: &str,
     is_primitive: bool,
     column_path_link: Option<ColumnIdPathLink>,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
     let (param_type_name, param_type_id) =
-        order_by_param_type(model_type_name, is_primitive, building);
+        order_by_param_type(entity_type_name, is_primitive, building);
 
     OrderByParameter {
         name: name.to_string(),
@@ -130,45 +129,45 @@ fn new_param(
 }
 
 pub fn new_field_param(
-    model_field: &PostgresField,
-    composite_type: &PostgresCompositeType,
+    entity_field: &PostgresField<EntityType>,
+    composite_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    let field_type_id = model_field.typ.type_id().to_owned();
-    let field_model_type = field_type_id.to_type(
+    let field_type_id = entity_field.typ.type_id().to_owned();
+    let field_entity_type = field_type_id.to_type(
         &building.primitive_types.values,
         &building.entity_types.values,
     );
 
     let column_path_link = Some(column_path_utils::column_path_link(
         composite_type,
-        model_field,
+        entity_field,
         &building.entity_types,
     ));
 
     new_param(
-        &model_field.name,
-        field_model_type.name(),
-        matches!(field_model_type, PostgresType::Primitive(_)),
+        &entity_field.name,
+        field_entity_type.name(),
+        matches!(field_entity_type, PostgresType::Primitive(_)),
         column_path_link,
         building,
     )
 }
 
 pub fn new_root_param(
-    model_type_name: &str,
+    entity_type_name: &str,
     is_primitive: bool,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    new_param("orderBy", model_type_name, is_primitive, None, building)
+    new_param("orderBy", entity_type_name, is_primitive, None, building)
 }
 
 fn order_by_param_type(
-    model_type_name: &str,
+    entity_type_name: &str,
     is_primitive: bool,
     building: &SystemContextBuilding,
 ) -> (String, SerializableSlabIndex<OrderByParameterType>) {
-    let param_type_name = get_parameter_type_name(model_type_name, is_primitive);
+    let param_type_name = get_parameter_type_name(entity_type_name, is_primitive);
 
     let param_type_id = building.order_by_types.get_id(&param_type_name).unwrap();
 
