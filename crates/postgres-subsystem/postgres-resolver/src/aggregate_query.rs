@@ -15,7 +15,7 @@ use payas_sql::{
 };
 use postgres_model::{
     model::ModelPostgresSystem, operation::AggregateQuery, relation::PostgresRelation,
-    types::PostgresCompositeType,
+    types::EntityType,
 };
 
 #[async_trait]
@@ -68,7 +68,7 @@ impl OperationSelectionResolver for AggregateQuery {
 
 #[async_recursion]
 async fn content_select<'content>(
-    return_type: &PostgresCompositeType,
+    return_type: &EntityType,
     fields: &'content [ValidatedField],
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
@@ -82,7 +82,7 @@ async fn content_select<'content>(
 }
 
 async fn map_field<'content>(
-    return_type: &PostgresCompositeType,
+    return_type: &EntityType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     _request_context: &'content RequestContext<'content>,

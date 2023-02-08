@@ -19,37 +19,39 @@ use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-pub enum PostgresTypeIndex {
+pub enum TypeIndex<CT> {
     Primitive(SerializableSlabIndex<PostgresPrimitiveType>),
-    Composite(SerializableSlabIndex<PostgresCompositeType>),
+    Composite(SerializableSlabIndex<CT>),
 }
 
-impl PostgresTypeIndex {
+impl<CT> TypeIndex<CT> {
     pub fn to_type<'a>(
         &self,
         primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
-        entity_types: &'a SerializableSlab<PostgresCompositeType>,
-    ) -> PostgresType<'a> {
+        entity_types: &'a SerializableSlab<CT>,
+    ) -> PostgresType<'a, CT> {
         match self {
-            PostgresTypeIndex::Primitive(index) => {
-                PostgresType::Primitive(&primitive_types[*index])
-            }
-            PostgresTypeIndex::Composite(index) => PostgresType::Composite(&entity_types[*index]),
+            TypeIndex::Primitive(index) => PostgresType::Primitive(&primitive_types[*index]),
+            TypeIndex::Composite(index) => PostgresType::Composite(&entity_types[*index]),
         }
     }
 }
 
-#[derive(Debug)]
-pub enum PostgresType<'a> {
-    Primitive(&'a PostgresPrimitiveType),
-    Composite(&'a PostgresCompositeType),
+pub trait Named {
+    fn name(&self) -> &str;
 }
 
-impl<'a> PostgresType<'a> {
+#[derive(Debug)]
+pub enum PostgresType<'a, CT> {
+    Primitive(&'a PostgresPrimitiveType),
+    Composite(&'a CT),
+}
+
+impl<'a, CT: Named> PostgresType<'a, CT> {
     pub fn name(&self) -> &str {
         match self {
             PostgresType::Primitive(primitive_type) => &primitive_type.name,
-            PostgresType::Composite(composite_type) => &composite_type.name,
+            PostgresType::Composite(composite_type) => composite_type.name(),
         }
     }
 }
@@ -60,12 +62,12 @@ pub struct PostgresPrimitiveType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PostgresCompositeType {
+pub struct EntityType {
     pub name: String,
     pub plural_name: String,
     pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
 
-    pub fields: Vec<PostgresField>,
+    pub fields: Vec<PostgresField<EntityType>>,
     pub agg_fields: Vec<AggregateField>,
     pub table_id: SerializableSlabIndex<PhysicalTable>,
     pub pk_query: SerializableSlabIndex<PkQuery>,
@@ -74,12 +76,26 @@ pub struct PostgresCompositeType {
     pub access: Access,
 }
 
-impl PostgresCompositeType {
-    pub fn field(&self, name: &str) -> Option<&PostgresField> {
+impl Named for EntityType {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+/// Mutation input types such as `CreatePostInput` and `UpdatePostInput`
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MutationType {
+    pub name: String,
+    pub fields: Vec<PostgresField<MutationType>>,
+    pub entity_type: SerializableSlabIndex<EntityType>,
+}
+
+impl EntityType {
+    pub fn field(&self, name: &str) -> Option<&PostgresField<EntityType>> {
         self.fields.iter().find(|field| field.name == name)
     }
 
-    pub fn pk_field(&self) -> Option<&PostgresField> {
+    pub fn pk_field(&self) -> Option<&PostgresField<EntityType>> {
         self.fields
             .iter()
             .find(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
@@ -91,9 +107,29 @@ impl PostgresCompositeType {
     }
 
     pub fn aggregate_field(&self, name: &str) -> Option<&AggregateField> {
-        self.agg_fields
-            .iter()
-            .find(|model_field| model_field.name == name)
+        self.agg_fields.iter().find(|field| field.name == name)
+    }
+}
+
+impl MutationType {
+    pub fn entity_type<'a>(
+        &'a self,
+        entity_types: &'a SerializableSlab<EntityType>,
+    ) -> &'a EntityType {
+        &entity_types[self.entity_type]
+    }
+
+    pub fn table_id(
+        &self,
+        entity_types: &SerializableSlab<EntityType>,
+    ) -> SerializableSlabIndex<PhysicalTable> {
+        let entity_type = self.entity_type(entity_types);
+        entity_type.table_id
+    }
+
+    pub fn table<'a>(&'a self, system: &'a ModelPostgresSystem) -> &'a PhysicalTable {
+        let table_id = self.table_id(&system.entity_types);
+        &system.tables[table_id]
     }
 }
 
@@ -105,61 +141,58 @@ pub enum PostgresTypeModifier {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PostgresField {
+pub struct PostgresField<CT> {
     pub name: String,
-    pub typ: PostgresFieldType,
+    pub typ: FieldType<CT>,
     pub relation: PostgresRelation,
     pub has_default_value: bool, // does this field have a default value?
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum PostgresFieldType {
-    Optional(Box<PostgresFieldType>),
+pub enum FieldType<CT> {
+    Optional(Box<FieldType<CT>>),
     Reference {
-        type_id: PostgresTypeIndex,
+        type_id: TypeIndex<CT>,
         type_name: String,
     },
-    List(Box<PostgresFieldType>),
+    List(Box<FieldType<CT>>),
 }
 
-impl PostgresFieldType {
-    pub fn type_id(&self) -> &PostgresTypeIndex {
+impl<CT> FieldType<CT>
+where
+    CT: Clone,
+{
+    pub fn type_id(&self) -> &TypeIndex<CT> {
         match self {
-            PostgresFieldType::Optional(underlying) | PostgresFieldType::List(underlying) => {
-                underlying.type_id()
-            }
-            PostgresFieldType::Reference { type_id, .. } => type_id,
+            FieldType::Optional(underlying) | FieldType::List(underlying) => underlying.type_id(),
+            FieldType::Reference { type_id, .. } => type_id,
         }
     }
 
     pub fn base_type<'a>(
         &self,
         primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
-        entity_types: &'a SerializableSlab<PostgresCompositeType>,
-    ) -> PostgresType<'a> {
+        entity_types: &'a SerializableSlab<CT>,
+    ) -> PostgresType<'a, CT> {
         match self {
-            PostgresFieldType::Optional(underlying) | PostgresFieldType::List(underlying) => {
+            FieldType::Optional(underlying) | FieldType::List(underlying) => {
                 underlying.base_type(primitive_types, entity_types)
             }
-            PostgresFieldType::Reference { type_id, .. } => {
-                type_id.to_type(primitive_types, entity_types)
-            }
+            FieldType::Reference { type_id, .. } => type_id.to_type(primitive_types, entity_types),
         }
     }
 
     pub fn type_name(&self) -> &str {
         match self {
-            PostgresFieldType::Optional(underlying) | PostgresFieldType::List(underlying) => {
-                underlying.type_name()
-            }
-            PostgresFieldType::Reference { type_name, .. } => type_name,
+            FieldType::Optional(underlying) | FieldType::List(underlying) => underlying.type_name(),
+            FieldType::Reference { type_name, .. } => type_name,
         }
     }
 
     pub fn optional(&self) -> Self {
         match self {
-            PostgresFieldType::Optional(_) => self.clone(),
-            _ => PostgresFieldType::Optional(Box::new(self.clone())),
+            FieldType::Optional(_) => self.clone(),
+            _ => FieldType::Optional(Box::new(self.clone())),
         }
     }
 }
@@ -176,22 +209,20 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresPrimitiveType {
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresCompositeType {
+impl TypeDefinitionProvider<ModelPostgresSystem> for EntityType {
     fn type_definition(&self, system: &ModelPostgresSystem) -> TypeDefinition {
-        let PostgresCompositeType {
-            fields: model_fields,
-            agg_fields,
-            ..
+        let EntityType {
+            fields, agg_fields, ..
         } = self;
 
         let kind = if self.is_input {
-            let fields = model_fields
+            let fields = fields
                 .iter()
                 .map(|field| default_positioned(field.input_value()))
                 .collect();
             TypeKind::InputObject(InputObjectType { fields })
         } else {
-            let entity = model_fields
+            let entity = fields
                 .iter()
                 .map(|field| default_positioned(field.field_definition(system)));
 
@@ -216,7 +247,27 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresCompositeType {
     }
 }
 
-impl FieldDefinitionProvider<ModelPostgresSystem> for PostgresField {
+impl TypeDefinitionProvider<ModelPostgresSystem> for MutationType {
+    fn type_definition(&self, _system: &ModelPostgresSystem) -> TypeDefinition {
+        let kind = {
+            let fields = self
+                .fields
+                .iter()
+                .map(|field| default_positioned(field.input_value()))
+                .collect();
+            TypeKind::InputObject(InputObjectType { fields })
+        };
+        TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(&self.name),
+            directives: vec![],
+            kind,
+        }
+    }
+}
+
+impl<CT> FieldDefinitionProvider<ModelPostgresSystem> for PostgresField<CT> {
     fn field_definition(&self, system: &ModelPostgresSystem) -> FieldDefinition {
         let field_type = default_positioned(compute_type(&self.typ));
 
@@ -259,27 +310,25 @@ impl FieldDefinitionProvider<ModelPostgresSystem> for PostgresField {
     }
 }
 
-pub fn compute_type(typ: &PostgresFieldType) -> Type {
-    fn compute_base_type(typ: &PostgresFieldType) -> BaseType {
+pub fn compute_type<CT>(typ: &FieldType<CT>) -> Type {
+    fn compute_base_type<CT>(typ: &FieldType<CT>) -> BaseType {
         match typ {
-            PostgresFieldType::Optional(underlying) => compute_base_type(underlying),
-            PostgresFieldType::Reference { type_name, .. } => BaseType::Named(Name::new(type_name)),
-            PostgresFieldType::List(underlying) => {
-                BaseType::List(Box::new(compute_type(underlying)))
-            }
+            FieldType::Optional(underlying) => compute_base_type(underlying),
+            FieldType::Reference { type_name, .. } => BaseType::Named(Name::new(type_name)),
+            FieldType::List(underlying) => BaseType::List(Box::new(compute_type(underlying))),
         }
     }
 
     match typ {
-        PostgresFieldType::Optional(underlying) => Type {
+        FieldType::Optional(underlying) => Type {
             base: compute_base_type(underlying),
             nullable: true,
         },
-        PostgresFieldType::Reference { type_name, .. } => Type {
+        FieldType::Reference { type_name, .. } => Type {
             base: BaseType::Named(Name::new(type_name)),
             nullable: false,
         },
-        PostgresFieldType::List(underlying) => Type {
+        FieldType::List(underlying) => Type {
             base: BaseType::List(Box::new(compute_type(underlying))),
             nullable: false,
         },
@@ -299,7 +348,7 @@ impl From<&PostgresTypeModifier> for TypeModifier {
 // We need to a special case for the PostgresField type, so that we can properly
 // created nested types such as Optional(List(List(String))). The blanket impl
 // above will not work for nested types like these.
-impl InputValueProvider for PostgresField {
+impl<CT> InputValueProvider for PostgresField<CT> {
     fn input_value(&self) -> InputValueDefinition {
         let field_type = default_positioned(compute_type(&self.typ));
 

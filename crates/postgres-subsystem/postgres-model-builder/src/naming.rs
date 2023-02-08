@@ -1,6 +1,6 @@
 use heck::ToLowerCamelCase;
 use heck::ToSnakeCase;
-use postgres_model::types::PostgresCompositeType;
+use postgres_model::types::EntityType;
 
 /// A type with both singular and plural versions of itself.
 pub(super) trait ToPlural {
@@ -18,7 +18,7 @@ impl ToPlural for str {
     }
 }
 
-impl ToPlural for PostgresCompositeType {
+impl ToPlural for EntityType {
     fn to_singular(&self) -> String {
         self.name.clone()
     }

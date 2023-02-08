@@ -5,7 +5,7 @@ use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableS
 
 use postgres_model::{
     operation::{CreateDataParameter, CreateDataParameterTypeWithModifier, PostgresMutationKind},
-    types::{PostgresCompositeType, PostgresTypeModifier},
+    types::{EntityType, PostgresTypeModifier},
 };
 
 use crate::mutation_builder::DataParamRole;
@@ -55,13 +55,13 @@ impl Builder for CreateMutationBuilder {
 }
 
 impl MutationBuilder for CreateMutationBuilder {
-    fn single_mutation_name(model_type: &PostgresCompositeType) -> String {
+    fn single_mutation_name(model_type: &EntityType) -> String {
         model_type.pk_create()
     }
 
     fn single_mutation_kind(
-        _model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-        model_type: &PostgresCompositeType,
+        _model_type_id: SerializableSlabIndex<EntityType>,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Create(Self::data_param(model_type, building, false))
@@ -71,13 +71,13 @@ impl MutationBuilder for CreateMutationBuilder {
         PostgresTypeModifier::NonNull
     }
 
-    fn multi_mutation_name(model_type: &PostgresCompositeType) -> String {
+    fn multi_mutation_name(model_type: &EntityType) -> String {
         model_type.collection_create()
     }
 
     fn multi_mutation_kind(
-        _model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-        model_type: &PostgresCompositeType,
+        _model_type_id: SerializableSlabIndex<EntityType>,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Create(Self::data_param(model_type, building, true))
@@ -98,7 +98,7 @@ impl DataParamBuilder<CreateDataParameter> for CreateMutationBuilder {
     }
 
     fn data_param(
-        model_type: &PostgresCompositeType,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
         array: bool,
     ) -> CreateDataParameter {
