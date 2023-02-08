@@ -18,10 +18,7 @@ use postgres_model::{
     aggregate::{AggregateField, AggregateFieldType},
     column_id::ColumnId,
     relation::{PostgresRelation, RelationCardinality},
-    types::{
-        PostgresCompositeType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
-        PostgresTypeIndex,
-    },
+    types::{EntityType, FieldType, PostgresField, PostgresPrimitiveType, TypeIndex},
 };
 
 use super::{
@@ -54,20 +51,20 @@ pub(crate) fn build_expanded(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
-    for (_, model_type) in resolved_env.resolved_types.iter() {
-        if let ResolvedType::Composite(c) = &model_type {
+    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(c) = &resolved_type {
             expand_type_no_fields(c, resolved_env, building);
         }
     }
 
-    for (_, model_type) in resolved_env.resolved_types.iter() {
-        if let ResolvedType::Composite(c) = &model_type {
+    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(c) = &resolved_type {
             expand_type_fields(c, building, resolved_env);
         }
     }
 
-    for (_, model_type) in resolved_env.resolved_types.iter() {
-        if let ResolvedType::Composite(c) = &model_type {
+    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(c) = &resolved_type {
             expand_type_access(c, resolved_env, building)?;
         }
     }
@@ -90,7 +87,7 @@ fn create_shallow_type(
             );
         }
         ResolvedType::Composite(_) => {
-            let typ = PostgresCompositeType {
+            let typ = EntityType {
                 name: resolved_type.name(),
                 plural_name: resolved_type.plural_name(),
                 is_input: false,
@@ -153,7 +150,7 @@ fn expand_type_no_fields(
         .get_id(&resolved_postgres_type.aggregate_query())
         .unwrap();
 
-    let typ = PostgresCompositeType {
+    let typ = EntityType {
         name: resolved_postgres_type.name.clone(),
         plural_name: resolved_postgres_type.plural_name.clone(),
         fields: vec![],
@@ -182,7 +179,7 @@ fn expand_type_fields(
 
     let existing_type = &building.entity_types[existing_type_id];
 
-    let PostgresCompositeType {
+    let EntityType {
         table_id,
         pk_query,
         collection_query,
@@ -190,7 +187,7 @@ fn expand_type_fields(
         ..
     } = &existing_type;
 
-    let model_fields: Vec<PostgresField> = resolved_type
+    let entity_fields = resolved_type
         .fields
         .iter()
         .map(|field| create_persistent_field(field, table_id, building, resolved_env))
@@ -202,10 +199,10 @@ fn expand_type_fields(
         .flat_map(|field| create_agg_field(field, table_id, building, resolved_env))
         .collect();
 
-    let typ = PostgresCompositeType {
+    let typ = EntityType {
         name: resolved_type.name.clone(),
         plural_name: resolved_type.plural_name.clone(),
-        fields: model_fields,
+        fields: entity_fields,
         agg_fields,
         table_id: *table_id,
         pk_query: *pk_query,
@@ -234,7 +231,7 @@ fn expand_type_access(
         building,
     )?;
 
-    let typ = PostgresCompositeType {
+    let typ = EntityType {
         name: resolved_type.name.clone(),
         plural_name: resolved_type.plural_name.clone(),
         fields: existing_type.fields.clone(),
@@ -254,7 +251,7 @@ fn expand_type_access(
 
 pub fn compute_access_composite_types(
     resolved: &ResolvedAccess,
-    self_type_info: &PostgresCompositeType,
+    self_type_info: &EntityType,
     resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> Result<Access, ModelBuildingError> {
@@ -281,11 +278,11 @@ fn create_persistent_field(
     table_id: &SerializableSlabIndex<PhysicalTable>,
     building: &SystemContextBuilding,
     env: &ResolvedTypeEnv,
-) -> PostgresField {
+) -> PostgresField<EntityType> {
     fn create_field_type(
         field_type: &ResolvedFieldType,
         building: &SystemContextBuilding,
-    ) -> PostgresFieldType {
+    ) -> FieldType<EntityType> {
         match field_type {
             ResolvedFieldType::Plain {
                 type_name,
@@ -293,24 +290,24 @@ fn create_persistent_field(
             } => {
                 if *is_primitive {
                     let type_id = building.primitive_types.get_id(type_name).unwrap();
-                    PostgresFieldType::Reference {
+                    FieldType::Reference {
                         type_name: type_name.clone(),
-                        type_id: PostgresTypeIndex::Primitive(type_id),
+                        type_id: TypeIndex::Primitive(type_id),
                     }
                 } else {
                     let type_id = building.entity_types.get_id(type_name).unwrap();
 
-                    PostgresFieldType::Reference {
+                    FieldType::Reference {
                         type_name: type_name.clone(),
-                        type_id: PostgresTypeIndex::Composite(type_id),
+                        type_id: TypeIndex::Composite(type_id),
                     }
                 }
             }
             ResolvedFieldType::Optional(underlying) => {
-                PostgresFieldType::Optional(Box::new(create_field_type(underlying, building)))
+                FieldType::Optional(Box::new(create_field_type(underlying, building)))
             }
             ResolvedFieldType::List(underlying) => {
-                PostgresFieldType::List(Box::new(create_field_type(underlying, building)))
+                FieldType::List(Box::new(create_field_type(underlying, building)))
             }
         }
     }

@@ -9,7 +9,7 @@ use postgres_model::{
     model::ModelPostgresSystem,
     operation::{OperationReturnType, UpdateDataParameter},
     relation::PostgresRelation,
-    types::PostgresCompositeType,
+    types::{EntityType, MutationType, PostgresType, TypeIndex},
 };
 
 use crate::{
@@ -37,10 +37,10 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
         let self_update_columns = compute_update_columns(data_type, argument, subsystem);
         let (table, _, _) = return_type_info(self.return_type, subsystem);
 
-        let container_model_type = self.return_type.typ(subsystem);
+        let container_entity_type = self.return_type.typ(subsystem);
 
         let (nested_updates, nested_inserts, nested_deletes) =
-            compute_nested_ops(data_type, argument, container_model_type, subsystem);
+            compute_nested_ops(data_type, argument, container_entity_type, subsystem);
 
         let abs_update = AbstractUpdate {
             table,
@@ -61,12 +61,12 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
 }
 
 fn compute_update_columns<'a>(
-    data_type: &'a PostgresCompositeType,
+    data_type: &'a MutationType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
 ) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
-    let PostgresCompositeType { fields, .. } = data_type;
-    fields
+    data_type
+        .fields
         .iter()
         .flat_map(|field| {
             field.relation.self_column().and_then(|key_column_id| {
@@ -101,9 +101,9 @@ fn compute_update_columns<'a>(
 // can be updated at the same time.
 // TODO: Do this once we rethink how we set up the parameters.
 fn compute_nested_ops<'a>(
-    field_model_type: &'a PostgresCompositeType,
-    argument: &'a ConstValue,
-    container_model_type: &'a PostgresCompositeType,
+    arg_type: &'a MutationType,
+    arg: &'a ConstValue,
+    container_entity_type: &'a EntityType,
     subsystem: &'a ModelPostgresSystem,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
@@ -114,53 +114,55 @@ fn compute_nested_ops<'a>(
     let mut nested_inserts = vec![];
     let mut nested_deletes = vec![];
 
-    let PostgresCompositeType { fields, .. } = field_model_type;
-    {
-        fields.iter().for_each(|field| {
-            if let PostgresRelation::OneToMany { other_type_id, .. } = &field.relation {
-                let field_model_type = &subsystem.entity_types[*other_type_id]; // TODO: This is a type but should be a data type
-
-                if let Some(argument) = get_argument_field(argument, &field.name) {
-                    nested_updates.extend(compute_nested_update(
-                        field_model_type,
-                        argument,
-                        container_model_type,
-                        subsystem,
-                    ));
-
-                    nested_inserts.extend(compute_nested_inserts(
-                        field_model_type,
-                        argument,
-                        container_model_type,
-                        subsystem,
-                    ));
-
-                    nested_deletes.extend(compute_nested_delete(
-                        field_model_type,
-                        argument,
-                        subsystem,
-                        container_model_type,
-                    ));
+    arg_type.fields.iter().for_each(|field| {
+        if let PostgresRelation::OneToMany { .. } = &field.relation {
+            let arg_type = match field.typ.type_id() {
+                TypeIndex::Primitive(_) => {
+                    panic!("One to many relation should target a composite type")
                 }
+                TypeIndex::Composite(type_id) => &subsystem.mutation_types[*type_id],
+            };
+
+            if let Some(argument) = get_argument_field(arg, &field.name) {
+                nested_updates.extend(compute_nested_update(
+                    arg_type,
+                    argument,
+                    container_entity_type,
+                    subsystem,
+                ));
+
+                nested_inserts.extend(compute_nested_inserts(
+                    arg_type,
+                    argument,
+                    container_entity_type,
+                    subsystem,
+                ));
+
+                nested_deletes.extend(compute_nested_delete(
+                    arg_type,
+                    argument,
+                    subsystem,
+                    container_entity_type,
+                ));
             }
-        })
-    }
+        }
+    });
 
     (nested_updates, nested_inserts, nested_deletes)
 }
 
-// Which column in field_model_type corresponds to the primary column in container_model_type?
+// Which column in field_entity_type corresponds to the primary column in container_entity_type?
 fn compute_nested_reference_column<'a>(
-    field_model_type: &'a PostgresCompositeType,
-    container_model_type: &'a PostgresCompositeType,
+    field_entity_type: &'a MutationType,
+    container_entity_type: &'a EntityType,
     system: &'a ModelPostgresSystem,
 ) -> Option<&'a PhysicalColumn> {
     let pk_column = {
-        let container_table = &system.tables[container_model_type.table_id];
+        let container_table = &system.tables[container_entity_type.table_id];
         container_table.get_pk_physical_column().unwrap()
     };
 
-    let nested_table = &system.tables[field_model_type.table_id];
+    let nested_table = &system.tables[system.entity_types[field_entity_type.entity_type].table_id];
 
     nested_table
         .columns
@@ -179,21 +181,23 @@ fn compute_nested_reference_column<'a>(
 
 // Look for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
-    field_model_type: &'a PostgresCompositeType,
+    field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
-    container_model_type: &'a PostgresCompositeType,
+    container_entity_type: &'a EntityType,
     subsystem: &'a ModelPostgresSystem,
 ) -> Vec<NestedAbstractUpdate<'a>> {
     let nested_reference_col =
-        compute_nested_reference_column(field_model_type, container_model_type, subsystem).unwrap();
+        compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
+            .unwrap();
 
-    let update_arg = get_argument_field(argument, "update");
+    let (update_arg, field_entity_type) =
+        extract_argument(argument, field_entity_type, "update", subsystem);
 
     match update_arg {
         Some(update_arg) => match update_arg {
             arg @ ConstValue::Object(..) => {
                 vec![compute_nested_update_object_arg(
-                    field_model_type,
+                    field_entity_type,
                     arg,
                     nested_reference_col,
                     subsystem,
@@ -203,7 +207,7 @@ fn compute_nested_update<'a>(
                 .iter()
                 .map(|arg| {
                     compute_nested_update_object_arg(
-                        field_model_type,
+                        field_entity_type,
                         arg,
                         nested_reference_col,
                         subsystem,
@@ -218,16 +222,16 @@ fn compute_nested_update<'a>(
 
 // Compute update step assuming that the argument is a single object (not an array)
 fn compute_nested_update_object_arg<'a>(
-    field_model_type: &'a PostgresCompositeType,
+    field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
     subsystem: &'a ModelPostgresSystem,
 ) -> NestedAbstractUpdate<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
-    let table = &subsystem.tables[field_model_type.table_id];
+    let table = field_entity_type.table(subsystem);
 
-    let nested = compute_update_columns(field_model_type, argument, subsystem);
+    let nested = compute_update_columns(field_entity_type, argument, subsystem);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
 
     // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let
@@ -279,25 +283,25 @@ fn compute_nested_update_object_arg<'a>(
 
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
 fn compute_nested_inserts<'a>(
-    field_model_type: &'a PostgresCompositeType,
+    field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
-    container_model_type: &'a PostgresCompositeType,
+    container_entity_type: &'a EntityType,
     subsystem: &'a ModelPostgresSystem,
 ) -> Vec<NestedAbstractInsert<'a>> {
     fn create_nested<'a>(
-        field_model_type: &'a PostgresCompositeType,
+        field_entity_type: &'a MutationType,
         argument: &'a ConstValue,
-        container_model_type: &'a PostgresCompositeType,
+        container_entity_type: &'a EntityType,
         subsystem: &'a ModelPostgresSystem,
     ) -> Result<NestedAbstractInsert<'a>, PostgresExecutionError> {
         let nested_reference_col =
-            compute_nested_reference_column(field_model_type, container_model_type, subsystem)
+            compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
                 .unwrap();
 
-        let table = &subsystem.tables[field_model_type.table_id];
+        let table = field_entity_type.table(subsystem);
 
         let rows =
-            super::create_data_param_mapper::map_argument(field_model_type, argument, subsystem)?;
+            super::create_data_param_mapper::map_argument(field_entity_type, argument, subsystem)?;
 
         Ok(NestedAbstractInsert {
             relation: NestedElementRelation {
@@ -319,21 +323,22 @@ fn compute_nested_inserts<'a>(
         })
     }
 
-    let create_arg = get_argument_field(argument, "create");
+    let (create_arg, field_entity_type) =
+        extract_argument(argument, field_entity_type, "create", subsystem);
 
     match create_arg {
         Some(create_arg) => match create_arg {
             _arg @ ConstValue::Object(..) => vec![create_nested(
-                field_model_type,
+                field_entity_type,
                 create_arg,
-                container_model_type,
+                container_entity_type,
                 subsystem,
             )
             .unwrap()],
             ConstValue::List(create_arg) => create_arg
                 .iter()
                 .map(|arg| {
-                    create_nested(field_model_type, arg, container_model_type, subsystem).unwrap()
+                    create_nested(field_entity_type, arg, container_entity_type, subsystem).unwrap()
                 })
                 .collect(),
             _ => panic!("Object or list expected"),
@@ -343,24 +348,26 @@ fn compute_nested_inserts<'a>(
 }
 
 fn compute_nested_delete<'a>(
-    field_model_type: &'a PostgresCompositeType,
+    field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
-    container_model_type: &'a PostgresCompositeType,
+    container_entity_type: &'a EntityType,
 ) -> Vec<NestedAbstractDelete<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
 
     let nested_reference_col =
-        compute_nested_reference_column(field_model_type, container_model_type, subsystem).unwrap();
+        compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
+            .unwrap();
 
-    let delete_arg = get_argument_field(argument, "delete");
+    let (delete_arg, field_entity_type) =
+        extract_argument(argument, field_entity_type, "delete", subsystem);
 
     match delete_arg {
         Some(update_arg) => match update_arg {
             arg @ ConstValue::Object(..) => {
                 vec![compute_nested_delete_object_arg(
-                    field_model_type,
+                    field_entity_type,
                     arg,
                     nested_reference_col,
                     subsystem,
@@ -370,7 +377,7 @@ fn compute_nested_delete<'a>(
                 .iter()
                 .map(|arg| {
                     compute_nested_delete_object_arg(
-                        field_model_type,
+                        field_entity_type,
                         arg,
                         nested_reference_col,
                         subsystem,
@@ -385,17 +392,17 @@ fn compute_nested_delete<'a>(
 
 // Compute delete step assuming that the argument is a single object (not an array)
 fn compute_nested_delete_object_arg<'a>(
-    field_model_type: &'a PostgresCompositeType,
+    field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
     subsystem: &'a ModelPostgresSystem,
 ) -> NestedAbstractDelete<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
-    let table = &subsystem.tables[field_model_type.table_id];
+    let table = field_entity_type.table(subsystem);
 
     //
-    let nested = compute_update_columns(field_model_type, argument, subsystem);
+    let nested = compute_update_columns(field_entity_type, argument, subsystem);
     let (pk_columns, _nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
 
     // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let
@@ -439,4 +446,27 @@ fn compute_nested_delete_object_arg<'a>(
             },
         },
     }
+}
+
+fn extract_argument<'a>(
+    argument: &'a ConstValue,
+    arg_type: &'a MutationType,
+    arg_name: &str,
+    subsystem: &'a ModelPostgresSystem,
+) -> (Option<&'a ConstValue>, &'a MutationType) {
+    let arg = get_argument_field(argument, arg_name);
+
+    let arg_type = match arg_type
+        .fields
+        .iter()
+        .find(|f| f.name == arg_name)
+        .unwrap()
+        .typ
+        .base_type(&subsystem.primitive_types, &subsystem.mutation_types)
+    {
+        PostgresType::Primitive(_) => panic!("{arg_name} argument type must be a composite type"),
+        PostgresType::Composite(typ) => typ,
+    };
+
+    (arg, arg_type)
 }

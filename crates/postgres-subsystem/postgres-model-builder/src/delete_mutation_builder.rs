@@ -3,7 +3,7 @@
 
 use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use postgres_model::operation::PostgresMutationKind;
-use postgres_model::types::{PostgresCompositeType, PostgresTypeModifier};
+use postgres_model::types::{EntityType, PostgresTypeModifier};
 
 use super::{
     builder::Builder,
@@ -44,13 +44,13 @@ impl Builder for DeleteMutationBuilder {
 }
 
 impl MutationBuilder for DeleteMutationBuilder {
-    fn single_mutation_name(model_type: &PostgresCompositeType) -> String {
+    fn single_mutation_name(model_type: &EntityType) -> String {
         model_type.pk_delete()
     }
 
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-        model_type: &PostgresCompositeType,
+        model_type_id: SerializableSlabIndex<EntityType>,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Delete(query_builder::pk_predicate_param(
@@ -64,13 +64,13 @@ impl MutationBuilder for DeleteMutationBuilder {
         PostgresTypeModifier::Optional // We return null if the specified id doesn't exist
     }
 
-    fn multi_mutation_name(model_type: &PostgresCompositeType) -> String {
+    fn multi_mutation_name(model_type: &EntityType) -> String {
         model_type.collection_delete()
     }
 
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
-        model_type: &PostgresCompositeType,
+        model_type_id: SerializableSlabIndex<EntityType>,
+        model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Delete(query_builder::collection_predicate_param(

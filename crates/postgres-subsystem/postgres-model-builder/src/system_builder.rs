@@ -12,7 +12,7 @@ use postgres_model::{
     operation::{AggregateQuery, CollectionQuery, PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
-    types::{PostgresCompositeType, PostgresPrimitiveType},
+    types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 
 use payas_sql::PhysicalTable;
@@ -111,7 +111,7 @@ fn build_expanded(
 #[derive(Debug, Default)]
 pub struct SystemContextBuilding {
     pub primitive_types: MappedArena<PostgresPrimitiveType>,
-    pub entity_types: MappedArena<PostgresCompositeType>,
+    pub entity_types: MappedArena<EntityType>,
 
     pub aggregate_types: MappedArena<AggregateType>,
 
@@ -122,16 +122,13 @@ pub struct SystemContextBuilding {
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
 
-    pub mutation_types: MappedArena<PostgresCompositeType>,
+    pub mutation_types: MappedArena<MutationType>,
     pub mutations: MappedArena<PostgresMutation>,
     pub tables: MappedArena<PhysicalTable>,
 }
 
 impl SystemContextBuilding {
-    pub fn get_entity_type_id(
-        &self,
-        name: &str,
-    ) -> Option<SerializableSlabIndex<PostgresCompositeType>> {
+    pub fn get_entity_type_id(&self, name: &str) -> Option<SerializableSlabIndex<EntityType>> {
         self.entity_types.get_id(name)
     }
 

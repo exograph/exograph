@@ -1,4 +1,8 @@
-use crate::{column_path::ColumnIdPathLink, model::ModelPostgresSystem, types::PostgresTypeIndex};
+use crate::{
+    column_path::ColumnIdPathLink,
+    model::ModelPostgresSystem,
+    types::{EntityType, TypeIndex},
+};
 use async_graphql_parser::types::{InputObjectType, TypeDefinition, TypeKind};
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +35,7 @@ pub struct PredicateParameter {
     pub column_path_link: Option<ColumnIdPathLink>,
 
     /// The type this parameter is filtering on. For example, for ConcertFilter, this will be (the index of) the Concert.
-    pub underlying_type_id: PostgresTypeIndex,
+    pub underlying_type_id: TypeIndex<EntityType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

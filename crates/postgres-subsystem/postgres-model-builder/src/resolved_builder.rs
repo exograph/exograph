@@ -24,13 +24,16 @@ use core_plugin_interface::{
 
 use super::{
     access_builder::{build_access, ResolvedAccess},
-    builder::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID},
     naming::{ToPlural, ToTableName},
     type_builder::ResolvedTypeEnv,
 };
 
 use heck::ToSnakeCase;
 use serde::{Deserialize, Serialize};
+
+const DEFAULT_FN_AUTOINCREMENT: &str = "autoincrement";
+const DEFAULT_FN_CURRENT_TIME: &str = "now";
+const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
 
 impl ToPlural for ResolvedCompositeType {
     fn to_singular(&self) -> String {
@@ -259,9 +262,8 @@ fn resolve(
     for (_, Service(service)) in typechecked_system.services.iter() {
         // Process each persistent type to create a PostgresType
         if service.annotations.get("postgres").is_some() {
-            for model in service.types.iter() {
-                if let Some(Type::Composite(ct)) = typechecked_system.types.get_by_key(&model.name)
-                {
+            for typ in service.types.iter() {
+                if let Some(Type::Composite(ct)) = typechecked_system.types.get_by_key(&typ.name) {
                     if ct.kind == AstModelKind::Type {
                         let plural_annotation_value = ct
                             .annotations
@@ -701,9 +703,9 @@ fn compute_column_info(
         match field_base_type {
             AstFieldType::Plain(_, _, _, _) => {
                 match field_base_type.to_typ(types).deref(types) {
-                    Type::Composite(field_model) => {
+                    Type::Composite(field_type) => {
                         let matching_field =
-                            get_matching_field(field, enclosing_type, &field_model, types);
+                            get_matching_field(field, enclosing_type, &field_type, types);
                         let matching_field = match matching_field {
                             Ok(matching_field) => matching_field,
                             Err(err) => return Err(err),
@@ -780,10 +782,10 @@ fn compute_column_info(
                         }
                     }
                     Type::Set(typ) => {
-                        if let Type::Composite(field_model) = typ.deref(types) {
+                        if let Type::Composite(field_type) = typ.deref(types) {
                             // OneToMany
                             let matching_field =
-                                get_matching_field(field, enclosing_type, &field_model, types);
+                                get_matching_field(field, enclosing_type, &field_type, types);
 
                             let matching_field = match matching_field {
                                 Ok(matching_field) => matching_field,
@@ -864,7 +866,7 @@ fn compute_column_info(
 fn get_matching_field<'a>(
     field: &AstField<Typed>,
     enclosing_type: &AstModel<Typed>,
-    field_model: &'a AstModel<Typed>,
+    field_type: &'a AstModel<Typed>,
     types: &MappedArena<Type>,
 ) -> Result<&'a AstField<Typed>, Diagnostic> {
     let user_supplied_column_name = field
@@ -873,7 +875,7 @@ fn get_matching_field<'a>(
         .get("column")
         .map(|p| p.params.as_single().as_string());
 
-    let matching_fields: Vec<_> = field_model
+    let matching_fields: Vec<_> = field_type
         .fields
         .iter()
         .filter(|f| {

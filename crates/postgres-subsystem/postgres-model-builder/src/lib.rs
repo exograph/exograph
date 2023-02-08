@@ -19,6 +19,7 @@ mod shallow;
 mod system_builder;
 mod type_builder;
 mod update_mutation_builder;
+mod utils;
 
 #[cfg(test)]
 mod test_utils;

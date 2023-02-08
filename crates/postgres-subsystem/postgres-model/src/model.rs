@@ -5,7 +5,7 @@ use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 use crate::{
     aggregate::AggregateType,
     operation::{AggregateQuery, CollectionQuery},
-    types::{PostgresCompositeType, PostgresPrimitiveType},
+    types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 
 use super::{
@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 pub struct ModelPostgresSystem {
     pub contexts: MappedArena<ContextType>,
     pub primitive_types: SerializableSlab<PostgresPrimitiveType>,
-    pub entity_types: SerializableSlab<PostgresCompositeType>,
+    pub entity_types: SerializableSlab<EntityType>,
 
     pub aggregate_types: SerializableSlab<AggregateType>,
 
@@ -42,7 +42,7 @@ pub struct ModelPostgresSystem {
     pub aggregate_queries: MappedArena<AggregateQuery>,
 
     // mutation related
-    pub mutation_types: SerializableSlab<PostgresCompositeType>, // create, update, delete input types such as `PersonUpdateInput`
+    pub mutation_types: SerializableSlab<MutationType>, // create, update, delete input types such as `PersonUpdateInput`
     pub mutations: MappedArena<PostgresMutation>,
 
     pub tables: SerializableSlab<PhysicalTable>,

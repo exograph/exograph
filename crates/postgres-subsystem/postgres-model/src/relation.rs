@@ -1,4 +1,4 @@
-use crate::types::PostgresCompositeType;
+use crate::types::EntityType;
 
 use super::column_id::ColumnId;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
@@ -23,12 +23,12 @@ pub enum PostgresRelation {
     },
     ManyToOne {
         column_id: ColumnId,
-        other_type_id: SerializableSlabIndex<PostgresCompositeType>,
+        other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
     },
     OneToMany {
         other_type_column_id: ColumnId,
-        other_type_id: SerializableSlabIndex<PostgresCompositeType>,
+        other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
     },
 }

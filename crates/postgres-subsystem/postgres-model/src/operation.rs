@@ -5,7 +5,8 @@ use core_plugin_interface::core_model::type_normalization::{Operation, Parameter
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
-use crate::{model::ModelPostgresSystem, types::PostgresCompositeType};
+use crate::types::EntityType;
+use crate::{model::ModelPostgresSystem, types::MutationType};
 
 use super::{
     limit_offset::{LimitParameter, OffsetParameter},
@@ -102,25 +103,25 @@ pub struct CreateDataParameter {
 pub struct UpdateDataParameter {
     pub name: String,
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresCompositeType>,
+    pub type_id: SerializableSlabIndex<MutationType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateDataParameterTypeWithModifier {
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresCompositeType>,
+    pub type_id: SerializableSlabIndex<MutationType>,
     pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OperationReturnType {
-    pub type_id: SerializableSlabIndex<PostgresCompositeType>,
+    pub type_id: SerializableSlabIndex<EntityType>,
     pub type_name: String,
     pub type_modifier: PostgresTypeModifier,
 }
 
 impl OperationReturnType {
-    pub fn typ<'a>(&'a self, system: &'a ModelPostgresSystem) -> &PostgresCompositeType {
+    pub fn typ<'a>(&'a self, system: &'a ModelPostgresSystem) -> &EntityType {
         &system.entity_types[self.type_id]
     }
 
