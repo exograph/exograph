@@ -15,11 +15,11 @@ use core_plugin_interface::{
     interception::InterceptorIndex,
 };
 use payas_sql::DatabaseExecutor;
-use postgres_model::model::ModelPostgresSystem;
+use postgres_model::subsystem::PostgresSubsystem;
 
 pub struct PostgresSubsystemResolver {
     pub id: &'static str,
-    pub subsystem: ModelPostgresSystem,
+    pub subsystem: PostgresSubsystem,
     pub executor: DatabaseExecutor,
 }
 

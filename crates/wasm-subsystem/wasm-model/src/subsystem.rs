@@ -1,5 +1,11 @@
+use super::service::Script;
+use crate::{
+    interceptor::Interceptor,
+    operation::{WasmMutation, WasmQuery},
+    service::ServiceMethod,
+    types::ServiceType,
+};
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
-
 use core_plugin_interface::{
     core_model::{
         context_type::ContextType,
@@ -9,27 +15,18 @@ use core_plugin_interface::{
     error::ModelSerializationError,
     system_serializer::SystemSerializer,
 };
-
 use serde::{Deserialize, Serialize};
 
-use super::service::Script;
-use crate::{
-    interceptor::Interceptor,
-    operation::{DenoMutation, DenoQuery},
-    service::ServiceMethod,
-    types::ServiceType,
-};
-
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ModelDenoSystem {
+pub struct WasmSubsystem {
     pub contexts: MappedArena<ContextType>,
     pub service_types: SerializableSlab<ServiceType>,
 
     // query related
-    pub queries: MappedArena<DenoQuery>,
+    pub queries: MappedArena<WasmQuery>,
 
     // mutation related
-    pub mutations: MappedArena<DenoMutation>,
+    pub mutations: MappedArena<WasmMutation>,
 
     // service related
     pub methods: SerializableSlab<ServiceMethod>,
@@ -37,7 +34,7 @@ pub struct ModelDenoSystem {
     pub interceptors: SerializableSlab<Interceptor>,
 }
 
-impl ModelDenoSystem {
+impl WasmSubsystem {
     pub fn schema_queries(&self) -> Vec<FieldDefinition> {
         self.queries
             .values
@@ -62,7 +59,7 @@ impl ModelDenoSystem {
     }
 }
 
-impl SystemSerializer for ModelDenoSystem {
+impl SystemSerializer for WasmSubsystem {
     type Underlying = Self;
 
     fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {

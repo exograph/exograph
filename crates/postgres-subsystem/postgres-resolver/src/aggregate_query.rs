@@ -14,7 +14,7 @@ use payas_sql::{
     AbstractPredicate, AbstractSelect, ColumnSelection, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
-    model::ModelPostgresSystem, operation::AggregateQuery, relation::PostgresRelation,
+    operation::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
     types::EntityType,
 };
 
@@ -24,7 +24,7 @@ impl OperationSelectionResolver for AggregateQuery {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
         let access_predicate = check_access(
             &self.return_type,
@@ -70,7 +70,7 @@ impl OperationSelectionResolver for AggregateQuery {
 async fn content_select<'content>(
     return_type: &EntityType,
     fields: &'content [ValidatedField],
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<Vec<ColumnSelection<'content>>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
@@ -84,7 +84,7 @@ async fn content_select<'content>(
 async fn map_field<'content>(
     return_type: &EntityType,
     field: &'content ValidatedField,
-    subsystem: &'content ModelPostgresSystem,
+    subsystem: &'content PostgresSubsystem,
     _request_context: &'content RequestContext<'content>,
 ) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {

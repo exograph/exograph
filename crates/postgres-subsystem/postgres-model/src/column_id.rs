@@ -1,4 +1,4 @@
-use crate::model::ModelPostgresSystem;
+use crate::subsystem::PostgresSubsystem;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use payas_sql::{PhysicalColumn, PhysicalTable};
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ impl ColumnId {
         }
     }
 
-    pub fn get_column<'a>(&self, system: &'a ModelPostgresSystem) -> &'a PhysicalColumn {
+    pub fn get_column<'a>(&self, system: &'a PostgresSubsystem) -> &'a PhysicalColumn {
         &system.tables[self.table_id].columns[self.column_index]
     }
 }

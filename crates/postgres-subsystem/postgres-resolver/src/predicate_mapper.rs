@@ -3,8 +3,8 @@ use async_graphql_value::ConstValue;
 use payas_sql::{AbstractPredicate, ColumnPath};
 use postgres_model::{
     column_path::ColumnIdPath,
-    model::ModelPostgresSystem,
     predicate::{PredicateParameter, PredicateParameterTypeKind},
+    subsystem::PostgresSubsystem,
 };
 
 use crate::{
@@ -24,7 +24,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
     fn to_sql(
         self,
         argument: &'a ConstValue,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
         let parameter_type = &subsystem.predicate_types[self.param.typ.type_id];
 
@@ -201,7 +201,7 @@ fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Result<(ColumnPath<'a>, ColumnPath<'a>), PostgresExecutionError> {
     let op_physical_column = param
         .column_path_link
@@ -224,7 +224,7 @@ fn operands<'a>(
 pub fn compute_predicate<'a>(
     param: &'a PredicateParameter,
     arguments: &'a Arguments,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     extract_and_map(
         PredicateParamInput {

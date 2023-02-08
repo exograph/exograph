@@ -19,7 +19,7 @@ use crate::{
 use super::service::Script;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ModelServiceSystem {
+pub struct ServiceSubsystem {
     pub contexts: MappedArena<ContextType>,
     pub service_types: SerializableSlab<ServiceType>,
 
@@ -35,7 +35,7 @@ pub struct ModelServiceSystem {
     pub interceptors: SerializableSlab<Interceptor>,
 }
 
-impl ModelServiceSystem {
+impl ServiceSubsystem {
     pub fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
         self.queries
             .values

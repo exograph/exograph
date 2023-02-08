@@ -11,7 +11,7 @@ use maybe_owned::MaybeOwned;
 use payas_sql::{AbstractPredicate, ColumnPath};
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression, column_path::ColumnIdPath,
-    model::ModelPostgresSystem,
+    subsystem::PostgresSubsystem,
 };
 use serde_json::Value;
 
@@ -44,13 +44,13 @@ impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper<'a> {
 
 pub struct PostgresAccessSolver<'a> {
     request_context: &'a RequestContext<'a>,
-    system: &'a ModelPostgresSystem,
+    system: &'a PostgresSubsystem,
 }
 
 impl PostgresAccessSolver<'_> {
     pub fn new<'a>(
         request_context: &'a RequestContext<'a>,
-        system: &'a ModelPostgresSystem,
+        system: &'a PostgresSubsystem,
     ) -> PostgresAccessSolver<'a> {
         PostgresAccessSolver {
             request_context,
@@ -196,7 +196,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     }
 }
 
-fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelPostgresSystem) -> ColumnPath<'a> {
+fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a PostgresSubsystem) -> ColumnPath<'a> {
     column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
 }
 
@@ -232,7 +232,7 @@ mod tests {
     use super::*;
 
     struct TestSystem {
-        system: ModelPostgresSystem,
+        system: PostgresSubsystem,
         published_column_path: ColumnIdPath,
         owner_id_column_path: ColumnIdPath,
         dept1_id_column_path: ColumnIdPath,
@@ -410,7 +410,7 @@ mod tests {
     async fn solve_access<'a>(
         expr: &'a AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
         request_context: &'a RequestContext<'a>,
-        subsystem_model: &'a ModelPostgresSystem,
+        subsystem_model: &'a PostgresSubsystem,
     ) -> AbstractPredicate<'a> {
         let access_solver = PostgresAccessSolver::new(request_context, subsystem_model);
         access_solver.solve(expr).await.0
@@ -1077,7 +1077,7 @@ mod tests {
         } = &test_system;
 
         // Scenario: true or false
-        let system = ModelPostgresSystem::default();
+        let system = PostgresSubsystem::default();
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(true);
         let context = test_request_context(Value::Null, test_system_resolver); // irrelevant context content

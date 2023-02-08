@@ -90,7 +90,6 @@ fn create_shallow_type(
             let typ = EntityType {
                 name: resolved_type.name(),
                 plural_name: resolved_type.plural_name(),
-                is_input: false,
                 fields: vec![],
                 agg_fields: vec![],
                 table_id: SerializableSlabIndex::shallow(),
@@ -160,7 +159,6 @@ fn expand_type_no_fields(
         collection_query,
         aggregate_query,
         access: Access::restrictive(),
-        is_input: false,
     };
 
     let existing_type_id = building.get_entity_type_id(&resolved_postgres_type.name);
@@ -209,7 +207,6 @@ fn expand_type_fields(
         collection_query: *collection_query,
         aggregate_query: *aggregate_query,
         access: Access::restrictive(),
-        is_input: false,
     };
 
     building.entity_types.values[existing_type_id] = typ;
@@ -241,7 +238,6 @@ fn expand_type_access(
         collection_query: existing_type.collection_query,
         aggregate_query: existing_type.aggregate_query,
         access: expr,
-        is_input: false,
     };
 
     building.entity_types.values[existing_type_id] = typ;

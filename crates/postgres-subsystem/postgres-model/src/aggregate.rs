@@ -4,9 +4,9 @@ use async_graphql_parser::types::{
 use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
 
-use crate::model::ModelPostgresSystem;
 use crate::operation::AggregateQueryParameter;
 use crate::relation::PostgresRelation;
+use crate::subsystem::PostgresSubsystem;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::type_normalization::{
     default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
@@ -59,8 +59,8 @@ impl ScalarAggregateFieldKind {
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for AggregateType {
-    fn type_definition(&self, system: &ModelPostgresSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresSubsystem> for AggregateType {
+    fn type_definition(&self, system: &PostgresSubsystem) -> TypeDefinition {
         let kind = {
             let fields: Vec<_> = self
                 .fields
@@ -83,8 +83,8 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for AggregateType {
     }
 }
 
-impl FieldDefinitionProvider<ModelPostgresSystem> for AggregateField {
-    fn field_definition(&self, system: &ModelPostgresSystem) -> FieldDefinition {
+impl FieldDefinitionProvider<PostgresSubsystem> for AggregateField {
+    fn field_definition(&self, system: &PostgresSubsystem) -> FieldDefinition {
         let arguments = match &self.relation {
             Some(relation) => match relation {
                 PostgresRelation::Pk { .. }
