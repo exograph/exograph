@@ -16,7 +16,7 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 
-use deno_model::{model::ModelDenoSystem, service::ServiceMethod};
+use deno_model::{service::ServiceMethod, subsystem::DenoSubsystem};
 use payas_deno::DenoExecutorPool;
 
 use super::{
@@ -44,7 +44,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
         &self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
-        let subsystem = ModelDenoSystem::deserialize(serialized_subsystem)?;
+        let subsystem = DenoSubsystem::deserialize(serialized_subsystem)?;
 
         let executor = DenoExecutorPool::new_from_config(clay_config());
 
@@ -58,7 +58,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
 
 pub struct DenoSubsystemResolver {
     pub id: &'static str,
-    pub subsystem: ModelDenoSystem,
+    pub subsystem: DenoSubsystem,
     pub executor: ClayDenoExecutorPool,
 }
 
@@ -161,7 +161,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
 }
 
 pub(crate) fn create_deno_operation<'a>(
-    system: &'a ModelDenoSystem,
+    system: &'a DenoSubsystem,
     method_id: &Option<SerializableSlabIndex<ServiceMethod>>,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,

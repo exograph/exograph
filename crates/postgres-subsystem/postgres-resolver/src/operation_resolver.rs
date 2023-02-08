@@ -3,7 +3,7 @@ use core_plugin_interface::core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField,
 };
 use payas_sql::{AbstractOperation, AbstractSelect};
-use postgres_model::model::ModelPostgresSystem;
+use postgres_model::subsystem::PostgresSubsystem;
 
 use crate::postgres_execution_error::PostgresExecutionError;
 
@@ -13,7 +13,7 @@ pub trait OperationSelectionResolver {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractSelect<'a>, PostgresExecutionError>;
 }
 
@@ -23,7 +23,7 @@ pub trait OperationResolver {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractOperation<'a>, PostgresExecutionError>;
 }
 
@@ -33,7 +33,7 @@ impl<T: OperationSelectionResolver + Send + Sync> OperationResolver for T {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
         self.resolve_select(field, request_context, subsystem)
             .await

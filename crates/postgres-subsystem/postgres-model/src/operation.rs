@@ -6,7 +6,7 @@ use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
 use crate::types::EntityType;
-use crate::{model::ModelPostgresSystem, types::MutationType};
+use crate::{subsystem::PostgresSubsystem, types::MutationType};
 
 use super::{
     limit_offset::{LimitParameter, OffsetParameter},
@@ -121,11 +121,11 @@ pub struct OperationReturnType {
 }
 
 impl OperationReturnType {
-    pub fn typ<'a>(&'a self, system: &'a ModelPostgresSystem) -> &EntityType {
+    pub fn typ<'a>(&'a self, system: &'a PostgresSubsystem) -> &EntityType {
         &system.entity_types[self.type_id]
     }
 
-    pub fn physical_table<'a>(&self, system: &'a ModelPostgresSystem) -> &'a PhysicalTable {
+    pub fn physical_table<'a>(&self, system: &'a PostgresSubsystem) -> &'a PhysicalTable {
         let return_type = self.typ(system);
         &system.tables[return_type.table_id]
     }

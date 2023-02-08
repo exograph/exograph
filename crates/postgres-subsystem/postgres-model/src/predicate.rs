@@ -1,6 +1,6 @@
 use crate::{
     column_path::ColumnIdPathLink,
-    model::ModelPostgresSystem,
+    subsystem::PostgresSubsystem,
     types::{EntityType, TypeIndex},
 };
 use async_graphql_parser::types::{InputObjectType, TypeDefinition, TypeKind};
@@ -82,8 +82,8 @@ impl Parameter for PredicateParameter {
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for PredicateParameterType {
-    fn type_definition(&self, _system: &ModelPostgresSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
+    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
         match &self.kind {
             PredicateParameterTypeKind::Operator(parameters) => {
                 let fields = parameters

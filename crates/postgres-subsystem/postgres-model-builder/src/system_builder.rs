@@ -8,10 +8,10 @@ use core_plugin_interface::{
 
 use postgres_model::{
     aggregate::AggregateType,
-    model::ModelPostgresSystem,
     operation::{AggregateQuery, CollectionQuery, PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
+    subsystem::PostgresSubsystem,
     types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 
@@ -27,7 +27,7 @@ use super::{
 pub fn build(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
-) -> Result<Option<ModelPostgresSystem>, ModelBuildingError> {
+) -> Result<Option<PostgresSubsystem>, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
 
     let resolved_types = resolved_builder::build(typechecked_system)?;
@@ -40,7 +40,7 @@ pub fn build(
         build_shallow(&resolved_env, &mut building);
         build_expanded(&resolved_env, &mut building)?;
 
-        ModelPostgresSystem {
+        PostgresSubsystem {
             contexts: base_system.contexts.clone(),
             primitive_types: building.primitive_types.values,
             entity_types: building.entity_types.values,
@@ -369,7 +369,7 @@ mod tests {
         panic!("No such column {name}")
     }
 
-    fn create_system(src: &str) -> ModelPostgresSystem {
+    fn create_system(src: &str) -> PostgresSubsystem {
         crate::test_utils::create_postgres_system_from_str(src, "test.clay".to_string()).unwrap()
     }
 }

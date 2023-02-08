@@ -631,24 +631,24 @@ mod tests {
 
     // TODO: Rethink this approach, where core (even though it's a test) depends on a specific subsystem (database)
 
-    use postgres_model::model::ModelPostgresSystem;
+    use postgres_model::subsystem::PostgresSubsystem;
     pub fn create_postgres_system_from_str(
         model_str: &str,
         file_name: String,
-    ) -> ModelPostgresSystem {
+    ) -> PostgresSubsystem {
         let serialized_system = builder::build_system_from_str(model_str, file_name).unwrap();
         let system = SerializableSystem::deserialize(serialized_system).unwrap();
 
         deserialize_postgres_subsystem(system)
     }
 
-    fn deserialize_postgres_subsystem(system: SerializableSystem) -> ModelPostgresSystem {
+    fn deserialize_postgres_subsystem(system: SerializableSystem) -> PostgresSubsystem {
         system
             .subsystems
             .into_iter()
             .find_map(|subsystem| {
                 if subsystem.id == "postgres" {
-                    Some(ModelPostgresSystem::deserialize(
+                    Some(PostgresSubsystem::deserialize(
                         subsystem.serialized_subsystem,
                     ))
                 } else {
@@ -656,7 +656,7 @@ mod tests {
                 }
             })
             // If there is no database subsystem in the serialized system, create an empty one
-            .unwrap_or_else(|| Ok(ModelPostgresSystem::default()))
+            .unwrap_or_else(|| Ok(PostgresSubsystem::default()))
             .unwrap()
     }
 }

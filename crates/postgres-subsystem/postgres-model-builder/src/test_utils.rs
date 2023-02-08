@@ -4,13 +4,13 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 #[cfg(test)]
-use postgres_model::model::ModelPostgresSystem;
+use postgres_model::subsystem::PostgresSubsystem;
 
 #[cfg(test)]
 pub(crate) fn create_postgres_system_from_str(
     model_str: &str,
     file_name: String,
-) -> Result<ModelPostgresSystem, ModelSerializationError> {
+) -> Result<PostgresSubsystem, ModelSerializationError> {
     let serialized_system = builder::build_system_from_str(model_str, file_name).unwrap();
     let system = SerializableSystem::deserialize(serialized_system)?;
 
@@ -20,13 +20,13 @@ pub(crate) fn create_postgres_system_from_str(
 #[cfg(test)]
 fn deserialize_postgres_subsystem(
     system: SerializableSystem,
-) -> Result<ModelPostgresSystem, ModelSerializationError> {
+) -> Result<PostgresSubsystem, ModelSerializationError> {
     system
         .subsystems
         .into_iter()
         .find_map(|subsystem| {
             if subsystem.id == "postgres" {
-                Some(ModelPostgresSystem::deserialize(
+                Some(PostgresSubsystem::deserialize(
                     subsystem.serialized_subsystem,
                 ))
             } else {
@@ -34,5 +34,5 @@ fn deserialize_postgres_subsystem(
             }
         })
         // If there is no database subsystem in the serialized system, create an empty one
-        .unwrap_or_else(|| Ok(ModelPostgresSystem::default()))
+        .unwrap_or_else(|| Ok(PostgresSubsystem::default()))
 }

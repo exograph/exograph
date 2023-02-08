@@ -6,9 +6,9 @@ use payas_sql::{
     NestedElementRelation, PhysicalColumn, PhysicalColumnType, Predicate, Selection,
 };
 use postgres_model::{
-    model::ModelPostgresSystem,
     operation::{OperationReturnType, UpdateDataParameter},
     relation::PostgresRelation,
+    subsystem::PostgresSubsystem,
     types::{EntityType, MutationType, PostgresType, TypeIndex},
 };
 
@@ -30,7 +30,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
     fn to_sql(
         self,
         argument: &'a ConstValue,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractUpdate<'a>, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.type_id];
 
@@ -63,7 +63,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
 fn compute_update_columns<'a>(
     data_type: &'a MutationType,
     argument: &'a ConstValue,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
     data_type
         .fields
@@ -104,7 +104,7 @@ fn compute_nested_ops<'a>(
     arg_type: &'a MutationType,
     arg: &'a ConstValue,
     container_entity_type: &'a EntityType,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
     Vec<NestedAbstractInsert<'a>>,
@@ -155,7 +155,7 @@ fn compute_nested_ops<'a>(
 fn compute_nested_reference_column<'a>(
     field_entity_type: &'a MutationType,
     container_entity_type: &'a EntityType,
-    system: &'a ModelPostgresSystem,
+    system: &'a PostgresSubsystem,
 ) -> Option<&'a PhysicalColumn> {
     let pk_column = {
         let container_table = &system.tables[container_entity_type.table_id];
@@ -184,7 +184,7 @@ fn compute_nested_update<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
     container_entity_type: &'a EntityType,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Vec<NestedAbstractUpdate<'a>> {
     let nested_reference_col =
         compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
@@ -225,7 +225,7 @@ fn compute_nested_update_object_arg<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> NestedAbstractUpdate<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
@@ -286,13 +286,13 @@ fn compute_nested_inserts<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
     container_entity_type: &'a EntityType,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Vec<NestedAbstractInsert<'a>> {
     fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a ConstValue,
         container_entity_type: &'a EntityType,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<NestedAbstractInsert<'a>, PostgresExecutionError> {
         let nested_reference_col =
             compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
@@ -350,7 +350,7 @@ fn compute_nested_inserts<'a>(
 fn compute_nested_delete<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
     container_entity_type: &'a EntityType,
 ) -> Vec<NestedAbstractDelete<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
@@ -395,7 +395,7 @@ fn compute_nested_delete_object_arg<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> NestedAbstractDelete<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
@@ -452,7 +452,7 @@ fn extract_argument<'a>(
     argument: &'a ConstValue,
     arg_type: &'a MutationType,
     arg_name: &str,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> (Option<&'a ConstValue>, &'a MutationType) {
     let arg = get_argument_field(argument, arg_name);
 

@@ -318,9 +318,8 @@ pub trait DataParamBuilder<D> {
         top_level_type: Option<&EntityType>,
         container_type: Option<&EntityType>,
     ) -> Vec<(SerializableSlabIndex<MutationType>, MutationType)> {
-        let EntityType { fields, .. } = &entity_type;
-
-        let mut field_types: Vec<_> = fields
+        let mut field_types: Vec<_> = entity_type
+            .fields
             .iter()
             .flat_map(|field| {
                 let field_type = field.typ.base_type(
@@ -352,7 +351,7 @@ pub trait DataParamBuilder<D> {
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
         let input_type_fields = self.compute_data_fields(
-            fields,
+            &entity_type.fields,
             top_level_type,
             Some(entity_type.name.as_str()),
             building,

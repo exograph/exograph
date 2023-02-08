@@ -26,7 +26,7 @@ use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ModelPostgresSystem {
+pub struct PostgresSubsystem {
     pub contexts: MappedArena<ContextType>,
     pub primitive_types: SerializableSlab<PostgresPrimitiveType>,
     pub entity_types: SerializableSlab<EntityType>,
@@ -48,7 +48,7 @@ pub struct ModelPostgresSystem {
     pub tables: SerializableSlab<PhysicalTable>,
 }
 
-impl ModelPostgresSystem {
+impl PostgresSubsystem {
     pub fn schema_queries(&self) -> Vec<FieldDefinition> {
         let pk_queries_defn = self
             .pk_queries
@@ -109,7 +109,7 @@ impl ModelPostgresSystem {
     }
 }
 
-impl Default for ModelPostgresSystem {
+impl Default for PostgresSubsystem {
     fn default() -> Self {
         Self {
             contexts: MappedArena::default(),
@@ -128,7 +128,7 @@ impl Default for ModelPostgresSystem {
     }
 }
 
-impl SystemSerializer for ModelPostgresSystem {
+impl SystemSerializer for PostgresSubsystem {
     type Underlying = Self;
 
     fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {

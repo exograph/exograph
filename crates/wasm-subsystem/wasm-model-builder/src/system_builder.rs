@@ -10,11 +10,11 @@ use core_plugin_interface::{
 use std::path::Path;
 use wasm_model::{
     interceptor::Interceptor,
-    model::ModelWasmSystem,
     operation::{WasmMutation, WasmQuery},
+    subsystem::WasmSubsystem,
 };
 pub struct ModelWasmSystemWithInterceptors {
-    pub underlying: ModelWasmSystem,
+    pub underlying: WasmSubsystem,
 
     pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
@@ -53,7 +53,7 @@ pub fn build(
     }
 
     Ok(Some(ModelWasmSystemWithInterceptors {
-        underlying: ModelWasmSystem {
+        underlying: WasmSubsystem {
             contexts: underlying_service_system.contexts,
             service_types: underlying_service_system.service_types,
             queries,

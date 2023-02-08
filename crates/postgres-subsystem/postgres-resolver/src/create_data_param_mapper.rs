@@ -6,9 +6,9 @@ use payas_sql::{
 };
 use postgres_model::{
     column_id::ColumnId,
-    model::ModelPostgresSystem,
     operation::{CreateDataParameter, OperationReturnType},
     relation::PostgresRelation,
+    subsystem::PostgresSubsystem,
     types::{EntityType, MutationType, PostgresField, PostgresType},
 };
 
@@ -29,7 +29,7 @@ impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
     fn to_sql(
         self,
         argument: &'a ConstValue,
-        subsystem: &'a ModelPostgresSystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractInsert<'a>, PostgresExecutionError> {
         let table = self.return_type.physical_table(subsystem);
 
@@ -54,7 +54,7 @@ impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
 pub(crate) fn map_argument<'a>(
     data_type: &'a MutationType,
     argument: &'a ConstValue,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Result<Vec<InsertionRow<'a>>, PostgresExecutionError> {
     match argument {
         ConstValue::List(arguments) => arguments
@@ -71,7 +71,7 @@ pub(crate) fn map_argument<'a>(
 fn map_single<'a>(
     data_type: &'a MutationType,
     argument: &'a ConstValue,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Result<InsertionRow<'a>, PostgresExecutionError> {
     let row: Result<Vec<_>, _> = data_type
         .fields
@@ -97,7 +97,7 @@ fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a PostgresField<MutationType>,
     argument: &'a ConstValue,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Result<InsertionElement<'a>, PostgresExecutionError> {
     let key_column = key_column_id.get_column(subsystem);
     let argument_value = match &field.relation {
@@ -139,11 +139,11 @@ fn map_foreign<'a>(
     field: &'a PostgresField<MutationType>,
     argument: &'a ConstValue,
     parent_data_type: &'a MutationType,
-    subsystem: &'a ModelPostgresSystem,
+    subsystem: &'a PostgresSubsystem,
 ) -> Result<InsertionElement<'a>, PostgresExecutionError> {
     fn underlying_type<'a>(
         data_type: &'a MutationType,
-        system: &'a ModelPostgresSystem,
+        system: &'a PostgresSubsystem,
     ) -> &'a EntityType {
         &system.entity_types[data_type.entity_type]
     }

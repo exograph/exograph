@@ -1,8 +1,8 @@
 use super::access::Access;
 use super::{column_id::ColumnId, relation::PostgresRelation};
 use crate::aggregate::AggregateField;
-use crate::model::ModelPostgresSystem;
 use crate::operation::{AggregateQuery, CollectionQuery, CollectionQueryParameter, PkQuery};
+use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
     BaseType, FieldDefinition, InputObjectType, InputValueDefinition, ObjectType, Type,
     TypeDefinition, TypeKind,
@@ -65,7 +65,6 @@ pub struct PostgresPrimitiveType {
 pub struct EntityType {
     pub name: String,
     pub plural_name: String,
-    pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
 
     pub fields: Vec<PostgresField<EntityType>>,
     pub agg_fields: Vec<AggregateField>,
@@ -127,7 +126,7 @@ impl MutationType {
         entity_type.table_id
     }
 
-    pub fn table<'a>(&'a self, system: &'a ModelPostgresSystem) -> &'a PhysicalTable {
+    pub fn table<'a>(&'a self, system: &'a PostgresSubsystem) -> &'a PhysicalTable {
         let table_id = self.table_id(&system.entity_types);
         &system.tables[table_id]
     }
@@ -197,8 +196,8 @@ where
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresPrimitiveType {
-    fn type_definition(&self, _system: &ModelPostgresSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresSubsystem> for PostgresPrimitiveType {
+    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
         TypeDefinition {
             extend: false,
             description: None,
@@ -209,19 +208,13 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresPrimitiveType {
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for EntityType {
-    fn type_definition(&self, system: &ModelPostgresSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresSubsystem> for EntityType {
+    fn type_definition(&self, system: &PostgresSubsystem) -> TypeDefinition {
         let EntityType {
             fields, agg_fields, ..
         } = self;
 
-        let kind = if self.is_input {
-            let fields = fields
-                .iter()
-                .map(|field| default_positioned(field.input_value()))
-                .collect();
-            TypeKind::InputObject(InputObjectType { fields })
-        } else {
+        let kind = {
             let entity = fields
                 .iter()
                 .map(|field| default_positioned(field.field_definition(system)));
@@ -247,8 +240,8 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for EntityType {
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for MutationType {
-    fn type_definition(&self, _system: &ModelPostgresSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresSubsystem> for MutationType {
+    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
         let kind = {
             let fields = self
                 .fields
@@ -267,8 +260,8 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for MutationType {
     }
 }
 
-impl<CT> FieldDefinitionProvider<ModelPostgresSystem> for PostgresField<CT> {
-    fn field_definition(&self, system: &ModelPostgresSystem) -> FieldDefinition {
+impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
+    fn field_definition(&self, system: &PostgresSubsystem) -> FieldDefinition {
         let field_type = default_positioned(compute_type(&self.typ));
 
         let arguments = match self.relation {

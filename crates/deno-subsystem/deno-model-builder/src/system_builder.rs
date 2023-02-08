@@ -12,14 +12,14 @@ use core_plugin_interface::{
 
 use deno_model::{
     interceptor::Interceptor,
-    model::ModelDenoSystem,
     operation::{DenoMutation, DenoQuery},
+    subsystem::DenoSubsystem,
 };
 
 use crate::service_skeleton_generator;
 
 pub struct ModelDenoSystemWithInterceptors {
-    pub underlying: ModelDenoSystem,
+    pub underlying: DenoSubsystem,
 
     pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
@@ -58,7 +58,7 @@ pub fn build(
     }
 
     Ok(Some(ModelDenoSystemWithInterceptors {
-        underlying: ModelDenoSystem {
+        underlying: DenoSubsystem {
             contexts: underlying_service_system.contexts,
             service_types: underlying_service_system.service_types,
             queries,

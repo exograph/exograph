@@ -11,8 +11,8 @@ use core_plugin_interface::core_resolver::{
 };
 
 use deno_model::{
-    model::ModelDenoSystem,
     service::{Argument, ServiceMethod},
+    subsystem::DenoSubsystem,
     types::{ServiceCompositeType, ServiceTypeKind},
 };
 
@@ -112,7 +112,7 @@ impl<'a> DenoOperation<'a> {
         .await
     }
 
-    fn subsystem(&self) -> &ModelDenoSystem {
+    fn subsystem(&self) -> &DenoSubsystem {
         &self.subsystem_resolver.subsystem
     }
 }
@@ -120,7 +120,7 @@ impl<'a> DenoOperation<'a> {
 pub async fn construct_arg_sequence<'a>(
     field_args: &IndexMap<String, ConstValue>,
     args: &[Argument],
-    system: &'a ModelDenoSystem,
+    system: &'a DenoSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {
     let mapped_args = field_args

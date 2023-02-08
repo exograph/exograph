@@ -1,5 +1,5 @@
 use super::types::PostgresTypeModifier;
-use crate::{model::ModelPostgresSystem, types::PostgresPrimitiveType};
+use crate::{subsystem::PostgresSubsystem, types::PostgresPrimitiveType};
 use async_graphql_parser::types::{TypeDefinition, TypeKind};
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
@@ -63,8 +63,8 @@ impl Parameter for OffsetParameter {
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for LimitParameter {
-    fn type_definition(&self, _system: &ModelPostgresSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresSubsystem> for LimitParameter {
+    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
         TypeDefinition {
             extend: false,
             description: None,
@@ -75,8 +75,8 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for LimitParameter {
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for OffsetParameter {
-    fn type_definition(&self, _system: &ModelPostgresSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresSubsystem> for OffsetParameter {
+    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
         TypeDefinition {
             extend: false,
             description: None,

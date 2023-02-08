@@ -9,9 +9,9 @@ use core_model_builder::{
 };
 use subsystem_model_util::{
     interceptor::Interceptor,
-    model::ModelServiceSystem,
     operation::{ServiceMutation, ServiceQuery},
     service::{Script, ServiceMethod},
+    subsystem::ServiceSubsystem,
     types::ServiceType,
 };
 
@@ -52,13 +52,13 @@ impl SystemContextBuilding {
     }
 }
 
-pub struct ModelServiceSystemWithInterceptors {
-    pub underlying: ModelServiceSystem,
+pub struct ServiceSubsystemWithInterceptors {
+    pub underlying: ServiceSubsystem,
 
     pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
-/// Builds a [ModelServiceSystemWithInterceptors], with a subset of [AstService]s chosen by closure.
+/// Builds a [ServiceSubsystemWithInterceptors], with a subset of [AstService]s chosen by closure.
 ///  
 /// `service_selection_closure` - A closure that will return `Some(name)` for each [AstService] the
 ///                               subsystem supports, where `name` is the annotation name of the plugin
@@ -74,7 +74,7 @@ pub fn build_with_selection(
         &BaseModelSystem,
         &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
-) -> Result<ModelServiceSystemWithInterceptors, ModelBuildingError> {
+) -> Result<ServiceSubsystemWithInterceptors, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
     let resolved_system = resolved_builder::build(
         typechecked_system,
@@ -119,8 +119,8 @@ pub fn build_with_selection(
         })
         .collect();
 
-    Ok(ModelServiceSystemWithInterceptors {
-        underlying: ModelServiceSystem {
+    Ok(ServiceSubsystemWithInterceptors {
+        underlying: ServiceSubsystem {
             service_types: building.types.values,
             queries: building.queries,
             mutations: building.mutations,
