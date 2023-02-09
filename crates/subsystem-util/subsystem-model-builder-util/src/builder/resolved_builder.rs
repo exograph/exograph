@@ -63,7 +63,6 @@ pub struct ResolvedField {
 pub enum ResolvedFieldType {
     Plain {
         type_name: String, // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
-        is_primitive: bool, // We need to know if the type is primitive, so that we can look into the correct arena in ModelSystem
     },
     Optional(Box<ResolvedFieldType>),
     List(Box<ResolvedFieldType>),
@@ -530,7 +529,6 @@ fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldTyp
         }
         Type::Reference(id) => ResolvedFieldType::Plain {
             type_name: types[*id].get_underlying_typename(types).unwrap(),
-            is_primitive: matches!(types[*id], Type::Primitive(_)),
         },
         Type::Set(underlying) | Type::Array(underlying) => {
             ResolvedFieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))

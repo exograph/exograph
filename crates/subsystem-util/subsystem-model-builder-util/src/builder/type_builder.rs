@@ -123,15 +123,11 @@ fn create_service_field(field: &ResolvedField, building: &SystemContextBuilding)
         building: &SystemContextBuilding,
     ) -> ServiceFieldType {
         match field_type {
-            ResolvedFieldType::Plain {
-                type_name,
-                is_primitive,
-            } => {
+            ResolvedFieldType::Plain { type_name } => {
                 let type_id = building.types.get_id(type_name).unwrap();
 
                 ServiceFieldType::Reference {
                     type_name: type_name.clone(),
-                    is_primitive: *is_primitive,
                     type_id,
                 }
             }
