@@ -41,7 +41,6 @@ impl Parameter for ArgumentParameter {
     }
 }
 
-// TODO: Reduce duplication from the above impl
 impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ArgumentParameterType {
     fn type_definition(&self, service_types: &SerializableSlab<ServiceType>) -> TypeDefinition {
         let type_def = service_types
