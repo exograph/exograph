@@ -14,8 +14,9 @@ use payas_sql::{
     AbstractPredicate, AbstractSelect, ColumnSelection, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
-    operation::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
-    types::EntityType,
+    operation::{AggregateQuery, OperationReturnType},
+    relation::PostgresRelation,
+    subsystem::PostgresSubsystem,
 };
 
 #[async_trait]
@@ -34,11 +35,8 @@ impl OperationSelectionResolver for AggregateQuery {
         )
         .await?;
 
-        let parameter = &self.parameter;
-        let predicate_param = &parameter.predicate_param;
-
         let query_predicate = super::predicate_mapper::compute_predicate(
-            predicate_param,
+            &self.parameter.predicate_param,
             &field.arguments,
             subsystem,
         )?;
@@ -48,7 +46,7 @@ impl OperationSelectionResolver for AggregateQuery {
         let root_physical_table = &subsystem.tables[return_postgres_type.table_id];
 
         let content_object = content_select(
-            return_postgres_type,
+            &self.return_type,
             &field.subfields,
             subsystem,
             request_context,
@@ -68,7 +66,7 @@ impl OperationSelectionResolver for AggregateQuery {
 
 #[async_recursion]
 async fn content_select<'content>(
-    return_type: &EntityType,
+    return_type: &OperationReturnType,
     fields: &'content [ValidatedField],
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
@@ -82,15 +80,17 @@ async fn content_select<'content>(
 }
 
 async fn map_field<'content>(
-    return_type: &EntityType,
+    return_type: &OperationReturnType,
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     _request_context: &'content RequestContext<'content>,
 ) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
-        SelectionElement::Constant(return_type.name.clone())
+        SelectionElement::Constant(return_type.type_name.clone())
     } else {
-        let model_field = return_type.field(&field.name).unwrap();
+        let entity_type = &return_type.typ(subsystem);
+
+        let model_field = entity_type.field(&field.name).unwrap();
 
         match &model_field.relation {
             PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
