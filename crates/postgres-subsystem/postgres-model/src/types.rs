@@ -111,23 +111,9 @@ impl EntityType {
 }
 
 impl MutationType {
-    pub fn entity_type<'a>(
-        &'a self,
-        entity_types: &'a SerializableSlab<EntityType>,
-    ) -> &'a EntityType {
-        &entity_types[self.entity_type]
-    }
-
-    pub fn table_id(
-        &self,
-        entity_types: &SerializableSlab<EntityType>,
-    ) -> SerializableSlabIndex<PhysicalTable> {
-        let entity_type = self.entity_type(entity_types);
-        entity_type.table_id
-    }
-
     pub fn table<'a>(&'a self, system: &'a PostgresSubsystem) -> &'a PhysicalTable {
-        let table_id = self.table_id(&system.entity_types);
+        let entity_type = &system.entity_types[self.entity_type];
+        let table_id = entity_type.table_id;
         &system.tables[table_id]
     }
 }

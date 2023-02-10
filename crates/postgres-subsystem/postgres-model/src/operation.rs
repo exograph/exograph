@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::type_normalization::{Operation, Parameter, TypeModifier};
-use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
 use crate::types::EntityType;
@@ -123,11 +122,6 @@ pub struct OperationReturnType {
 impl OperationReturnType {
     pub fn typ<'a>(&'a self, system: &'a PostgresSubsystem) -> &EntityType {
         &system.entity_types[self.type_id]
-    }
-
-    pub fn physical_table<'a>(&self, system: &'a PostgresSubsystem) -> &'a PhysicalTable {
-        let return_type = self.typ(system);
-        &system.tables[return_type.table_id]
     }
 }
 

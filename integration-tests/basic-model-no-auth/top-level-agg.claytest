@@ -1,6 +1,7 @@
 operation: |
     query {
       venuesAgg {
+          __typename
           id {
             count
           }
@@ -13,6 +14,7 @@ operation: |
       }
 
       higherLatitudeVenuesAgg: venuesAgg(where: {latitude: {gt: 36}}) {
+          __typename
           id {
             count
           }
@@ -25,6 +27,7 @@ operation: |
       }
 
       concertsAgg {
+          __typename
           id {
             count
           }
@@ -37,6 +40,7 @@ operation: |
       }
 
       expensiveConcertsAgg: concertsAgg(where: {price: {gt: "20"}}) {
+          __typename
           id {
             count
           }
@@ -49,6 +53,7 @@ operation: |
       }
 
       highLatitudeConcertsAgg: concertsAgg(where: {venue: {latitude: {gt: 36}}}) { # An example of predicate on nested element
+          __typename
           id {
             count
           }
@@ -64,6 +69,7 @@ response: |
     {
       "data": {
         "venuesAgg": {
+          "__typename": "VenueAgg",
           "id": {
             "count": 2
           },
@@ -75,6 +81,7 @@ response: |
           }
         },
         "higherLatitudeVenuesAgg": {
+          "__typename": "VenueAgg",
           "id": {
             "count": 1
           },
@@ -86,6 +93,7 @@ response: |
           }
         },
         "concertsAgg": {
+          "__typename": "ConcertAgg",
           "id": {
             "count": 4
           },
@@ -97,6 +105,7 @@ response: |
           }
         },
         "expensiveConcertsAgg": {
+          "__typename": "ConcertAgg",
           "id": {
             "count": 3
           },
@@ -108,6 +117,7 @@ response: |
           }
         },
         "highLatitudeConcertsAgg": {
+          "__typename": "ConcertAgg",
           "id": {
             "count": 2
           },
