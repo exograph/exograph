@@ -1,12 +1,15 @@
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_model::{
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, OperationReturnType},
+};
 use core_plugin_shared::interception::InterceptorKind;
 use subsystem_model_util::{
     access::Access,
     argument::{ArgumentParameter, ArgumentParameterType},
     interceptor::Interceptor,
-    operation::{OperationReturnType, ServiceMutation, ServiceQuery},
+    operation::{ServiceMutation, ServiceQuery},
     service::{Argument, Script, ServiceMethod, ServiceMethodType},
-    types::ServiceType,
+    types::{ServiceType, ServiceTypeModifier},
 };
 
 use super::{
@@ -106,15 +109,26 @@ fn create_shallow_service(
                     is_injected: arg.is_injected,
                 })
                 .collect(),
-            return_type: OperationReturnType {
-                type_id: building
-                    .get_id(resolved_method.return_type.get_underlying_typename())
-                    .unwrap(),
-                type_name: resolved_method
-                    .return_type
-                    .get_underlying_typename()
-                    .to_string(),
-                type_modifier: resolved_method.return_type.get_modifier(),
+            return_type: {
+                let plain_return_type = OperationReturnType::Plain(BaseOperationReturnType {
+                    associated_type_id: building
+                        .get_id(resolved_method.return_type.get_underlying_typename())
+                        .unwrap(),
+                    type_name: resolved_method
+                        .return_type
+                        .get_underlying_typename()
+                        .to_string(),
+                });
+
+                match resolved_method.return_type.get_modifier() {
+                    ServiceTypeModifier::NonNull => plain_return_type,
+                    ServiceTypeModifier::Optional => {
+                        OperationReturnType::Optional(Box::new(plain_return_type))
+                    }
+                    ServiceTypeModifier::List => {
+                        OperationReturnType::List(Box::new(plain_return_type))
+                    }
+                }
             },
         },
     );
@@ -133,10 +147,18 @@ fn shallow_service_query(
         name: method.name.clone(),
         method_id: None,
         argument_param: argument_param(method, building),
-        return_type: OperationReturnType {
-            type_id: service_types.get_id(return_type_name).unwrap(),
-            type_name: return_type_name.to_string(),
-            type_modifier: return_type.get_modifier(),
+        return_type: {
+            let plain_return_type = OperationReturnType::Plain(BaseOperationReturnType {
+                associated_type_id: service_types.get_id(return_type_name).unwrap(),
+                type_name: return_type_name.to_string(),
+            });
+            match return_type.get_modifier() {
+                ServiceTypeModifier::NonNull => plain_return_type,
+                ServiceTypeModifier::Optional => {
+                    OperationReturnType::Optional(Box::new(plain_return_type))
+                }
+                ServiceTypeModifier::List => OperationReturnType::List(Box::new(plain_return_type)),
+            }
         },
     }
 }
@@ -153,10 +175,18 @@ fn shallow_service_mutation(
         name: method.name.clone(),
         method_id: None,
         argument_param: argument_param(method, building),
-        return_type: OperationReturnType {
-            type_id: service_types.get_id(return_type_name).unwrap(),
-            type_name: return_type_name.to_string(),
-            type_modifier: return_type.get_modifier(),
+        return_type: {
+            let plain_return_type = OperationReturnType::Plain(BaseOperationReturnType {
+                associated_type_id: service_types.get_id(return_type_name).unwrap(),
+                type_name: return_type_name.to_string(),
+            });
+            match return_type.get_modifier() {
+                ServiceTypeModifier::NonNull => plain_return_type,
+                ServiceTypeModifier::Optional => {
+                    OperationReturnType::Optional(Box::new(plain_return_type))
+                }
+                ServiceTypeModifier::List => OperationReturnType::List(Box::new(plain_return_type)),
+            }
         },
     }
 }

@@ -1,15 +1,15 @@
 //! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
 //! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
-use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::{
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, OperationReturnType},
+};
 
 use postgres_model::{
-    operation::{OperationReturnType, PostgresMutation, PostgresMutationKind},
+    operation::{PostgresMutation, PostgresMutationKind},
     relation::PostgresRelation,
-    types::{
-        EntityType, FieldType, MutationType, PostgresField, PostgresType, PostgresTypeModifier,
-        TypeIndex,
-    },
+    types::{EntityType, FieldType, MutationType, PostgresField, PostgresType, TypeIndex},
 };
 
 use crate::{resolved_builder::ResolvedField, shallow::Shallow, utils::to_mutation_type};
@@ -64,7 +64,9 @@ pub trait MutationBuilder {
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
-    fn single_mutation_type_modifier() -> PostgresTypeModifier;
+    fn single_mutation_modified_type(
+        base_type: BaseOperationReturnType<EntityType>,
+    ) -> OperationReturnType<EntityType>;
 
     fn multi_mutation_name(entity_type: &EntityType) -> String;
     fn multi_mutation_kind(
@@ -82,21 +84,21 @@ pub trait MutationBuilder {
         let single_mutation = PostgresMutation {
             name: Self::single_mutation_name(entity_type),
             kind: Self::single_mutation_kind(entity_type_id, entity_type, building),
-            return_type: OperationReturnType {
-                type_id: entity_type_id,
+            return_type: Self::single_mutation_modified_type(BaseOperationReturnType {
+                associated_type_id: entity_type_id,
                 type_name: entity_type.name.clone(),
-                type_modifier: Self::single_mutation_type_modifier(),
-            },
+            }),
         };
 
         let multi_mutation = PostgresMutation {
             name: Self::multi_mutation_name(entity_type),
             kind: Self::multi_mutation_kind(entity_type_id, entity_type, building),
-            return_type: OperationReturnType {
-                type_id: entity_type_id,
-                type_name: entity_type.name.clone(),
-                type_modifier: PostgresTypeModifier::List,
-            },
+            return_type: OperationReturnType::List(Box::new(OperationReturnType::Plain(
+                BaseOperationReturnType {
+                    associated_type_id: entity_type_id,
+                    type_name: entity_type.name.clone(),
+                },
+            ))),
         };
 
         vec![single_mutation, multi_mutation]

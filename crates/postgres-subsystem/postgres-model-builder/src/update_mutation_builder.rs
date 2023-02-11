@@ -1,10 +1,13 @@
 //! Build update mutation types <Type>UpdateInput, update<Type>, and update<Type>s
 
-use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::{
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, OperationReturnType},
+};
 use postgres_model::{
     operation::{PostgresMutationKind, UpdateDataParameter},
     relation::PostgresRelation,
-    types::{EntityType, FieldType, MutationType, PostgresField, PostgresTypeModifier, TypeIndex},
+    types::{EntityType, FieldType, MutationType, PostgresField, TypeIndex},
 };
 
 use crate::{mutation_builder::DataParamRole, shallow::Shallow, utils::to_mutation_type};
@@ -76,8 +79,11 @@ impl MutationBuilder for UpdateMutationBuilder {
         }
     }
 
-    fn single_mutation_type_modifier() -> PostgresTypeModifier {
-        PostgresTypeModifier::Optional // We return null if the specified id doesn't exist
+    fn single_mutation_modified_type(
+        base_type: BaseOperationReturnType<EntityType>,
+    ) -> OperationReturnType<EntityType> {
+        // We return null if the specified id doesn't exist
+        OperationReturnType::Optional(Box::new(OperationReturnType::Plain(base_type)))
     }
 
     fn multi_mutation_name(entity_type: &EntityType) -> String {

@@ -1,16 +1,18 @@
 use async_graphql_value::{indexmap::IndexMap, ConstValue};
+use postgres_model::types::EntityType;
 
 use crate::{
     access_solver::PostgresAccessSolver, postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLOperationKind,
 };
+use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver, request_context::RequestContext,
 };
 use payas_sql::{AbstractPredicate, PhysicalTable};
 use postgres_model::{
     column_path::{ColumnIdPath, ColumnIdPathLink},
-    operation::{CollectionQuery, OperationReturnType, PkQuery},
+    operation::{CollectionQuery, PkQuery},
     subsystem::PostgresSubsystem,
 };
 
@@ -19,12 +21,12 @@ pub type Arguments = IndexMap<String, ConstValue>;
 // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
 // See issue #69
 pub(crate) async fn check_access<'a>(
-    return_type: &'a OperationReturnType,
+    return_type: &'a OperationReturnType<EntityType>,
     kind: &SQLOperationKind,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
-    let return_type = return_type.typ(subsystem);
+    let return_type = return_type.typ(&subsystem.entity_types);
     let access_solver = PostgresAccessSolver::new(request_context, subsystem);
 
     let access_predicate = {
@@ -88,10 +90,10 @@ pub(crate) fn get_argument_field<'a>(
 /// # Returns
 /// - A (table associated with the return type, pk query, collection query) tuple.
 pub(crate) fn return_type_info<'a>(
-    return_type: &'a OperationReturnType,
+    return_type: &'a OperationReturnType<EntityType>,
     subsystem: &'a PostgresSubsystem,
 ) -> (&'a PhysicalTable, &'a PkQuery, &'a CollectionQuery) {
-    let typ = return_type.typ(subsystem);
+    let typ = return_type.typ(&subsystem.entity_types);
 
     (
         &subsystem.tables[typ.table_id],

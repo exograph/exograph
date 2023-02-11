@@ -4,3 +4,4 @@ pub mod mapped_arena;
 pub mod primitive_type;
 
 pub mod type_normalization;
+pub mod types;

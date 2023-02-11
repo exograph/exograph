@@ -1,11 +1,14 @@
-use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::{
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, OperationReturnType},
+};
 
 use postgres_model::{
     column_path::ColumnIdPathLink,
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     operation::{
         AggregateQuery, AggregateQueryParameter, CollectionQuery, CollectionQueryParameter,
-        OperationReturnType, PkQuery, PkQueryParameter,
+        PkQuery, PkQueryParameter,
     },
     order::OrderByParameter,
     predicate::{PredicateParameter, PredicateParameterTypeWithModifier},
@@ -73,11 +76,10 @@ fn shallow_pk_query(
         parameter: PkQueryParameter {
             predicate_param: PredicateParameter::shallow(),
         },
-        return_type: OperationReturnType {
-            type_id: entity_type_id,
+        return_type: OperationReturnType::Plain(BaseOperationReturnType {
+            associated_type_id: entity_type_id,
             type_name: typ.name.clone(),
-            type_modifier: PostgresTypeModifier::NonNull,
-        },
+        }),
     }
 }
 
@@ -141,11 +143,12 @@ fn shallow_collection_query(
             limit_param: LimitParameter::shallow(),
             offset_param: OffsetParameter::shallow(),
         },
-        return_type: OperationReturnType {
-            type_id: entity_type_id,
-            type_name: resolved_entity_type.name.clone(),
-            type_modifier: PostgresTypeModifier::List,
-        },
+        return_type: OperationReturnType::List(Box::new(OperationReturnType::Plain(
+            BaseOperationReturnType {
+                associated_type_id: entity_type_id,
+                type_name: resolved_entity_type.name.clone(),
+            },
+        ))),
     }
 }
 
@@ -186,11 +189,10 @@ fn shallow_aggregate_query(
         parameter: AggregateQueryParameter {
             predicate_param: PredicateParameter::shallow(),
         },
-        return_type: OperationReturnType {
-            type_id: entity_type_id,
+        return_type: OperationReturnType::Plain(BaseOperationReturnType {
+            associated_type_id: entity_type_id,
             type_name: aggregate_type_name(&resolved_entity_type.name),
-            type_modifier: PostgresTypeModifier::NonNull,
-        },
+        }),
     }
 }
 

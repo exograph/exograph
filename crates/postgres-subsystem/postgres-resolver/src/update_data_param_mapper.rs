@@ -1,12 +1,13 @@
 use async_graphql_value::ConstValue;
 
+use core_plugin_interface::core_model::types::OperationReturnType;
 use payas_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
     ColumnPathLink, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
     NestedElementRelation, PhysicalColumn, PhysicalColumnType, Predicate, Selection,
 };
 use postgres_model::{
-    operation::{OperationReturnType, UpdateDataParameter},
+    operation::UpdateDataParameter,
     relation::PostgresRelation,
     subsystem::PostgresSubsystem,
     types::{EntityType, MutationType, PostgresType, TypeIndex},
@@ -21,7 +22,7 @@ use super::{cast, postgres_execution_error::PostgresExecutionError};
 
 pub struct UpdateOperation<'a> {
     pub data_param: &'a UpdateDataParameter,
-    pub return_type: &'a OperationReturnType,
+    pub return_type: &'a OperationReturnType<EntityType>,
     pub predicate: AbstractPredicate<'a>,
     pub select: AbstractSelect<'a>,
 }
@@ -37,7 +38,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
         let self_update_columns = compute_update_columns(data_type, argument, subsystem);
         let (table, _, _) = return_type_info(self.return_type, subsystem);
 
-        let container_entity_type = self.return_type.typ(subsystem);
+        let container_entity_type = self.return_type.typ(&subsystem.entity_types);
 
         let (nested_updates, nested_inserts, nested_deletes) =
             compute_nested_ops(data_type, argument, container_entity_type, subsystem);
