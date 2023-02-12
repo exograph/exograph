@@ -8,6 +8,7 @@ use async_graphql_parser::types::{
     TypeDefinition, TypeKind,
 };
 use async_graphql_value::Name;
+use core_plugin_interface::core_model::types::Named;
 use core_plugin_interface::core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
@@ -35,10 +36,6 @@ impl<CT> TypeIndex<CT> {
             TypeIndex::Composite(index) => PostgresType::Composite(&entity_types[*index]),
         }
     }
-}
-
-pub trait Named {
-    fn name(&self) -> &str;
 }
 
 #[derive(Debug)]

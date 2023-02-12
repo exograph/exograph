@@ -3,17 +3,39 @@ use serde::{Deserialize, Serialize};
 use crate::mapped_arena::{SerializableSlab, SerializableSlabIndex};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum DecoratedType<T> {
+    Plain(T),
+    List(Box<DecoratedType<T>>),
+    Optional(Box<DecoratedType<T>>),
+}
+
+pub trait Named {
+    fn name(&self) -> &str;
+}
+
+impl<T: Named> Named for DecoratedType<T> {
+    fn name(&self) -> &str {
+        match self {
+            DecoratedType::Plain(plain) => plain.name(),
+            DecoratedType::List(list) => list.name(),
+            DecoratedType::Optional(optional) => optional.name(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BaseOperationReturnType<T> {
     pub associated_type_id: SerializableSlabIndex<T>,
     pub type_name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum OperationReturnType<T> {
-    Plain(BaseOperationReturnType<T>),
-    List(Box<OperationReturnType<T>>),
-    Optional(Box<OperationReturnType<T>>),
+impl<T> Named for BaseOperationReturnType<T> {
+    fn name(&self) -> &str {
+        &self.type_name
+    }
 }
+
+pub type OperationReturnType<T> = DecoratedType<BaseOperationReturnType<T>>;
 
 impl<T> OperationReturnType<T> {
     pub fn typ<'a>(&'a self, types: &'a SerializableSlab<T>) -> &T {

@@ -9,9 +9,10 @@ use async_graphql_value::Name;
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
-        default_positioned, default_positioned_name, InputValueProvider, Parameter, ParameterType,
+        default_positioned, default_positioned_name, InputValueProvider, Parameter,
         TypeDefinitionProvider, TypeModifier,
     },
+    types::Named,
 };
 
 use serde::{Deserialize, Serialize};
@@ -50,8 +51,8 @@ pub enum OrderByParameterTypeKind {
 
 pub const PRIMITIVE_ORDERING_OPTIONS: [&str; 2] = ["ASC", "DESC"];
 
-impl ParameterType for OrderByParameterType {
-    fn name(&self) -> &String {
+impl Named for OrderByParameterType {
+    fn name(&self) -> &str {
         &self.name
     }
 }
