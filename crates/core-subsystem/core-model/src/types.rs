@@ -1,3 +1,5 @@
+use async_graphql_parser::types::{BaseType, Type};
+use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
 
 use crate::mapped_arena::{SerializableSlab, SerializableSlabIndex};
@@ -11,6 +13,50 @@ pub enum DecoratedType<T> {
 
 pub trait Named {
     fn name(&self) -> &str;
+}
+
+impl<T: Named> DecoratedType<T> {
+    /// Transforms the type into an introspection type
+    ///
+    /// The complexity of this function is due to the fact that the GraphQL spec and hence the
+    /// introspection type (`Type`) does not support nested optionals. However, `DecoratedType`
+    /// being more general, does support nested optionals. This function will panic if it encounters
+    /// a nested optional.
+    pub fn to_introspection_type(&self) -> Type {
+        /// Returns the base type and whether it is optional
+        fn base_type<T: Named>(typ: &DecoratedType<T>) -> (BaseType, bool) {
+            match typ {
+                DecoratedType::Plain(base) => (BaseType::Named(Name::new(base.name())), false),
+                DecoratedType::List(underlying) => (
+                    BaseType::List(Box::new(underlying.to_introspection_type())),
+                    false,
+                ),
+                DecoratedType::Optional(underlying) => (base_type(underlying).0, true),
+            }
+        }
+
+        match self {
+            DecoratedType::Plain(_) => Type {
+                base: base_type(self).0,
+                nullable: false,
+            },
+            DecoratedType::Optional(underlying) => {
+                let (base, is_optional) = base_type(underlying);
+
+                if is_optional {
+                    panic!("Optional type cannot be nested")
+                }
+                Type {
+                    base,
+                    nullable: true,
+                }
+            }
+            DecoratedType::List(underlying) => Type {
+                base: base_type(underlying).0,
+                nullable: false,
+            },
+        }
+    }
 }
 
 impl<T: Named> Named for DecoratedType<T> {

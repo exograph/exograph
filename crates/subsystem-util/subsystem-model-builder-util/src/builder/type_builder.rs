@@ -1,4 +1,4 @@
-use core_model::{context_type::ContextType, mapped_arena::MappedArena};
+use core_model::{context_type::ContextType, mapped_arena::MappedArena, types::DecoratedType};
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed};
 use subsystem_model_util::{
     access::Access,
@@ -121,21 +121,21 @@ fn create_service_field(field: &ResolvedField, building: &SystemContextBuilding)
     fn create_field_type(
         field_type: &ResolvedFieldType,
         building: &SystemContextBuilding,
-    ) -> ServiceFieldType {
+    ) -> DecoratedType<ServiceFieldType> {
         match field_type {
             ResolvedFieldType::Plain { type_name } => {
                 let type_id = building.types.get_id(type_name).unwrap();
 
-                ServiceFieldType::Reference {
+                DecoratedType::Plain(ServiceFieldType {
                     type_name: type_name.clone(),
                     type_id,
-                }
+                })
             }
             ResolvedFieldType::Optional(underlying) => {
-                ServiceFieldType::Optional(Box::new(create_field_type(underlying, building)))
+                DecoratedType::Optional(Box::new(create_field_type(underlying, building)))
             }
             ResolvedFieldType::List(underlying) => {
-                ServiceFieldType::List(Box::new(create_field_type(underlying, building)))
+                DecoratedType::List(Box::new(create_field_type(underlying, building)))
             }
         }
     }
