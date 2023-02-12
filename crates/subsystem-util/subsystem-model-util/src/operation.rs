@@ -1,19 +1,19 @@
 use std::fmt::Debug;
 
-use core_model::mapped_arena::{SerializableSlab, SerializableSlabIndex};
-
+use core_model::mapped_arena::SerializableSlabIndex;
 use core_model::type_normalization::{Operation, Parameter, TypeModifier};
+use core_model::types::OperationReturnType;
 use serde::{Deserialize, Serialize};
 
 use super::types::ServiceType;
-use super::{argument::ArgumentParameter, service::ServiceMethod, types::ServiceTypeModifier};
+use super::{argument::ArgumentParameter, service::ServiceMethod};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceQuery {
     pub name: String,
     pub method_id: Option<SerializableSlabIndex<ServiceMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
-    pub return_type: OperationReturnType,
+    pub return_type: OperationReturnType<ServiceType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -21,21 +21,7 @@ pub struct ServiceMutation {
     pub name: String,
     pub method_id: Option<SerializableSlabIndex<ServiceMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
-    pub return_type: OperationReturnType,
-}
-
-// TODO: This is nearly duplicated from the database version. We should consolidate them.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct OperationReturnType {
-    pub type_id: SerializableSlabIndex<ServiceType>,
-    pub type_name: String,
-    pub type_modifier: ServiceTypeModifier,
-}
-
-impl OperationReturnType {
-    pub fn typ<'a>(&self, service_types: &'a SerializableSlab<ServiceType>) -> &'a ServiceType {
-        &service_types[self.type_id]
-    }
+    pub return_type: OperationReturnType<ServiceType>,
 }
 
 impl Operation for ServiceQuery {
@@ -54,11 +40,15 @@ impl Operation for ServiceQuery {
     }
 
     fn return_type_name(&self) -> &str {
-        &self.return_type.type_name
+        self.return_type.type_name()
     }
 
     fn return_type_modifier(&self) -> TypeModifier {
-        (&self.return_type.type_modifier).into()
+        match &self.return_type {
+            OperationReturnType::Plain(_) => TypeModifier::NonNull,
+            OperationReturnType::List(_) => TypeModifier::List,
+            OperationReturnType::Optional(_) => TypeModifier::Optional,
+        }
     }
 }
 
@@ -78,10 +68,14 @@ impl Operation for ServiceMutation {
     }
 
     fn return_type_name(&self) -> &str {
-        &self.return_type.type_name
+        self.return_type.type_name()
     }
 
     fn return_type_modifier(&self) -> TypeModifier {
-        (&self.return_type.type_modifier).into()
+        match &self.return_type {
+            OperationReturnType::Plain(_) => TypeModifier::NonNull,
+            OperationReturnType::List(_) => TypeModifier::List,
+            OperationReturnType::Optional(_) => TypeModifier::Optional,
+        }
     }
 }

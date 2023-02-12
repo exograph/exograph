@@ -1,4 +1,7 @@
-use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::{
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::Named,
+};
 use postgres_model::types::{EntityType, PostgresPrimitiveType, PostgresTypeModifier, TypeIndex};
 use std::collections::HashMap;
 
@@ -224,8 +227,8 @@ fn create_composite_filter_type_kind(
         .fields
         .iter()
         .map(|field| {
-            let param_type_name = get_parameter_type_name(field.typ.type_name());
-            let param_type_id = field.typ.type_id();
+            let param_type_name = get_parameter_type_name(field.typ.name());
+            let param_type_id = &field.typ.inner_most().type_id;
 
             let column_path_link = Some(column_path_utils::column_path_link(
                 composite_type,

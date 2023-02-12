@@ -4391,6 +4391,7 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "bincode",
+ "core-model",
  "core-plugin-interface",
  "payas-sql",
  "serde",

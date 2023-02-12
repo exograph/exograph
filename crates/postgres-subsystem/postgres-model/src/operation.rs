@@ -1,17 +1,18 @@
 use std::fmt::Debug;
 
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
+use core_plugin_interface::core_model::types::OperationReturnType;
+
 use core_plugin_interface::core_model::type_normalization::{Operation, Parameter, TypeModifier};
 use serde::{Deserialize, Serialize};
 
 use crate::types::EntityType;
-use crate::{subsystem::PostgresSubsystem, types::MutationType};
+use crate::types::MutationType;
 
 use super::{
     limit_offset::{LimitParameter, OffsetParameter},
     order::OrderByParameter,
     predicate::PredicateParameter,
-    types::PostgresTypeModifier,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -21,7 +22,7 @@ where
 {
     pub name: String,
     pub parameter: P,
-    pub return_type: OperationReturnType,
+    pub return_type: OperationReturnType<EntityType>,
 }
 
 pub trait OperationParameter {
@@ -79,7 +80,7 @@ impl OperationParameter for AggregateQueryParameter {
 pub struct PostgresMutation {
     pub name: String,
     pub kind: PostgresMutationKind,
-    pub return_type: OperationReturnType,
+    pub return_type: OperationReturnType<EntityType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -110,19 +111,6 @@ pub struct CreateDataParameterTypeWithModifier {
     pub type_name: String,
     pub type_id: SerializableSlabIndex<MutationType>,
     pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct OperationReturnType {
-    pub type_id: SerializableSlabIndex<EntityType>,
-    pub type_name: String,
-    pub type_modifier: PostgresTypeModifier,
-}
-
-impl OperationReturnType {
-    pub fn typ<'a>(&'a self, system: &'a PostgresSubsystem) -> &EntityType {
-        &system.entity_types[self.type_id]
-    }
 }
 
 impl Parameter for CreateDataParameter {
@@ -170,11 +158,15 @@ where
     }
 
     fn return_type_name(&self) -> &str {
-        &self.return_type.type_name
+        self.return_type.type_name()
     }
 
     fn return_type_modifier(&self) -> TypeModifier {
-        (&self.return_type.type_modifier).into()
+        match &self.return_type {
+            OperationReturnType::Plain(_) => TypeModifier::NonNull,
+            OperationReturnType::List(_) => TypeModifier::List,
+            OperationReturnType::Optional(_) => TypeModifier::Optional,
+        }
     }
 }
 
@@ -195,10 +187,14 @@ impl Operation for PostgresMutation {
     }
 
     fn return_type_name(&self) -> &str {
-        &self.return_type.type_name
+        self.return_type.type_name()
     }
 
     fn return_type_modifier(&self) -> TypeModifier {
-        (&self.return_type.type_modifier).into()
+        match &self.return_type {
+            OperationReturnType::Plain(_) => TypeModifier::NonNull,
+            OperationReturnType::List(_) => TypeModifier::List,
+            OperationReturnType::Optional(_) => TypeModifier::Optional,
+        }
     }
 }

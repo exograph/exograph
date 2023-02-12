@@ -5,6 +5,7 @@ use super::{
 use crate::operation_resolver::OperationSelectionResolver;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
+use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField,
 };
@@ -14,9 +15,8 @@ use payas_sql::{
     AbstractPredicate, AbstractSelect, ColumnSelection, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
-    operation::{AggregateQuery, OperationReturnType},
-    relation::PostgresRelation,
-    subsystem::PostgresSubsystem,
+    operation::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
+    types::EntityType,
 };
 
 #[async_trait]
@@ -41,7 +41,7 @@ impl OperationSelectionResolver for AggregateQuery {
             subsystem,
         )?;
         let predicate = AbstractPredicate::and(query_predicate, access_predicate);
-        let return_postgres_type = &self.return_type.typ(subsystem);
+        let return_postgres_type = &self.return_type.typ(&subsystem.entity_types);
 
         let root_physical_table = &subsystem.tables[return_postgres_type.table_id];
 
@@ -66,7 +66,7 @@ impl OperationSelectionResolver for AggregateQuery {
 
 #[async_recursion]
 async fn content_select<'content>(
-    return_type: &OperationReturnType,
+    return_type: &OperationReturnType<EntityType>,
     fields: &'content [ValidatedField],
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
@@ -80,15 +80,15 @@ async fn content_select<'content>(
 }
 
 async fn map_field<'content>(
-    return_type: &OperationReturnType,
+    return_type: &OperationReturnType<EntityType>,
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     _request_context: &'content RequestContext<'content>,
 ) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
-        SelectionElement::Constant(return_type.type_name.clone())
+        SelectionElement::Constant(return_type.type_name().to_string())
     } else {
-        let entity_type = &return_type.typ(subsystem);
+        let entity_type = &return_type.typ(&subsystem.entity_types);
 
         let model_field = entity_type.field(&field.name).unwrap();
 

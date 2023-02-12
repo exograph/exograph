@@ -11,6 +11,7 @@ use crate::{
     update_data_param_mapper::UpdateOperation,
 };
 use async_trait::async_trait;
+use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField,
 };
@@ -18,13 +19,10 @@ use payas_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractSelect, AbstractUpdate,
 };
 use postgres_model::{
-    operation::{
-        CreateDataParameter, OperationReturnType, PostgresMutation, PostgresMutationKind,
-        UpdateDataParameter,
-    },
+    operation::{CreateDataParameter, PostgresMutation, PostgresMutationKind, UpdateDataParameter},
     predicate::PredicateParameter,
     subsystem::PostgresSubsystem,
-    types::PostgresTypeModifier,
+    types::EntityType,
 };
 
 #[async_trait]
@@ -39,13 +37,11 @@ impl OperationResolver for PostgresMutation {
 
         let abstract_select = {
             let (_, pk_query, collection_query) = return_type_info(return_type, subsystem);
-            match return_type.type_modifier {
-                PostgresTypeModifier::List => {
+            match return_type {
+                OperationReturnType::List(_) => {
                     collection_query.resolve_select(field, request_context, subsystem)
                 }
-                PostgresTypeModifier::NonNull | PostgresTypeModifier::Optional => {
-                    pk_query.resolve_select(field, request_context, subsystem)
-                }
+                _ => pk_query.resolve_select(field, request_context, subsystem),
             }
         }
         .await?;
@@ -93,7 +89,7 @@ impl OperationResolver for PostgresMutation {
 }
 
 async fn create_operation<'content>(
-    return_type: &'content OperationReturnType,
+    return_type: &'content OperationReturnType<EntityType>,
     data_param: &'content CreateDataParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
@@ -123,7 +119,7 @@ async fn create_operation<'content>(
 }
 
 async fn delete_operation<'content>(
-    return_type: &'content OperationReturnType,
+    return_type: &'content OperationReturnType<EntityType>,
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
@@ -151,7 +147,7 @@ async fn delete_operation<'content>(
 }
 
 async fn update_operation<'content>(
-    return_type: &'content OperationReturnType,
+    return_type: &'content OperationReturnType<EntityType>,
     data_param: &'content UpdateDataParameter,
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,

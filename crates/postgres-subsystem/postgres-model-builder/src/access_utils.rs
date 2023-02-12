@@ -7,6 +7,7 @@ use core_plugin_interface::{
         context_type::ContextFieldType,
         mapped_arena::MappedArena,
         primitive_type::PrimitiveType,
+        types::FieldType,
     },
     core_model_builder::{
         ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
@@ -18,7 +19,7 @@ use core_plugin_interface::{
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression,
     column_path::{ColumnIdPath, ColumnIdPathLink},
-    types::{EntityType, FieldType, PostgresPrimitiveType, PostgresType},
+    types::{base_type, EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
 };
 
 use super::column_path_utils;
@@ -26,7 +27,7 @@ use super::column_path_utils;
 use super::type_builder::ResolvedTypeEnv;
 
 enum PathSelection<'a> {
-    Column(ColumnIdPath, &'a FieldType<EntityType>),
+    Column(ColumnIdPath, &'a FieldType<PostgresFieldType<EntityType>>),
     Context(AccessContextSelection, &'a ContextFieldType),
 }
 
@@ -47,12 +48,12 @@ pub fn compute_predicate_expression(
                 subsystem_entity_types,
             ) {
                 PathSelection::Column(column_path, column_type) => {
-                    if column_type
-                        .base_type(
-                            &subsystem_primitive_types.values,
-                            &subsystem_entity_types.values,
-                        )
-                        .name()
+                    if base_type(
+                        column_type,
+                        &subsystem_primitive_types.values,
+                        &subsystem_entity_types.values,
+                    )
+                    .name()
                         == "Boolean"
                     {
                         // Treat boolean columns in the same way as an "eq" relational expression
@@ -215,7 +216,10 @@ fn compute_selection<'a>(
         field_name: &str,
         self_type_info: &'a EntityType,
         entity_types: &MappedArena<EntityType>,
-    ) -> (ColumnIdPathLink, &'a FieldType<EntityType>) {
+    ) -> (
+        ColumnIdPathLink,
+        &'a FieldType<PostgresFieldType<EntityType>>,
+    ) {
         let get_field = |field_name: &str| {
             self_type_info.field(field_name).unwrap_or_else(|| {
                 panic!("Field {field_name} not found while processing access rules")
@@ -272,11 +276,12 @@ fn compute_selection<'a>(
                 let (field_column_path, field_type) =
                     get_column(field_name, self_type_info, subsystem_entity_types);
 
-                let field_composite_type = match &field_type.base_type(
+                let field_composite_type = match base_type(
+                    field_type,
                     &subsystem_primitive_types.values,
                     &subsystem_entity_types.values,
                 ) {
-                    PostgresType::Composite(composite_type) => Some(*composite_type),
+                    PostgresType::Composite(composite_type) => Some(composite_type),
                     _ => None,
                 };
 

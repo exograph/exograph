@@ -7,7 +7,11 @@
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 
 use core_plugin_interface::{
-    core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType},
+    core_model::{
+        mapped_arena::MappedArena,
+        primitive_type::PrimitiveType,
+        types::{FieldType, Named},
+    },
     core_model_builder::{
         ast::ast_types::{
             AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind,
@@ -60,14 +64,14 @@ pub fn build(
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum ResolvedType {
     Primitive(PrimitiveType),
     Composite(ResolvedCompositeType),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedCompositeType {
     pub name: String,
     pub plural_name: String,
@@ -77,70 +81,42 @@ pub struct ResolvedCompositeType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum ResolvedFieldType {
-    Plain {
-        type_name: String, // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
-        is_primitive: bool, // We need to know if the type is primitive, so that we can look into the correct arena in ModelSystem
-    },
-    Optional(Box<ResolvedFieldType>),
-    List(Box<ResolvedFieldType>),
+pub struct ResolvedFieldType {
+    pub type_name: String, // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
+    pub is_primitive: bool, // We need to know if the type is primitive, so that we can look into the correct arena in ModelSystem
 }
 
-impl ResolvedFieldType {
-    pub fn get_underlying_typename(&self) -> &str {
-        match &self {
-            ResolvedFieldType::Plain { type_name, .. } => type_name,
-            ResolvedFieldType::Optional(underlying) => underlying.get_underlying_typename(),
-            ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
-        }
-    }
-
-    pub fn get_is_underlying_primitive(&self) -> bool {
-        match &self {
-            ResolvedFieldType::Plain { is_primitive, .. } => *is_primitive,
-            ResolvedFieldType::Optional(underlying) => underlying.get_is_underlying_primitive(),
-            ResolvedFieldType::List(underlying) => underlying.get_is_underlying_primitive(),
-        }
-    }
-
-    /// The inner (nested) type if any
-    pub fn inner(&self) -> Option<&ResolvedFieldType> {
-        match &self {
-            ResolvedFieldType::Plain { .. } => None,
-            ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
-                Some(underlying)
-            }
-        }
+impl Named for ResolvedFieldType {
+    fn name(&self) -> &str {
+        &self.type_name
     }
 }
 
-impl ResolvedFieldType {
-    pub fn deref<'a>(&'a self, env: &'a ResolvedTypeEnv) -> &'a ResolvedType {
-        match self {
-            ResolvedFieldType::Plain { type_name, .. } => env.get_by_key(type_name).unwrap(),
-            ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
-                underlying.deref(env)
-            }
-        }
+pub trait ResolvedFieldTypeHelper {
+    fn deref<'a>(&'a self, env: &'a ResolvedTypeEnv) -> &'a ResolvedType;
+    fn deref_subsystem_type<'a>(
+        &'a self,
+        types: &'a MappedArena<ResolvedType>,
+    ) -> Option<&'a ResolvedType>;
+}
+
+impl ResolvedFieldTypeHelper for FieldType<ResolvedFieldType> {
+    fn deref<'a>(&'a self, env: &'a ResolvedTypeEnv) -> &'a ResolvedType {
+        env.get_by_key(&self.inner_most().type_name).unwrap()
     }
 
-    pub fn deref_subsystem_type<'a>(
+    fn deref_subsystem_type<'a>(
         &'a self,
         types: &'a MappedArena<ResolvedType>,
     ) -> Option<&'a ResolvedType> {
-        match self {
-            ResolvedFieldType::Plain { type_name, .. } => types.get_by_key(type_name),
-            ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
-                underlying.deref_subsystem_type(types)
-            }
-        }
+        types.get_by_key(&self.inner_most().type_name)
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedField {
     pub name: String,
-    pub typ: ResolvedFieldType,
+    pub typ: FieldType<ResolvedFieldType>,
     pub column_name: String,
     pub self_column: bool, // is the column name in the same table or does it point to a column in a different table?
     pub is_pk: bool,
@@ -230,17 +206,17 @@ impl ResolvedType {
     }
 }
 
-pub fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldType {
+pub fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> FieldType<ResolvedFieldType> {
     match typ {
         Type::Optional(underlying) => {
-            ResolvedFieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
+            FieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
         }
-        Type::Reference(id) => ResolvedFieldType::Plain {
+        Type::Reference(id) => FieldType::Plain(ResolvedFieldType {
             type_name: types[*id].get_underlying_typename(types).unwrap(),
             is_primitive: matches!(types[*id], Type::Primitive(_)),
-        },
+        }),
         Type::Set(underlying) | Type::Array(underlying) => {
-            ResolvedFieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
+            FieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
         }
         _ => todo!("Unsupported field type"),
     }
@@ -346,10 +322,10 @@ fn resolve(
 
 fn resolve_field_default_type(
     default_value: &AstFieldDefault<Typed>,
-    field_type: &ResolvedFieldType,
+    field_type: &FieldType<ResolvedFieldType>,
     errors: &mut Vec<Diagnostic>,
 ) -> ResolvedFieldDefault {
-    let field_underlying_type = field_type.get_underlying_typename();
+    let field_underlying_type = field_type.name();
 
     match &default_value.kind {
         AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
