@@ -2,7 +2,7 @@
 
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, DecoratedType, Named, OperationReturnType},
+    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 use postgres_model::{
     operation::{PostgresMutationKind, UpdateDataParameter},
@@ -194,7 +194,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             let fields = fields_info
                 .into_iter()
                 .map(|(name, field_type_name)| {
-                    let plain_field_type = DecoratedType::Plain(PostgresFieldType {
+                    let plain_field_type = FieldType::Plain(PostgresFieldType {
                         type_id: TypeIndex::Composite(
                             building.mutation_types.get_id(&field_type_name).unwrap(),
                         ),
@@ -203,7 +203,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     PostgresField {
                         name: name.to_string(),
                         // The nested "create", "update", and "delete" fields are all optional that take a list.
-                        typ: DecoratedType::Optional(Box::new(DecoratedType::List(Box::new(
+                        typ: FieldType::Optional(Box::new(FieldType::List(Box::new(
                             plain_field_type,
                         )))),
                         relation: field.relation.clone(),

@@ -3,7 +3,7 @@
 
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, DecoratedType, Named, OperationReturnType},
+    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 
 use postgres_model::{
@@ -160,7 +160,7 @@ pub trait DataParamBuilder<D> {
                 // we can treat Optional fields as their inner type for the purposes of
                 // computing their type names
                 let typ = match &field.typ {
-                    DecoratedType::Optional(inner_type) => inner_type.as_ref(),
+                    FieldType::Optional(inner_type) => inner_type.as_ref(),
                     _ => &field.typ,
                 };
 
@@ -168,16 +168,16 @@ pub trait DataParamBuilder<D> {
                 if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
                     typ.deref_subsystem_type(resolved_types)
                 {
-                    if let DecoratedType::List(_) = field.typ {
+                    if let FieldType::List(_) = field.typ {
                         // If it is a list, we need to create a nested input type (one-to-many)
                         Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
-                    } else if let DecoratedType::Optional(_) = field.typ {
+                    } else if let FieldType::Optional(_) = field.typ {
                         // Let's determine if it is one-to-zero_or_one (where we need to create a nested input type)
                         // Or many-to-one_optional (Think Concert with an optional Venue, and Venue with multiple (possibly optional) concerts)
                         match get_matching_field(field, resolved_types) {
                             Some(matching_field) => {
                                 let inner_type = matching_field.typ.inner();
-                                if let Some(DecoratedType::List(_)) = inner_type {
+                                if let Some(FieldType::List(_)) = inner_type {
                                     vec![]
                                 } else {
                                     Self::data_param_field_one_to_many_type_names(
@@ -253,22 +253,20 @@ pub trait DataParamBuilder<D> {
             PostgresRelation::ManyToOne { .. } => {
                 let field_type_name = field.typ.name().reference_type();
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-                let field_plain_type = DecoratedType::Plain(PostgresFieldType {
+                let field_plain_type = FieldType::Plain(PostgresFieldType {
                     type_name: field_type_name,
                     type_id: TypeIndex::Composite(field_type_id),
                 });
                 let field_type = match field.typ {
-                    DecoratedType::Plain(_) => {
+                    FieldType::Plain(_) => {
                         if optional {
                             field_plain_type.optional()
                         } else {
                             field_plain_type
                         }
                     }
-                    DecoratedType::Optional(_) => {
-                        DecoratedType::Optional(Box::new(field_plain_type))
-                    }
-                    DecoratedType::List(_) => DecoratedType::List(Box::new(field_plain_type)),
+                    FieldType::Optional(_) => FieldType::Optional(Box::new(field_plain_type)),
+                    FieldType::List(_) => FieldType::List(Box::new(field_plain_type)),
                 };
 
                 match &top_level_type {
@@ -290,8 +288,7 @@ pub trait DataParamBuilder<D> {
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<PostgresField<MutationType>> {
-        let optional =
-            matches!(field.typ, DecoratedType::Optional(_)) || Self::mark_fields_optional();
+        let optional = matches!(field.typ, FieldType::Optional(_)) || Self::mark_fields_optional();
 
         let field_type_name = Self::data_type_name(field.typ.name(), container_type);
 
@@ -299,11 +296,11 @@ pub trait DataParamBuilder<D> {
             .mutation_types
             .get_id(&field_type_name)
             .and_then(|field_type_id| {
-                let field_plain_type = DecoratedType::Plain(PostgresFieldType {
+                let field_plain_type = FieldType::Plain(PostgresFieldType {
                     type_name: field_type_name,
                     type_id: TypeIndex::Composite(field_type_id),
                 });
-                let field_type = DecoratedType::List(Box::new(field_plain_type));
+                let field_type = FieldType::List(Box::new(field_plain_type));
 
                 match &container_type {
                     Some(value) if value == &field.typ.name() => None,

@@ -7,7 +7,7 @@ use core_plugin_interface::{
         context_type::ContextFieldType,
         mapped_arena::MappedArena,
         primitive_type::PrimitiveType,
-        types::DecoratedType,
+        types::FieldType,
     },
     core_model_builder::{
         ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
@@ -27,10 +27,7 @@ use super::column_path_utils;
 use super::type_builder::ResolvedTypeEnv;
 
 enum PathSelection<'a> {
-    Column(
-        ColumnIdPath,
-        &'a DecoratedType<PostgresFieldType<EntityType>>,
-    ),
+    Column(ColumnIdPath, &'a FieldType<PostgresFieldType<EntityType>>),
     Context(AccessContextSelection, &'a ContextFieldType),
 }
 
@@ -221,7 +218,7 @@ fn compute_selection<'a>(
         entity_types: &MappedArena<EntityType>,
     ) -> (
         ColumnIdPathLink,
-        &'a DecoratedType<PostgresFieldType<EntityType>>,
+        &'a FieldType<PostgresFieldType<EntityType>>,
     ) {
         let get_field = |field_name: &str| {
             self_type_info.field(field_name).unwrap_or_else(|| {

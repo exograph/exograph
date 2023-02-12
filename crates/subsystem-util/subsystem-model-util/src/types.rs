@@ -8,7 +8,7 @@ use core_model::{
         default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
         TypeDefinitionProvider, TypeModifier,
     },
-    types::{DecoratedType, Named},
+    types::{FieldType, Named},
 };
 
 use serde::{Deserialize, Serialize};
@@ -46,7 +46,7 @@ pub enum ServiceTypeModifier {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceField {
     pub name: String,
-    pub typ: DecoratedType<ServiceFieldType>,
+    pub typ: FieldType<ServiceFieldType>,
     pub has_default_value: bool, // does this field have a default value?
 }
 

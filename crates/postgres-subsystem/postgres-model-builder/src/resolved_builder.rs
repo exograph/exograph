@@ -10,7 +10,7 @@ use core_plugin_interface::{
     core_model::{
         mapped_arena::MappedArena,
         primitive_type::PrimitiveType,
-        types::{DecoratedType, Named},
+        types::{FieldType, Named},
     },
     core_model_builder::{
         ast::ast_types::{
@@ -100,7 +100,7 @@ pub trait ResolvedFieldTypeHelper {
     ) -> Option<&'a ResolvedType>;
 }
 
-impl ResolvedFieldTypeHelper for DecoratedType<ResolvedFieldType> {
+impl ResolvedFieldTypeHelper for FieldType<ResolvedFieldType> {
     fn deref<'a>(&'a self, env: &'a ResolvedTypeEnv) -> &'a ResolvedType {
         env.get_by_key(&self.inner_most().type_name).unwrap()
     }
@@ -116,7 +116,7 @@ impl ResolvedFieldTypeHelper for DecoratedType<ResolvedFieldType> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedField {
     pub name: String,
-    pub typ: DecoratedType<ResolvedFieldType>,
+    pub typ: FieldType<ResolvedFieldType>,
     pub column_name: String,
     pub self_column: bool, // is the column name in the same table or does it point to a column in a different table?
     pub is_pk: bool,
@@ -206,20 +206,17 @@ impl ResolvedType {
     }
 }
 
-pub fn resolve_field_type(
-    typ: &Type,
-    types: &MappedArena<Type>,
-) -> DecoratedType<ResolvedFieldType> {
+pub fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> FieldType<ResolvedFieldType> {
     match typ {
         Type::Optional(underlying) => {
-            DecoratedType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
+            FieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
         }
-        Type::Reference(id) => DecoratedType::Plain(ResolvedFieldType {
+        Type::Reference(id) => FieldType::Plain(ResolvedFieldType {
             type_name: types[*id].get_underlying_typename(types).unwrap(),
             is_primitive: matches!(types[*id], Type::Primitive(_)),
         }),
         Type::Set(underlying) | Type::Array(underlying) => {
-            DecoratedType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
+            FieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
         }
         _ => todo!("Unsupported field type"),
     }
@@ -325,7 +322,7 @@ fn resolve(
 
 fn resolve_field_default_type(
     default_value: &AstFieldDefault<Typed>,
-    field_type: &DecoratedType<ResolvedFieldType>,
+    field_type: &FieldType<ResolvedFieldType>,
     errors: &mut Vec<Diagnostic>,
 ) -> ResolvedFieldDefault {
     let field_underlying_type = field_type.name();

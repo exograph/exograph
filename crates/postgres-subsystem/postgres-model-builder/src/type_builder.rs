@@ -10,7 +10,7 @@ use core_plugin_interface::{
         context_type::ContextType,
         mapped_arena::{MappedArena, SerializableSlabIndex},
         primitive_type::PrimitiveType,
-        types::{DecoratedType, Named},
+        types::{FieldType, Named},
     },
     core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed},
 };
@@ -280,34 +280,34 @@ fn create_persistent_field(
     env: &ResolvedTypeEnv,
 ) -> PostgresField<EntityType> {
     fn create_field_type(
-        field_type: &DecoratedType<ResolvedFieldType>,
+        field_type: &FieldType<ResolvedFieldType>,
         building: &SystemContextBuilding,
-    ) -> DecoratedType<PostgresFieldType<EntityType>> {
+    ) -> FieldType<PostgresFieldType<EntityType>> {
         match field_type {
-            DecoratedType::Plain(ResolvedFieldType {
+            FieldType::Plain(ResolvedFieldType {
                 type_name,
                 is_primitive,
             }) => {
                 if *is_primitive {
                     let type_id = building.primitive_types.get_id(type_name).unwrap();
-                    DecoratedType::Plain(PostgresFieldType {
+                    FieldType::Plain(PostgresFieldType {
                         type_name: type_name.clone(),
                         type_id: TypeIndex::Primitive(type_id),
                     })
                 } else {
                     let type_id = building.entity_types.get_id(type_name).unwrap();
 
-                    DecoratedType::Plain(PostgresFieldType {
+                    FieldType::Plain(PostgresFieldType {
                         type_name: type_name.clone(),
                         type_id: TypeIndex::Composite(type_id),
                     })
                 }
             }
-            DecoratedType::Optional(underlying) => {
-                DecoratedType::Optional(Box::new(create_field_type(underlying, building)))
+            FieldType::Optional(underlying) => {
+                FieldType::Optional(Box::new(create_field_type(underlying, building)))
             }
-            DecoratedType::List(underlying) => {
-                DecoratedType::List(Box::new(create_field_type(underlying, building)))
+            FieldType::List(underlying) => {
+                FieldType::List(Box::new(create_field_type(underlying, building)))
             }
         }
     }
@@ -326,11 +326,11 @@ fn create_agg_field(
     building: &SystemContextBuilding,
     env: &ResolvedTypeEnv,
 ) -> Option<AggregateField> {
-    fn is_underlying_type_list(field_type: &DecoratedType<ResolvedFieldType>) -> bool {
+    fn is_underlying_type_list(field_type: &FieldType<ResolvedFieldType>) -> bool {
         match field_type {
-            DecoratedType::Plain(_) => false,
-            DecoratedType::Optional(underlying) => is_underlying_type_list(underlying),
-            DecoratedType::List(_) => true,
+            FieldType::Plain(_) => false,
+            FieldType::Optional(underlying) => is_underlying_type_list(underlying),
+            FieldType::List(_) => true,
         }
     }
 
@@ -366,7 +366,7 @@ fn create_column(
     };
     // split a Optional type into its inner type and the optional marker
     let (typ, optional) = match &field.typ {
-        DecoratedType::Optional(inner_typ) => (inner_typ.as_ref(), true),
+        FieldType::Optional(inner_typ) => (inner_typ.as_ref(), true),
         _ => (&field.typ, false),
     };
 
@@ -392,7 +392,7 @@ fn create_column(
             });
 
     match typ {
-        DecoratedType::Plain(ResolvedFieldType { type_name, .. }) => {
+        FieldType::Plain(ResolvedFieldType { type_name, .. }) => {
             // Either a scalar (primitive) or a many-to-one relationship with another table
             let field_type = env.get_by_key(type_name).unwrap();
 
@@ -440,19 +440,18 @@ fn create_column(
                 }
             }
         }
-        DecoratedType::List(typ) => {
+        FieldType::List(typ) => {
             // unwrap list to base type
             let mut underlying_typ = typ;
             let mut depth = 1;
 
-            while let DecoratedType::List(t) = &**underlying_typ {
+            while let FieldType::List(t) = &**underlying_typ {
                 underlying_typ = t;
                 depth += 1;
             }
 
-            let underlying_pt = if let DecoratedType::Plain(ResolvedFieldType {
-                type_name, ..
-            }) = &**underlying_typ
+            let underlying_pt = if let FieldType::Plain(ResolvedFieldType { type_name, .. }) =
+                &**underlying_typ
             {
                 if let Some(ResolvedType::Primitive(pt)) = env.resolved_types.get_by_key(type_name)
                 {
@@ -489,7 +488,7 @@ fn create_column(
                 None
             }
         }
-        DecoratedType::Optional(_) => panic!("Optional in an Optional?"),
+        FieldType::Optional(_) => panic!("Optional in an Optional?"),
     }
 }
 
@@ -672,10 +671,10 @@ fn create_relation(
         }
     } else {
         fn compute_base_type(
-            field_type: &DecoratedType<ResolvedFieldType>,
-        ) -> &DecoratedType<ResolvedFieldType> {
+            field_type: &FieldType<ResolvedFieldType>,
+        ) -> &FieldType<ResolvedFieldType> {
             match field_type {
-                DecoratedType::Optional(inner_typ) => inner_typ.as_ref(),
+                FieldType::Optional(inner_typ) => inner_typ.as_ref(),
                 _ => field_type,
             }
         }
@@ -683,7 +682,7 @@ fn create_relation(
         let field_base_typ = compute_base_type(&field.typ);
 
         match field_base_typ {
-            DecoratedType::List(underlying) => {
+            FieldType::List(underlying) => {
                 if let ResolvedType::Primitive(_) = underlying.deref(resolved_env) {
                     // List of a primitive type is still a scalar from the database perspective
                     PostgresRelation::Scalar {
@@ -713,7 +712,7 @@ fn create_relation(
                 }
             }
 
-            DecoratedType::Plain(ResolvedFieldType { type_name, .. }) => {
+            FieldType::Plain(ResolvedFieldType { type_name, .. }) => {
                 let field_type = resolved_env.get_by_key(type_name).unwrap();
 
                 match field_type {
@@ -739,7 +738,7 @@ fn create_relation(
                         let other_type_id = building.get_entity_type_id(&ct.name).unwrap();
 
                         match (&field.typ, other_type_field_typ) {
-                            (DecoratedType::Optional(_), DecoratedType::Plain(_)) => {
+                            (FieldType::Optional(_), FieldType::Plain(_)) => {
                                 let other_type = &building.entity_types[other_type_id];
                                 let other_table_id = other_type.table_id;
                                 let other_table = &building.tables[other_table_id];
@@ -752,7 +751,7 @@ fn create_relation(
                                     cardinality: RelationCardinality::Optional,
                                 }
                             }
-                            (DecoratedType::Plain { .. }, DecoratedType::Optional(_)) => {
+                            (FieldType::Plain { .. }, FieldType::Optional(_)) => {
                                 let column_id = compute_column_id(table, table_id, field);
 
                                 PostgresRelation::ManyToOne {
@@ -763,7 +762,7 @@ fn create_relation(
                             }
                             (field_typ, other_field_type) => {
                                 match (field_base_typ, compute_base_type(other_field_type)) {
-                                    (DecoratedType::Plain(_), DecoratedType::List(_)) => {
+                                    (FieldType::Plain(_), FieldType::List(_)) => {
                                         let column_id = compute_column_id(table, table_id, field);
                                         PostgresRelation::ManyToOne {
                                             column_id: column_id.unwrap(),
@@ -783,7 +782,7 @@ fn create_relation(
                     }
                 }
             }
-            DecoratedType::Optional(_) => panic!("Optional in an Optional?"),
+            FieldType::Optional(_) => panic!("Optional in an Optional?"),
         }
     }
 }

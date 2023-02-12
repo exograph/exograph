@@ -4,7 +4,7 @@ use std::path::Path;
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 
-use core_model::types::{DecoratedType, Named};
+use core_model::types::{FieldType, Named};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::ast::ast_types::AstFieldType;
 use core_model_builder::builder::resolved_builder::AnnotationMapHelper;
@@ -56,7 +56,7 @@ pub struct ResolvedCompositeType {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedField {
     pub name: String,
-    pub typ: DecoratedType<ResolvedFieldType>,
+    pub typ: FieldType<ResolvedFieldType>,
     pub default_value: Option<Box<AstExpr<Typed>>>,
 }
 
@@ -71,11 +71,11 @@ impl Named for ResolvedFieldType {
     }
 }
 
-pub fn get_modifier(typ: &DecoratedType<ResolvedFieldType>) -> ServiceTypeModifier {
+pub fn get_modifier(typ: &FieldType<ResolvedFieldType>) -> ServiceTypeModifier {
     match typ {
-        DecoratedType::Plain(_) => ServiceTypeModifier::NonNull,
-        DecoratedType::Optional(_) => ServiceTypeModifier::Optional,
-        DecoratedType::List(_) => ServiceTypeModifier::List,
+        FieldType::Plain(_) => ServiceTypeModifier::NonNull,
+        FieldType::Optional(_) => ServiceTypeModifier::Optional,
+        FieldType::List(_) => ServiceTypeModifier::List,
     }
 }
 
@@ -96,7 +96,7 @@ pub struct ResolvedMethod {
     pub is_exported: bool,
     pub access: ResolvedAccess,
     pub arguments: Vec<ResolvedArgument>,
-    pub return_type: DecoratedType<ResolvedFieldType>,
+    pub return_type: FieldType<ResolvedFieldType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -108,7 +108,7 @@ pub enum ResolvedMethodType {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedArgument {
     pub name: String,
-    pub typ: DecoratedType<ResolvedFieldType>,
+    pub typ: FieldType<ResolvedFieldType>,
     pub is_injected: bool,
 }
 
@@ -515,16 +515,16 @@ fn resolve_service_types(
     Ok(resolved_service_types)
 }
 
-fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> DecoratedType<ResolvedFieldType> {
+fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> FieldType<ResolvedFieldType> {
     match typ {
         Type::Optional(underlying) => {
-            DecoratedType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
+            FieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
         }
-        Type::Reference(id) => DecoratedType::Plain(ResolvedFieldType {
+        Type::Reference(id) => FieldType::Plain(ResolvedFieldType {
             type_name: types[*id].get_underlying_typename(types).unwrap(),
         }),
         Type::Set(underlying) | Type::Array(underlying) => {
-            DecoratedType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
+            FieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
         }
         _ => {
             panic!("Unsupported field type")

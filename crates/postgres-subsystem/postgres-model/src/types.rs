@@ -6,7 +6,7 @@ use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, InputValueDefinition, ObjectType, TypeDefinition, TypeKind,
 };
-use core_model::types::{DecoratedType, Named};
+use core_model::types::{FieldType, Named};
 use core_plugin_interface::core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
@@ -123,7 +123,7 @@ pub enum PostgresTypeModifier {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresField<CT> {
     pub name: String,
-    pub typ: DecoratedType<PostgresFieldType<CT>>,
+    pub typ: FieldType<PostgresFieldType<CT>>,
     pub relation: PostgresRelation,
     pub has_default_value: bool, // does this field have a default value?
 }
@@ -141,7 +141,7 @@ impl<CT> Named for PostgresFieldType<CT> {
 }
 
 pub fn base_type<'a, CT>(
-    typ: &DecoratedType<PostgresFieldType<CT>>,
+    typ: &FieldType<PostgresFieldType<CT>>,
     primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
     entity_types: &'a SerializableSlab<CT>,
 ) -> PostgresType<'a, CT> {
