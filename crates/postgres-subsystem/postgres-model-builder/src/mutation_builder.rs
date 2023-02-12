@@ -10,7 +10,8 @@ use postgres_model::{
     operation::{PostgresMutation, PostgresMutationKind},
     relation::PostgresRelation,
     types::{
-        base_type, EntityType, FieldType, MutationType, PostgresField, PostgresType, TypeIndex,
+        base_type, EntityType, MutationType, PostgresField, PostgresFieldType, PostgresType,
+        TypeIndex,
     },
 };
 
@@ -252,7 +253,7 @@ pub trait DataParamBuilder<D> {
             PostgresRelation::ManyToOne { .. } => {
                 let field_type_name = field.typ.name().reference_type();
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-                let field_plain_type = DecoratedType::Plain(FieldType {
+                let field_plain_type = DecoratedType::Plain(PostgresFieldType {
                     type_name: field_type_name,
                     type_id: TypeIndex::Composite(field_type_id),
                 });
@@ -298,7 +299,7 @@ pub trait DataParamBuilder<D> {
             .mutation_types
             .get_id(&field_type_name)
             .and_then(|field_type_id| {
-                let field_plain_type = DecoratedType::Plain(FieldType {
+                let field_plain_type = DecoratedType::Plain(PostgresFieldType {
                     type_name: field_type_name,
                     type_id: TypeIndex::Composite(field_type_id),
                 });

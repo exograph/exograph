@@ -7,7 +7,7 @@ use core_plugin_interface::core_model::{
 use postgres_model::{
     operation::{PostgresMutationKind, UpdateDataParameter},
     relation::PostgresRelation,
-    types::{EntityType, FieldType, MutationType, PostgresField, TypeIndex},
+    types::{EntityType, MutationType, PostgresField, PostgresFieldType, TypeIndex},
 };
 
 use crate::{mutation_builder::DataParamRole, shallow::Shallow, utils::to_mutation_type};
@@ -194,7 +194,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             let fields = fields_info
                 .into_iter()
                 .map(|(name, field_type_name)| {
-                    let plain_field_type = DecoratedType::Plain(FieldType {
+                    let plain_field_type = DecoratedType::Plain(PostgresFieldType {
                         type_id: TypeIndex::Composite(
                             building.mutation_types.get_id(&field_type_name).unwrap(),
                         ),

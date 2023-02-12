@@ -22,7 +22,7 @@ use postgres_model::{
     aggregate::{AggregateField, AggregateFieldType},
     column_id::ColumnId,
     relation::{PostgresRelation, RelationCardinality},
-    types::{EntityType, FieldType, PostgresField, PostgresPrimitiveType, TypeIndex},
+    types::{EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, TypeIndex},
 };
 
 use super::{
@@ -282,7 +282,7 @@ fn create_persistent_field(
     fn create_field_type(
         field_type: &DecoratedType<ResolvedFieldType>,
         building: &SystemContextBuilding,
-    ) -> DecoratedType<FieldType<EntityType>> {
+    ) -> DecoratedType<PostgresFieldType<EntityType>> {
         match field_type {
             DecoratedType::Plain(ResolvedFieldType {
                 type_name,
@@ -290,14 +290,14 @@ fn create_persistent_field(
             }) => {
                 if *is_primitive {
                     let type_id = building.primitive_types.get_id(type_name).unwrap();
-                    DecoratedType::Plain(FieldType {
+                    DecoratedType::Plain(PostgresFieldType {
                         type_name: type_name.clone(),
                         type_id: TypeIndex::Primitive(type_id),
                     })
                 } else {
                     let type_id = building.entity_types.get_id(type_name).unwrap();
 
-                    DecoratedType::Plain(FieldType {
+                    DecoratedType::Plain(PostgresFieldType {
                         type_name: type_name.clone(),
                         type_id: TypeIndex::Composite(type_id),
                     })

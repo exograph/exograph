@@ -19,7 +19,7 @@ use core_plugin_interface::{
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression,
     column_path::{ColumnIdPath, ColumnIdPathLink},
-    types::{base_type, EntityType, FieldType, PostgresPrimitiveType, PostgresType},
+    types::{base_type, EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
 };
 
 use super::column_path_utils;
@@ -27,7 +27,10 @@ use super::column_path_utils;
 use super::type_builder::ResolvedTypeEnv;
 
 enum PathSelection<'a> {
-    Column(ColumnIdPath, &'a DecoratedType<FieldType<EntityType>>),
+    Column(
+        ColumnIdPath,
+        &'a DecoratedType<PostgresFieldType<EntityType>>,
+    ),
     Context(AccessContextSelection, &'a ContextFieldType),
 }
 
@@ -216,7 +219,10 @@ fn compute_selection<'a>(
         field_name: &str,
         self_type_info: &'a EntityType,
         entity_types: &MappedArena<EntityType>,
-    ) -> (ColumnIdPathLink, &'a DecoratedType<FieldType<EntityType>>) {
+    ) -> (
+        ColumnIdPathLink,
+        &'a DecoratedType<PostgresFieldType<EntityType>>,
+    ) {
         let get_field = |field_name: &str| {
             self_type_info.field(field_name).unwrap_or_else(|| {
                 panic!("Field {field_name} not found while processing access rules")

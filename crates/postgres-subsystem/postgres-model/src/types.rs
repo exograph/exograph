@@ -123,25 +123,25 @@ pub enum PostgresTypeModifier {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresField<CT> {
     pub name: String,
-    pub typ: DecoratedType<FieldType<CT>>,
+    pub typ: DecoratedType<PostgresFieldType<CT>>,
     pub relation: PostgresRelation,
     pub has_default_value: bool, // does this field have a default value?
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct FieldType<CT> {
+pub struct PostgresFieldType<CT> {
     pub type_id: TypeIndex<CT>,
     pub type_name: String,
 }
 
-impl<CT> Named for FieldType<CT> {
+impl<CT> Named for PostgresFieldType<CT> {
     fn name(&self) -> &str {
         &self.type_name
     }
 }
 
 pub fn base_type<'a, CT>(
-    typ: &DecoratedType<FieldType<CT>>,
+    typ: &DecoratedType<PostgresFieldType<CT>>,
     primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
     entity_types: &'a SerializableSlab<CT>,
 ) -> PostgresType<'a, CT> {
