@@ -3,7 +3,7 @@
 
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, OperationReturnType},
+    types::{BaseOperationReturnType, DecoratedType, Named, OperationReturnType},
 };
 
 use postgres_model::{
@@ -12,7 +12,11 @@ use postgres_model::{
     types::{EntityType, FieldType, MutationType, PostgresField, PostgresType, TypeIndex},
 };
 
-use crate::{resolved_builder::ResolvedField, shallow::Shallow, utils::to_mutation_type};
+use crate::{
+    resolved_builder::{ResolvedField, ResolvedFieldTypeHelper},
+    shallow::Shallow,
+    utils::to_mutation_type,
+};
 
 use super::{
     builder::Builder,
@@ -20,7 +24,6 @@ use super::{
     delete_mutation_builder::DeleteMutationBuilder,
     naming::ToPostgresTypeNames,
     reference_input_type_builder::ReferenceInputTypeBuilder,
-    resolved_builder::ResolvedFieldType,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
     type_builder::ResolvedTypeEnv,
@@ -154,7 +157,7 @@ pub trait DataParamBuilder<D> {
                 // we can treat Optional fields as their inner type for the purposes of
                 // computing their type names
                 let typ = match &field.typ {
-                    ResolvedFieldType::Optional(inner_type) => inner_type.as_ref(),
+                    DecoratedType::Optional(inner_type) => inner_type.as_ref(),
                     _ => &field.typ,
                 };
 
@@ -162,16 +165,16 @@ pub trait DataParamBuilder<D> {
                 if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
                     typ.deref_subsystem_type(resolved_types)
                 {
-                    if let ResolvedFieldType::List(_) = field.typ {
+                    if let DecoratedType::List(_) = field.typ {
                         // If it is a list, we need to create a nested input type (one-to-many)
                         Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
-                    } else if let ResolvedFieldType::Optional(_) = field.typ {
+                    } else if let DecoratedType::Optional(_) = field.typ {
                         // Let's determine if it is one-to-zero_or_one (where we need to create a nested input type)
                         // Or many-to-one_optional (Think Concert with an optional Venue, and Venue with multiple (possibly optional) concerts)
                         match get_matching_field(field, resolved_types) {
                             Some(matching_field) => {
                                 let inner_type = matching_field.typ.inner();
-                                if let Some(ResolvedFieldType::List(_)) = inner_type {
+                                if let Some(DecoratedType::List(_)) = inner_type {
                                     vec![]
                                 } else {
                                     Self::data_param_field_one_to_many_type_names(
@@ -431,9 +434,7 @@ fn get_matching_field<'a>(
     field: &'a ResolvedField,
     types: &'a MappedArena<ResolvedType>,
 ) -> Option<&'a ResolvedField> {
-    let field_typ = types
-        .get_by_key(field.typ.get_underlying_typename())
-        .unwrap();
+    let field_typ = types.get_by_key(field.typ.name()).unwrap();
 
     if let ResolvedType::Composite(field_typ) = field_typ {
         let matching_fields: Vec<_> = field_typ

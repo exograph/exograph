@@ -15,6 +15,22 @@ pub trait Named {
     fn name(&self) -> &str;
 }
 
+impl<T> DecoratedType<T> {
+    pub fn inner(&self) -> Option<&DecoratedType<T>> {
+        match self {
+            DecoratedType::Plain(_) => None,
+            DecoratedType::List(inner) | DecoratedType::Optional(inner) => Some(inner),
+        }
+    }
+
+    pub fn inner_most(&self) -> &T {
+        match self {
+            DecoratedType::Plain(inner) => inner,
+            DecoratedType::List(inner) | DecoratedType::Optional(inner) => inner.inner_most(),
+        }
+    }
+}
+
 impl<T: Named> DecoratedType<T> {
     /// Transforms the type into an introspection type
     ///
