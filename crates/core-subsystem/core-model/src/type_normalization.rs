@@ -27,10 +27,6 @@ pub fn default_positioned_name(value: &str) -> Positioned<Name> {
     default_positioned(Name::new(value))
 }
 
-pub trait ParameterType {
-    fn name(&self) -> &String;
-}
-
 pub enum TypeModifier {
     List,
     NonNull,

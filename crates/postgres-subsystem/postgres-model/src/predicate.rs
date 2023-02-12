@@ -10,9 +10,10 @@ use super::types::PostgresTypeModifier;
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
-        default_positioned, default_positioned_name, InputValueProvider, Parameter, ParameterType,
+        default_positioned, default_positioned_name, InputValueProvider, Parameter,
         TypeDefinitionProvider, TypeModifier,
     },
+    types::Named,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -62,8 +63,8 @@ pub enum PredicateParameterTypeKind {
     },
 }
 
-impl ParameterType for PredicateParameterType {
-    fn name(&self) -> &String {
+impl Named for PredicateParameterType {
+    fn name(&self) -> &str {
         &self.name
     }
 }

@@ -1,15 +1,15 @@
 use async_graphql_value::ConstValue;
-
+use core_plugin_interface::core_model::types::OperationReturnType;
 use payas_sql::{
     AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
     NestedElementRelation, NestedInsertion,
 };
 use postgres_model::{
     column_id::ColumnId,
-    operation::{CreateDataParameter, OperationReturnType},
+    operation::CreateDataParameter,
     relation::PostgresRelation,
     subsystem::PostgresSubsystem,
-    types::{EntityType, MutationType, PostgresField, PostgresType},
+    types::{base_type, EntityType, MutationType, PostgresField, PostgresType},
 };
 
 use crate::sql_mapper::SQLMapper;
@@ -21,7 +21,7 @@ use super::{
 
 pub struct InsertOperation<'a> {
     pub data_param: &'a CreateDataParameter,
-    pub return_type: &'a OperationReturnType,
+    pub return_type: &'a OperationReturnType<EntityType>,
     pub select: AbstractSelect<'a>,
 }
 
@@ -147,9 +147,11 @@ fn map_foreign<'a>(
         &system.entity_types[data_type.entity_type]
     }
 
-    let field_type = field
-        .typ
-        .base_type(&subsystem.primitive_types, &subsystem.mutation_types);
+    let field_type = base_type(
+        &field.typ,
+        &subsystem.primitive_types,
+        &subsystem.mutation_types,
+    );
 
     let field_type = match field_type {
         PostgresType::Composite(field_type) => field_type,

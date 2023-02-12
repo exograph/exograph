@@ -9,6 +9,7 @@ use crate::{
 };
 use async_recursion::async_recursion;
 use async_trait::async_trait;
+use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField,
 };
@@ -19,12 +20,12 @@ use payas_sql::{
 };
 use postgres_model::{
     aggregate::AggregateField,
-    operation::{CollectionQuery, CollectionQueryParameter, OperationReturnType, PkQuery},
+    operation::{CollectionQuery, CollectionQueryParameter, PkQuery},
     order::OrderByParameter,
     predicate::PredicateParameter,
     relation::{PostgresRelation, RelationCardinality},
     subsystem::PostgresSubsystem,
-    types::{EntityType, PostgresField, PostgresTypeModifier},
+    types::{EntityType, PostgresField},
 };
 
 #[async_trait]
@@ -84,7 +85,7 @@ async fn compute_select<'content>(
     order_by: Option<AbstractOrderBy<'content>>,
     limit: Option<Limit>,
     offset: Option<Offset>,
-    return_type: &'content OperationReturnType,
+    return_type: &'content OperationReturnType<EntityType>,
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
@@ -101,7 +102,7 @@ async fn compute_select<'content>(
         super::predicate_mapper::compute_predicate(predicate_param, &field.arguments, subsystem)?;
     let predicate = AbstractPredicate::and(query_predicate, access_predicate);
 
-    let return_postgres_type = return_type.typ(subsystem);
+    let return_postgres_type = return_type.typ(&subsystem.entity_types);
 
     let content_object = content_select(
         return_postgres_type,
@@ -113,9 +114,9 @@ async fn compute_select<'content>(
 
     let root_physical_table = &subsystem.tables[return_postgres_type.table_id];
 
-    let selection_cardinality = match return_type.type_modifier {
-        PostgresTypeModifier::Optional | PostgresTypeModifier::NonNull => SelectionCardinality::One,
-        PostgresTypeModifier::List => SelectionCardinality::Many,
+    let selection_cardinality = match return_type {
+        OperationReturnType::List(_) => SelectionCardinality::Many,
+        _ => SelectionCardinality::One,
     };
     Ok(AbstractSelect {
         table: root_physical_table,

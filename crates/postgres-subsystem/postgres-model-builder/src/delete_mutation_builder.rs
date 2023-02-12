@@ -1,9 +1,12 @@
 //! Build mutation input types associated with deletion (<Type>DeletionInput) and
 //! the create mutations (delete<Type>, and delete<Type>s)
 
-use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::{
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, OperationReturnType},
+};
 use postgres_model::operation::PostgresMutationKind;
-use postgres_model::types::{EntityType, PostgresTypeModifier};
+use postgres_model::types::EntityType;
 
 use super::{
     builder::Builder,
@@ -60,8 +63,11 @@ impl MutationBuilder for DeleteMutationBuilder {
         ))
     }
 
-    fn single_mutation_type_modifier() -> PostgresTypeModifier {
-        PostgresTypeModifier::Optional // We return null if the specified id doesn't exist
+    fn single_mutation_modified_type(
+        base_type: BaseOperationReturnType<EntityType>,
+    ) -> OperationReturnType<EntityType> {
+        // We return null if the specified id doesn't exist
+        OperationReturnType::Optional(Box::new(OperationReturnType::Plain(base_type)))
     }
 
     fn multi_mutation_name(model_type: &EntityType) -> String {

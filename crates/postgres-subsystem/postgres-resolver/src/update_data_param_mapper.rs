@@ -1,15 +1,16 @@
 use async_graphql_value::ConstValue;
 
+use core_plugin_interface::core_model::types::OperationReturnType;
 use payas_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
     ColumnPathLink, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
     NestedElementRelation, PhysicalColumn, PhysicalColumnType, Predicate, Selection,
 };
 use postgres_model::{
-    operation::{OperationReturnType, UpdateDataParameter},
+    operation::UpdateDataParameter,
     relation::PostgresRelation,
     subsystem::PostgresSubsystem,
-    types::{EntityType, MutationType, PostgresType, TypeIndex},
+    types::{base_type, EntityType, MutationType, PostgresType, TypeIndex},
 };
 
 use crate::{
@@ -21,7 +22,7 @@ use super::{cast, postgres_execution_error::PostgresExecutionError};
 
 pub struct UpdateOperation<'a> {
     pub data_param: &'a UpdateDataParameter,
-    pub return_type: &'a OperationReturnType,
+    pub return_type: &'a OperationReturnType<EntityType>,
     pub predicate: AbstractPredicate<'a>,
     pub select: AbstractSelect<'a>,
 }
@@ -37,7 +38,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
         let self_update_columns = compute_update_columns(data_type, argument, subsystem);
         let (table, _, _) = return_type_info(self.return_type, subsystem);
 
-        let container_entity_type = self.return_type.typ(subsystem);
+        let container_entity_type = self.return_type.typ(&subsystem.entity_types);
 
         let (nested_updates, nested_inserts, nested_deletes) =
             compute_nested_ops(data_type, argument, container_entity_type, subsystem);
@@ -116,11 +117,11 @@ fn compute_nested_ops<'a>(
 
     arg_type.fields.iter().for_each(|field| {
         if let PostgresRelation::OneToMany { .. } = &field.relation {
-            let arg_type = match field.typ.type_id() {
+            let arg_type = match field.typ.inner_most().type_id {
                 TypeIndex::Primitive(_) => {
                     panic!("One to many relation should target a composite type")
                 }
-                TypeIndex::Composite(type_id) => &subsystem.mutation_types[*type_id],
+                TypeIndex::Composite(type_id) => &subsystem.mutation_types[type_id],
             };
 
             if let Some(argument) = get_argument_field(arg, &field.name) {
@@ -456,14 +457,16 @@ fn extract_argument<'a>(
 ) -> (Option<&'a ConstValue>, &'a MutationType) {
     let arg = get_argument_field(argument, arg_name);
 
-    let arg_type = match arg_type
-        .fields
-        .iter()
-        .find(|f| f.name == arg_name)
-        .unwrap()
-        .typ
-        .base_type(&subsystem.primitive_types, &subsystem.mutation_types)
-    {
+    let arg_type = match base_type(
+        &arg_type
+            .fields
+            .iter()
+            .find(|f| f.name == arg_name)
+            .unwrap()
+            .typ,
+        &subsystem.primitive_types,
+        &subsystem.mutation_types,
+    ) {
         PostgresType::Primitive(_) => panic!("{arg_name} argument type must be a composite type"),
         PostgresType::Composite(typ) => typ,
     };

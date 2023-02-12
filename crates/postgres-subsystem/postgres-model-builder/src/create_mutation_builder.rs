@@ -1,11 +1,14 @@
 //! Build mutation input types associated with creation (<Type>CreationInput) and
 //! the create mutations (create<Type>, and create<Type>s)
 
-use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::{
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, OperationReturnType},
+};
 
 use postgres_model::{
     operation::{CreateDataParameter, CreateDataParameterTypeWithModifier, PostgresMutationKind},
-    types::{EntityType, PostgresTypeModifier},
+    types::EntityType,
 };
 
 use crate::mutation_builder::DataParamRole;
@@ -71,8 +74,10 @@ impl MutationBuilder for CreateMutationBuilder {
         PostgresMutationKind::Create(Self::data_param(entity_type, building, false))
     }
 
-    fn single_mutation_type_modifier() -> PostgresTypeModifier {
-        PostgresTypeModifier::NonNull
+    fn single_mutation_modified_type(
+        base_type: BaseOperationReturnType<EntityType>,
+    ) -> OperationReturnType<EntityType> {
+        OperationReturnType::Plain(base_type)
     }
 
     fn multi_mutation_name(entity_type: &EntityType) -> String {

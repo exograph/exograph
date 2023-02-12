@@ -4,6 +4,7 @@ use std::path::Path;
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 
+use core_model::types::{FieldType, Named};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::ast::ast_types::AstFieldType;
 use core_model_builder::builder::resolved_builder::AnnotationMapHelper;
@@ -24,7 +25,7 @@ use crate::builder::access_builder::build_access;
 
 use super::access_builder::ResolvedAccess;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum ResolvedType {
     Primitive(PrimitiveType),
@@ -44,7 +45,7 @@ impl ResolvedType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedCompositeType {
     pub name: String,
     pub fields: Vec<ResolvedField>,
@@ -52,41 +53,33 @@ pub struct ResolvedCompositeType {
     pub access: ResolvedAccess,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedField {
     pub name: String,
-    pub typ: ResolvedFieldType,
+    pub typ: FieldType<ResolvedFieldType>,
     pub default_value: Option<Box<AstExpr<Typed>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum ResolvedFieldType {
-    Plain {
-        type_name: String, // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
-    },
-    Optional(Box<ResolvedFieldType>),
-    List(Box<ResolvedFieldType>),
+pub struct ResolvedFieldType {
+    pub type_name: String,
 }
 
-impl ResolvedFieldType {
-    pub fn get_underlying_typename(&self) -> &str {
-        match &self {
-            ResolvedFieldType::Plain { type_name, .. } => type_name,
-            ResolvedFieldType::Optional(underlying) => underlying.get_underlying_typename(),
-            ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
-        }
-    }
-
-    pub fn get_modifier(&self) -> ServiceTypeModifier {
-        match &self {
-            ResolvedFieldType::Plain { .. } => ServiceTypeModifier::NonNull,
-            ResolvedFieldType::Optional(_) => ServiceTypeModifier::Optional,
-            ResolvedFieldType::List(_) => ServiceTypeModifier::List,
-        }
+impl Named for ResolvedFieldType {
+    fn name(&self) -> &str {
+        &self.type_name
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub fn get_modifier(typ: &FieldType<ResolvedFieldType>) -> ServiceTypeModifier {
+    match typ {
+        FieldType::Plain(_) => ServiceTypeModifier::NonNull,
+        FieldType::Optional(_) => ServiceTypeModifier::Optional,
+        FieldType::List(_) => ServiceTypeModifier::List,
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedService {
     pub name: String,
     pub script: Vec<u8>,
@@ -96,14 +89,14 @@ pub struct ResolvedService {
     pub types_defined: HashSet<String>, // Typed defined in the service
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedMethod {
     pub name: String,
     pub operation_kind: ResolvedMethodType,
     pub is_exported: bool,
     pub access: ResolvedAccess,
     pub arguments: Vec<ResolvedArgument>,
-    pub return_type: ResolvedFieldType,
+    pub return_type: FieldType<ResolvedFieldType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -112,14 +105,14 @@ pub enum ResolvedMethodType {
     Mutation,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedArgument {
     pub name: String,
-    pub typ: ResolvedFieldType,
+    pub typ: FieldType<ResolvedFieldType>,
     pub is_injected: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedInterceptor {
     pub service_name: String,
     pub method_name: String,
@@ -522,16 +515,16 @@ fn resolve_service_types(
     Ok(resolved_service_types)
 }
 
-fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldType {
+fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> FieldType<ResolvedFieldType> {
     match typ {
         Type::Optional(underlying) => {
-            ResolvedFieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
+            FieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
         }
-        Type::Reference(id) => ResolvedFieldType::Plain {
+        Type::Reference(id) => FieldType::Plain(ResolvedFieldType {
             type_name: types[*id].get_underlying_typename(types).unwrap(),
-        },
+        }),
         Type::Set(underlying) | Type::Array(underlying) => {
-            ResolvedFieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
+            FieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
         }
         _ => {
             panic!("Unsupported field type")

@@ -1,18 +1,25 @@
 //! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
 //! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
-use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::{
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
+};
 
 use postgres_model::{
-    operation::{OperationReturnType, PostgresMutation, PostgresMutationKind},
+    operation::{PostgresMutation, PostgresMutationKind},
     relation::PostgresRelation,
     types::{
-        EntityType, FieldType, MutationType, PostgresField, PostgresType, PostgresTypeModifier,
+        base_type, EntityType, MutationType, PostgresField, PostgresFieldType, PostgresType,
         TypeIndex,
     },
 };
 
-use crate::{resolved_builder::ResolvedField, shallow::Shallow, utils::to_mutation_type};
+use crate::{
+    resolved_builder::{ResolvedField, ResolvedFieldTypeHelper},
+    shallow::Shallow,
+    utils::to_mutation_type,
+};
 
 use super::{
     builder::Builder,
@@ -20,7 +27,6 @@ use super::{
     delete_mutation_builder::DeleteMutationBuilder,
     naming::ToPostgresTypeNames,
     reference_input_type_builder::ReferenceInputTypeBuilder,
-    resolved_builder::ResolvedFieldType,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
     type_builder::ResolvedTypeEnv,
@@ -64,7 +70,9 @@ pub trait MutationBuilder {
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
-    fn single_mutation_type_modifier() -> PostgresTypeModifier;
+    fn single_mutation_modified_type(
+        base_type: BaseOperationReturnType<EntityType>,
+    ) -> OperationReturnType<EntityType>;
 
     fn multi_mutation_name(entity_type: &EntityType) -> String;
     fn multi_mutation_kind(
@@ -82,21 +90,21 @@ pub trait MutationBuilder {
         let single_mutation = PostgresMutation {
             name: Self::single_mutation_name(entity_type),
             kind: Self::single_mutation_kind(entity_type_id, entity_type, building),
-            return_type: OperationReturnType {
-                type_id: entity_type_id,
+            return_type: Self::single_mutation_modified_type(BaseOperationReturnType {
+                associated_type_id: entity_type_id,
                 type_name: entity_type.name.clone(),
-                type_modifier: Self::single_mutation_type_modifier(),
-            },
+            }),
         };
 
         let multi_mutation = PostgresMutation {
             name: Self::multi_mutation_name(entity_type),
             kind: Self::multi_mutation_kind(entity_type_id, entity_type, building),
-            return_type: OperationReturnType {
-                type_id: entity_type_id,
-                type_name: entity_type.name.clone(),
-                type_modifier: PostgresTypeModifier::List,
-            },
+            return_type: OperationReturnType::List(Box::new(OperationReturnType::Plain(
+                BaseOperationReturnType {
+                    associated_type_id: entity_type_id,
+                    type_name: entity_type.name.clone(),
+                },
+            ))),
         };
 
         vec![single_mutation, multi_mutation]
@@ -152,7 +160,7 @@ pub trait DataParamBuilder<D> {
                 // we can treat Optional fields as their inner type for the purposes of
                 // computing their type names
                 let typ = match &field.typ {
-                    ResolvedFieldType::Optional(inner_type) => inner_type.as_ref(),
+                    FieldType::Optional(inner_type) => inner_type.as_ref(),
                     _ => &field.typ,
                 };
 
@@ -160,16 +168,16 @@ pub trait DataParamBuilder<D> {
                 if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
                     typ.deref_subsystem_type(resolved_types)
                 {
-                    if let ResolvedFieldType::List(_) = field.typ {
+                    if let FieldType::List(_) = field.typ {
                         // If it is a list, we need to create a nested input type (one-to-many)
                         Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
-                    } else if let ResolvedFieldType::Optional(_) = field.typ {
+                    } else if let FieldType::Optional(_) = field.typ {
                         // Let's determine if it is one-to-zero_or_one (where we need to create a nested input type)
                         // Or many-to-one_optional (Think Concert with an optional Venue, and Venue with multiple (possibly optional) concerts)
                         match get_matching_field(field, resolved_types) {
                             Some(matching_field) => {
                                 let inner_type = matching_field.typ.inner();
-                                if let Some(ResolvedFieldType::List(_)) = inner_type {
+                                if let Some(FieldType::List(_)) = inner_type {
                                     vec![]
                                 } else {
                                     Self::data_param_field_one_to_many_type_names(
@@ -243,14 +251,14 @@ pub trait DataParamBuilder<D> {
                 self.compute_one_to_many_data_field(field, container_type, building)
             }
             PostgresRelation::ManyToOne { .. } => {
-                let field_type_name = field.typ.type_name().reference_type();
+                let field_type_name = field.typ.name().reference_type();
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-                let field_plain_type = FieldType::Reference {
+                let field_plain_type = FieldType::Plain(PostgresFieldType {
                     type_name: field_type_name,
                     type_id: TypeIndex::Composite(field_type_id),
-                };
+                });
                 let field_type = match field.typ {
-                    FieldType::Reference { .. } => {
+                    FieldType::Plain(_) => {
                         if optional {
                             field_plain_type.optional()
                         } else {
@@ -262,7 +270,7 @@ pub trait DataParamBuilder<D> {
                 };
 
                 match &top_level_type {
-                    Some(value) if value.name == field.typ.type_name() => None,
+                    Some(value) if value.name == field.typ.name() => None,
                     _ => Some(PostgresField {
                         name: field.name.clone(),
                         typ: field_type,
@@ -282,20 +290,20 @@ pub trait DataParamBuilder<D> {
     ) -> Option<PostgresField<MutationType>> {
         let optional = matches!(field.typ, FieldType::Optional(_)) || Self::mark_fields_optional();
 
-        let field_type_name = Self::data_type_name(field.typ.type_name(), container_type);
+        let field_type_name = Self::data_type_name(field.typ.name(), container_type);
 
         building
             .mutation_types
             .get_id(&field_type_name)
             .and_then(|field_type_id| {
-                let field_plain_type = FieldType::Reference {
+                let field_plain_type = FieldType::Plain(PostgresFieldType {
                     type_name: field_type_name,
                     type_id: TypeIndex::Composite(field_type_id),
-                };
+                });
                 let field_type = FieldType::List(Box::new(field_plain_type));
 
                 match &container_type {
-                    Some(value) if value == &field.typ.type_name() => None,
+                    Some(value) if value == &field.typ.name() => None,
                     _ => Some(PostgresField {
                         name: field.name.clone(),
                         typ: if optional {
@@ -322,7 +330,8 @@ pub trait DataParamBuilder<D> {
             .fields
             .iter()
             .flat_map(|field| {
-                let field_type = field.typ.base_type(
+                let field_type = base_type(
+                    &field.typ,
                     &building.primitive_types.values,
                     &building.entity_types.values,
                 );
@@ -429,9 +438,7 @@ fn get_matching_field<'a>(
     field: &'a ResolvedField,
     types: &'a MappedArena<ResolvedType>,
 ) -> Option<&'a ResolvedField> {
-    let field_typ = types
-        .get_by_key(field.typ.get_underlying_typename())
-        .unwrap();
+    let field_typ = types.get_by_key(field.typ.name()).unwrap();
 
     if let ResolvedType::Composite(field_typ) = field_typ {
         let matching_fields: Vec<_> = field_typ

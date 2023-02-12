@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use core_plugin_interface::core_model::types::Named;
 use core_plugin_interface::core_model_builder::error::ModelBuildingError;
 use lazy_static::lazy_static;
 use postgres_model::aggregate::{
@@ -122,8 +123,8 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
                 //   }
                 // }
                 // ```
-                if field.typ.get_is_underlying_primitive() {
-                    let type_name = aggregate_type_name(field.typ.get_underlying_typename());
+                if field.typ.inner_most().is_primitive {
+                    let type_name = aggregate_type_name(field.typ.name());
 
                     let type_id = building.aggregate_types.get_id(&type_name).unwrap();
 

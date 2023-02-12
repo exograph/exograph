@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 use crate::access::Access;
 
 use super::{
-    operation::{OperationReturnType, ServiceMutation, ServiceQuery},
+    operation::{ServiceMutation, ServiceQuery},
     types::{ServiceType, ServiceTypeModifier},
 };
-use core_model::mapped_arena::SerializableSlabIndex;
+use core_model::{mapped_arena::SerializableSlabIndex, types::OperationReturnType};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceMethod {
@@ -16,7 +16,7 @@ pub struct ServiceMethod {
     pub is_exported: bool,
     pub arguments: Vec<Argument>,
     pub access: Access,
-    pub return_type: OperationReturnType,
+    pub return_type: OperationReturnType<ServiceType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
