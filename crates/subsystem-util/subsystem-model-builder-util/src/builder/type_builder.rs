@@ -119,11 +119,11 @@ fn expand_method_access(
 
 fn create_service_field(field: &ResolvedField, building: &SystemContextBuilding) -> ServiceField {
     fn create_field_type(
-        field_type: &ResolvedFieldType,
+        field_type: &DecoratedType<ResolvedFieldType>,
         building: &SystemContextBuilding,
     ) -> DecoratedType<ServiceFieldType> {
         match field_type {
-            ResolvedFieldType::Plain { type_name } => {
+            DecoratedType::Plain(ResolvedFieldType { type_name }) => {
                 let type_id = building.types.get_id(type_name).unwrap();
 
                 DecoratedType::Plain(ServiceFieldType {
@@ -131,10 +131,10 @@ fn create_service_field(field: &ResolvedField, building: &SystemContextBuilding)
                     type_id,
                 })
             }
-            ResolvedFieldType::Optional(underlying) => {
+            DecoratedType::Optional(underlying) => {
                 DecoratedType::Optional(Box::new(create_field_type(underlying, building)))
             }
-            ResolvedFieldType::List(underlying) => {
+            DecoratedType::List(underlying) => {
                 DecoratedType::List(Box::new(create_field_type(underlying, building)))
             }
         }

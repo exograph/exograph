@@ -1,6 +1,6 @@
 use core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, OperationReturnType},
+    types::{BaseOperationReturnType, Named, OperationReturnType},
 };
 use core_plugin_shared::interception::InterceptorKind;
 use subsystem_model_util::{
@@ -14,7 +14,8 @@ use subsystem_model_util::{
 
 use super::{
     resolved_builder::{
-        ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService, ResolvedType,
+        get_modifier, ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService,
+        ResolvedType,
     },
     system_builder::SystemContextBuilding,
 };
@@ -104,23 +105,20 @@ fn create_shallow_service(
                 .iter()
                 .map(|arg| Argument {
                     name: arg.name.clone(),
-                    type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
-                    modifier: arg.typ.get_modifier(),
+                    type_id: building.get_id(arg.typ.name()).unwrap(),
+                    modifier: get_modifier(&arg.typ),
                     is_injected: arg.is_injected,
                 })
                 .collect(),
             return_type: {
                 let plain_return_type = OperationReturnType::Plain(BaseOperationReturnType {
                     associated_type_id: building
-                        .get_id(resolved_method.return_type.get_underlying_typename())
+                        .get_id(resolved_method.return_type.name())
                         .unwrap(),
-                    type_name: resolved_method
-                        .return_type
-                        .get_underlying_typename()
-                        .to_string(),
+                    type_name: resolved_method.return_type.name().to_string(),
                 });
 
-                match resolved_method.return_type.get_modifier() {
+                match get_modifier(&resolved_method.return_type) {
                     ServiceTypeModifier::NonNull => plain_return_type,
                     ServiceTypeModifier::Optional => {
                         OperationReturnType::Optional(Box::new(plain_return_type))
@@ -141,7 +139,7 @@ fn shallow_service_query(
 ) -> ServiceQuery {
     let return_type = &method.return_type;
 
-    let return_type_name = return_type.get_underlying_typename();
+    let return_type_name = return_type.name();
 
     ServiceQuery {
         name: method.name.clone(),
@@ -152,7 +150,7 @@ fn shallow_service_query(
                 associated_type_id: service_types.get_id(return_type_name).unwrap(),
                 type_name: return_type_name.to_string(),
             });
-            match return_type.get_modifier() {
+            match get_modifier(return_type) {
                 ServiceTypeModifier::NonNull => plain_return_type,
                 ServiceTypeModifier::Optional => {
                     OperationReturnType::Optional(Box::new(plain_return_type))
@@ -169,7 +167,7 @@ fn shallow_service_mutation(
     building: &SystemContextBuilding,
 ) -> ServiceMutation {
     let return_type = &method.return_type;
-    let return_type_name = return_type.get_underlying_typename();
+    let return_type_name = return_type.name();
 
     ServiceMutation {
         name: method.name.clone(),
@@ -180,7 +178,7 @@ fn shallow_service_mutation(
                 associated_type_id: service_types.get_id(return_type_name).unwrap(),
                 type_name: return_type_name.to_string(),
             });
-            match return_type.get_modifier() {
+            match get_modifier(return_type) {
                 ServiceTypeModifier::NonNull => plain_return_type,
                 ServiceTypeModifier::Optional => {
                     OperationReturnType::Optional(Box::new(plain_return_type))
@@ -201,8 +199,8 @@ fn argument_param(
         .iter()
         .filter(|arg| !arg.is_injected) // skip injected params!
         .map(|arg| {
-            let arg_typename = arg.typ.get_underlying_typename();
-            let type_modifier = arg.typ.get_modifier();
+            let arg_typename = arg.typ.name();
+            let type_modifier = get_modifier(&arg.typ);
             let input_type_id = building.types.get_id(arg_typename);
 
             if let Some(input_type_id) = input_type_id {
@@ -257,8 +255,8 @@ pub fn create_shallow_interceptor(
             .iter()
             .map(|arg| Argument {
                 name: arg.name.clone(),
-                type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
-                modifier: arg.typ.get_modifier(),
+                type_id: building.get_id(arg.typ.name()).unwrap(),
+                modifier: get_modifier(&arg.typ),
                 is_injected: true, // implicitly set is_injected for interceptors
             })
             .collect(),
