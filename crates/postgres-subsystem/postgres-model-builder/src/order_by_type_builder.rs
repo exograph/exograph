@@ -133,7 +133,7 @@ pub fn new_field_param(
     composite_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    let field_type_id = entity_field.typ.type_id().to_owned();
+    let field_type_id = entity_field.typ.inner_most().type_id.to_owned();
     let field_entity_type = field_type_id.to_type(
         &building.primitive_types.values,
         &building.entity_types.values,

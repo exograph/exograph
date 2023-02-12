@@ -4,11 +4,9 @@ use crate::aggregate::AggregateField;
 use crate::operation::{AggregateQuery, CollectionQuery, CollectionQueryParameter, PkQuery};
 use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
-    BaseType, FieldDefinition, InputObjectType, InputValueDefinition, ObjectType, Type,
-    TypeDefinition, TypeKind,
+    FieldDefinition, InputObjectType, InputValueDefinition, ObjectType, TypeDefinition, TypeKind,
 };
-use async_graphql_value::Name;
-use core_plugin_interface::core_model::types::Named;
+use core_model::types::{DecoratedType, Named};
 use core_plugin_interface::core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
@@ -125,58 +123,31 @@ pub enum PostgresTypeModifier {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresField<CT> {
     pub name: String,
-    pub typ: FieldType<CT>,
+    pub typ: DecoratedType<FieldType<CT>>,
     pub relation: PostgresRelation,
     pub has_default_value: bool, // does this field have a default value?
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum FieldType<CT> {
-    Optional(Box<FieldType<CT>>),
-    Reference {
-        type_id: TypeIndex<CT>,
-        type_name: String,
-    },
-    List(Box<FieldType<CT>>),
+pub struct FieldType<CT> {
+    pub type_id: TypeIndex<CT>,
+    pub type_name: String,
 }
 
-impl<CT> FieldType<CT>
-where
-    CT: Clone,
-{
-    pub fn type_id(&self) -> &TypeIndex<CT> {
-        match self {
-            FieldType::Optional(underlying) | FieldType::List(underlying) => underlying.type_id(),
-            FieldType::Reference { type_id, .. } => type_id,
-        }
+impl<CT> Named for FieldType<CT> {
+    fn name(&self) -> &str {
+        &self.type_name
     }
+}
 
-    pub fn base_type<'a>(
-        &self,
-        primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
-        entity_types: &'a SerializableSlab<CT>,
-    ) -> PostgresType<'a, CT> {
-        match self {
-            FieldType::Optional(underlying) | FieldType::List(underlying) => {
-                underlying.base_type(primitive_types, entity_types)
-            }
-            FieldType::Reference { type_id, .. } => type_id.to_type(primitive_types, entity_types),
-        }
-    }
-
-    pub fn type_name(&self) -> &str {
-        match self {
-            FieldType::Optional(underlying) | FieldType::List(underlying) => underlying.type_name(),
-            FieldType::Reference { type_name, .. } => type_name,
-        }
-    }
-
-    pub fn optional(&self) -> Self {
-        match self {
-            FieldType::Optional(_) => self.clone(),
-            _ => FieldType::Optional(Box::new(self.clone())),
-        }
-    }
+pub fn base_type<'a, CT>(
+    typ: &DecoratedType<FieldType<CT>>,
+    primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
+    entity_types: &'a SerializableSlab<CT>,
+) -> PostgresType<'a, CT> {
+    typ.inner_most()
+        .type_id
+        .to_type(primitive_types, entity_types)
 }
 
 impl TypeDefinitionProvider<PostgresSubsystem> for PostgresPrimitiveType {
@@ -245,7 +216,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for MutationType {
 
 impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
     fn field_definition(&self, system: &PostgresSubsystem) -> FieldDefinition {
-        let field_type = default_positioned(compute_type(&self.typ));
+        let field_type = default_positioned(self.typ.to_introspection_type());
 
         let arguments = match self.relation {
             PostgresRelation::Pk { .. }
@@ -286,31 +257,6 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
     }
 }
 
-pub fn compute_type<CT>(typ: &FieldType<CT>) -> Type {
-    fn compute_base_type<CT>(typ: &FieldType<CT>) -> BaseType {
-        match typ {
-            FieldType::Optional(underlying) => compute_base_type(underlying),
-            FieldType::Reference { type_name, .. } => BaseType::Named(Name::new(type_name)),
-            FieldType::List(underlying) => BaseType::List(Box::new(compute_type(underlying))),
-        }
-    }
-
-    match typ {
-        FieldType::Optional(underlying) => Type {
-            base: compute_base_type(underlying),
-            nullable: true,
-        },
-        FieldType::Reference { type_name, .. } => Type {
-            base: BaseType::Named(Name::new(type_name)),
-            nullable: false,
-        },
-        FieldType::List(underlying) => Type {
-            base: BaseType::List(Box::new(compute_type(underlying))),
-            nullable: false,
-        },
-    }
-}
-
 impl From<&PostgresTypeModifier> for TypeModifier {
     fn from(modifier: &PostgresTypeModifier) -> Self {
         match modifier {
@@ -326,7 +272,7 @@ impl From<&PostgresTypeModifier> for TypeModifier {
 // above will not work for nested types like these.
 impl<CT> InputValueProvider for PostgresField<CT> {
     fn input_value(&self) -> InputValueDefinition {
-        let field_type = default_positioned(compute_type(&self.typ));
+        let field_type = default_positioned(self.typ.to_introspection_type());
 
         InputValueDefinition {
             description: None,

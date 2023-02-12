@@ -31,35 +31,32 @@ impl<T> DecoratedType<T> {
     }
 }
 
+impl<T: Clone> DecoratedType<T> {
+    /// Compute the optional version of the given type
+    pub fn optional(&self) -> Self {
+        match self {
+            DecoratedType::Optional(_) => self.clone(),
+            _ => DecoratedType::Optional(Box::new(self.clone())),
+        }
+    }
+}
+
 impl<T: Named> DecoratedType<T> {
     /// Transforms the type into an introspection type
     ///
     /// The complexity of this function is due to the fact that the GraphQL spec and hence the
     /// introspection type (`Type`) does not support nested optionals. However, `DecoratedType`
-    /// being more general, does support nested optionals. This function will panic if it encounters
-    /// a nested optional.
+    /// being more general, does. This function will panic if it encounters a nested optional.
     pub fn to_introspection_type(&self) -> Type {
-        /// Returns the base type and whether it is optional
-        fn base_type<T: Named>(typ: &DecoratedType<T>) -> (BaseType, bool) {
-            match typ {
-                DecoratedType::Plain(base) => (BaseType::Named(Name::new(base.name())), false),
-                DecoratedType::List(underlying) => (
-                    BaseType::List(Box::new(underlying.to_introspection_type())),
-                    false,
-                ),
-                DecoratedType::Optional(underlying) => (base_type(underlying).0, true),
-            }
-        }
-
         match self {
-            DecoratedType::Plain(_) => Type {
-                base: base_type(self).0,
+            DecoratedType::Plain(base) => Type {
+                base: BaseType::Named(Name::new(base.name())),
                 nullable: false,
             },
             DecoratedType::Optional(underlying) => {
-                let (base, is_optional) = base_type(underlying);
+                let Type { base, nullable } = underlying.to_introspection_type();
 
-                if is_optional {
+                if nullable {
                     panic!("Optional type cannot be nested")
                 }
                 Type {
@@ -68,7 +65,7 @@ impl<T: Named> DecoratedType<T> {
                 }
             }
             DecoratedType::List(underlying) => Type {
-                base: base_type(underlying).0,
+                base: BaseType::List(Box::new(underlying.to_introspection_type())),
                 nullable: false,
             },
         }

@@ -9,7 +9,7 @@ use postgres_model::{
     operation::CreateDataParameter,
     relation::PostgresRelation,
     subsystem::PostgresSubsystem,
-    types::{EntityType, MutationType, PostgresField, PostgresType},
+    types::{base_type, EntityType, MutationType, PostgresField, PostgresType},
 };
 
 use crate::sql_mapper::SQLMapper;
@@ -147,9 +147,11 @@ fn map_foreign<'a>(
         &system.entity_types[data_type.entity_type]
     }
 
-    let field_type = field
-        .typ
-        .base_type(&subsystem.primitive_types, &subsystem.mutation_types);
+    let field_type = base_type(
+        &field.typ,
+        &subsystem.primitive_types,
+        &subsystem.mutation_types,
+    );
 
     let field_type = match field_type {
         PostgresType::Composite(field_type) => field_type,

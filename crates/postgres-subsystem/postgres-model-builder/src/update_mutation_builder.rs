@@ -2,7 +2,7 @@
 
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, OperationReturnType},
+    types::{BaseOperationReturnType, DecoratedType, Named, OperationReturnType},
 };
 use postgres_model::{
     operation::{PostgresMutationKind, UpdateDataParameter},
@@ -177,33 +177,33 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                 (
                     "create",
                     create_data_type_name(
-                        field.typ.type_name(),
+                        field.typ.name(),
                         container_type.map(|t| t.name.as_str()),
                     ),
                 ),
                 (
                     "update",
                     update_data_type_name(
-                        field.typ.type_name(),
+                        field.typ.name(),
                         container_type.map(|t| t.name.as_str()),
                     ) + "Nested",
                 ),
-                ("delete", field.typ.type_name().reference_type()),
+                ("delete", field.typ.name().reference_type()),
             ];
 
             let fields = fields_info
                 .into_iter()
                 .map(|(name, field_type_name)| {
-                    let plain_field_type = FieldType::Reference {
+                    let plain_field_type = DecoratedType::Plain(FieldType {
                         type_id: TypeIndex::Composite(
                             building.mutation_types.get_id(&field_type_name).unwrap(),
                         ),
                         type_name: field_type_name,
-                    };
+                    });
                     PostgresField {
                         name: name.to_string(),
                         // The nested "create", "update", and "delete" fields are all optional that take a list.
-                        typ: FieldType::Optional(Box::new(FieldType::List(Box::new(
+                        typ: DecoratedType::Optional(Box::new(DecoratedType::List(Box::new(
                             plain_field_type,
                         )))),
                         relation: field.relation.clone(),

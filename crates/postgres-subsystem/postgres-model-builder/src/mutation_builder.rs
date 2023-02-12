@@ -9,7 +9,9 @@ use core_plugin_interface::core_model::{
 use postgres_model::{
     operation::{PostgresMutation, PostgresMutationKind},
     relation::PostgresRelation,
-    types::{EntityType, FieldType, MutationType, PostgresField, PostgresType, TypeIndex},
+    types::{
+        base_type, EntityType, FieldType, MutationType, PostgresField, PostgresType, TypeIndex,
+    },
 };
 
 use crate::{
@@ -248,26 +250,28 @@ pub trait DataParamBuilder<D> {
                 self.compute_one_to_many_data_field(field, container_type, building)
             }
             PostgresRelation::ManyToOne { .. } => {
-                let field_type_name = field.typ.type_name().reference_type();
+                let field_type_name = field.typ.name().reference_type();
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-                let field_plain_type = FieldType::Reference {
+                let field_plain_type = DecoratedType::Plain(FieldType {
                     type_name: field_type_name,
                     type_id: TypeIndex::Composite(field_type_id),
-                };
+                });
                 let field_type = match field.typ {
-                    FieldType::Reference { .. } => {
+                    DecoratedType::Plain(_) => {
                         if optional {
                             field_plain_type.optional()
                         } else {
                             field_plain_type
                         }
                     }
-                    FieldType::Optional(_) => FieldType::Optional(Box::new(field_plain_type)),
-                    FieldType::List(_) => FieldType::List(Box::new(field_plain_type)),
+                    DecoratedType::Optional(_) => {
+                        DecoratedType::Optional(Box::new(field_plain_type))
+                    }
+                    DecoratedType::List(_) => DecoratedType::List(Box::new(field_plain_type)),
                 };
 
                 match &top_level_type {
-                    Some(value) if value.name == field.typ.type_name() => None,
+                    Some(value) if value.name == field.typ.name() => None,
                     _ => Some(PostgresField {
                         name: field.name.clone(),
                         typ: field_type,
@@ -285,22 +289,23 @@ pub trait DataParamBuilder<D> {
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<PostgresField<MutationType>> {
-        let optional = matches!(field.typ, FieldType::Optional(_)) || Self::mark_fields_optional();
+        let optional =
+            matches!(field.typ, DecoratedType::Optional(_)) || Self::mark_fields_optional();
 
-        let field_type_name = Self::data_type_name(field.typ.type_name(), container_type);
+        let field_type_name = Self::data_type_name(field.typ.name(), container_type);
 
         building
             .mutation_types
             .get_id(&field_type_name)
             .and_then(|field_type_id| {
-                let field_plain_type = FieldType::Reference {
+                let field_plain_type = DecoratedType::Plain(FieldType {
                     type_name: field_type_name,
                     type_id: TypeIndex::Composite(field_type_id),
-                };
-                let field_type = FieldType::List(Box::new(field_plain_type));
+                });
+                let field_type = DecoratedType::List(Box::new(field_plain_type));
 
                 match &container_type {
-                    Some(value) if value == &field.typ.type_name() => None,
+                    Some(value) if value == &field.typ.name() => None,
                     _ => Some(PostgresField {
                         name: field.name.clone(),
                         typ: if optional {
@@ -327,7 +332,8 @@ pub trait DataParamBuilder<D> {
             .fields
             .iter()
             .flat_map(|field| {
-                let field_type = field.typ.base_type(
+                let field_type = base_type(
+                    &field.typ,
                     &building.primitive_types.values,
                     &building.entity_types.values,
                 );

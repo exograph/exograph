@@ -1,6 +1,6 @@
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, OperationReturnType},
+    types::{BaseOperationReturnType, Named, OperationReturnType},
 };
 
 use postgres_model::{
@@ -111,11 +111,11 @@ pub fn pk_predicate_param(
 
     PredicateParameter {
         name: pk_field.name.to_string(),
-        type_name: pk_field.typ.type_name().to_string(),
+        type_name: pk_field.typ.name().to_string(),
         typ: PredicateParameterTypeWithModifier {
             type_id: building
                 .predicate_types
-                .get_id(pk_field.typ.type_name())
+                .get_id(pk_field.typ.name())
                 .unwrap(),
             type_modifier: PostgresTypeModifier::NonNull,
         },

@@ -10,7 +10,7 @@ use postgres_model::{
     operation::UpdateDataParameter,
     relation::PostgresRelation,
     subsystem::PostgresSubsystem,
-    types::{EntityType, MutationType, PostgresType, TypeIndex},
+    types::{base_type, EntityType, MutationType, PostgresType, TypeIndex},
 };
 
 use crate::{
@@ -117,11 +117,11 @@ fn compute_nested_ops<'a>(
 
     arg_type.fields.iter().for_each(|field| {
         if let PostgresRelation::OneToMany { .. } = &field.relation {
-            let arg_type = match field.typ.type_id() {
+            let arg_type = match field.typ.inner_most().type_id {
                 TypeIndex::Primitive(_) => {
                     panic!("One to many relation should target a composite type")
                 }
-                TypeIndex::Composite(type_id) => &subsystem.mutation_types[*type_id],
+                TypeIndex::Composite(type_id) => &subsystem.mutation_types[type_id],
             };
 
             if let Some(argument) = get_argument_field(arg, &field.name) {
@@ -457,14 +457,16 @@ fn extract_argument<'a>(
 ) -> (Option<&'a ConstValue>, &'a MutationType) {
     let arg = get_argument_field(argument, arg_name);
 
-    let arg_type = match arg_type
-        .fields
-        .iter()
-        .find(|f| f.name == arg_name)
-        .unwrap()
-        .typ
-        .base_type(&subsystem.primitive_types, &subsystem.mutation_types)
-    {
+    let arg_type = match base_type(
+        &arg_type
+            .fields
+            .iter()
+            .find(|f| f.name == arg_name)
+            .unwrap()
+            .typ,
+        &subsystem.primitive_types,
+        &subsystem.mutation_types,
+    ) {
         PostgresType::Primitive(_) => panic!("{arg_name} argument type must be a composite type"),
         PostgresType::Composite(typ) => typ,
     };
