@@ -22,7 +22,6 @@ impl Shallow for PredicateParameter {
     fn shallow() -> Self {
         Self {
             name: String::new(),
-            type_name: String::new(),
             type_id: SerializableSlabIndex::shallow(),
             typ: FieldType::Plain(PredicateParameterType::shallow()),
             column_path_link: None,
@@ -194,7 +193,6 @@ fn create_operator_filter_type_kind(
 
         PredicateParameter {
             name: operator.to_string(),
-            type_name: scalar_model_type.name.to_string(),
             type_id: predicate_param_type_id,
             typ: FieldType::Optional(Box::new(FieldType::Plain(predicate_param_type))),
             column_path_link: None,
@@ -241,7 +239,6 @@ fn create_composite_filter_type_kind(
 
             PredicateParameter {
                 name: field.name.to_string(),
-                type_name: param_type_name.clone(),
                 type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
                 typ: FieldType::Optional(Box::new(FieldType::Plain(PredicateParameterType {
                     name: param_type_name,
@@ -282,7 +279,6 @@ fn create_composite_filter_type_kind(
             };
             PredicateParameter {
                 name: name.to_string(),
-                type_name: get_parameter_type_name(composite_type_name),
                 type_id: param_type_id,
                 typ: param_field_type,
                 column_path_link: None,

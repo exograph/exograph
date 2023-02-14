@@ -18,10 +18,9 @@ use core_plugin_interface::core_model::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OrderByParameter {
     pub name: String,
-    pub type_name: String,
     pub typ: FieldType<OrderByParameterType>,
     pub type_id: SerializableSlabIndex<OrderByParameterType>,
 
@@ -33,13 +32,13 @@ pub struct OrderByParameter {
     pub column_path_link: Option<ColumnIdPathLink>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OrderByParameterType {
     pub name: String,
     pub kind: OrderByParameterTypeKind,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum OrderByParameterTypeKind {
     Primitive,
     Composite { parameters: Vec<OrderByParameter> },

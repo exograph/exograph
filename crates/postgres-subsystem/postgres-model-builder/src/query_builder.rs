@@ -116,7 +116,6 @@ pub fn pk_predicate_param(
 
     PredicateParameter {
         name: pk_field.name.to_string(),
-        type_name: pk_field.typ.name().to_string(),
         type_id: param_type_id,
         typ: FieldType::Plain(param_type),
         column_path_link: pk_field
@@ -251,7 +250,6 @@ pub fn collection_predicate_param(
 
     PredicateParameter {
         name: "where".to_string(),
-        type_name: param_type_name,
         type_id: param_type_id,
         typ: FieldType::Optional(Box::new(FieldType::Plain(param_type))),
         column_path_link: None,

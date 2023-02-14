@@ -20,10 +20,6 @@ use core_plugin_interface::core_model::{
 pub struct PredicateParameter {
     /// The name of the parameter. For example, "where", "and", "id", "venue", etc.
     pub name: String,
-    /// The type name of the parameter.
-    /// For example, "ConcertFilter", "IntFilter". We need to keep this only for introspection, which doesn't have access to the ModelSystem.
-    /// We might find a way to avoid this, since given the model system and type_id of the parameter, we can get the type name.
-    pub type_name: String,
 
     /// For parameters such as "and", FieldType will be a list.
     pub typ: FieldType<PredicateParameterType>,
@@ -43,6 +39,7 @@ pub struct PredicateParameter {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PredicateParameterType {
+    /// The name of the type. For example, "ConcertFilter", "IntFilter".
     pub name: String,
     pub kind: PredicateParameterTypeKind,
 }

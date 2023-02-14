@@ -25,35 +25,7 @@ impl Named for LimitParameterType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OffsetParameter {
-    pub name: String,
-    pub typ: FieldType<OffsetParameterType>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OffsetParameterType {
-    pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresPrimitiveType>,
-}
-
-impl Named for OffsetParameterType {
-    fn name(&self) -> &str {
-        &self.type_name
-    }
-}
-
 impl Parameter for LimitParameter {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn typ(&self) -> Type {
-        (&self.typ).into()
-    }
-}
-
-impl Parameter for OffsetParameter {
     fn name(&self) -> &str {
         &self.name
     }
@@ -72,6 +44,34 @@ impl TypeDefinitionProvider<PostgresSubsystem> for LimitParameter {
             directives: vec![],
             kind: TypeKind::Scalar,
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OffsetParameter {
+    pub name: String,
+    pub typ: FieldType<OffsetParameterType>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OffsetParameterType {
+    pub type_name: String,
+    pub type_id: SerializableSlabIndex<PostgresPrimitiveType>,
+}
+
+impl Named for OffsetParameterType {
+    fn name(&self) -> &str {
+        &self.type_name
+    }
+}
+
+impl Parameter for OffsetParameter {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }
 

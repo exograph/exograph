@@ -95,8 +95,10 @@ fn order_by_pair<'a>(
     }?;
 
     // If this is a leaf node ({something: ASC} kind), then resolve the ordering. If not, then recurse with a new parent column path.
-    // TODO: This feels a bit of a hack (we need a better way to find if this is a leaf parameter). Revisit this after we have a improved validation (#483)
-    if &parameter.type_name == "Ordering" {
+    if matches!(
+        parameter.typ.inner_most().kind,
+        OrderByParameterTypeKind::Primitive
+    ) {
         let new_column_path =
             to_column_path(&parent_column_path, &parameter.column_path_link, subsystem);
         ordering(parameter_value).map(|ordering| AbstractOrderBy(vec![(new_column_path, ordering)]))
