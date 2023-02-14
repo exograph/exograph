@@ -7,13 +7,13 @@ use core_model::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LimitParameter {
     pub name: String,
     pub typ: FieldType<LimitParameterType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LimitParameterType {
     pub type_name: String,
     pub type_id: SerializableSlabIndex<PostgresPrimitiveType>,
@@ -25,13 +25,13 @@ impl Named for LimitParameterType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct OffsetParameter {
     pub name: String,
     pub typ: FieldType<OffsetParameterType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct OffsetParameterType {
     pub type_name: String,
     pub type_id: SerializableSlabIndex<PostgresPrimitiveType>,

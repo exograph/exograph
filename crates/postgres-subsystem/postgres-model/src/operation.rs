@@ -33,7 +33,7 @@ pub trait OperationParameter {
 
 pub type PkQuery = Query<PkQueryParameter>;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PkQueryParameter {
     pub predicate_param: PredicateParameter,
 }
@@ -46,7 +46,7 @@ impl OperationParameter for PkQueryParameter {
 
 pub type CollectionQuery = Query<CollectionQueryParameter>;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CollectionQueryParameter {
     pub predicate_param: PredicateParameter,
     pub order_by_param: OrderByParameter,
@@ -67,7 +67,7 @@ impl OperationParameter for CollectionQueryParameter {
 
 pub type AggregateQuery = Query<AggregateQueryParameter>;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AggregateQueryParameter {
     pub predicate_param: PredicateParameter,
 }
@@ -78,14 +78,14 @@ impl OperationParameter for AggregateQueryParameter {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresMutation {
     pub name: String,
     pub kind: PostgresMutationKind,
     pub return_type: OperationReturnType<EntityType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum PostgresMutationKind {
     Create(CreateDataParameter),
     Delete(PredicateParameter),

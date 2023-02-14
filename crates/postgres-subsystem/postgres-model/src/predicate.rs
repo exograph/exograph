@@ -94,10 +94,9 @@ impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
                 field_params,
                 logical_op_params,
             } => {
-                let parameters = [field_params, &logical_op_params[..]].concat();
+                let parameters = field_params.iter().chain(logical_op_params.iter());
 
                 let fields = parameters
-                    .iter()
                     .map(|parameter| default_positioned(parameter.input_value()))
                     .collect();
 
