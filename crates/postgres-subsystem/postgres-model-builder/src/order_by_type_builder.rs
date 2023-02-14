@@ -3,7 +3,7 @@ use core_plugin_interface::core_model::{mapped_arena::SerializableSlabIndex, typ
 use postgres_model::{
     column_path::ColumnIdPathLink,
     order::OrderByParameter,
-    order::{OrderByParameterType, OrderByParameterTypeKind},
+    order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},
     types::{EntityType, PostgresField, PostgresType},
 };
 
@@ -20,18 +20,17 @@ impl Shallow for OrderByParameter {
     fn shallow() -> Self {
         Self {
             name: String::default(),
-            typ: FieldType::Plain(OrderByParameterType::shallow()),
-            type_id: SerializableSlabIndex::shallow(),
+            typ: FieldType::Plain(OrderByParameterTypeWrapper::shallow()),
             column_path_link: None,
         }
     }
 }
 
-impl Shallow for OrderByParameterType {
+impl Shallow for OrderByParameterTypeWrapper {
     fn shallow() -> Self {
         Self {
             name: String::default(),
-            kind: OrderByParameterTypeKind::Primitive,
+            type_id: SerializableSlabIndex::shallow(),
         }
     }
 }
@@ -104,11 +103,11 @@ fn new_param(
     column_path_link: Option<ColumnIdPathLink>,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    let (_, param_type_id) = order_by_param_type(entity_type_name, is_primitive, building);
+    let (param_type_name, param_type_id) =
+        order_by_param_type(entity_type_name, is_primitive, building);
 
     OrderByParameter {
         name: name.to_string(),
-        type_id: param_type_id,
 
         // Specifying ModelTypeModifier::List allows queries such as:
         // order_by: [{name: ASC}, {id: DESC}]
@@ -121,7 +120,10 @@ fn new_param(
         // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
         // TODO: When executing, check for the unsupported version (more than one attributes in an array element) and return an error
         typ: FieldType::Optional(Box::new(FieldType::List(Box::new(FieldType::Plain(
-            building.order_by_types[param_type_id].clone(),
+            OrderByParameterTypeWrapper {
+                name: param_type_name,
+                type_id: param_type_id,
+            },
         ))))),
         column_path_link,
     }

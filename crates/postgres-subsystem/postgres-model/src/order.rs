@@ -18,11 +18,10 @@ use core_plugin_interface::core_model::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct OrderByParameter {
     pub name: String,
-    pub typ: FieldType<OrderByParameterType>,
-    pub type_id: SerializableSlabIndex<OrderByParameterType>,
+    pub typ: FieldType<OrderByParameterTypeWrapper>,
 
     /// How does this parameter relates with the parent parameter?
     /// For example for parameter used as {order_by: {venue1: {id: Desc}}}, we will have following column links:
@@ -32,13 +31,19 @@ pub struct OrderByParameter {
     pub column_path_link: Option<ColumnIdPathLink>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OrderByParameterTypeWrapper {
+    pub name: String,
+    pub type_id: SerializableSlabIndex<OrderByParameterType>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct OrderByParameterType {
     pub name: String,
     pub kind: OrderByParameterTypeKind,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum OrderByParameterTypeKind {
     Primitive,
     Composite { parameters: Vec<OrderByParameter> },
@@ -46,7 +51,7 @@ pub enum OrderByParameterTypeKind {
 
 pub const PRIMITIVE_ORDERING_OPTIONS: [&str; 2] = ["ASC", "DESC"];
 
-impl Named for OrderByParameterType {
+impl Named for OrderByParameterTypeWrapper {
     fn name(&self) -> &str {
         &self.name
     }
@@ -74,7 +79,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
                 TypeDefinition {
                     extend: false,
                     description: None,
-                    name: default_positioned_name(self.name()),
+                    name: default_positioned_name(&self.name),
                     directives: vec![],
                     kind: TypeKind::InputObject(InputObjectType { fields }),
                 }
@@ -82,7 +87,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
             OrderByParameterTypeKind::Primitive => TypeDefinition {
                 extend: false,
                 description: None,
-                name: default_positioned_name(self.name()),
+                name: default_positioned_name(&self.name),
                 directives: vec![],
                 kind: TypeKind::Enum(EnumType {
                     values: PRIMITIVE_ORDERING_OPTIONS
@@ -101,5 +106,12 @@ impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
                 }),
             },
         }
+    }
+}
+
+impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterTypeWrapper {
+    fn type_definition(&self, system: &PostgresSubsystem) -> TypeDefinition {
+        let typ = &system.order_by_types[self.type_id];
+        typ.type_definition(system)
     }
 }

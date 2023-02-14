@@ -11,8 +11,8 @@ use postgres_model::{
         PkQuery, PkQueryParameter,
     },
     order::OrderByParameter,
-    predicate::PredicateParameter,
-    types::{EntityType, TypeIndex},
+    predicate::{PredicateParameter, PredicateParameterTypeWrapper},
+    types::EntityType,
 };
 
 use crate::{
@@ -47,19 +47,19 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (entity_type_id, entity_type) in building.entity_types.iter() {
+    for (_, entity_type) in building.entity_types.iter() {
         {
-            let query = expanded_pk_query(entity_type_id, entity_type, building);
+            let query = expanded_pk_query(entity_type, building);
             let existing_id = building.pk_queries.get_id(&query.name).unwrap();
             building.pk_queries[existing_id] = query;
         }
         {
-            let query = expanded_collection_query(entity_type_id, entity_type, building);
+            let query = expanded_collection_query(entity_type, building);
             let existing_id = building.collection_queries.get_id(&query.name).unwrap();
             building.collection_queries[existing_id] = query;
         }
         {
-            let query = expanded_aggregate_query(entity_type_id, entity_type, building);
+            let query = expanded_aggregate_query(entity_type, building);
             let existing_id = building.aggregate_queries.get_id(&query.name).unwrap();
             building.aggregate_queries[existing_id] = query;
         }
@@ -83,15 +83,11 @@ fn shallow_pk_query(
     }
 }
 
-fn expanded_pk_query(
-    entity_type_id: SerializableSlabIndex<EntityType>,
-    entity_type: &EntityType,
-    building: &SystemContextBuilding,
-) -> PkQuery {
+fn expanded_pk_query(entity_type: &EntityType, building: &SystemContextBuilding) -> PkQuery {
     let operation_name = entity_type.pk_query();
     let existing_query = building.pk_queries.get_by_key(&operation_name).unwrap();
 
-    let pk_param = pk_predicate_param(entity_type_id, entity_type, building);
+    let pk_param = pk_predicate_param(entity_type, building);
 
     PkQuery {
         name: operation_name,
@@ -103,7 +99,6 @@ fn expanded_pk_query(
 }
 
 pub fn pk_predicate_param(
-    entity_type_id: SerializableSlabIndex<EntityType>,
     entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
@@ -112,11 +107,13 @@ pub fn pk_predicate_param(
         .predicate_types
         .get_id(pk_field.typ.name())
         .unwrap();
-    let param_type = building.predicate_types[param_type_id].clone();
+    let param_type = PredicateParameterTypeWrapper {
+        name: pk_field.typ.name().to_owned(),
+        type_id: param_type_id,
+    };
 
     PredicateParameter {
         name: pk_field.name.to_string(),
-        type_id: param_type_id,
         typ: FieldType::Plain(param_type),
         column_path_link: pk_field
             .relation
@@ -125,7 +122,6 @@ pub fn pk_predicate_param(
                 self_column_id: column_id,
                 linked_column_id: None,
             }),
-        underlying_type_id: TypeIndex::Composite(entity_type_id),
     }
 }
 
@@ -152,7 +148,6 @@ fn shallow_collection_query(
 }
 
 fn expanded_collection_query(
-    entity_type_id: SerializableSlabIndex<EntityType>,
     entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> CollectionQuery {
@@ -162,7 +157,7 @@ fn expanded_collection_query(
         .get_by_key(&operation_name)
         .unwrap();
 
-    let predicate_param = collection_predicate_param(entity_type_id, entity_type, building);
+    let predicate_param = collection_predicate_param(entity_type, building);
     let order_by_param = order_by_type_builder::new_root_param(&entity_type.name, false, building);
     let limit_param = limit_param(building);
     let offset_param = offset_param(building);
@@ -196,7 +191,6 @@ fn shallow_aggregate_query(
 }
 
 fn expanded_aggregate_query(
-    entity_type_id: SerializableSlabIndex<EntityType>,
     entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> AggregateQuery {
@@ -206,7 +200,7 @@ fn expanded_aggregate_query(
         .get_by_key(&operation_name)
         .unwrap();
 
-    let predicate_param = collection_predicate_param(entity_type_id, entity_type, building);
+    let predicate_param = collection_predicate_param(entity_type, building);
 
     AggregateQuery {
         name: operation_name.clone(),
@@ -240,20 +234,21 @@ pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
 }
 
 pub fn collection_predicate_param(
-    entity_type_id: SerializableSlabIndex<EntityType>,
     entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
     let param_type_name = predicate_builder::get_parameter_type_name(&entity_type.name);
     let param_type_id = building.predicate_types.get_id(&param_type_name).unwrap();
-    let param_type = building.predicate_types[param_type_id].clone();
+
+    let param_type = PredicateParameterTypeWrapper {
+        name: param_type_name,
+        type_id: param_type_id,
+    };
 
     PredicateParameter {
         name: "where".to_string(),
-        type_id: param_type_id,
         typ: FieldType::Optional(Box::new(FieldType::Plain(param_type))),
         column_path_link: None,
-        underlying_type_id: TypeIndex::Composite(entity_type_id),
     }
 }
 

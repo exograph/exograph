@@ -65,17 +65,12 @@ impl MutationBuilder for UpdateMutationBuilder {
     }
 
     fn single_mutation_kind(
-        entity_type_id: SerializableSlabIndex<EntityType>,
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
             data_param: Self::data_param(entity_type, building, false),
-            predicate_param: query_builder::pk_predicate_param(
-                entity_type_id,
-                entity_type,
-                building,
-            ),
+            predicate_param: query_builder::pk_predicate_param(entity_type, building),
         }
     }
 
@@ -91,17 +86,12 @@ impl MutationBuilder for UpdateMutationBuilder {
     }
 
     fn multi_mutation_kind(
-        entity_type_id: SerializableSlabIndex<EntityType>,
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
             data_param: Self::data_param(entity_type, building, true),
-            predicate_param: query_builder::collection_predicate_param(
-                entity_type_id,
-                entity_type,
-                building,
-            ),
+            predicate_param: query_builder::collection_predicate_param(entity_type, building),
         }
     }
 }

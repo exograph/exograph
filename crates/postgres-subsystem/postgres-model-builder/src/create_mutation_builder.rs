@@ -2,7 +2,7 @@
 //! the create mutations (create<Type>, and create<Type>s)
 
 use core_plugin_interface::core_model::{
-    mapped_arena::{MappedArena, SerializableSlabIndex},
+    mapped_arena::MappedArena,
     types::{BaseOperationReturnType, FieldType, OperationReturnType},
 };
 
@@ -67,7 +67,6 @@ impl MutationBuilder for CreateMutationBuilder {
     }
 
     fn single_mutation_kind(
-        _entity_type_id: SerializableSlabIndex<EntityType>,
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
@@ -85,7 +84,6 @@ impl MutationBuilder for CreateMutationBuilder {
     }
 
     fn multi_mutation_kind(
-        _entity_type_id: SerializableSlabIndex<EntityType>,
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
