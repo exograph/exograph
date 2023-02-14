@@ -1,10 +1,10 @@
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
+use core_plugin_interface::core_model::{mapped_arena::SerializableSlabIndex, types::FieldType};
 
 use postgres_model::{
     column_path::ColumnIdPathLink,
     order::OrderByParameter,
-    order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWithModifier},
-    types::{EntityType, PostgresField, PostgresType, PostgresTypeModifier},
+    order::{OrderByParameterType, OrderByParameterTypeKind},
+    types::{EntityType, PostgresField, PostgresType},
 };
 
 use crate::shallow::Shallow;
@@ -21,17 +21,18 @@ impl Shallow for OrderByParameter {
         Self {
             name: String::default(),
             type_name: String::default(),
-            typ: OrderByParameterTypeWithModifier::shallow(),
+            typ: FieldType::Plain(OrderByParameterType::shallow()),
+            type_id: SerializableSlabIndex::shallow(),
             column_path_link: None,
         }
     }
 }
 
-impl Shallow for OrderByParameterTypeWithModifier {
+impl Shallow for OrderByParameterType {
     fn shallow() -> Self {
         Self {
-            type_modifier: PostgresTypeModifier::Optional,
-            type_id: SerializableSlabIndex::shallow(),
+            name: String::default(),
+            kind: OrderByParameterTypeKind::Primitive,
         }
     }
 }
@@ -109,21 +110,25 @@ fn new_param(
 
     OrderByParameter {
         name: name.to_string(),
-        type_name: param_type_name,
-        typ: OrderByParameterTypeWithModifier {
-            type_id: param_type_id,
-            // Specifying ModelTypeModifier::List allows queries such as:
-            // order_by: [{name: ASC}, {id: DESC}]
-            // Using a List is the only way to maintain ordering within a parameter value
-            // (the order within an object is not guaranteed to be maintained (and the graphql-parser uses BTreeMap that doesn't maintain so))
-            //
-            // But this also allows nonsensical queries such as
-            // order_by: [{name: ASC, id: DESC}].
-            // Here the user intention is the same as the query above, but we cannot honor that intention
-            // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
-            // TODO: When executing, check for the unsupported version (more than one attributes in an array element) and return an error
-            type_modifier: PostgresTypeModifier::List,
-        },
+        type_name: param_type_name.clone(),
+        type_id: param_type_id,
+
+        // Specifying ModelTypeModifier::List allows queries such as:
+        // order_by: [{name: ASC}, {id: DESC}]
+        // Using a List is the only way to maintain ordering within a parameter value
+        // (the order within an object is not guaranteed to be maintained (and the graphql-parser uses BTreeMap that doesn't maintain so))
+        //
+        // But this also allows nonsensical queries such as
+        // order_by: [{name: ASC, id: DESC}].
+        // Here the user intention is the same as the query above, but we cannot honor that intention
+        // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
+        // TODO: When executing, check for the unsupported version (more than one attributes in an array element) and return an error
+        typ: FieldType::Optional(Box::new(FieldType::List(Box::new(FieldType::Plain(
+            OrderByParameterType {
+                name: param_type_name,
+                kind: OrderByParameterTypeKind::Primitive,
+            },
+        ))))),
         column_path_link,
     }
 }

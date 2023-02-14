@@ -31,7 +31,7 @@ impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
         argument: &'a ConstValue,
         subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractInsert<'a>, PostgresExecutionError> {
-        let data_type = &subsystem.mutation_types[self.data_param.typ.type_id];
+        let data_type = &subsystem.mutation_types[self.data_param.typ.inner_most().type_id];
         let table = data_type.table(subsystem);
 
         let rows = map_argument(data_type, argument, subsystem)?;

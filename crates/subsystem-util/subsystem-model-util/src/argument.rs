@@ -1,30 +1,35 @@
 use async_graphql_parser::{
-    types::{InputObjectType, InputValueDefinition, TypeDefinition, TypeKind},
+    types::{InputObjectType, InputValueDefinition, Type, TypeDefinition, TypeKind},
     Positioned,
 };
 use core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
         default_positioned_name, Parameter, TypeDefinitionIntrospection, TypeDefinitionProvider,
-        TypeModifier,
     },
+    types::{FieldType, Named},
 };
 use serde::{Deserialize, Serialize};
 
-use super::types::{ServiceType, ServiceTypeModifier};
+use super::types::ServiceType;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArgumentParameter {
     pub name: String,
-    pub typ: ArgumentParameterType,
+    pub typ: FieldType<ArgumentParameterType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArgumentParameterType {
     pub name: String,
-    pub type_modifier: ServiceTypeModifier,
     pub type_id: Option<SerializableSlabIndex<ServiceType>>,
     pub is_primitive: bool,
+}
+
+impl Named for ArgumentParameterType {
+    fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 impl Parameter for ArgumentParameter {
@@ -32,12 +37,8 @@ impl Parameter for ArgumentParameter {
         &self.name
     }
 
-    fn type_name(&self) -> &str {
-        &self.typ.name
-    }
-
-    fn type_modifier(&self) -> TypeModifier {
-        (&self.typ.type_modifier).into()
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }
 

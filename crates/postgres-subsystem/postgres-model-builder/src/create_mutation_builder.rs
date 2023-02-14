@@ -3,11 +3,11 @@
 
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, OperationReturnType},
+    types::{BaseOperationReturnType, FieldType, OperationReturnType},
 };
 
 use postgres_model::{
-    operation::{CreateDataParameter, CreateDataParameterTypeWithModifier, PostgresMutationKind},
+    operation::{CreateDataParameter, CreateDataParameterType, PostgresMutationKind},
     types::EntityType,
 };
 
@@ -117,12 +117,17 @@ impl DataParamBuilder<CreateDataParameter> for CreateMutationBuilder {
             .get_id(&data_param_type_name)
             .unwrap();
 
+        let base_type = FieldType::Plain(CreateDataParameterType {
+            type_name: data_param_type_name,
+            type_id: data_param_type_id,
+        });
+
         CreateDataParameter {
             name: "data".to_string(),
-            typ: CreateDataParameterTypeWithModifier {
-                type_name: data_param_type_name,
-                type_id: data_param_type_id,
-                array_input: array,
+            typ: if array {
+                FieldType::List(Box::new(base_type))
+            } else {
+                base_type
             },
         }
     }

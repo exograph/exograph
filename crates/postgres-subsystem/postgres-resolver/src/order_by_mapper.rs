@@ -24,7 +24,7 @@ impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
         argument: &'a ConstValue,
         subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractOrderBy<'a>, PostgresExecutionError> {
-        let parameter_type = &subsystem.order_by_types[self.param.typ.type_id];
+        let parameter_type = &subsystem.order_by_types[self.param.type_id];
         fn flatten<E>(order_bys: Result<Vec<AbstractOrderBy>, E>) -> Result<AbstractOrderBy, E> {
             let mapped = order_bys?.into_iter().flat_map(|elem| elem.0).collect();
             Ok(AbstractOrderBy(mapped))

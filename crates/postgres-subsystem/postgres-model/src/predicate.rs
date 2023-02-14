@@ -3,15 +3,15 @@ use crate::{
     subsystem::PostgresSubsystem,
     types::{EntityType, TypeIndex},
 };
-use async_graphql_parser::types::{InputObjectType, TypeDefinition, TypeKind};
+use async_graphql_parser::types::{InputObjectType, Type, TypeDefinition, TypeKind};
+use core_model::types::FieldType;
 use serde::{Deserialize, Serialize};
 
-use super::types::PostgresTypeModifier;
+use core_model::type_normalization::InputValueProvider;
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
-        default_positioned, default_positioned_name, InputValueProvider, Parameter,
-        TypeDefinitionProvider, TypeModifier,
+        default_positioned, default_positioned_name, Parameter, TypeDefinitionProvider,
     },
     types::Named,
 };
@@ -25,8 +25,10 @@ pub struct PredicateParameter {
     /// We might find a way to avoid this, since given the model system and type_id of the parameter, we can get the type name.
     pub type_name: String,
 
-    pub typ: PredicateParameterTypeWithModifier,
-
+    /// For parameters such as "and", FieldType will be a list.
+    pub typ: FieldType<PredicateParameterType>,
+    /// Type id of the parameter type. For example: IntFilter, StringFilter, etc.
+    pub type_id: SerializableSlabIndex<PredicateParameterType>,
     /// How does this parameter relates with the parent parameter?
     /// For example for parameter used as {where: {venue1: {id: {eq: 1}}}}, we will have following column links:
     /// eq: None
@@ -40,17 +42,15 @@ pub struct PredicateParameter {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PredicateParameterTypeWithModifier {
-    /// The type modifier of the parameter. For parameters such as "and", this will be a list.
-    pub type_modifier: PostgresTypeModifier,
-    /// Type id of the parameter type. For example: IntFilter, StringFilter, etc.
-    pub type_id: SerializableSlabIndex<PredicateParameterType>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PredicateParameterType {
     pub name: String,
     pub kind: PredicateParameterTypeKind,
+}
+
+impl Named for PredicateParameterType {
+    fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -63,23 +63,13 @@ pub enum PredicateParameterTypeKind {
     },
 }
 
-impl Named for PredicateParameterType {
-    fn name(&self) -> &str {
-        &self.name
-    }
-}
-
 impl Parameter for PredicateParameter {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn type_name(&self) -> &str {
-        &self.type_name
-    }
-
-    fn type_modifier(&self) -> TypeModifier {
-        (&self.typ.type_modifier).into()
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }
 

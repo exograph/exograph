@@ -1,6 +1,6 @@
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, Named, OperationReturnType},
+    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 
 use postgres_model::{
@@ -11,8 +11,8 @@ use postgres_model::{
         PkQuery, PkQueryParameter,
     },
     order::OrderByParameter,
-    predicate::{PredicateParameter, PredicateParameterTypeWithModifier},
-    types::{EntityType, PostgresTypeModifier, TypeIndex},
+    predicate::PredicateParameter,
+    types::{EntityType, TypeIndex},
 };
 
 use crate::{
@@ -108,17 +108,17 @@ pub fn pk_predicate_param(
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
     let pk_field = entity_type.pk_field().unwrap();
+    let param_type_id = building
+        .predicate_types
+        .get_id(pk_field.typ.name())
+        .unwrap();
+    let param_type = building.predicate_types[param_type_id].clone();
 
     PredicateParameter {
         name: pk_field.name.to_string(),
         type_name: pk_field.typ.name().to_string(),
-        typ: PredicateParameterTypeWithModifier {
-            type_id: building
-                .predicate_types
-                .get_id(pk_field.typ.name())
-                .unwrap(),
-            type_modifier: PostgresTypeModifier::NonNull,
-        },
+        type_id: param_type_id,
+        typ: FieldType::Plain(param_type),
         column_path_link: pk_field
             .relation
             .self_column()
@@ -221,11 +221,10 @@ pub fn limit_param(building: &SystemContextBuilding) -> LimitParameter {
 
     LimitParameter {
         name: "limit".to_string(),
-        typ: LimitParameterType {
+        typ: FieldType::Optional(Box::new(FieldType::Plain(LimitParameterType {
             type_name: param_type_name.clone(),
             type_id: building.get_primitive_type_id(&param_type_name).unwrap(),
-            type_modifier: PostgresTypeModifier::Optional,
-        },
+        }))),
     }
 }
 
@@ -234,11 +233,10 @@ pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
 
     OffsetParameter {
         name: "offset".to_string(),
-        typ: OffsetParameterType {
+        typ: FieldType::Optional(Box::new(FieldType::Plain(OffsetParameterType {
             type_name: param_type_name.clone(),
             type_id: building.get_primitive_type_id(&param_type_name).unwrap(),
-            type_modifier: PostgresTypeModifier::Optional,
-        },
+        }))),
     }
 }
 
@@ -248,13 +246,14 @@ pub fn collection_predicate_param(
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
     let param_type_name = predicate_builder::get_parameter_type_name(&entity_type.name);
+    let param_type_id = building.predicate_types.get_id(&param_type_name).unwrap();
+    let param_type = building.predicate_types[param_type_id].clone();
+
     PredicateParameter {
         name: "where".to_string(),
-        type_name: param_type_name.clone(),
-        typ: PredicateParameterTypeWithModifier {
-            type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-            type_modifier: PostgresTypeModifier::Optional,
-        },
+        type_name: param_type_name,
+        type_id: param_type_id,
+        typ: FieldType::Optional(Box::new(FieldType::Plain(param_type))),
         column_path_link: None,
         underlying_type_id: TypeIndex::Composite(entity_type_id),
     }
@@ -264,7 +263,7 @@ impl Shallow for LimitParameter {
     fn shallow() -> Self {
         LimitParameter {
             name: String::default(),
-            typ: LimitParameterType::shallow(),
+            typ: FieldType::Plain(LimitParameterType::shallow()),
         }
     }
 }
@@ -274,7 +273,6 @@ impl Shallow for LimitParameterType {
         LimitParameterType {
             type_name: String::default(),
             type_id: SerializableSlabIndex::shallow(),
-            type_modifier: PostgresTypeModifier::Optional,
         }
     }
 }
@@ -283,7 +281,7 @@ impl Shallow for OffsetParameter {
     fn shallow() -> Self {
         OffsetParameter {
             name: String::default(),
-            typ: OffsetParameterType::shallow(),
+            typ: FieldType::Plain(OffsetParameterType::shallow()),
         }
     }
 }
@@ -293,7 +291,6 @@ impl Shallow for OffsetParameterType {
         OffsetParameterType {
             type_name: String::default(),
             type_id: SerializableSlabIndex::shallow(),
-            type_modifier: PostgresTypeModifier::Optional,
         }
     }
 }

@@ -1,8 +1,8 @@
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::Named,
+    types::{FieldType, Named},
 };
-use postgres_model::types::{EntityType, PostgresPrimitiveType, PostgresTypeModifier, TypeIndex};
+use postgres_model::types::{EntityType, PostgresPrimitiveType, TypeIndex};
 use std::collections::HashMap;
 
 use crate::shallow::Shallow;
@@ -14,7 +14,6 @@ use super::{
 };
 use postgres_model::predicate::{
     PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
-    PredicateParameterTypeWithModifier,
 };
 
 use lazy_static::lazy_static;
@@ -24,18 +23,19 @@ impl Shallow for PredicateParameter {
         Self {
             name: String::new(),
             type_name: String::new(),
-            typ: PredicateParameterTypeWithModifier::shallow(),
+            type_id: SerializableSlabIndex::shallow(),
+            typ: FieldType::Plain(PredicateParameterType::shallow()),
             column_path_link: None,
             underlying_type_id: TypeIndex::shallow(),
         }
     }
 }
 
-impl Shallow for PredicateParameterTypeWithModifier {
+impl Shallow for PredicateParameterType {
     fn shallow() -> Self {
         Self {
-            type_modifier: PostgresTypeModifier::Optional,
-            type_id: SerializableSlabIndex::shallow(),
+            name: String::new(),
+            kind: PredicateParameterTypeKind::ImplicitEqual,
         }
     }
 }
@@ -185,18 +185,21 @@ fn create_operator_filter_type_kind(
     scalar_model_type: &PostgresPrimitiveType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
-    let parameter_constructor = |operator: &&str| PredicateParameter {
-        name: operator.to_string(),
-        type_name: scalar_model_type.name.to_string(),
-        typ: PredicateParameterTypeWithModifier {
-            type_id: building
-                .predicate_types
-                .get_id(&scalar_model_type.name)
-                .unwrap(),
-            type_modifier: PostgresTypeModifier::Optional,
-        },
-        column_path_link: None,
-        underlying_type_id: TypeIndex::Primitive(postgres_type_id),
+    let parameter_constructor = |operator: &&str| {
+        let predicate_param_type_id = building
+            .predicate_types
+            .get_id(&scalar_model_type.name)
+            .unwrap();
+        let predicate_param_type = building.predicate_types[predicate_param_type_id].clone();
+
+        PredicateParameter {
+            name: operator.to_string(),
+            type_name: scalar_model_type.name.to_string(),
+            type_id: predicate_param_type_id,
+            typ: FieldType::Optional(Box::new(FieldType::Plain(predicate_param_type))),
+            column_path_link: None,
+            underlying_type_id: TypeIndex::Primitive(postgres_type_id),
+        }
     };
 
     // look up type in (type, operations) table
@@ -239,39 +242,49 @@ fn create_composite_filter_type_kind(
             PredicateParameter {
                 name: field.name.to_string(),
                 type_name: param_type_name.clone(),
-                typ: PredicateParameterTypeWithModifier {
-                    type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-                    type_modifier: PostgresTypeModifier::Optional,
-                },
+                type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
+                typ: FieldType::Optional(Box::new(FieldType::Plain(PredicateParameterType {
+                    name: param_type_name,
+                    kind: PredicateParameterTypeKind::ImplicitEqual,
+                }))),
                 underlying_type_id: param_type_id.clone(),
                 column_path_link,
             }
         })
         .collect();
 
+    #[derive(Debug, PartialEq, Eq)]
+    enum LogicalOpModifier {
+        List,     // logical op takes a list of predicates
+        Optional, // logical op takes a single predicate
+    }
     // populate logical ops predicate parameters
     let logical_ops = [
-        ("and", PostgresTypeModifier::List),
-        ("or", PostgresTypeModifier::List),
-        ("not", PostgresTypeModifier::Optional),
+        ("and", LogicalOpModifier::List),
+        ("or", LogicalOpModifier::List),
+        ("not", LogicalOpModifier::Optional),
     ];
 
     let logical_op_params = logical_ops
         .into_iter()
         .map(|(name, type_modifier)| {
             let param_type_name = get_parameter_type_name(composite_type_name);
+            let param_type_id = building
+                .predicate_types
+                .get_id(&param_type_name)
+                .unwrap_or_else(|| panic!("Could not find predicate type '{param_type_name}'"));
+            let param_type = FieldType::Plain(building.predicate_types[param_type_id].clone());
+
+            let param_field_type = if type_modifier == LogicalOpModifier::Optional {
+                FieldType::Optional(Box::new(param_type))
+            } else {
+                FieldType::Optional(Box::new(FieldType::List(Box::new(param_type))))
+            };
             PredicateParameter {
                 name: name.to_string(),
                 type_name: get_parameter_type_name(composite_type_name),
-                typ: PredicateParameterTypeWithModifier {
-                    type_id: building
-                        .predicate_types
-                        .get_id(&param_type_name)
-                        .unwrap_or_else(|| {
-                            panic!("Could not find predicate type '{param_type_name}'")
-                        }),
-                    type_modifier,
-                },
+                type_id: param_type_id,
+                typ: param_field_type,
                 column_path_link: None,
                 underlying_type_id: TypeIndex::Composite(postgres_type_id),
             }

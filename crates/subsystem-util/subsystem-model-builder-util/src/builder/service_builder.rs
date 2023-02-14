@@ -1,6 +1,6 @@
 use core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, Named, OperationReturnType},
+    types::{BaseOperationReturnType, FieldType, Named},
 };
 use core_plugin_shared::interception::InterceptorKind;
 use subsystem_model_util::{
@@ -9,13 +9,15 @@ use subsystem_model_util::{
     interceptor::Interceptor,
     operation::{ServiceMutation, ServiceQuery},
     service::{Argument, Script, ServiceMethod, ServiceMethodType},
-    types::{ServiceType, ServiceTypeModifier},
+    types::ServiceType,
 };
+
+use crate::builder::resolved_builder::ResolvedFieldType;
 
 use super::{
     resolved_builder::{
-        get_modifier, ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService,
-        ResolvedType,
+        ResolvedInterceptor, ResolvedInterceptorKind, ResolvedMethod, ResolvedMethodType,
+        ResolvedService, ResolvedType,
     },
     system_builder::SystemContextBuilding,
 };
@@ -105,28 +107,19 @@ fn create_shallow_service(
                 .iter()
                 .map(|arg| Argument {
                     name: arg.name.clone(),
-                    type_id: building.get_id(arg.typ.name()).unwrap(),
-                    modifier: get_modifier(&arg.typ),
+                    type_id: arg.typ.wrap(building.get_id(arg.typ.name()).unwrap()),
                     is_injected: arg.is_injected,
                 })
                 .collect(),
             return_type: {
-                let plain_return_type = OperationReturnType::Plain(BaseOperationReturnType {
+                let plain_return_type = BaseOperationReturnType {
                     associated_type_id: building
                         .get_id(resolved_method.return_type.name())
                         .unwrap(),
                     type_name: resolved_method.return_type.name().to_string(),
-                });
+                };
 
-                match get_modifier(&resolved_method.return_type) {
-                    ServiceTypeModifier::NonNull => plain_return_type,
-                    ServiceTypeModifier::Optional => {
-                        OperationReturnType::Optional(Box::new(plain_return_type))
-                    }
-                    ServiceTypeModifier::List => {
-                        OperationReturnType::List(Box::new(plain_return_type))
-                    }
-                }
+                resolved_method.return_type.wrap(plain_return_type)
             },
         },
     );
@@ -137,26 +130,19 @@ fn shallow_service_query(
     service_types: &MappedArena<ServiceType>,
     building: &SystemContextBuilding,
 ) -> ServiceQuery {
-    let return_type = &method.return_type;
-
-    let return_type_name = return_type.name();
+    let resolved_return_type = &method.return_type;
+    let return_type_name = resolved_return_type.name();
 
     ServiceQuery {
         name: method.name.clone(),
         method_id: None,
         argument_param: argument_param(method, building),
         return_type: {
-            let plain_return_type = OperationReturnType::Plain(BaseOperationReturnType {
+            let plain_return_type = BaseOperationReturnType {
                 associated_type_id: service_types.get_id(return_type_name).unwrap(),
                 type_name: return_type_name.to_string(),
-            });
-            match get_modifier(return_type) {
-                ServiceTypeModifier::NonNull => plain_return_type,
-                ServiceTypeModifier::Optional => {
-                    OperationReturnType::Optional(Box::new(plain_return_type))
-                }
-                ServiceTypeModifier::List => OperationReturnType::List(Box::new(plain_return_type)),
-            }
+            };
+            resolved_return_type.wrap(plain_return_type)
         },
     }
 }
@@ -166,25 +152,19 @@ fn shallow_service_mutation(
     service_types: &MappedArena<ServiceType>,
     building: &SystemContextBuilding,
 ) -> ServiceMutation {
-    let return_type = &method.return_type;
-    let return_type_name = return_type.name();
+    let resolved_return_type = &method.return_type;
+    let return_type_name = resolved_return_type.name();
 
     ServiceMutation {
         name: method.name.clone(),
         method_id: None,
         argument_param: argument_param(method, building),
         return_type: {
-            let plain_return_type = OperationReturnType::Plain(BaseOperationReturnType {
+            let plain_return_type = BaseOperationReturnType {
                 associated_type_id: service_types.get_id(return_type_name).unwrap(),
                 type_name: return_type_name.to_string(),
-            });
-            match get_modifier(return_type) {
-                ServiceTypeModifier::NonNull => plain_return_type,
-                ServiceTypeModifier::Optional => {
-                    OperationReturnType::Optional(Box::new(plain_return_type))
-                }
-                ServiceTypeModifier::List => OperationReturnType::List(Box::new(plain_return_type)),
-            }
+            };
+            resolved_return_type.wrap(plain_return_type)
         },
     }
 }
@@ -194,37 +174,31 @@ fn argument_param(
     method: &ResolvedMethod,
     building: &SystemContextBuilding,
 ) -> Vec<ArgumentParameter> {
+    fn to_field_type(
+        typename: &str,
+        type_id: Option<SerializableSlabIndex<ServiceType>>,
+        arg_typ: &FieldType<ResolvedFieldType>,
+    ) -> FieldType<ArgumentParameterType> {
+        let base_field_type = ArgumentParameterType {
+            name: typename.to_owned(),
+            type_id,
+            is_primitive: type_id.is_none(),
+        };
+        arg_typ.wrap(base_field_type)
+    }
     method
         .arguments
         .iter()
         .filter(|arg| !arg.is_injected) // skip injected params!
         .map(|arg| {
             let arg_typename = arg.typ.name();
-            let type_modifier = get_modifier(&arg.typ);
             let input_type_id = building.types.get_id(arg_typename);
 
-            if let Some(input_type_id) = input_type_id {
-                ArgumentParameter {
-                    name: arg.name.clone(),
-                    typ: ArgumentParameterType {
-                        name: arg_typename.to_owned(),
-                        type_id: Some(input_type_id),
-                        type_modifier,
-                        is_primitive: false,
-                    },
-                }
-            } else {
-                // argument must be a primitive type
+            let field_typ = to_field_type(arg_typename, input_type_id, &arg.typ);
 
-                ArgumentParameter {
-                    name: arg.name.clone(),
-                    typ: ArgumentParameterType {
-                        name: arg_typename.to_string(),
-                        type_id: None,
-                        type_modifier,
-                        is_primitive: true,
-                    },
-                }
+            ArgumentParameter {
+                name: arg.name.clone(),
+                typ: field_typ,
             }
         })
         .collect()
@@ -246,17 +220,16 @@ pub fn create_shallow_interceptor(
         method_name: resolved_interceptor.method_name.clone(),
         script,
         interceptor_kind: match resolved_interceptor.interceptor_kind {
-            super::resolved_builder::ResolvedInterceptorKind::Before(_) => InterceptorKind::Before,
-            super::resolved_builder::ResolvedInterceptorKind::After(_) => InterceptorKind::After,
-            super::resolved_builder::ResolvedInterceptorKind::Around(_) => InterceptorKind::Around,
+            ResolvedInterceptorKind::Before(_) => InterceptorKind::Before,
+            ResolvedInterceptorKind::After(_) => InterceptorKind::After,
+            ResolvedInterceptorKind::Around(_) => InterceptorKind::Around,
         },
         arguments: resolved_interceptor
             .arguments
             .iter()
             .map(|arg| Argument {
                 name: arg.name.clone(),
-                type_id: building.get_id(arg.typ.name()).unwrap(),
-                modifier: get_modifier(&arg.typ),
+                type_id: arg.typ.wrap(building.get_id(arg.typ.name()).unwrap()),
                 is_injected: true, // implicitly set is_injected for interceptors
             })
             .collect(),

@@ -5,7 +5,7 @@ use core_plugin_interface::core_model::{
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 use postgres_model::{
-    operation::{PostgresMutationKind, UpdateDataParameter},
+    operation::{PostgresMutationKind, UpdateDataParameter, UpdateDataParameterType},
     relation::PostgresRelation,
     types::{EntityType, MutationType, PostgresField, PostgresFieldType, TypeIndex},
 };
@@ -132,8 +132,11 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
 
         UpdateDataParameter {
             name: "data".to_string(),
-            type_name: data_param_type_name,
-            type_id: data_param_type_id,
+            type_name: data_param_type_name.clone(),
+            typ: FieldType::Plain(UpdateDataParameterType {
+                type_name: data_param_type_name,
+                type_id: data_param_type_id,
+            }),
         }
     }
 

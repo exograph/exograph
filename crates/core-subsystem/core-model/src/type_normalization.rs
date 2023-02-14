@@ -1,7 +1,6 @@
 use async_graphql_parser::{
     types::{
-        BaseType, EnumValueDefinition, FieldDefinition, InputValueDefinition, Type, TypeDefinition,
-        TypeKind,
+        EnumValueDefinition, FieldDefinition, InputValueDefinition, Type, TypeDefinition, TypeKind,
     },
     Pos, Positioned,
 };
@@ -35,54 +34,35 @@ pub enum TypeModifier {
 
 pub trait Parameter {
     fn name(&self) -> &str;
-    fn type_name(&self) -> &str;
-    fn type_modifier(&self) -> TypeModifier;
-}
-
-macro_rules! parameter_input_value_provider {
-    () => {
-        fn input_value(&self) -> InputValueDefinition {
-            let field_type =
-                default_positioned(value_type(self.type_name(), &self.type_modifier()));
-
-            InputValueDefinition {
-                description: None,
-                name: default_positioned_name(self.name()),
-                ty: field_type,
-                default_value: None,
-                directives: vec![],
-            }
-        }
-    };
+    fn typ(&self) -> Type;
 }
 
 impl<T: Parameter> InputValueProvider for T {
-    parameter_input_value_provider!();
+    fn input_value(&self) -> InputValueDefinition {
+        let field_type = default_positioned(self.typ());
+
+        InputValueDefinition {
+            description: None,
+            name: default_positioned_name(self.name()),
+            ty: field_type,
+            default_value: None,
+            directives: vec![],
+        }
+    }
 }
 
-// TODO: Derive this from the one above
+// TODO: Dedup from above
 impl InputValueProvider for &dyn Parameter {
-    parameter_input_value_provider!();
-}
+    fn input_value(&self) -> InputValueDefinition {
+        let field_type = default_positioned(self.typ());
 
-fn value_type(name: &str, type_modifier: &TypeModifier) -> Type {
-    let base_field_type = BaseType::Named(Name::new(name));
-    match type_modifier {
-        TypeModifier::Optional => Type {
-            base: base_field_type,
-            nullable: true,
-        },
-        TypeModifier::NonNull => Type {
-            base: base_field_type,
-            nullable: false,
-        },
-        TypeModifier::List => Type {
-            base: BaseType::List(Box::new(Type {
-                base: base_field_type,
-                nullable: false, // Reasonable default; See https://github.com/payalabs/payas/issues/599 for a proper fix
-            })),
-            nullable: true,
-        },
+        InputValueDefinition {
+            description: None,
+            name: default_positioned_name(self.name()),
+            ty: field_type,
+            default_value: None,
+            directives: vec![],
+        }
     }
 }
 
@@ -164,8 +144,7 @@ impl TypeDefinitionIntrospection for TypeDefinition {
 pub trait Operation {
     fn name(&self) -> &String;
     fn parameters(&self) -> Vec<&dyn Parameter>;
-    fn return_type_name(&self) -> &str;
-    fn return_type_modifier(&self) -> TypeModifier;
+    fn return_type(&self) -> Type;
 }
 
 // Field definition for the query such as `venue(id: Int!): Venue`, combining such fields will form
@@ -183,10 +162,7 @@ impl<T: Operation, S> FieldDefinitionProvider<S> for T {
             name: default_positioned_name(self.name()),
             arguments: fields,
             directives: vec![],
-            ty: default_positioned(value_type(
-                self.return_type_name(),
-                &self.return_type_modifier(),
-            )),
+            ty: default_positioned(self.return_type()),
         }
     }
 }
