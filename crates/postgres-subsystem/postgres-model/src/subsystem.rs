@@ -2,16 +2,15 @@ use std::vec;
 
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 
-use crate::{
-    aggregate::AggregateType,
-    operation::{AggregateQuery, CollectionQuery},
-    types::{EntityType, MutationType, PostgresPrimitiveType},
-};
-
 use super::{
     operation::{PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
+};
+use crate::{
+    aggregate::AggregateType,
+    operation::{AggregateQuery, CollectionQuery},
+    types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 use core_plugin_interface::{
     core_model::{

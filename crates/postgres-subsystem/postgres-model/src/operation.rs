@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 
 use async_graphql_parser::types::Type;
-use core_model::types::{FieldType, Named};
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::types::OperationReturnType;
+use core_plugin_interface::core_model::types::{FieldType, Named};
 
 use core_plugin_interface::core_model::type_normalization::{Operation, Parameter};
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ use super::{
     predicate::PredicateParameter,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Query<P>
 where
     P: OperationParameter,
@@ -95,21 +95,21 @@ pub enum PostgresMutationKind {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CreateDataParameter {
     pub name: String,
     // FieldType will be list for array input such as for create<Entity>s (note the plural)
     pub typ: FieldType<CreateDataParameterType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateDataParameter {
     pub name: String,
     pub type_name: String,
     pub typ: FieldType<UpdateDataParameterType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateDataParameterType {
     pub type_name: String,
     pub type_id: SerializableSlabIndex<MutationType>,
@@ -121,7 +121,7 @@ impl Named for UpdateDataParameterType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CreateDataParameterType {
     pub type_name: String,
     pub type_id: SerializableSlabIndex<MutationType>,

@@ -55,7 +55,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                 );
 
                 // Another one for operators
-                let param_type_name = get_parameter_type_name(&type_name);
+                let param_type_name = get_parameter_type_name(&type_name); // For example, IntFilter
                 building.predicate_types.add(
                     &param_type_name,
                     PredicateParameterType {
@@ -74,25 +74,25 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (_, typ) in building.primitive_types.iter() {
-        let param_type_name = get_parameter_type_name(&typ.name);
+    for (_, primitive_type) in building.primitive_types.iter() {
+        let param_type_name = get_parameter_type_name(&primitive_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-        let new_kind = expand_primitive_type(typ, building);
+        let new_kind = expand_primitive_type(primitive_type, building);
         building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 
-    for (_, model_type) in building.entity_types.iter() {
-        let param_type_name = get_parameter_type_name(&model_type.name);
+    for (_, entity_type) in building.entity_types.iter() {
+        let param_type_name = get_parameter_type_name(&entity_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-        let new_kind = expand_entity_type(model_type, building);
+        let new_kind = expand_entity_type(entity_type, building);
         building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 }
 
-pub fn get_parameter_type_name(model_type_name: &str) -> String {
-    format!("{model_type_name}Filter")
+pub fn get_parameter_type_name(type_name: &str) -> String {
+    format!("{type_name}Filter")
 }
 
 fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType {
@@ -179,19 +179,19 @@ lazy_static! {
 }
 
 fn create_operator_filter_type_kind(
-    scalar_model_type: &PostgresPrimitiveType,
+    primitive_type: &PostgresPrimitiveType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     let parameter_constructor = |operator: &&str| {
         let predicate_param_type_id = building
             .predicate_types
-            .get_id(&scalar_model_type.name)
+            .get_id(&primitive_type.name)
             .unwrap();
 
         PredicateParameter {
             name: operator.to_string(),
             typ: FieldType::Optional(Box::new(FieldType::Plain(PredicateParameterTypeWrapper {
-                name: scalar_model_type.name.to_owned(),
+                name: primitive_type.name.to_owned(),
                 type_id: predicate_param_type_id,
             }))),
             column_path_link: None,
@@ -199,7 +199,7 @@ fn create_operator_filter_type_kind(
     };
 
     // look up type in (type, operations) table
-    if let Some(maybe_operators) = TYPE_OPERATORS.get(&scalar_model_type.name as &str) {
+    if let Some(maybe_operators) = TYPE_OPERATORS.get(&primitive_type.name as &str) {
         if let Some(operators) = maybe_operators {
             // type supports specific operations, construct kind with supported operations
             let parameters: Vec<PredicateParameter> =
@@ -211,7 +211,7 @@ fn create_operator_filter_type_kind(
             PredicateParameterTypeKind::ImplicitEqual
         }
     } else {
-        todo!("{} does not support any operators", scalar_model_type.name)
+        todo!("{} does not support any operators", primitive_type.name)
     } // type given is not listed in TYPE_OPERATORS?
 }
 

@@ -6,14 +6,13 @@ use async_graphql_parser::{
     Pos, Positioned,
 };
 use async_graphql_value::Name;
-use core_model::type_normalization::InputValueProvider;
-use core_model::types::FieldType;
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
-        default_positioned, default_positioned_name, Parameter, TypeDefinitionProvider,
+        default_positioned, default_positioned_name, InputValueProvider, Parameter,
+        TypeDefinitionProvider,
     },
-    types::Named,
+    types::{FieldType, Named},
 };
 
 use serde::{Deserialize, Serialize};

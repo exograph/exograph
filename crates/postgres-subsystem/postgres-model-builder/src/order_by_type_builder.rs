@@ -1,10 +1,13 @@
-use core_plugin_interface::core_model::{mapped_arena::SerializableSlabIndex, types::FieldType};
+use core_plugin_interface::core_model::{
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::FieldType,
+};
 
 use postgres_model::{
     column_path::ColumnIdPathLink,
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},
-    types::{EntityType, PostgresField, PostgresType},
+    types::{EntityType, PostgresField, PostgresPrimitiveType, PostgresType},
 };
 
 use crate::shallow::Shallow;
@@ -90,7 +93,15 @@ fn expand_type(
     let parameters = entity_type
         .fields
         .iter()
-        .map(|field| new_field_param(field, entity_type, building))
+        .map(|field| {
+            new_field_param(
+                field,
+                entity_type,
+                &building.primitive_types,
+                &building.entity_types,
+                &building.order_by_types,
+            )
+        })
         .collect();
 
     OrderByParameterTypeKind::Composite { parameters }
@@ -101,10 +112,10 @@ fn new_param(
     entity_type_name: &str,
     is_primitive: bool,
     column_path_link: Option<ColumnIdPathLink>,
-    building: &SystemContextBuilding,
+    order_by_types: &MappedArena<OrderByParameterType>,
 ) -> OrderByParameter {
     let (param_type_name, param_type_id) =
-        order_by_param_type(entity_type_name, is_primitive, building);
+        order_by_param_type(entity_type_name, is_primitive, order_by_types);
 
     OrderByParameter {
         name: name.to_string(),
@@ -132,18 +143,17 @@ fn new_param(
 pub fn new_field_param(
     entity_field: &PostgresField<EntityType>,
     composite_type: &EntityType,
-    building: &SystemContextBuilding,
+    primitive_types: &MappedArena<PostgresPrimitiveType>,
+    entity_types: &MappedArena<EntityType>,
+    order_by_types: &MappedArena<OrderByParameterType>,
 ) -> OrderByParameter {
-    let field_type_id = entity_field.typ.inner_most().type_id.to_owned();
-    let field_entity_type = field_type_id.to_type(
-        &building.primitive_types.values,
-        &building.entity_types.values,
-    );
+    let field_type_id = &entity_field.typ.inner_most().type_id;
+    let field_entity_type = field_type_id.to_type(&primitive_types.values, &entity_types.values);
 
     let column_path_link = Some(column_path_utils::column_path_link(
         composite_type,
         entity_field,
-        &building.entity_types,
+        entity_types,
     ));
 
     new_param(
@@ -151,26 +161,32 @@ pub fn new_field_param(
         field_entity_type.name(),
         matches!(field_entity_type, PostgresType::Primitive(_)),
         column_path_link,
-        building,
+        order_by_types,
     )
 }
 
 pub fn new_root_param(
     entity_type_name: &str,
     is_primitive: bool,
-    building: &SystemContextBuilding,
+    order_by_types: &MappedArena<OrderByParameterType>,
 ) -> OrderByParameter {
-    new_param("orderBy", entity_type_name, is_primitive, None, building)
+    new_param(
+        "orderBy",
+        entity_type_name,
+        is_primitive,
+        None,
+        order_by_types,
+    )
 }
 
 fn order_by_param_type(
     entity_type_name: &str,
     is_primitive: bool,
-    building: &SystemContextBuilding,
+    order_by_types: &MappedArena<OrderByParameterType>,
 ) -> (String, SerializableSlabIndex<OrderByParameterType>) {
     let param_type_name = get_parameter_type_name(entity_type_name, is_primitive);
 
-    let param_type_id = building.order_by_types.get_id(&param_type_name).unwrap();
+    let param_type_id = order_by_types.get_id(&param_type_name).unwrap();
 
     (param_type_name, param_type_id)
 }

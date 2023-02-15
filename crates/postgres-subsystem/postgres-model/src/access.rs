@@ -1,5 +1,3 @@
-// use super::column_path::ColumnIdPath;
-
 use crate::column_path::ColumnIdPath;
 use core_plugin_interface::core_model::access::{
     AccessContextSelection, AccessPredicateExpression,
@@ -7,7 +5,7 @@ use core_plugin_interface::core_model::access::{
 use serde::{Deserialize, Serialize};
 
 /// Access specification for a model
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Access {
     pub creation: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
     pub read: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
@@ -29,7 +27,7 @@ impl Access {
 /// Primitive expression (that doesn't contain any other expressions).
 /// Used as sides of `AccessRelationalExpression` to form more complex expressions
 /// such as equal and less than.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DatabaseAccessPrimitiveExpression {
     ContextSelection(AccessContextSelection), // for example, AuthContext.role
     Column(ColumnIdPath),                     // for example, self.id
