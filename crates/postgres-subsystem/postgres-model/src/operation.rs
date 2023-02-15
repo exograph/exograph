@@ -17,7 +17,7 @@ use super::{
     predicate::PredicateParameter,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Query<P>
 where
     P: OperationParameter,

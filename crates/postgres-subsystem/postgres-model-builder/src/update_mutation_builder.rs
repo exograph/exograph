@@ -70,7 +70,10 @@ impl MutationBuilder for UpdateMutationBuilder {
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
             data_param: Self::data_param(entity_type, building, false),
-            predicate_param: query_builder::pk_predicate_param(entity_type, building),
+            predicate_param: query_builder::pk_predicate_param(
+                entity_type,
+                &building.predicate_types,
+            ),
         }
     }
 
@@ -91,7 +94,10 @@ impl MutationBuilder for UpdateMutationBuilder {
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
             data_param: Self::data_param(entity_type, building, true),
-            predicate_param: query_builder::collection_predicate_param(entity_type, building),
+            predicate_param: query_builder::collection_predicate_param(
+                entity_type,
+                &building.predicate_types,
+            ),
         }
     }
 }

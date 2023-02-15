@@ -5,7 +5,7 @@ use core_plugin_interface::core_model::access::{
 use serde::{Deserialize, Serialize};
 
 /// Access specification for a model
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Access {
     pub creation: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
     pub read: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,

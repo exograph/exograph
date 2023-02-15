@@ -55,7 +55,10 @@ impl MutationBuilder for DeleteMutationBuilder {
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
-        PostgresMutationKind::Delete(query_builder::pk_predicate_param(entity_type, building))
+        PostgresMutationKind::Delete(query_builder::pk_predicate_param(
+            entity_type,
+            &building.predicate_types,
+        ))
     }
 
     fn single_mutation_modified_type(
@@ -75,7 +78,7 @@ impl MutationBuilder for DeleteMutationBuilder {
     ) -> PostgresMutationKind {
         PostgresMutationKind::Delete(query_builder::collection_predicate_param(
             entity_type,
-            building,
+            &building.predicate_types,
         ))
     }
 }

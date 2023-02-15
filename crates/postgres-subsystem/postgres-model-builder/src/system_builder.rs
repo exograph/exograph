@@ -131,13 +131,6 @@ impl SystemContextBuilding {
     pub fn get_entity_type_id(&self, name: &str) -> Option<SerializableSlabIndex<EntityType>> {
         self.entity_types.get_id(name)
     }
-
-    pub fn get_primitive_type_id(
-        &self,
-        name: &str,
-    ) -> Option<SerializableSlabIndex<PostgresPrimitiveType>> {
-        self.primitive_types.get_id(name)
-    }
 }
 
 #[cfg(test)]

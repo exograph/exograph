@@ -56,7 +56,7 @@ pub struct PostgresPrimitiveType {
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EntityType {
     pub name: String,
     pub plural_name: String,
