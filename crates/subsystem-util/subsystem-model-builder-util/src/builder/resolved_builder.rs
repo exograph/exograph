@@ -19,7 +19,6 @@ use core_model_builder::{
     typechecker::{typ::Type, Typed},
 };
 use serde::{Deserialize, Serialize};
-use subsystem_model_util::types::ServiceTypeModifier;
 
 use crate::builder::access_builder::build_access;
 
@@ -68,14 +67,6 @@ pub struct ResolvedFieldType {
 impl Named for ResolvedFieldType {
     fn name(&self) -> &str {
         &self.type_name
-    }
-}
-
-pub fn get_modifier(typ: &FieldType<ResolvedFieldType>) -> ServiceTypeModifier {
-    match typ {
-        FieldType::Plain(_) => ServiceTypeModifier::NonNull,
-        FieldType::Optional(_) => ServiceTypeModifier::Optional,
-        FieldType::List(_) => ServiceTypeModifier::List,
     }
 }
 

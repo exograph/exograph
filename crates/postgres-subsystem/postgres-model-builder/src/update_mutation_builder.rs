@@ -5,7 +5,7 @@ use core_plugin_interface::core_model::{
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 use postgres_model::{
-    operation::{PostgresMutationKind, UpdateDataParameter},
+    operation::{PostgresMutationKind, UpdateDataParameter, UpdateDataParameterType},
     relation::PostgresRelation,
     types::{EntityType, MutationType, PostgresField, PostgresFieldType, TypeIndex},
 };
@@ -65,17 +65,12 @@ impl MutationBuilder for UpdateMutationBuilder {
     }
 
     fn single_mutation_kind(
-        entity_type_id: SerializableSlabIndex<EntityType>,
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
             data_param: Self::data_param(entity_type, building, false),
-            predicate_param: query_builder::pk_predicate_param(
-                entity_type_id,
-                entity_type,
-                building,
-            ),
+            predicate_param: query_builder::pk_predicate_param(entity_type, building),
         }
     }
 
@@ -91,17 +86,12 @@ impl MutationBuilder for UpdateMutationBuilder {
     }
 
     fn multi_mutation_kind(
-        entity_type_id: SerializableSlabIndex<EntityType>,
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Update {
             data_param: Self::data_param(entity_type, building, true),
-            predicate_param: query_builder::collection_predicate_param(
-                entity_type_id,
-                entity_type,
-                building,
-            ),
+            predicate_param: query_builder::collection_predicate_param(entity_type, building),
         }
     }
 }
@@ -132,8 +122,11 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
 
         UpdateDataParameter {
             name: "data".to_string(),
-            type_name: data_param_type_name,
-            type_id: data_param_type_id,
+            type_name: data_param_type_name.clone(),
+            typ: FieldType::Plain(UpdateDataParameterType {
+                type_name: data_param_type_name,
+                type_id: data_param_type_id,
+            }),
         }
     }
 

@@ -24,7 +24,7 @@ impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
         argument: &'a ConstValue,
         subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractOrderBy<'a>, PostgresExecutionError> {
-        let parameter_type = &subsystem.order_by_types[self.param.typ.type_id];
+        let parameter_type = &subsystem.order_by_types[self.param.typ.inner_most().type_id];
         fn flatten<E>(order_bys: Result<Vec<AbstractOrderBy>, E>) -> Result<AbstractOrderBy, E> {
             let mapped = order_bys?.into_iter().flat_map(|elem| elem.0).collect();
             Ok(AbstractOrderBy(mapped))
@@ -94,9 +94,9 @@ fn order_by_pair<'a>(
         )),
     }?;
 
+    let base_param_type = &subsystem.order_by_types[parameter.typ.inner_most().type_id];
     // If this is a leaf node ({something: ASC} kind), then resolve the ordering. If not, then recurse with a new parent column path.
-    // TODO: This feels a bit of a hack (we need a better way to find if this is a leaf parameter). Revisit this after we have a improved validation (#483)
-    if &parameter.type_name == "Ordering" {
+    if matches!(base_param_type.kind, OrderByParameterTypeKind::Primitive) {
         let new_column_path =
             to_column_path(&parent_column_path, &parameter.column_path_link, subsystem);
         ordering(parameter_value).map(|ordering| AbstractOrderBy(vec![(new_column_path, ordering)]))

@@ -1,9 +1,11 @@
 use std::fmt::Debug;
 
+use async_graphql_parser::types::Type;
+use core_model::types::{FieldType, Named};
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::types::OperationReturnType;
 
-use core_plugin_interface::core_model::type_normalization::{Operation, Parameter, TypeModifier};
+use core_plugin_interface::core_model::type_normalization::{Operation, Parameter};
 use serde::{Deserialize, Serialize};
 
 use crate::types::EntityType;
@@ -31,7 +33,7 @@ pub trait OperationParameter {
 
 pub type PkQuery = Query<PkQueryParameter>;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PkQueryParameter {
     pub predicate_param: PredicateParameter,
 }
@@ -44,7 +46,7 @@ impl OperationParameter for PkQueryParameter {
 
 pub type CollectionQuery = Query<CollectionQueryParameter>;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CollectionQueryParameter {
     pub predicate_param: PredicateParameter,
     pub order_by_param: OrderByParameter,
@@ -65,7 +67,7 @@ impl OperationParameter for CollectionQueryParameter {
 
 pub type AggregateQuery = Query<AggregateQueryParameter>;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AggregateQueryParameter {
     pub predicate_param: PredicateParameter,
 }
@@ -76,14 +78,14 @@ impl OperationParameter for AggregateQueryParameter {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresMutation {
     pub name: String,
     pub kind: PostgresMutationKind,
     pub return_type: OperationReturnType<EntityType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum PostgresMutationKind {
     Create(CreateDataParameter),
     Delete(PredicateParameter),
@@ -96,21 +98,39 @@ pub enum PostgresMutationKind {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateDataParameter {
     pub name: String,
-    pub typ: CreateDataParameterTypeWithModifier,
+    // FieldType will be list for array input such as for create<Entity>s (note the plural)
+    pub typ: FieldType<CreateDataParameterType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateDataParameter {
     pub name: String,
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<MutationType>,
+    pub typ: FieldType<UpdateDataParameterType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CreateDataParameterTypeWithModifier {
+pub struct UpdateDataParameterType {
     pub type_name: String,
     pub type_id: SerializableSlabIndex<MutationType>,
-    pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
+}
+
+impl Named for UpdateDataParameterType {
+    fn name(&self) -> &str {
+        &self.type_name
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CreateDataParameterType {
+    pub type_name: String,
+    pub type_id: SerializableSlabIndex<MutationType>,
+}
+
+impl Named for CreateDataParameterType {
+    fn name(&self) -> &str {
+        &self.type_name
+    }
 }
 
 impl Parameter for CreateDataParameter {
@@ -118,16 +138,8 @@ impl Parameter for CreateDataParameter {
         &self.name
     }
 
-    fn type_name(&self) -> &str {
-        &self.typ.type_name
-    }
-
-    fn type_modifier(&self) -> TypeModifier {
-        if self.typ.array_input {
-            TypeModifier::List
-        } else {
-            TypeModifier::NonNull
-        }
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }
 
@@ -136,12 +148,8 @@ impl Parameter for UpdateDataParameter {
         &self.name
     }
 
-    fn type_name(&self) -> &str {
-        &self.type_name
-    }
-
-    fn type_modifier(&self) -> TypeModifier {
-        TypeModifier::NonNull
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }
 
@@ -157,16 +165,8 @@ where
         self.parameter.parameters()
     }
 
-    fn return_type_name(&self) -> &str {
-        self.return_type.type_name()
-    }
-
-    fn return_type_modifier(&self) -> TypeModifier {
-        match &self.return_type {
-            OperationReturnType::Plain(_) => TypeModifier::NonNull,
-            OperationReturnType::List(_) => TypeModifier::List,
-            OperationReturnType::Optional(_) => TypeModifier::Optional,
-        }
+    fn return_type(&self) -> Type {
+        (&self.return_type).into()
     }
 }
 
@@ -185,16 +185,7 @@ impl Operation for PostgresMutation {
             } => vec![predicate_param, data_param],
         }
     }
-
-    fn return_type_name(&self) -> &str {
-        self.return_type.type_name()
-    }
-
-    fn return_type_modifier(&self) -> TypeModifier {
-        match &self.return_type {
-            OperationReturnType::Plain(_) => TypeModifier::NonNull,
-            OperationReturnType::List(_) => TypeModifier::List,
-            OperationReturnType::Optional(_) => TypeModifier::Optional,
-        }
+    fn return_type(&self) -> Type {
+        (&self.return_type).into()
     }
 }

@@ -138,7 +138,7 @@ pub async fn construct_arg_sequence<'a>(
             if arg.is_injected {
                 // handle injected arguments
 
-                let arg_type = &system.service_types[arg.type_id];
+                let arg_type = &system.service_types[*arg.type_id.inner_most()];
 
                 // what kind of injected argument is it?
                 // first check if it's a context

@@ -4,9 +4,12 @@ use crate::access::Access;
 
 use super::{
     operation::{ServiceMutation, ServiceQuery},
-    types::{ServiceType, ServiceTypeModifier},
+    types::ServiceType,
 };
-use core_model::{mapped_arena::SerializableSlabIndex, types::OperationReturnType};
+use core_model::{
+    mapped_arena::SerializableSlabIndex,
+    types::{FieldType, OperationReturnType},
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceMethod {
@@ -28,8 +31,7 @@ pub struct Script {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Argument {
     pub name: String,
-    pub type_id: SerializableSlabIndex<ServiceType>,
-    pub modifier: ServiceTypeModifier,
+    pub type_id: FieldType<SerializableSlabIndex<ServiceType>>,
     pub is_injected: bool,
 }
 

@@ -1,40 +1,28 @@
-use crate::{
-    subsystem::PostgresSubsystem,
-    types::{PostgresPrimitiveType, PostgresTypeModifier},
-};
-use async_graphql_parser::types::{TypeDefinition, TypeKind};
+use crate::{subsystem::PostgresSubsystem, types::PostgresPrimitiveType};
+use async_graphql_parser::types::{Type, TypeDefinition, TypeKind};
 use core_model::{
     mapped_arena::SerializableSlabIndex,
-    type_normalization::{
-        default_positioned_name, Parameter, TypeDefinitionProvider, TypeModifier,
-    },
+    type_normalization::{default_positioned_name, Parameter, TypeDefinitionProvider},
+    types::{FieldType, Named},
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LimitParameter {
     pub name: String,
-    pub typ: LimitParameterType,
+    pub typ: FieldType<LimitParameterType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LimitParameterType {
     pub type_name: String,
     pub type_id: SerializableSlabIndex<PostgresPrimitiveType>,
-    pub type_modifier: PostgresTypeModifier,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct OffsetParameter {
-    pub name: String,
-    pub typ: OffsetParameterType,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct OffsetParameterType {
-    pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresPrimitiveType>,
-    pub type_modifier: PostgresTypeModifier,
+impl Named for LimitParameterType {
+    fn name(&self) -> &str {
+        &self.type_name
+    }
 }
 
 impl Parameter for LimitParameter {
@@ -42,26 +30,8 @@ impl Parameter for LimitParameter {
         &self.name
     }
 
-    fn type_name(&self) -> &str {
-        &self.typ.type_name
-    }
-
-    fn type_modifier(&self) -> TypeModifier {
-        (&self.typ.type_modifier).into()
-    }
-}
-
-impl Parameter for OffsetParameter {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn type_name(&self) -> &str {
-        &self.typ.type_name
-    }
-
-    fn type_modifier(&self) -> TypeModifier {
-        (&self.typ.type_modifier).into()
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }
 
@@ -74,6 +44,34 @@ impl TypeDefinitionProvider<PostgresSubsystem> for LimitParameter {
             directives: vec![],
             kind: TypeKind::Scalar,
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OffsetParameter {
+    pub name: String,
+    pub typ: FieldType<OffsetParameterType>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OffsetParameterType {
+    pub type_name: String,
+    pub type_id: SerializableSlabIndex<PostgresPrimitiveType>,
+}
+
+impl Named for OffsetParameterType {
+    fn name(&self) -> &str {
+        &self.type_name
+    }
+}
+
+impl Parameter for OffsetParameter {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }
 
