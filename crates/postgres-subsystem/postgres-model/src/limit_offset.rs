@@ -1,6 +1,6 @@
 use crate::{subsystem::PostgresSubsystem, types::PostgresPrimitiveType};
 use async_graphql_parser::types::{Type, TypeDefinition, TypeKind};
-use core_model::{
+use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{default_positioned_name, Parameter, TypeDefinitionProvider},
     types::{FieldType, Named},

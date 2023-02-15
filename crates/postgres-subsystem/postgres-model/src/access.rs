@@ -1,5 +1,3 @@
-// use super::column_path::ColumnIdPath;
-
 use crate::column_path::ColumnIdPath;
 use core_plugin_interface::core_model::access::{
     AccessContextSelection, AccessPredicateExpression,

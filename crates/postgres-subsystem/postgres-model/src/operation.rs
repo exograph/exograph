@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 
 use async_graphql_parser::types::Type;
-use core_model::types::{FieldType, Named};
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::types::OperationReturnType;
+use core_plugin_interface::core_model::types::{FieldType, Named};
 
 use core_plugin_interface::core_model::type_normalization::{Operation, Parameter};
 use serde::{Deserialize, Serialize};

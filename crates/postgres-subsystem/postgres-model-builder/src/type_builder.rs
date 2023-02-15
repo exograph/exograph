@@ -45,7 +45,7 @@ impl<'a> ResolvedTypeEnv<'a> {
     }
 }
 
-pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+pub(crate) fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         create_shallow_type(resolved_type, resolved_env, building);
     }
@@ -108,24 +108,24 @@ fn create_shallow_type(
     }
 }
 
-/// Expand a type except for creating its fields.
+/// Expand a composite type except for creating its fields.
 ///
 /// Specifically:
-/// 1. Create and set the table (if applicable)
+/// 1. Create and set the table
 /// 2. Create and set *_query members (if applicable)
 /// 3. Leave fields as an empty vector
 ///
-/// This allows types to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
+/// This allows the type to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
 /// We can't expand fields yet since creating a field requires access to columns (self as well as those in a referred field in case a relation)
 /// and we may not have expanded a referred type yet.
 fn expand_type_no_fields(
-    resolved_postgres_type: &ResolvedCompositeType,
+    resolved_type: &ResolvedCompositeType,
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
-    let table_name = resolved_postgres_type.table_name.clone();
+    let table_name = resolved_type.table_name.clone();
 
-    let columns = resolved_postgres_type
+    let columns = resolved_type
         .fields
         .iter()
         .flat_map(|field| create_column(field, &table_name, resolved_env))
@@ -140,34 +140,25 @@ fn expand_type_no_fields(
 
     let pk_query = building
         .pk_queries
-        .get_id(&resolved_postgres_type.pk_query())
+        .get_id(&resolved_type.pk_query())
         .unwrap();
 
     let collection_query = building
         .collection_queries
-        .get_id(&resolved_postgres_type.collection_query())
+        .get_id(&resolved_type.collection_query())
         .unwrap();
 
     let aggregate_query = building
         .aggregate_queries
-        .get_id(&resolved_postgres_type.aggregate_query())
+        .get_id(&resolved_type.aggregate_query())
         .unwrap();
 
-    let typ = EntityType {
-        name: resolved_postgres_type.name.clone(),
-        plural_name: resolved_postgres_type.plural_name.clone(),
-        fields: vec![],
-        agg_fields: vec![],
-        table_id,
-        pk_query,
-        collection_query,
-        aggregate_query,
-        access: Access::restrictive(),
-    };
-
-    let existing_type_id = building.get_entity_type_id(&resolved_postgres_type.name);
-
-    building.entity_types.values[existing_type_id.unwrap()] = typ;
+    let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
+    let mut existing_type = &mut building.entity_types[existing_type_id];
+    existing_type.table_id = table_id;
+    existing_type.pk_query = pk_query;
+    existing_type.collection_query = collection_query;
+    existing_type.aggregate_query = aggregate_query;
 }
 
 /// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can
@@ -178,42 +169,23 @@ fn expand_type_fields(
     resolved_env: &ResolvedTypeEnv,
 ) {
     let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
-
-    let existing_type = &building.entity_types[existing_type_id];
-
-    let EntityType {
-        table_id,
-        pk_query,
-        collection_query,
-        aggregate_query,
-        ..
-    } = &existing_type;
+    let existing_table_id = &building.entity_types[existing_type_id].table_id;
 
     let entity_fields = resolved_type
         .fields
         .iter()
-        .map(|field| create_persistent_field(field, table_id, building, resolved_env))
+        .map(|field| create_persistent_field(field, existing_table_id, building, resolved_env))
         .collect();
 
     let agg_fields = resolved_type
         .fields
         .iter()
-        .flat_map(|field| create_agg_field(field, table_id, building, resolved_env))
+        .flat_map(|field| create_agg_field(field, existing_table_id, building, resolved_env))
         .collect();
 
-    let typ = EntityType {
-        name: resolved_type.name.clone(),
-        plural_name: resolved_type.plural_name.clone(),
-        fields: entity_fields,
-        agg_fields,
-        table_id: *table_id,
-        pk_query: *pk_query,
-        collection_query: *collection_query,
-        aggregate_query: *aggregate_query,
-        access: Access::restrictive(),
-    };
-
-    building.entity_types.values[existing_type_id] = typ;
+    let mut existing_type = &mut building.entity_types[existing_type_id];
+    existing_type.fields = entity_fields;
+    existing_type.agg_fields = agg_fields;
 }
 
 // Expand access expressions (pre-condition: all type fields have been populated)
@@ -223,28 +195,17 @@ fn expand_type_access(
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
     let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
-    let existing_type = &building.entity_types[existing_type_id];
 
     let expr = compute_access_composite_types(
         &resolved_type.access,
-        existing_type,
+        &building.entity_types[existing_type_id],
         resolved_env,
         building,
     )?;
 
-    let typ = EntityType {
-        name: resolved_type.name.clone(),
-        plural_name: resolved_type.plural_name.clone(),
-        fields: existing_type.fields.clone(),
-        agg_fields: existing_type.agg_fields.clone(),
-        table_id: existing_type.table_id,
-        pk_query: existing_type.pk_query,
-        collection_query: existing_type.collection_query,
-        aggregate_query: existing_type.aggregate_query,
-        access: expr,
-    };
+    let mut existing_type = &mut building.entity_types[existing_type_id];
 
-    building.entity_types.values[existing_type_id] = typ;
+    existing_type.access = expr;
 
     Ok(())
 }
@@ -279,42 +240,30 @@ fn create_persistent_field(
     building: &SystemContextBuilding,
     env: &ResolvedTypeEnv,
 ) -> PostgresField<EntityType> {
-    fn create_field_type(
-        field_type: &FieldType<ResolvedFieldType>,
-        building: &SystemContextBuilding,
-    ) -> FieldType<PostgresFieldType<EntityType>> {
-        match field_type {
-            FieldType::Plain(ResolvedFieldType {
-                type_name,
-                is_primitive,
-            }) => {
-                if *is_primitive {
-                    let type_id = building.primitive_types.get_id(type_name).unwrap();
-                    FieldType::Plain(PostgresFieldType {
-                        type_name: type_name.clone(),
-                        type_id: TypeIndex::Primitive(type_id),
-                    })
-                } else {
-                    let type_id = building.entity_types.get_id(type_name).unwrap();
+    let base_field_type = {
+        let ResolvedFieldType {
+            type_name,
+            is_primitive,
+        } = field.typ.inner_most();
 
-                    FieldType::Plain(PostgresFieldType {
-                        type_name: type_name.clone(),
-                        type_id: TypeIndex::Composite(type_id),
-                    })
-                }
+        if *is_primitive {
+            let type_id = building.primitive_types.get_id(type_name).unwrap();
+            PostgresFieldType {
+                type_name: type_name.clone(),
+                type_id: TypeIndex::Primitive(type_id),
             }
-            FieldType::Optional(underlying) => {
-                FieldType::Optional(Box::new(create_field_type(underlying, building)))
-            }
-            FieldType::List(underlying) => {
-                FieldType::List(Box::new(create_field_type(underlying, building)))
+        } else {
+            let type_id = building.entity_types.get_id(type_name).unwrap();
+            PostgresFieldType {
+                type_name: type_name.clone(),
+                type_id: TypeIndex::Composite(type_id),
             }
         }
-    }
+    };
 
     PostgresField {
         name: field.name.to_owned(),
-        typ: create_field_type(&field.typ, building),
+        typ: field.typ.wrap(base_field_type),
         relation: create_relation(field, *table_id, building, env),
         has_default_value: field.default_value.is_some(),
     }

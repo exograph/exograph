@@ -6,14 +6,13 @@ use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
-use core_model::type_normalization::Parameter;
-use core_model::types::{FieldType, Named};
 use core_plugin_interface::core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
         default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
-        TypeDefinitionProvider,
+        Parameter, TypeDefinitionProvider,
     },
+    types::{FieldType, Named},
 };
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};

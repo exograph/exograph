@@ -38,8 +38,8 @@ impl Builder for DeleteMutationBuilder {
     ) {
         // Since there are no special input types for deletion, no expansion is needed
 
-        for (model_type_id, model_type) in building.entity_types.iter() {
-            for mutation in self.build_mutations(model_type_id, model_type, building) {
+        for (entity_type_id, entity_type) in building.entity_types.iter() {
+            for mutation in self.build_mutations(entity_type_id, entity_type, building) {
                 building.mutations.add(&mutation.name.to_owned(), mutation);
             }
         }
@@ -47,15 +47,15 @@ impl Builder for DeleteMutationBuilder {
 }
 
 impl MutationBuilder for DeleteMutationBuilder {
-    fn single_mutation_name(model_type: &EntityType) -> String {
-        model_type.pk_delete()
+    fn single_mutation_name(entity_type: &EntityType) -> String {
+        entity_type.pk_delete()
     }
 
     fn single_mutation_kind(
-        model_type: &EntityType,
+        entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
-        PostgresMutationKind::Delete(query_builder::pk_predicate_param(model_type, building))
+        PostgresMutationKind::Delete(query_builder::pk_predicate_param(entity_type, building))
     }
 
     fn single_mutation_modified_type(
@@ -65,16 +65,17 @@ impl MutationBuilder for DeleteMutationBuilder {
         OperationReturnType::Optional(Box::new(OperationReturnType::Plain(base_type)))
     }
 
-    fn multi_mutation_name(model_type: &EntityType) -> String {
-        model_type.collection_delete()
+    fn multi_mutation_name(entity_type: &EntityType) -> String {
+        entity_type.collection_delete()
     }
 
     fn multi_mutation_kind(
-        model_type: &EntityType,
+        entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Delete(query_builder::collection_predicate_param(
-            model_type, building,
+            entity_type,
+            building,
         ))
     }
 }

@@ -1,16 +1,14 @@
 use crate::{column_path::ColumnIdPathLink, subsystem::PostgresSubsystem};
 use async_graphql_parser::types::{InputObjectType, Type, TypeDefinition, TypeKind};
-use core_model::types::FieldType;
-use serde::{Deserialize, Serialize};
-
-use core_model::type_normalization::InputValueProvider;
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
-        default_positioned, default_positioned_name, Parameter, TypeDefinitionProvider,
+        default_positioned, default_positioned_name, InputValueProvider, Parameter,
+        TypeDefinitionProvider,
     },
-    types::Named,
+    types::{FieldType, Named},
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PredicateParameter {
