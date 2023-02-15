@@ -19,14 +19,14 @@ pub struct AggregateType {
     pub fields: Vec<AggregateField>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AggregateField {
     pub name: String, // Such as max, sum, etc for scalar types; field names (id, name, etc.) for composite types
     pub typ: AggregateFieldType,
     pub relation: Option<PostgresRelation>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum AggregateFieldType {
     Scalar {
         type_name: String,              // "Int", "String", etc.

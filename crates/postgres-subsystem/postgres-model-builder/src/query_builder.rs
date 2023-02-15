@@ -10,9 +10,9 @@ use postgres_model::{
         AggregateQuery, AggregateQueryParameter, CollectionQuery, CollectionQueryParameter,
         PkQuery, PkQueryParameter,
     },
-    order::OrderByParameter,
-    predicate::{PredicateParameter, PredicateParameterTypeWrapper},
-    types::EntityType,
+    order::{OrderByParameter, OrderByParameterType},
+    predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},
+    types::{EntityType, PostgresPrimitiveType},
 };
 
 use crate::{
@@ -48,21 +48,23 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, entity_type) in building.entity_types.iter() {
-        {
-            let query = expanded_pk_query(entity_type, building);
-            let existing_id = building.pk_queries.get_id(&query.name).unwrap();
-            building.pk_queries[existing_id] = query;
-        }
-        {
-            let query = expanded_collection_query(entity_type, building);
-            let existing_id = building.collection_queries.get_id(&query.name).unwrap();
-            building.collection_queries[existing_id] = query;
-        }
-        {
-            let query = expanded_aggregate_query(entity_type, building);
-            let existing_id = building.aggregate_queries.get_id(&query.name).unwrap();
-            building.aggregate_queries[existing_id] = query;
-        }
+        expand_pk_query(
+            entity_type,
+            &building.predicate_types,
+            &mut building.pk_queries,
+        );
+        expand_collection_query(
+            entity_type,
+            &building.primitive_types,
+            &building.predicate_types,
+            &building.order_by_types,
+            &mut building.collection_queries,
+        );
+        expand_aggregate_query(
+            entity_type,
+            &building.predicate_types,
+            &mut building.aggregate_queries,
+        );
     }
 }
 
@@ -83,30 +85,22 @@ fn shallow_pk_query(
     }
 }
 
-fn expanded_pk_query(entity_type: &EntityType, building: &SystemContextBuilding) -> PkQuery {
+fn expand_pk_query(
+    entity_type: &EntityType,
+    predicate_types: &MappedArena<PredicateParameterType>,
+    pk_queries: &mut MappedArena<PkQuery>,
+) {
     let operation_name = entity_type.pk_query();
-    let existing_query = building.pk_queries.get_by_key(&operation_name).unwrap();
-
-    let pk_param = pk_predicate_param(entity_type, building);
-
-    PkQuery {
-        name: operation_name,
-        parameter: PkQueryParameter {
-            predicate_param: pk_param,
-        },
-        return_type: existing_query.return_type.clone(),
-    }
+    let mut existing_query = &mut pk_queries.get_by_key_mut(&operation_name).unwrap();
+    existing_query.parameter.predicate_param = pk_predicate_param(entity_type, predicate_types);
 }
 
 pub fn pk_predicate_param(
     entity_type: &EntityType,
-    building: &SystemContextBuilding,
+    predicate_types: &MappedArena<PredicateParameterType>,
 ) -> PredicateParameter {
     let pk_field = entity_type.pk_field().unwrap();
-    let param_type_id = building
-        .predicate_types
-        .get_id(pk_field.typ.name())
-        .unwrap();
+    let param_type_id = predicate_types.get_id(pk_field.typ.name()).unwrap();
     let param_type = PredicateParameterTypeWrapper {
         name: pk_field.typ.name().to_owned(),
         type_id: param_type_id,
@@ -147,31 +141,27 @@ fn shallow_collection_query(
     }
 }
 
-fn expanded_collection_query(
+fn expand_collection_query(
     entity_type: &EntityType,
-    building: &SystemContextBuilding,
-) -> CollectionQuery {
+    primitive_types: &MappedArena<PostgresPrimitiveType>,
+    predicate_types: &MappedArena<PredicateParameterType>,
+    order_by_types: &MappedArena<OrderByParameterType>,
+    collection_queries: &mut MappedArena<CollectionQuery>,
+) {
     let operation_name = entity_type.collection_query();
-    let existing_query = building
-        .collection_queries
-        .get_by_key(&operation_name)
-        .unwrap();
 
-    let predicate_param = collection_predicate_param(entity_type, building);
-    let order_by_param = order_by_type_builder::new_root_param(&entity_type.name, false, building);
-    let limit_param = limit_param(building);
-    let offset_param = offset_param(building);
+    let predicate_param = collection_predicate_param(entity_type, predicate_types);
+    let order_by_param =
+        order_by_type_builder::new_root_param(&entity_type.name, false, order_by_types);
+    let limit_param = limit_param(primitive_types);
+    let offset_param = offset_param(primitive_types);
 
-    CollectionQuery {
-        name: operation_name.clone(),
-        parameter: CollectionQueryParameter {
-            predicate_param,
-            order_by_param,
-            limit_param,
-            offset_param,
-        },
-        return_type: existing_query.return_type.clone(),
-    }
+    let mut existing_query = &mut collection_queries.get_by_key_mut(&operation_name).unwrap();
+
+    existing_query.parameter.predicate_param = predicate_param;
+    existing_query.parameter.order_by_param = order_by_param;
+    existing_query.parameter.limit_param = limit_param;
+    existing_query.parameter.offset_param = offset_param;
 }
 
 fn shallow_aggregate_query(
@@ -190,55 +180,49 @@ fn shallow_aggregate_query(
     }
 }
 
-fn expanded_aggregate_query(
+fn expand_aggregate_query(
     entity_type: &EntityType,
-    building: &SystemContextBuilding,
-) -> AggregateQuery {
+    predicate_types: &MappedArena<PredicateParameterType>,
+    aggregate_queries: &mut MappedArena<AggregateQuery>,
+) {
     let operation_name = entity_type.aggregate_query();
-    let existing_query = building
-        .aggregate_queries
-        .get_by_key(&operation_name)
-        .unwrap();
 
-    let predicate_param = collection_predicate_param(entity_type, building);
+    let predicate_param = collection_predicate_param(entity_type, predicate_types);
 
-    AggregateQuery {
-        name: operation_name.clone(),
-        parameter: AggregateQueryParameter { predicate_param },
-        return_type: existing_query.return_type.clone(),
-    }
+    let mut existing_query = &mut aggregate_queries.get_by_key_mut(&operation_name).unwrap();
+    existing_query.parameter.predicate_param = predicate_param;
 }
 
-pub fn limit_param(building: &SystemContextBuilding) -> LimitParameter {
+pub fn limit_param(primitive_types: &MappedArena<PostgresPrimitiveType>) -> LimitParameter {
     let param_type_name = "Int".to_string();
 
     LimitParameter {
         name: "limit".to_string(),
         typ: FieldType::Optional(Box::new(FieldType::Plain(LimitParameterType {
             type_name: param_type_name.clone(),
-            type_id: building.get_primitive_type_id(&param_type_name).unwrap(),
+            type_id: primitive_types.get_id(&param_type_name).unwrap(),
         }))),
     }
 }
 
-pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
+pub fn offset_param(primitive_types: &MappedArena<PostgresPrimitiveType>) -> OffsetParameter {
     let param_type_name = "Int".to_string();
 
     OffsetParameter {
         name: "offset".to_string(),
         typ: FieldType::Optional(Box::new(FieldType::Plain(OffsetParameterType {
             type_name: param_type_name.clone(),
-            type_id: building.get_primitive_type_id(&param_type_name).unwrap(),
+            type_id: primitive_types.get_id(&param_type_name).unwrap(),
         }))),
     }
 }
 
 pub fn collection_predicate_param(
     entity_type: &EntityType,
-    building: &SystemContextBuilding,
+    predicate_types: &MappedArena<PredicateParameterType>,
 ) -> PredicateParameter {
     let param_type_name = predicate_builder::get_parameter_type_name(&entity_type.name);
-    let param_type_id = building.predicate_types.get_id(&param_type_name).unwrap();
+    let param_type_id = predicate_types.get_id(&param_type_name).unwrap();
 
     let param_type = PredicateParameterTypeWrapper {
         name: param_type_name,

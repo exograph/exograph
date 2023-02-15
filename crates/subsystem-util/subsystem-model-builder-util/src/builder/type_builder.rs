@@ -40,8 +40,8 @@ pub(super) fn build_service_expanded(
         }
     }
 
-    for (_, model_type) in resolved_env.resolved_types.iter() {
-        if let ResolvedType::Composite(c) = &model_type {
+    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(c) = &resolved_type {
             expand_type_access(c, resolved_env, building)?;
         }
     }
