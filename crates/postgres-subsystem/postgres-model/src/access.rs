@@ -27,7 +27,7 @@ impl Access {
 /// Primitive expression (that doesn't contain any other expressions).
 /// Used as sides of `AccessRelationalExpression` to form more complex expressions
 /// such as equal and less than.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DatabaseAccessPrimitiveExpression {
     ContextSelection(AccessContextSelection), // for example, AuthContext.role
     Column(ColumnIdPath),                     // for example, self.id
