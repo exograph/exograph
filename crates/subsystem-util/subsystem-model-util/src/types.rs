@@ -1,12 +1,12 @@
 use async_graphql_parser::types::{
-    FieldDefinition, InputObjectType, InputValueDefinition, ObjectType, TypeDefinition, TypeKind,
+    FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
 
 use core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
         default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
-        TypeDefinitionProvider, TypeModifier,
+        Parameter, TypeDefinitionProvider,
     },
     types::{FieldType, Named},
 };
@@ -36,13 +36,6 @@ pub struct ServiceCompositeType {
     pub access: Access,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum ServiceTypeModifier {
-    Optional,
-    NonNull,
-    List,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceField {
     pub name: String,
@@ -59,16 +52,6 @@ pub struct ServiceFieldType {
 impl Named for ServiceFieldType {
     fn name(&self) -> &str {
         &self.type_name
-    }
-}
-
-impl From<&ServiceTypeModifier> for TypeModifier {
-    fn from(modifier: &ServiceTypeModifier) -> Self {
-        match modifier {
-            ServiceTypeModifier::Optional => TypeModifier::Optional,
-            ServiceTypeModifier::NonNull => TypeModifier::NonNull,
-            ServiceTypeModifier::List => TypeModifier::List,
-        }
     }
 }
 
@@ -119,7 +102,7 @@ impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ServiceType {
 
 impl FieldDefinitionProvider<SerializableSlab<ServiceType>> for ServiceField {
     fn field_definition(&self, _service_types: &SerializableSlab<ServiceType>) -> FieldDefinition {
-        let field_type = default_positioned(self.typ.to_introspection_type());
+        let field_type = default_positioned((&self.typ).into());
 
         FieldDefinition {
             description: None,
@@ -131,19 +114,12 @@ impl FieldDefinitionProvider<SerializableSlab<ServiceType>> for ServiceField {
     }
 }
 
-// We need to a special case for the GqlField type, so that we can properly
-// created nested types such as Optional(List(List(String))). The blanket impl
-// above will not work for nested types like these.
-impl InputValueProvider for ServiceField {
-    fn input_value(&self) -> InputValueDefinition {
-        let field_type = default_positioned(self.typ.to_introspection_type());
+impl Parameter for ServiceField {
+    fn name(&self) -> &str {
+        &self.name
+    }
 
-        InputValueDefinition {
-            description: None,
-            name: default_positioned_name(&self.name),
-            ty: field_type,
-            default_value: None,
-            directives: vec![],
-        }
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }

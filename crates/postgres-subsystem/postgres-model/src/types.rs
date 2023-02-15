@@ -4,14 +4,15 @@ use crate::aggregate::AggregateField;
 use crate::operation::{AggregateQuery, CollectionQuery, CollectionQueryParameter, PkQuery};
 use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
-    FieldDefinition, InputObjectType, InputValueDefinition, ObjectType, TypeDefinition, TypeKind,
+    FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
+use core_model::type_normalization::Parameter;
 use core_model::types::{FieldType, Named};
 use core_plugin_interface::core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
         default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
-        TypeDefinitionProvider, TypeModifier,
+        TypeDefinitionProvider,
     },
 };
 use payas_sql::PhysicalTable;
@@ -113,13 +114,6 @@ impl MutationType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum PostgresTypeModifier {
-    Optional,
-    NonNull,
-    List,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresField<CT> {
     pub name: String,
@@ -216,7 +210,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for MutationType {
 
 impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
     fn field_definition(&self, system: &PostgresSubsystem) -> FieldDefinition {
-        let field_type = default_positioned(self.typ.to_introspection_type());
+        let field_type = default_positioned((&self.typ).into());
 
         let arguments = match self.relation {
             PostgresRelation::Pk { .. }
@@ -257,29 +251,12 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
     }
 }
 
-impl From<&PostgresTypeModifier> for TypeModifier {
-    fn from(modifier: &PostgresTypeModifier) -> Self {
-        match modifier {
-            PostgresTypeModifier::Optional => TypeModifier::Optional,
-            PostgresTypeModifier::NonNull => TypeModifier::NonNull,
-            PostgresTypeModifier::List => TypeModifier::List,
-        }
+impl<CT> Parameter for PostgresField<CT> {
+    fn name(&self) -> &str {
+        &self.name
     }
-}
 
-// We need to a special case for the PostgresField type, so that we can properly
-// created nested types such as Optional(List(List(String))). The blanket impl
-// above will not work for nested types like these.
-impl<CT> InputValueProvider for PostgresField<CT> {
-    fn input_value(&self) -> InputValueDefinition {
-        let field_type = default_positioned(self.typ.to_introspection_type());
-
-        InputValueDefinition {
-            description: None,
-            name: default_positioned_name(&self.name),
-            ty: field_type,
-            default_value: None,
-            directives: vec![],
-        }
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }

@@ -1,31 +1,24 @@
-use crate::{
-    column_path::ColumnIdPathLink,
-    subsystem::PostgresSubsystem,
-    types::{EntityType, TypeIndex},
-};
-use async_graphql_parser::types::{InputObjectType, TypeDefinition, TypeKind};
+use crate::{column_path::ColumnIdPathLink, subsystem::PostgresSubsystem};
+use async_graphql_parser::types::{InputObjectType, Type, TypeDefinition, TypeKind};
+use core_model::types::FieldType;
 use serde::{Deserialize, Serialize};
 
-use super::types::PostgresTypeModifier;
+use core_model::type_normalization::InputValueProvider;
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
-        default_positioned, default_positioned_name, InputValueProvider, Parameter,
-        TypeDefinitionProvider, TypeModifier,
+        default_positioned, default_positioned_name, Parameter, TypeDefinitionProvider,
     },
     types::Named,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PredicateParameter {
     /// The name of the parameter. For example, "where", "and", "id", "venue", etc.
     pub name: String,
-    /// The type name of the parameter.
-    /// For example, "ConcertFilter", "IntFilter". We need to keep this only for introspection, which doesn't have access to the ModelSystem.
-    /// We might find a way to avoid this, since given the model system and type_id of the parameter, we can get the type name.
-    pub type_name: String,
 
-    pub typ: PredicateParameterTypeWithModifier,
+    /// For parameters such as "and", FieldType will be a list.
+    pub typ: FieldType<PredicateParameterTypeWrapper>,
 
     /// How does this parameter relates with the parent parameter?
     /// For example for parameter used as {where: {venue1: {id: {eq: 1}}}}, we will have following column links:
@@ -34,26 +27,33 @@ pub struct PredicateParameter {
     /// venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     /// where: None
     pub column_path_link: Option<ColumnIdPathLink>,
-
-    /// The type this parameter is filtering on. For example, for ConcertFilter, this will be (the index of) the Concert.
-    pub underlying_type_id: TypeIndex<EntityType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PredicateParameterTypeWithModifier {
-    /// The type modifier of the parameter. For parameters such as "and", this will be a list.
-    pub type_modifier: PostgresTypeModifier,
+/// Thw wrapper around PredicateParameterType to be able to satisfy the Named trait, without cloning the parameter type.
+/// This one provides a name for the parameter type, while holding to a pointer to the actual parameter type.
+/// This is needed because the parameter type is stored in a slab, and we need to be able to get the name of the parameter type
+/// without access to the subsystem that holds the slab.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PredicateParameterTypeWrapper {
+    pub name: String,
     /// Type id of the parameter type. For example: IntFilter, StringFilter, etc.
     pub type_id: SerializableSlabIndex<PredicateParameterType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PredicateParameterType {
+    /// The name of the type. For example, "ConcertFilter", "IntFilter".
     pub name: String,
     pub kind: PredicateParameterTypeKind,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+impl Named for PredicateParameterTypeWrapper {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum PredicateParameterTypeKind {
     ImplicitEqual,                     // {id: 3}
     Operator(Vec<PredicateParameter>), // {lt: ..,gt: ..} such as IntFilter
@@ -63,23 +63,13 @@ pub enum PredicateParameterTypeKind {
     },
 }
 
-impl Named for PredicateParameterType {
-    fn name(&self) -> &str {
-        &self.name
-    }
-}
-
 impl Parameter for PredicateParameter {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn type_name(&self) -> &str {
-        &self.type_name
-    }
-
-    fn type_modifier(&self) -> TypeModifier {
-        (&self.typ.type_modifier).into()
+    fn typ(&self) -> Type {
+        (&self.typ).into()
     }
 }
 
@@ -95,7 +85,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
                 TypeDefinition {
                     extend: false,
                     description: None,
-                    name: default_positioned_name(self.name()),
+                    name: default_positioned_name(&self.name),
                     directives: vec![],
                     kind: TypeKind::InputObject(InputObjectType { fields }),
                 }
@@ -104,17 +94,16 @@ impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
                 field_params,
                 logical_op_params,
             } => {
-                let parameters = [field_params, &logical_op_params[..]].concat();
+                let parameters = field_params.iter().chain(logical_op_params.iter());
 
                 let fields = parameters
-                    .iter()
                     .map(|parameter| default_positioned(parameter.input_value()))
                     .collect();
 
                 TypeDefinition {
                     extend: false,
                     description: None,
-                    name: default_positioned_name(self.name()),
+                    name: default_positioned_name(&self.name),
                     directives: vec![],
                     kind: TypeKind::InputObject(InputObjectType { fields }),
                 }
@@ -122,7 +111,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
             PredicateParameterTypeKind::ImplicitEqual => TypeDefinition {
                 extend: false,
                 description: None,
-                name: default_positioned_name(self.name()),
+                name: default_positioned_name(&self.name),
                 directives: vec![],
                 kind: TypeKind::Scalar,
             },

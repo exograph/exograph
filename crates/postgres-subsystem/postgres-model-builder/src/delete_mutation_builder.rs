@@ -2,7 +2,7 @@
 //! the create mutations (delete<Type>, and delete<Type>s)
 
 use core_plugin_interface::core_model::{
-    mapped_arena::{MappedArena, SerializableSlabIndex},
+    mapped_arena::MappedArena,
     types::{BaseOperationReturnType, OperationReturnType},
 };
 use postgres_model::operation::PostgresMutationKind;
@@ -52,15 +52,10 @@ impl MutationBuilder for DeleteMutationBuilder {
     }
 
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<EntityType>,
         model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
-        PostgresMutationKind::Delete(query_builder::pk_predicate_param(
-            model_type_id,
-            model_type,
-            building,
-        ))
+        PostgresMutationKind::Delete(query_builder::pk_predicate_param(model_type, building))
     }
 
     fn single_mutation_modified_type(
@@ -75,14 +70,11 @@ impl MutationBuilder for DeleteMutationBuilder {
     }
 
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<EntityType>,
         model_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Delete(query_builder::collection_predicate_param(
-            model_type_id,
-            model_type,
-            building,
+            model_type, building,
         ))
     }
 }

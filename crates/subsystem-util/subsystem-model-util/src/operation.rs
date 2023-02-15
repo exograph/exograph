@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 
+use async_graphql_parser::types::Type;
 use core_model::mapped_arena::SerializableSlabIndex;
-use core_model::type_normalization::{Operation, Parameter, TypeModifier};
+use core_model::type_normalization::{Operation, Parameter};
 use core_model::types::OperationReturnType;
 use serde::{Deserialize, Serialize};
 
@@ -39,16 +40,8 @@ impl Operation for ServiceQuery {
         params
     }
 
-    fn return_type_name(&self) -> &str {
-        self.return_type.type_name()
-    }
-
-    fn return_type_modifier(&self) -> TypeModifier {
-        match &self.return_type {
-            OperationReturnType::Plain(_) => TypeModifier::NonNull,
-            OperationReturnType::List(_) => TypeModifier::List,
-            OperationReturnType::Optional(_) => TypeModifier::Optional,
-        }
+    fn return_type(&self) -> Type {
+        (&self.return_type).into()
     }
 }
 
@@ -67,15 +60,7 @@ impl Operation for ServiceMutation {
             .collect()
     }
 
-    fn return_type_name(&self) -> &str {
-        self.return_type.type_name()
-    }
-
-    fn return_type_modifier(&self) -> TypeModifier {
-        match &self.return_type {
-            OperationReturnType::Plain(_) => TypeModifier::NonNull,
-            OperationReturnType::List(_) => TypeModifier::List,
-            OperationReturnType::Optional(_) => TypeModifier::Optional,
-        }
+    fn return_type(&self) -> Type {
+        (&self.return_type).into()
     }
 }

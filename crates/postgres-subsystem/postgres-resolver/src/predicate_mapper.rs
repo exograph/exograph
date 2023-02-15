@@ -26,7 +26,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
         argument: &'a ConstValue,
         subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
-        let parameter_type = &subsystem.predicate_types[self.param.typ.type_id];
+        let parameter_type = &subsystem.predicate_types[self.param.typ.inner_most().type_id];
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {

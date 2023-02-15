@@ -66,7 +66,6 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
 pub trait MutationBuilder {
     fn single_mutation_name(entity_type: &EntityType) -> String;
     fn single_mutation_kind(
-        entity_type_id: SerializableSlabIndex<EntityType>,
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
@@ -76,7 +75,6 @@ pub trait MutationBuilder {
 
     fn multi_mutation_name(entity_type: &EntityType) -> String;
     fn multi_mutation_kind(
-        entity_type_id: SerializableSlabIndex<EntityType>,
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
@@ -89,7 +87,7 @@ pub trait MutationBuilder {
     ) -> Vec<PostgresMutation> {
         let single_mutation = PostgresMutation {
             name: Self::single_mutation_name(entity_type),
-            kind: Self::single_mutation_kind(entity_type_id, entity_type, building),
+            kind: Self::single_mutation_kind(entity_type, building),
             return_type: Self::single_mutation_modified_type(BaseOperationReturnType {
                 associated_type_id: entity_type_id,
                 type_name: entity_type.name.clone(),
@@ -98,7 +96,7 @@ pub trait MutationBuilder {
 
         let multi_mutation = PostgresMutation {
             name: Self::multi_mutation_name(entity_type),
-            kind: Self::multi_mutation_kind(entity_type_id, entity_type, building),
+            kind: Self::multi_mutation_kind(entity_type, building),
             return_type: OperationReturnType::List(Box::new(OperationReturnType::Plain(
                 BaseOperationReturnType {
                     associated_type_id: entity_type_id,

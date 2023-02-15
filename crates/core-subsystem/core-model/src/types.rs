@@ -31,6 +31,15 @@ impl<T> FieldType<T> {
             FieldType::List(inner) | FieldType::Optional(inner) => inner.inner_most(),
         }
     }
+
+    /// Wrap the destination type to match the structure of the source type
+    pub fn wrap<D>(&self, dest: D) -> FieldType<D> {
+        match self {
+            FieldType::Plain(_) => FieldType::Plain(dest),
+            FieldType::Optional(optional) => FieldType::Optional(Box::new(optional.wrap(dest))),
+            FieldType::List(list) => FieldType::List(Box::new(list.wrap(dest))),
+        }
+    }
 }
 
 impl<T: Clone> FieldType<T> {
@@ -43,20 +52,20 @@ impl<T: Clone> FieldType<T> {
     }
 }
 
-impl<T: Named> FieldType<T> {
-    /// Transforms the type into an introspection type
-    ///
-    /// The complexity of this function is due to the fact that the GraphQL spec and hence the
-    /// introspection type (`Type`) does not support nested optionals. However, `FieldType`
-    /// being more general, does. This function will panic if it encounters a nested optional.
-    pub fn to_introspection_type(&self) -> Type {
-        match self {
+/// Transforms the type into an introspection type
+///
+/// The complexity of this function is due to the fact that the GraphQL spec and hence the
+/// introspection type (`Type`) does not support nested optionals. However, `FieldType`
+/// being more general, does. This function will panic if it encounters a nested optional.
+impl<T: Named> From<&FieldType<T>> for Type {
+    fn from(ft: &FieldType<T>) -> Self {
+        match ft {
             FieldType::Plain(base) => Type {
                 base: BaseType::Named(Name::new(base.name())),
                 nullable: false,
             },
             FieldType::Optional(underlying) => {
-                let Type { base, nullable } = underlying.to_introspection_type();
+                let Type { base, nullable } = underlying.as_ref().into();
 
                 if nullable {
                     panic!("Optional type cannot be nested")
@@ -67,7 +76,7 @@ impl<T: Named> FieldType<T> {
                 }
             }
             FieldType::List(underlying) => Type {
-                base: BaseType::List(Box::new(underlying.to_introspection_type())),
+                base: BaseType::List(Box::new(underlying.as_ref().into())),
                 nullable: false,
             },
         }
