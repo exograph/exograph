@@ -2,7 +2,7 @@
 service TodoPersistence {
   @access(true)
   type Todo {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     title: String
   }
 }

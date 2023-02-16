@@ -3,7 +3,7 @@ service FooDatabase {
     @table("foo")
     @access(true)
     type Foo {
-        @pk id: Int = autoincrement()
+        @pk id: Int = autoIncrement()
         bar: Int
         baz: Int
         qux: Int

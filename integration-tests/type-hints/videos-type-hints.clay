@@ -3,7 +3,7 @@ service VideoService {
   @table("videos")
   @access(true)
   type Video {
-    @dbtype("BIGINT") @pk id: Int = autoincrement() 
+    @dbtype("BIGINT") @pk id: Int = autoIncrement() 
     name: String  
     @length(30)  slug: String 
     @bits(16) nonce: Int 

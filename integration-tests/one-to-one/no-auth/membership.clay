@@ -3,14 +3,14 @@ service MembershipService {
   // A user may have an optional membership, but a membership must have an associated user
   @access(true)
   type User {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     name: String
     membership: Membership?
   }
 
   @access(true)
   type Membership {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     kind: String
     user: User
   }

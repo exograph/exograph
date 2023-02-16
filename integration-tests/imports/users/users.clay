@@ -4,14 +4,14 @@ import "../mailing_list" // An example of not specifying the .clay extension
 service UserService {
     @access(true)
     type User {
-        @pk id: Int = autoincrement()
+        @pk id: Int = autoIncrement()
         username: String
         @column("subscribed_user_id") subscribed_lists: Set<UserSubscription>? 
     }
     
     @access(true)
     type UserSubscription {
-        @pk id: Int = autoincrement()
+        @pk id: Int = autoIncrement()
         @column("subscribed_user_id") user: User 
         @column("subscribed_mailing_list") mailing_list: MailingList 
     }

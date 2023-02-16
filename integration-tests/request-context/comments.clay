@@ -29,7 +29,7 @@ service JournalService {
                  AuthContext.sessionId == "abcde" 
     )
     type JournalEntry {
-        @pk id: Int = autoincrement()
+        @pk id: Int = autoIncrement()
         text: String
     }
 }

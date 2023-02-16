@@ -15,7 +15,7 @@ impl PhysicalColumn {
         let column_name_same = self.column_name == new.column_name;
         let type_same = self.typ == new.typ;
         let is_pk_same = self.is_pk == new.is_pk;
-        let is_autoincrement_same = self.is_autoincrement == new.is_autoincrement;
+        let is_auto_increment_same = self.is_auto_increment == new.is_auto_increment;
         let is_nullable_same = self.is_nullable == new.is_nullable;
         let _unique_constraints_same = self.unique_constraints == new.unique_constraints;
         let default_value_same = self.default_value == new.default_value;
@@ -24,7 +24,7 @@ impl PhysicalColumn {
             panic!("Diffing columns must have the same table name and column name");
         }
 
-        if !(type_same || is_pk_same || is_autoincrement_same) {
+        if !(type_same || is_pk_same || is_auto_increment_same) {
             changes.push(SchemaOp::DeleteColumn { column: self });
             changes.push(SchemaOp::CreateColumn { column: new });
         } else if !is_nullable_same {
@@ -64,8 +64,8 @@ impl PhysicalColumn {
         explicit_type: Option<PhysicalColumnType>,
         unique_constraints: Vec<String>,
     ) -> Result<WithIssues<Option<PhysicalColumn>>, DatabaseError> {
-        // Find all sequences in the database that are used for SERIAL (autoincrement) columns
-        // e.g. an autoincrement column `id` in the table `users` will create a sequence called
+        // Find all sequences in the database that are used for SERIAL (autoIncrement) columns
+        // e.g. an autoIncrement column `id` in the table `users` will create a sequence called
         // `users_id_seq`
         let serial_columns_query = "SELECT relname FROM pg_class WHERE relkind = 'S'";
 
@@ -126,10 +126,10 @@ impl PhysicalColumn {
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
 
-        let is_autoincrement = serial_columns.contains(&format!("{table_name}_{column_name}_seq"));
+        let is_auto_increment = serial_columns.contains(&format!("{table_name}_{column_name}_seq"));
 
-        let default_value = if is_autoincrement {
-            // if this column is autoincrement, then default value will be populated
+        let default_value = if is_auto_increment {
+            // if this column is autoIncrement, then default value will be populated
             // with an invocation of nextval()
             //
             // clear it to normalize the column
@@ -153,7 +153,7 @@ impl PhysicalColumn {
                 column_name: column_name.to_owned(),
                 typ,
                 is_pk,
-                is_autoincrement,
+                is_auto_increment,
                 is_nullable: !not_null,
                 unique_constraints,
                 default_value,
@@ -170,7 +170,7 @@ impl PhysicalColumn {
             ..
         } = self
             .typ
-            .to_sql(&self.table_name, &self.column_name, self.is_autoincrement);
+            .to_sql(&self.table_name, &self.column_name, self.is_auto_increment);
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
         let not_null_str = if !self.is_nullable && !self.is_pk {
             // primary keys are implied to be not null
@@ -200,12 +200,12 @@ impl PhysicalColumnType {
         &self,
         table_name: &str,
         column_name: &str,
-        is_autoincrement: bool,
+        is_auto_increment: bool,
     ) -> SchemaStatement {
         match self {
             PhysicalColumnType::Int { bits } => SchemaStatement {
                 statement: {
-                    if is_autoincrement {
+                    if is_auto_increment {
                         match bits {
                             IntBits::_16 => "SMALLSERIAL",
                             IntBits::_32 => "SERIAL",
@@ -350,7 +350,7 @@ impl PhysicalColumnType {
                 }
 
                 let mut sql_statement =
-                    underlying_typ.to_sql(table_name, column_name, is_autoincrement);
+                    underlying_typ.to_sql(table_name, column_name, is_auto_increment);
                 sql_statement.statement += &dimensions_part;
                 sql_statement
             }
@@ -361,7 +361,7 @@ impl PhysicalColumnType {
                 ..
             } => {
                 let mut sql_statement =
-                    ref_pk_type.to_sql(table_name, column_name, is_autoincrement);
+                    ref_pk_type.to_sql(table_name, column_name, is_auto_increment);
                 let foreign_constraint = format!(
                     r#"ALTER TABLE "{table_name}" ADD CONSTRAINT "{table_name}_{column_name}_fk" FOREIGN KEY ("{column_name}") REFERENCES "{ref_table_name}";"#,
                 );
