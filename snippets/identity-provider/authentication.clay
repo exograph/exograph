@@ -1,7 +1,7 @@
 @postgres 
 service UserService {
     type User {
-        @pk id: Int = autoincrement()
+        @pk id: Int = autoIncrement()
 
         email: String     // login e-mail
         role: String      // user role

@@ -8,7 +8,7 @@ service ConcertService {
   @table("concerts")
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
   type Concert {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     title: String
     @column("venueid")
     venue: Venue 
@@ -20,7 +20,7 @@ service ConcertService {
   @table("venues")
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
   type Venue {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     name: String
     @column("venueid") concerts: Set<Concert>? 
     published: Boolean

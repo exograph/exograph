@@ -231,7 +231,7 @@ pub trait DataParamBuilder<D> {
                         has_default_value: field.has_default_value,
                     })
                 } else {
-                    // TODO: Make this decision based on autoincrement/uuid etc of the id
+                    // TODO: Make this decision based on autoIncrement/uuid etc of the id
                     None
                 }
             }

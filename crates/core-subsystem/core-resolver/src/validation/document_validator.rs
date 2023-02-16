@@ -602,13 +602,13 @@ mod tests {
             @postgres
             service LogService {
                 type Concert {
-                    @pk id: Int = autoincrement()
+                    @pk id: Int = autoIncrement()
                     title: String
                     venue: Venue
                 }
 
                 type Venue {
-                    @pk id: Int = autoincrement()
+                    @pk id: Int = autoIncrement()
                     name: String
                     published: Boolean
                     concerts: Set<Concert>

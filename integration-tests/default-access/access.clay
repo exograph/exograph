@@ -2,7 +2,7 @@
 service ConcertService {
   // No @access specified, so all queries and mutations should result in "Not authorized"
   type Concert {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     title: String
   }
 }

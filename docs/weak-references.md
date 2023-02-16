@@ -9,19 +9,19 @@ Users will first start with the following domain model.
 
 ```claytip
 export model Concert {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   title: String
   concertArtists: Set[ConcertArtist]
 }
 
 export model Artist {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   name: String
   artistConcerts: Set[ConcertArtist]
 }
 
 model ConcertArtist {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   concert: Concert
   artist: Artist
   role: String // When we support, an enum { main, accompanying }
@@ -114,7 +114,7 @@ associated with a `Concert`). This can be accomplished by replacing the type of
 
 ```claytip
 export model Artist {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   name: String
   artistConcerts: WeakSet[ConcertArtist]
 }
@@ -141,7 +141,7 @@ model ConcertArtist {
 }
 
 export model FeaturedPerformance {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   promoTitle: String
   concertArtist: ConcertArtist
 }
@@ -255,7 +255,7 @@ residue dynamically with the query (similar to how we do it for access control).
 
 ```claytip
 export model Artist {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   name: String
   artistConcerts: WeakSet[ConcertArtist]
 }
@@ -306,7 +306,7 @@ C. For `@weak` and not exported models, emit each strong reference as
 
 ```claytip
 @weak export model FeaturedPerformance {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   promoTitle: String
   concertArtist: ConcertArtist
 }

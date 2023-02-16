@@ -2,7 +2,7 @@
 service VenueService {
   @access(true)
   type Venue {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     name: String
     published: Boolean
     cost: Float? // Keep this optional so that we can test that not specifying it when creating a new venue is not an error
