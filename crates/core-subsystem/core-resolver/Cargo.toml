@@ -7,8 +7,8 @@ edition = "2021"
 test-context = []
 
 [dependencies]
-async-graphql-parser = "4.0.5"
-async-graphql-value = "4.0.5"
+async-graphql-parser = "5.0.6"
+async-graphql-value = "5.0.6"
 async-recursion = "1.0.0"
 async-trait = "0.1.53"
 bytes = "1"
