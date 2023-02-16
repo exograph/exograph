@@ -6,4 +6,4 @@ class ClaytipError extends Error {
 }
 
 // Need to register the ClaytipError class so that we can use it as a custom error (see claytip_ops.rs)
-Deno.core.registerErrorClass('ClaytipError', ClaytipError);
+Deno[Deno.internal].core.registerErrorClass('ClaytipError', ClaytipError);

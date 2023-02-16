@@ -5,6 +5,7 @@ use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
+use deno_core::ResolutionKind;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -26,7 +27,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
         &self,
         specifier: &str,
         referrer: &str,
-        _is_main: bool,
+        _kind: ResolutionKind,
     ) -> Result<ModuleSpecifier, AnyError> {
         Ok(resolve_import(specifier, referrer)?)
     }
