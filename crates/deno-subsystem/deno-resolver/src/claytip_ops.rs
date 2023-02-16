@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use deno_core::{error::AnyError, op, OpState};
+use payas_deno::deno_core::{error::AnyError, op, OpState};
 
 use core_plugin_interface::core_resolver::system_resolver::SystemResolutionError;
 use serde_json::Value;
@@ -86,7 +86,7 @@ pub async fn op_claytip_execute_query_priv(
 }
 
 #[op]
-pub fn op_intercepted_operation_name(state: &mut OpState) -> Result<String, AnyError> {
+pub fn op_operation_name(state: &mut OpState) -> Result<String, AnyError> {
     // try to read the intercepted operation name out of Deno's GothamStorage
     if let Some(InterceptedOperationInfo { name, .. }) = state.borrow() {
         Ok(name.clone())
@@ -96,7 +96,7 @@ pub fn op_intercepted_operation_name(state: &mut OpState) -> Result<String, AnyE
 }
 
 #[op]
-pub fn op_intercepted_operation_query(state: &mut OpState) -> Result<Value, AnyError> {
+pub fn op_operation_query(state: &mut OpState) -> Result<Value, AnyError> {
     if let Some(InterceptedOperationInfo { query, .. }) = state.borrow() {
         Ok(query.to_owned())
     } else {
@@ -105,7 +105,7 @@ pub fn op_intercepted_operation_query(state: &mut OpState) -> Result<Value, AnyE
 }
 
 #[op]
-pub async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value, AnyError> {
+pub async fn op_operation_proceed(state: Rc<RefCell<OpState>>) -> Result<Value, AnyError> {
     let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
 
     let sender = {
@@ -116,20 +116,11 @@ pub async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value
     sender
         .send(RequestFromDenoMessage::InterceptedOperationProceed { response_sender })
         .await
-        .map_err(|err| {
-            anyhow!(
-                "Could not send request from op_intercepted_proceed ({})",
-                err
-            )
-        })?;
+        .map_err(|err| anyhow!("Could not send request from op_operation_proceed ({})", err))?;
 
-    if let ResponseForDenoMessage::InterceptedOperationProceed(result) =
-        response_receiver.await.map_err(|err| {
-            anyhow!(
-                "Could not receive result in op_intercepted_proceed ({})",
-                err
-            )
-        })?
+    if let ResponseForDenoMessage::InterceptedOperationProceed(result) = response_receiver
+        .await
+        .map_err(|err| anyhow!("Could not receive result in op_operation_proceed ({})", err))?
     {
         let result = process_execution_error(result)?;
 
@@ -140,7 +131,7 @@ pub async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value
 
         Ok(result.body.to_json()?)
     } else {
-        bail!("Wrong response type for op_intercepted_proceed")
+        bail!("Wrong response type for op_operation_proceed")
     }
 }
 
@@ -165,7 +156,11 @@ pub fn add_header(state: &mut OpState, header: String, value: String) -> Result<
 }
 
 #[op]
-pub fn op_add_header(state: &mut OpState, header: String, value: String) -> Result<(), AnyError> {
+pub fn op_claytip_add_header(
+    state: &mut OpState,
+    header: String,
+    value: String,
+) -> Result<(), AnyError> {
     add_header(state, header, value)
 }
 
