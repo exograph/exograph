@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
-async-graphql-parser = "4.0.6"
-async-graphql-value = "4.0.5"
+async-graphql-parser = "5.0.6"
+async-graphql-value = "5.0.6"
 async-recursion = "1.0.0"
 async-trait = "0.1.53"
 # Make sure deno_core version matches the one in the Cargo.toml of the payas_deno crate
