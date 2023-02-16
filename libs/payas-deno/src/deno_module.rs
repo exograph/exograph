@@ -7,7 +7,7 @@ use deno_core::ModuleSpecifier;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::ops::io::Stdio;
-use deno_runtime::permissions::Permissions;
+use deno_runtime::permissions::PermissionsContainer;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
@@ -161,6 +161,7 @@ impl DenoModule {
                 is_tty: false,
                 user_agent: user_agent_name.to_string(),
                 inspect: false,
+                locale: "en".to_string(),
             },
             extensions,
             unsafely_ignore_certificate_errors: None,
@@ -183,10 +184,13 @@ impl DenoModule {
             npm_resolver: None,
             web_worker_pre_execute_module_cb: Arc::new(|_| todo!()),
             cache_storage_dir: None,
+            extensions_with_js: vec![],
+            should_wait_for_inspector_session: false,
+            startup_snapshot: None,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
-        let permissions = Permissions::allow_all();
+        let permissions = PermissionsContainer::allow_all();
 
         let mut worker =
             MainWorker::bootstrap_from_options(main_module.clone(), permissions, options);
@@ -576,7 +580,9 @@ mod tests {
             "deno_module",
             vec![],
             vec![],
-            vec![Extension::builder().ops(vec![rust_impl::decl()]).build()],
+            vec![Extension::builder("test")
+                .ops(vec![rust_impl::decl()])
+                .build()],
             DenoModuleSharedState::default(),
             None,
             None,

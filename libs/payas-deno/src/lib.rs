@@ -15,3 +15,5 @@ mod deno_actor;
 mod embedded_module_loader;
 #[cfg(feature = "typescript-loader")]
 mod typescript_module_loader;
+
+pub use deno_core;

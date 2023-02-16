@@ -9,6 +9,7 @@ use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
+use deno_core::ResolutionKind;
 use futures::FutureExt;
 use include_dir::Dir;
 use std::collections::HashMap;
@@ -26,7 +27,7 @@ impl ModuleLoader for TypescriptLoader {
         &self,
         specifier: &str,
         referrer: &str,
-        _is_main: bool,
+        _kind: ResolutionKind,
     ) -> Result<ModuleSpecifier, deno_core::anyhow::Error> {
         Ok(resolve_import(specifier, referrer)?)
     }

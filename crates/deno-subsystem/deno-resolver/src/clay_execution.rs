@@ -108,14 +108,14 @@ pub fn clay_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
     fn create_extensions() -> Vec<Extension> {
         // we provide a set of Claytip functionality through custom Deno ops,
         // create a Deno extension that provides these ops
-        let ext = Extension::builder()
+        let ext = Extension::builder("claytip")
             .ops(vec![
                 super::claytip_ops::op_claytip_execute_query::decl(),
                 super::claytip_ops::op_claytip_execute_query_priv::decl(),
-                super::claytip_ops::op_intercepted_operation_name::decl(),
-                super::claytip_ops::op_intercepted_operation_query::decl(),
-                super::claytip_ops::op_intercepted_proceed::decl(),
-                super::claytip_ops::op_add_header::decl(),
+                super::claytip_ops::op_claytip_add_header::decl(),
+                super::claytip_ops::op_operation_name::decl(),
+                super::claytip_ops::op_operation_query::decl(),
+                super::claytip_ops::op_operation_proceed::decl(),
             ])
             .build();
         vec![ext]

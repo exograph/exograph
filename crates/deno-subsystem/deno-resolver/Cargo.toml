@@ -9,7 +9,9 @@ async-graphql-parser = "4.0.6"
 async-graphql-value = "4.0.5"
 async-recursion = "1.0.0"
 async-trait = "0.1.53"
-deno_core = "0.155.0"
+# Make sure deno_core version matches the one in the Cargo.toml of the payas_deno crate
+# It looks like if we re-export the deno_core crate from the payas_deno crate, the #[op] macro panics (it looks for the deno_core crate local Cargo.toml)
+deno_core = "0.171.0" 
 futures = "0.3"
 maybe-owned = "0.3.4"
 serde_json = { version = "1.0", features = ["preserve_order"] }
