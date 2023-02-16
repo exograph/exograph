@@ -35,7 +35,7 @@ use super::{
 use heck::ToSnakeCase;
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_FN_AUTOINCREMENT: &str = "autoincrement";
+const DEFAULT_FN_AUTOINCREMENT: &str = "autoIncrement";
 const DEFAULT_FN_CURRENT_TIME: &str = "now";
 const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
 
@@ -127,7 +127,7 @@ pub struct ResolvedField {
 
 // TODO: dedup?
 impl ResolvedField {
-    pub fn get_is_autoincrement(&self) -> bool {
+    pub fn get_is_auto_increment(&self) -> bool {
         matches!(
             &self.default_value,
             Some(ResolvedFieldDefault::Autoincrement)
@@ -956,7 +956,7 @@ mod tests {
         service ConcertService {
             @table("custom_concerts")
             type Concert {
-              @pk @dbtype("bigint") @column("custom_id") id: Int = autoincrement() 
+              @pk @dbtype("bigint") @column("custom_id") id: Int = autoIncrement() 
               @column("custom_title") @length(12) title: String 
               @column("custom_venue_id") venue: Venue 
               @range(min=0, max=300) reserved: Int 
@@ -967,7 +967,7 @@ mod tests {
             @table("venues")
             @plural("Venuess")
             type Venue {
-              @pk @column("custom_id") id: Int = autoincrement() 
+              @pk @column("custom_id") id: Int = autoIncrement() 
               @column("custom_name") name: String 
               @column("custom_venue_id") concerts: Set<Concert> 
               @bits(16) capacity: Int 
@@ -998,7 +998,7 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-                @dbtype("BIGINT") @pk  id: Int = autoincrement() 
+                @dbtype("BIGINT") @pk  id: Int = autoIncrement() 
               title: String 
               @unique("unique_concert") venue: Venue 
               attending: Array<String>
@@ -1006,7 +1006,7 @@ mod tests {
             }
 
             type Venue             {
-              @pk @dbtype("BIGINT") id: Int  = autoincrement() 
+              @pk @dbtype("BIGINT") id: Int  = autoIncrement() 
               name:String 
               concerts: Set<Concert> 
             }        
@@ -1026,14 +1026,14 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-              @pk id: Int = autoincrement() 
+              @pk id: Int = autoIncrement() 
               title: String 
               venue: Venue? 
               icon: Blob?
             }
 
             type Venue {
-              @pk id: Int = autoincrement()
+              @pk id: Int = autoIncrement()
               name: String
               @column("custom_address") address: String? 
               concerts: Set<Concert>?
@@ -1059,7 +1059,7 @@ mod tests {
         service ConcertService {
             @access(AuthContext.role == "ROLE_ADMIN" || self.public)
             type Concert {
-              @pk id: Int = autoincrement() 
+              @pk id: Int = autoIncrement() 
               title: String
               public: Boolean
             }      
@@ -1067,13 +1067,13 @@ mod tests {
 
             @access(true)
             type Venue {
-              @pk id: Int = autoincrement() 
+              @pk id: Int = autoIncrement() 
               name: String
             }   
 
             @access(false)
             type Artist {
-              @pk id: Int = autoincrement() 
+              @pk id: Int = autoIncrement() 
               name: String
             }  
         }
@@ -1105,7 +1105,7 @@ mod tests {
         service ConcertService {
             @access(AuthContext.role == "ROLE_ADMIN" || self.public)
             type Concert {
-              @pk id: Int = autoincrement() 
+              @pk id: Int = autoIncrement() 
               title: String
               public: Boolean
             }      
@@ -1125,7 +1125,7 @@ mod tests {
         @postgres
         service EntityService {
             type Entity {
-              @pk _id: Int = autoincrement()
+              @pk _id: Int = autoIncrement()
               title_main: String
               title_main1: String
               public1: Boolean
@@ -1147,14 +1147,14 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-              @pk id: Int = autoincrement()
+              @pk id: Int = autoIncrement()
               title: String
               venuex: Venue // non-standard name
               published: Boolean
             }
         
             type Venue {
-              @pk id: Int = autoincrement()
+              @pk id: Int = autoIncrement()
               name: String
               concerts: Set<Concert>
               published: Boolean
@@ -1175,7 +1175,7 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-                @pk id: Int = autoincrement() 
+                @pk id: Int = autoIncrement() 
                 title: String 
                 //@column("ticket_office")
                 ticket_office: Venue 
@@ -1184,7 +1184,7 @@ mod tests {
             }
           
             type Venue {
-                id: Int  @autoincrement @pk 
+                id: Int  @autoIncrement @pk 
                 name:String 
                 //@column("ticket_office")
                 ticket_events: Set<Concert> 
@@ -1205,14 +1205,14 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-                @pk id: Int = autoincrement() 
+                @pk id: Int = autoIncrement() 
                 title: String  
                 @column("ticket_office") ticket_office: Venue 
                 @column("main") main: Venue 
             }
           
             type Venue {
-                @pk id: Int = autoincrement() 
+                @pk id: Int = autoIncrement() 
                 name:String 
                 @column("ticket_office") ticket_events: Set<Concert> 
                 @column("main") main_events: Set<Concert> 
@@ -1233,7 +1233,7 @@ mod tests {
         @postgres
         service ConcertService {
             type ConcertInfo {
-                @pk concertId: Int = autoincrement() 
+                @pk concertId: Int = autoIncrement() 
                 mainTitle: String 
             }
         }

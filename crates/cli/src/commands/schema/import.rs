@@ -128,8 +128,8 @@ impl ToModel for PhysicalColumn {
         let mut issues = Vec::new();
 
         let pk_str = if self.is_pk { " @pk" } else { "" };
-        let autoinc_str = if self.is_autoincrement {
-            " = autoincrement()"
+        let autoinc_str = if self.is_auto_increment {
+            " = autoIncrement()"
         } else {
             ""
         };

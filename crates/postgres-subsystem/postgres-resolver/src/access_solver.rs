@@ -290,7 +290,7 @@ mod tests {
                 @postgres
                 service ArticleService {
                     type Article {
-                        @pk id: Int = autoincrement()
+                        @pk id: Int = autoIncrement()
                         published: Boolean
                         @bits(64) owner_id: Int 
                         @bits(64) dept1_id: Int 

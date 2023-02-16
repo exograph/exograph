@@ -2,7 +2,7 @@
 service ConcertVenues {
   @access(true)
   type Concert {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     title: String
     @column("venueid") venue: Venue 
     published: Boolean
@@ -11,7 +11,7 @@ service ConcertVenues {
 
   @access(true)
   type Venue {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     name: String
     @column("venueid") concerts: Set<Concert>? 
     published: Boolean
@@ -23,7 +23,7 @@ service ConcertVenues {
 service LogService {
   @access(true)
   type Log {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     message: String
   }
 }

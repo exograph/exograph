@@ -4,7 +4,7 @@ import "users"  // Example of not specifying the index.clay file in a directory
 service MailingListService {
     @access(true)
     type MailingList {
-        @pk id: Int = autoincrement()
+        @pk id: Int = autoIncrement()
         email_address: String
         @column("subscribed_mailing_list")  subscriptions: Set<UserSubscription>? 
     }

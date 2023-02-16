@@ -4,7 +4,7 @@ service ConcertService {
   @access(true)
   type Concert {
     @pk
-    id: Int = autoincrement();
+    id: Int = autoIncrement();
     title: String
     @column("venueid") venue: Venue 
     published: Boolean
@@ -14,7 +14,7 @@ service ConcertService {
   @table("venues")
   @access(true)
   type Venue {
-    @pk id: Int = autoincrement() 
+    @pk id: Int = autoIncrement() 
     name: String
     @column("venueid") concerts: Set<Concert>? 
     published: Boolean

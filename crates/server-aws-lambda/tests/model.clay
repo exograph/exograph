@@ -2,7 +2,7 @@
 service LoggingService {
     @access(true)
     type Log {
-        @pk id: Int = autoincrement()
+        @pk id: Int = autoIncrement()
         message: String
     }
 }

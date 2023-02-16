@@ -147,7 +147,7 @@ mod tests {
             service ConcertService {
                 @table("concerts")
                 type Concert {
-                    @pk id: Int = autoincrement()
+                    @pk id: Int = autoIncrement()
                     title: String
                     venue: Venue?
                     icon: Blob?
@@ -155,7 +155,7 @@ mod tests {
 
                 @table("venues")
                 type Venue {
-                    @pk id: Int = autoincrement()
+                    @pk id: Int = autoIncrement()
                     name: String
                     address: String?
                     concerts: Set<Concert>?
@@ -200,12 +200,12 @@ mod tests {
         @postgres
         service UserService {
             type User {
-                @pk id: Int = autoincrement()
+                @pk id: Int = autoIncrement()
                 membership: Membership?
             }
 
             type Membership {
-                @pk id: Int = autoincrement()
+                @pk id: Int = autoIncrement()
                 user: User
             }
         }
@@ -234,7 +234,7 @@ mod tests {
             service LogService {
                 @table("logs")
                 type Log {
-                  @dbtype("bigint") @pk id: Int = autoincrement() 
+                  @dbtype("bigint") @pk id: Int = autoIncrement() 
                   @bits(16) nonce: Int 
                   @size(8) hash: Int 
                   @size(4) float: Float 

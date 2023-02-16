@@ -3,7 +3,7 @@ service LogPersistence {
   @table("logs")
   @access(true)
   type Log {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     timestamp: Int
     text: String
   }

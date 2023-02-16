@@ -2,14 +2,14 @@
 service ConcertService {
 @table("concerts")
   type Concert {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     @access(!self.id.bar || self.venue.name) title: Stringg 
     @column("venueid") venue: Venue 
   }
   
   @table("venues")
   type Venue {
-    @access(Foo) @pk id: Int = autoincrement() 
+    @access(Foo) @pk id: Int = autoIncrement() 
     @range(min=-10, max=10) name: String 
     @column("venueid") concerts: <Concert> 
   }

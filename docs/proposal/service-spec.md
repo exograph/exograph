@@ -87,20 +87,20 @@ Assume the following Clay model:
 
 ```clay
 model ConcertNotification {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   concert: Concert? // Allow null for sending general notification without a concert
   preBlurb: String?
   postBlurb: String?
 }
 
 model Subscription {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   email: String
   groups: Set[SubscriptionGroup] // many-to-many
 }
 
 model SubscriptionGroup {
-  @pk id: Int = autoincrement()
+  @pk id: Int = autoIncrement()
   name: String // "test", "all", "admins"
   subscriptions: Set[Subscription] // many-to-many
 }

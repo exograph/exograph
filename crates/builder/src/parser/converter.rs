@@ -671,7 +671,7 @@ mod tests {
                 // a short comment
                 @table("concerts")
                 type Concert {
-                    @pk id: Int = autoincrement()
+                    @pk id: Int = autoIncrement()
                     title: String // a comment
                     // another comment
                     @column("venueid") venue: Venue 
@@ -685,7 +685,7 @@ mod tests {
                 */
                 @table("venues")
                 type Venue {
-                    @pk id: Int = autoincrement()
+                    @pk id: Int = autoIncrement()
                     name: String
                     /*here */ @column("venueid") /* and here */ concerts: Set<Concert /* here too! */> 
                 }

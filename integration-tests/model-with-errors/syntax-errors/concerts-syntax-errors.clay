@@ -1,6 +1,6 @@
 @table("concerts")
 type Concert {
-  id: Int @pk = autoincrement()
+  id: Int @pk = autoIncrement()
   @access(!self.id.bar | self.venue.name) title: Stringg 
   column("venueid") venue: Venue 
 }
@@ -9,7 +9,7 @@ type Concert {
 service VenueService {
   @table("venues"
   type Venue {
-    @access(Foo) @pk id: Int = autoincrement() 
+    @access(Foo) @pk id: Int = autoIncrement() 
     name: String
     @column("venueid") concerts: Concert> 
   }

@@ -2,14 +2,14 @@
 service ConcertsService {
   @access(true)
   type Concert {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     title: String
     concertArtists: Set<ConcertArtist>
   }
   
   @access(true)
   type ConcertArtist {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     concert: Concert
     artist: Artist
     rank: Int
@@ -18,7 +18,7 @@ service ConcertsService {
   
   @access(true)
   type Artist {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     name: String
     concertArtists: Set<ConcertArtist>? // An artist may yet to participate in a concert, hence optional
   }

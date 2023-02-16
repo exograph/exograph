@@ -351,7 +351,7 @@ fn create_column(
                     column_name: field.column_name.to_string(),
                     typ: determine_column_type(pt, field),
                     is_pk: field.is_pk,
-                    is_autoincrement: if field.get_is_autoincrement() {
+                    is_auto_increment: if field.get_is_auto_increment() {
                         assert!(matches!(
                             typ.deref(env),
                             &ResolvedType::Primitive(PrimitiveType::Int)
@@ -381,7 +381,7 @@ fn create_column(
                             )),
                         },
                         is_pk: false,
-                        is_autoincrement: false,
+                        is_auto_increment: false,
                         is_nullable: optional,
                         unique_constraints: unique_constraint_name,
                         default_value,
@@ -427,7 +427,7 @@ fn create_column(
                     column_name: field.column_name.to_string(),
                     typ: determine_column_type(&pt, field),
                     is_pk: false,
-                    is_autoincrement: false,
+                    is_auto_increment: false,
                     is_nullable: optional,
                     unique_constraints: unique_constraint_name,
                     default_value,

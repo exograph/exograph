@@ -8,7 +8,7 @@ service RsvpPersistence {
   // Later, we will allow to not even export this APIs
   @access(AuthContext.role == "admin")
   type Rsvp {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     email: String
     count: Int
   }

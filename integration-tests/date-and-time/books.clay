@@ -3,7 +3,7 @@ service BookService {
   @table("books")
   @access(true)
   type Book {
-    @pk id: Int = autoincrement()
+    @pk id: Int = autoIncrement()
     name: String
     published_on: LocalDate 
     @precision(4) modified_time: Instant 
