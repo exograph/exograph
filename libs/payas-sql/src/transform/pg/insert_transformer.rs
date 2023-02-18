@@ -51,7 +51,7 @@ impl InsertTransformer for Postgres {
         let root_update = SQLOperation::Insert(table.insert(
             column_names,
             column_values_seq,
-            vec![Column::Star.into()],
+            vec![Column::Star(None).into()],
         ));
 
         // TODO: We need a different way to create TransactionScript for multiple rows
@@ -111,7 +111,7 @@ impl InsertTransformer for Postgres {
                         SQLOperation::Insert(self_table.insert(
                             column_names,
                             column_values_seq,
-                            vec![Column::Star.into()],
+                            vec![Column::Star(None).into()],
                         )),
                     )
                 },

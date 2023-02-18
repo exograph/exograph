@@ -84,13 +84,8 @@ impl SelectTransformer for Postgres {
     fn to_transaction_script<'a>(
         &self,
         abstract_select: &'a AbstractSelect,
-        additional_predicate: Option<Predicate<'a>>,
     ) -> TransactionScript<'a> {
-        let select = self.to_select(
-            abstract_select,
-            additional_predicate,
-            SelectionLevel::TopLevel,
-        );
+        let select = self.to_select(abstract_select, None, SelectionLevel::TopLevel);
         let mut transaction_script = TransactionScript::default();
         transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
             SQLOperation::Select(select),

@@ -13,7 +13,6 @@ use crate::{
         cte::Cte,
         delete::TemplateDelete,
         insert::TemplateInsert,
-        predicate::Predicate,
         sql_operation::{SQLOperation, TemplateSQLOperation},
         transaction::{
             ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
@@ -34,7 +33,6 @@ impl UpdateTransformer for Postgres {
     fn to_transaction_script<'a>(
         &self,
         abstract_select: &'a AbstractUpdate,
-        additional_predicate: Option<Predicate<'a>>,
     ) -> TransactionScript<'a> {
         let column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)> = abstract_select
             .column_values
@@ -43,10 +41,7 @@ impl UpdateTransformer for Postgres {
             .collect();
 
         // TODO: Consider the "join" aspect of the predicate
-        let predicate = Predicate::and(
-            abstract_select.predicate.predicate(),
-            additional_predicate.unwrap_or(Predicate::True),
-        );
+        let predicate = abstract_select.predicate.predicate();
 
         let select = self.to_select(&abstract_select.selection, None, SelectionLevel::TopLevel);
 
@@ -62,7 +57,7 @@ impl UpdateTransformer for Postgres {
                     .expect("No primary key column"),
             )
         } else {
-            Column::Star
+            Column::Star(None)
         };
 
         let root_update = SQLOperation::Update(abstract_select.table.update(
@@ -240,6 +235,7 @@ mod tests {
         },
         sql::column::Column,
         transform::test_util::TestSetup,
+        Predicate,
     };
 
     use super::*;
@@ -289,8 +285,7 @@ mod tests {
                     },
                 };
 
-                let update =
-                    UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update, None);
+                let update = UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update);
 
                 // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{update:#?}");
@@ -374,8 +369,7 @@ mod tests {
                     },
                 };
 
-                let update =
-                    UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update, None);
+                let update = UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update);
 
                 // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{update:#?}");
