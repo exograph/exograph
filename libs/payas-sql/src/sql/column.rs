@@ -22,21 +22,6 @@ pub struct PhysicalColumn {
     pub default_value: Option<String>, // the default constraint
 }
 
-impl Default for PhysicalColumn {
-    fn default() -> Self {
-        Self {
-            table_name: Default::default(),
-            column_name: Default::default(),
-            typ: PhysicalColumnType::Blob,
-            is_pk: false,
-            is_auto_increment: false,
-            is_nullable: true,
-            unique_constraints: vec![],
-            default_value: None,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PhysicalColumnType {
     Int {
