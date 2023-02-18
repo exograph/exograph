@@ -290,7 +290,7 @@ pub enum Column<'a> {
     SelectionTableWrapper(Box<Select<'a>>),
     // TODO: Generalize the following to return any type of value, not just strings
     Constant(String), // Currently needed to have a query return __typename set to a constant value
-    Star,
+    Star(Option<String>), // * (None) or "table_name".* (Some("table_name"))
     Null,
     Function {
         function_name: String,
@@ -366,7 +366,13 @@ impl<'a> Expression for Column<'a> {
                 ParameterBinding::new(format!("({})", pb.stmt), pb.params)
             }
             Column::Constant(value) => ParameterBinding::new(format!("'{value}'"), vec![]),
-            Column::Star => ParameterBinding::new("*".to_string(), vec![]),
+            Column::Star(table_name) => {
+                let stmt = match table_name {
+                    Some(table_name) => format!("\"{table_name}\".*"),
+                    None => "*".to_string(),
+                };
+                ParameterBinding::new(stmt, vec![])
+            }
             Column::Null => ParameterBinding::new("NULL".to_string(), vec![]),
         }
     }

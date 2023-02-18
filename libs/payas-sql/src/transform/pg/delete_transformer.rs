@@ -5,7 +5,6 @@ use crate::{
     sql::{
         column::Column,
         cte::Cte,
-        predicate::Predicate,
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
@@ -22,18 +21,14 @@ impl DeleteTransformer for Postgres {
     fn to_transaction_script<'a>(
         &self,
         abstract_delete: &'a AbstractDelete,
-        additional_predicate: Option<Predicate<'a>>,
     ) -> TransactionScript<'a> {
         // TODO: Consider the "join" aspect of the predicate
-        let predicate = Predicate::and(
-            abstract_delete.predicate.predicate(),
-            additional_predicate.unwrap_or(Predicate::True),
-        );
+        let predicate = abstract_delete.predicate.predicate();
 
         let root_delete = SQLOperation::Delete(
             abstract_delete
                 .table
-                .delete(predicate.into(), vec![Column::Star.into()]),
+                .delete(predicate.into(), vec![Column::Star(None).into()]),
         );
         let select = self.to_select(&abstract_delete.selection, None, SelectionLevel::TopLevel);
 
