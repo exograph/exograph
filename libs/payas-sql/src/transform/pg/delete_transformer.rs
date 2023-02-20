@@ -8,7 +8,12 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::transformer::{DeleteTransformer, SelectTransformer},
+    transform::{
+        join_util,
+        table_dependency::TableDependency,
+        transformer::{DeleteTransformer, SelectTransformer},
+    },
+    ColumnPath, ColumnPathLink,
 };
 
 use super::Postgres;
@@ -22,7 +27,32 @@ impl DeleteTransformer for Postgres {
         &self,
         abstract_delete: &'a AbstractDelete,
     ) -> TransactionScript<'a> {
+        // TODO: De-dump from the select transformer before committing
+        fn column_path_owned<'a>(
+            column_paths: Vec<&ColumnPath<'a>>,
+        ) -> Vec<Vec<ColumnPathLink<'a>>> {
+            column_paths
+                .into_iter()
+                .filter_map(|path| match path {
+                    ColumnPath::Physical(links) => Some(links.to_vec()),
+                    _ => None,
+                })
+                .collect()
+        }
+
         // TODO: Consider the "join" aspect of the predicate
+        let predicate_column_paths: Vec<Vec<ColumnPathLink>> =
+            column_path_owned(abstract_delete.predicate.column_paths());
+
+        let dependencies = TableDependency::from_column_path(predicate_column_paths);
+
+        println!(
+            "dependencies: {:#?}",
+            &dependencies.as_ref().map(|d| &d.dependencies),
+        );
+
+        // DELETE FROM "concert_artists" WHERE "concerts"."id" = $1 RETURNING *
+        // DELETE FROM "concert_artists" WHERE "concert_artists"."concert_id" in (select "concerts"."id" from "concerts" where "concerts"."id" = $1) RETURNING *;
         let predicate = abstract_delete.predicate.predicate();
 
         let root_delete = SQLOperation::Delete(
