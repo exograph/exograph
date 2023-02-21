@@ -8,16 +8,16 @@ pub enum DatabaseError {
     #[error("Failed to execute transaction {0}")]
     Transaction(String),
 
-    #[error("{0}")]
+    #[error("Validation: {0}")]
     Validation(String),
 
-    #[error("{0}")]
+    #[error("Delegate: {0}")]
     Delegate(#[from] tokio_postgres::Error),
 
-    #[error("{0}")]
+    #[error("SSL: {0}")]
     Ssl(#[from] openssl::error::ErrorStack),
 
-    #[error("{0}")]
+    #[error("Pool: {0}")]
     Pool(#[from] deadpool_postgres::PoolError),
 
     #[error("{0} {1}")]
