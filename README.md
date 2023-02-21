@@ -6,7 +6,7 @@ Must have:
 
 - Rust (see the version specified in [rust-toolchain.toml](rust-toolchain.toml)). Also install the wasm32-wasm target (`rustup target add wasm32-wasi`).
 - Postgres 12
-- Tree-sitter (`cargo install --version 0.20.6 tree-sitter-cli`)
+- Node (any reasonable version, used by Tree Sitter)
 - [Deno](https://deno.land/)
 
 Nice to have:
