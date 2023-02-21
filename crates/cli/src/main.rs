@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{anyhow, Result};
 use clap::{Arg, Command};
-use commands::{serve::ServeCommand, test::TestCommand, yolo::YoloCommand};
+use commands::{dev::DevCommand, test::TestCommand, yolo::YoloCommand};
 use tokio::sync::{
     broadcast::{Receiver, Sender},
     Mutex,
@@ -135,7 +135,7 @@ fn main() -> Result<()> {
                 ),
         )
         .subcommand(
-            Command::new("serve")
+            Command::new("dev")
                 .about("Run claytip server in development mode")
                 .arg(model_file_arg())
                 .arg(port_arg()),
@@ -210,7 +210,7 @@ fn main() -> Result<()> {
             }),
             _ => panic!("Unhandled command name"),
         },
-        Some(("serve", matches)) => Box::new(ServeCommand {
+        Some(("dev", matches)) => Box::new(DevCommand {
             model: get_required(matches, "model")?,
             port: get(matches, "port"),
         }),

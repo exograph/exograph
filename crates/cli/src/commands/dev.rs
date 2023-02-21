@@ -15,12 +15,12 @@ use crate::{
 use super::command::Command;
 
 /// Run local claytip server
-pub struct ServeCommand {
+pub struct DevCommand {
     pub model: PathBuf,
     pub port: Option<u32>,
 }
 
-impl Command for ServeCommand {
+impl Command for DevCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         println!(
             "{}",
