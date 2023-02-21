@@ -13,8 +13,6 @@ RUN rustup component add rustfmt
 
 RUN rustup component add clippy
 
-RUN cargo install --rev v0.20.4 --git https://github.com/tree-sitter/tree-sitter.git tree-sitter-cli
-
 RUN cargo install sccache
 
 ENV RUSTC_WRAPPER sccache

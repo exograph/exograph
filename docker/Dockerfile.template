@@ -10,9 +10,6 @@ ARG BUILD_FLAG
 
 %%BUILD_SETUP%%
 
-ENV PATH "$PATH:/root/.cargo/bin"
-RUN cargo install --version 0.20.6 tree-sitter-cli
-
 WORKDIR /usr/src
 
 ## Build and cache the dependencies
