@@ -8,22 +8,27 @@ fn main() {
     println!("cargo:rerun-if-changed={graphiql_folder}/package-lock.json");
 
     if !std::process::Command::new("npm")
-        .arg("ci").current_dir(&graphiql_folder_path)
+        .arg("ci")
+        .current_dir(&graphiql_folder_path)
         .spawn()
         .unwrap()
         .wait()
         .unwrap()
-        .success() {
+        .success()
+    {
         panic!("Failed to install graphiql dependencies");
     }
 
     if !std::process::Command::new("npm")
-        .arg("run").arg("prod-build").current_dir(graphiql_folder_path)
+        .arg("run")
+        .arg("prod-build")
+        .current_dir(graphiql_folder_path)
         .spawn()
         .unwrap()
         .wait()
         .unwrap()
-        .success() {
+        .success()
+    {
         panic!("Failed to build graphiql");
     }
 }
