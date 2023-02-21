@@ -147,7 +147,7 @@ pub fn new_field_param(
     entity_types: &MappedArena<EntityType>,
     order_by_types: &MappedArena<OrderByParameterType>,
 ) -> OrderByParameter {
-    let field_type_id = &entity_field.typ.inner_most().type_id;
+    let field_type_id = &entity_field.typ.innermost().type_id;
     let field_entity_type = field_type_id.to_type(&primitive_types.values, &entity_types.values);
 
     let column_path_link = Some(column_path_utils::column_path_link(

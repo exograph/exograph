@@ -33,7 +33,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
         argument: &'a ConstValue,
         subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractUpdate<'a>, PostgresExecutionError> {
-        let data_type = &subsystem.mutation_types[self.data_param.typ.inner_most().type_id];
+        let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
 
         let self_update_columns = compute_update_columns(data_type, argument, subsystem);
         let (table, _, _) = return_type_info(self.return_type, subsystem);
@@ -117,7 +117,7 @@ fn compute_nested_ops<'a>(
 
     arg_type.fields.iter().for_each(|field| {
         if let PostgresRelation::OneToMany { .. } = &field.relation {
-            let arg_type = match field.typ.inner_most().type_id {
+            let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
                     panic!("One to many relation should target a composite type")
                 }

@@ -32,8 +32,11 @@ pub enum TypeModifier {
     Optional,
 }
 
+/// Introspection parameter such as `id: Int` or `name: String`
 pub trait Parameter {
+    /// Name of the parameter such as `id` or `name`
     fn name(&self) -> &str;
+    /// Type of the parameter such as `Int` or `[String]`
     fn typ(&self) -> Type;
 }
 

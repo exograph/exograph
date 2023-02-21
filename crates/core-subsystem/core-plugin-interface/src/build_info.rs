@@ -17,11 +17,10 @@ pub enum SubsystemCheckError {
 ///
 /// The output of this function is used in a rudimentary binary compatibility check. `clay-server`
 /// will check the output of this function against the interface version string of any library that
-/// it loads using [check_subsystem_library]. Libraries export their version strings through the
-/// `__claytip_interface_version` pointer.
+/// it load. Libraries export their version strings through the `__claytip_interface_version`
+/// pointer.
 ///
-/// This function should incorporate enough information such that Claytip does not inadvertenly
-/// load an incompatible library.
+/// This function should incorporate enough information such that Claytip does not inadvertently
 pub fn interface_version() -> String {
     mod built_info {
         include!(concat!(env!("OUT_DIR"), "/built.rs"));

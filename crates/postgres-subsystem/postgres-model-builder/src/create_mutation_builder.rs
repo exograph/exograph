@@ -1,5 +1,5 @@
-//! Build mutation input types associated with creation (<Type>CreationInput) and
-//! the create mutations (create<Type>, and create<Type>s)
+//! Build mutation input types associated with creation (`<Type>CreationInput`) and
+//! the create mutations (`create<Type>`, and `create<Type>s`)
 
 use core_plugin_interface::core_model::{
     mapped_arena::MappedArena,

@@ -37,7 +37,7 @@ impl OperationSelectionResolver for PkQuery {
         subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
         compute_select(
-            &self.parameter.predicate_param,
+            &self.parameters.predicate_param,
             None,
             None,
             None,
@@ -63,7 +63,7 @@ impl OperationSelectionResolver for CollectionQuery {
             order_by_param,
             limit_param,
             offset_param,
-        } = &self.parameter;
+        } = &self.parameters;
 
         compute_select(
             predicate_param,

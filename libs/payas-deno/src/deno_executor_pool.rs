@@ -61,7 +61,7 @@ impl<C> DenoExecutorConfig<C> {
 ///                  -> DenoExecutor -> DenoActor -> DenoModule
 ///
 /// # Type Parameters
-/// - `C`: The type of the call context (for example, Option<InterceptedOperationName>). This object
+/// - `C`: The type of the call context (for example, `Option<InterceptedOperationName>`). This object
 ///        is set into the `DenoModule`s GothamState and may be resolved synchronously or asynchronously.
 /// - `M`: The type of the callback message.
 /// - `R`: An opaque return type to also return from GothamStorage with each method execution. Useful for

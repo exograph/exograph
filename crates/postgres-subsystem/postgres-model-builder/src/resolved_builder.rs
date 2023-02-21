@@ -102,14 +102,14 @@ pub trait ResolvedFieldTypeHelper {
 
 impl ResolvedFieldTypeHelper for FieldType<ResolvedFieldType> {
     fn deref<'a>(&'a self, env: &'a ResolvedTypeEnv) -> &'a ResolvedType {
-        env.get_by_key(&self.inner_most().type_name).unwrap()
+        env.get_by_key(&self.innermost().type_name).unwrap()
     }
 
     fn deref_subsystem_type<'a>(
         &'a self,
         types: &'a MappedArena<ResolvedType>,
     ) -> Option<&'a ResolvedType> {
-        types.get_by_key(&self.inner_most().type_name)
+        types.get_by_key(&self.innermost().type_name)
     }
 }
 

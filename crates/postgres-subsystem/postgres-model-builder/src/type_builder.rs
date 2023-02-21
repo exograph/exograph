@@ -244,7 +244,7 @@ fn create_persistent_field(
         let ResolvedFieldType {
             type_name,
             is_primitive,
-        } = field.typ.inner_most();
+        } = field.typ.innermost();
 
         if *is_primitive {
             let type_id = building.primitive_types.get_id(type_name).unwrap();
@@ -283,7 +283,7 @@ fn create_agg_field(
         }
     }
 
-    if field.typ.inner_most().is_primitive || !is_underlying_type_list(&field.typ) {
+    if field.typ.innermost().is_primitive || !is_underlying_type_list(&field.typ) {
         None
     } else {
         let field_name = format!("{}Agg", field.name);
