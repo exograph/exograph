@@ -138,7 +138,7 @@ pub fn base_type<'a, CT>(
     primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
     entity_types: &'a SerializableSlab<CT>,
 ) -> PostgresType<'a, CT> {
-    typ.inner_most()
+    typ.innermost()
         .type_id
         .to_type(primitive_types, entity_types)
 }
@@ -226,7 +226,7 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
                     order_by_param,
                     limit_param,
                     offset_param,
-                } = &collection_query.parameter;
+                } = &collection_query.parameters;
 
                 [
                     predicate_param.input_value(),

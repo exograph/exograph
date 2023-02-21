@@ -63,7 +63,7 @@ pub struct ServiceSubsystemWithInterceptors {
 /// `service_selection_closure` - A closure that will return `Some(name)` for each [AstService] the
 ///                               subsystem supports, where `name` is the annotation name of the plugin
 ///                               annotation (e.g. `"deno"` for `@deno`).
-/// `process_script` - A closure that will process a script at the provided [PathBuf] into a runnable form for usage
+/// `process_script` - A closure that will process a script at the provided [`Path`] into a runnable form for usage
 ///                    during subsystem resolution at runtime.
 pub fn build_with_selection(
     typechecked_system: &TypecheckedSystem,

@@ -1,5 +1,5 @@
-//! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
-//! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
+//! Build mutation input types (`<Type>CreationInput`, `<Type>UpdateInput`, `<Type>ReferenceInput`) and
+//! mutations (`create<Type>`, `update<Type>`, and `delete<Type>` as well as their plural versions)
 
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},

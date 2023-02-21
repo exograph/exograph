@@ -19,11 +19,13 @@ pub struct PredicateParameter {
     pub typ: FieldType<PredicateParameterTypeWrapper>,
 
     /// How does this parameter relates with the parent parameter?
-    /// For example for parameter used as {where: {venue1: {id: {eq: 1}}}}, we will have following column links:
-    /// eq: None
-    /// id: Some((<the venues.id column>, None))
-    /// venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
-    /// where: None
+    /// For example for parameter used as `{where: {venue1: {id: {eq: 1}}}}`, we will have following column links:
+    /// ```no_rust
+    ///   eq: None
+    ///   id: Some((<the venues.id column>, None))
+    ///   venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
+    ///   where: None
+    /// ```
     pub column_path_link: Option<ColumnIdPathLink>,
 }
 

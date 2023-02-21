@@ -1,5 +1,5 @@
-//! Build mutation input types associated with deletion (<Type>DeletionInput) and
-//! the create mutations (delete<Type>, and delete<Type>s)
+//! Build mutation input types associated with deletion (`<Type>DeletionInput`) and
+//! the create mutations (`delete<Type>`, and `delete<Type>s`)
 
 use core_plugin_interface::core_model::{
     mapped_arena::MappedArena,

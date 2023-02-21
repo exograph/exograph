@@ -53,11 +53,11 @@ pub trait SubsystemBuilder {
     ///
     fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)>;
 
-    /// Build a subsystem's model, producing an [Option<SubsystemBuild>].
+    /// Build a subsystem's model, producing an [`Option<SubsystemBuild>`].
     ///
-    /// - `typechecked_system`: A partially typechecked system. This contains the set of all [Type]s
-    ///                         that were successfully parsed from the user's model, ranging from `service`s
-    ///                         to composite `type`s (not to be confused with [Type]s).
+    /// - `typechecked_system`: A partially typechecked system. This contains the set of all types
+    ///                         that were successfully parsed from the user's model, ranging from `service` types
+    ///                         to composite `type`.
     /// - `base_system`: The base model system for Claytip. These are a set of common types that are
     ///                  used by all plugins, like `context`s and primitive types (`Int`, `String`, etc.)
     ///

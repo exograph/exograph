@@ -1,4 +1,4 @@
-//! Build update mutation types <Type>UpdateInput, update<Type>, and update<Type>s
+//! Build update mutation types `<Type>UpdateInput`, `update<Type>`, and `update<Type>s`
 
 use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
