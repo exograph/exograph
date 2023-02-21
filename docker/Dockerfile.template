@@ -32,9 +32,6 @@ COPY ./graphiql/package-lock.json ./graphiql/package-lock.json
 RUN cargo build --all ${BUILD_FLAG} 
 
 %%RM_DEPS%% 
-## Build GraphiQL bundle
-RUN cd graphiql && npm install
-
 ## Build the actual image
 ### Copy over the source files
 ADD crates crates/
@@ -43,7 +40,6 @@ ADD graphiql graphiql/
 
 
 ### Build the binaries (first the graphiql app and then the rest)
-RUN cd graphiql && npm run prod-build
 RUN cargo build --all ${BUILD_FLAG}
 
 # Create an image to include the compiled binaries
