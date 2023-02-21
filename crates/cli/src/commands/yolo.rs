@@ -1,7 +1,8 @@
 use std::{
+    fs::OpenOptions,
     io::{BufRead, BufReader, Write},
     path::PathBuf,
-    process::Stdio,
+    process::{Child, Stdio},
     sync::atomic::Ordering,
     time::SystemTime,
 };
@@ -13,6 +14,7 @@ use anyhow::{anyhow, Context, Result};
 use futures::FutureExt;
 use payas_sql::{schema::spec::SchemaSpec, Database};
 use rand::Rng;
+use tempfile::TempDir;
 
 fn generate_random_string() -> String {
     rand::thread_rng()
@@ -41,16 +43,27 @@ impl Command for YoloCommand {
         // which does not run on a normal SIGINT exit
         crate::EXIT_ON_SIGINT.store(false, Ordering::SeqCst);
 
-        // create postgresql docker
-        let db = PostgreSQLInstance::from_docker()
-            .context("While trying to instantiate PostgreSQL docker")?;
+        // create postgresql
+        let db: Box<dyn PostgreSQLInstance + Send + Sync> = if LocalPostgreSQL::check_availability()
+            .is_ok()
+        {
+            println!("Launching PostgreSQL locally...");
+            Box::new(
+                LocalPostgreSQL::new().context("While trying to instantiate local PostgreSQL")?,
+            )
+        } else {
+            println!("Launching PostgreSQL in Docker...");
+            Box::new(
+                DockerPostgreSQL::new().context("While trying to instantiate PostgreSQL docker")?,
+            )
+        };
 
         let jwt_secret = generate_random_string();
 
         let prestart_callback = || {
             async {
             // set envs for server
-            std::env::set_var("CLAY_POSTGRES_URL", &db.connection_url);
+            std::env::set_var("CLAY_POSTGRES_URL", &db.url());
             std::env::remove_var("CLAY_POSTGRES_USER");
             std::env::remove_var("CLAY_POSTGRES_PASSWORD");
             std::env::set_var("CLAY_INTROSPECTION", "true");
@@ -58,7 +71,7 @@ impl Command for YoloCommand {
             std::env::set_var("CLAY_CORS_DOMAINS", "*");
 
             println!("JWT secret is {}", &jwt_secret);
-            println!("Postgres URL is {}", &db.connection_url);
+            println!("Postgres URL is {}", &db.url());
 
             // generate migrations for current database
             println!("Generating migrations...");
@@ -110,7 +123,7 @@ impl Command for YoloCommand {
                         println!("=====");
                         println!(
                             "Pausing for manual repair. Postgres URL is {}",
-                            db.connection_url
+                            db.url()
                         );
                         println!("Press enter to continue.");
                         println!("=====");
@@ -142,13 +155,136 @@ impl Command for YoloCommand {
     }
 }
 
-struct PostgreSQLInstance {
+pub trait PostgreSQLInstance {
+    fn url(&self) -> String;
+}
+
+pub struct LocalPostgreSQL {
+    process: Child,
+    data_dir: TempDir,
+}
+
+impl PostgreSQLInstance for LocalPostgreSQL {
+    fn url(&self) -> String {
+        format!(
+            "postgres://clay@{}",
+            urlencoding::encode(self.data_dir.path().to_str().unwrap())
+        )
+    }
+}
+
+impl Drop for LocalPostgreSQL {
+    fn drop(&mut self) {
+        let _ = self.process.kill();
+    }
+}
+
+impl LocalPostgreSQL {
+    fn check_availability() -> Result<()> {
+        which::which("initdb")?;
+        which::which("postgres")?;
+        which::which("pg_isready")?;
+        which::which("createdb")?;
+        Ok(())
+    }
+
+    fn new() -> Result<LocalPostgreSQL> {
+        let data_dir = tempfile::tempdir()?;
+
+        std::process::Command::new("initdb")
+            .args([
+                "-D",
+                data_dir.path().to_str().unwrap(),
+                "-A",
+                "trust",
+                "--username",
+                "clay",
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .context("While trying to spawn initdb")?
+            .wait()
+            .context("While waiting for initdb to finish")?;
+
+        let config_file = data_dir.path().join("postgresql.conf");
+        let mut file = OpenOptions::new()
+            .append(true)
+            .open(&config_file)
+            .context("While trying to open postgresql.conf")?;
+        file.write_all(b"\nlisten_addresses = ''\n")?;
+        drop(file);
+
+        let postgres = std::process::Command::new("postgres")
+            .args([
+                "-D",
+                data_dir.path().to_str().unwrap(),
+                "-k",
+                data_dir.path().to_str().unwrap(),
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .context("While trying to spawn postgres")?;
+
+        let mut tries = 0;
+        loop {
+            let result = std::process::Command::new("pg_isready")
+                .args(["-h", data_dir.path().to_str().unwrap(), "-U", "clay"])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .context("While trying to spawn postgres")?
+                .wait()
+                .context("While waiting for postgres to finish")?;
+
+            if result.success() {
+                break;
+            }
+
+            tries += 1;
+            if tries > 100 {
+                return Err(anyhow!("Postgres failed to start"));
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+
+        std::process::Command::new("createdb")
+            .args([
+                "-h",
+                data_dir.path().to_str().unwrap(),
+                "-U",
+                "clay",
+                "clay",
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .context("While trying to spawn postgres")?
+            .wait()
+            .context("While waiting for postgres to finish")?;
+
+        Ok(LocalPostgreSQL {
+            process: postgres,
+            data_dir,
+        })
+    }
+}
+
+pub struct DockerPostgreSQL {
     container_name: String,
     connection_url: String,
 }
 
-impl PostgreSQLInstance {
-    pub fn from_docker() -> Result<PostgreSQLInstance> {
+impl PostgreSQLInstance for DockerPostgreSQL {
+    fn url(&self) -> String {
+        self.connection_url.clone()
+    }
+}
+
+impl DockerPostgreSQL {
+    pub fn new() -> Result<DockerPostgreSQL> {
         println!("Starting PostgreSQL docker...");
 
         // acquire an empty port
@@ -195,14 +331,14 @@ impl PostgreSQLInstance {
             }
         }
 
-        Ok(PostgreSQLInstance {
+        Ok(DockerPostgreSQL {
             container_name,
             connection_url: format!("postgresql://clay:clay@127.0.0.1:{port}/postgres"),
         })
     }
 }
 
-impl Drop for PostgreSQLInstance {
+impl Drop for DockerPostgreSQL {
     fn drop(&mut self) {
         println!("Cleaning up container...");
 
