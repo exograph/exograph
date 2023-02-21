@@ -123,7 +123,7 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
                 //   }
                 // }
                 // ```
-                if field.typ.inner_most().is_primitive {
+                if field.typ.innermost().is_primitive {
                     let type_name = aggregate_type_name(field.typ.name());
 
                     let type_id = building.aggregate_types.get_id(&type_name).unwrap();

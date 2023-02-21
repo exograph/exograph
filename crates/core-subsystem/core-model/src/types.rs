@@ -1,3 +1,6 @@
+//! Common support for representing GraphQL types such as `Int`, `List<Int>`, `Optional<Int>`, `Optional<List<Int>>`, etc.
+//!
+
 use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
@@ -18,6 +21,7 @@ pub trait Named {
 }
 
 impl<T> FieldType<T> {
+    /// Return the inner type, if any
     pub fn inner(&self) -> Option<&FieldType<T>> {
         match self {
             FieldType::Plain(_) => None,
@@ -25,10 +29,11 @@ impl<T> FieldType<T> {
         }
     }
 
-    pub fn inner_most(&self) -> &T {
+    /// Return the innermost (i.e. leaf) type
+    pub fn innermost(&self) -> &T {
         match self {
             FieldType::Plain(inner) => inner,
-            FieldType::List(inner) | FieldType::Optional(inner) => inner.inner_most(),
+            FieldType::List(inner) | FieldType::Optional(inner) => inner.innermost(),
         }
     }
 
@@ -46,7 +51,7 @@ impl<T: Clone> FieldType<T> {
     /// Compute the optional version of the given type
     pub fn optional(&self) -> Self {
         match self {
-            FieldType::Optional(_) => self.clone(),
+            FieldType::Optional(_) => self.clone(), // Already optional
             _ => FieldType::Optional(Box::new(self.clone())),
         }
     }
@@ -55,7 +60,7 @@ impl<T: Clone> FieldType<T> {
 /// Transforms the type into an introspection type
 ///
 /// The complexity of this function is due to the fact that the GraphQL spec and hence the
-/// introspection type (`Type`) does not support nested optionals. However, `FieldType`
+/// introspection type ([`Type`]) does not support nested optionals. However, [`FieldType`]
 /// being more general, does. This function will panic if it encounters a nested optional.
 impl<T: Named> From<&FieldType<T>> for Type {
     fn from(ft: &FieldType<T>) -> Self {

@@ -96,7 +96,7 @@ impl FieldDefinitionProvider<PostgresSubsystem> for AggregateField {
                     let other_type = &system.entity_types[*other_type_id];
                     let aggregate_query = &system.aggregate_queries[other_type.aggregate_query];
 
-                    let AggregateQueryParameter { predicate_param } = &aggregate_query.parameter;
+                    let AggregateQueryParameter { predicate_param } = &aggregate_query.parameters;
 
                     vec![default_positioned(predicate_param.input_value())]
                 }

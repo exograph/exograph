@@ -23,10 +23,12 @@ pub struct OrderByParameter {
     pub typ: FieldType<OrderByParameterTypeWrapper>,
 
     /// How does this parameter relates with the parent parameter?
-    /// For example for parameter used as {order_by: {venue1: {id: Desc}}}, we will have following column links:
+    /// For example for parameter used as `{order_by: {venue1: {id: Desc}}}`, we will have following column links:
+    /// ```no_rust
     ///   id: Some((<the venues.id column>, None))
     ///   venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     ///   order_by: None
+    /// ```
     pub column_path_link: Option<ColumnIdPathLink>,
 }
 

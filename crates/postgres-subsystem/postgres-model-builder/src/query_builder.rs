@@ -75,7 +75,7 @@ fn shallow_pk_query(
     let operation_name = typ.pk_query();
     PkQuery {
         name: operation_name,
-        parameter: PkQueryParameter {
+        parameters: PkQueryParameter {
             predicate_param: PredicateParameter::shallow(),
         },
         return_type: OperationReturnType::Plain(BaseOperationReturnType {
@@ -92,7 +92,7 @@ fn expand_pk_query(
 ) {
     let operation_name = entity_type.pk_query();
     let mut existing_query = &mut pk_queries.get_by_key_mut(&operation_name).unwrap();
-    existing_query.parameter.predicate_param = pk_predicate_param(entity_type, predicate_types);
+    existing_query.parameters.predicate_param = pk_predicate_param(entity_type, predicate_types);
 }
 
 pub fn pk_predicate_param(
@@ -126,7 +126,7 @@ fn shallow_collection_query(
     let operation_name = resolved_entity_type.collection_query();
     CollectionQuery {
         name: operation_name,
-        parameter: CollectionQueryParameter {
+        parameters: CollectionQueryParameter {
             predicate_param: PredicateParameter::shallow(),
             order_by_param: OrderByParameter::shallow(),
             limit_param: LimitParameter::shallow(),
@@ -158,10 +158,10 @@ fn expand_collection_query(
 
     let mut existing_query = &mut collection_queries.get_by_key_mut(&operation_name).unwrap();
 
-    existing_query.parameter.predicate_param = predicate_param;
-    existing_query.parameter.order_by_param = order_by_param;
-    existing_query.parameter.limit_param = limit_param;
-    existing_query.parameter.offset_param = offset_param;
+    existing_query.parameters.predicate_param = predicate_param;
+    existing_query.parameters.order_by_param = order_by_param;
+    existing_query.parameters.limit_param = limit_param;
+    existing_query.parameters.offset_param = offset_param;
 }
 
 fn shallow_aggregate_query(
@@ -170,7 +170,7 @@ fn shallow_aggregate_query(
 ) -> AggregateQuery {
     AggregateQuery {
         name: resolved_entity_type.aggregate_query(),
-        parameter: AggregateQueryParameter {
+        parameters: AggregateQueryParameter {
             predicate_param: PredicateParameter::shallow(),
         },
         return_type: OperationReturnType::Plain(BaseOperationReturnType {
@@ -190,7 +190,7 @@ fn expand_aggregate_query(
     let predicate_param = collection_predicate_param(entity_type, predicate_types);
 
     let mut existing_query = &mut aggregate_queries.get_by_key_mut(&operation_name).unwrap();
-    existing_query.parameter.predicate_param = predicate_param;
+    existing_query.parameters.predicate_param = predicate_param;
 }
 
 pub fn limit_param(primitive_types: &MappedArena<PostgresPrimitiveType>) -> LimitParameter {
