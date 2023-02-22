@@ -19,7 +19,7 @@ use payas_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractSelect, AbstractUpdate,
 };
 use postgres_model::{
-    operation::{CreateDataParameter, PostgresMutation, PostgresMutationKind, UpdateDataParameter},
+    mutation::{DataParameter, PostgresMutation, PostgresMutationParameters},
     predicate::PredicateParameter,
     subsystem::PostgresSubsystem,
     types::EntityType,
@@ -46,8 +46,8 @@ impl OperationResolver for PostgresMutation {
         }
         .await?;
 
-        Ok(match &self.kind {
-            PostgresMutationKind::Create(data_param) => AbstractOperation::Insert(
+        Ok(match &self.parameters {
+            PostgresMutationParameters::Create(data_param) => AbstractOperation::Insert(
                 create_operation(
                     return_type,
                     data_param,
@@ -58,7 +58,7 @@ impl OperationResolver for PostgresMutation {
                 )
                 .await?,
             ),
-            PostgresMutationKind::Delete(predicate_param) => AbstractOperation::Delete(
+            PostgresMutationParameters::Delete(predicate_param) => AbstractOperation::Delete(
                 delete_operation(
                     return_type,
                     predicate_param,
@@ -69,7 +69,7 @@ impl OperationResolver for PostgresMutation {
                 )
                 .await?,
             ),
-            PostgresMutationKind::Update {
+            PostgresMutationParameters::Update {
                 data_param,
                 predicate_param,
             } => AbstractOperation::Update(
@@ -90,7 +90,7 @@ impl OperationResolver for PostgresMutation {
 
 async fn create_operation<'content>(
     return_type: &'content OperationReturnType<EntityType>,
-    data_param: &'content CreateDataParameter,
+    data_param: &'content DataParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
     subsystem: &'content PostgresSubsystem,
@@ -148,7 +148,7 @@ async fn delete_operation<'content>(
 
 async fn update_operation<'content>(
     return_type: &'content OperationReturnType<EntityType>,
-    data_param: &'content UpdateDataParameter,
+    data_param: &'content DataParameter,
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,

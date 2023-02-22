@@ -5,7 +5,7 @@ use core_plugin_interface::core_model::{
     mapped_arena::MappedArena,
     types::{BaseOperationReturnType, OperationReturnType},
 };
-use postgres_model::operation::PostgresMutationKind;
+use postgres_model::mutation::PostgresMutationParameters;
 use postgres_model::types::EntityType;
 
 use super::{
@@ -51,11 +51,11 @@ impl MutationBuilder for DeleteMutationBuilder {
         entity_type.pk_delete()
     }
 
-    fn single_mutation_kind(
+    fn single_mutation_parameters(
         entity_type: &EntityType,
         building: &SystemContextBuilding,
-    ) -> PostgresMutationKind {
-        PostgresMutationKind::Delete(query_builder::pk_predicate_param(
+    ) -> PostgresMutationParameters {
+        PostgresMutationParameters::Delete(query_builder::pk_predicate_param(
             entity_type,
             &building.predicate_types,
         ))
@@ -72,11 +72,11 @@ impl MutationBuilder for DeleteMutationBuilder {
         entity_type.collection_delete()
     }
 
-    fn multi_mutation_kind(
+    fn multi_mutation_parameters(
         entity_type: &EntityType,
         building: &SystemContextBuilding,
-    ) -> PostgresMutationKind {
-        PostgresMutationKind::Delete(query_builder::collection_predicate_param(
+    ) -> PostgresMutationParameters {
+        PostgresMutationParameters::Delete(query_builder::collection_predicate_param(
             entity_type,
             &building.predicate_types,
         ))

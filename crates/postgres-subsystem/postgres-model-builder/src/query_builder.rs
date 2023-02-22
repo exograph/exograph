@@ -6,12 +6,12 @@ use core_plugin_interface::core_model::{
 use postgres_model::{
     column_path::ColumnIdPathLink,
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
-    operation::{
-        AggregateQuery, AggregateQueryParameter, CollectionQuery, CollectionQueryParameter,
-        PkQuery, PkQueryParameter,
-    },
     order::{OrderByParameter, OrderByParameterType},
     predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},
+    query::{
+        AggregateQuery, AggregateQueryParameters, CollectionQuery, CollectionQueryParameters,
+        PkQuery, PkQueryParameters,
+    },
     types::{EntityType, PostgresPrimitiveType},
 };
 
@@ -75,7 +75,7 @@ fn shallow_pk_query(
     let operation_name = typ.pk_query();
     PkQuery {
         name: operation_name,
-        parameters: PkQueryParameter {
+        parameters: PkQueryParameters {
             predicate_param: PredicateParameter::shallow(),
         },
         return_type: OperationReturnType::Plain(BaseOperationReturnType {
@@ -126,7 +126,7 @@ fn shallow_collection_query(
     let operation_name = resolved_entity_type.collection_query();
     CollectionQuery {
         name: operation_name,
-        parameters: CollectionQueryParameter {
+        parameters: CollectionQueryParameters {
             predicate_param: PredicateParameter::shallow(),
             order_by_param: OrderByParameter::shallow(),
             limit_param: LimitParameter::shallow(),
@@ -170,7 +170,7 @@ fn shallow_aggregate_query(
 ) -> AggregateQuery {
     AggregateQuery {
         name: resolved_entity_type.aggregate_query(),
-        parameters: AggregateQueryParameter {
+        parameters: AggregateQueryParameters {
             predicate_param: PredicateParameter::shallow(),
         },
         return_type: OperationReturnType::Plain(BaseOperationReturnType {
