@@ -1,5 +1,5 @@
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
+use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType, types::FieldType};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -38,25 +38,20 @@ impl AstAnnotationHelper for AstAnnotation<Typed> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedContext {
     pub name: String,
     pub fields: Vec<ResolvedContextField>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedContextField {
     pub name: String,
     pub typ: ResolvedContextFieldType,
     pub source: ResolvedContextSource,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum ResolvedContextFieldType {
-    Plain(PrimitiveType),
-    Optional(Box<ResolvedContextFieldType>),
-    List(Box<ResolvedContextFieldType>),
-}
+pub type ResolvedContextFieldType = FieldType<PrimitiveType>;
 
 // For now, ResolvedContextSource and ContextSource have the same structure
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

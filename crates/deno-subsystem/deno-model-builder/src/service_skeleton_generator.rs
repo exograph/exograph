@@ -242,7 +242,7 @@ impl TypeScriptType for ContextFieldType {
     fn typescript_type(&self) -> String {
         match self {
             ContextFieldType::Optional(typ) => format!("{}?", typ.typescript_type()),
-            ContextFieldType::Reference(pt) => typescript_base_type(&pt.name()),
+            ContextFieldType::Plain(pt) => typescript_base_type(&pt.name()),
             ContextFieldType::List(typ) => format!("{}[]", typ.typescript_type()),
         }
     }

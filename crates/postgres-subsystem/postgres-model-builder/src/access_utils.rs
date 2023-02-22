@@ -69,7 +69,7 @@ pub fn compute_predicate_expression(
                     }
                 }
                 PathSelection::Context(context_selection, field_type) => {
-                    if field_type.primitive_type() == &PrimitiveType::Boolean {
+                    if field_type.innermost() == &PrimitiveType::Boolean {
                         // Treat boolean context expressions in the same way as an "eq" relational expression
                         // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
                         Ok(AccessPredicateExpression::RelationalOp(
