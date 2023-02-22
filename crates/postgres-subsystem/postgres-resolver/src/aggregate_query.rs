@@ -15,7 +15,7 @@ use payas_sql::{
     AbstractPredicate, AbstractSelect, ColumnSelection, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
-    operation::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
+    query::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
     types::EntityType,
 };
 

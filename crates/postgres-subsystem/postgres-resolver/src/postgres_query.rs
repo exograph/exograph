@@ -20,9 +20,9 @@ use payas_sql::{
 };
 use postgres_model::{
     aggregate::AggregateField,
-    operation::{CollectionQuery, CollectionQueryParameter, PkQuery},
     order::OrderByParameter,
     predicate::PredicateParameter,
+    query::{CollectionQuery, CollectionQueryParameters, PkQuery},
     relation::{PostgresRelation, RelationCardinality},
     subsystem::PostgresSubsystem,
     types::{EntityType, PostgresField},
@@ -58,7 +58,7 @@ impl OperationSelectionResolver for CollectionQuery {
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
-        let CollectionQueryParameter {
+        let CollectionQueryParameters {
             predicate_param,
             order_by_param,
             limit_param,

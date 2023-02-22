@@ -3,13 +3,12 @@ use std::vec;
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 
 use super::{
-    operation::{PkQuery, PostgresMutation},
-    order::OrderByParameterType,
-    predicate::PredicateParameterType,
+    mutation::PostgresMutation, order::OrderByParameterType, predicate::PredicateParameterType,
+    query::PkQuery,
 };
 use crate::{
     aggregate::AggregateType,
-    operation::{AggregateQuery, CollectionQuery},
+    query::{AggregateQuery, CollectionQuery},
     types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 use core_plugin_interface::{

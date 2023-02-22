@@ -8,9 +8,10 @@ use core_plugin_interface::{
 
 use postgres_model::{
     aggregate::AggregateType,
-    operation::{AggregateQuery, CollectionQuery, PkQuery, PostgresMutation},
+    mutation::PostgresMutation,
     order::OrderByParameterType,
     predicate::PredicateParameterType,
+    query::{AggregateQuery, CollectionQuery, PkQuery},
     subsystem::PostgresSubsystem,
     types::{EntityType, MutationType, PostgresPrimitiveType},
 };

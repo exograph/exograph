@@ -20,177 +20,35 @@
 use std::fmt::Debug;
 
 use async_graphql_parser::types::Type;
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
-use core_plugin_interface::core_model::types::OperationReturnType;
-use core_plugin_interface::core_model::types::{FieldType, Named};
-
 use core_plugin_interface::core_model::type_normalization::{Operation, Parameter};
+use core_plugin_interface::core_model::types::OperationReturnType;
+
 use serde::{Deserialize, Serialize};
 
 use crate::types::EntityType;
-use crate::types::MutationType;
 
-use super::{
-    limit_offset::{LimitParameter, OffsetParameter},
-    order::OrderByParameter,
-    predicate::PredicateParameter,
-};
-
+/// An operation such as a query or mutation.
 ///
-///
-/// * `P` - This parameter allows differentiating between, for example, [`PkQuery`] and [`AggregateQuery`].
+/// * `P` - This parameter allows differentiating between, for example,
+///   [`PkQuery`](`super::query::PkQuery`), [`AggregateQuery`](super::query::AggregateQuery), and
+///   [`PostgresMutation`](super::mutation::PostgresMutation).
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Query<P: OperationParameters> {
-    /// The name of the query such as `todos` or `todosAgg`.
+pub struct PostgresOperation<P: OperationParameters> {
+    /// The name of the operation such as `todos`, `todosAgg`, createTodo`, `updateTodo`, or `deleteTodo`.
     pub name: String,
-    /// The query parameter (if multiple parameters are needed, they are wrapped in a struct)
+    /// The parameters (if multiple parameters are needed, they are wrapped in a struct)
     pub parameters: P,
     /// The return type such as `Todo` or `[Todo]`.
     pub return_type: OperationReturnType<EntityType>,
 }
 
-/// Supports introspection of query parameters
+/// Supports introspection of operation parameters
 pub trait OperationParameters {
     /// Create an introspection version of the parameters
     fn introspect(&self) -> Vec<&dyn Parameter>;
 }
 
-/// Query by primary key such as `todo(id: 1)`
-pub type PkQuery = Query<PkQueryParameter>;
-
-/// Primary key query parameter such as `id: 1` in `todo(id: 1)`
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PkQueryParameter {
-    pub predicate_param: PredicateParameter,
-}
-
-impl OperationParameters for PkQueryParameter {
-    fn introspect(&self) -> Vec<&dyn Parameter> {
-        vec![&self.predicate_param]
-    }
-}
-
-/// Query that return a collection such as `todos(where: { title: { eq: "Hello" } })`
-pub type CollectionQuery = Query<CollectionQueryParameter>;
-
-/// Collection query parameters
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CollectionQueryParameter {
-    /// The predicate parameter such as `where: { title: { eq: "Hello" } }`
-    pub predicate_param: PredicateParameter,
-    /// The order by parameter such as `orderBy: { title: ASC }`
-    pub order_by_param: OrderByParameter,
-    /// The limit parameter such as `limit: 10`
-    pub limit_param: LimitParameter,
-    /// The offset parameter such as `offset: 20`
-    pub offset_param: OffsetParameter,
-}
-
-impl OperationParameters for CollectionQueryParameter {
-    fn introspect(&self) -> Vec<&dyn Parameter> {
-        vec![
-            &self.predicate_param,
-            &self.order_by_param,
-            &self.limit_param,
-            &self.offset_param,
-        ]
-    }
-}
-
-/// Query that returns an aggregate such as `todosAgg(where: { title: { eq: "Hello" } })`
-pub type AggregateQuery = Query<AggregateQueryParameter>;
-
-/// Query parameter such as `id: 1` in `todo(id: 1)` to be used in an aggregate query
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AggregateQueryParameter {
-    pub predicate_param: PredicateParameter,
-}
-
-impl OperationParameters for AggregateQueryParameter {
-    fn introspect(&self) -> Vec<&dyn Parameter> {
-        vec![&self.predicate_param]
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PostgresMutation {
-    pub name: String,
-    pub kind: PostgresMutationKind,
-    pub return_type: OperationReturnType<EntityType>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum PostgresMutationKind {
-    Create(CreateDataParameter),
-    Delete(PredicateParameter),
-    Update {
-        data_param: UpdateDataParameter,
-        predicate_param: PredicateParameter,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CreateDataParameter {
-    pub name: String,
-    // FieldType will be list for array input such as for create<Entity>s (note the plural)
-    pub typ: FieldType<CreateDataParameterType>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateDataParameter {
-    pub name: String,
-    pub type_name: String,
-    pub typ: FieldType<UpdateDataParameterType>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateDataParameterType {
-    pub type_name: String,
-    pub type_id: SerializableSlabIndex<MutationType>,
-}
-
-impl Named for UpdateDataParameterType {
-    fn name(&self) -> &str {
-        &self.type_name
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CreateDataParameterType {
-    pub type_name: String,
-    pub type_id: SerializableSlabIndex<MutationType>,
-}
-
-impl Named for CreateDataParameterType {
-    fn name(&self) -> &str {
-        &self.type_name
-    }
-}
-
-impl Parameter for CreateDataParameter {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn typ(&self) -> Type {
-        (&self.typ).into()
-    }
-}
-
-impl Parameter for UpdateDataParameter {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn typ(&self) -> Type {
-        (&self.typ).into()
-    }
-}
-
-impl<P> Operation for Query<P>
-where
-    P: OperationParameters,
-{
+impl<P: OperationParameters> Operation for PostgresOperation<P> {
     fn name(&self) -> &String {
         &self.name
     }
@@ -199,26 +57,6 @@ where
         self.parameters.introspect()
     }
 
-    fn return_type(&self) -> Type {
-        (&self.return_type).into()
-    }
-}
-
-impl Operation for PostgresMutation {
-    fn name(&self) -> &String {
-        &self.name
-    }
-
-    fn parameters(&self) -> Vec<&dyn Parameter> {
-        match &self.kind {
-            PostgresMutationKind::Create(data_param) => vec![data_param],
-            PostgresMutationKind::Delete(predicate_param) => vec![predicate_param],
-            PostgresMutationKind::Update {
-                data_param,
-                predicate_param,
-            } => vec![predicate_param, data_param],
-        }
-    }
     fn return_type(&self) -> Type {
         (&self.return_type).into()
     }

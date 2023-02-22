@@ -7,7 +7,7 @@ use payas_sql::{
     NestedElementRelation, PhysicalColumn, PhysicalColumnType, Predicate, Selection,
 };
 use postgres_model::{
-    operation::UpdateDataParameter,
+    mutation::DataParameter,
     relation::PostgresRelation,
     subsystem::PostgresSubsystem,
     types::{base_type, EntityType, MutationType, PostgresType, TypeIndex},
@@ -21,7 +21,7 @@ use crate::{
 use super::{cast, postgres_execution_error::PostgresExecutionError};
 
 pub struct UpdateOperation<'a> {
-    pub data_param: &'a UpdateDataParameter,
+    pub data_param: &'a DataParameter,
     pub return_type: &'a OperationReturnType<EntityType>,
     pub predicate: AbstractPredicate<'a>,
     pub select: AbstractSelect<'a>,

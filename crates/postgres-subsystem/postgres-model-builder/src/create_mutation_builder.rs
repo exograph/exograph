@@ -7,7 +7,7 @@ use core_plugin_interface::core_model::{
 };
 
 use postgres_model::{
-    operation::{CreateDataParameter, CreateDataParameterType, PostgresMutationKind},
+    mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
     types::EntityType,
 };
 
@@ -66,11 +66,11 @@ impl MutationBuilder for CreateMutationBuilder {
         entity_type.pk_create()
     }
 
-    fn single_mutation_kind(
+    fn single_mutation_parameters(
         entity_type: &EntityType,
         building: &SystemContextBuilding,
-    ) -> PostgresMutationKind {
-        PostgresMutationKind::Create(Self::data_param(entity_type, building, false))
+    ) -> PostgresMutationParameters {
+        PostgresMutationParameters::Create(Self::data_param(entity_type, building, false))
     }
 
     fn single_mutation_modified_type(
@@ -83,15 +83,15 @@ impl MutationBuilder for CreateMutationBuilder {
         entity_type.collection_create()
     }
 
-    fn multi_mutation_kind(
+    fn multi_mutation_parameters(
         entity_type: &EntityType,
         building: &SystemContextBuilding,
-    ) -> PostgresMutationKind {
-        PostgresMutationKind::Create(Self::data_param(entity_type, building, true))
+    ) -> PostgresMutationParameters {
+        PostgresMutationParameters::Create(Self::data_param(entity_type, building, true))
     }
 }
 
-impl DataParamBuilder<CreateDataParameter> for CreateMutationBuilder {
+impl DataParamBuilder<DataParameter> for CreateMutationBuilder {
     fn mark_fields_optional() -> bool {
         false
     }
@@ -108,19 +108,19 @@ impl DataParamBuilder<CreateDataParameter> for CreateMutationBuilder {
         entity_type: &EntityType,
         building: &SystemContextBuilding,
         array: bool,
-    ) -> CreateDataParameter {
+    ) -> DataParameter {
         let data_param_type_name = Self::base_data_type_name(&entity_type.name);
         let data_param_type_id = building
             .mutation_types
             .get_id(&data_param_type_name)
             .unwrap();
 
-        let base_type = FieldType::Plain(CreateDataParameterType {
-            type_name: data_param_type_name,
+        let base_type = FieldType::Plain(DataParameterType {
+            name: data_param_type_name,
             type_id: data_param_type_id,
         });
 
-        CreateDataParameter {
+        DataParameter {
             name: "data".to_string(),
             typ: if array {
                 FieldType::List(Box::new(base_type))

@@ -5,7 +5,7 @@ use core_plugin_interface::core_model::{
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 use postgres_model::{
-    operation::{PostgresMutationKind, UpdateDataParameter, UpdateDataParameterType},
+    mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
     relation::PostgresRelation,
     types::{EntityType, MutationType, PostgresField, PostgresFieldType, TypeIndex},
 };
@@ -64,11 +64,11 @@ impl MutationBuilder for UpdateMutationBuilder {
         entity_type.pk_update()
     }
 
-    fn single_mutation_kind(
+    fn single_mutation_parameters(
         entity_type: &EntityType,
         building: &SystemContextBuilding,
-    ) -> PostgresMutationKind {
-        PostgresMutationKind::Update {
+    ) -> PostgresMutationParameters {
+        PostgresMutationParameters::Update {
             data_param: Self::data_param(entity_type, building, false),
             predicate_param: query_builder::pk_predicate_param(
                 entity_type,
@@ -88,11 +88,11 @@ impl MutationBuilder for UpdateMutationBuilder {
         entity_type.collection_update()
     }
 
-    fn multi_mutation_kind(
+    fn multi_mutation_parameters(
         entity_type: &EntityType,
         building: &SystemContextBuilding,
-    ) -> PostgresMutationKind {
-        PostgresMutationKind::Update {
+    ) -> PostgresMutationParameters {
+        PostgresMutationParameters::Update {
             data_param: Self::data_param(entity_type, building, true),
             predicate_param: query_builder::collection_predicate_param(
                 entity_type,
@@ -102,7 +102,7 @@ impl MutationBuilder for UpdateMutationBuilder {
     }
 }
 
-impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
+impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
     fn mark_fields_optional() -> bool {
         true
     }
@@ -119,18 +119,17 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         entity_type: &EntityType,
         building: &SystemContextBuilding,
         _array: bool,
-    ) -> UpdateDataParameter {
+    ) -> DataParameter {
         let data_param_type_name = Self::base_data_type_name(&entity_type.name);
         let data_param_type_id = building
             .mutation_types
             .get_id(&data_param_type_name)
             .unwrap();
 
-        UpdateDataParameter {
+        DataParameter {
             name: "data".to_string(),
-            type_name: data_param_type_name.clone(),
-            typ: FieldType::Plain(UpdateDataParameterType {
-                type_name: data_param_type_name,
+            typ: FieldType::Plain(DataParameterType {
+                name: data_param_type_name,
                 type_id: data_param_type_id,
             }),
         }
