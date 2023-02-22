@@ -70,7 +70,7 @@ fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
 
 fn create_context_field_type(field_type: &ResolvedContextFieldType) -> ContextFieldType {
     match field_type {
-        ResolvedContextFieldType::Plain(pt) => ContextFieldType::Reference(pt.clone()),
+        ResolvedContextFieldType::Plain(pt) => ContextFieldType::Plain(pt.clone()),
         ResolvedContextFieldType::Optional(underlying) => {
             ContextFieldType::Optional(Box::new(create_context_field_type(underlying)))
         }
