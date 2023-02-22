@@ -1,7 +1,7 @@
 use super::access::Access;
 use super::{column_id::ColumnId, relation::PostgresRelation};
 use crate::aggregate::AggregateField;
-use crate::operation::{AggregateQuery, CollectionQuery, CollectionQueryParameter, PkQuery};
+use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, PkQuery};
 use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
@@ -221,7 +221,7 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
                 let other_type = &system.entity_types[other_type_id];
                 let collection_query = &system.collection_queries[other_type.collection_query];
 
-                let CollectionQueryParameter {
+                let CollectionQueryParameters {
                     predicate_param,
                     order_by_param,
                     limit_param,

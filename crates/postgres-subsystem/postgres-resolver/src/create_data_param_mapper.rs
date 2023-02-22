@@ -6,7 +6,7 @@ use payas_sql::{
 };
 use postgres_model::{
     column_id::ColumnId,
-    operation::CreateDataParameter,
+    mutation::DataParameter,
     relation::PostgresRelation,
     subsystem::PostgresSubsystem,
     types::{base_type, EntityType, MutationType, PostgresField, PostgresType},
@@ -20,7 +20,7 @@ use super::{
 };
 
 pub struct InsertOperation<'a> {
-    pub data_param: &'a CreateDataParameter,
+    pub data_param: &'a DataParameter,
     pub return_type: &'a OperationReturnType<EntityType>,
     pub select: AbstractSelect<'a>,
 }

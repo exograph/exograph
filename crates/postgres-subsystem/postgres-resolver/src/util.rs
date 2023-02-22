@@ -12,7 +12,7 @@ use core_plugin_interface::core_resolver::{
 use payas_sql::{AbstractPredicate, PhysicalTable};
 use postgres_model::{
     column_path::{ColumnIdPath, ColumnIdPathLink},
-    operation::{CollectionQuery, PkQuery},
+    query::{CollectionQuery, PkQuery},
     subsystem::PostgresSubsystem,
 };
 
