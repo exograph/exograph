@@ -21,7 +21,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::primitive_type::PrimitiveType;
+use crate::{primitive_type::PrimitiveType, types::FieldType};
 
 /// A context type to represent objects such as `AuthContext` and `IPContext`
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -44,14 +44,7 @@ pub struct ContextField {
 }
 
 /// The type of a context field such as `Int` and `Array<String>`
-///
-/// TODO: We should model this using `FieldType<PrimitiveType>`
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ContextFieldType {
-    Reference(PrimitiveType),
-    Optional(Box<ContextFieldType>),
-    List(Box<ContextFieldType>),
-}
+pub type ContextFieldType = FieldType<PrimitiveType>;
 
 /// The source of a context field such as JWT or client IP
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -60,15 +53,4 @@ pub struct ContextSource {
     pub annotation_name: String,
     /// Annotation arguments such as `id` and `roles`
     pub value: Option<String>,
-}
-
-impl ContextFieldType {
-    pub fn primitive_type(&self) -> &PrimitiveType {
-        match self {
-            ContextFieldType::Optional(underlying) | ContextFieldType::List(underlying) => {
-                underlying.primitive_type()
-            }
-            ContextFieldType::Reference(pt) => pt,
-        }
-    }
 }
