@@ -250,10 +250,10 @@ fn compute_selection<'a>(
                 .unwrap();
 
             (
-                AccessContextSelection::Select(
-                    Box::new(AccessContextSelection::Context(path_elements[0].clone())),
-                    path_elements[1].clone(),
-                ),
+                AccessContextSelection {
+                    context_name: path_elements[0].clone(),
+                    path: (path_elements[1].clone(), vec![]),
+                },
                 &field.typ,
             )
         } else {
