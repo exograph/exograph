@@ -6,7 +6,7 @@ use crate::{
         select::{AbstractSelect, SelectionLevel},
         update::AbstractUpdate,
     },
-    sql::{select::Select, transaction::TransactionScript},
+    sql::{cte::Cte, select::Select, transaction::TransactionScript},
     Predicate,
 };
 
@@ -56,6 +56,8 @@ pub trait SelectTransformer {
 }
 
 pub trait DeleteTransformer {
+    fn to_delete<'a>(&self, abstract_delete: &'a AbstractDelete) -> Cte<'a>;
+
     fn to_transaction_script<'a>(
         &self,
         abstract_delete: &'a AbstractDelete,

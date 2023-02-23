@@ -141,13 +141,13 @@ impl<'a> ConcreteTransactionStep<'a> {
         let params: Vec<&(dyn ToSql + Sync)> =
             binding.params.iter().map(|p| (*p).as_pg()).collect();
 
-        println!("Executing SQL operation: {}", binding.stmt.as_str());
+        debug!("Executing SQL operation: {}", binding.stmt.as_str());
 
         client
             .query(binding.stmt.as_str(), &params[..])
             .await
             .map_err(|e| {
-                println!("Failed to execute query: {e:?}");
+                error!("Failed to execute query: {e:?}");
                 DatabaseError::Delegate(e).with_context("Database operation failed".into())
             })
     }
