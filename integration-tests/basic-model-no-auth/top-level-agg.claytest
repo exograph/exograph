@@ -1,24 +1,52 @@
 operation: |
+    fragment VenueAggFragment on VenueAgg {
+      __typename
+      id {
+        __typename
+        count
+      }
+      latitude {
+        __typename
+        count
+        max
+        min
+        avg
+      }
+    }
+
+    fragment ConcertAggFragment on ConcertAgg {
+      __typename
+      id {
+        __typename
+        count
+      }
+      price {
+        __typename
+        count
+        max
+        min
+        avg
+      }
+    }
+
     query {
       venuesAgg {
-          __typename
-          id {
-            count
-          }
-          latitude {
-            count
-            max
-            min
-            avg
-          }
+          ...VenueAggFragment
       }
 
       higherLatitudeVenuesAgg: venuesAgg(where: {latitude: {gt: 36}}) {
+          ...VenueAggFragment
+      }
+
+      # To ensure that we don't have to rely on fragments to get the same result
+      venueAggWithoutFragment: venuesAgg {
           __typename
           id {
+            __typename
             count
           }
           latitude {
+            __typename
             count
             max
             min
@@ -27,37 +55,25 @@ operation: |
       }
 
       concertsAgg {
-          __typename
-          id {
-            count
-          }
-          price {
-            count
-            max
-            min
-            avg
-          }
+          ...ConcertAggFragment
       }
 
       expensiveConcertsAgg: concertsAgg(where: {price: {gt: "20"}}) {
-          __typename
-          id {
-            count
-          }
-          price {
-            count
-            max
-            min
-            avg
-          }
+          ...ConcertAggFragment
       }
 
       highLatitudeConcertsAgg: concertsAgg(where: {venue: {latitude: {gt: 36}}}) { # An example of predicate on nested element
+          ...ConcertAggFragment
+      }
+
+      concertsAggWithoutFragment: concertsAgg {
           __typename
           id {
+            __typename
             count
           }
           price {
+            __typename
             count
             max
             min
@@ -71,9 +87,11 @@ response: |
         "venuesAgg": {
           "__typename": "VenueAgg",
           "id": {
+            "__typename": "IntAgg",
             "count": 2
           },
           "latitude": {
+            "__typename": "FloatAgg",
             "count": 2,
             "max": 37.7749,
             "min": 35.6762,
@@ -83,21 +101,39 @@ response: |
         "higherLatitudeVenuesAgg": {
           "__typename": "VenueAgg",
           "id": {
+            "__typename": "IntAgg",
             "count": 1
           },
           "latitude": {
+            "__typename": "FloatAgg",
             "count": 1,
             "max": 37.7749,
             "min": 37.7749,
             "avg": 37.774898529052734
           }
         },
+        "venueAggWithoutFragment": {
+          "__typename": "VenueAgg",
+          "id": {
+            "__typename": "IntAgg",
+            "count": 2
+          },
+          "latitude": {
+            "__typename": "FloatAgg",
+            "count": 2,
+            "max": 37.7749,
+            "min": 35.6762,
+            "avg": 36.72554969787598
+          }
+        },        
         "concertsAgg": {
           "__typename": "ConcertAgg",
           "id": {
+            "__typename": "IntAgg",
             "count": 4
           },
           "price": {
+            "__typename": "DecimalAgg",
             "count": 4,
             "max": 30.5,
             "min": 12.5,
@@ -107,9 +143,11 @@ response: |
         "expensiveConcertsAgg": {
           "__typename": "ConcertAgg",
           "id": {
+            "__typename": "IntAgg",
             "count": 3
           },
           "price": {
+            "__typename": "DecimalAgg",
             "count": 3,
             "max": 30.5,
             "min": 20.5,
@@ -119,14 +157,30 @@ response: |
         "highLatitudeConcertsAgg": {
           "__typename": "ConcertAgg",
           "id": {
+            "__typename": "IntAgg",
             "count": 2
           },
           "price": {
+            "__typename": "DecimalAgg",
             "count": 2,
             "max": 30.5,
             "min": 20.5,
             "avg": 25.5
           }
-        }
+        },
+        "concertsAggWithoutFragment": {
+          "__typename": "ConcertAgg",
+          "id": {
+            "__typename": "IntAgg",
+            "count": 4
+          },
+          "price": {
+            "__typename": "DecimalAgg",
+            "count": 4,
+            "max": 30.5,
+            "min": 12.5,
+            "avg": 21.5
+          }
+        }        
       }
     }

@@ -10,9 +10,11 @@ operation: |
         concertsAgg {
           __typename
           id {
+            __typename
             count
           }
           price {
+            __typename
             count
             sum
             avg
@@ -30,9 +32,11 @@ operation: |
         expensiveConcertsAgg: concertsAgg(where: {price: {gt: "20"}}) {
           __typename
           id {
+            __typename
             count
           }
           price {
+            __typename
             count
             sum
             avg
@@ -50,9 +54,11 @@ operation: |
         concertsAgg {
           __typename
           id {
+            __typename
             count
           }
           price {
+            __typename
             count
             sum
             avg
@@ -80,9 +86,11 @@ response: |
             "concertsAgg": {
               "__typename": "ConcertAgg",
               "id": {
+                "__typename": "IntAgg",
                 "count": 2
               },
               "price": {
+                "__typename": "DecimalAgg",
                 "count": 2,
                 "sum": 51.0,
                 "avg": 25.5
@@ -105,9 +113,11 @@ response: |
             "concertsAgg": {
               "__typename": "ConcertAgg",
               "id": {
+                "__typename": "IntAgg",
                 "count": 2
               },
               "price": {
+                "__typename": "DecimalAgg",               
                 "count": 2,
                 "sum": 35.0,
                 "avg": 17.5
@@ -132,9 +142,11 @@ response: |
             "expensiveConcertsAgg": {
               "__typename": "ConcertAgg",
               "id": {
+                "__typename": "IntAgg",
                 "count": 2
               },
               "price": {
+                "__typename": "DecimalAgg",
                 "count": 2,
                 "sum": 51.0,
                 "avg": 25.5
@@ -157,9 +169,11 @@ response: |
             "expensiveConcertsAgg": {
               "__typename": "ConcertAgg",
               "id": {
+                "__typename": "IntAgg",
                 "count": 1
               },
               "price": {
+                "__typename": "DecimalAgg",
                 "count": 1,
                 "sum": 22.5,
                 "avg": 22.5
@@ -183,9 +197,11 @@ response: |
           "concertsAgg": {
             "__typename": "ConcertAgg",
             "id": {
+              "__typename": "IntAgg",
               "count": 2
             },
             "price": {
+              "__typename": "DecimalAgg",
               "count": 2,
               "sum": 51.0,
               "avg": 25.5

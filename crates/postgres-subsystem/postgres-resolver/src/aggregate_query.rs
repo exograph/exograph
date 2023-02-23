@@ -91,6 +91,10 @@ async fn map_field<'content>(
         let entity_type = &return_type.typ(&subsystem.entity_types);
 
         let model_field = entity_type.field(&field.name).unwrap();
+        let model_field_type = &model_field.typ.innermost().type_name;
+        // This is duplicated from builder.
+        // We need to rethink aggregation and the concept of aggregate fields in EntityType.
+        let model_field_agg_type = format!("{model_field_type}Agg");
 
         match &model_field.relation {
             PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
@@ -98,14 +102,16 @@ async fn map_field<'content>(
                 let elements = field
                     .subfields
                     .iter()
-                    .map(|field| {
-                        (
-                            field.output_name(),
-                            MaybeOwned::Owned(SelectionElement::Function {
-                                function_name: field.name.to_string(),
+                    .map(|subfield| {
+                        let selection_elem = if subfield.name == "__typename" {
+                            SelectionElement::Constant(model_field_agg_type.clone())
+                        } else {
+                            SelectionElement::Function {
+                                function_name: subfield.name.to_string(),
                                 column,
-                            }),
-                        )
+                            }
+                        };
+                        (subfield.output_name(), MaybeOwned::Owned(selection_elem))
                     })
                     .collect();
                 SelectionElement::Object(elements)
