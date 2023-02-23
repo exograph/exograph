@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use core_model::context_type::{ContextField, ContextType};
 use futures::StreamExt;
 use payas_sql::TransactionHolder;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use thiserror::Error;
 
 use crate::system_resolver::SystemResolver;
@@ -135,18 +135,16 @@ impl<'a> RequestContext<'a> {
     pub async fn extract_context<'s>(
         &'a self,
         context: &ContextType,
-    ) -> Result<Value, ContextParsingError> {
-        Ok(Value::Object(
-            futures::stream::iter(context.fields.iter())
-                .then(|field| async { self.extract_context_field(context, field).await })
-                .collect::<Vec<Result<_, _>>>()
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .flatten()
-                .collect(),
-        ))
+    ) -> Result<Map<String, Value>, ContextParsingError> {
+        Ok(futures::stream::iter(context.fields.iter())
+            .then(|field| async { self.extract_context_field(context, field).await })
+            .collect::<Vec<Result<_, _>>>()
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .collect())
     }
 
     // Given an annotation name and its value,

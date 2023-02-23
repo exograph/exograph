@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use core_model::access::{
     AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
 };
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 /// Access predicate that can be logically combined with other predicates.
 pub trait AccessPredicate<'a>:
@@ -65,7 +65,7 @@ where
     ///   role: "admin",
     /// }
     /// ```
-    async fn extract_context(&self, context_name: &str) -> Option<Value>;
+    async fn extract_context(&self, context_name: &str) -> Option<Map<String, Value>>;
 
     /// Extract the context object selection.
     ///
@@ -79,15 +79,20 @@ where
         &self,
         context_selection: &AccessContextSelection,
     ) -> Option<Value> {
-        match context_selection {
-            AccessContextSelection::Context(context_name) => {
-                self.extract_context(context_name).await
+        fn extract_path<'a>(value: &'a Value, path: &[String]) -> Option<&'a Value> {
+            match path.split_first() {
+                Some((key, tail)) => value.get(key).and_then(|value| extract_path(value, tail)),
+                None => Some(value),
             }
-            AccessContextSelection::Select(path, key) => self
-                .extract_context_selection(path)
-                .await
-                .and_then(|value| value.get(key).cloned()),
         }
+
+        let context = self
+            .extract_context(&context_selection.context_name)
+            .await?;
+        context
+            .get(&context_selection.path.0)
+            .and_then(|head_selection| extract_path(head_selection, &context_selection.path.1))
+            .cloned()
     }
 
     /// Solve relational operation such as `=`, `!=`, `<`, `>`, `<=`, `>=`.

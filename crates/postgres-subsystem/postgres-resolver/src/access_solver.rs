@@ -13,7 +13,7 @@ use postgres_model::{
     access::DatabaseAccessPrimitiveExpression, column_path::ColumnIdPath,
     subsystem::PostgresSubsystem,
 };
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 // Only to get around the orphan rule while implementing AccessSolver
 pub struct AbstractPredicateWrapper<'a>(pub AbstractPredicate<'a>);
@@ -70,7 +70,7 @@ pub enum SolvedPrimitiveExpression<'a> {
 impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWrapper<'a>>
     for PostgresAccessSolver<'a>
 {
-    async fn extract_context(&self, context_name: &str) -> Option<Value> {
+    async fn extract_context(&self, context_name: &str) -> Option<Map<String, Value>> {
         let context_type = self.system.contexts.get_by_key(context_name).unwrap();
         self.request_context
             .extract_context(context_type)
@@ -369,17 +369,14 @@ mod tests {
         }
     }
 
-    fn context_selection(head: &str, tail: &[&str]) -> AccessContextSelection {
-        match tail {
-            [] => AccessContextSelection::Context(head.to_string()),
-            [init @ .., last] => AccessContextSelection::Select(
-                Box::new(context_selection(head, init)),
-                last.to_string(),
-            ),
+    fn context_selection(context_name: &str, path_head: &str) -> AccessContextSelection {
+        AccessContextSelection {
+            context_name: context_name.to_string(),
+            path: (path_head.to_string(), vec![]),
         }
     }
 
-    fn context_selection_expr(head: &str, tail: &[&str]) -> Box<DatabaseAccessPrimitiveExpression> {
+    fn context_selection_expr(head: &str, tail: &str) -> Box<DatabaseAccessPrimitiveExpression> {
         Box::new(DatabaseAccessPrimitiveExpression::ContextSelection(
             context_selection(head, tail),
         ))
@@ -452,8 +449,8 @@ mod tests {
         // Case 1: Both values from AuthContext
         {
             let test_ae = AccessPredicateExpression::RelationalOp(op(
-                context_selection_expr("AccessContext", &["token1"]),
-                context_selection_expr("AccessContext", &["token2"]),
+                context_selection_expr("AccessContext", "token1"),
+                context_selection_expr("AccessContext", "token2"),
             ));
 
             let request_context = test_request_context(
@@ -515,7 +512,7 @@ mod tests {
 
             // Once test with `context op column` and then `column op context`
             test_context_column(AccessPredicateExpression::RelationalOp(op(
-                context_selection_expr("AccessContext", &["user_id"]),
+                context_selection_expr("AccessContext", "user_id"),
                 Box::new(DatabaseAccessPrimitiveExpression::Column(
                     owner_id_column_path.clone(),
                 )),
@@ -526,7 +523,7 @@ mod tests {
                 Box::new(DatabaseAccessPrimitiveExpression::Column(
                     owner_id_column_path.clone(),
                 )),
-                context_selection_expr("AccessContext", &["user_id"]),
+                context_selection_expr("AccessContext", "user_id"),
             )))
             .await;
         }
@@ -706,11 +703,11 @@ mod tests {
                 let test_ae = AccessPredicateExpression::LogicalOp(op(
                     Box::new(boolean_context_selection(context_selection(
                         "AccessContext",
-                        &[c1],
+                        c1,
                     ))),
                     Box::new(boolean_context_selection(context_selection(
                         "AccessContext",
-                        &[c2],
+                        c2,
                     ))),
                 ));
 
@@ -854,10 +851,10 @@ mod tests {
 
             for (c1, expected) in scenarios.iter() {
                 let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(
-                    Box::new(boolean_context_selection(AccessContextSelection::Select(
-                        Box::new(AccessContextSelection::Context("AccessContext".to_string())),
-                        c1.to_string(),
-                    ))),
+                    Box::new(boolean_context_selection(AccessContextSelection {
+                        context_name: "AccessContext".to_string(),
+                        path: (c1.to_string(), vec![]),
+                    })),
                 ));
 
                 let solved_predicate = solve_access(&test_ae, &context, system).await;
@@ -894,7 +891,7 @@ mod tests {
         } = test_system();
 
         let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-            context_selection_expr("AccessContext", &["role"]),
+            context_selection_expr("AccessContext", "role"),
             Box::new(DatabaseAccessPrimitiveExpression::StringLiteral(
                 "ROLE_ADMIN".to_owned(),
             )),
@@ -923,7 +920,7 @@ mod tests {
 
         let test_ae = {
             let admin_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-                context_selection_expr("AccessContext", &["role"]),
+                context_selection_expr("AccessContext", "role"),
                 Box::new(DatabaseAccessPrimitiveExpression::StringLiteral(
                     "ROLE_ADMIN".to_owned(),
                 )),
@@ -964,7 +961,7 @@ mod tests {
         } = &test_system;
 
         let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-            context_selection_expr("AccessContext", &["user_id"]),
+            context_selection_expr("AccessContext", "user_id"),
             Box::new(DatabaseAccessPrimitiveExpression::Column(
                 owner_id_column_path.clone(),
             )),
@@ -1004,7 +1001,7 @@ mod tests {
         } = &test_system;
 
         let admin_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-            context_selection_expr("AccessContext", &["role"]),
+            context_selection_expr("AccessContext", "role"),
             Box::new(DatabaseAccessPrimitiveExpression::StringLiteral(
                 "ROLE_ADMIN".to_owned(),
             )),
@@ -1012,7 +1009,7 @@ mod tests {
 
         let user_access = {
             let role_rule = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-                context_selection_expr("AccessContext", &["role"]),
+                context_selection_expr("AccessContext", "role"),
                 Box::new(DatabaseAccessPrimitiveExpression::StringLiteral(
                     "ROLE_USER".to_owned(),
                 )),
@@ -1126,7 +1123,7 @@ mod tests {
             ..
         } = &test_system;
 
-        let test_ae = boolean_context_selection(context_selection("AccessContext", &["is_admin"]));
+        let test_ae = boolean_context_selection(context_selection("AccessContext", "is_admin"));
 
         let context = test_request_context(json!({"is_admin": true}), test_system_resolver);
         let solved_predicate = solve_access(&test_ae, &context, system).await;

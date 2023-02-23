@@ -10,7 +10,7 @@ use core_plugin_interface::{
 
 use deno_model::{access::ServiceAccessPrimitiveExpression, subsystem::DenoSubsystem};
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::service_access_predicate::ServiceAccessPredicate;
 
@@ -62,7 +62,7 @@ impl DenoAccessSolver<'_> {
 impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredicateWrapper>
     for DenoAccessSolver<'a>
 {
-    async fn extract_context(&self, context_name: &str) -> Option<Value> {
+    async fn extract_context(&self, context_name: &str) -> Option<Map<String, Value>> {
         let context_type = self.system.contexts.get_by_key(context_name).unwrap();
         self.request_context
             .extract_context(context_type)
