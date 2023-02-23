@@ -18,6 +18,7 @@ use deno_model::{
 
 use futures::StreamExt;
 use payas_deno::Arg;
+use serde_json::Value;
 
 use crate::{
     access_solver::DenoAccessSolver, clay_execution::ClayCallbackProcessor,
@@ -158,7 +159,7 @@ pub async fn construct_arg_sequence<'a>(
                                 &context.name
                             )
                         });
-                    Ok(Arg::Serde(context_value))
+                    Ok(Arg::Serde(Value::Object(context_value)))
                 } else {
                     // not a context, assume it is a provided shim by the Deno executor
                     Ok(Arg::Shim(arg_type.name.clone()))

@@ -31,7 +31,7 @@ impl Access {
 pub enum DatabaseAccessPrimitiveExpression {
     ContextSelection(AccessContextSelection), // for example, AuthContext.role
     Column(ColumnIdPath),                     // for example, self.id
-    StringLiteral(String),                    // for example, "ROLE_ADMIN"
+    StringLiteral(String),                    // for example, "ADMIN"
     BooleanLiteral(bool),                     // for example, true
     NumberLiteral(i64),                       // for example, integer (-13, 0, 300, etc.)
 }
