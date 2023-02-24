@@ -1,7 +1,11 @@
 use async_trait::async_trait;
 
 use core_plugin_interface::{
-    core_model::access::{AccessContextSelection, AccessRelationalOp},
+    core_model::{
+        access::{AccessContextSelection, AccessRelationalOp},
+        context_type::ContextType,
+        mapped_arena::MappedArena,
+    },
     core_resolver::{
         access_solver::{AccessPredicate, AccessSolver},
         request_context::RequestContext,
@@ -10,7 +14,7 @@ use core_plugin_interface::{
 
 use deno_model::{access::ServiceAccessPrimitiveExpression, subsystem::DenoSubsystem};
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::service_access_predicate::ServiceAccessPredicate;
 
@@ -41,37 +45,17 @@ impl<'a> AccessPredicate<'a> for ServiceAccessPredicateWrapper {
     }
 }
 
-pub struct DenoAccessSolver<'a> {
-    request_context: &'a RequestContext<'a>,
-    system: &'a DenoSubsystem,
-}
-
-impl DenoAccessSolver<'_> {
-    pub fn new<'a>(
-        request_context: &'a RequestContext<'a>,
-        system: &'a DenoSubsystem,
-    ) -> DenoAccessSolver<'a> {
-        DenoAccessSolver {
-            request_context,
-            system,
-        }
-    }
-}
-
 #[async_trait]
 impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredicateWrapper>
-    for DenoAccessSolver<'a>
+    for DenoSubsystem
 {
-    async fn extract_context(&self, context_name: &str) -> Option<Map<String, Value>> {
-        let context_type = self.system.contexts.get_by_key(context_name).unwrap();
-        self.request_context
-            .extract_context(context_type)
-            .await
-            .ok()
+    fn contexts(&self) -> &MappedArena<ContextType> {
+        &self.contexts
     }
 
     async fn solve_relational_op(
-        &self,
+        &'a self,
+        request_context: &'a RequestContext<'a>,
         op: &'a AccessRelationalOp<ServiceAccessPrimitiveExpression>,
     ) -> ServiceAccessPredicateWrapper {
         #[derive(Debug)]
@@ -81,12 +65,13 @@ impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredica
         }
 
         async fn reduce_primitive_expression<'a>(
-            solver: &DenoAccessSolver<'a>,
+            solver: &DenoSubsystem,
+            request_context: &'a RequestContext<'a>,
             expr: &'a ServiceAccessPrimitiveExpression,
         ) -> SolvedPrimitiveExpression<'a> {
             match expr {
                 ServiceAccessPrimitiveExpression::ContextSelection(selection) => solver
-                    .extract_context_selection(selection)
+                    .extract_context_selection(request_context, selection)
                     .await
                     .map(SolvedPrimitiveExpression::Value)
                     .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
@@ -103,8 +88,8 @@ impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredica
         }
 
         let (left, right) = op.sides();
-        let left = reduce_primitive_expression(self, left).await;
-        let right = reduce_primitive_expression(self, right).await;
+        let left = reduce_primitive_expression(self, request_context, left).await;
+        let right = reduce_primitive_expression(self, request_context, right).await;
 
         type ValuePredicateFn<'a> = fn(Value, Value) -> ServiceAccessPredicate;
 

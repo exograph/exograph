@@ -2,6 +2,8 @@ use crate::column_path_util;
 use async_trait::async_trait;
 use core_plugin_interface::{
     core_model::access::{AccessContextSelection, AccessRelationalOp},
+    core_model::context_type::ContextType,
+    core_model::mapped_arena::MappedArena,
     core_resolver::{
         access_solver::AccessPredicate, access_solver::AccessSolver,
         request_context::RequestContext,
@@ -13,7 +15,7 @@ use postgres_model::{
     access::DatabaseAccessPrimitiveExpression, column_path::ColumnIdPath,
     subsystem::PostgresSubsystem,
 };
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 // Only to get around the orphan rule while implementing AccessSolver
 pub struct AbstractPredicateWrapper<'a>(pub AbstractPredicate<'a>);
@@ -42,23 +44,6 @@ impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper<'a> {
     }
 }
 
-pub struct PostgresAccessSolver<'a> {
-    request_context: &'a RequestContext<'a>,
-    system: &'a PostgresSubsystem,
-}
-
-impl PostgresAccessSolver<'_> {
-    pub fn new<'a>(
-        request_context: &'a RequestContext<'a>,
-        system: &'a PostgresSubsystem,
-    ) -> PostgresAccessSolver<'a> {
-        PostgresAccessSolver {
-            request_context,
-            system,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub enum SolvedPrimitiveExpression<'a> {
     Value(Value),
@@ -68,18 +53,15 @@ pub enum SolvedPrimitiveExpression<'a> {
 
 #[async_trait]
 impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWrapper<'a>>
-    for PostgresAccessSolver<'a>
+    for PostgresSubsystem
 {
-    async fn extract_context(&self, context_name: &str) -> Option<Map<String, Value>> {
-        let context_type = self.system.contexts.get_by_key(context_name).unwrap();
-        self.request_context
-            .extract_context(context_type)
-            .await
-            .ok()
+    fn contexts(&self) -> &MappedArena<ContextType> {
+        &self.contexts
     }
 
     async fn solve_relational_op(
-        &self,
+        &'a self,
+        request_context: &'a RequestContext<'a>,
         op: &'a AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
     ) -> AbstractPredicateWrapper<'a> {
         type ColumnPredicateFn<'a> = fn(
@@ -89,12 +71,13 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
 
         async fn reduce_primitive_expression<'a>(
-            solver: &PostgresAccessSolver<'a>,
+            solver: &PostgresSubsystem,
+            request_context: &'a RequestContext<'a>,
             expr: &'a DatabaseAccessPrimitiveExpression,
         ) -> SolvedPrimitiveExpression<'a> {
             match expr {
                 DatabaseAccessPrimitiveExpression::ContextSelection(selection) => solver
-                    .extract_context_selection(selection)
+                    .extract_context_selection(request_context, selection)
                     .await
                     .map(SolvedPrimitiveExpression::Value)
                     .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
@@ -114,8 +97,8 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         }
 
         let (left, right) = op.sides();
-        let left = reduce_primitive_expression(self, left).await;
-        let right = reduce_primitive_expression(self, right).await;
+        let left = reduce_primitive_expression(self, request_context, left).await;
+        let right = reduce_primitive_expression(self, request_context, right).await;
 
         let helper = |unresolved_context_predicate: AbstractPredicate<'a>,
                       column_predicate: ColumnPredicateFn<'a>,
@@ -126,12 +109,13 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => {
                     unresolved_context_predicate
                 }
+
                 (
                     SolvedPrimitiveExpression::Column(left_col),
                     SolvedPrimitiveExpression::Column(right_col),
                 ) => column_predicate(
-                    to_column_path(&left_col, self.system).into(),
-                    to_column_path(&right_col, self.system).into(),
+                    to_column_path(&left_col, self).into(),
+                    to_column_path(&right_col, self).into(),
                 ),
 
                 (
@@ -145,10 +129,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 | (
                     SolvedPrimitiveExpression::Column(column),
                     SolvedPrimitiveExpression::Value(value),
-                ) => column_predicate(
-                    to_column_path(&column, self.system).into(),
-                    literal_column(value),
-                ),
+                ) => column_predicate(to_column_path(&column, self).into(), literal_column(value)),
             }
         };
 
@@ -407,10 +388,9 @@ mod tests {
     async fn solve_access<'a>(
         expr: &'a AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
         request_context: &'a RequestContext<'a>,
-        subsystem_model: &'a PostgresSubsystem,
+        subsystem: &'a PostgresSubsystem,
     ) -> AbstractPredicate<'a> {
-        let access_solver = PostgresAccessSolver::new(request_context, subsystem_model);
-        access_solver.solve(expr).await.0
+        subsystem.solve(request_context, expr).await.0
     }
 
     async fn test_relational_op<'a>(

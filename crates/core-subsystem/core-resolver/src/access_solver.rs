@@ -1,8 +1,15 @@
 use async_trait::async_trait;
-use core_model::access::{
-    AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+use core_model::{
+    access::{
+        AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
+        AccessRelationalOp,
+    },
+    context_type::ContextType,
+    mapped_arena::MappedArena,
 };
 use serde_json::{Map, Value};
+
+use crate::request_context::RequestContext;
 
 /// Access predicate that can be logically combined with other predicates.
 pub trait AccessPredicate<'a>:
@@ -35,10 +42,18 @@ where
     /// scheme allows the implementor to optimize to avoid passing a filter to the downstream data
     /// source as well as return a "Not authorized" error when possible (instead of an empty/null
     /// result).
-    async fn solve(&self, expr: &'a AccessPredicateExpression<PrimExpr>) -> Res {
+    async fn solve(
+        &'a self,
+        request_context: &'a RequestContext<'a>,
+        expr: &'a AccessPredicateExpression<PrimExpr>,
+    ) -> Res {
         match expr {
-            AccessPredicateExpression::LogicalOp(op) => self.solve_logical_op(op).await,
-            AccessPredicateExpression::RelationalOp(op) => self.solve_relational_op(op).await,
+            AccessPredicateExpression::LogicalOp(op) => {
+                self.solve_logical_op(request_context, op).await
+            }
+            AccessPredicateExpression::RelationalOp(op) => {
+                self.solve_relational_op(request_context, op).await
+            }
             AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
         }
     }
@@ -65,7 +80,20 @@ where
     ///   role: "admin",
     /// }
     /// ```
-    async fn extract_context(&self, context_name: &str) -> Option<Map<String, Value>>;
+    async fn extract_context(
+        &self,
+        request_context: &RequestContext,
+        context_name: &str,
+    ) -> Option<Map<String, Value>> {
+        let contexts = self.contexts();
+        let context_type = contexts.get_by_key(context_name).unwrap();
+        request_context.extract_context(context_type).await.ok()
+    }
+
+    /// Get all context types
+    ///
+    /// This allows us to have a shared implementation of `extract_context`
+    fn contexts(&self) -> &MappedArena<ContextType>;
 
     /// Extract the context object selection.
     ///
@@ -77,6 +105,7 @@ where
     /// the value `"admin"`.
     async fn extract_context_selection(
         &self,
+        request_context: &RequestContext,
         context_selection: &AccessContextSelection,
     ) -> Option<Value> {
         fn extract_path<'a>(value: &'a Value, path: &[String]) -> Option<&'a Value> {
@@ -87,7 +116,7 @@ where
         }
 
         let context = self
-            .extract_context(&context_selection.context_name)
+            .extract_context(request_context, &context_selection.context_name)
             .await?;
         context
             .get(&context_selection.path.0)
@@ -100,24 +129,32 @@ where
     /// Since relating two primitive expressions depend on the subsystem, this method is abstract.
     /// For example, a database subsystem produce a relational expression comparing two columns
     /// such as `column_a < column_b`.
-    async fn solve_relational_op(&self, op: &'a AccessRelationalOp<PrimExpr>) -> Res;
+    async fn solve_relational_op(
+        &'a self,
+        request_context: &'a RequestContext<'a>,
+        op: &'a AccessRelationalOp<PrimExpr>,
+    ) -> Res;
 
     /// Solve logical operations such as `not`, `and`, `or`.
-    async fn solve_logical_op(&self, op: &'a AccessLogicalExpression<PrimExpr>) -> Res {
+    async fn solve_logical_op(
+        &'a self,
+        request_context: &'a RequestContext<'a>,
+        op: &'a AccessLogicalExpression<PrimExpr>,
+    ) -> Res {
         match op {
             AccessLogicalExpression::Not(underlying) => {
-                let underlying_predicate = self.solve(underlying).await;
+                let underlying_predicate = self.solve(request_context, underlying).await;
                 underlying_predicate.not()
             }
             AccessLogicalExpression::And(left, right) => {
-                let left_predicate = self.solve(left).await;
-                let right_predicate = self.solve(right).await;
+                let left_predicate = self.solve(request_context, left).await;
+                let right_predicate = self.solve(request_context, right).await;
 
                 left_predicate.and(right_predicate)
             }
             AccessLogicalExpression::Or(left, right) => {
-                let left_predicate = self.solve(left).await;
-                let right_predicate = self.solve(right).await;
+                let left_predicate = self.solve(request_context, left).await;
+                let right_predicate = self.solve(request_context, right).await;
 
                 left_predicate.or(right_predicate)
             }

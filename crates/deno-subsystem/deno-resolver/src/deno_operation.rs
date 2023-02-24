@@ -21,9 +21,8 @@ use payas_deno::Arg;
 use serde_json::Value;
 
 use crate::{
-    access_solver::DenoAccessSolver, clay_execution::ClayCallbackProcessor,
-    deno_execution_error::DenoExecutionError, plugin::DenoSubsystemResolver,
-    service_access_predicate::ServiceAccessPredicate,
+    clay_execution::ClayCallbackProcessor, deno_execution_error::DenoExecutionError,
+    plugin::DenoSubsystemResolver, service_access_predicate::ServiceAccessPredicate,
 };
 
 use std::collections::HashMap;
@@ -51,16 +50,19 @@ impl<'a> DenoOperation<'a> {
         let subsystem = &self.subsystem();
         let return_type = self.method.return_type.typ(&subsystem.service_types);
 
-        let access_solver = DenoAccessSolver::new(self.request_context, subsystem);
-
         let type_level_access = match &return_type.kind {
             ServiceTypeKind::Primitive => true,
-            ServiceTypeKind::Composite(ServiceCompositeType { access, .. }) => {
-                access_solver.solve(&access.value).await.0.into()
-            }
+            ServiceTypeKind::Composite(ServiceCompositeType { access, .. }) => subsystem
+                .solve(self.request_context, &access.value)
+                .await
+                .0
+                .into(),
         };
 
-        let method_level_access = access_solver.solve(&self.method.access.value).await.0;
+        let method_level_access = subsystem
+            .solve(self.request_context, &self.method.access.value)
+            .await
+            .0;
 
         let method_level_access = method_level_access;
 
