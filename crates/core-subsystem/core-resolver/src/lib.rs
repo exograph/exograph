@@ -1,4 +1,5 @@
 pub mod access_solver;
+pub mod context_extractor;
 pub mod introspection;
 pub mod operation_resolver;
 pub mod plugin;

@@ -21,7 +21,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{primitive_type::PrimitiveType, types::FieldType};
+use crate::{mapped_arena::MappedArena, primitive_type::PrimitiveType, types::FieldType};
 
 /// A context type to represent objects such as `AuthContext` and `IPContext`
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -53,4 +53,13 @@ pub struct ContextSource {
     pub annotation_name: String,
     /// Annotation arguments such as `id` and `roles`
     pub value: Option<String>,
+}
+
+/// Container for all context types. Allows us to abstract over subsystems to share the
+/// implementation extracting context (for example, when solving access control expressions)
+pub trait ContextContainer {
+    /// Get all context types
+    ///
+    /// This allows us to have a shared implementation of `extract_context`
+    fn contexts(&self) -> &MappedArena<ContextType>;
 }
