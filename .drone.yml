@@ -25,31 +25,40 @@ steps:
       - cargo fmt --all -- --check
       - cargo clippy --all --all-targets --all-features -- -D warnings
 
+  - name: build
+    image: payas-ci-image
+    pull: if-not-exists
+    depends_on:
+      - rustfmt-clippy
+    volumes:
+    - name: sccache
+      path: /sccache
+    commands:
+      - cargo build 
+
   - name: test
     image: payas-ci-image
     pull: if-not-exists
     depends_on:
-      - discord-start
+      - build
     volumes:
     - name: sccache
       path: /sccache
     commands:
         # TODO: figure out how to build cdylibs during tests implicitly
         # see https://github.com/rust-lang/cargo/issues/8311
-      - cargo build 
       - CLAY_TEST_POSTGRES_URL=postgresql://postgres@database:5432 cargo test --workspace
 
   - name: test-integration
     image: payas-ci-image
     pull: if-not-exists
     depends_on:
-      - discord-start
+      - build
     volumes:
     - name: sccache
       path: /sccache
     commands:
-      - cargo build --release
-      - export PATH=./target/release:$PATH
+      - export PATH=./target/debug:$PATH
       - CLAY_TEST_POSTGRES_URL=postgresql://postgres@database:5432 clay test --run-introspection-tests integration-tests
 
   - name: discord-end
