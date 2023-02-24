@@ -1,13 +1,10 @@
 use async_trait::async_trait;
 
 use core_plugin_interface::{
-    core_model::{
-        access::{AccessContextSelection, AccessRelationalOp},
-        context_type::ContextType,
-        mapped_arena::MappedArena,
-    },
+    core_model::access::{AccessContextSelection, AccessRelationalOp},
     core_resolver::{
         access_solver::{AccessPredicate, AccessSolver},
+        context_extractor::ContextExtractor,
         request_context::RequestContext,
     },
 };
@@ -49,10 +46,6 @@ impl<'a> AccessPredicate<'a> for ServiceAccessPredicateWrapper {
 impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredicateWrapper>
     for DenoSubsystem
 {
-    fn contexts(&self) -> &MappedArena<ContextType> {
-        &self.contexts
-    }
-
     async fn solve_relational_op(
         &'a self,
         request_context: &'a RequestContext<'a>,

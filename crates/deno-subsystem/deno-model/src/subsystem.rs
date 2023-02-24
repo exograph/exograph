@@ -2,7 +2,7 @@ use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 
 use core_plugin_interface::{
     core_model::{
-        context_type::ContextType,
+        context_type::{ContextContainer, ContextType},
         mapped_arena::{MappedArena, SerializableSlab},
         type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
     },
@@ -73,5 +73,11 @@ impl SystemSerializer for DenoSubsystem {
         reader: impl std::io::Read,
     ) -> Result<Self::Underlying, ModelSerializationError> {
         bincode::deserialize_from(reader).map_err(ModelSerializationError::Deserialize)
+    }
+}
+
+impl ContextContainer for DenoSubsystem {
+    fn contexts(&self) -> &MappedArena<ContextType> {
+        &self.contexts
     }
 }

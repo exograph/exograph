@@ -2,11 +2,9 @@ use crate::column_path_util;
 use async_trait::async_trait;
 use core_plugin_interface::{
     core_model::access::{AccessContextSelection, AccessRelationalOp},
-    core_model::context_type::ContextType,
-    core_model::mapped_arena::MappedArena,
     core_resolver::{
         access_solver::AccessPredicate, access_solver::AccessSolver,
-        request_context::RequestContext,
+        context_extractor::ContextExtractor, request_context::RequestContext,
     },
 };
 use maybe_owned::MaybeOwned;
@@ -55,10 +53,6 @@ pub enum SolvedPrimitiveExpression<'a> {
 impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWrapper<'a>>
     for PostgresSubsystem
 {
-    fn contexts(&self) -> &MappedArena<ContextType> {
-        &self.contexts
-    }
-
     async fn solve_relational_op(
         &'a self,
         request_context: &'a RequestContext<'a>,
