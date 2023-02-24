@@ -1,10 +1,7 @@
 use async_graphql_value::{indexmap::IndexMap, ConstValue};
 use postgres_model::types::EntityType;
 
-use crate::{
-    access_solver::PostgresAccessSolver, postgres_execution_error::PostgresExecutionError,
-    sql_mapper::SQLOperationKind,
-};
+use crate::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLOperationKind};
 use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver, request_context::RequestContext,
@@ -27,7 +24,6 @@ pub(crate) async fn check_access<'a>(
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     let return_type = return_type.typ(&subsystem.entity_types);
-    let access_solver = PostgresAccessSolver::new(request_context, subsystem);
 
     let access_predicate = {
         let access_expr = match kind {
@@ -36,7 +32,7 @@ pub(crate) async fn check_access<'a>(
             SQLOperationKind::Update => &return_type.access.update,
             SQLOperationKind::Delete => &return_type.access.delete,
         };
-        access_solver.solve(access_expr).await.0
+        subsystem.solve(request_context, access_expr).await.0
     };
 
     if access_predicate == AbstractPredicate::False {
