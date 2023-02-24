@@ -6,7 +6,7 @@ Must have:
 
 - Rust (see the version specified in [rust-toolchain.toml](rust-toolchain.toml)). Also install the wasm32-wasm target (`rustup target add wasm32-wasi`).
 - Postgres 12
-- Tree-sitter (`cargo install --version 0.20.6 tree-sitter-cli`)
+- Node (any reasonable version, used by Tree Sitter)
 - [Deno](https://deno.land/)
 
 Nice to have:
@@ -23,16 +23,7 @@ ln -s $PWD/vscode-extension/out $HOME/.vscode/extensions/clay.vscode
 ```
 
 ## Building
-
-1. Build the `graphiql` app:
-
-Anytime you make a change to the `graphiql` app, you need to run this command.
-
-```
-(cd graphiql && npm install && npm run prod-build)
-```
-
-2. Build the `clay` and `clay-server` binaries:
+Build the `clay` and `clay-server` binaries:
 
 ```
 cargo build
