@@ -5,16 +5,20 @@
   "dependencies": {
     "@graphiql/toolkit": "^0.8.0",
     "graphiql": "2.2.0",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
     "react-scripts": "5.0.1",
     "typescript": "^4.9.3",
     "graphql-ws": "^5.11.2"
   },
   "devDependencies": {
-    "@types/react": "^17.0.2",
-    "@types/react-dom": "^17.0.2",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
     "react-app-rewired": "^2.2.1"
+  },
+  "overrides": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "scripts": {
     "start": "react-app-rewired start",
