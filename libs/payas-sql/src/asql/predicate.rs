@@ -1,6 +1,11 @@
 use maybe_owned::MaybeOwned;
 
-use crate::sql::{column::Column, predicate::Predicate};
+use crate::{
+    asql::select::SelectionLevel,
+    sql::{column::Column, predicate::Predicate},
+    transform::transformer::SelectTransformer,
+    AbstractSelect, ColumnSelection, Selection, SelectionElement,
+};
 
 use super::column_path::ColumnPath;
 
@@ -125,6 +130,56 @@ impl<'a> AbstractPredicate<'a> {
             AbstractPredicate::And(l, r) => Predicate::and(l.predicate(), r.predicate()),
             AbstractPredicate::Or(l, r) => Predicate::or(l.predicate(), r.predicate()),
             AbstractPredicate::Not(p) => Predicate::Not(Box::new(p.predicate())),
+        }
+    }
+
+    pub fn predicate_x(&'a self, select_transformer: &impl SelectTransformer) -> Predicate<'a> {
+        match self {
+            AbstractPredicate::Eq(l, r) => {
+                // "concerts"."venue_id" in (select "venues"."id" from "venues" where "venues"."name" = $1)
+
+                println!("predicate_x:\n{l:#?}\n{r:#?}");
+
+                let (in_left_column, table, foreign_column, tail_links) = match l.as_ref() {
+                    ColumnPath::Physical(links) => {
+                        let (head, tail) = links.split_first().unwrap();
+
+                        (
+                            Column::Physical(head.self_column.0),
+                            head.self_column.1,
+                            head.linked_column.unwrap().0,
+                            tail,
+                        )
+                    }
+                    _ => todo!(),
+                };
+
+                let l_abstract_select = AbstractSelect {
+                    table,
+                    selection: Selection::Seq(vec![ColumnSelection {
+                        column: SelectionElement::Physical(foreign_column),
+                        alias: foreign_column.column_name.clone(),
+                    }]),
+                    predicate: AbstractPredicate::Eq(
+                        MaybeOwned::Owned(ColumnPath::Physical(tail_links.to_vec())),
+                        MaybeOwned::Borrowed(r),
+                    ),
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                };
+
+                let l_select =
+                    select_transformer.to_select(&l_abstract_select, None, SelectionLevel::Nested);
+
+                let x = Column::SelectionTableWrapper(Box::new(l_select));
+
+                let inx = Predicate::In(in_left_column.into(), x.into());
+                println!("in: {inx:#?}");
+
+                inx
+            }
+            _ => todo!(),
         }
     }
 }

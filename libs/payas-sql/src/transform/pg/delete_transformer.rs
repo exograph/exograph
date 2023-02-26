@@ -8,10 +8,7 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{
-        table_dependency::TableDependency,
-        transformer::{DeleteTransformer, SelectTransformer},
-    },
+    transform::transformer::{DeleteTransformer, SelectTransformer},
     ColumnPath, ColumnPathLink,
 };
 
@@ -52,19 +49,25 @@ impl DeleteTransformer for Postgres {
         }
 
         // TODO: Consider the "join" aspect of the predicate
-        let predicate_column_paths: Vec<Vec<ColumnPathLink>> =
-            column_path_owned(abstract_delete.predicate.column_paths());
+        // let predicate_column_paths: Vec<Vec<ColumnPathLink>> =
+        //     column_path_owned(abstract_delete.predicate.column_paths());
+        // println!("predicate_column_paths: {predicate_column_paths:#?}");
 
-        let dependencies = TableDependency::from_column_path(predicate_column_paths);
+        // let dependencies = TableDependency::from_column_path(predicate_column_paths);
 
-        println!(
-            "dependencies: {:#?}",
-            &dependencies.as_ref().map(|d| &d.dependencies),
-        );
+        // println!("predicate: {:#?}", abstract_delete.predicate);
+        // println!("dependencies: {dependencies:#?}");
 
         // DELETE FROM "concert_artists" WHERE "concerts"."id" = $1 RETURNING *
         // DELETE FROM "concert_artists" WHERE "concert_artists"."concert_id" in (select "concerts"."id" from "concerts" where "concerts"."id" = $1) RETURNING *;
+
+        // current:  DELETE FROM "concerts" WHERE "venues"."name" = $1 RETURNING *
+        // expected: DELETE FROM "concerts" WHERE "concerts"."venue_id" in (select "venues"."id" from "venues" where "venues"."name" = $1) RETURNING *
+
         let predicate = abstract_delete.predicate.predicate();
+        let predicate_x = abstract_delete.predicate.predicate_x(&Postgres {});
+
+        println!("predicate_x: {predicate_x:#?}");
 
         let root_delete = SQLOperation::Delete(
             abstract_delete
@@ -175,9 +178,12 @@ mod tests {
                 let delete = Postgres {}.to_delete(&adelete);
                 let mut expr = ExpressionContext::default();
                 let binding = delete.binding(&mut expr);
+
+                // current:  DELETE FROM "concerts" WHERE "venues"."name" = $1 RETURNING *
+                // expected: DELETE FROM "concerts" WHERE "concerts"."venue_id" in (select "venues"."id" from "venues" where "venues"."name" = $1) RETURNING *
                 assert_binding!(
                     binding,
-                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "venues"."name" = $1 RETURNING *) select "concerts"."id" from "concerts""#,
+                    r#"WITH "concerts" AS (DELETE FROM "concert" WHERE "concert"."venue_id" in (select "venues"."id" from "venues" where "venues"."name" = $1) RETURNING *) select "concerts"."id" from "concerts""#,
                     "v1".to_string()
                 );
             },

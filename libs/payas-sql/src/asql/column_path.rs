@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ColumnPathLink<'a> {
-    pub self_column: (&'a PhysicalColumn, &'a PhysicalTable), // We need to keep the table since column carries the table name and not the table itself
+    pub self_column: (&'a PhysicalColumn, &'a PhysicalTable), // We need to keep the table since a column carries the table name and not the table itself
     pub linked_column: Option<(&'a PhysicalColumn, &'a PhysicalTable)>,
 }
 
