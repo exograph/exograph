@@ -27,7 +27,7 @@ impl SelectTransformer for Postgres {
         )]
     fn to_select<'a>(
         &self,
-        abstract_select: &'a AbstractSelect,
+        abstract_select: &AbstractSelect<'a>,
         additional_predicate: Option<Predicate<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a> {
@@ -95,7 +95,7 @@ impl SelectTransformer for Postgres {
 }
 
 impl<'a> Selection<'a> {
-    pub fn to_sql(&'a self, database_kind: &impl SelectTransformer) -> SelectionSQL<'a> {
+    pub fn to_sql(&self, database_kind: &impl SelectTransformer) -> SelectionSQL<'a> {
         match self {
             Selection::Seq(seq) => SelectionSQL::Seq(
                 seq.iter()
@@ -129,7 +129,7 @@ impl<'a> Selection<'a> {
 }
 
 impl<'a> SelectionElement<'a> {
-    pub fn to_sql(&'a self, database_kind: &impl SelectTransformer) -> Column<'a> {
+    pub fn to_sql(&self, database_kind: &impl SelectTransformer) -> Column<'a> {
         match self {
             SelectionElement::Physical(pc) => Column::Physical(pc),
             SelectionElement::Function {

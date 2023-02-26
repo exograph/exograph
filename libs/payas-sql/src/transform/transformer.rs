@@ -44,7 +44,7 @@ impl Transformer for Postgres {
 pub trait SelectTransformer {
     fn to_select<'a>(
         &self,
-        abstract_select: &'a AbstractSelect,
+        abstract_select: &AbstractSelect<'a>,
         additional_predicate: Option<Predicate<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a>;

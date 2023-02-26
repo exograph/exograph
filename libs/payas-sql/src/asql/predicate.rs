@@ -39,7 +39,7 @@ impl<'a> AbstractPredicate<'a> {
         }
     }
 
-    pub fn predicate(&'a self) -> Predicate<'a> {
+    pub fn predicate(&self) -> Predicate<'a> {
         fn leaf_column<'c>(
             column_path: MaybeOwned<'c, ColumnPath<'c>>,
         ) -> MaybeOwned<'c, Column<'c>> {
