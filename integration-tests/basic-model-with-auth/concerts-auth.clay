@@ -1,6 +1,6 @@
 context AuthContext {
   @jwt("sub") id: Int 
-  @jwt("role") role: String 
+  @jwt role: String 
 }
 
 @postgres
