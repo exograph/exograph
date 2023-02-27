@@ -1,3 +1,12 @@
+//! [`AccessSolver`] for the Postgres subsystem.
+//!
+//! This computes a predicate that can be either a boolean value or a residual expression that can
+//! be passed down to the the underlying system (for example, a `where` clause to the database
+//! query).
+//!
+//! This module differs from Deno/Wasm in that it has an additional primitive expression type,
+//! `ColumnPath`, which we process into a predicate that we can pass to the database query.
+
 use crate::column_path_util;
 use async_trait::async_trait;
 use core_plugin_interface::{
@@ -58,12 +67,6 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         request_context: &'a RequestContext<'a>,
         op: &'a AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
     ) -> AbstractPredicateWrapper<'a> {
-        type ColumnPredicateFn<'a> = fn(
-            MaybeOwned<'a, ColumnPath<'a>>,
-            MaybeOwned<'a, ColumnPath<'a>>,
-        ) -> AbstractPredicate<'a>;
-        type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
-
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresSubsystem,
             request_context: &'a RequestContext<'a>,
@@ -94,6 +97,12 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         let left = reduce_primitive_expression(self, request_context, left).await;
         let right = reduce_primitive_expression(self, request_context, right).await;
 
+        type ColumnPredicateFn<'a> = fn(
+            MaybeOwned<'a, ColumnPath<'a>>,
+            MaybeOwned<'a, ColumnPath<'a>>,
+        ) -> AbstractPredicate<'a>;
+        type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
+
         let helper = |unresolved_context_predicate: AbstractPredicate<'a>,
                       column_predicate: ColumnPredicateFn<'a>,
                       value_predicate: ValuePredicateFn<'a>|
@@ -116,11 +125,16 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     SolvedPrimitiveExpression::Value(left_value),
                     SolvedPrimitiveExpression::Value(right_value),
                 ) => value_predicate(left_value, right_value),
+
+                // The next two need to be handled separately, since we need to pass the left side
+                // and right side to the predicate in the correct order. For example, `age > 18` is
+                // different from `18 > age`.
                 (
                     SolvedPrimitiveExpression::Value(value),
                     SolvedPrimitiveExpression::Column(column),
-                )
-                | (
+                ) => column_predicate(literal_column(value), to_column_path(&column, self).into()),
+
+                (
                     SolvedPrimitiveExpression::Column(column),
                     SolvedPrimitiveExpression::Value(value),
                 ) => column_predicate(to_column_path(&column, self).into(), literal_column(value)),
@@ -134,11 +148,14 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 |val1, val2| (val1 == val2).into(),
             ),
             AccessRelationalOp::Neq(_, _) => helper(
-                AbstractPredicate::True, // If a context is undefined, declare the expression as a match. For example, `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
+                // If a context is undefined, declare the expression as a match. For example,
+                // `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
+                AbstractPredicate::True,
                 AbstractPredicate::neq,
                 |val1, val2| (val1 != val2).into(),
             ),
-            // For the next four, we could better optimize cases where values are comparable, but for now, we generate a predicate and let database handle it
+            // For the next four, we could better optimize cases where values are comparable, but
+            // for now, we generate a predicate and let database handle it
             AccessRelationalOp::Lt(_, _) => helper(
                 AbstractPredicate::False,
                 AbstractPredicate::Lt,
@@ -175,13 +192,15 @@ fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a PostgresSubsystem) -
     column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
 }
 
+/// Converts a value to a literal column path
 fn literal_column(value: Value) -> MaybeOwned<'static, ColumnPath<'static>> {
     match value {
         Value::Null => ColumnPath::Null,
         Value::Bool(v) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(v))),
         Value::Number(v) => {
+            // TODO: Deal with the specific number types such as float, double, etc
             ColumnPath::Literal(MaybeOwned::Owned(Box::new(v.as_i64().unwrap() as i32)))
-        } // TODO: Deal with the exact number type
+        }
         Value::String(v) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(v))),
         Value::Array(values) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(values))),
         Value::Object(_) => todo!(),
@@ -387,29 +406,20 @@ mod tests {
         subsystem.solve(request_context, expr).await.0
     }
 
+    type CompareFn<'a> =
+        fn(MaybeOwned<'a, ColumnPath<'a>>, MaybeOwned<'a, ColumnPath<'a>>) -> AbstractPredicate<'a>;
+
     async fn test_relational_op<'a>(
         test_system: &'a TestSystem,
         op: fn(
             Box<DatabaseAccessPrimitiveExpression>,
             Box<DatabaseAccessPrimitiveExpression>,
         ) -> AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
-        context_match_predicate: fn(
-            MaybeOwned<'a, ColumnPath<'a>>,
-            MaybeOwned<'a, ColumnPath<'a>>,
-        ) -> AbstractPredicate<'a>,
-        context_mismatch_predicate: fn(
-            MaybeOwned<'a, ColumnPath<'a>>,
-            MaybeOwned<'a, ColumnPath<'a>>,
-        ) -> AbstractPredicate<'a>,
+        context_match_predicate: CompareFn<'a>,
+        context_mismatch_predicate: CompareFn<'a>,
         context_missing_predicate: AbstractPredicate<'a>,
-        context_value_predicate: fn(
-            MaybeOwned<'a, ColumnPath<'a>>,
-            MaybeOwned<'a, ColumnPath<'a>>,
-        ) -> AbstractPredicate<'a>,
-        column_column_predicate: fn(
-            MaybeOwned<'a, ColumnPath<'a>>,
-            MaybeOwned<'a, ColumnPath<'a>>,
-        ) -> AbstractPredicate<'a>,
+        context_value_predicate: CompareFn<'a>,
+        column_column_predicate: CompareFn<'a>,
     ) {
         let TestSystem {
             system,
@@ -420,109 +430,157 @@ mod tests {
             ..
         } = &test_system;
 
+        let relational_op = |lhs, rhs| AccessPredicateExpression::RelationalOp(op(lhs, rhs));
+
+        macro_rules! assert_solve_access {
+            ($expr:expr, $request_context:expr, $expected:expr) => {
+                assert_eq!(
+                    solve_access($expr, $request_context, system).await,
+                    $expected
+                );
+            };
+        }
+
         // Case 1: Both values from AuthContext
         {
-            let test_ae = AccessPredicateExpression::RelationalOp(op(
+            let test_expression = relational_op(
                 context_selection_expr("AccessContext", "token1"),
                 context_selection_expr("AccessContext", "token2"),
-            ));
+            );
 
-            let request_context = test_request_context(
-                json!({"token1": "token_value", "token2": "token_value"}),
-                test_system_resolver,
-            );
-            let solved_predicate = solve_access(&test_ae, &request_context, system).await;
-            assert_eq!(
-                solved_predicate,
-                context_match_predicate(
-                    ColumnPath::Literal(MaybeOwned::Owned(Box::new("token_value".to_string())))
-                        .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(Box::new("token_value".to_string())))
-                        .into(),
-                )
-            );
+            // The match case: both values are the same "token_value"
+            {
+                let request_context = test_request_context(
+                    json!({"token1": "token_value", "token2": "token_value"}),
+                    test_system_resolver,
+                );
+                assert_solve_access!(
+                    &test_expression,
+                    &request_context,
+                    context_match_predicate(
+                        ColumnPath::Literal(MaybeOwned::Owned(Box::new("token_value".to_string())))
+                            .into(),
+                        ColumnPath::Literal(MaybeOwned::Owned(Box::new("token_value".to_string())))
+                            .into(),
+                    )
+                );
+            }
 
             // The mismatch case doesn't make sense for lt/lte/gt/gte, but since we don't optimize
-            // (to reduce obvious matches such as 5 < 6 => Predicate::True/False) in those cases,
+            // (to reduce obvious matches such as 5 < 6 => Predicate::True) those cases,
             // the unoptimized predicate created works for both match and mismatch cases.
-
-            let request_context = test_request_context(
-                json!({"token1": "token_value1", "token2": "token_value2"}),
-                test_system_resolver,
-            );
-            let solved_predicate = solve_access(&test_ae, &request_context, system).await;
-            assert_eq!(
-                solved_predicate,
-                context_mismatch_predicate(
-                    ColumnPath::Literal(MaybeOwned::Owned(Box::new("token_value1".to_string())))
+            {
+                let request_context = test_request_context(
+                    json!({"token1": "token_value1", "token2": "token_value2"}),
+                    test_system_resolver,
+                );
+                assert_solve_access!(
+                    &test_expression,
+                    &request_context,
+                    context_mismatch_predicate(
+                        ColumnPath::Literal(MaybeOwned::Owned(Box::new(
+                            "token_value1".to_string()
+                        )))
                         .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(Box::new("token_value2".to_string())))
+                        ColumnPath::Literal(MaybeOwned::Owned(Box::new(
+                            "token_value2".to_string()
+                        )))
                         .into(),
-                )
-            );
+                    )
+                );
+            }
         }
 
         // One value from AuthContext and other from a column
         {
-            let test_context_column = |test_ae: AccessPredicateExpression<
-                DatabaseAccessPrimitiveExpression,
-            >| async {
-                let test_ae = test_ae;
-                let context = test_request_context(json!({"user_id": "u1"}), test_system_resolver);
-                let solved_predicate = solve_access(&test_ae, &context, system).await;
-                assert_eq!(
-                    solved_predicate,
+            let context = test_request_context(json!({"user_id": "u1"}), test_system_resolver);
+            let empty_context = test_request_context(json!({}), test_system_resolver);
+
+            {
+                let test_ae = relational_op(
+                    context_selection_expr("AccessContext", "user_id"),
+                    Box::new(DatabaseAccessPrimitiveExpression::Column(
+                        owner_id_column_path.clone(),
+                    )),
+                );
+                assert_solve_access!(
+                    &test_ae,
+                    &context,
+                    context_value_predicate(
+                        ColumnPath::Literal(MaybeOwned::Owned(Box::new("u1".to_string()))).into(),
+                        test_system.owner_id_column(),
+                    )
+                );
+                // No user_id, so we can definitely declare it Predicate::False
+                assert_solve_access!(&test_ae, &empty_context, context_missing_predicate);
+            }
+
+            // Now with a commuted expression
+            {
+                let test_ae = relational_op(
+                    Box::new(DatabaseAccessPrimitiveExpression::Column(
+                        owner_id_column_path.clone(),
+                    )),
+                    context_selection_expr("AccessContext", "user_id"),
+                );
+                assert_solve_access!(
+                    &test_ae,
+                    &context,
                     context_value_predicate(
                         test_system.owner_id_column(),
                         ColumnPath::Literal(MaybeOwned::Owned(Box::new("u1".to_string()))).into(),
                     )
                 );
-
                 // No user_id, so we can definitely declare it Predicate::False
-                let context = test_request_context(json!({}), test_system_resolver);
-                let solved_predicate = solve_access(&test_ae, &context, system).await;
-                assert_eq!(&solved_predicate, &context_missing_predicate);
-            };
-
-            // Once test with `context op column` and then `column op context`
-            test_context_column(AccessPredicateExpression::RelationalOp(op(
-                context_selection_expr("AccessContext", "user_id"),
-                Box::new(DatabaseAccessPrimitiveExpression::Column(
-                    owner_id_column_path.clone(),
-                )),
-            )))
-            .await;
-
-            test_context_column(AccessPredicateExpression::RelationalOp(op(
-                Box::new(DatabaseAccessPrimitiveExpression::Column(
-                    owner_id_column_path.clone(),
-                )),
-                context_selection_expr("AccessContext", "user_id"),
-            )))
-            .await;
+                assert_solve_access!(&test_ae, &empty_context, context_missing_predicate);
+            }
         }
 
         // Both values from columns
         {
-            let test_ae = AccessPredicateExpression::RelationalOp(op(
-                Box::new(DatabaseAccessPrimitiveExpression::Column(
-                    dept1_id_column_path.clone(),
-                )),
-                Box::new(DatabaseAccessPrimitiveExpression::Column(
-                    dept2_id_column_path.clone(),
-                )),
-            ));
-
             // context is irrelevant
-            let context = test_request_context(Value::Null, test_system_resolver);
-            let solved_predicate = solve_access(&test_ae, &context, system).await;
-            assert_eq!(
-                solved_predicate,
-                column_column_predicate(
-                    test_system.dept1_id_column(),
-                    test_system.dept2_id_column(),
-                )
-            );
+            let request_context = test_request_context(Value::Null, test_system_resolver);
+
+            {
+                let test_ae = relational_op(
+                    Box::new(DatabaseAccessPrimitiveExpression::Column(
+                        dept1_id_column_path.clone(),
+                    )),
+                    Box::new(DatabaseAccessPrimitiveExpression::Column(
+                        dept2_id_column_path.clone(),
+                    )),
+                );
+
+                assert_solve_access!(
+                    &test_ae,
+                    &request_context,
+                    column_column_predicate(
+                        test_system.dept1_id_column(),
+                        test_system.dept2_id_column(),
+                    )
+                );
+            }
+
+            // Now with a commuted expression
+            {
+                let test_ae = relational_op(
+                    Box::new(DatabaseAccessPrimitiveExpression::Column(
+                        dept2_id_column_path.clone(),
+                    )),
+                    Box::new(DatabaseAccessPrimitiveExpression::Column(
+                        dept1_id_column_path.clone(),
+                    )),
+                );
+
+                assert_solve_access!(
+                    &test_ae,
+                    &request_context,
+                    column_column_predicate(
+                        test_system.dept2_id_column(),
+                        test_system.dept1_id_column(),
+                    )
+                );
+            }
         }
     }
 
@@ -612,6 +670,7 @@ mod tests {
 
     type DatabaseAccessPredicateExpression =
         AccessPredicateExpression<DatabaseAccessPrimitiveExpression>;
+
     #[allow(clippy::too_many_arguments)]
     async fn test_logical_op<'a>(
         test_system: &'a TestSystem,
@@ -946,8 +1005,8 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                test_system.owner_id_column(),
                 ColumnPath::Literal(MaybeOwned::Owned(Box::new("1".to_string()))).into(),
+                test_system.owner_id_column(),
             )
         );
 
@@ -956,8 +1015,8 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                test_system.owner_id_column(),
                 ColumnPath::Literal(MaybeOwned::Owned(Box::new("2".to_string()))).into(),
+                test_system.owner_id_column(),
             )
         );
     }
