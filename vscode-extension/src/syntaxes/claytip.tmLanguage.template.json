@@ -238,7 +238,7 @@
       "patterns": [
         {
           "name": "meta.method.declaration.claytip",
-          "begin": "(?:(export){{ws}})?(?:(async){{ws}})?(query|mutation|interceptor)(?:(?:{{ws}}|(?<=\\*))({{identifier}}))?{{opt_ws}}",
+          "begin": "(?:(export){{ws}})?(query|mutation|interceptor)(?:(?:{{ws}}|(?<=\\*))({{identifier}}))?{{opt_ws}}",
           "beginCaptures": {
             "1": {
               "name": "keyword.control.export.claytip"
