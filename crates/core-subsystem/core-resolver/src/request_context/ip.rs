@@ -15,6 +15,7 @@ impl ParsedContext for IpExtractor {
     async fn extract_context_field<'r>(
         &self,
         _key: Option<&str>,
+        _field_name: &str,
         _request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
