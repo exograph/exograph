@@ -20,7 +20,7 @@ use crate::{
         },
         update::TemplateUpdate,
     },
-    transform::transformer::{SelectTransformer, UpdateTransformer},
+    transform::transformer::{PredicateTransformer, SelectTransformer, UpdateTransformer},
 };
 
 use super::Postgres;
@@ -41,7 +41,7 @@ impl UpdateTransformer for Postgres {
             .collect();
 
         // TODO: Consider the "join" aspect of the predicate
-        let predicate = abstract_select.predicate.predicate();
+        let predicate = self.to_predicate(&abstract_select.predicate);
 
         let select = self.to_select(&abstract_select.selection, None, SelectionLevel::TopLevel);
 
@@ -81,7 +81,7 @@ impl UpdateTransformer for Postgres {
                 .iter()
                 .for_each(|nested_update| {
                     let update_op = TemplateTransactionStep {
-                        operation: update_op(nested_update, root_step_id),
+                        operation: update_op(nested_update, root_step_id, self),
                         prev_step_id: root_step_id,
                     };
 
@@ -105,7 +105,7 @@ impl UpdateTransformer for Postgres {
                 .iter()
                 .for_each(|nested_delete| {
                     let delete_op = TemplateTransactionStep {
-                        operation: delete_op(nested_delete, root_step_id),
+                        operation: delete_op(nested_delete, root_step_id, self),
                         prev_step_id: root_step_id,
                     };
 
@@ -131,6 +131,7 @@ impl UpdateTransformer for Postgres {
 fn update_op<'a>(
     nested_update: &'a NestedAbstractUpdate,
     parent_step_id: TransactionStepId,
+    predicate_transformer: &impl PredicateTransformer,
 ) -> TemplateSQLOperation<'a> {
     let mut column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)> = nested_update
         .update
@@ -148,7 +149,7 @@ fn update_op<'a>(
 
     TemplateSQLOperation::Update(TemplateUpdate {
         table: nested_update.update.table,
-        predicate: nested_update.update.predicate.predicate(),
+        predicate: predicate_transformer.to_predicate(&nested_update.update.predicate),
         column_values,
         returning: vec![],
     })
@@ -195,6 +196,7 @@ fn insert_op<'a>(
 fn delete_op<'a>(
     nested_delete: &'a NestedAbstractDelete,
     _parent_step_id: TransactionStepId,
+    predicate_transformer: &impl PredicateTransformer,
 ) -> TemplateSQLOperation<'a> {
     // TODO: We need TemplatePredicate here, because we need to use the proxy column in the nested delete
     // let predicate = Predicate::and(
@@ -212,7 +214,7 @@ fn delete_op<'a>(
     //     ),
     // );
 
-    let predicate = nested_delete.delete.predicate.predicate();
+    let predicate = predicate_transformer.to_predicate(&nested_delete.delete.predicate);
 
     TemplateSQLOperation::Delete(TemplateDelete {
         table: nested_delete.delete.table,

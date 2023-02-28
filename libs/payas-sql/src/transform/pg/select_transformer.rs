@@ -15,7 +15,10 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{join_util, transformer::SelectTransformer},
+    transform::{
+        join_util,
+        transformer::{PredicateTransformer, SelectTransformer},
+    },
 };
 
 use super::Postgres;
@@ -65,7 +68,7 @@ impl SelectTransformer for Postgres {
         };
 
         let predicate = Predicate::and(
-            abstract_select.predicate.predicate(),
+            self.to_predicate(&abstract_select.predicate),
             additional_predicate.unwrap_or(Predicate::True),
         )
         .into();

@@ -5,6 +5,7 @@
   "azureFunctions.requestTimeout": 180,
   "azureFunctions.projectSubpath": "integration/azure/azure-app",
   "cSpell.words": [
-    "newtype"
+    "newtype",
+    "subselect"
   ]
 }

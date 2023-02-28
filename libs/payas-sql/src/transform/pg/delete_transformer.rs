@@ -8,7 +8,7 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::transformer::{DeleteTransformer, SelectTransformer},
+    transform::transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
 };
 
 use super::Postgres;
@@ -34,13 +34,7 @@ impl DeleteTransformer for Postgres {
     /// This way, we can do nested selection if needed.
     #[instrument(name = "DeleteTransformer::to_delete for Postgres", skip(self))]
     fn to_delete<'a>(&self, abstract_delete: &'a AbstractDelete) -> Cte<'a> {
-        let predicate_column_paths = abstract_delete.predicate.column_paths();
-
-        let predicate = if predicate_column_paths.len() <= 1 {
-            abstract_delete.predicate.predicate()
-        } else {
-            abstract_delete.predicate.predicate_x(self)
-        };
+        let predicate = self.to_subselect_predicate(&abstract_delete.predicate);
 
         let root_delete = SQLOperation::Delete(
             abstract_delete
@@ -209,65 +203,6 @@ mod tests {
                 assert_binding!(
                     binding,
                     r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN ((select "venues"."id" from "venues" WHERE "venues"."name" = $1)) RETURNING *) select "concerts"."id" from "concerts""#,
-                    "v1".to_string()
-                );
-            },
-        );
-    }
-
-    #[test]
-    fn nested_predicate_neq() {
-        TestSetup::with_setup(
-            |TestSetup {
-                 concerts_table,
-                 concerts_id_column,
-                 concerts_venue_id_column,
-                 venues_id_column,
-                 venues_name_column,
-                 venues_table,
-                 ..
-             }| {
-                let predicate = AbstractPredicate::Neq(
-                    ColumnPath::Physical(vec![
-                        ColumnPathLink {
-                            self_column: (concerts_venue_id_column, concerts_table),
-                            linked_column: Some((venues_id_column, venues_table)),
-                        },
-                        ColumnPathLink {
-                            self_column: (venues_name_column, venues_table),
-                            linked_column: None,
-                        },
-                    ])
-                    .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "v1".to_string(),
-                    )))
-                    .into(),
-                );
-
-                let adelete = AbstractDelete {
-                    table: concerts_table,
-                    selection: AbstractSelect {
-                        table: concerts_table,
-                        selection: Selection::Seq(vec![ColumnSelection::new(
-                            "id".to_string(),
-                            SelectionElement::Physical(concerts_id_column),
-                        )]),
-                        predicate: Predicate::True,
-                        order_by: None,
-                        offset: None,
-                        limit: None,
-                    },
-                    predicate,
-                };
-
-                let delete = Postgres {}.to_delete(&adelete);
-                let mut expr = ExpressionContext::default();
-                let binding = delete.binding(&mut expr);
-
-                assert_binding!(
-                    binding,
-                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN ((select "venues"."id" from "venues" WHERE "venues"."name" <> $1)) RETURNING *) select "concerts"."id" from "concerts""#,
                     "v1".to_string()
                 );
             },

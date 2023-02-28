@@ -7,7 +7,7 @@ use crate::{
         update::AbstractUpdate,
     },
     sql::{cte::Cte, select::Select, transaction::TransactionScript},
-    Predicate,
+    AbstractPredicate, Predicate,
 };
 
 use super::pg::Postgres;
@@ -76,4 +76,9 @@ pub trait UpdateTransformer {
         &self,
         abstract_update: &'a AbstractUpdate,
     ) -> TransactionScript<'a>;
+}
+
+pub trait PredicateTransformer {
+    fn to_predicate<'a>(&self, predicate: &AbstractPredicate<'a>) -> Predicate<'a>;
+    fn to_subselect_predicate<'a>(&self, predicate: &'a AbstractPredicate<'a>) -> Predicate<'a>;
 }

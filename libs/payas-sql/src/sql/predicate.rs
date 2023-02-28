@@ -192,7 +192,7 @@ impl<'a> Expression for Predicate<'a, Column<'a>> {
             }
             Predicate::In(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
-                    format!("{stmt1} IN ({stmt2})")
+                    format!("{stmt1} IN {stmt2}")
                 })
             }
             Predicate::And(predicate1, predicate2) => {
