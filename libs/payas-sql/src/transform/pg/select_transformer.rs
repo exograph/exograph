@@ -165,6 +165,7 @@ impl<'a> SelectionElement<'a> {
 
 #[cfg(test)]
 mod tests {
+
     use maybe_owned::MaybeOwned;
 
     use crate::{
@@ -174,7 +175,7 @@ mod tests {
             select::SelectionLevel,
             selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
-        sql::ExpressionContext,
+        sql::{ExpressionContext, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
         AbstractOrderBy, Ordering, Predicate,
     };
@@ -222,7 +223,7 @@ mod tests {
                     self_column: (concerts_id_column, concerts_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(MaybeOwned::Owned(Box::new(5)));
+                let literal = ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(5)));
                 let predicate = AbstractPredicate::Eq(concert_id_path.into(), literal.into());
 
                 let aselect = AbstractSelect {
@@ -442,7 +443,10 @@ mod tests {
                         },
                     ])
                     .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(Box::new("v1".to_string()))).into(),
+                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
+                        "v1".to_string(),
+                    )))
+                    .into(),
                 );
                 let aselect = AbstractSelect {
                     table: concerts_table,

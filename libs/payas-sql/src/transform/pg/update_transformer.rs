@@ -223,6 +223,7 @@ fn delete_op<'a>(
 
 #[cfg(test)]
 mod tests {
+
     use maybe_owned::MaybeOwned;
 
     use crate::{
@@ -233,7 +234,7 @@ mod tests {
             selection::{ColumnSelection, NestedElementRelation, Selection, SelectionElement},
             update::NestedAbstractUpdate,
         },
-        sql::column::Column,
+        sql::{column::Column, SQLParamContainer},
         transform::test_util::TestSetup,
         Predicate,
     };
@@ -253,7 +254,7 @@ mod tests {
                     self_column: (venues_id_column, venues_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(MaybeOwned::Owned(Box::new(5)));
+                let literal = ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(5)));
                 let predicate = AbstractPredicate::eq(venue_id_path.into(), literal.into());
 
                 let abs_update = AbstractUpdate {
@@ -261,7 +262,9 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
+                        Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(
+                            "new_name".to_string(),
+                        ))),
                     )],
                     nested_updates: vec![],
                     nested_inserts: vec![],
@@ -309,7 +312,7 @@ mod tests {
                     self_column: (venues_id_column, venues_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(MaybeOwned::Owned(Box::new(5)));
+                let literal = ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(5)));
                 let predicate = AbstractPredicate::eq(venue_id_path.into(), literal.into());
 
                 let nested_abs_update = NestedAbstractUpdate {
@@ -322,7 +325,7 @@ mod tests {
                         predicate: Predicate::True,
                         column_values: vec![(
                             concerts_name_column,
-                            Column::Literal(MaybeOwned::Owned(Box::new(
+                            Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(
                                 "new_concert_name".to_string(),
                             ))),
                         )],
@@ -345,7 +348,9 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
+                        Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(
+                            "new_name".to_string(),
+                        ))),
                     )],
                     nested_updates: vec![nested_abs_update],
                     nested_inserts: vec![],

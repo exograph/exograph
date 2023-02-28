@@ -8,7 +8,7 @@ macro_rules! assert_params {
     ($actual_params:expr, $expected_param:expr) => {
         match $actual_params.split_first() {
             Some((actual_head, actual_tail)) => {
-                let actual_boxed_head = actual_head.as_any().downcast_ref::<Box<dyn $crate::sql::SQLParam>>();
+                let actual_boxed_head = actual_head.as_any().downcast_ref::<$crate::sql::SQLParamContainer>();
                 match actual_boxed_head {
                     Some(actual_boxed_head) => {
                         let actual_head = actual_boxed_head.as_ref();
@@ -30,7 +30,7 @@ macro_rules! assert_params {
     ($actual_params:expr, $expected_param:expr, $($rest:expr), *) => {
         match $actual_params.split_first() {
             Some((actual_head, actual_tail)) => {
-                let actual_boxed_head = actual_head.as_any().downcast_ref::<Box<dyn $crate::sql::SQLParam>>();
+                let actual_boxed_head = actual_head.as_any().downcast_ref::<$crate::sql::SQLParamContainer>();
                 match actual_boxed_head {
                     Some(actual_boxed_head) => {
                         let actual_head = actual_boxed_head.as_ref();

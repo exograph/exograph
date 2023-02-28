@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use maybe_owned::MaybeOwned;
 
 use crate::{
-    sql::{column::PhysicalColumn, predicate::LiteralEquality, SQLParam},
+    sql::{column::PhysicalColumn, predicate::LiteralEquality, SQLParamContainer},
     PhysicalTable,
 };
 
@@ -16,7 +16,7 @@ pub struct ColumnPathLink<'a> {
 #[derive(Debug, PartialEq)]
 pub enum ColumnPath<'a> {
     Physical(Vec<ColumnPathLink<'a>>),
-    Literal(MaybeOwned<'a, Box<dyn SQLParam>>),
+    Literal(MaybeOwned<'a, SQLParamContainer>),
     Null,
 }
 

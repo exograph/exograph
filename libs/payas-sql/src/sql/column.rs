@@ -2,7 +2,7 @@ use crate::database_error::DatabaseError;
 
 use super::{
     select::Select, transaction::TransactionStepId, Expression, ExpressionContext,
-    ParameterBinding, SQLParam,
+    ParameterBinding, SQLParamContainer,
 };
 use maybe_owned::MaybeOwned;
 use regex::Regex;
@@ -293,7 +293,7 @@ impl PhysicalColumnType {
 #[derive(Debug, PartialEq)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
-    Literal(MaybeOwned<'a, Box<dyn SQLParam>>),
+    Literal(MaybeOwned<'a, SQLParamContainer>),
     JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
     JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
     SelectionTableWrapper(Box<Select<'a>>),

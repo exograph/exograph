@@ -5,7 +5,7 @@ use crate::PhysicalTable;
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     transaction::{TransactionContext, TransactionStepId},
-    Expression, ExpressionContext, ParameterBinding,
+    Expression, ExpressionContext, ParameterBinding, SQLParamContainer,
 };
 
 #[derive(Debug)]
@@ -99,11 +99,11 @@ impl<'a> TemplateInsert<'a> {
                 row.iter()
                     .map(|col| match col {
                         ProxyColumn::Concrete(col) => col.as_ref().into(),
-                        ProxyColumn::Template { col_index, step_id } => {
-                            MaybeOwned::Owned(Column::Literal(MaybeOwned::Owned(Box::new(
+                        ProxyColumn::Template { col_index, step_id } => MaybeOwned::Owned(
+                            Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(
                                 transaction_context.resolve_value(*step_id, row_index, *col_index),
-                            ))))
-                        }
+                            ))),
+                        ),
                     })
                     .collect()
             })
