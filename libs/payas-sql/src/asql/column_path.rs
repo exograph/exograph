@@ -1,22 +1,20 @@
 use std::cmp::Ordering;
 
-use maybe_owned::MaybeOwned;
-
 use crate::{
-    sql::{column::PhysicalColumn, predicate::LiteralEquality, SQLParam},
+    sql::{column::PhysicalColumn, predicate::LiteralEquality, SQLParamContainer},
     PhysicalTable,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ColumnPathLink<'a> {
-    pub self_column: (&'a PhysicalColumn, &'a PhysicalTable), // We need to keep the table since column carries the table name and not the table itself
+    pub self_column: (&'a PhysicalColumn, &'a PhysicalTable), // We need to keep the table since a column carries the table name and not the table itself
     pub linked_column: Option<(&'a PhysicalColumn, &'a PhysicalTable)>,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum ColumnPath<'a> {
     Physical(Vec<ColumnPathLink<'a>>),
-    Literal(MaybeOwned<'a, Box<dyn SQLParam>>),
+    Literal(SQLParamContainer),
     Null,
 }
 

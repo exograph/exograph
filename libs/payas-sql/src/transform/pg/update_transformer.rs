@@ -20,7 +20,7 @@ use crate::{
         },
         update::TemplateUpdate,
     },
-    transform::transformer::{SelectTransformer, UpdateTransformer},
+    transform::transformer::{PredicateTransformer, SelectTransformer, UpdateTransformer},
 };
 
 use super::Postgres;
@@ -41,7 +41,7 @@ impl UpdateTransformer for Postgres {
             .collect();
 
         // TODO: Consider the "join" aspect of the predicate
-        let predicate = abstract_select.predicate.predicate();
+        let predicate = self.to_predicate(&abstract_select.predicate);
 
         let select = self.to_select(&abstract_select.selection, None, SelectionLevel::TopLevel);
 
@@ -81,7 +81,7 @@ impl UpdateTransformer for Postgres {
                 .iter()
                 .for_each(|nested_update| {
                     let update_op = TemplateTransactionStep {
-                        operation: update_op(nested_update, root_step_id),
+                        operation: update_op(nested_update, root_step_id, self),
                         prev_step_id: root_step_id,
                     };
 
@@ -105,7 +105,7 @@ impl UpdateTransformer for Postgres {
                 .iter()
                 .for_each(|nested_delete| {
                     let delete_op = TemplateTransactionStep {
-                        operation: delete_op(nested_delete, root_step_id),
+                        operation: delete_op(nested_delete, root_step_id, self),
                         prev_step_id: root_step_id,
                     };
 
@@ -131,6 +131,7 @@ impl UpdateTransformer for Postgres {
 fn update_op<'a>(
     nested_update: &'a NestedAbstractUpdate,
     parent_step_id: TransactionStepId,
+    predicate_transformer: &impl PredicateTransformer,
 ) -> TemplateSQLOperation<'a> {
     let mut column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)> = nested_update
         .update
@@ -148,7 +149,7 @@ fn update_op<'a>(
 
     TemplateSQLOperation::Update(TemplateUpdate {
         table: nested_update.update.table,
-        predicate: nested_update.update.predicate.predicate(),
+        predicate: predicate_transformer.to_predicate(&nested_update.update.predicate),
         column_values,
         returning: vec![],
     })
@@ -195,6 +196,7 @@ fn insert_op<'a>(
 fn delete_op<'a>(
     nested_delete: &'a NestedAbstractDelete,
     _parent_step_id: TransactionStepId,
+    predicate_transformer: &impl PredicateTransformer,
 ) -> TemplateSQLOperation<'a> {
     // TODO: We need TemplatePredicate here, because we need to use the proxy column in the nested delete
     // let predicate = Predicate::and(
@@ -212,7 +214,7 @@ fn delete_op<'a>(
     //     ),
     // );
 
-    let predicate = nested_delete.delete.predicate.predicate();
+    let predicate = predicate_transformer.to_predicate(&nested_delete.delete.predicate);
 
     TemplateSQLOperation::Delete(TemplateDelete {
         table: nested_delete.delete.table,
@@ -223,8 +225,6 @@ fn delete_op<'a>(
 
 #[cfg(test)]
 mod tests {
-    use maybe_owned::MaybeOwned;
-
     use crate::{
         asql::{
             column_path::{ColumnPath, ColumnPathLink},
@@ -233,7 +233,7 @@ mod tests {
             selection::{ColumnSelection, NestedElementRelation, Selection, SelectionElement},
             update::NestedAbstractUpdate,
         },
-        sql::column::Column,
+        sql::{column::Column, SQLParamContainer},
         transform::test_util::TestSetup,
         Predicate,
     };
@@ -253,7 +253,7 @@ mod tests {
                     self_column: (venues_id_column, venues_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(MaybeOwned::Owned(Box::new(5)));
+                let literal = ColumnPath::Literal(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path.into(), literal.into());
 
                 let abs_update = AbstractUpdate {
@@ -261,7 +261,7 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
+                        Column::Literal(SQLParamContainer::new("new_name".to_string())),
                     )],
                     nested_updates: vec![],
                     nested_inserts: vec![],
@@ -309,7 +309,7 @@ mod tests {
                     self_column: (venues_id_column, venues_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(MaybeOwned::Owned(Box::new(5)));
+                let literal = ColumnPath::Literal(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path.into(), literal.into());
 
                 let nested_abs_update = NestedAbstractUpdate {
@@ -322,9 +322,7 @@ mod tests {
                         predicate: Predicate::True,
                         column_values: vec![(
                             concerts_name_column,
-                            Column::Literal(MaybeOwned::Owned(Box::new(
-                                "new_concert_name".to_string(),
-                            ))),
+                            Column::Literal(SQLParamContainer::new("new_concert_name".to_string())),
                         )],
                         selection: AbstractSelect {
                             selection: Selection::Seq(vec![]),
@@ -345,7 +343,7 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
+                        Column::Literal(SQLParamContainer::new("new_name".to_string())),
                     )],
                     nested_updates: vec![nested_abs_update],
                     nested_inserts: vec![],

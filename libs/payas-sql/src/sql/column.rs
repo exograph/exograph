@@ -2,13 +2,13 @@ use crate::database_error::DatabaseError;
 
 use super::{
     select::Select, transaction::TransactionStepId, Expression, ExpressionContext,
-    ParameterBinding, SQLParam,
+    ParameterBinding, SQLParamContainer,
 };
 use maybe_owned::MaybeOwned;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
@@ -20,6 +20,15 @@ pub struct PhysicalColumn {
     pub unique_constraints: Vec<String>, // optional names for unique constraints
 
     pub default_value: Option<String>, // the default constraint
+}
+
+impl std::fmt::Debug for PhysicalColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!(
+            "Column: {}.{}",
+            &self.table_name, &self.column_name
+        ))
+    }
 }
 
 impl Default for PhysicalColumn {
@@ -284,7 +293,7 @@ impl PhysicalColumnType {
 #[derive(Debug, PartialEq)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
-    Literal(MaybeOwned<'a, Box<dyn SQLParam>>),
+    Literal(SQLParamContainer),
     JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
     JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
     SelectionTableWrapper(Box<Select<'a>>),

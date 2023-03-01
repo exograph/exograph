@@ -6,8 +6,8 @@ use crate::{
         select::{AbstractSelect, SelectionLevel},
         update::AbstractUpdate,
     },
-    sql::{select::Select, transaction::TransactionScript},
-    Predicate,
+    sql::{cte::Cte, select::Select, transaction::TransactionScript},
+    AbstractPredicate, Predicate,
 };
 
 use super::pg::Postgres;
@@ -44,7 +44,7 @@ impl Transformer for Postgres {
 pub trait SelectTransformer {
     fn to_select<'a>(
         &self,
-        abstract_select: &'a AbstractSelect,
+        abstract_select: &AbstractSelect<'a>,
         additional_predicate: Option<Predicate<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a>;
@@ -56,6 +56,8 @@ pub trait SelectTransformer {
 }
 
 pub trait DeleteTransformer {
+    fn to_delete<'a>(&self, abstract_delete: &'a AbstractDelete) -> Cte<'a>;
+
     fn to_transaction_script<'a>(
         &self,
         abstract_delete: &'a AbstractDelete,
@@ -74,4 +76,9 @@ pub trait UpdateTransformer {
         &self,
         abstract_update: &'a AbstractUpdate,
     ) -> TransactionScript<'a>;
+}
+
+pub trait PredicateTransformer {
+    fn to_predicate<'a>(&self, predicate: &AbstractPredicate<'a>) -> Predicate<'a>;
+    fn to_subselect_predicate<'a>(&self, predicate: &'a AbstractPredicate<'a>) -> Predicate<'a>;
 }

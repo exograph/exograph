@@ -1,0 +1,42 @@
+operation: |
+  mutation($concert_id: Int!) {
+    deleteConcertArtists(where: {concert: {id: {eq: $concert_id}}}) {
+      id
+      concert {
+        id
+        title
+      }
+    }      
+  }
+variable: |
+  {
+    "concert_id": $.c1_id
+  }
+response: |
+  {
+    "data": {
+      "deleteConcertArtists": [
+        {
+          "id": 1,
+          "concert": {
+            "id": $.c1_id,
+            "title": "C1"
+          }
+        },
+        {
+          "id": 2,
+          "concert": {
+            "id": $.c1_id,
+            "title": "C1"
+          }
+        },
+        {
+          "id": 3,
+          "concert": {
+            "id": $.c1_id,
+            "title": "C1"
+          }
+        }
+      ]
+    }
+  }

@@ -31,7 +31,7 @@ pub struct TestSetup<'a> {
 }
 
 impl TestSetup<'_> {
-    pub fn with_setup(test_fn: fn(&TestSetup) -> ()) {
+    pub fn with_setup(test_fn: impl Fn(&TestSetup)) {
         let concerts_table = &PhysicalTable {
             name: "concerts".to_string(),
             columns: vec![

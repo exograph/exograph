@@ -6,7 +6,7 @@ use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     predicate::Predicate,
     transaction::{TransactionContext, TransactionStepId},
-    Expression, ExpressionContext, ParameterBinding,
+    Expression, ExpressionContext, ParameterBinding, SQLParamContainer,
 };
 
 #[derive(Debug)]
@@ -100,10 +100,10 @@ impl<'a> TemplateUpdate<'a> {
                         let resolved_col = match col {
                             ProxyColumn::Concrete(col) => col.as_ref().into(),
                             ProxyColumn::Template { col_index, step_id } => {
-                                MaybeOwned::Owned(Column::Literal(MaybeOwned::Owned(Box::new(
+                                MaybeOwned::Owned(Column::Literal(SQLParamContainer::new(
                                     transaction_context
                                         .resolve_value(*step_id, row_index, *col_index),
-                                ))))
+                                )))
                             }
                         };
                         (*physical_col, resolved_col)

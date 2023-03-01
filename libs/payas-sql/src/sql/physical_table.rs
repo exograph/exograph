@@ -10,10 +10,17 @@ use super::{
 use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct PhysicalTable {
     pub name: String,
     pub columns: Vec<PhysicalColumn>,
+}
+
+impl std::fmt::Debug for PhysicalTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Table: ")?;
+        f.write_str(&self.name)
+    }
 }
 
 impl PhysicalTable {
