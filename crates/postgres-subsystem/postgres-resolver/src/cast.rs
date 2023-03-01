@@ -3,7 +3,6 @@ use async_graphql_value::Number;
 use base64::DecodeError;
 use chrono::prelude::*;
 use chrono::DateTime;
-use maybe_owned::MaybeOwned;
 use payas_sql::database_error::DatabaseError;
 use payas_sql::{
     array_util::{self, ArrayEntry},
@@ -46,11 +45,7 @@ pub(crate) fn literal_column<'a>(
     associated_column: &PhysicalColumn,
 ) -> Result<Column<'a>, PostgresExecutionError> {
     cast_value(value, &associated_column.typ)
-        .map(|value| {
-            value
-                .map(|v| Column::Literal(MaybeOwned::Owned(v)))
-                .unwrap_or(Column::Null)
-        })
+        .map(|value| value.map(Column::Literal).unwrap_or(Column::Null))
         .map_err(PostgresExecutionError::CastError)
 }
 

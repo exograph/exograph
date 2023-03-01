@@ -99,11 +99,11 @@ impl<'a> TemplateInsert<'a> {
                 row.iter()
                     .map(|col| match col {
                         ProxyColumn::Concrete(col) => col.as_ref().into(),
-                        ProxyColumn::Template { col_index, step_id } => MaybeOwned::Owned(
-                            Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(
+                        ProxyColumn::Template { col_index, step_id } => {
+                            MaybeOwned::Owned(Column::Literal(SQLParamContainer::new(
                                 transaction_context.resolve_value(*step_id, row_index, *col_index),
-                            ))),
-                        ),
+                            )))
+                        }
                     })
                     .collect()
             })

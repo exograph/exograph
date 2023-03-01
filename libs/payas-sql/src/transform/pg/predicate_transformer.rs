@@ -173,7 +173,7 @@ impl PredicateTransformer for Postgres {
 fn leaf_column<'c>(column_path: &ColumnPath<'c>) -> Column<'c> {
     match column_path {
         ColumnPath::Physical(links) => Column::Physical(links.last().unwrap().self_column.0),
-        ColumnPath::Literal(l) => Column::Literal(MaybeOwned::Owned(l.as_ref().clone())),
+        ColumnPath::Literal(l) => Column::Literal(l.clone()),
         ColumnPath::Null => Column::Null,
     }
 }
@@ -228,10 +228,7 @@ mod tests {
                         linked_column: None,
                     }])
                     .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "v1".to_string(),
-                    )))
-                    .into(),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
                 );
 
                 {
@@ -315,10 +312,7 @@ mod tests {
                         },
                     ])
                     .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "v1".to_string(),
-                    )))
-                    .into(),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
                 );
 
                 {

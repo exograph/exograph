@@ -53,9 +53,6 @@ impl DeleteTransformer for Postgres {
 
 #[cfg(test)]
 mod tests {
-
-    use maybe_owned::MaybeOwned;
-
     use crate::{
         asql::selection::{ColumnSelection, Selection, SelectionElement},
         sql::{Expression, ExpressionContext, SQLParamContainer},
@@ -115,10 +112,7 @@ mod tests {
                         linked_column: None,
                     }])
                     .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "v1".to_string(),
-                    )))
-                    .into(),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
                 );
 
                 let adelete = AbstractDelete {
@@ -174,10 +168,7 @@ mod tests {
                         },
                     ])
                     .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "v1".to_string(),
-                    )))
-                    .into(),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
                 );
 
                 let adelete = AbstractDelete {

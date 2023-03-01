@@ -316,7 +316,7 @@ mod tests {
             ..Default::default()
         };
         let age_col = Column::Physical(&age_col);
-        let age_value_col = Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(5)));
+        let age_value_col = Column::Literal(SQLParamContainer::new(5));
 
         let predicate = Predicate::Eq(MaybeOwned::Owned(age_col), MaybeOwned::Owned(age_value_col));
 
@@ -337,7 +337,7 @@ mod tests {
             ..Default::default()
         };
         let name_col = Column::Physical(&name_col);
-        let name_value_col = Column::Literal(MaybeOwned::Owned(SQLParamContainer::new("foo")));
+        let name_value_col = Column::Literal(SQLParamContainer::new("foo"));
 
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
@@ -346,7 +346,7 @@ mod tests {
             ..Default::default()
         };
         let age_col = Column::Physical(&age_col);
-        let age_value_col = Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(5)));
+        let age_value_col = Column::Literal(SQLParamContainer::new(5));
 
         let name_predicate = Predicate::Eq(name_col.into(), name_value_col.into());
         let age_predicate = Predicate::Eq(age_col.into(), age_value_col.into());
@@ -376,8 +376,7 @@ mod tests {
             title_physical_col: &PhysicalColumn,
         ) -> (MaybeOwned<'_, Column<'_>>, MaybeOwned<'_, Column<'_>>) {
             let title_col = Column::Physical(title_physical_col).into();
-            let title_value_col =
-                Column::Literal(MaybeOwned::Owned(SQLParamContainer::new("utawaku"))).into();
+            let title_value_col = Column::Literal(SQLParamContainer::new("utawaku")).into();
 
             (title_col, title_value_col)
         }
@@ -455,17 +454,14 @@ mod tests {
                 "#,
             )
             .unwrap();
-            let json_value_col = Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                json_value.clone(),
-            )))
-            .into();
+            let json_value_col = Column::Literal(SQLParamContainer::new(json_value.clone())).into();
 
             (json_col, Arc::new(json_value), json_value_col)
         }
 
         let json_key_list: serde_json::Value = serde_json::from_str(r#"["a", "b"]"#).unwrap();
 
-        let json_key_col = Column::Literal(MaybeOwned::Owned(SQLParamContainer::new("a")));
+        let json_key_col = Column::Literal(SQLParamContainer::new("a"));
 
         //// Test bindings starting now
 
@@ -490,9 +486,7 @@ mod tests {
         );
 
         // matchKey
-        let json_key_list_col = Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-            json_key_list.clone(),
-        )));
+        let json_key_list_col = Column::Literal(SQLParamContainer::new(json_key_list.clone()));
 
         let (json_col, _, _) = json_test_data(&json_physical_col);
         let mut expression_context = ExpressionContext::default();
@@ -515,9 +509,7 @@ mod tests {
         );
 
         // matchAllKeys
-        let json_key_list_col = Column::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-            json_key_list.clone(),
-        )));
+        let json_key_list_col = Column::Literal(SQLParamContainer::new(json_key_list.clone()));
 
         let (json_col, _, _) = json_test_data(&json_physical_col);
         let mut expression_context = ExpressionContext::default();

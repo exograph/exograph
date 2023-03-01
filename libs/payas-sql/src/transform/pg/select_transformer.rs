@@ -168,9 +168,6 @@ impl<'a> SelectionElement<'a> {
 
 #[cfg(test)]
 mod tests {
-
-    use maybe_owned::MaybeOwned;
-
     use crate::{
         asql::{
             column_path::{ColumnPath, ColumnPathLink},
@@ -226,7 +223,7 @@ mod tests {
                     self_column: (concerts_id_column, concerts_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(5)));
+                let literal = ColumnPath::Literal(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::Eq(concert_id_path.into(), literal.into());
 
                 let aselect = AbstractSelect {
@@ -446,10 +443,7 @@ mod tests {
                         },
                     ])
                     .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "v1".to_string(),
-                    )))
-                    .into(),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
                 );
                 let aselect = AbstractSelect {
                     table: concerts_table,

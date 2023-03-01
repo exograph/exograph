@@ -196,14 +196,10 @@ fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a PostgresSubsystem) -
 fn literal_column(value: Value) -> MaybeOwned<'static, ColumnPath<'static>> {
     match value {
         Value::Null => ColumnPath::Null,
-        Value::Bool(v) => ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(v))),
-        Value::Number(v) => ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-            v.as_i64().unwrap() as i32,
-        ))), // TODO: Deal with the exact number type
-        Value::String(v) => ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(v))),
-        Value::Array(values) => {
-            ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(values)))
-        }
+        Value::Bool(v) => ColumnPath::Literal(SQLParamContainer::new(v)),
+        Value::Number(v) => ColumnPath::Literal(SQLParamContainer::new(v.as_i64().unwrap() as i32)), // TODO: Deal with the exact number type
+        Value::String(v) => ColumnPath::Literal(SQLParamContainer::new(v)),
+        Value::Array(values) => ColumnPath::Literal(SQLParamContainer::new(values)),
         Value::Object(_) => todo!(),
     }
     .into()
@@ -457,14 +453,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_match_predicate(
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "token_value".to_string()
-                    )))
-                    .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "token_value".to_string()
-                    )))
-                    .into(),
+                    ColumnPath::Literal(SQLParamContainer::new("token_value".to_string())).into(),
+                    ColumnPath::Literal(SQLParamContainer::new("token_value".to_string())).into(),
                 )
             );
 
@@ -480,14 +470,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_mismatch_predicate(
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "token_value1".to_string()
-                    )))
-                    .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                        "token_value2".to_string()
-                    )))
-                    .into(),
+                    ColumnPath::Literal(SQLParamContainer::new("token_value1".to_string())).into(),
+                    ColumnPath::Literal(SQLParamContainer::new("token_value2".to_string())).into(),
                 )
             );
         }
@@ -508,10 +492,7 @@ mod tests {
                     &test_ae,
                     &context,
                     context_value_predicate(
-                        ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                            "u1".to_string()
-                        )))
-                        .into(),
+                        ColumnPath::Literal(SQLParamContainer::new("u1".to_string())).into(),
                         test_system.owner_id_column(),
                     )
                 );
@@ -532,10 +513,7 @@ mod tests {
                     &context,
                     context_value_predicate(
                         test_system.owner_id_column(),
-                        ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(
-                            "u1".to_string()
-                        )))
-                        .into(),
+                        ColumnPath::Literal(SQLParamContainer::new("u1".to_string())).into(),
                     )
                 );
                 // No user_id, so we can definitely declare it Predicate::False
@@ -774,7 +752,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
                         test_system.dept1_id_column(),
-                        ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(true))).into()
+                        ColumnPath::Literal(SQLParamContainer::new(true)).into()
                     ))
                 );
 
@@ -789,7 +767,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
                         test_system.dept1_id_column(),
-                        ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(true))).into()
+                        ColumnPath::Literal(SQLParamContainer::new(true)).into()
                     ))
                 );
             }
@@ -809,11 +787,11 @@ mod tests {
                 both_columns(
                     Box::new(AbstractPredicate::Eq(
                         test_system.dept1_id_column(),
-                        ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(true))).into()
+                        ColumnPath::Literal(SQLParamContainer::new(true)).into()
                     )),
                     Box::new(AbstractPredicate::Eq(
                         test_system.dept2_id_column(),
-                        ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(true))).into()
+                        ColumnPath::Literal(SQLParamContainer::new(true)).into()
                     ))
                 )
             );
@@ -914,7 +892,7 @@ mod tests {
                 solved_predicate,
                 AbstractPredicate::Neq(
                     test_system.dept1_id_column(),
-                    ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(true))).into()
+                    ColumnPath::Literal(SQLParamContainer::new(true)).into()
                 )
             );
         }
@@ -983,7 +961,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(true))).into()
+                ColumnPath::Literal(SQLParamContainer::new(true)).into()
             )
         );
     }
@@ -1012,8 +990,7 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new("1".to_string())))
-                    .into(),
+                ColumnPath::Literal(SQLParamContainer::new("1".to_string())).into(),
                 test_system.owner_id_column(),
             )
         );
@@ -1023,8 +1000,7 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new("2".to_string())))
-                    .into(),
+                ColumnPath::Literal(SQLParamContainer::new("2".to_string())).into(),
                 test_system.owner_id_column(),
             )
         );
@@ -1087,7 +1063,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(true))).into(),
+                ColumnPath::Literal(SQLParamContainer::new(true)).into(),
             )
         );
 
@@ -1149,7 +1125,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Literal(MaybeOwned::Owned(SQLParamContainer::new(true))).into()
+                ColumnPath::Literal(SQLParamContainer::new(true)).into()
             )
         );
     }
