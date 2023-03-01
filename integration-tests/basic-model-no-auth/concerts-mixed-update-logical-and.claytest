@@ -1,0 +1,27 @@
+# Mixed level predicates connected by AND
+operation: |
+    mutation {
+      updateConcerts(where: {and: [{title: {eq: "Concert1"}}, {venue: {id: {eq: 1}}}]}, data: {price: "100"}) {
+        id
+        price
+        venue {
+          id
+          name
+        }
+      }
+    }
+response: |
+    {
+      "data": {
+        "updateConcerts": [
+          {
+            "id": 1,
+            "price": "100.00",
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          }
+        ]
+      }
+    }
