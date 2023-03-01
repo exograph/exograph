@@ -1,0 +1,25 @@
+# Mixed level predicates connected by AND
+operation: |
+    mutation {
+      deleteConcerts(where: {and: [{title: {eq: "Concert1"}}, {venue: {id: {eq: 1}}}]}) {
+        id
+        venue {
+          id
+          name
+        }
+      }
+    }
+response: |
+    {
+      "data": {
+        "deleteConcerts": [
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          }
+        ]
+      }
+    }

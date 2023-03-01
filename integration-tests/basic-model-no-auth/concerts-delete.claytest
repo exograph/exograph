@@ -1,0 +1,25 @@
+operation: |
+    mutation {
+      deleteConcerts(where: {title: {eq: "Concert1"}}) {
+        id
+        venue {
+          id
+          name
+        }
+      }
+    }
+response: |
+    {
+      "data": {
+        "deleteConcerts": [
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          }
+        ]
+      }
+    }
+    
