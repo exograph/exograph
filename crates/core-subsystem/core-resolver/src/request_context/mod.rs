@@ -154,6 +154,7 @@ impl<'a> RequestContext<'a> {
         parsed_context_map: &HashMap<String, BoxedParsedContext<'a>>,
         request: &'a (dyn Request + Send + Sync),
         annotation_name: &str,
+        field_name: &str,
         value: Option<&str>,
     ) -> Result<Option<Value>, ContextParsingError> {
         let parsed_context = parsed_context_map
@@ -161,7 +162,7 @@ impl<'a> RequestContext<'a> {
             .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(value, self, request)
+            .extract_context_field(value, field_name, self, request)
             .await)
     }
 
@@ -182,6 +183,7 @@ impl<'a> RequestContext<'a> {
                         parsed_context_map,
                         *request,
                         &field.source.annotation_name,
+                        &field.name,
                         field.source.value.as_deref(),
                     )
                     .await?;
@@ -218,6 +220,7 @@ pub trait ParsedContext {
     async fn extract_context_field<'r>(
         &self,
         key: Option<&str>,
+        field_name: &str,
         request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value>;
@@ -239,6 +242,7 @@ impl ParsedContext for TestRequestContext {
     async fn extract_context_field<'r>(
         &self,
         key: Option<&str>,
+        _field_name: &str,
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {

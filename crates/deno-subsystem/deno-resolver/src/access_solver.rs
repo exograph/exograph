@@ -1,3 +1,5 @@
+//! [`AccessSolver`] for the Deno subsystem.
+
 use async_trait::async_trait;
 
 use core_plugin_interface::{
@@ -51,10 +53,13 @@ impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredica
         request_context: &'a RequestContext<'a>,
         op: &'a AccessRelationalOp<ServiceAccessPrimitiveExpression>,
     ) -> ServiceAccessPredicateWrapper {
+        /// A primitive expression that has been reduced to a JSON value or an unresolved context
         #[derive(Debug)]
         enum SolvedPrimitiveExpression<'a> {
             Value(Value),
-            UnresolvedContext(&'a AccessContextSelection), // For example, AuthContext.role for an anonymous user
+            /// A context field that could not be resolved. For example, `AuthContext.role` for an anonymous user.
+            /// We process unresolved context when performing relational operations.
+            UnresolvedContext(&'a AccessContextSelection),
         }
 
         async fn reduce_primitive_expression<'a>(
@@ -84,8 +89,10 @@ impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredica
         let left = reduce_primitive_expression(self, request_context, left).await;
         let right = reduce_primitive_expression(self, request_context, right).await;
 
+        /// Compare two JSON values
         type ValuePredicateFn<'a> = fn(Value, Value) -> ServiceAccessPredicate;
 
+        // A helper to reduce code duplication in the match below
         let helper = |unresolved_context_predicate: ServiceAccessPredicate,
                       value_predicate: ValuePredicateFn<'a>|
          -> ServiceAccessPredicate {
@@ -101,6 +108,7 @@ impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredica
             }
         };
 
+        // Currently, we don't support expressions such as <, >, <=, >=, but we can easily add them later
         ServiceAccessPredicateWrapper(match op {
             AccessRelationalOp::Eq(..) => helper(ServiceAccessPredicate::False, |val1, val2| {
                 (val1 == val2).into()
@@ -116,7 +124,7 @@ impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredica
                     _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
                 },
             ),
-            _ => unreachable!("Unsupported relational operator"),
+            _ => todo!("Unsupported relational operator"),
         })
     }
 }

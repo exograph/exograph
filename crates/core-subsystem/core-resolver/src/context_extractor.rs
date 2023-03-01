@@ -39,8 +39,8 @@ pub trait ContextExtractor {
     ///
     /// This method is similar to `extract_context` but it allows to select a specific field from
     /// the context object. For example, consider the context type and the context object in the
-    /// documentation of [`extract_context`](AccessSolver::extract_context). Calling this method
-    /// with `context_selection` set to
+    /// documentation of [`extract_context`](Self::extract_context). Calling this method with
+    /// `context_selection` set to
     /// `AccessContextSelection::Select(AccessContextSelection("AuthContext"), "role")` will return
     /// the value `"admin"`.
     async fn extract_context_selection(
