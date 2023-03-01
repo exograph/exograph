@@ -32,26 +32,25 @@ impl UpdateTransformer for Postgres {
         )]
     fn to_transaction_script<'a>(
         &self,
-        abstract_select: &'a AbstractUpdate,
+        abstract_update: &'a AbstractUpdate,
     ) -> TransactionScript<'a> {
-        let column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)> = abstract_select
+        let column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)> = abstract_update
             .column_values
             .iter()
             .map(|(c, v)| (*c, v.into()))
             .collect();
 
-        // TODO: Consider the "join" aspect of the predicate
-        let predicate = self.to_predicate(&abstract_select.predicate);
+        let predicate = self.to_subselect_predicate(&abstract_update.predicate);
 
-        let select = self.to_select(&abstract_select.selection, None, SelectionLevel::TopLevel);
+        let select = self.to_select(&abstract_update.selection, None, SelectionLevel::TopLevel);
 
         // If there is no nested update, select all the columns, so that the select statement will have all
         // those column (and not have to specify the WHERE clause once again).
         // If there are nested updates, select only the primary key columns, so that we can use that as the proxy
         // column in the nested updates added to the transaction script.
-        let return_col = if !abstract_select.nested_updates.is_empty() {
+        let return_col = if !abstract_update.nested_updates.is_empty() {
             Column::Physical(
-                abstract_select
+                abstract_update
                     .table
                     .get_pk_physical_column()
                     .expect("No primary key column"),
@@ -60,7 +59,7 @@ impl UpdateTransformer for Postgres {
             Column::Star(None)
         };
 
-        let root_update = SQLOperation::Update(abstract_select.table.update(
+        let root_update = SQLOperation::Update(abstract_update.table.update(
             column_values,
             predicate.into(),
             vec![return_col.into()],
@@ -68,15 +67,15 @@ impl UpdateTransformer for Postgres {
 
         let mut transaction_script = TransactionScript::default();
 
-        if !abstract_select.nested_updates.is_empty()
-            || !abstract_select.nested_inserts.is_empty()
-            || !abstract_select.nested_deletes.is_empty()
+        if !abstract_update.nested_updates.is_empty()
+            || !abstract_update.nested_inserts.is_empty()
+            || !abstract_update.nested_deletes.is_empty()
         {
             let root_step_id = transaction_script.add_step(TransactionStep::Concrete(
                 ConcreteTransactionStep::new(root_update),
             ));
 
-            abstract_select
+            abstract_update
                 .nested_updates
                 .iter()
                 .for_each(|nested_update| {
@@ -88,7 +87,7 @@ impl UpdateTransformer for Postgres {
                     let _ = transaction_script.add_step(TransactionStep::Template(update_op));
                 });
 
-            abstract_select
+            abstract_update
                 .nested_inserts
                 .iter()
                 .for_each(|nested_insert| {
@@ -100,7 +99,7 @@ impl UpdateTransformer for Postgres {
                     let _ = transaction_script.add_step(TransactionStep::Template(insert_op));
                 });
 
-            abstract_select
+            abstract_update
                 .nested_deletes
                 .iter()
                 .for_each(|nested_delete| {
@@ -118,7 +117,7 @@ impl UpdateTransformer for Postgres {
         } else {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::Cte(Cte {
-                    ctes: vec![(abstract_select.table.name.clone(), root_update)],
+                    ctes: vec![(abstract_update.table.name.clone(), root_update)],
                     select,
                 }),
             )));
