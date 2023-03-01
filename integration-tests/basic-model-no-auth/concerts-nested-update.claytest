@@ -1,0 +1,34 @@
+operation: |
+    mutation {
+      updateConcerts(where: {venue: {name: {eq: "Venue1"}}}, data: {price: "50"}) {
+        id
+        price
+        venue {
+          id
+          name
+        }
+      }
+    }
+response: |
+    {
+      "data": {
+        "updateConcerts": [
+          {
+            "id": 3,
+            "price": "50.00",
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          },
+          {
+            "id": 1,
+            "price": "50.00",
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          }
+        ]
+      }
+    }
