@@ -4,7 +4,7 @@ use crate::{asql::column_path::ColumnPathLink, PhysicalTable};
 
 #[derive(Debug)]
 pub struct TableDependency<'a> {
-    /// The base table being joined. In the example below, "concerts"
+    /// The base table being joined. In the example below (in impl TableDependency), "concerts"
     pub table: &'a PhysicalTable,
     /// The tables being joined. In the example below, ("venue1_id", "venues") and ("venue2_id", "venues")
     pub dependencies: Vec<DependencyLink<'a>>,
@@ -28,22 +28,22 @@ impl<'a> TableDependency<'a> {
     /// ```
     /// then the result will be the join needed to access the leaf columns:
     /// ```no_rust
-    /// TableJoin {
+    /// TableDependency {
     ///    table: concerts,
     ///    dependencies: [
-    ///       ((concert.id, concert_artists.concert_id), TableJoin {
+    ///       ((concert.id, concert_artists.concert_id), TableDependency {
     ///          table: concert_artists,
     ///          dependencies: [
-    ///             ((concert_artists.artist_id, artists.id), TableJoin {
+    ///             ((concert_artists.artist_id, artists.id), TableDependency {
     ///                table: artists,
     ///                dependencies: [
-    ///                   ((artists.address_id, address.id), TableJoin {
+    ///                   ((artists.address_id, address.id), TableDependency {
     ///                      table: address,
     ///                      dependencies: []
     ///                   }),
     ///                ]
     ///             }),
-    ///       ((concert.venue_id, venue.id), TableJoin {
+    ///       ((concert.venue_id, venue.id), TableDependency {
     ///            table: venue,
     ///            dependencies: []
     ///       }),

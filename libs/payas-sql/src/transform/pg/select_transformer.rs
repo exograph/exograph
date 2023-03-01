@@ -15,7 +15,10 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{join_util, transformer::SelectTransformer},
+    transform::{
+        join_util,
+        transformer::{PredicateTransformer, SelectTransformer},
+    },
 };
 
 use super::Postgres;
@@ -27,7 +30,7 @@ impl SelectTransformer for Postgres {
         )]
     fn to_select<'a>(
         &self,
-        abstract_select: &'a AbstractSelect,
+        abstract_select: &AbstractSelect<'a>,
         additional_predicate: Option<Predicate<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a> {
@@ -65,7 +68,7 @@ impl SelectTransformer for Postgres {
         };
 
         let predicate = Predicate::and(
-            abstract_select.predicate.predicate(),
+            self.to_predicate(&abstract_select.predicate),
             additional_predicate.unwrap_or(Predicate::True),
         )
         .into();
@@ -95,7 +98,7 @@ impl SelectTransformer for Postgres {
 }
 
 impl<'a> Selection<'a> {
-    pub fn to_sql(&'a self, database_kind: &impl SelectTransformer) -> SelectionSQL<'a> {
+    pub fn to_sql(&self, database_kind: &impl SelectTransformer) -> SelectionSQL<'a> {
         match self {
             Selection::Seq(seq) => SelectionSQL::Seq(
                 seq.iter()
@@ -129,7 +132,7 @@ impl<'a> Selection<'a> {
 }
 
 impl<'a> SelectionElement<'a> {
-    pub fn to_sql(&'a self, database_kind: &impl SelectTransformer) -> Column<'a> {
+    pub fn to_sql(&self, database_kind: &impl SelectTransformer) -> Column<'a> {
         match self {
             SelectionElement::Physical(pc) => Column::Physical(pc),
             SelectionElement::Function {
@@ -165,8 +168,6 @@ impl<'a> SelectionElement<'a> {
 
 #[cfg(test)]
 mod tests {
-    use maybe_owned::MaybeOwned;
-
     use crate::{
         asql::{
             column_path::{ColumnPath, ColumnPathLink},
@@ -174,7 +175,7 @@ mod tests {
             select::SelectionLevel,
             selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
-        sql::ExpressionContext,
+        sql::{ExpressionContext, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
         AbstractOrderBy, Ordering, Predicate,
     };
@@ -222,7 +223,7 @@ mod tests {
                     self_column: (concerts_id_column, concerts_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(MaybeOwned::Owned(Box::new(5)));
+                let literal = ColumnPath::Literal(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::Eq(concert_id_path.into(), literal.into());
 
                 let aselect = AbstractSelect {
@@ -442,7 +443,7 @@ mod tests {
                         },
                     ])
                     .into(),
-                    ColumnPath::Literal(MaybeOwned::Owned(Box::new("v1".to_string()))).into(),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
                 );
                 let aselect = AbstractSelect {
                     table: concerts_table,

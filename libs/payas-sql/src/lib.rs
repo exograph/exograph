@@ -57,5 +57,5 @@ pub use sql::{
     order::Ordering,
     physical_table::PhysicalTable,
     predicate::Predicate,
-    SQLBytes, SQLParam,
+    SQLBytes, SQLParam, SQLParamContainer,
 };

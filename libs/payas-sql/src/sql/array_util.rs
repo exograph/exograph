@@ -2,7 +2,7 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use crate::database_error::DatabaseError;
 
-use super::SQLParam;
+use super::SQLParamContainer;
 use postgres_array::{Array, Dimension};
 
 pub enum ArrayEntry<'a, T> {
@@ -10,7 +10,7 @@ pub enum ArrayEntry<'a, T> {
     List(&'a Vec<T>),
 }
 
-type OptionalSQLParam = Option<Box<dyn SQLParam>>;
+type OptionalSQLParam = Option<SQLParamContainer>;
 
 /// Convert a Rust array into an SQLParam.
 ///
@@ -26,9 +26,8 @@ pub fn to_sql_param<T>(
     elems: &[T],
     array_entry: fn(&T) -> ArrayEntry<T>,
     to_sql_param: &impl Fn(&T) -> Result<OptionalSQLParam, DatabaseError>,
-) -> Result<Option<Box<dyn SQLParam>>, DatabaseError> {
-    to_sql_array(elems, array_entry, to_sql_param)
-        .map(|array| Some(Box::new(array) as Box<dyn SQLParam>))
+) -> Result<Option<SQLParamContainer>, DatabaseError> {
+    to_sql_array(elems, array_entry, to_sql_param).map(|array| Some(SQLParamContainer::new(array)))
 }
 
 // Separate function to enable testing
@@ -36,7 +35,7 @@ fn to_sql_array<T>(
     elems: &[T],
     array_entry: fn(&T) -> ArrayEntry<T>,
     to_sql_param: &impl Fn(&T) -> Result<OptionalSQLParam, DatabaseError>,
-) -> Result<Array<Box<dyn SQLParam>>, DatabaseError> {
+) -> Result<Array<SQLParamContainer>, DatabaseError> {
     let mut result = (Vec::new(), HashMap::new());
     process_array(elems, &mut result, 0, array_entry, to_sql_param)?;
 
@@ -59,7 +58,7 @@ fn to_sql_array<T>(
 /// See the tests module for examples.
 fn process_array<T>(
     elems: &[T],
-    result: &mut (Vec<Box<dyn SQLParam>>, HashMap<usize, i32>),
+    result: &mut (Vec<SQLParamContainer>, HashMap<usize, i32>),
     depth: usize,
     array_entry: fn(&T) -> ArrayEntry<T>,
     to_sql_param: &impl Fn(&T) -> Result<OptionalSQLParam, DatabaseError>,
@@ -71,7 +70,7 @@ fn process_array<T>(
         match array_entry(elem) {
             ArrayEntry::Single(elem) => {
                 let value = to_sql_param(elem)?;
-                result.0.push(Box::new(value));
+                result.0.push(SQLParamContainer::new(value));
             }
             ArrayEntry::List(elems) => {
                 process_array(elems, result, depth + 1, array_entry, to_sql_param)?;
@@ -112,23 +111,23 @@ mod tests {
     }
 
     fn i32_to_sql_param(i: &i32) -> Result<OptionalSQLParam, DatabaseError> {
-        Ok(Some(Box::new(*i) as Box<dyn SQLParam>))
+        Ok(Some(SQLParamContainer::new(*i) as SQLParamContainer))
     }
 
     fn element_to_sql_param(entry: &Element) -> Result<OptionalSQLParam, DatabaseError> {
         match entry {
-            Element::Single(i) => Ok(Some(Box::new(*i) as Box<dyn SQLParam>)),
+            Element::Single(i) => Ok(Some(SQLParamContainer::new(*i) as SQLParamContainer)),
             Element::List(entries) => {
                 let mut result = Vec::new();
                 for entry in entries {
                     result.push(element_to_sql_param(entry)?);
                 }
-                Ok(Some(Box::new(result) as Box<dyn SQLParam>))
+                Ok(Some(SQLParamContainer::new(result) as SQLParamContainer))
             }
         }
     }
 
-    fn to_debug_string(array: &Array<Box<dyn SQLParam>>) -> Vec<String> {
+    fn to_debug_string(array: &Array<SQLParamContainer>) -> Vec<String> {
         array.iter().map(|e| format!("{e:?}")).collect()
     }
 
