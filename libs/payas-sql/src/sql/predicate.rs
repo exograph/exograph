@@ -8,7 +8,7 @@ pub enum CaseSensitivity {
     Insensitive,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Predicate<'a, C = Column<'a>>
 where
     C: PartialEq + LiteralEquality,

@@ -193,8 +193,8 @@ mod tests {
 
         let name_col = physical_table.get_column("name").unwrap();
         let json_col = Column::JsonObject(vec![
-            ("namex".to_string(), name_col.into()),
-            ("agex".to_string(), age_col.into()),
+            ("namex".to_string(), name_col),
+            ("agex".to_string(), age_col),
         ]);
         let table = TableQuery::Physical(&physical_table);
         let selected_table = table.select(

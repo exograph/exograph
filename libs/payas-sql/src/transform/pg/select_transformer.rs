@@ -117,7 +117,7 @@ impl<'a> Selection<'a> {
                 let object_elems = seq
                     .iter()
                     .map(|ColumnSelection { alias, column }| {
-                        (alias.clone(), column.to_sql(database_kind).into())
+                        (alias.clone(), column.to_sql(database_kind))
                     })
                     .collect();
 
@@ -126,7 +126,7 @@ impl<'a> Selection<'a> {
                 match cardinality {
                     SelectionCardinality::One => SelectionSQL::Single(json_obj),
                     SelectionCardinality::Many => {
-                        SelectionSQL::Single(Column::JsonAgg(Box::new(json_obj.into())))
+                        SelectionSQL::Single(Column::JsonAgg(Box::new(json_obj)))
                     }
                 }
             }
@@ -149,7 +149,7 @@ impl<'a> SelectionElement<'a> {
             SelectionElement::Object(elements) => {
                 let elements = elements
                     .iter()
-                    .map(|(alias, column)| (alias.to_owned(), column.to_sql(database_kind).into()))
+                    .map(|(alias, column)| (alias.to_owned(), column.to_sql(database_kind)))
                     .collect();
                 Column::JsonObject(elements)
             }
