@@ -2,6 +2,7 @@ use maybe_owned::MaybeOwned;
 
 use crate::{
     asql::select::SelectionLevel,
+    sql::group_by::GroupBy,
     transform::transformer::{PredicateTransformer, SelectTransformer},
     AbstractPredicate, AbstractSelect, Column, ColumnPath, ColumnPathLink, ColumnSelection,
     PhysicalColumn, PhysicalTable, Predicate, Selection, SelectionElement,
@@ -103,6 +104,7 @@ impl PredicateTransformer for Postgres {
                     let right_select = select_transformer.to_select(
                         &right_abstract_select,
                         None,
+                        Some(GroupBy(vec![foreign_column])),
                         SelectionLevel::Nested,
                     );
 
@@ -335,7 +337,7 @@ mod tests {
                     assert_binding!(
                         binding,
                         format!(
-                            r#""concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" {sql_op})"#
+                            r#""concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" {sql_op} GROUP BY "venues"."id")"#
                         ),
                         "v1".to_string()
                     );

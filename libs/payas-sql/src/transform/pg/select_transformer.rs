@@ -10,6 +10,7 @@ use crate::{
     },
     sql::{
         column::Column,
+        group_by::GroupBy,
         predicate::Predicate,
         select::Select,
         sql_operation::SQLOperation,
@@ -32,6 +33,7 @@ impl SelectTransformer for Postgres {
         &self,
         abstract_select: &AbstractSelect<'a>,
         additional_predicate: Option<Predicate<'a>>,
+        group_by: Option<GroupBy<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a> {
         fn column_path_owned<'a>(
@@ -80,6 +82,7 @@ impl SelectTransformer for Postgres {
             order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
             offset: abstract_select.offset.clone(),
             limit: abstract_select.limit.clone(),
+            group_by,
             top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
         }
     }
@@ -88,7 +91,7 @@ impl SelectTransformer for Postgres {
         &self,
         abstract_select: &'a AbstractSelect,
     ) -> TransactionScript<'a> {
-        let select = self.to_select(abstract_select, None, SelectionLevel::TopLevel);
+        let select = self.to_select(abstract_select, None, None, SelectionLevel::TopLevel);
         let mut transaction_script = TransactionScript::default();
         transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
             SQLOperation::Select(select),
@@ -159,6 +162,7 @@ impl<'a> SelectionElement<'a> {
                             Column::Physical(linked_column.0).into(),
                         )
                     }),
+                    None,
                     SelectionLevel::Nested,
                 )))
             }
@@ -203,7 +207,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(binding, r#"select "concerts"."id" from "concerts""#);
@@ -238,7 +242,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -273,7 +277,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -341,7 +345,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -403,7 +407,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -460,7 +464,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -498,7 +502,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -544,7 +548,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(

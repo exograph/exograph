@@ -39,7 +39,7 @@ impl InsertTransformer for Postgres {
             selection,
         } = abstract_insert;
 
-        let select = self.to_select(selection, None, SelectionLevel::TopLevel);
+        let select = self.to_select(selection, None, None, SelectionLevel::TopLevel);
 
         let (self_elems, mut nested_elems): (Vec<_>, Vec<_>) = rows
             .iter()
@@ -101,6 +101,7 @@ impl InsertTransformer for Postgres {
                             order_by: None,
                             offset: parent_index.map(|index| Offset(index as i64)),
                             limit: parent_index.map(|_| Limit(1)),
+                            group_by: None,
                             top_level_selection: false,
                         }));
 

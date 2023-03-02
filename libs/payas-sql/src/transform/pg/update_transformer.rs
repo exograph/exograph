@@ -42,7 +42,12 @@ impl UpdateTransformer for Postgres {
 
         let predicate = self.to_subselect_predicate(&abstract_update.predicate);
 
-        let select = self.to_select(&abstract_update.selection, None, SelectionLevel::TopLevel);
+        let select = self.to_select(
+            &abstract_update.selection,
+            None,
+            None,
+            SelectionLevel::TopLevel,
+        );
 
         // If there is no nested update, select all the columns, so that the select statement will have all
         // those column (and not have to specify the WHERE clause once again).

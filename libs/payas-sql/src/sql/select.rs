@@ -3,8 +3,8 @@ use maybe_owned::MaybeOwned;
 use crate::{Limit, Offset};
 
 use super::{
-    column::Column, order::OrderBy, predicate::Predicate, table::TableQuery, Expression,
-    ExpressionContext, ParameterBinding,
+    column::Column, group_by::GroupBy, order::OrderBy, predicate::Predicate, table::TableQuery,
+    Expression, ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug, PartialEq)]
@@ -15,6 +15,7 @@ pub struct Select<'a> {
     pub order_by: Option<OrderBy<'a>>,
     pub offset: Option<Offset>,
     pub limit: Option<Limit>,
+    pub group_by: Option<GroupBy<'a>>,
     pub top_level_selection: bool,
 }
 
@@ -74,14 +75,21 @@ impl<'a> Expression for Select<'a> {
             format!(" {}", binding.stmt)
         });
 
+        let group_by_part = self.group_by.as_ref().map(|group_by| {
+            let binding = group_by.binding(expression_context);
+            params.extend(binding.params);
+            format!(" {}", binding.stmt)
+        });
+
         let table_binding_stmt = table_binding.stmt;
         let stmt = if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
             let conditions = format!(
-                "{}{}{}{}",
+                "{}{}{}{}{}",
                 predicate_part,
+                group_by_part.unwrap_or_default(),
                 order_by_part.unwrap_or_default(),
                 limit_part.unwrap_or_default(),
-                offset_part.unwrap_or_default()
+                offset_part.unwrap_or_default(),
             );
 
             let base_table_stmt = self
@@ -94,7 +102,10 @@ impl<'a> Expression for Select<'a> {
                 "select {cols_stmts} from (select {base_table_stmt}.* from {table_binding_stmt}{conditions}) as {table_binding_stmt}",
             )
         } else {
-            format!("select {cols_stmts} from {table_binding_stmt}{predicate_part}",)
+            format!(
+                "select {cols_stmts} from {table_binding_stmt}{predicate_part}{}",
+                group_by_part.unwrap_or_default()
+            )
         };
 
         ParameterBinding::new(stmt, params)
@@ -141,6 +152,7 @@ mod tests {
             None,
             Some(Offset(10)),
             Some(Limit(20)),
+            None,
             false,
         );
 
@@ -188,6 +200,7 @@ mod tests {
         let selected_table = table.select(
             vec![age_col2.into(), json_col.into()],
             Predicate::True,
+            None,
             None,
             None,
             None,

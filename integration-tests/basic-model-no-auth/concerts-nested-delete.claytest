@@ -13,14 +13,14 @@ response: |
       "data": {
         "deleteConcerts": [
           {
-            "id": 3,
+            "id": 1,
             "venue": {
               "id": 1,
               "name": "Venue1"
             }
           },
           {
-            "id": 1,
+            "id": 3,
             "venue": {
               "id": 1,
               "name": "Venue1"

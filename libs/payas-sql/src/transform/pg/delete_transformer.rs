@@ -42,7 +42,12 @@ impl DeleteTransformer for Postgres {
                 .delete(predicate.into(), vec![Column::Star(None).into()]),
         );
 
-        let select = self.to_select(&abstract_delete.selection, None, SelectionLevel::TopLevel);
+        let select = self.to_select(
+            &abstract_delete.selection,
+            None,
+            None,
+            SelectionLevel::TopLevel,
+        );
 
         Cte {
             ctes: vec![(abstract_delete.table.name.clone(), root_delete)],
@@ -193,7 +198,7 @@ mod tests {
 
                 assert_binding!(
                     binding,
-                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" = $1) RETURNING *) select "concerts"."id" from "concerts""#,
+                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" = $1 GROUP BY "venues"."id") RETURNING *) select "concerts"."id" from "concerts""#,
                     "v1".to_string()
                 );
             },

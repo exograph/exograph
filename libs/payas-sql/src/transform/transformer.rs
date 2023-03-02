@@ -6,7 +6,7 @@ use crate::{
         select::{AbstractSelect, SelectionLevel},
         update::AbstractUpdate,
     },
-    sql::{cte::Cte, select::Select, transaction::TransactionScript},
+    sql::{cte::Cte, group_by::GroupBy, select::Select, transaction::TransactionScript},
     AbstractPredicate, Predicate,
 };
 
@@ -46,6 +46,7 @@ pub trait SelectTransformer {
         &self,
         abstract_select: &AbstractSelect<'a>,
         additional_predicate: Option<Predicate<'a>>,
+        group_by: Option<GroupBy<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a>;
 

@@ -1,8 +1,8 @@
 use crate::{Limit, Offset, PhysicalTable};
 
 use super::{
-    column::Column, join::Join, order::OrderBy, predicate::Predicate, select::Select, Expression,
-    ExpressionContext, ParameterBinding,
+    column::Column, group_by::GroupBy, join::Join, order::OrderBy, predicate::Predicate,
+    select::Select, Expression, ExpressionContext, ParameterBinding,
 };
 use maybe_owned::MaybeOwned;
 
@@ -13,6 +13,7 @@ pub enum TableQuery<'a> {
 }
 
 impl<'a> TableQuery<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn select<P>(
         self,
         columns: Vec<MaybeOwned<'a, Column<'a>>>,
@@ -20,6 +21,7 @@ impl<'a> TableQuery<'a> {
         order_by: Option<OrderBy<'a>>,
         offset: Option<Offset>,
         limit: Option<Limit>,
+        group_by: Option<GroupBy<'a>>,
         top_level_selection: bool,
     ) -> Select<'a>
     where
@@ -32,6 +34,7 @@ impl<'a> TableQuery<'a> {
             order_by,
             offset,
             limit,
+            group_by,
             top_level_selection,
         }
     }
