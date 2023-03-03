@@ -10,7 +10,7 @@ use super::{
 #[derive(Debug, PartialEq)]
 pub struct Select<'a> {
     pub underlying: TableQuery<'a>,
-    pub columns: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub columns: Vec<Column<'a>>,
     pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
     pub offset: Option<Offset>,
@@ -28,7 +28,7 @@ impl<'a> Expression for Select<'a> {
             .iter()
             .map(|c| {
                 let col_binding = c.binding(expression_context);
-                let text_cast = match c.as_ref() {
+                let text_cast = match c {
                     Column::JsonObject(_) | Column::JsonAgg(_) if self.top_level_selection => {
                         "::text"
                     }
@@ -142,7 +142,7 @@ mod tests {
         let predicate = ConcretePredicate::Eq(age_col, age_value_col);
 
         let age_col = physical_table.get_column("age").unwrap();
-        let selected_cols = vec![age_col.into()];
+        let selected_cols = vec![age_col];
 
         let table = TableQuery::Physical(&physical_table);
 
@@ -198,7 +198,7 @@ mod tests {
         ]);
         let table = TableQuery::Physical(&physical_table);
         let selected_table = table.select(
-            vec![age_col2.into(), json_col.into()],
+            vec![age_col2, json_col],
             ConcretePredicate::True,
             None,
             None,

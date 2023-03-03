@@ -96,7 +96,7 @@ impl InsertTransformer for Postgres {
                     column_values_seq.iter_mut().for_each(|value| {
                         let parent_reference = Column::SelectionTableWrapper(Box::new(Select {
                             underlying: TableQuery::Physical(parent_table),
-                            columns: vec![Column::Physical(parent_pk_physical_column).into()],
+                            columns: vec![Column::Physical(parent_pk_physical_column)],
                             predicate: ConcretePredicate::True.into(),
                             order_by: None,
                             offset: parent_index.map(|index| Offset(index as i64)),

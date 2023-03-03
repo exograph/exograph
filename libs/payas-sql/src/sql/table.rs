@@ -16,7 +16,7 @@ impl<'a> TableQuery<'a> {
     #[allow(clippy::too_many_arguments)]
     pub fn select<P>(
         self,
-        columns: Vec<MaybeOwned<'a, Column<'a>>>,
+        columns: Vec<Column<'a>>,
         predicate: P,
         order_by: Option<OrderBy<'a>>,
         offset: Option<Offset>,

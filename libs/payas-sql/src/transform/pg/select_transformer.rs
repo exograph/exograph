@@ -65,8 +65,8 @@ impl SelectTransformer for Postgres {
         let join = join_util::compute_join(abstract_select.table, columns_paths);
 
         let columns = match abstract_select.selection.to_sql(self) {
-            SelectionSQL::Single(elem) => vec![elem.into()],
-            SelectionSQL::Seq(elems) => elems.into_iter().map(|elem| elem.into()).collect(),
+            SelectionSQL::Single(elem) => vec![elem],
+            SelectionSQL::Seq(elems) => elems,
         };
 
         let predicate = ConcretePredicate::and(

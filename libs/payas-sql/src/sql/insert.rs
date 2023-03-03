@@ -76,7 +76,7 @@ pub struct TemplateInsert<'a> {
     pub table: &'a PhysicalTable,
     pub column_names: Vec<&'a PhysicalColumn>,
     pub column_values_seq: Vec<Vec<ProxyColumn<'a>>>,
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub returning: Vec<Column<'a>>,
 }
 
 impl<'a> TemplateInsert<'a> {
@@ -140,7 +140,7 @@ impl<'a> TemplateInsert<'a> {
                 table,
                 column_names: column_names.clone(),
                 column_values_seq: resolved_cols,
-                returning: returning.iter().map(|ret| ret.as_ref().into()).collect(),
+                returning: returning.iter().map(|ret| ret.into()).collect(),
             })
         }
     }
