@@ -3,15 +3,15 @@ use maybe_owned::MaybeOwned;
 use crate::{Limit, Offset};
 
 use super::{
-    column::Column, group_by::GroupBy, order::OrderBy, predicate::Predicate, table::TableQuery,
-    Expression, ExpressionContext, ParameterBinding,
+    column::Column, group_by::GroupBy, order::OrderBy, predicate::ConcretePredicate,
+    table::TableQuery, Expression, ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug, PartialEq)]
 pub struct Select<'a> {
     pub underlying: TableQuery<'a>,
     pub columns: Vec<MaybeOwned<'a, Column<'a>>>,
-    pub predicate: MaybeOwned<'a, Predicate<'a>>,
+    pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
     pub offset: Option<Offset>,
     pub limit: Option<Limit>,
@@ -48,7 +48,7 @@ impl<'a> Expression for Select<'a> {
 
         let predicate_part = match self.predicate.as_ref() {
             // Avoid correct, but inelegant "where true" clause
-            Predicate::True => "".to_string(),
+            ConcretePredicate::True => "".to_string(),
             predicate => {
                 let binding = predicate.binding(expression_context);
                 params.extend(binding.params);
@@ -139,7 +139,7 @@ mod tests {
         let age_col = physical_table.get_column("age").unwrap();
         let age_value_col = Column::Literal(SQLParamContainer::new(5));
 
-        let predicate = Predicate::Eq(age_col.into(), age_value_col.into());
+        let predicate = ConcretePredicate::Eq(age_col, age_value_col);
 
         let age_col = physical_table.get_column("age").unwrap();
         let selected_cols = vec![age_col.into()];
@@ -199,7 +199,7 @@ mod tests {
         let table = TableQuery::Physical(&physical_table);
         let selected_table = table.select(
             vec![age_col2.into(), json_col.into()],
-            Predicate::True,
+            ConcretePredicate::True,
             None,
             None,
             None,

@@ -237,9 +237,8 @@ mod tests {
             selection::{ColumnSelection, NestedElementRelation, Selection, SelectionElement},
             update::NestedAbstractUpdate,
         },
-        sql::{column::Column, SQLParamContainer},
+        sql::{column::Column, predicate::Predicate, SQLParamContainer},
         transform::test_util::TestSetup,
-        Predicate,
     };
 
     use super::*;
@@ -258,7 +257,7 @@ mod tests {
                     linked_column: None,
                 }]);
                 let literal = ColumnPath::Literal(SQLParamContainer::new(5));
-                let predicate = AbstractPredicate::eq(venue_id_path.into(), literal.into());
+                let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let abs_update = AbstractUpdate {
                     table: venues_table,
@@ -314,7 +313,7 @@ mod tests {
                     linked_column: None,
                 }]);
                 let literal = ColumnPath::Literal(SQLParamContainer::new(5));
-                let predicate = AbstractPredicate::eq(venue_id_path.into(), literal.into());
+                let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
                     relation: NestedElementRelation {

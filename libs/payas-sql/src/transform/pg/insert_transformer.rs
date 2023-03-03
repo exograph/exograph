@@ -12,7 +12,7 @@ use crate::{
     sql::{
         column::{Column, PhysicalColumn},
         cte::Cte,
-        predicate::Predicate,
+        predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
         table::TableQuery,
@@ -97,7 +97,7 @@ impl InsertTransformer for Postgres {
                         let parent_reference = Column::SelectionTableWrapper(Box::new(Select {
                             underlying: TableQuery::Physical(parent_table),
                             columns: vec![Column::Physical(parent_pk_physical_column).into()],
-                            predicate: Predicate::True.into(),
+                            predicate: ConcretePredicate::True.into(),
                             order_by: None,
                             offset: parent_index.map(|index| Offset(index as i64)),
                             limit: parent_index.map(|_| Limit(1)),

@@ -1,5 +1,3 @@
-use maybe_owned::MaybeOwned;
-
 use super::{column::Column, Expression, ExpressionContext, ParameterBinding};
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -8,49 +6,47 @@ pub enum CaseSensitivity {
     Insensitive,
 }
 
+pub type ConcretePredicate<'a> = Predicate<Column<'a>>;
+
 #[derive(Debug, PartialEq, Clone)]
-pub enum Predicate<'a, C = Column<'a>>
+pub enum Predicate<C>
 where
     C: PartialEq + LiteralEquality,
 {
     True,
     False,
-    Eq(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    Neq(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    Lt(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    Lte(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    Gt(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    Gte(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    In(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    Eq(C, C),
+    Neq(C, C),
+    Lt(C, C),
+    Lte(C, C),
+    Gt(C, C),
+    Gte(C, C),
+    In(C, C),
     // Prefer Predicate::and(), which simplifies the clause, to construct an And expression
-    And(Box<Predicate<'a, C>>, Box<Predicate<'a, C>>),
+    And(Box<Predicate<C>>, Box<Predicate<C>>),
     // Prefer Predicate::or(), which simplifies the clause, to construct an Or expression
-    Or(Box<Predicate<'a, C>>, Box<Predicate<'a, C>>),
+    Or(Box<Predicate<C>>, Box<Predicate<C>>),
     // Prefer Predicate::not(), which simplifies the clause, to construct a Not expression
-    Not(Box<Predicate<'a, C>>),
+    Not(Box<Predicate<C>>),
 
     // string predicates
-    StringLike(MaybeOwned<'a, C>, MaybeOwned<'a, C>, CaseSensitivity),
-    StringStartsWith(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    StringEndsWith(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    StringLike(C, C, CaseSensitivity),
+    StringStartsWith(C, C),
+    StringEndsWith(C, C),
 
     // json predicates
-    JsonContains(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    JsonContainedBy(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    JsonMatchKey(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    JsonMatchAnyKey(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
-    JsonMatchAllKeys(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    JsonContains(C, C),
+    JsonContainedBy(C, C),
+    JsonMatchKey(C, C),
+    JsonMatchAnyKey(C, C),
+    JsonMatchAllKeys(C, C),
 }
 
-impl<'a, C> Predicate<'a, C>
+impl<C> Predicate<C>
 where
     C: PartialEq + LiteralEquality,
 {
-    pub fn from_name(
-        op_name: &str,
-        lhs: MaybeOwned<'a, C>,
-        rhs: MaybeOwned<'a, C>,
-    ) -> Predicate<'a, C> {
+    pub fn from_name(op_name: &str, lhs: C, rhs: C) -> Predicate<C> {
         match op_name {
             "eq" => Predicate::Eq(lhs, rhs),
             "neq" => Predicate::Neq(lhs, rhs),
@@ -72,23 +68,23 @@ where
     }
 
     // The next set of methods try to minimize the expression
-    pub fn eq(lhs: MaybeOwned<'a, C>, rhs: MaybeOwned<'a, C>) -> Predicate<'a, C> {
+    pub fn eq(lhs: C, rhs: C) -> Predicate<C> {
         if lhs == rhs {
             Predicate::True
         } else {
             // For literal columns, we can check for Predicate::False directly
-            match lhs.as_ref().literal_eq(rhs.as_ref()) {
+            match lhs.literal_eq(&rhs) {
                 Some(false) => Predicate::False,
                 _ => Predicate::Eq(lhs, rhs),
             }
         }
     }
 
-    pub fn neq(lhs: MaybeOwned<'a, C>, rhs: MaybeOwned<'a, C>) -> Predicate<'a, C> {
+    pub fn neq(lhs: C, rhs: C) -> Predicate<C> {
         !Self::eq(lhs, rhs)
     }
 
-    pub fn and(lhs: Predicate<'a, C>, rhs: Predicate<'a, C>) -> Predicate<'a, C> {
+    pub fn and(lhs: Predicate<C>, rhs: Predicate<C>) -> Predicate<C> {
         match (lhs, rhs) {
             (Predicate::False, _) | (_, Predicate::False) => Predicate::False,
             (Predicate::True, rhs) => rhs,
@@ -97,7 +93,7 @@ where
         }
     }
 
-    pub fn or(lhs: Predicate<'a, C>, rhs: Predicate<'a, C>) -> Predicate<'a, C> {
+    pub fn or(lhs: Predicate<C>, rhs: Predicate<C>) -> Predicate<C> {
         match (lhs, rhs) {
             (Predicate::True, _) | (_, Predicate::True) => Predicate::True,
             (Predicate::False, rhs) => rhs,
@@ -107,11 +103,11 @@ where
     }
 }
 
-impl<'a, C> From<bool> for Predicate<'a, C>
+impl<C> From<bool> for Predicate<C>
 where
     C: PartialEq + LiteralEquality,
 {
-    fn from(b: bool) -> Predicate<'a, C> {
+    fn from(b: bool) -> Predicate<C> {
         if b {
             Predicate::True
         } else {
@@ -120,11 +116,11 @@ where
     }
 }
 
-impl<'a, C> std::ops::Not for Predicate<'a, C>
+impl<C> std::ops::Not for Predicate<C>
 where
     C: PartialEq + LiteralEquality,
 {
-    type Output = Predicate<'a, C>;
+    type Output = Predicate<C>;
 
     fn not(self) -> Self::Output {
         match self {
@@ -155,52 +151,56 @@ impl LiteralEquality for Column<'_> {
     }
 }
 
-impl<'a> Expression for Predicate<'a, Column<'a>> {
+impl<'a> Expression for ConcretePredicate<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match &self {
-            Predicate::True => ParameterBinding::new("true".to_string(), vec![]),
-            Predicate::False => ParameterBinding::new("false".to_string(), vec![]),
-            Predicate::Eq(column1, column2) => {
+            ConcretePredicate::True => ParameterBinding::new("true".to_string(), vec![]),
+            ConcretePredicate::False => ParameterBinding::new("false".to_string(), vec![]),
+            ConcretePredicate::Eq(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} = {stmt2}")
                 })
             }
-            Predicate::Neq(column1, column2) => {
+            ConcretePredicate::Neq(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} <> {stmt2}")
                 })
             }
-            Predicate::Lt(column1, column2) => {
+            ConcretePredicate::Lt(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} < {stmt2}")
                 })
             }
-            Predicate::Lte(column1, column2) => {
+            ConcretePredicate::Lte(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} <= {stmt2}")
                 })
             }
-            Predicate::Gt(column1, column2) => {
+            ConcretePredicate::Gt(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} > {stmt2}")
                 })
             }
-            Predicate::Gte(column1, column2) => {
+            ConcretePredicate::Gte(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} >= {stmt2}")
                 })
             }
-            Predicate::In(column1, column2) => {
+            ConcretePredicate::In(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} IN {stmt2}")
                 })
             }
-            Predicate::And(predicate1, predicate2) => {
+            ConcretePredicate::And(predicate1, predicate2) => {
                 match (predicate1.as_ref(), predicate2.as_ref()) {
-                    (Predicate::True, predicate) => predicate.binding(expression_context),
-                    (Predicate::False, _) => Predicate::False.binding(expression_context),
-                    (predicate, Predicate::True) => predicate.binding(expression_context),
-                    (_, Predicate::False) => Predicate::False.binding(expression_context),
+                    (ConcretePredicate::True, predicate) => predicate.binding(expression_context),
+                    (ConcretePredicate::False, _) => {
+                        ConcretePredicate::False.binding(expression_context)
+                    }
+                    (predicate, ConcretePredicate::True) => predicate.binding(expression_context),
+                    (_, ConcretePredicate::False) => {
+                        ConcretePredicate::False.binding(expression_context)
+                    }
                     (predicate1, predicate2) => combine(
                         predicate1,
                         predicate2,
@@ -209,17 +209,17 @@ impl<'a> Expression for Predicate<'a, Column<'a>> {
                     ),
                 }
             }
-            Predicate::Or(predicate1, predicate2) => combine(
+            ConcretePredicate::Or(predicate1, predicate2) => combine(
                 predicate1.as_ref(),
                 predicate2.as_ref(),
                 expression_context,
                 |stmt1, stmt2| format!("({stmt1} OR {stmt2})"),
             ),
-            Predicate::Not(predicate) => {
+            ConcretePredicate::Not(predicate) => {
                 let expr = predicate.binding(expression_context);
                 ParameterBinding::new(format!("NOT ({})", expr.stmt), expr.params)
             }
-            Predicate::StringLike(column1, column2, case_sensitivity) => {
+            ConcretePredicate::StringLike(column1, column2, case_sensitivity) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     if *case_sensitivity == CaseSensitivity::Insensitive {
                         format!("{stmt1} ILIKE {stmt2}")
@@ -230,37 +230,37 @@ impl<'a> Expression for Predicate<'a, Column<'a>> {
             }
             // we use the postgres concat operator (||) in order to handle both literals
             // and column references
-            Predicate::StringStartsWith(column1, column2) => {
+            ConcretePredicate::StringStartsWith(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} LIKE {stmt2} || '%'")
                 })
             }
-            Predicate::StringEndsWith(column1, column2) => {
+            ConcretePredicate::StringEndsWith(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} LIKE '%' || {stmt2}")
                 })
             }
-            Predicate::JsonContains(column1, column2) => {
+            ConcretePredicate::JsonContains(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} @> {stmt2}")
                 })
             }
-            Predicate::JsonContainedBy(column1, column2) => {
+            ConcretePredicate::JsonContainedBy(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} <@ {stmt2}")
                 })
             }
-            Predicate::JsonMatchKey(column1, column2) => {
+            ConcretePredicate::JsonMatchKey(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} ? {stmt2}")
                 })
             }
-            Predicate::JsonMatchAnyKey(column1, column2) => {
+            ConcretePredicate::JsonMatchAnyKey(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} ?| {stmt2}")
                 })
             }
-            Predicate::JsonMatchAllKeys(column1, column2) => {
+            ConcretePredicate::JsonMatchAllKeys(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{stmt1} ?& {stmt2}")
                 })
@@ -298,13 +298,19 @@ mod tests {
     fn true_predicate() {
         let mut expression_context = ExpressionContext::default();
 
-        assert_binding!(Predicate::True.binding(&mut expression_context), "true");
+        assert_binding!(
+            ConcretePredicate::True.binding(&mut expression_context),
+            "true"
+        );
     }
 
     #[test]
     fn false_predicate() {
         let mut expression_context = ExpressionContext::default();
-        assert_binding!(Predicate::False.binding(&mut expression_context), "false");
+        assert_binding!(
+            ConcretePredicate::False.binding(&mut expression_context),
+            "false"
+        );
     }
 
     #[test]
@@ -318,7 +324,7 @@ mod tests {
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(SQLParamContainer::new(5));
 
-        let predicate = Predicate::Eq(MaybeOwned::Owned(age_col), MaybeOwned::Owned(age_value_col));
+        let predicate = Predicate::Eq(age_col, age_value_col);
 
         let mut expression_context = ExpressionContext::default();
         assert_binding!(
@@ -348,10 +354,10 @@ mod tests {
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(SQLParamContainer::new(5));
 
-        let name_predicate = Predicate::Eq(name_col.into(), name_value_col.into());
-        let age_predicate = Predicate::Eq(age_col.into(), age_value_col.into());
+        let name_predicate = ConcretePredicate::Eq(name_col, name_value_col);
+        let age_predicate = ConcretePredicate::Eq(age_col, age_value_col);
 
-        let predicate = Predicate::And(Box::new(name_predicate), Box::new(age_predicate));
+        let predicate = ConcretePredicate::And(Box::new(name_predicate), Box::new(age_predicate));
 
         let mut expression_context = ExpressionContext::default();
         assert_binding!(
@@ -372,11 +378,9 @@ mod tests {
             ..Default::default()
         };
 
-        fn title_test_data(
-            title_physical_col: &PhysicalColumn,
-        ) -> (MaybeOwned<'_, Column<'_>>, MaybeOwned<'_, Column<'_>>) {
-            let title_col = Column::Physical(title_physical_col).into();
-            let title_value_col = Column::Literal(SQLParamContainer::new("utawaku")).into();
+        fn title_test_data(title_physical_col: &PhysicalColumn) -> (Column<'_>, Column<'_>) {
+            let title_col = Column::Physical(title_physical_col);
+            let title_value_col = Column::Literal(SQLParamContainer::new("utawaku"));
 
             (title_col, title_value_col)
         }
@@ -385,7 +389,7 @@ mod tests {
         let (title_col, title_value_col) = title_test_data(&title_physical_col);
         let mut expression_context = ExpressionContext::default();
         let like_predicate =
-            Predicate::StringLike(title_col, title_value_col, CaseSensitivity::Sensitive);
+            ConcretePredicate::StringLike(title_col, title_value_col, CaseSensitivity::Sensitive);
         assert_binding!(
             like_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE $1"#,
@@ -396,7 +400,7 @@ mod tests {
         let (title_col, title_value_col) = title_test_data(&title_physical_col);
         let mut expression_context = ExpressionContext::default();
         let ilike_predicate =
-            Predicate::StringLike(title_col, title_value_col, CaseSensitivity::Insensitive);
+            ConcretePredicate::StringLike(title_col, title_value_col, CaseSensitivity::Insensitive);
         assert_binding!(
             ilike_predicate.binding(&mut expression_context),
             r#""videos"."title" ILIKE $1"#,
@@ -406,7 +410,7 @@ mod tests {
         // startsWith
         let (title_col, title_value_col) = title_test_data(&title_physical_col);
         let mut expression_context = ExpressionContext::default();
-        let starts_with_predicate = Predicate::StringStartsWith(title_col, title_value_col);
+        let starts_with_predicate = ConcretePredicate::StringStartsWith(title_col, title_value_col);
         assert_binding!(
             starts_with_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE $1 || '%'"#,
@@ -416,7 +420,7 @@ mod tests {
         // endsWith
         let (title_col, title_value_col) = title_test_data(&title_physical_col);
         let mut expression_context = ExpressionContext::default();
-        let ends_with_predicate = Predicate::StringEndsWith(title_col, title_value_col);
+        let ends_with_predicate = ConcretePredicate::StringEndsWith(title_col, title_value_col);
         assert_binding!(
             ends_with_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE '%' || $1"#,
@@ -437,12 +441,8 @@ mod tests {
 
         fn json_test_data(
             json_physical_col: &PhysicalColumn,
-        ) -> (
-            MaybeOwned<'_, Column<'_>>,
-            Arc<serde_json::Value>,
-            MaybeOwned<'_, Column<'_>>,
-        ) {
-            let json_col = Column::Physical(json_physical_col).into();
+        ) -> (Column<'_>, Arc<serde_json::Value>, Column<'_>) {
+            let json_col = Column::Physical(json_physical_col);
 
             let json_value: serde_json::Value = serde_json::from_str(
                 r#"
@@ -454,7 +454,7 @@ mod tests {
                 "#,
             )
             .unwrap();
-            let json_value_col = Column::Literal(SQLParamContainer::new(json_value.clone())).into();
+            let json_value_col = Column::Literal(SQLParamContainer::new(json_value.clone()));
 
             (json_col, Arc::new(json_value), json_value_col)
         }
@@ -468,7 +468,7 @@ mod tests {
         // contains
         let (json_col, json_value, json_value_col) = json_test_data(&json_physical_col);
         let mut expression_context = ExpressionContext::default();
-        let contains_predicate = Predicate::JsonContains(json_col, json_value_col);
+        let contains_predicate = ConcretePredicate::JsonContains(json_col, json_value_col);
         assert_binding!(
             contains_predicate.binding(&mut expression_context),
             r#""card"."data" @> $1"#,
@@ -478,7 +478,7 @@ mod tests {
         // containedBy
         let (json_col, json_value, json_value_col) = json_test_data(&json_physical_col);
         let mut expression_context = ExpressionContext::default();
-        let contained_by_predicate = Predicate::JsonContainedBy(json_col, json_value_col);
+        let contained_by_predicate = ConcretePredicate::JsonContainedBy(json_col, json_value_col);
         assert_binding!(
             contained_by_predicate.binding(&mut expression_context),
             r#""card"."data" <@ $1"#,
@@ -490,7 +490,7 @@ mod tests {
 
         let (json_col, _, _) = json_test_data(&json_physical_col);
         let mut expression_context = ExpressionContext::default();
-        let match_key_predicate = Predicate::JsonMatchKey(json_col, json_key_col.into());
+        let match_key_predicate = ConcretePredicate::JsonMatchKey(json_col, json_key_col);
         assert_binding!(
             match_key_predicate.binding(&mut expression_context),
             r#""card"."data" ? $1"#,
@@ -501,7 +501,7 @@ mod tests {
         let (json_col, _, _) = json_test_data(&json_physical_col);
         let mut expression_context = ExpressionContext::default();
         let match_any_key_predicate =
-            Predicate::JsonMatchAnyKey(json_col, json_key_list_col.into());
+            ConcretePredicate::JsonMatchAnyKey(json_col, json_key_list_col);
         assert_binding!(
             match_any_key_predicate.binding(&mut expression_context),
             r#""card"."data" ?| $1"#,
@@ -514,7 +514,7 @@ mod tests {
         let (json_col, _, _) = json_test_data(&json_physical_col);
         let mut expression_context = ExpressionContext::default();
         let match_all_keys_predicate =
-            Predicate::JsonMatchAllKeys(json_col, json_key_list_col.into());
+            ConcretePredicate::JsonMatchAllKeys(json_col, json_key_list_col);
         assert_binding!(
             match_all_keys_predicate.binding(&mut expression_context),
             r#""card"."data" ?& $1"#,

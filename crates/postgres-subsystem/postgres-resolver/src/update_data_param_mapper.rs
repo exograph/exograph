@@ -4,7 +4,7 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use payas_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
     ColumnPathLink, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
-    NestedElementRelation, PhysicalColumn, PhysicalColumnType, Predicate, Selection,
+    NestedElementRelation, PhysicalColumn, PhysicalColumnType, Selection,
 };
 use postgres_model::{
     mutation::DataParameter,
@@ -251,9 +251,8 @@ fn compute_nested_update_object_arg<'a>(
                     ColumnPath::Physical(vec![ColumnPathLink {
                         self_column: (pk_col, table),
                         linked_column: None,
-                    }])
-                    .into(),
-                    value.into(),
+                    }]),
+                    value,
                 ),
             )
         });
@@ -270,7 +269,7 @@ fn compute_nested_update_object_arg<'a>(
             selection: AbstractSelect {
                 table,
                 selection: Selection::Seq(vec![]),
-                predicate: Predicate::True,
+                predicate: AbstractPredicate::True,
                 order_by: None,
                 offset: None,
                 limit: None,
@@ -315,7 +314,7 @@ fn compute_nested_inserts<'a>(
                 selection: AbstractSelect {
                     table,
                     selection: Selection::Seq(vec![]),
-                    predicate: Predicate::True,
+                    predicate: AbstractPredicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -422,9 +421,8 @@ fn compute_nested_delete_object_arg<'a>(
                     ColumnPath::Physical(vec![ColumnPathLink {
                         self_column: (pk_col, table),
                         linked_column: None,
-                    }])
-                    .into(),
-                    value.into(),
+                    }]),
+                    value,
                 ),
             )
         });
@@ -440,7 +438,7 @@ fn compute_nested_delete_object_arg<'a>(
             selection: AbstractSelect {
                 table,
                 selection: Selection::Seq(vec![]),
-                predicate: Predicate::True,
+                predicate: AbstractPredicate::True,
                 order_by: None,
                 offset: None,
                 limit: None,

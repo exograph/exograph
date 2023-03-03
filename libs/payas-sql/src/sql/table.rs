@@ -1,7 +1,7 @@
 use crate::{Limit, Offset, PhysicalTable};
 
 use super::{
-    column::Column, group_by::GroupBy, join::Join, order::OrderBy, predicate::Predicate,
+    column::Column, group_by::GroupBy, join::Join, order::OrderBy, predicate::ConcretePredicate,
     select::Select, Expression, ExpressionContext, ParameterBinding,
 };
 use maybe_owned::MaybeOwned;
@@ -25,7 +25,7 @@ impl<'a> TableQuery<'a> {
         top_level_selection: bool,
     ) -> Select<'a>
     where
-        P: Into<MaybeOwned<'a, Predicate<'a>>>,
+        P: Into<MaybeOwned<'a, ConcretePredicate<'a>>>,
     {
         Select {
             underlying: self,
@@ -42,7 +42,7 @@ impl<'a> TableQuery<'a> {
     pub fn join(
         self,
         other_table: TableQuery<'a>,
-        predicate: MaybeOwned<'a, Predicate<'a>>,
+        predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
     ) -> TableQuery<'a> {
         TableQuery::Join(Join::new(self, other_table, predicate))
     }

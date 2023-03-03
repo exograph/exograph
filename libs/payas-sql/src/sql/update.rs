@@ -4,7 +4,7 @@ use crate::PhysicalTable;
 
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
-    predicate::Predicate,
+    predicate::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
     Expression, ExpressionContext, ParameterBinding, SQLParamContainer,
 };
@@ -12,7 +12,7 @@ use super::{
 #[derive(Debug)]
 pub struct Update<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: MaybeOwned<'a, Predicate<'a>>,
+    pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
     pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)>,
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
@@ -72,7 +72,7 @@ impl<'a> Expression for Update<'a> {
 #[derive(Debug)]
 pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: Predicate<'a>,
+    pub predicate: ConcretePredicate<'a>,
     pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }

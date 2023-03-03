@@ -11,7 +11,7 @@ use crate::{
     sql::{
         column::Column,
         group_by::GroupBy,
-        predicate::Predicate,
+        predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
@@ -32,7 +32,7 @@ impl SelectTransformer for Postgres {
     fn to_select<'a>(
         &self,
         abstract_select: &AbstractSelect<'a>,
-        additional_predicate: Option<Predicate<'a>>,
+        additional_predicate: Option<ConcretePredicate<'a>>,
         group_by: Option<GroupBy<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a> {
@@ -69,9 +69,9 @@ impl SelectTransformer for Postgres {
             SelectionSQL::Seq(elems) => elems.into_iter().map(|elem| elem.into()).collect(),
         };
 
-        let predicate = Predicate::and(
+        let predicate = ConcretePredicate::and(
             self.to_predicate(&abstract_select.predicate),
-            additional_predicate.unwrap_or(Predicate::True),
+            additional_predicate.unwrap_or(ConcretePredicate::True),
         )
         .into();
 
@@ -157,9 +157,9 @@ impl<'a> SelectionElement<'a> {
                 Column::SelectionTableWrapper(Box::new(database_kind.to_select(
                     select,
                     relation.linked_column.map(|linked_column| {
-                        Predicate::Eq(
-                            Column::Physical(relation.self_column.0).into(),
-                            Column::Physical(linked_column.0).into(),
+                        ConcretePredicate::Eq(
+                            Column::Physical(relation.self_column.0),
+                            Column::Physical(linked_column.0),
                         )
                     }),
                     None,
@@ -179,9 +179,9 @@ mod tests {
             select::SelectionLevel,
             selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
-        sql::{ExpressionContext, SQLParamContainer},
+        sql::{predicate::Predicate, ExpressionContext, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
-        AbstractOrderBy, Ordering, Predicate,
+        AbstractOrderBy, Ordering,
     };
 
     use super::AbstractSelect;
@@ -228,7 +228,7 @@ mod tests {
                     linked_column: None,
                 }]);
                 let literal = ColumnPath::Literal(SQLParamContainer::new(5));
-                let predicate = AbstractPredicate::Eq(concert_id_path.into(), literal.into());
+                let predicate = AbstractPredicate::Eq(concert_id_path, literal);
 
                 let aselect = AbstractSelect {
                     table: concerts_table,
@@ -445,9 +445,8 @@ mod tests {
                             self_column: (venues_name_column, venues_table),
                             linked_column: None,
                         },
-                    ])
-                    .into(),
-                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
+                    ]),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())),
                 );
                 let aselect = AbstractSelect {
                     table: concerts_table,
