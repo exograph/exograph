@@ -14,23 +14,20 @@ pub enum TableQuery<'a> {
 
 impl<'a> TableQuery<'a> {
     #[allow(clippy::too_many_arguments)]
-    pub fn select<P>(
+    pub fn select(
         self,
         columns: Vec<Column<'a>>,
-        predicate: P,
+        predicate: ConcretePredicate<'a>,
         order_by: Option<OrderBy<'a>>,
         offset: Option<Offset>,
         limit: Option<Limit>,
         group_by: Option<GroupBy<'a>>,
         top_level_selection: bool,
-    ) -> Select<'a>
-    where
-        P: Into<MaybeOwned<'a, ConcretePredicate<'a>>>,
-    {
+    ) -> Select<'a> {
         Select {
             underlying: self,
             columns,
-            predicate: predicate.into(),
+            predicate,
             order_by,
             offset,
             limit,

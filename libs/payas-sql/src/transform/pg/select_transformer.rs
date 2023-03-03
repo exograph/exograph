@@ -72,8 +72,7 @@ impl SelectTransformer for Postgres {
         let predicate = ConcretePredicate::and(
             self.to_predicate(&abstract_select.predicate),
             additional_predicate.unwrap_or(ConcretePredicate::True),
-        )
-        .into();
+        );
 
         Select {
             underlying: join,

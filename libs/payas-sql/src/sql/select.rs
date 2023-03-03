@@ -1,5 +1,3 @@
-use maybe_owned::MaybeOwned;
-
 use crate::{Limit, Offset};
 
 use super::{
@@ -11,7 +9,7 @@ use super::{
 pub struct Select<'a> {
     pub underlying: TableQuery<'a>,
     pub columns: Vec<Column<'a>>,
-    pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
+    pub predicate: ConcretePredicate<'a>,
     pub order_by: Option<OrderBy<'a>>,
     pub offset: Option<Offset>,
     pub limit: Option<Limit>,
@@ -46,7 +44,7 @@ impl<'a> Expression for Select<'a> {
         let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
         params.extend(table_binding.params);
 
-        let predicate_part = match self.predicate.as_ref() {
+        let predicate_part = match &self.predicate {
             // Avoid correct, but inelegant "where true" clause
             ConcretePredicate::True => "".to_string(),
             predicate => {
