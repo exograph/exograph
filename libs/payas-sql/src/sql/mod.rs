@@ -23,6 +23,7 @@ pub(crate) mod select;
 pub(crate) mod sql_operation;
 
 pub mod array_util;
+pub(crate) mod group_by;
 mod join;
 pub(crate) mod limit;
 pub(crate) mod offset;

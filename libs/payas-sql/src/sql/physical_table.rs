@@ -2,7 +2,7 @@ use super::{
     column::{Column, PhysicalColumn},
     delete::Delete,
     insert::Insert,
-    predicate::Predicate,
+    predicate::ConcretePredicate,
     update::Update,
     Expression, ExpressionContext, ParameterBinding,
 };
@@ -64,7 +64,7 @@ impl PhysicalTable {
 
     pub fn delete<'a>(
         &'a self,
-        predicate: MaybeOwned<'a, Predicate<'a>>,
+        predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
         returning: Vec<MaybeOwned<'a, Column<'a>>>,
     ) -> Delete {
         Delete {
@@ -77,7 +77,7 @@ impl PhysicalTable {
     pub fn update<'a, C>(
         &'a self,
         column_values: Vec<(&'a PhysicalColumn, C)>,
-        predicate: MaybeOwned<'a, Predicate<'a>>,
+        predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
         returning: Vec<MaybeOwned<'a, Column<'a>>>,
     ) -> Update
     where

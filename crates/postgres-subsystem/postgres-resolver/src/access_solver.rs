@@ -16,7 +16,6 @@ use core_plugin_interface::{
         context_extractor::ContextExtractor, request_context::RequestContext,
     },
 };
-use maybe_owned::MaybeOwned;
 use payas_sql::{AbstractPredicate, ColumnPath, SQLParamContainer};
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression, column_path::ColumnIdPath,
@@ -97,10 +96,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         let left = reduce_primitive_expression(self, request_context, left).await;
         let right = reduce_primitive_expression(self, request_context, right).await;
 
-        type ColumnPredicateFn<'a> = fn(
-            MaybeOwned<'a, ColumnPath<'a>>,
-            MaybeOwned<'a, ColumnPath<'a>>,
-        ) -> AbstractPredicate<'a>;
+        type ColumnPredicateFn<'a> = fn(ColumnPath<'a>, ColumnPath<'a>) -> AbstractPredicate<'a>;
         type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
 
         let helper = |unresolved_context_predicate: AbstractPredicate<'a>,
@@ -117,8 +113,8 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     SolvedPrimitiveExpression::Column(left_col),
                     SolvedPrimitiveExpression::Column(right_col),
                 ) => column_predicate(
-                    to_column_path(&left_col, self).into(),
-                    to_column_path(&right_col, self).into(),
+                    to_column_path(&left_col, self),
+                    to_column_path(&right_col, self),
                 ),
 
                 (
@@ -132,12 +128,12 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 (
                     SolvedPrimitiveExpression::Value(value),
                     SolvedPrimitiveExpression::Column(column),
-                ) => column_predicate(literal_column(value), to_column_path(&column, self).into()),
+                ) => column_predicate(literal_column(value), to_column_path(&column, self)),
 
                 (
                     SolvedPrimitiveExpression::Column(column),
                     SolvedPrimitiveExpression::Value(value),
-                ) => column_predicate(to_column_path(&column, self).into(), literal_column(value)),
+                ) => column_predicate(to_column_path(&column, self), literal_column(value)),
             }
         };
 
@@ -193,7 +189,7 @@ fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a PostgresSubsystem) -
 }
 
 /// Converts a value to a literal column path
-fn literal_column(value: Value) -> MaybeOwned<'static, ColumnPath<'static>> {
+fn literal_column(value: Value) -> ColumnPath<'static> {
     match value {
         Value::Null => ColumnPath::Null,
         Value::Bool(v) => ColumnPath::Literal(SQLParamContainer::new(v)),
@@ -202,7 +198,6 @@ fn literal_column(value: Value) -> MaybeOwned<'static, ColumnPath<'static>> {
         Value::Array(values) => ColumnPath::Literal(SQLParamContainer::new(values)),
         Value::Object(_) => todo!(),
     }
-    .into()
 }
 
 #[cfg(test)]
@@ -246,20 +241,20 @@ mod tests {
     const REQUEST: TestRequest = TestRequest {};
 
     impl TestSystem {
-        fn published_column(&self) -> MaybeOwned<ColumnPath> {
-            super::to_column_path(&self.published_column_path, &self.system).into()
+        fn published_column(&self) -> ColumnPath {
+            super::to_column_path(&self.published_column_path, &self.system)
         }
 
-        fn owner_id_column(&self) -> MaybeOwned<ColumnPath> {
-            super::to_column_path(&self.owner_id_column_path, &self.system).into()
+        fn owner_id_column(&self) -> ColumnPath {
+            super::to_column_path(&self.owner_id_column_path, &self.system)
         }
 
-        fn dept1_id_column(&self) -> MaybeOwned<ColumnPath> {
-            super::to_column_path(&self.dept1_id_column_path, &self.system).into()
+        fn dept1_id_column(&self) -> ColumnPath {
+            super::to_column_path(&self.dept1_id_column_path, &self.system)
         }
 
-        fn dept2_id_column(&self) -> MaybeOwned<ColumnPath> {
-            super::to_column_path(&self.dept2_id_column_path, &self.system).into()
+        fn dept2_id_column(&self) -> ColumnPath {
+            super::to_column_path(&self.dept2_id_column_path, &self.system)
         }
     }
 
@@ -403,8 +398,7 @@ mod tests {
         subsystem.solve(request_context, expr).await.0
     }
 
-    type CompareFn<'a> =
-        fn(MaybeOwned<'a, ColumnPath<'a>>, MaybeOwned<'a, ColumnPath<'a>>) -> AbstractPredicate<'a>;
+    type CompareFn<'a> = fn(ColumnPath<'a>, ColumnPath<'a>) -> AbstractPredicate<'a>;
 
     async fn test_relational_op<'a>(
         test_system: &'a TestSystem,
@@ -453,8 +447,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_match_predicate(
-                    ColumnPath::Literal(SQLParamContainer::new("token_value".to_string())).into(),
-                    ColumnPath::Literal(SQLParamContainer::new("token_value".to_string())).into(),
+                    ColumnPath::Literal(SQLParamContainer::new("token_value".to_string())),
+                    ColumnPath::Literal(SQLParamContainer::new("token_value".to_string())),
                 )
             );
 
@@ -470,8 +464,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_mismatch_predicate(
-                    ColumnPath::Literal(SQLParamContainer::new("token_value1".to_string())).into(),
-                    ColumnPath::Literal(SQLParamContainer::new("token_value2".to_string())).into(),
+                    ColumnPath::Literal(SQLParamContainer::new("token_value1".to_string())),
+                    ColumnPath::Literal(SQLParamContainer::new("token_value2".to_string())),
                 )
             );
         }
@@ -492,7 +486,7 @@ mod tests {
                     &test_ae,
                     &context,
                     context_value_predicate(
-                        ColumnPath::Literal(SQLParamContainer::new("u1".to_string())).into(),
+                        ColumnPath::Literal(SQLParamContainer::new("u1".to_string())),
                         test_system.owner_id_column(),
                     )
                 );
@@ -513,7 +507,7 @@ mod tests {
                     &context,
                     context_value_predicate(
                         test_system.owner_id_column(),
-                        ColumnPath::Literal(SQLParamContainer::new("u1".to_string())).into(),
+                        ColumnPath::Literal(SQLParamContainer::new("u1".to_string())),
                     )
                 );
                 // No user_id, so we can definitely declare it Predicate::False
@@ -752,7 +746,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
                         test_system.dept1_id_column(),
-                        ColumnPath::Literal(SQLParamContainer::new(true)).into()
+                        ColumnPath::Literal(SQLParamContainer::new(true))
                     ))
                 );
 
@@ -767,7 +761,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
                         test_system.dept1_id_column(),
-                        ColumnPath::Literal(SQLParamContainer::new(true)).into()
+                        ColumnPath::Literal(SQLParamContainer::new(true))
                     ))
                 );
             }
@@ -787,11 +781,11 @@ mod tests {
                 both_columns(
                     Box::new(AbstractPredicate::Eq(
                         test_system.dept1_id_column(),
-                        ColumnPath::Literal(SQLParamContainer::new(true)).into()
+                        ColumnPath::Literal(SQLParamContainer::new(true))
                     )),
                     Box::new(AbstractPredicate::Eq(
                         test_system.dept2_id_column(),
-                        ColumnPath::Literal(SQLParamContainer::new(true)).into()
+                        ColumnPath::Literal(SQLParamContainer::new(true))
                     ))
                 )
             );
@@ -892,7 +886,7 @@ mod tests {
                 solved_predicate,
                 AbstractPredicate::Neq(
                     test_system.dept1_id_column(),
-                    ColumnPath::Literal(SQLParamContainer::new(true)).into()
+                    ColumnPath::Literal(SQLParamContainer::new(true))
                 )
             );
         }
@@ -961,7 +955,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Literal(SQLParamContainer::new(true)).into()
+                ColumnPath::Literal(SQLParamContainer::new(true))
             )
         );
     }
@@ -990,7 +984,7 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                ColumnPath::Literal(SQLParamContainer::new("1".to_string())).into(),
+                ColumnPath::Literal(SQLParamContainer::new("1".to_string())),
                 test_system.owner_id_column(),
             )
         );
@@ -1000,7 +994,7 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                ColumnPath::Literal(SQLParamContainer::new("2".to_string())).into(),
+                ColumnPath::Literal(SQLParamContainer::new("2".to_string())),
                 test_system.owner_id_column(),
             )
         );
@@ -1063,7 +1057,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Literal(SQLParamContainer::new(true)).into(),
+                ColumnPath::Literal(SQLParamContainer::new(true)),
             )
         );
 
@@ -1125,7 +1119,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Literal(SQLParamContainer::new(true)).into()
+                ColumnPath::Literal(SQLParamContainer::new(true))
             )
         );
     }

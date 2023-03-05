@@ -10,7 +10,8 @@ use crate::{
     },
     sql::{
         column::Column,
-        predicate::Predicate,
+        group_by::GroupBy,
+        predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
@@ -31,7 +32,8 @@ impl SelectTransformer for Postgres {
     fn to_select<'a>(
         &self,
         abstract_select: &AbstractSelect<'a>,
-        additional_predicate: Option<Predicate<'a>>,
+        additional_predicate: Option<ConcretePredicate<'a>>,
+        group_by: Option<GroupBy<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a> {
         fn column_path_owned<'a>(
@@ -63,15 +65,14 @@ impl SelectTransformer for Postgres {
         let join = join_util::compute_join(abstract_select.table, columns_paths);
 
         let columns = match abstract_select.selection.to_sql(self) {
-            SelectionSQL::Single(elem) => vec![elem.into()],
-            SelectionSQL::Seq(elems) => elems.into_iter().map(|elem| elem.into()).collect(),
+            SelectionSQL::Single(elem) => vec![elem],
+            SelectionSQL::Seq(elems) => elems,
         };
 
-        let predicate = Predicate::and(
+        let predicate = ConcretePredicate::and(
             self.to_predicate(&abstract_select.predicate),
-            additional_predicate.unwrap_or(Predicate::True),
-        )
-        .into();
+            additional_predicate.unwrap_or(ConcretePredicate::True),
+        );
 
         Select {
             underlying: join,
@@ -80,6 +81,7 @@ impl SelectTransformer for Postgres {
             order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
             offset: abstract_select.offset.clone(),
             limit: abstract_select.limit.clone(),
+            group_by,
             top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
         }
     }
@@ -88,7 +90,7 @@ impl SelectTransformer for Postgres {
         &self,
         abstract_select: &'a AbstractSelect,
     ) -> TransactionScript<'a> {
-        let select = self.to_select(abstract_select, None, SelectionLevel::TopLevel);
+        let select = self.to_select(abstract_select, None, None, SelectionLevel::TopLevel);
         let mut transaction_script = TransactionScript::default();
         transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
             SQLOperation::Select(select),
@@ -114,7 +116,7 @@ impl<'a> Selection<'a> {
                 let object_elems = seq
                     .iter()
                     .map(|ColumnSelection { alias, column }| {
-                        (alias.clone(), column.to_sql(database_kind).into())
+                        (alias.clone(), column.to_sql(database_kind))
                     })
                     .collect();
 
@@ -123,7 +125,7 @@ impl<'a> Selection<'a> {
                 match cardinality {
                     SelectionCardinality::One => SelectionSQL::Single(json_obj),
                     SelectionCardinality::Many => {
-                        SelectionSQL::Single(Column::JsonAgg(Box::new(json_obj.into())))
+                        SelectionSQL::Single(Column::JsonAgg(Box::new(json_obj)))
                     }
                 }
             }
@@ -146,7 +148,7 @@ impl<'a> SelectionElement<'a> {
             SelectionElement::Object(elements) => {
                 let elements = elements
                     .iter()
-                    .map(|(alias, column)| (alias.to_owned(), column.to_sql(database_kind).into()))
+                    .map(|(alias, column)| (alias.to_owned(), column.to_sql(database_kind)))
                     .collect();
                 Column::JsonObject(elements)
             }
@@ -154,11 +156,12 @@ impl<'a> SelectionElement<'a> {
                 Column::SelectionTableWrapper(Box::new(database_kind.to_select(
                     select,
                     relation.linked_column.map(|linked_column| {
-                        Predicate::Eq(
-                            Column::Physical(relation.self_column.0).into(),
-                            Column::Physical(linked_column.0).into(),
+                        ConcretePredicate::Eq(
+                            Column::Physical(relation.self_column.0),
+                            Column::Physical(linked_column.0),
                         )
                     }),
+                    None,
                     SelectionLevel::Nested,
                 )))
             }
@@ -175,9 +178,9 @@ mod tests {
             select::SelectionLevel,
             selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
-        sql::{ExpressionContext, SQLParamContainer},
+        sql::{predicate::Predicate, ExpressionContext, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
-        AbstractOrderBy, Ordering, Predicate,
+        AbstractOrderBy, Ordering,
     };
 
     use super::AbstractSelect;
@@ -203,7 +206,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(binding, r#"select "concerts"."id" from "concerts""#);
@@ -224,7 +227,7 @@ mod tests {
                     linked_column: None,
                 }]);
                 let literal = ColumnPath::Literal(SQLParamContainer::new(5));
-                let predicate = AbstractPredicate::Eq(concert_id_path.into(), literal.into());
+                let predicate = AbstractPredicate::Eq(concert_id_path, literal);
 
                 let aselect = AbstractSelect {
                     table: concerts_table,
@@ -238,7 +241,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -273,7 +276,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -341,7 +344,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -403,7 +406,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -441,9 +444,8 @@ mod tests {
                             self_column: (venues_name_column, venues_table),
                             linked_column: None,
                         },
-                    ])
-                    .into(),
-                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
+                    ]),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())),
                 );
                 let aselect = AbstractSelect {
                     table: concerts_table,
@@ -460,7 +462,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -498,7 +500,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -544,7 +546,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(

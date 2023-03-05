@@ -12,7 +12,7 @@ use crate::{
     sql::{
         column::{Column, PhysicalColumn},
         cte::Cte,
-        predicate::Predicate,
+        predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
         table::TableQuery,
@@ -39,7 +39,7 @@ impl InsertTransformer for Postgres {
             selection,
         } = abstract_insert;
 
-        let select = self.to_select(selection, None, SelectionLevel::TopLevel);
+        let select = self.to_select(selection, None, None, SelectionLevel::TopLevel);
 
         let (self_elems, mut nested_elems): (Vec<_>, Vec<_>) = rows
             .iter()
@@ -96,11 +96,12 @@ impl InsertTransformer for Postgres {
                     column_values_seq.iter_mut().for_each(|value| {
                         let parent_reference = Column::SelectionTableWrapper(Box::new(Select {
                             underlying: TableQuery::Physical(parent_table),
-                            columns: vec![Column::Physical(parent_pk_physical_column).into()],
-                            predicate: Predicate::True.into(),
+                            columns: vec![Column::Physical(parent_pk_physical_column)],
+                            predicate: ConcretePredicate::True,
                             order_by: None,
                             offset: parent_index.map(|index| Offset(index as i64)),
                             limit: parent_index.map(|_| Limit(1)),
+                            group_by: None,
                             top_level_selection: false,
                         }));
 

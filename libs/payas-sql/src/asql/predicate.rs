@@ -2,7 +2,7 @@ use crate::sql::predicate::Predicate;
 
 use super::column_path::ColumnPath;
 
-pub type AbstractPredicate<'a> = Predicate<'a, ColumnPath<'a>>;
+pub type AbstractPredicate<'a> = Predicate<ColumnPath<'a>>;
 
 impl<'a> AbstractPredicate<'a> {
     pub fn column_paths(&self) -> Vec<&ColumnPath<'a>> {
