@@ -1,6 +1,6 @@
 use crate::{
     asql::select::SelectionLevel,
-    sql::{group_by::GroupBy, predicate::ConcretePredicate},
+    sql::predicate::ConcretePredicate,
     transform::transformer::{PredicateTransformer, SelectTransformer},
     AbstractPredicate, AbstractSelect, Column, ColumnPath, ColumnPathLink, ColumnSelection,
     PhysicalColumn, PhysicalTable, Selection, SelectionElement,
@@ -62,13 +62,13 @@ impl PredicateTransformer for Postgres {
         &self,
         predicate: &AbstractPredicate<'a>,
     ) -> ConcretePredicate<'a> {
-        fn binary_operator<'x>(
-            left: &ColumnPath<'x>,
-            right: &ColumnPath<'x>,
-            predicate_op: impl Fn(ColumnPath<'x>, ColumnPath<'x>) -> AbstractPredicate<'x>,
+        fn binary_operator<'p>(
+            left: &ColumnPath<'p>,
+            right: &ColumnPath<'p>,
+            predicate_op: impl Fn(ColumnPath<'p>, ColumnPath<'p>) -> AbstractPredicate<'p>,
             select_transformer: &impl SelectTransformer,
-        ) -> Option<ConcretePredicate<'x>> {
-            match components(left) {
+        ) -> Option<ConcretePredicate<'p>> {
+            match column_path_components(left) {
                 Some((left_column, table, foreign_column, tail_links)) => {
                     let right_abstract_select = AbstractSelect {
                         table,
@@ -88,7 +88,7 @@ impl PredicateTransformer for Postgres {
                     let right_select = select_transformer.to_select(
                         &right_abstract_select,
                         None,
-                        Some(GroupBy(vec![foreign_column])),
+                        None,
                         SelectionLevel::Nested,
                     );
 
@@ -163,7 +163,7 @@ fn leaf_column<'c>(column_path: &ColumnPath<'c>) -> Column<'c> {
     }
 }
 
-fn components<'a, 'p>(
+pub(super) fn column_path_components<'a, 'p>(
     column_path: &'a ColumnPath<'p>,
 ) -> Option<(
     &'p PhysicalColumn,
@@ -312,7 +312,7 @@ mod tests {
                     assert_binding!(
                         binding,
                         format!(
-                            r#""concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" {sql_op} GROUP BY "venues"."id")"#
+                            r#""concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" {sql_op})"#
                         ),
                         "v1".to_string()
                     );

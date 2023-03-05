@@ -14,7 +14,7 @@ response: |
       "data": {
         "updateConcerts": [
           {
-            "id": 1,
+            "id": 3,
             "price": "50.00",
             "venue": {
               "id": 1,
@@ -22,7 +22,7 @@ response: |
             }
           },
           {
-            "id": 3,
+            "id": 1,
             "price": "50.00",
             "venue": {
               "id": 1,

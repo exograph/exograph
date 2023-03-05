@@ -54,6 +54,12 @@ impl<'a> Expression for Select<'a> {
             }
         };
 
+        let group_by_part = self.group_by.as_ref().map(|group_by| {
+            let binding = group_by.binding(expression_context);
+            params.extend(binding.params);
+            format!(" {}", binding.stmt)
+        });
+
         let order_by_part = self.order_by.as_ref().map(|order_by| {
             let binding = order_by.binding(expression_context);
             params.extend(binding.params);
@@ -69,12 +75,6 @@ impl<'a> Expression for Select<'a> {
 
         let offset_part = self.offset.as_ref().map(|offset| {
             let binding = offset.binding(expression_context);
-            params.extend(binding.params);
-            format!(" {}", binding.stmt)
-        });
-
-        let group_by_part = self.group_by.as_ref().map(|group_by| {
-            let binding = group_by.binding(expression_context);
             params.extend(binding.params);
             format!(" {}", binding.stmt)
         });
@@ -102,7 +102,7 @@ impl<'a> Expression for Select<'a> {
         } else {
             format!(
                 "select {cols_stmts} from {table_binding_stmt}{predicate_part}{}",
-                group_by_part.unwrap_or_default()
+                group_by_part.unwrap_or_default(),
             )
         };
 

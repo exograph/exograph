@@ -196,7 +196,7 @@ mod tests {
 
                 assert_binding!(
                     binding,
-                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" = $1 GROUP BY "venues"."id") RETURNING *) select "concerts"."id" from "concerts""#,
+                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" = $1) RETURNING *) select "concerts"."id" from "concerts""#,
                     "v1".to_string()
                 );
             },
