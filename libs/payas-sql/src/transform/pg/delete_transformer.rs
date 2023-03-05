@@ -42,7 +42,12 @@ impl DeleteTransformer for Postgres {
                 .delete(predicate.into(), vec![Column::Star(None).into()]),
         );
 
-        let select = self.to_select(&abstract_delete.selection, None, SelectionLevel::TopLevel);
+        let select = self.to_select(
+            &abstract_delete.selection,
+            None,
+            None,
+            SelectionLevel::TopLevel,
+        );
 
         Cte {
             ctes: vec![(abstract_delete.table.name.clone(), root_delete)],
@@ -55,9 +60,9 @@ impl DeleteTransformer for Postgres {
 mod tests {
     use crate::{
         asql::selection::{ColumnSelection, Selection, SelectionElement},
-        sql::{Expression, ExpressionContext, SQLParamContainer},
+        sql::{predicate::Predicate, Expression, ExpressionContext, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
-        AbstractPredicate, AbstractSelect, ColumnPath, ColumnPathLink, Predicate,
+        AbstractPredicate, AbstractSelect, ColumnPath, ColumnPathLink,
     };
 
     use super::*;
@@ -110,9 +115,8 @@ mod tests {
                     ColumnPath::Physical(vec![ColumnPathLink {
                         self_column: (concerts_name_column, concerts_table),
                         linked_column: None,
-                    }])
-                    .into(),
-                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
+                    }]),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())),
                 );
 
                 let adelete = AbstractDelete {
@@ -166,9 +170,8 @@ mod tests {
                             self_column: (venues_name_column, venues_table),
                             linked_column: None,
                         },
-                    ])
-                    .into(),
-                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())).into(),
+                    ]),
+                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())),
                 );
 
                 let adelete = AbstractDelete {

@@ -1,14 +1,14 @@
 use maybe_owned::MaybeOwned;
 
 use super::{
-    column::Column, physical_table::PhysicalTable, predicate::Predicate, Expression,
+    column::Column, physical_table::PhysicalTable, predicate::ConcretePredicate, Expression,
     ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug)]
 pub struct Delete<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: MaybeOwned<'a, Predicate<'a>>,
+    pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
@@ -51,7 +51,7 @@ impl<'a> Expression for Delete<'a> {
 #[derive(Debug)]
 pub struct TemplateDelete<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: Predicate<'a>,
+    pub predicate: ConcretePredicate<'a>,
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 

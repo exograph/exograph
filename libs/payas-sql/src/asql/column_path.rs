@@ -11,7 +11,7 @@ pub struct ColumnPathLink<'a> {
     pub linked_column: Option<(&'a PhysicalColumn, &'a PhysicalTable)>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ColumnPath<'a> {
     Physical(Vec<ColumnPathLink<'a>>),
     Literal(SQLParamContainer),

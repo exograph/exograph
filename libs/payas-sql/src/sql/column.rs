@@ -294,8 +294,8 @@ impl PhysicalColumnType {
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
     Literal(SQLParamContainer),
-    JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
-    JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
+    JsonObject(Vec<(String, Column<'a>)>),
+    JsonAgg(Box<Column<'a>>),
     SelectionTableWrapper(Box<Select<'a>>),
     // TODO: Generalize the following to return any type of value, not just strings
     Constant(String), // Currently needed to have a query return __typename set to a constant value
@@ -340,7 +340,7 @@ impl<'a> Expression for Column<'a> {
                         let elem_binding = elem.1.binding(expression_context);
                         let mut stmt = elem_binding.stmt;
 
-                        if let Column::Physical(PhysicalColumn { typ, .. }) = &elem.1.as_ref() {
+                        if let Column::Physical(PhysicalColumn { typ, .. }) = &elem.1 {
                             stmt = match &typ {
                                 // encode blob fields in JSON objects as base64
                                 // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode

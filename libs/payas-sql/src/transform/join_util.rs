@@ -1,6 +1,6 @@
 use crate::{
     asql::column_path::ColumnPathLink,
-    sql::{column::Column, predicate::Predicate, table::TableQuery},
+    sql::{column::Column, predicate::ConcretePredicate, table::TableQuery},
     transform::table_dependency::{DependencyLink, TableDependency},
     PhysicalTable,
 };
@@ -13,9 +13,9 @@ pub fn compute_join<'a>(
         dependency.dependencies.into_iter().fold(
             TableQuery::Physical(dependency.table),
             |acc, DependencyLink { link, dependency }| {
-                let join_predicate = Predicate::Eq(
-                    Column::Physical(link.self_column.0).into(),
-                    Column::Physical(link.linked_column.unwrap().0).into(),
+                let join_predicate = ConcretePredicate::Eq(
+                    Column::Physical(link.self_column.0),
+                    Column::Physical(link.linked_column.unwrap().0),
                 );
 
                 let join_table_query = from_dependency(dependency);

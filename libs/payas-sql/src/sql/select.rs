@@ -1,20 +1,19 @@
-use maybe_owned::MaybeOwned;
-
 use crate::{Limit, Offset};
 
 use super::{
-    column::Column, order::OrderBy, predicate::Predicate, table::TableQuery, Expression,
-    ExpressionContext, ParameterBinding,
+    column::Column, group_by::GroupBy, order::OrderBy, predicate::ConcretePredicate,
+    table::TableQuery, Expression, ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug, PartialEq)]
 pub struct Select<'a> {
     pub underlying: TableQuery<'a>,
-    pub columns: Vec<MaybeOwned<'a, Column<'a>>>,
-    pub predicate: MaybeOwned<'a, Predicate<'a>>,
+    pub columns: Vec<Column<'a>>,
+    pub predicate: ConcretePredicate<'a>,
     pub order_by: Option<OrderBy<'a>>,
     pub offset: Option<Offset>,
     pub limit: Option<Limit>,
+    pub group_by: Option<GroupBy<'a>>,
     pub top_level_selection: bool,
 }
 
@@ -27,7 +26,7 @@ impl<'a> Expression for Select<'a> {
             .iter()
             .map(|c| {
                 let col_binding = c.binding(expression_context);
-                let text_cast = match c.as_ref() {
+                let text_cast = match c {
                     Column::JsonObject(_) | Column::JsonAgg(_) if self.top_level_selection => {
                         "::text"
                     }
@@ -45,15 +44,21 @@ impl<'a> Expression for Select<'a> {
         let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
         params.extend(table_binding.params);
 
-        let predicate_part = match self.predicate.as_ref() {
+        let predicate_part = match &self.predicate {
             // Avoid correct, but inelegant "where true" clause
-            Predicate::True => "".to_string(),
+            ConcretePredicate::True => "".to_string(),
             predicate => {
                 let binding = predicate.binding(expression_context);
                 params.extend(binding.params);
                 format!(" WHERE {}", binding.stmt)
             }
         };
+
+        let group_by_part = self.group_by.as_ref().map(|group_by| {
+            let binding = group_by.binding(expression_context);
+            params.extend(binding.params);
+            format!(" {}", binding.stmt)
+        });
 
         let order_by_part = self.order_by.as_ref().map(|order_by| {
             let binding = order_by.binding(expression_context);
@@ -77,11 +82,12 @@ impl<'a> Expression for Select<'a> {
         let table_binding_stmt = table_binding.stmt;
         let stmt = if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
             let conditions = format!(
-                "{}{}{}{}",
+                "{}{}{}{}{}",
                 predicate_part,
+                group_by_part.unwrap_or_default(),
                 order_by_part.unwrap_or_default(),
                 limit_part.unwrap_or_default(),
-                offset_part.unwrap_or_default()
+                offset_part.unwrap_or_default(),
             );
 
             let base_table_stmt = self
@@ -94,7 +100,10 @@ impl<'a> Expression for Select<'a> {
                 "select {cols_stmts} from (select {base_table_stmt}.* from {table_binding_stmt}{conditions}) as {table_binding_stmt}",
             )
         } else {
-            format!("select {cols_stmts} from {table_binding_stmt}{predicate_part}",)
+            format!(
+                "select {cols_stmts} from {table_binding_stmt}{predicate_part}{}",
+                group_by_part.unwrap_or_default(),
+            )
         };
 
         ParameterBinding::new(stmt, params)
@@ -128,10 +137,10 @@ mod tests {
         let age_col = physical_table.get_column("age").unwrap();
         let age_value_col = Column::Literal(SQLParamContainer::new(5));
 
-        let predicate = Predicate::Eq(age_col.into(), age_value_col.into());
+        let predicate = ConcretePredicate::Eq(age_col, age_value_col);
 
         let age_col = physical_table.get_column("age").unwrap();
-        let selected_cols = vec![age_col.into()];
+        let selected_cols = vec![age_col];
 
         let table = TableQuery::Physical(&physical_table);
 
@@ -141,6 +150,7 @@ mod tests {
             None,
             Some(Offset(10)),
             Some(Limit(20)),
+            None,
             false,
         );
 
@@ -181,13 +191,14 @@ mod tests {
 
         let name_col = physical_table.get_column("name").unwrap();
         let json_col = Column::JsonObject(vec![
-            ("namex".to_string(), name_col.into()),
-            ("agex".to_string(), age_col.into()),
+            ("namex".to_string(), name_col),
+            ("agex".to_string(), age_col),
         ]);
         let table = TableQuery::Physical(&physical_table);
         let selected_table = table.select(
-            vec![age_col2.into(), json_col.into()],
-            Predicate::True,
+            vec![age_col2, json_col],
+            ConcretePredicate::True,
+            None,
             None,
             None,
             None,

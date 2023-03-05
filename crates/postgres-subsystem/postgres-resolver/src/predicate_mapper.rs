@@ -33,10 +33,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
                 let (op_key_path, op_value_path) =
                     operands(self.param, argument, self.parent_column_path, subsystem)?;
 
-                Ok(AbstractPredicate::eq(
-                    op_key_path.into(),
-                    op_value_path.into(),
-                ))
+                Ok(AbstractPredicate::eq(op_key_path, op_value_path))
             }
             PredicateParameterTypeKind::Operator(parameters) => {
                 let predicate =
@@ -55,8 +52,8 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
                                     .expect("Could not get operands");
                                     AbstractPredicate::from_name(
                                         &parameter.name,
-                                        op_key_column.into(),
-                                        op_value_column.into(),
+                                        op_key_column,
+                                        op_value_column,
                                     )
                                 }
                                 None => AbstractPredicate::True,

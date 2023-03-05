@@ -42,7 +42,12 @@ impl UpdateTransformer for Postgres {
 
         let predicate = self.to_subselect_predicate(&abstract_update.predicate);
 
-        let select = self.to_select(&abstract_update.selection, None, SelectionLevel::TopLevel);
+        let select = self.to_select(
+            &abstract_update.selection,
+            None,
+            None,
+            SelectionLevel::TopLevel,
+        );
 
         // If there is no nested update, select all the columns, so that the select statement will have all
         // those column (and not have to specify the WHERE clause once again).
@@ -232,9 +237,8 @@ mod tests {
             selection::{ColumnSelection, NestedElementRelation, Selection, SelectionElement},
             update::NestedAbstractUpdate,
         },
-        sql::{column::Column, SQLParamContainer},
+        sql::{column::Column, predicate::Predicate, SQLParamContainer},
         transform::test_util::TestSetup,
-        Predicate,
     };
 
     use super::*;
@@ -253,7 +257,7 @@ mod tests {
                     linked_column: None,
                 }]);
                 let literal = ColumnPath::Literal(SQLParamContainer::new(5));
-                let predicate = AbstractPredicate::eq(venue_id_path.into(), literal.into());
+                let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let abs_update = AbstractUpdate {
                     table: venues_table,
@@ -309,7 +313,7 @@ mod tests {
                     linked_column: None,
                 }]);
                 let literal = ColumnPath::Literal(SQLParamContainer::new(5));
-                let predicate = AbstractPredicate::eq(venue_id_path.into(), literal.into());
+                let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
                     relation: NestedElementRelation {

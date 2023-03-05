@@ -6,8 +6,11 @@ use crate::{
         select::{AbstractSelect, SelectionLevel},
         update::AbstractUpdate,
     },
-    sql::{cte::Cte, select::Select, transaction::TransactionScript},
-    AbstractPredicate, Predicate,
+    sql::{
+        cte::Cte, group_by::GroupBy, predicate::ConcretePredicate, select::Select,
+        transaction::TransactionScript,
+    },
+    AbstractPredicate,
 };
 
 use super::pg::Postgres;
@@ -45,7 +48,8 @@ pub trait SelectTransformer {
     fn to_select<'a>(
         &self,
         abstract_select: &AbstractSelect<'a>,
-        additional_predicate: Option<Predicate<'a>>,
+        additional_predicate: Option<ConcretePredicate<'a>>,
+        group_by: Option<GroupBy<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a>;
 
@@ -79,6 +83,9 @@ pub trait UpdateTransformer {
 }
 
 pub trait PredicateTransformer {
-    fn to_predicate<'a>(&self, predicate: &AbstractPredicate<'a>) -> Predicate<'a>;
-    fn to_subselect_predicate<'a>(&self, predicate: &'a AbstractPredicate<'a>) -> Predicate<'a>;
+    fn to_predicate<'a>(&self, predicate: &AbstractPredicate<'a>) -> ConcretePredicate<'a>;
+    fn to_subselect_predicate<'a>(
+        &self,
+        predicate: &AbstractPredicate<'a>,
+    ) -> ConcretePredicate<'a>;
 }
