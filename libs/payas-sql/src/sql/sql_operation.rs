@@ -6,7 +6,7 @@ use super::{
     select::Select,
     transaction::{TransactionContext, TransactionStepId},
     update::{TemplateUpdate, Update},
-    Expression, ExpressionContext, OperationExpression, ParameterBinding,
+    Expression, OperationExpression, ParameterBinding,
 };
 
 #[derive(Debug)]
@@ -19,13 +19,13 @@ pub enum SQLOperation<'a> {
 }
 
 impl<'a> OperationExpression for SQLOperation<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+    fn binding(&self) -> ParameterBinding {
         match self {
-            SQLOperation::Select(select) => select.binding(expression_context),
-            SQLOperation::Insert(insert) => insert.binding(expression_context),
-            SQLOperation::Delete(delete) => delete.binding(expression_context),
-            SQLOperation::Update(update) => update.binding(expression_context),
-            SQLOperation::Cte(cte) => cte.binding(expression_context),
+            SQLOperation::Select(select) => select.binding(),
+            SQLOperation::Insert(insert) => insert.binding(),
+            SQLOperation::Delete(delete) => delete.binding(),
+            SQLOperation::Update(update) => update.binding(),
+            SQLOperation::Cte(cte) => cte.binding(),
         }
     }
 }

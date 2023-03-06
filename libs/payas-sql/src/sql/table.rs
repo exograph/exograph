@@ -2,7 +2,7 @@ use crate::{Limit, Offset, PhysicalTable};
 
 use super::{
     column::Column, group_by::GroupBy, join::Join, order::OrderBy, predicate::ConcretePredicate,
-    select::Select, Expression, ExpressionContext, ParameterBinding,
+    select::Select, Expression, ParameterBinding,
 };
 use maybe_owned::MaybeOwned;
 
@@ -53,10 +53,10 @@ impl<'a> TableQuery<'a> {
 }
 
 impl<'a> Expression for TableQuery<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+    fn binding(&self) -> ParameterBinding {
         match self {
-            TableQuery::Physical(physical_table) => physical_table.binding(expression_context),
-            TableQuery::Join(join) => join.binding(expression_context),
+            TableQuery::Physical(physical_table) => ParameterBinding::Table(physical_table),
+            TableQuery::Join(join) => join.binding(),
         }
     }
 }

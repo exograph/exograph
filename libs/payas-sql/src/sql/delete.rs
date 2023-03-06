@@ -2,7 +2,7 @@ use maybe_owned::MaybeOwned;
 
 use super::{
     column::Column, physical_table::PhysicalTable, predicate::ConcretePredicate, Expression,
-    ExpressionContext, ParameterBinding,
+    ParameterBinding,
 };
 
 #[derive(Debug)]
@@ -13,37 +13,19 @@ pub struct Delete<'a> {
 }
 
 impl<'a> Expression for Delete<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let table_binding = self.table.binding(expression_context);
+    fn binding(&self) -> ParameterBinding {
+        let table_binding = ParameterBinding::Table(self.table);
 
-        let predicate_binding = self.predicate.binding(expression_context);
-
-        let (stmt, mut params) = {
-            let mut params = table_binding.params;
-            params.extend(predicate_binding.params);
-
-            (
-                format!(
-                    "DELETE FROM {} WHERE {}",
-                    table_binding.stmt, predicate_binding.stmt
-                ),
-                params,
-            )
+        let predicate_binding = if self.predicate.as_ref() != &ConcretePredicate::True {
+            Some(Box::new(self.predicate.binding()))
+        } else {
+            None
         };
 
-        if self.returning.is_empty() {
-            ParameterBinding { stmt, params }
-        } else {
-            let (ret_stmts, ret_params): (Vec<_>, Vec<_>) = self
-                .returning
-                .iter()
-                .map(|ret| ret.binding(expression_context).tupled())
-                .unzip();
-
-            let stmt = format!("{} RETURNING {}", stmt, ret_stmts.join(", "));
-            params.extend(ret_params.into_iter().flatten());
-
-            ParameterBinding { stmt, params }
+        ParameterBinding::Delete {
+            table: Box::new(table_binding),
+            predicate: predicate_binding,
+            returning: self.returning.iter().map(|ret| ret.binding()).collect(),
         }
     }
 }

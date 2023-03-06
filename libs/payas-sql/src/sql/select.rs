@@ -2,7 +2,7 @@ use crate::{Limit, Offset};
 
 use super::{
     column::Column, group_by::GroupBy, order::OrderBy, predicate::ConcretePredicate,
-    table::TableQuery, Expression, ExpressionContext, ParameterBinding,
+    table::TableQuery, Expression, ParameterBinding,
 };
 
 #[derive(Debug, PartialEq)]
@@ -18,95 +18,93 @@ pub struct Select<'a> {
 }
 
 impl<'a> Expression for Select<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let table_binding = self.underlying.binding(expression_context);
+    fn binding(&self) -> ParameterBinding {
+        let table_binding = self.underlying.binding();
 
-        let (col_stmtss, col_paramss): (Vec<_>, Vec<_>) = self
+        let col_stmts: Vec<_> = self
             .columns
             .iter()
             .map(|c| {
-                let col_binding = c.binding(expression_context);
-                let text_cast = match c {
+                let col_binding = c.binding();
+                match c {
                     Column::JsonObject(_) | Column::JsonAgg(_) if self.top_level_selection => {
-                        "::text"
+                        ParameterBinding::Cast(Box::new(col_binding), "text")
                     }
-                    _ => "",
-                };
-                (
-                    format!("{}{}", col_binding.stmt, text_cast),
-                    col_binding.params,
-                )
+                    _ => col_binding,
+                }
             })
-            .unzip();
-
-        let cols_stmts: String = col_stmtss.join(", ");
-
-        let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
-        params.extend(table_binding.params);
+            .collect();
 
         let predicate_part = match &self.predicate {
             // Avoid correct, but inelegant "where true" clause
-            ConcretePredicate::True => "".to_string(),
-            predicate => {
-                let binding = predicate.binding(expression_context);
-                params.extend(binding.params);
-                format!(" WHERE {}", binding.stmt)
+            ConcretePredicate::True => None,
+            predicate => Some(Box::new(ParameterBinding::Predicate(Box::new(
+                predicate.binding(),
+            )))),
+        };
+
+        let group_by_part = self
+            .group_by
+            .as_ref()
+            .map(|group_by| Box::new(group_by.binding()));
+
+        let order_by_part = self
+            .order_by
+            .as_ref()
+            .map(|order_by| Box::new(order_by.binding()));
+
+        let limit_part = self.limit.as_ref().map(|limit| Box::new(limit.binding()));
+
+        let offset_part = self
+            .offset
+            .as_ref()
+            .map(|offset| Box::new(offset.binding()));
+
+        if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
+            let inner_select = ParameterBinding::Select {
+                columns: vec![ParameterBinding::Star(Some(
+                    &self.underlying.base_table().name,
+                ))],
+                from: Box::new(table_binding),
+                predicate: predicate_part,
+                group_by: group_by_part,
+                order_by: order_by_part,
+                limit: limit_part,
+                offset: offset_part,
+                alias: None,
+                nested: true,
+            };
+
+            ParameterBinding::Select {
+                columns: col_stmts,
+                from: Box::new(inner_select),
+                predicate: None,
+                group_by: None,
+                order_by: None,
+                limit: None,
+                offset: None,
+                alias: Some(self.underlying.base_table().name.clone()),
+                nested: false,
             }
-        };
-
-        let group_by_part = self.group_by.as_ref().map(|group_by| {
-            let binding = group_by.binding(expression_context);
-            params.extend(binding.params);
-            format!(" {}", binding.stmt)
-        });
-
-        let order_by_part = self.order_by.as_ref().map(|order_by| {
-            let binding = order_by.binding(expression_context);
-            params.extend(binding.params);
-
-            format!(" {}", binding.stmt)
-        });
-
-        let limit_part = self.limit.as_ref().map(|limit| {
-            let binding = limit.binding(expression_context);
-            params.extend(binding.params);
-            format!(" {}", binding.stmt)
-        });
-
-        let offset_part = self.offset.as_ref().map(|offset| {
-            let binding = offset.binding(expression_context);
-            params.extend(binding.params);
-            format!(" {}", binding.stmt)
-        });
-
-        let table_binding_stmt = table_binding.stmt;
-        let stmt = if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
-            let conditions = format!(
-                "{}{}{}{}{}",
-                predicate_part,
-                group_by_part.unwrap_or_default(),
-                order_by_part.unwrap_or_default(),
-                limit_part.unwrap_or_default(),
-                offset_part.unwrap_or_default(),
-            );
-
-            let base_table_stmt = self
-                .underlying
-                .base_table()
-                .binding(expression_context)
-                .stmt;
-            // If we just "select *", we may get duplicated columns from a join statement, so we only pick the columns of the base table (left-most table in the join)
-            format!(
-                "select {cols_stmts} from (select {base_table_stmt}.* from {table_binding_stmt}{conditions}) as {table_binding_stmt}",
-            )
+            // let base_table_stmt = self.underlying.base_table().binding().stmt;
+            // // If we just "select *", we may get duplicated columns from a join statement, so we only pick the columns of the base table (left-most table in the join)
+            // format!(
+            //     "select {cols_stmts} from (select {base_table_stmt}.* from {table_binding_stmt}{conditions}) as {table_binding_stmt}",
+            // )
+            // todo!("Select::binding")
         } else {
-            format!(
-                "select {cols_stmts} from {table_binding_stmt}{predicate_part}{}",
-                group_by_part.unwrap_or_default(),
-            )
-        };
-
-        ParameterBinding::new(stmt, params)
+            ParameterBinding::Select {
+                columns: col_stmts,
+                from: Box::new(table_binding),
+                predicate: predicate_part,
+                group_by: group_by_part,
+                order_by: None,
+                limit: None,
+                offset: None,
+                alias: None,
+                nested: false,
+            }
+        }
     }
 }
 
@@ -154,12 +152,11 @@ mod tests {
             false,
         );
 
-        let mut expression_context = ExpressionContext::default();
-        let binding = predicated_table.binding(&mut expression_context);
+        let binding = predicated_table.binding();
 
         assert_binding!(
             binding,
-            r#"select "people"."age" from (select "people".* from "people" WHERE "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
+            r#"SELECT "people"."age" FROM (SELECT "people".* FROM "people" WHERE "people"."age" = $1 LIMIT $2 OFFSET $3) AS "people""#,
             5,
             20i64,
             10i64
@@ -205,10 +202,9 @@ mod tests {
             true,
         );
 
-        let mut expression_context = ExpressionContext::default();
         assert_binding!(
-            selected_table.binding(&mut expression_context),
-            r#"select "people"."age", json_build_object('namex', "people"."name", 'agex', "people"."age")::text from "people""#
+            selected_table.binding(),
+            r#"SELECT "people"."age", json_build_object('namex', "people"."name", 'agex', "people"."age")::text FROM "people""#
         );
     }
 }

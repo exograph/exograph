@@ -10,7 +10,7 @@ use crate::{
     },
     sql::{
         column::{Column, PhysicalColumn, ProxyColumn},
-        cte::Cte,
+        cte::{Cte, CteExpression},
         delete::TemplateDelete,
         insert::TemplateInsert,
         sql_operation::{SQLOperation, TemplateSQLOperation},
@@ -122,7 +122,10 @@ impl UpdateTransformer for Postgres {
         } else {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::Cte(Cte {
-                    ctes: vec![(abstract_update.table.name.clone(), root_update)],
+                    expressions: vec![CteExpression {
+                        name: abstract_update.table.name.clone(),
+                        operation: root_update,
+                    }],
                     select,
                 }),
             )));

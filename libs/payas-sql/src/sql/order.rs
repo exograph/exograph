@@ -9,27 +9,14 @@ pub enum Ordering {
 pub struct OrderBy<'a>(pub Vec<(&'a PhysicalColumn, Ordering)>);
 
 impl<'a> Expression for OrderBy<'a> {
-    fn binding(&self, expression_context: &mut super::ExpressionContext) -> ParameterBinding {
-        let (stmts, params): (Vec<_>, Vec<_>) = self
+    fn binding(&self) -> ParameterBinding {
+        let exprs = self
             .0
             .iter()
-            .map(|elem| {
-                let column_binding = elem.0.binding(expression_context);
-                let order_stmt = match &elem.1 {
-                    Ordering::Asc => "ASC",
-                    Ordering::Desc => "DESC",
-                };
-                (
-                    format!("{} {}", column_binding.stmt, order_stmt),
-                    column_binding.params,
-                )
-            })
-            .unzip();
+            .map(|(column, order)| ParameterBinding::OrderByElement(column, *order))
+            .collect();
 
-        ParameterBinding::new(
-            format!("ORDER BY {}", stmts.join(", ")),
-            params.into_iter().flatten().collect(),
-        )
+        ParameterBinding::OrderBy(exprs)
     }
 }
 
@@ -37,7 +24,6 @@ impl<'a> Expression for OrderBy<'a> {
 mod test {
     use super::*;
     use crate::sql::column::{IntBits, PhysicalColumn, PhysicalColumnType};
-    use crate::sql::ExpressionContext;
 
     #[test]
     fn single() {
@@ -50,8 +36,7 @@ mod test {
 
         let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
 
-        let mut expression_context = ExpressionContext::default();
-        let binding = order_by.binding(&mut expression_context);
+        let binding = order_by.binding();
 
         assert_binding!(binding, r#"ORDER BY "people"."age" DESC"#);
     }
@@ -75,8 +60,7 @@ mod test {
         {
             let order_by = OrderBy(vec![(&name_col, Ordering::Asc), (&age_col, Ordering::Desc)]);
 
-            let mut expression_context = ExpressionContext::default();
-            let binding = order_by.binding(&mut expression_context);
+            let binding = order_by.binding();
 
             assert_binding!(
                 binding,
@@ -84,12 +68,11 @@ mod test {
             );
         }
 
-        // Reverse the order and it should be refleted in the statement
+        // Reverse the order and it should be reflected in the statement
         {
             let order_by = OrderBy(vec![(&age_col, Ordering::Desc), (&name_col, Ordering::Asc)]);
 
-            let mut expression_context = ExpressionContext::default();
-            let binding = order_by.binding(&mut expression_context);
+            let binding = order_by.binding();
 
             assert_binding!(
                 binding,

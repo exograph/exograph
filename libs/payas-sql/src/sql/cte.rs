@@ -1,33 +1,37 @@
 use crate::sql::OperationExpression;
 
-use super::{
-    select::Select, sql_operation::SQLOperation, Expression, ExpressionContext, ParameterBinding,
-};
+use super::{select::Select, sql_operation::SQLOperation, Expression, ParameterBinding};
 
 #[derive(Debug)]
 pub struct Cte<'a> {
-    pub ctes: Vec<(String, SQLOperation<'a>)>,
+    pub expressions: Vec<CteExpression<'a>>,
     pub select: Select<'a>,
 }
 
+#[derive(Debug)]
+pub struct CteExpression<'a> {
+    pub name: String,
+    pub operation: SQLOperation<'a>,
+}
+
 impl<'a> Expression for Cte<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let (cte_statements, cte_params): (Vec<_>, Vec<_>) = self
-            .ctes
+    fn binding(&self) -> ParameterBinding {
+        let exprs: Vec<_> = self
+            .expressions
             .iter()
-            .map(|(name, operation)| {
-                let ParameterBinding { stmt, params } = operation.binding(expression_context);
-                (format!(r#""{name}" AS ({stmt})"#), params)
-            })
-            .unzip();
+            .map(
+                |CteExpression { name, operation }| ParameterBinding::CteExpression {
+                    name: name.clone(),
+                    operation: Box::new(operation.binding()),
+                },
+            )
+            .collect();
 
-        let select_binding = self.select.binding(expression_context);
+        let select_expr = self.select.binding();
 
-        let stmt = format!("WITH {} {}", cte_statements.join(", "), select_binding.stmt);
-
-        let mut params: Vec<_> = cte_params.into_iter().flatten().collect();
-        params.extend(select_binding.params.iter());
-
-        ParameterBinding { stmt, params }
+        ParameterBinding::Cte {
+            exprs,
+            select: Box::new(select_expr),
+        }
     }
 }

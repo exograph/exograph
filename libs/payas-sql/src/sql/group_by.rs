@@ -1,24 +1,18 @@
 use crate::PhysicalColumn;
 
-use super::{Expression, ExpressionContext, ParameterBinding};
+use super::{Expression, ParameterBinding};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GroupBy<'a>(pub Vec<&'a PhysicalColumn>);
 
 impl<'a> Expression for GroupBy<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let (stmts, params): (Vec<_>, Vec<_>) = self
+    fn binding(&self) -> ParameterBinding {
+        let exprs = self
             .0
             .iter()
-            .map(|elem| {
-                let column_binding = elem.binding(expression_context);
-                (column_binding.stmt, column_binding.params)
-            })
-            .unzip();
+            .map(|column| ParameterBinding::Column(column))
+            .collect();
 
-        ParameterBinding::new(
-            format!("GROUP BY {}", stmts.join(", ")),
-            params.into_iter().flatten().collect(),
-        )
+        ParameterBinding::GroupBy(exprs)
     }
 }

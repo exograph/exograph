@@ -189,7 +189,7 @@ pub(super) fn column_path_components<'a, 'p>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        sql::{predicate::CaseSensitivity, Expression, ExpressionContext, SQLParamContainer},
+        sql::{predicate::CaseSensitivity, Expression, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
         AbstractPredicate, ColumnPath, ColumnPathLink,
     };
@@ -214,16 +214,16 @@ mod tests {
 
                 {
                     let predicate = Postgres {}.to_predicate(&abstract_predicate);
-                    let mut expr = ExpressionContext::default();
-                    let binding = predicate.binding(&mut expr);
+
+                    let binding = predicate.binding();
 
                     assert_binding!(binding, r#""concerts"."name" = $1"#, "v1".to_string());
                 }
 
                 {
                     let predicate = Postgres {}.to_subselect_predicate(&abstract_predicate);
-                    let mut expr = ExpressionContext::default();
-                    let binding = predicate.binding(&mut expr);
+
+                    let binding = predicate.binding();
 
                     assert_binding!(binding, r#""concerts"."name" = $1"#, "v1".to_string());
                 }
@@ -294,8 +294,8 @@ mod tests {
 
                 {
                     let predicate = Postgres {}.to_predicate(&abstract_predicate);
-                    let mut expr = ExpressionContext::default();
-                    let binding = predicate.binding(&mut expr);
+
+                    let binding = predicate.binding();
 
                     assert_binding!(
                         binding,
@@ -306,13 +306,13 @@ mod tests {
 
                 {
                     let predicate = Postgres {}.to_subselect_predicate(&abstract_predicate);
-                    let mut expr = ExpressionContext::default();
-                    let binding = predicate.binding(&mut expr);
+
+                    let binding = predicate.binding();
 
                     assert_binding!(
                         binding,
                         format!(
-                            r#""concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" {sql_op})"#
+                            r#""concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE "venues"."name" {sql_op})"#
                         ),
                         "v1".to_string()
                     );

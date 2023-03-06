@@ -178,7 +178,7 @@ mod tests {
             select::SelectionLevel,
             selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
-        sql::{predicate::Predicate, ExpressionContext, SQLParamContainer},
+        sql::{predicate::Predicate, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
         AbstractOrderBy, Ordering,
     };
@@ -207,9 +207,8 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let mut expr = ExpressionContext::default();
-                let binding = select.binding(&mut expr);
-                assert_binding!(binding, r#"select "concerts"."id" from "concerts""#);
+                let binding = select.binding();
+                assert_binding!(binding, r#"SELECT "concerts"."id" FROM "concerts""#);
             },
         );
     }
@@ -242,11 +241,10 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let mut expr = ExpressionContext::default();
-                let binding = select.binding(&mut expr);
+                let binding = select.binding();
                 assert_binding!(
                     binding,
-                    r#"select "concerts"."id" from "concerts" WHERE "concerts"."id" = $1"#,
+                    r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."id" = $1"#,
                     5
                 );
             },
@@ -277,11 +275,10 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let mut expr = ExpressionContext::default();
-                let binding = select.binding(&mut expr);
+                let binding = select.binding();
                 assert_binding!(
                     binding,
-                    r#"select coalesce(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text from "concerts""#
+                    r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts""#
                 );
             },
         );
@@ -345,11 +342,10 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let mut expr = ExpressionContext::default();
-                let binding = select.binding(&mut expr);
+                let binding = select.binding();
                 assert_binding!(
                     binding,
-                    r#"select coalesce(json_agg(json_build_object('id', "concerts"."id", 'venue', (select json_build_object('id', "venues"."id") from "venues" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text from "concerts""#
+                    r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id", 'venue', (SELECT json_build_object('id', "venues"."id") FROM "venues" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "concerts""#
                 );
             },
         );
@@ -407,11 +403,10 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let mut expr = ExpressionContext::default();
-                let binding = select.binding(&mut expr);
+                let binding = select.binding();
                 assert_binding!(
                     binding,
-                    r#"select coalesce(json_agg(json_build_object('id', "venues"."id", 'concerts', (select coalesce(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) from "concerts" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text from "venues""#
+                    r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "venues""#
                 );
             },
         );
@@ -463,11 +458,10 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let mut expr = ExpressionContext::default();
-                let binding = select.binding(&mut expr);
+                let binding = select.binding();
                 assert_binding!(
                     binding,
-                    r#"select coalesce(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text from "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
+                    r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
                     "v1".to_string()
                 );
             },
@@ -501,11 +495,10 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let mut expr = ExpressionContext::default();
-                let binding = select.binding(&mut expr);
+                let binding = select.binding();
                 assert_binding!(
                     binding,
-                    r#"select "concerts"."id" from (select "concerts".* from "concerts" ORDER BY "concerts"."name" ASC) as "concerts""#
+                    r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" ORDER BY "concerts"."name" ASC) AS "concerts""#
                 );
             },
         );
@@ -547,11 +540,10 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let mut expr = ExpressionContext::default();
-                let binding = select.binding(&mut expr);
+                let binding = select.binding();
                 assert_binding!(
                     binding,
-                    r#"select "concerts"."id" from (select "concerts".* from "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC) as "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
+                    r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC) AS "concerts""#
                 );
             },
         );

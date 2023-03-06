@@ -1,8 +1,7 @@
 use crate::database_error::DatabaseError;
 
 use super::{
-    select::Select, transaction::TransactionStepId, Expression, ExpressionContext,
-    ParameterBinding, SQLParamContainer,
+    select::Select, transaction::TransactionStepId, Expression, ParameterBinding, SQLParamContainer,
 };
 use maybe_owned::MaybeOwned;
 use regex::Regex;
@@ -307,82 +306,71 @@ pub enum Column<'a> {
     },
 }
 
-impl Expression for PhysicalColumn {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let col_stmt = if expression_context.plain {
-            format!("\"{}\"", self.column_name)
-        } else {
-            format!("\"{}\".\"{}\"", self.table_name, self.column_name)
-        };
-        ParameterBinding::new(col_stmt, vec![])
-    }
-}
-
 impl<'a> Expression for Column<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+    fn binding(&self) -> ParameterBinding {
         match self {
-            Column::Physical(pc) => pc.binding(expression_context),
+            Column::Physical(pc) => ParameterBinding::Column(pc),
             Column::Function {
                 function_name,
                 column,
             } => {
-                let column_stmt = column.binding(expression_context).stmt;
-                ParameterBinding::new(format!("{function_name}({column_stmt})"), vec![])
+                let column_expr = ParameterBinding::Column(column);
+                ParameterBinding::Function(function_name.to_owned(), Box::new(column_expr))
             }
-            Column::Literal(value) => {
-                let param_index = expression_context.push(value.param());
-                ParameterBinding::new(format! {"${param_index}"}, vec![value.as_ref()])
-            }
+            Column::Literal(value) => ParameterBinding::Parameter(value.param()),
             Column::JsonObject(elems) => {
-                let (elem_stmt, elem_params): (Vec<_>, Vec<_>) = elems
+                let pairs = elems
                     .iter()
                     .map(|elem| {
-                        let elem_binding = elem.1.binding(expression_context);
-                        let mut stmt = elem_binding.stmt;
+                        let elem_binding = elem.1.binding();
 
-                        if let Column::Physical(PhysicalColumn { typ, .. }) = &elem.1 {
-                            stmt = match &typ {
+                        let value = if let Column::Physical(PhysicalColumn { typ, .. }) = &elem.1 {
+                            match &typ {
                                 // encode blob fields in JSON objects as base64
                                 // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
                                 // need to filter out using translate(...) function
-                                PhysicalColumnType::Blob => {
-                                    format!("translate(encode({stmt}, \'base64\'), E'\\n', '')")
-                                }
+                                PhysicalColumnType::Blob => ParameterBinding::SubExpressions(vec![
+                                    ParameterBinding::Static("translate(encode("),
+                                    elem_binding,
+                                    ParameterBinding::Static(", \'base64\'), E'\\n', '')"),
+                                ]),
 
                                 // numerics must be outputted as text to avoid any loss in precision
-                                PhysicalColumnType::Numeric { .. } => format!("{stmt}::text"),
+                                PhysicalColumnType::Numeric { .. } => {
+                                    ParameterBinding::Cast(Box::new(elem_binding), "text")
+                                }
 
-                                _ => stmt,
+                                _ => elem_binding,
                             }
-                        }
+                        } else {
+                            elem_binding
+                        };
 
-                        (format!("'{}', {}", elem.0, stmt), elem_binding.params)
+                        (elem.0.to_owned(), value)
                     })
-                    .unzip();
+                    .collect();
 
-                let stmt = format!("json_build_object({})", elem_stmt.join(", "));
-                let params = elem_params.into_iter().flatten().collect();
-                ParameterBinding::new(stmt, params)
+                ParameterBinding::JsonObject(pairs)
             }
             Column::JsonAgg(column) => {
                 // coalesce to return an empty array if we have no matching entities
-                let column_binding = column.binding(expression_context);
-                let stmt = format!("coalesce(json_agg({}), '[]'::json)", column_binding.stmt);
-                ParameterBinding::new(stmt, column_binding.params)
+                let column_binding = column.binding();
+                ParameterBinding::Coalesce(
+                    Box::new(ParameterBinding::Function(
+                        "json_agg".to_string(),
+                        Box::new(column_binding),
+                    )),
+                    "'[]'::json",
+                )
             }
             Column::SelectionTableWrapper(selection_table) => {
-                let pb = selection_table.binding(expression_context);
-                ParameterBinding::new(format!("({})", pb.stmt), pb.params)
+                ParameterBinding::Parenthetical(Box::new(selection_table.binding()))
             }
-            Column::Constant(value) => ParameterBinding::new(format!("'{value}'"), vec![]),
+            Column::Constant(value) => ParameterBinding::Literal(value.to_owned()),
             Column::Star(table_name) => {
-                let stmt = match table_name {
-                    Some(table_name) => format!("\"{table_name}\".*"),
-                    None => "*".to_string(),
-                };
-                ParameterBinding::new(stmt, vec![])
+                ParameterBinding::Star(table_name.as_ref().map(|s| s.as_str()))
             }
-            Column::Null => ParameterBinding::new("NULL".to_string(), vec![]),
+            Column::Null => ParameterBinding::Static("NULL"),
         }
     }
 }

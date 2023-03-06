@@ -1,7 +1,7 @@
 use tokio_postgres::{GenericClient, Row, Transaction};
 use tracing::{debug, error, instrument};
 
-use crate::{database_error::DatabaseError, sql::ExpressionContext};
+use crate::database_error::DatabaseError;
 
 use super::{
     sql_operation::{SQLOperation, TemplateSQLOperation},
@@ -135,21 +135,17 @@ impl<'a> ConcreteTransactionStep<'a> {
         client: &mut impl GenericClient,
     ) -> Result<Vec<Row>, DatabaseError> {
         let sql_operation = &self.operation;
-        let mut context = ExpressionContext::default();
-        let binding = sql_operation.binding(&mut context);
+        let binding = sql_operation.binding();
+        let (stmt, params) = binding.string_expression();
 
-        let params = context.params();
         let params: Vec<_> = params.iter().map(|p| p.as_pg()).collect();
 
-        debug!("Executing SQL operation: {}", binding.stmt.as_str());
+        debug!("Executing SQL operation: {}", stmt);
 
-        client
-            .query(binding.stmt.as_str(), &params[..])
-            .await
-            .map_err(|e| {
-                error!("Failed to execute query: {e:?}");
-                DatabaseError::Delegate(e).with_context("Database operation failed".into())
-            })
+        client.query(&stmt, &params[..]).await.map_err(|e| {
+            error!("Failed to execute query: {e:?}");
+            DatabaseError::Delegate(e).with_context("Database operation failed".into())
+        })
     }
 }
 

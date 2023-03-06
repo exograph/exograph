@@ -29,32 +29,23 @@ impl<'a> Join<'a> {
 }
 
 impl Expression for Join<'_> {
-    fn binding(&self, expression_context: &mut super::ExpressionContext) -> ParameterBinding {
-        let left_binding = self.left.binding(expression_context);
-        let right_binding = self.right.binding(expression_context);
-        let predicate_binding = self.predicate.binding(expression_context);
+    fn binding(&self) -> ParameterBinding {
+        let left_expr = self.left.binding();
+        let right_expr = self.right.binding();
+        let predicate_expr = self.predicate.binding();
 
-        let mut params = left_binding.params;
-        params.extend(right_binding.params);
-        params.extend(predicate_binding.params);
-
-        ParameterBinding {
-            stmt: format!(
-                "{} LEFT JOIN {} ON {}",
-                left_binding.stmt, right_binding.stmt, predicate_binding.stmt
-            ),
-            params,
-        }
+        ParameterBinding::LeftJoin(
+            Box::new(left_expr),
+            Box::new(right_expr),
+            Box::new(predicate_expr),
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        sql::{
-            column::{IntBits, PhysicalColumn, PhysicalColumnType},
-            ExpressionContext,
-        },
+        sql::column::{IntBits, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     };
 
@@ -108,8 +99,7 @@ mod tests {
         .into();
         let join = Join::new(concert_table, venue_table, join_predicate);
 
-        let mut expression_context = ExpressionContext::default();
-        let binding = join.binding(&mut expression_context);
+        let binding = join.binding();
 
         assert_binding!(
             binding,

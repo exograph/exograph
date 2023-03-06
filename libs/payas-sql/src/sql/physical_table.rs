@@ -4,7 +4,6 @@ use super::{
     insert::Insert,
     predicate::ConcretePredicate,
     update::Update,
-    Expression, ExpressionContext, ParameterBinding,
 };
 
 use maybe_owned::MaybeOwned;
@@ -92,11 +91,5 @@ impl PhysicalTable {
             predicate,
             returning,
         }
-    }
-}
-
-impl Expression for PhysicalTable {
-    fn binding(&self, _expression_context: &mut ExpressionContext) -> ParameterBinding {
-        ParameterBinding::new(format!(r#""{}""#, self.name.clone()), vec![])
     }
 }
