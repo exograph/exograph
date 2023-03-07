@@ -94,7 +94,6 @@ pub fn build_with_selection(
 
     let interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)> = resolved_env
         .resolved_services
-        .values
         .iter()
         .flat_map(|(_, resolved_service)| {
             resolved_service
@@ -121,11 +120,11 @@ pub fn build_with_selection(
 
     Ok(ServiceSubsystemWithInterceptors {
         underlying: ServiceSubsystem {
-            service_types: building.types.values,
+            service_types: building.types.values(),
             queries: building.queries,
             mutations: building.mutations,
-            methods: building.methods.values,
-            scripts: building.scripts.values,
+            methods: building.methods.values(),
+            scripts: building.scripts.values(),
             contexts: base_system.contexts.clone(),
             interceptors: building.interceptors,
         },

@@ -37,7 +37,6 @@ pub struct WasmSubsystem {
 impl WasmSubsystem {
     pub fn schema_queries(&self) -> Vec<FieldDefinition> {
         self.queries
-            .values
             .iter()
             .map(|(_, query)| query.field_definition(self))
             .collect()
@@ -45,7 +44,6 @@ impl WasmSubsystem {
 
     pub fn schema_mutations(&self) -> Vec<FieldDefinition> {
         self.mutations
-            .values
             .iter()
             .map(|(_, query)| query.field_definition(self))
             .collect()

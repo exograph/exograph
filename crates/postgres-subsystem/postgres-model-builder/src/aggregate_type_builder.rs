@@ -139,7 +139,10 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
             })
             .collect();
 
-        building.aggregate_types.values[existing_type_id].fields = fields;
+        building
+            .aggregate_types
+            .get_by_id_mut(existing_type_id)
+            .fields = fields;
     }
 }
 

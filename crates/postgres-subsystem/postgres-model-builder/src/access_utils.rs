@@ -48,8 +48,8 @@ pub fn compute_predicate_expression(
                 PathSelection::Column(column_path, column_type) => {
                     if base_type(
                         column_type,
-                        &subsystem_primitive_types.values,
-                        &subsystem_entity_types.values,
+                        subsystem_primitive_types.values_ref(),
+                        subsystem_entity_types.values_ref(),
                     )
                     .name()
                         == "Boolean"
@@ -238,7 +238,6 @@ fn compute_selection<'a>(
         if path_elements.len() == 2 {
             let context_type = resolved_env
                 .contexts
-                .values
                 .iter()
                 .find(|t| t.1.name == path_elements[0])
                 .unwrap()
@@ -276,8 +275,8 @@ fn compute_selection<'a>(
 
                 let field_composite_type = match base_type(
                     field_type,
-                    &subsystem_primitive_types.values,
-                    &subsystem_entity_types.values,
+                    subsystem_primitive_types.values_ref(),
+                    subsystem_entity_types.values_ref(),
                 ) {
                     PostgresType::Composite(composite_type) => Some(composite_type),
                     _ => None,
