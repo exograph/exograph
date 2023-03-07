@@ -48,12 +48,12 @@ pub fn build(
     }
 
     let mut queries = MappedArena::default();
-    for query in underlying_service_system.queries.values.into_iter() {
+    for query in underlying_service_system.queries.values().into_iter() {
         queries.add(&query.name.clone(), DenoQuery(query));
     }
 
     let mut mutations = MappedArena::default();
-    for mutation in underlying_service_system.mutations.values.into_iter() {
+    for mutation in underlying_service_system.mutations.values().into_iter() {
         mutations.add(&mutation.name.clone(), DenoMutation(mutation));
     }
 

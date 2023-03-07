@@ -133,7 +133,6 @@ fn compute_selection<'a>(
         if path_elements.len() == 2 {
             let context_type = resolved_env
                 .contexts
-                .values
                 .iter()
                 .find(|t| t.1.name == path_elements[0])
                 .unwrap()
