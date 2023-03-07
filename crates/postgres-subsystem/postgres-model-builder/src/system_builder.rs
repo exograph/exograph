@@ -43,26 +43,26 @@ pub fn build(
 
         PostgresSubsystem {
             contexts: base_system.contexts.clone(),
-            primitive_types: building.primitive_types.values,
-            entity_types: building.entity_types.values,
-            aggregate_types: building.aggregate_types.values,
+            primitive_types: building.primitive_types.values(),
+            entity_types: building.entity_types.values(),
+            aggregate_types: building.aggregate_types.values(),
 
-            order_by_types: building.order_by_types.values,
-            predicate_types: building.predicate_types.values,
+            order_by_types: building.order_by_types.values(),
+            predicate_types: building.predicate_types.values(),
             pk_queries: building.pk_queries,
             collection_queries: building.collection_queries,
             aggregate_queries: building.aggregate_queries,
-            tables: building.tables.values,
-            mutation_types: building.mutation_types.values,
+            tables: building.tables.values(),
+            mutation_types: building.mutation_types.values(),
             mutations: building.mutations,
         }
     };
 
     Ok({
-        if system.pk_queries.values.is_empty()
-            && system.collection_queries.values.is_empty()
-            && system.aggregate_queries.values.is_empty()
-            && system.mutations.values.is_empty()
+        if system.pk_queries.is_empty()
+            && system.collection_queries.is_empty()
+            && system.aggregate_queries.is_empty()
+            && system.mutations.is_empty()
         {
             None
         } else {

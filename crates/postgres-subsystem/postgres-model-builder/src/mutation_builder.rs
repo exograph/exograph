@@ -330,8 +330,8 @@ pub trait DataParamBuilder<D> {
             .flat_map(|field| {
                 let field_type = base_type(
                     &field.typ,
-                    &building.primitive_types.values,
-                    &building.entity_types.values,
+                    building.primitive_types.values_ref(),
+                    building.entity_types.values_ref(),
                 );
                 if let (PostgresType::Composite(field_type), PostgresRelation::OneToMany { .. }) =
                     (&field_type, &field.relation)
