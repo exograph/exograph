@@ -10,8 +10,9 @@ use crate::{
         select::SelectionLevel,
     },
     sql::{
-        column::{Column, PhysicalColumn},
-        cte::Cte,
+        column::Column,
+        cte::{Cte, CteExpression},
+        physical_column::PhysicalColumn,
         predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
@@ -107,27 +108,36 @@ impl InsertTransformer for Postgres {
 
                         value.push(parent_reference.into())
                     });
-                    (
-                        self_table.name.clone(),
-                        SQLOperation::Insert(self_table.insert(
+                    CteExpression {
+                        name: self_table.name.clone(),
+                        operation: SQLOperation::Insert(self_table.insert(
                             column_names,
                             column_values_seq,
                             vec![Column::Star(None).into()],
                         )),
-                    )
+                    }
                 },
             );
 
-            let mut ctes = vec![(table.name.clone(), root_update)];
+            let mut ctes = vec![CteExpression {
+                name: table.name.clone(),
+                operation: root_update,
+            }];
             ctes.extend(nested_ctes);
 
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::Cte(Cte { ctes, select }),
+                SQLOperation::Cte(Cte {
+                    expressions: ctes,
+                    select,
+                }),
             )));
         } else {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::Cte(Cte {
-                    ctes: vec![(table.name.clone(), root_update)],
+                    expressions: vec![CteExpression {
+                        name: table.name.clone(),
+                        operation: root_update,
+                    }],
                     select,
                 }),
             )));

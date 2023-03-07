@@ -1,6 +1,6 @@
 use crate::sql::{
-    column::PhysicalColumn,
-    order::{OrderBy, Ordering},
+    order::{OrderBy, OrderByElement, Ordering},
+    physical_column::PhysicalColumn,
 };
 
 use super::column_path::ColumnPath;
@@ -20,7 +20,7 @@ impl<'a> AbstractOrderBy<'a> {
         OrderBy(
             self.0
                 .iter()
-                .map(|(path, ordering)| (Self::leaf_column(path), *ordering))
+                .map(|(path, ordering)| OrderByElement::new(Self::leaf_column(path), *ordering))
                 .collect(),
         )
     }

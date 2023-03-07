@@ -4,7 +4,7 @@ use crate::{
     asql::{delete::AbstractDelete, select::SelectionLevel},
     sql::{
         column::Column,
-        cte::Cte,
+        cte::{Cte, CteExpression},
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
@@ -50,7 +50,10 @@ impl DeleteTransformer for Postgres {
         );
 
         Cte {
-            ctes: vec![(abstract_delete.table.name.clone(), root_delete)],
+            expressions: vec![CteExpression {
+                name: abstract_delete.table.name.clone(),
+                operation: root_delete,
+            }],
             select,
         }
     }
@@ -60,7 +63,7 @@ impl DeleteTransformer for Postgres {
 mod tests {
     use crate::{
         asql::selection::{ColumnSelection, Selection, SelectionElement},
-        sql::{predicate::Predicate, Expression, ExpressionContext, SQLParamContainer},
+        sql::{predicate::Predicate, ExpressionBuilder, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
         AbstractPredicate, AbstractSelect, ColumnPath, ColumnPathLink,
     };
@@ -92,11 +95,9 @@ mod tests {
                 };
 
                 let delete = Postgres {}.to_delete(&adelete);
-                let mut expr = ExpressionContext::default();
-                let binding = delete.binding(&mut expr);
                 assert_binding!(
-                    binding,
-                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE true RETURNING *) select "concerts"."id" from "concerts""#
+                    delete.into_sql(),
+                    r#"WITH "concerts" AS (DELETE FROM "concerts" RETURNING *) SELECT "concerts"."id" FROM "concerts""#
                 );
             },
         );
@@ -136,12 +137,10 @@ mod tests {
                 };
 
                 let delete = Postgres {}.to_delete(&adelete);
-                let mut expr = ExpressionContext::default();
-                let binding = delete.binding(&mut expr);
 
                 assert_binding!(
-                    binding,
-                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."name" = $1 RETURNING *) select "concerts"."id" from "concerts""#,
+                    delete.into_sql(),
+                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."name" = $1 RETURNING *) SELECT "concerts"."id" FROM "concerts""#,
                     "v1".to_string()
                 );
             },
@@ -191,12 +190,10 @@ mod tests {
                 };
 
                 let delete = Postgres {}.to_delete(&adelete);
-                let mut expr = ExpressionContext::default();
-                let binding = delete.binding(&mut expr);
 
                 assert_binding!(
-                    binding,
-                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN (select "venues"."id" from "venues" WHERE "venues"."name" = $1) RETURNING *) select "concerts"."id" from "concerts""#,
+                    delete.into_sql(),
+                    r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE "venues"."name" = $1) RETURNING *) SELECT "concerts"."id" FROM "concerts""#,
                     "v1".to_string()
                 );
             },

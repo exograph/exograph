@@ -1,11 +1,13 @@
-use super::{Expression, ExpressionContext, ParameterBinding};
+use std::sync::Arc;
+
+use super::{ExpressionBuilder, SQLBuilder};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Offset(pub i64);
 
-impl Expression for Offset {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let param_index = expression_context.next_param();
-        ParameterBinding::new(format! {"OFFSET ${param_index}"}, vec![&self.0])
+impl ExpressionBuilder for Offset {
+    fn build(&self, builder: &mut SQLBuilder) {
+        builder.push_str(" OFFSET ");
+        builder.push_param(Arc::new(self.0))
     }
 }

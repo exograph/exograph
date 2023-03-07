@@ -3,9 +3,10 @@ use maybe_owned::MaybeOwned;
 use crate::PhysicalTable;
 
 use super::{
-    column::{Column, PhysicalColumn, ProxyColumn},
+    column::{Column, ProxyColumn},
+    physical_column::PhysicalColumn,
     transaction::{TransactionContext, TransactionStepId},
-    Expression, ExpressionContext, ParameterBinding, SQLParamContainer,
+    ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
 
 #[derive(Debug)]
@@ -16,57 +17,25 @@ pub struct Insert<'a> {
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
-impl<'a> Expression for Insert<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let table_binding = self.table.binding(expression_context);
+impl<'a> ExpressionBuilder for Insert<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
+        builder.push_str("INSERT INTO ");
+        self.table.build(builder);
+        builder.push_str(" (");
+        builder.with_plain(|builder| {
+            builder.push_elems(&self.column_names, ", ");
+        });
 
-        let (column_statements, col_params): (Vec<_>, Vec<_>) =
-            expression_context.with_plain(|expression_context| {
-                self.column_names
-                    .iter()
-                    .map(|column_names| column_names.binding(expression_context).tupled())
-                    .unzip()
-            });
+        builder.push_str(") VALUES (");
 
-        let (value_statements, value_params): (Vec<Vec<_>>, Vec<Vec<_>>) = self
-            .column_values_seq
-            .iter()
-            .map(|column_values| {
-                column_values
-                    .iter()
-                    .map(|value| value.binding(expression_context).tupled())
-                    .unzip()
-            })
-            .unzip();
+        builder.push_iter(self.column_values_seq.iter(), "), (", |builder, values| {
+            builder.push_elems(values, ", ");
+        });
+        builder.push(')');
 
-        let stmt = format!(
-            "INSERT INTO {} ({}) VALUES {}",
-            table_binding.stmt,
-            column_statements.join(", "),
-            value_statements
-                .iter()
-                .map(|v| format!("({})", v.join(", ")))
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-
-        let mut params = table_binding.params;
-        params.extend(col_params.into_iter().flatten());
-        params.extend(value_params.into_iter().flatten().into_iter().flatten());
-
-        if self.returning.is_empty() {
-            ParameterBinding { stmt, params }
-        } else {
-            let (ret_stmts, ret_params): (Vec<_>, Vec<_>) = self
-                .returning
-                .iter()
-                .map(|ret| ret.binding(expression_context).tupled())
-                .unzip();
-
-            let stmt = format!("{} RETURNING {}", stmt, ret_stmts.join(", "));
-            params.extend(ret_params.into_iter().flatten());
-
-            ParameterBinding { stmt, params }
+        if !self.returning.is_empty() {
+            builder.push_str(" RETURNING ");
+            builder.push_elems(&self.returning, ", ")
         }
     }
 }

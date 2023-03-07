@@ -50,11 +50,12 @@ pub use asql::{
 
 pub use sql::{
     array_util::{self, ArrayEntry},
-    column::{Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
+    column::Column,
     database::Database,
     limit::Limit,
     offset::Offset,
     order::Ordering,
+    physical_column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
     physical_table::PhysicalTable,
     SQLBytes, SQLParam, SQLParamContainer,
 };

@@ -2,7 +2,7 @@ use crate::{Limit, Offset, PhysicalTable};
 
 use super::{
     column::Column, group_by::GroupBy, join::Join, order::OrderBy, predicate::ConcretePredicate,
-    select::Select, Expression, ExpressionContext, ParameterBinding,
+    select::Select, ExpressionBuilder, SQLBuilder,
 };
 use maybe_owned::MaybeOwned;
 
@@ -10,6 +10,10 @@ use maybe_owned::MaybeOwned;
 pub enum TableQuery<'a> {
     Physical(&'a PhysicalTable),
     Join(Join<'a>),
+    SubSelect {
+        select: Box<Select<'a>>,
+        alias: String,
+    },
 }
 
 impl<'a> TableQuery<'a> {
@@ -48,15 +52,23 @@ impl<'a> TableQuery<'a> {
         match self {
             TableQuery::Physical(table) => table,
             TableQuery::Join(join) => join.left().base_table(),
+            TableQuery::SubSelect { select, .. } => select.underlying.base_table(),
         }
     }
 }
 
-impl<'a> Expression for TableQuery<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+impl<'a> ExpressionBuilder for TableQuery<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         match self {
-            TableQuery::Physical(physical_table) => physical_table.binding(expression_context),
-            TableQuery::Join(join) => join.binding(expression_context),
+            TableQuery::Physical(physical_table) => builder.push_identifier(&physical_table.name),
+            TableQuery::Join(join) => join.build(builder),
+            TableQuery::SubSelect { select, alias } => {
+                builder.push('(');
+                select.build(builder);
+                builder.push(')');
+                builder.push_str(" AS ");
+                builder.push_identifier(alias);
+            }
         }
     }
 }

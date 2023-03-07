@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::database_error::DatabaseError;
-use crate::sql::column::PhysicalColumnType;
+use crate::sql::physical_column::PhysicalColumnType;
 use crate::{PhysicalColumn, PhysicalTable};
 use deadpool_postgres::Client;
 

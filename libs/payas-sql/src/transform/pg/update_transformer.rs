@@ -9,10 +9,11 @@ use crate::{
         },
     },
     sql::{
-        column::{Column, PhysicalColumn, ProxyColumn},
-        cte::Cte,
+        column::{Column, ProxyColumn},
+        cte::{Cte, CteExpression},
         delete::TemplateDelete,
         insert::TemplateInsert,
+        physical_column::PhysicalColumn,
         sql_operation::{SQLOperation, TemplateSQLOperation},
         transaction::{
             ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
@@ -122,7 +123,10 @@ impl UpdateTransformer for Postgres {
         } else {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::Cte(Cte {
-                    ctes: vec![(abstract_update.table.name.clone(), root_update)],
+                    expressions: vec![CteExpression {
+                        name: abstract_update.table.name.clone(),
+                        operation: root_update,
+                    }],
                     select,
                 }),
             )));

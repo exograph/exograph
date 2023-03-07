@@ -1,33 +1,33 @@
-use crate::sql::OperationExpression;
-
-use super::{
-    select::Select, sql_operation::SQLOperation, Expression, ExpressionContext, ParameterBinding,
-};
+use super::{select::Select, sql_operation::SQLOperation, ExpressionBuilder, SQLBuilder};
 
 #[derive(Debug)]
 pub struct Cte<'a> {
-    pub ctes: Vec<(String, SQLOperation<'a>)>,
+    pub expressions: Vec<CteExpression<'a>>,
     pub select: Select<'a>,
 }
 
-impl<'a> Expression for Cte<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let (cte_statements, cte_params): (Vec<_>, Vec<_>) = self
-            .ctes
-            .iter()
-            .map(|(name, operation)| {
-                let ParameterBinding { stmt, params } = operation.binding(expression_context);
-                (format!(r#""{name}" AS ({stmt})"#), params)
-            })
-            .unzip();
+#[derive(Debug)]
+pub struct CteExpression<'a> {
+    pub name: String,
+    pub operation: SQLOperation<'a>,
+}
 
-        let select_binding = self.select.binding(expression_context);
+impl<'a> ExpressionBuilder for Cte<'a> {
+    /// Build a CTE for the `WITH <expressions> <select>` syntax.
+    fn build(&self, builder: &mut SQLBuilder) {
+        builder.push_str("WITH ");
+        builder.push_elems(&self.expressions, ", ");
+        builder.push(' ');
+        self.select.build(builder);
+    }
+}
 
-        let stmt = format!("WITH {} {}", cte_statements.join(", "), select_binding.stmt);
-
-        let mut params: Vec<_> = cte_params.into_iter().flatten().collect();
-        params.extend(select_binding.params.iter());
-
-        ParameterBinding { stmt, params }
+impl ExpressionBuilder for CteExpression<'_> {
+    /// Build a CTE expression for the `<name> AS (<operation>)` syntax.
+    fn build(&self, builder: &mut SQLBuilder) {
+        builder.push_identifier(&self.name);
+        builder.push_str(" AS (");
+        self.operation.build(builder);
+        builder.push(')');
     }
 }

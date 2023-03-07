@@ -1,4 +1,4 @@
-use super::{column::PhysicalColumn, Expression, ParameterBinding};
+use super::{physical_column::PhysicalColumn, ExpressionBuilder, SQLBuilder};
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Ordering {
     Asc,
@@ -6,38 +6,40 @@ pub enum Ordering {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct OrderBy<'a>(pub Vec<(&'a PhysicalColumn, Ordering)>);
+pub struct OrderByElement<'a>(pub &'a PhysicalColumn, pub Ordering);
 
-impl<'a> Expression for OrderBy<'a> {
-    fn binding(&self, expression_context: &mut super::ExpressionContext) -> ParameterBinding {
-        let (stmts, params): (Vec<_>, Vec<_>) = self
-            .0
-            .iter()
-            .map(|elem| {
-                let column_binding = elem.0.binding(expression_context);
-                let order_stmt = match &elem.1 {
-                    Ordering::Asc => "ASC",
-                    Ordering::Desc => "DESC",
-                };
-                (
-                    format!("{} {}", column_binding.stmt, order_stmt),
-                    column_binding.params,
-                )
-            })
-            .unzip();
+#[derive(Debug, PartialEq, Eq)]
+pub struct OrderBy<'a>(pub Vec<OrderByElement<'a>>);
 
-        ParameterBinding::new(
-            format!("ORDER BY {}", stmts.join(", ")),
-            params.into_iter().flatten().collect(),
-        )
+impl<'a> OrderByElement<'a> {
+    pub fn new(column: &'a PhysicalColumn, ordering: Ordering) -> Self {
+        Self(column, ordering)
+    }
+}
+
+impl<'a> ExpressionBuilder for OrderByElement<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
+        self.0.build(builder);
+        builder.push(' ');
+        if self.1 == Ordering::Asc {
+            builder.push_str("ASC");
+        } else {
+            builder.push_str("DESC");
+        }
+    }
+}
+
+impl<'a> ExpressionBuilder for OrderBy<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
+        builder.push_str("ORDER BY ");
+        builder.push_elems(&self.0, ", ");
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sql::column::{IntBits, PhysicalColumn, PhysicalColumnType};
-    use crate::sql::ExpressionContext;
+    use crate::sql::physical_column::{IntBits, PhysicalColumn, PhysicalColumnType};
 
     #[test]
     fn single() {
@@ -48,12 +50,9 @@ mod test {
             ..Default::default()
         };
 
-        let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
+        let order_by = OrderBy(vec![OrderByElement::new(&age_col, Ordering::Desc)]);
 
-        let mut expression_context = ExpressionContext::default();
-        let binding = order_by.binding(&mut expression_context);
-
-        assert_binding!(binding, r#"ORDER BY "people"."age" DESC"#);
+        assert_binding!(order_by.into_sql(), r#"ORDER BY "people"."age" DESC"#);
     }
 
     #[test]
@@ -73,26 +72,26 @@ mod test {
         };
 
         {
-            let order_by = OrderBy(vec![(&name_col, Ordering::Asc), (&age_col, Ordering::Desc)]);
-
-            let mut expression_context = ExpressionContext::default();
-            let binding = order_by.binding(&mut expression_context);
+            let order_by = OrderBy(vec![
+                OrderByElement::new(&name_col, Ordering::Asc),
+                OrderByElement::new(&age_col, Ordering::Desc),
+            ]);
 
             assert_binding!(
-                binding,
+                order_by.into_sql(),
                 r#"ORDER BY "people"."name" ASC, "people"."age" DESC"#
             );
         }
 
-        // Reverse the order and it should be refleted in the statement
+        // Reverse the order and it should be reflected in the statement
         {
-            let order_by = OrderBy(vec![(&age_col, Ordering::Desc), (&name_col, Ordering::Asc)]);
-
-            let mut expression_context = ExpressionContext::default();
-            let binding = order_by.binding(&mut expression_context);
+            let order_by = OrderBy(vec![
+                OrderByElement::new(&age_col, Ordering::Desc),
+                OrderByElement::new(&name_col, Ordering::Asc),
+            ]);
 
             assert_binding!(
-                binding,
+                order_by.into_sql(),
                 r#"ORDER BY "people"."age" DESC, "people"."name" ASC"#
             );
         }
