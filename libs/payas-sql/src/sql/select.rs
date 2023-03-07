@@ -19,12 +19,6 @@ pub struct Select<'a> {
 
 impl<'a> ExpressionBuilder for Select<'a> {
     fn build(&self, builder: &mut SQLBuilder) {
-        let predicate = match &self.predicate {
-            // Avoid correct, but inelegant "where true" clause
-            ConcretePredicate::True => None,
-            predicate => Some(predicate),
-        };
-
         builder.push_str("SELECT ");
 
         builder.push_iter(self.columns.iter(), ", ", |builder, col| {
@@ -41,9 +35,10 @@ impl<'a> ExpressionBuilder for Select<'a> {
 
         self.underlying.build(builder);
 
-        if let Some(predicate) = predicate {
+        // Avoid correct, but inelegant "where true" clause
+        if self.predicate != ConcretePredicate::True {
             builder.push_str(" WHERE ");
-            predicate.build(builder);
+            self.predicate.build(builder);
         }
         if let Some(group_by) = &self.group_by {
             builder.push(' ');
@@ -65,7 +60,8 @@ impl<'a> ExpressionBuilder for Select<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        sql::column::{IntBits, JsonObjectElement, PhysicalColumn, PhysicalColumnType},
+        sql::json_object::{JsonObject, JsonObjectElement},
+        sql::physical_column::{IntBits, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     };
 
@@ -95,10 +91,10 @@ mod tests {
         let age_col2 = physical_table.get_column("age").unwrap();
 
         let name_col = physical_table.get_column("name").unwrap();
-        let json_col = Column::JsonObject(vec![
+        let json_col = Column::JsonObject(JsonObject(vec![
             JsonObjectElement::new("namex".to_string(), name_col),
             JsonObjectElement::new("agex".to_string(), age_col),
-        ]);
+        ]));
         let table = TableQuery::Physical(&physical_table);
         let selected_table = table.select(
             vec![age_col2, json_col],

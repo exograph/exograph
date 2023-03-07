@@ -2,7 +2,8 @@ use maybe_owned::MaybeOwned;
 
 use super::select::AbstractSelect;
 use super::selection::NestedElementRelation;
-use crate::sql::column::{Column, PhysicalColumn};
+use crate::sql::column::Column;
+use crate::sql::physical_column::PhysicalColumn;
 use crate::PhysicalTable;
 
 #[derive(Debug)]

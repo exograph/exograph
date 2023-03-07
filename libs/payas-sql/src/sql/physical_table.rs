@@ -1,10 +1,6 @@
 use super::{
-    column::{Column, PhysicalColumn},
-    delete::Delete,
-    insert::Insert,
-    predicate::ConcretePredicate,
-    update::Update,
-    ExpressionBuilder,
+    column::Column, delete::Delete, insert::Insert, physical_column::PhysicalColumn,
+    predicate::ConcretePredicate, update::Update, ExpressionBuilder,
 };
 
 use maybe_owned::MaybeOwned;

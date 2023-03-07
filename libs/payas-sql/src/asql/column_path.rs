@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::{
-    sql::{column::PhysicalColumn, predicate::LiteralEquality, SQLParamContainer},
+    sql::{physical_column::PhysicalColumn, predicate::LiteralEquality, SQLParamContainer},
     PhysicalTable,
 };
 

@@ -10,8 +10,9 @@ use crate::{
         select::SelectionLevel,
     },
     sql::{
-        column::{Column, PhysicalColumn},
+        column::Column,
         cte::{Cte, CteExpression},
+        physical_column::PhysicalColumn,
         predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,

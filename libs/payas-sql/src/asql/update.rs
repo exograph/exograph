@@ -1,7 +1,4 @@
-use crate::{
-    sql::column::{Column, PhysicalColumn},
-    PhysicalTable,
-};
+use crate::{sql::column::Column, sql::physical_column::PhysicalColumn, PhysicalTable};
 
 use super::{
     delete::AbstractDelete, insert::AbstractInsert, predicate::AbstractPredicate,

@@ -1,6 +1,6 @@
 use crate::sql::{
-    column::PhysicalColumn,
     order::{OrderBy, OrderByElement, Ordering},
+    physical_column::PhysicalColumn,
 };
 
 use super::column_path::ColumnPath;

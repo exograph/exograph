@@ -9,8 +9,10 @@ use crate::{
         },
     },
     sql::{
-        column::{Column, JsonObjectElement},
+        column::Column,
         group_by::GroupBy,
+        json_agg::JsonAgg,
+        json_object::{JsonObject, JsonObjectElement},
         predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
@@ -151,12 +153,12 @@ impl<'a> Selection<'a> {
                     })
                     .collect();
 
-                let json_obj = Column::JsonObject(object_elems);
+                let json_obj = Column::JsonObject(JsonObject(object_elems));
 
                 match cardinality {
                     SelectionCardinality::One => SelectionSQL::Single(json_obj),
                     SelectionCardinality::Many => {
-                        SelectionSQL::Single(Column::JsonAgg(Box::new(json_obj)))
+                        SelectionSQL::Single(Column::JsonAgg(JsonAgg(Box::new(json_obj))))
                     }
                 }
             }
@@ -183,7 +185,7 @@ impl<'a> SelectionElement<'a> {
                         JsonObjectElement::new(alias.to_owned(), column.to_sql(database_kind))
                     })
                     .collect();
-                Column::JsonObject(elements)
+                Column::JsonObject(JsonObject(elements))
             }
             SelectionElement::Nested(relation, select) => {
                 Column::SelectionTableWrapper(Box::new(database_kind.to_select(

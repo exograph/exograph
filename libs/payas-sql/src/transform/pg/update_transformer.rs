@@ -9,10 +9,11 @@ use crate::{
         },
     },
     sql::{
-        column::{Column, PhysicalColumn, ProxyColumn},
+        column::{Column, ProxyColumn},
         cte::{Cte, CteExpression},
         delete::TemplateDelete,
         insert::TemplateInsert,
+        physical_column::PhysicalColumn,
         sql_operation::{SQLOperation, TemplateSQLOperation},
         transaction::{
             ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,

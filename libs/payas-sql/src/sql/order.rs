@@ -1,4 +1,4 @@
-use super::{column::PhysicalColumn, ExpressionBuilder, SQLBuilder};
+use super::{physical_column::PhysicalColumn, ExpressionBuilder, SQLBuilder};
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Ordering {
     Asc,
@@ -39,7 +39,7 @@ impl<'a> ExpressionBuilder for OrderBy<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sql::column::{IntBits, PhysicalColumn, PhysicalColumnType};
+    use crate::sql::physical_column::{IntBits, PhysicalColumn, PhysicalColumnType};
 
     #[test]
     fn single() {

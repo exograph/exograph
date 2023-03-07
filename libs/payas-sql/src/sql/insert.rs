@@ -3,7 +3,8 @@ use maybe_owned::MaybeOwned;
 use crate::PhysicalTable;
 
 use super::{
-    column::{Column, PhysicalColumn, ProxyColumn},
+    column::{Column, ProxyColumn},
+    physical_column::PhysicalColumn,
     transaction::{TransactionContext, TransactionStepId},
     ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };

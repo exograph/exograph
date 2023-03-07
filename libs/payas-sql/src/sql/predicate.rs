@@ -289,7 +289,7 @@ mod tests {
     use std::sync::Arc;
 
     use crate::sql::{
-        column::{IntBits, PhysicalColumn, PhysicalColumnType},
+        physical_column::{IntBits, PhysicalColumn, PhysicalColumnType},
         SQLParamContainer,
     };
 
