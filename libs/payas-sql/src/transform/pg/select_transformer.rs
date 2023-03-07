@@ -14,6 +14,7 @@ use crate::{
         predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
+        table::TableQuery,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::{
@@ -74,15 +75,45 @@ impl SelectTransformer for Postgres {
             additional_predicate.unwrap_or(ConcretePredicate::True),
         );
 
-        Select {
-            underlying: join,
-            columns,
-            predicate,
-            order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
-            offset: abstract_select.offset.clone(),
-            limit: abstract_select.limit.clone(),
-            group_by,
-            top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
+        if abstract_select.order_by.is_some()
+            || abstract_select.offset.is_some()
+            || abstract_select.limit.is_some()
+        {
+            let inner_select = Select {
+                underlying: join,
+                columns: vec![Column::Star(Some(abstract_select.table.name.clone()))],
+                predicate,
+                order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
+                offset: abstract_select.offset.clone(),
+                limit: abstract_select.limit.clone(),
+                group_by,
+                top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
+            };
+
+            Select {
+                underlying: TableQuery::SubSelect {
+                    select: Box::new(inner_select),
+                    alias: abstract_select.table.name.clone(),
+                },
+                columns,
+                predicate: ConcretePredicate::True,
+                order_by: None,
+                offset: None,
+                limit: None,
+                group_by: None,
+                top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
+            }
+        } else {
+            Select {
+                underlying: join,
+                columns,
+                predicate,
+                order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
+                offset: abstract_select.offset.clone(),
+                limit: abstract_select.limit.clone(),
+                group_by,
+                top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
+            }
         }
     }
 
@@ -180,7 +211,7 @@ mod tests {
         },
         sql::{predicate::Predicate, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
-        AbstractOrderBy, Ordering,
+        AbstractOrderBy, Limit, Offset, Ordering,
     };
 
     use super::AbstractSelect;
@@ -207,8 +238,10 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let binding = select.binding();
-                assert_binding!(binding, r#"SELECT "concerts"."id" FROM "concerts""#);
+                assert_binding!(
+                    select.into_sql(),
+                    r#"SELECT "concerts"."id" FROM "concerts""#
+                );
             },
         );
     }
@@ -241,9 +274,8 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let binding = select.binding();
                 assert_binding!(
-                    binding,
+                    select.into_sql(),
                     r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."id" = $1"#,
                     5
                 );
@@ -275,9 +307,8 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let binding = select.binding();
                 assert_binding!(
-                    binding,
+                    select.into_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts""#
                 );
             },
@@ -342,9 +373,8 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let binding = select.binding();
                 assert_binding!(
-                    binding,
+                    select.into_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id", 'venue', (SELECT json_build_object('id', "venues"."id") FROM "venues" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "concerts""#
                 );
             },
@@ -403,9 +433,8 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let binding = select.binding();
                 assert_binding!(
-                    binding,
+                    select.into_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "venues""#
                 );
             },
@@ -458,9 +487,8 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let binding = select.binding();
                 assert_binding!(
-                    binding,
+                    select.into_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
                     "v1".to_string()
                 );
@@ -495,10 +523,50 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let binding = select.binding();
                 assert_binding!(
-                    binding,
+                    select.into_sql(),
                     r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" ORDER BY "concerts"."name" ASC) AS "concerts""#
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn with_predicate_limit_and_offset() {
+        TestSetup::with_setup(
+            |TestSetup {
+                 concerts_table,
+                 concerts_id_column,
+                 concerts_name_column,
+                 ..
+             }| {
+                let concert_name_path = ColumnPath::Physical(vec![ColumnPathLink {
+                    self_column: (concerts_name_column, concerts_table),
+                    linked_column: None,
+                }]);
+
+                let literal = ColumnPath::Literal(SQLParamContainer::new("c1".to_string()));
+                let predicate = AbstractPredicate::Eq(concert_name_path, literal);
+
+                let aselect = AbstractSelect {
+                    table: concerts_table,
+                    selection: Selection::Seq(vec![ColumnSelection::new(
+                        "id".to_string(),
+                        SelectionElement::Physical(concerts_id_column),
+                    )]),
+                    predicate,
+                    order_by: None,
+                    offset: Some(Offset(10)),
+                    limit: Some(Limit(20)),
+                };
+
+                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                assert_binding!(
+                    select.into_sql(),
+                    r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" WHERE "concerts"."name" = $1 LIMIT $2 OFFSET $3) AS "concerts""#,
+                    "c1".to_string(),
+                    20i64,
+                    10i64
                 );
             },
         );
@@ -540,9 +608,8 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                let binding = select.binding();
                 assert_binding!(
-                    binding,
+                    select.into_sql(),
                     r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC) AS "concerts""#
                 );
             },

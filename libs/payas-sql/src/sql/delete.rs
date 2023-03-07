@@ -2,7 +2,7 @@ use maybe_owned::MaybeOwned;
 
 use super::{
     column::Column, physical_table::PhysicalTable, predicate::ConcretePredicate, Expression,
-    ParameterBinding,
+    SQLBuilder,
 };
 
 #[derive(Debug)]
@@ -13,19 +13,20 @@ pub struct Delete<'a> {
 }
 
 impl<'a> Expression for Delete<'a> {
-    fn binding(&self) -> ParameterBinding {
-        let table_binding = ParameterBinding::Table(self.table);
+    fn binding(&self, builder: &mut SQLBuilder) {
+        builder.push_str("DELETE FROM ");
+        self.table.binding(builder);
 
-        let predicate_binding = if self.predicate.as_ref() != &ConcretePredicate::True {
-            Some(Box::new(self.predicate.binding()))
-        } else {
-            None
-        };
+        if self.predicate.as_ref() != &ConcretePredicate::True {
+            builder.push_str(" WHERE ");
+            self.predicate.binding(builder);
+        }
 
-        ParameterBinding::Delete {
-            table: Box::new(table_binding),
-            predicate: predicate_binding,
-            returning: self.returning.iter().map(|ret| ret.binding()).collect(),
+        if !self.returning.is_empty() {
+            builder.push_str(" RETURNING ");
+            builder.push_iter(self.returning.iter(), ", ", |builder, elem| {
+                elem.binding(builder)
+            });
         }
     }
 }

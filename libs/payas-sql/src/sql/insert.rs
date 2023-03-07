@@ -5,7 +5,7 @@ use crate::PhysicalTable;
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     transaction::{TransactionContext, TransactionStepId},
-    Expression, ParameterBinding, SQLParamContainer,
+    Expression, SQLBuilder, SQLParamContainer,
 };
 
 #[derive(Debug)]
@@ -17,26 +17,24 @@ pub struct Insert<'a> {
 }
 
 impl<'a> Expression for Insert<'a> {
-    fn binding(&self) -> ParameterBinding {
-        let table_binding = ParameterBinding::Table(self.table);
+    fn binding(&self, builder: &mut SQLBuilder) {
+        builder.push_str("INSERT INTO ");
+        self.table.binding(builder);
+        builder.push_str(" (");
+        builder.with_plain(|builder| {
+            builder.push_elems(&self.column_names, ", ");
+        });
 
-        let column_statements: Vec<_> = self
-            .column_names
-            .iter()
-            .map(|column| ParameterBinding::PlainColumn(column))
-            .collect();
+        builder.push_str(") VALUES (");
 
-        let value_statements: Vec<Vec<_>> = self
-            .column_values_seq
-            .iter()
-            .map(|column_values| column_values.iter().map(|value| value.binding()).collect())
-            .collect();
+        builder.push_iter(self.column_values_seq.iter(), "), (", |builder, values| {
+            builder.push_elems(values, ", ");
+        });
+        builder.push(')');
 
-        ParameterBinding::Insert {
-            table: Box::new(table_binding),
-            columns: column_statements,
-            values: value_statements,
-            returning: self.returning.iter().map(|ret| ret.binding()).collect(),
+        if !self.returning.is_empty() {
+            builder.push_str(" RETURNING ");
+            builder.push_elems(&self.returning, ", ")
         }
     }
 }

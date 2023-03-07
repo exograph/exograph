@@ -1,7 +1,7 @@
 use crate::database_error::DatabaseError;
 
 use super::{
-    select::Select, transaction::TransactionStepId, Expression, ParameterBinding, SQLParamContainer,
+    select::Select, transaction::TransactionStepId, Expression, SQLBuilder, SQLParamContainer,
 };
 use maybe_owned::MaybeOwned;
 use regex::Regex;
@@ -42,6 +42,16 @@ impl Default for PhysicalColumn {
             unique_constraints: vec![],
             default_value: None,
         }
+    }
+}
+
+impl Expression for PhysicalColumn {
+    fn binding(&self, builder: &mut SQLBuilder) {
+        if !builder.plain {
+            builder.push_quoted(&self.table_name);
+            builder.push('.');
+        }
+        builder.push_quoted(&self.column_name);
     }
 }
 
@@ -307,70 +317,78 @@ pub enum Column<'a> {
 }
 
 impl<'a> Expression for Column<'a> {
-    fn binding(&self) -> ParameterBinding {
+    fn binding(&self, builder: &mut SQLBuilder) {
         match self {
-            Column::Physical(pc) => ParameterBinding::Column(pc),
+            Column::Physical(pc) => pc.binding(builder),
             Column::Function {
                 function_name,
                 column,
             } => {
-                let column_expr = ParameterBinding::Column(column);
-                ParameterBinding::Function(function_name.to_owned(), Box::new(column_expr))
+                builder.push_str(function_name);
+                builder.push('(');
+                column.binding(builder);
+                builder.push(')');
             }
-            Column::Literal(value) => ParameterBinding::Parameter(value.param()),
+            Column::Literal(value) => builder.push_param(value.param()),
             Column::JsonObject(elems) => {
-                let pairs = elems
-                    .iter()
-                    .map(|elem| {
-                        let elem_binding = elem.1.binding();
+                builder.push_str("json_build_object(");
+                builder.push_iter(elems.iter(), ", ", |builder, (key, value)| {
+                    builder.push_str("'");
+                    builder.push_str(key);
+                    builder.push_str("', ");
 
-                        let value = if let Column::Physical(PhysicalColumn { typ, .. }) = &elem.1 {
-                            match &typ {
-                                // encode blob fields in JSON objects as base64
-                                // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
-                                // need to filter out using translate(...) function
-                                PhysicalColumnType::Blob => ParameterBinding::SubExpressions(vec![
-                                    ParameterBinding::Static("translate(encode("),
-                                    elem_binding,
-                                    ParameterBinding::Static(", \'base64\'), E'\\n', '')"),
-                                ]),
-
-                                // numerics must be outputted as text to avoid any loss in precision
-                                PhysicalColumnType::Numeric { .. } => {
-                                    ParameterBinding::Cast(Box::new(elem_binding), "text")
-                                }
-
-                                _ => elem_binding,
+                    if let Column::Physical(PhysicalColumn { typ, .. }) = value {
+                        match &typ {
+                            // encode blob fields in JSON objects as base64
+                            // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
+                            // need to filter out using translate(...) function
+                            PhysicalColumnType::Blob => {
+                                builder.push_str("translate(encode(");
+                                value.binding(builder);
+                                builder.push_str(", \'base64\'), E'\\n', '')");
                             }
-                        } else {
-                            elem_binding
-                        };
 
-                        (elem.0.to_owned(), value)
-                    })
-                    .collect();
+                            // numerics must be outputted as text to avoid any loss in precision
+                            PhysicalColumnType::Numeric { .. } => {
+                                value.binding(builder);
+                                builder.push_str("::text");
+                            }
 
-                ParameterBinding::JsonObject(pairs)
+                            _ => value.binding(builder),
+                        }
+                    } else {
+                        value.binding(builder)
+                    }
+                });
+
+                builder.push(')');
             }
             Column::JsonAgg(column) => {
                 // coalesce to return an empty array if we have no matching entities
-                let column_binding = column.binding();
-                ParameterBinding::Coalesce(
-                    Box::new(ParameterBinding::Function(
-                        "json_agg".to_string(),
-                        Box::new(column_binding),
-                    )),
-                    "'[]'::json",
-                )
+                builder.push_str("COALESCE(json_agg(");
+                column.binding(builder);
+                builder.push_str("), '[]'::json)");
             }
             Column::SelectionTableWrapper(selection_table) => {
-                ParameterBinding::Parenthetical(Box::new(selection_table.binding()))
+                builder.push('(');
+                selection_table.binding(builder);
+                builder.push(')');
             }
-            Column::Constant(value) => ParameterBinding::Literal(value.to_owned()),
+            Column::Constant(value) => {
+                builder.push('\'');
+                builder.push_str(value);
+                builder.push('\'');
+            }
             Column::Star(table_name) => {
-                ParameterBinding::Star(table_name.as_ref().map(|s| s.as_str()))
+                if let Some(table_name) = table_name {
+                    builder.push_quoted(table_name);
+                    builder.push('.');
+                }
+                builder.push('*');
             }
-            Column::Null => ParameterBinding::Static("NULL"),
+            Column::Null => {
+                builder.push_str("NULL");
+            }
         }
     }
 }

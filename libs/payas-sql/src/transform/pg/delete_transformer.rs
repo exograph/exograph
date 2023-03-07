@@ -95,9 +95,8 @@ mod tests {
                 };
 
                 let delete = Postgres {}.to_delete(&adelete);
-                let binding = delete.binding();
                 assert_binding!(
-                    binding,
+                    delete.into_sql(),
                     r#"WITH "concerts" AS (DELETE FROM "concerts" RETURNING *) SELECT "concerts"."id" FROM "concerts""#
                 );
             },
@@ -138,10 +137,9 @@ mod tests {
                 };
 
                 let delete = Postgres {}.to_delete(&adelete);
-                let binding = delete.binding();
 
                 assert_binding!(
-                    binding,
+                    delete.into_sql(),
                     r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."name" = $1 RETURNING *) SELECT "concerts"."id" FROM "concerts""#,
                     "v1".to_string()
                 );
@@ -192,10 +190,9 @@ mod tests {
                 };
 
                 let delete = Postgres {}.to_delete(&adelete);
-                let binding = delete.binding();
 
                 assert_binding!(
-                    binding,
+                    delete.into_sql(),
                     r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE "venues"."name" = $1) RETURNING *) SELECT "concerts"."id" FROM "concerts""#,
                     "v1".to_string()
                 );

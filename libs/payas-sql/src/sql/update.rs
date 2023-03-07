@@ -6,7 +6,7 @@ use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     predicate::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
-    Expression, ParameterBinding, SQLParamContainer,
+    Expression, SQLBuilder, SQLParamContainer,
 };
 
 #[derive(Debug)]
@@ -18,54 +18,31 @@ pub struct Update<'a> {
 }
 
 impl<'a> Expression for Update<'a> {
-    fn binding(&self) -> ParameterBinding {
-        let table_binding = ParameterBinding::Table(self.table);
+    fn binding(&self, builder: &mut SQLBuilder) {
+        builder.push_str("UPDATE ");
+        self.table.binding(builder);
+        builder.push_str(" SET ");
+        builder.push_iter(
+            self.column_values.iter(),
+            ", ",
+            |builder, (column, value)| {
+                builder.with_plain(|builder| {
+                    column.binding(builder);
+                });
+                builder.push_str(" = ");
+                value.binding(builder);
+            },
+        );
 
-        let assignments: Vec<_> = self
-            .column_values
-            .iter()
-            .map(|(column, value)| {
-                let col_binding = ParameterBinding::PlainColumn(column);
-                let value_binding = value.binding();
-
-                (col_binding, value_binding)
-            })
-            .collect();
-
-        let predicate_binding = self.predicate.binding();
-
-        ParameterBinding::Update {
-            table: Box::new(table_binding),
-            assignments,
-            predicate: Some(Box::new(predicate_binding)),
-            returning: self.returning.iter().map(|ret| ret.binding()).collect(),
+        if self.predicate.as_ref() != &ConcretePredicate::True {
+            builder.push_str(" WHERE ");
+            self.predicate.binding(builder);
         }
 
-        // let stmt = format!(
-        //     "UPDATE {} SET {} WHERE {}",
-        //     table_binding.stmt,
-        //     col_stmts.join(", "),
-        //     predicate_binding.stmt
-        // );
-
-        // let mut params = table_binding.params;
-        // params.extend(col_params.into_iter().flatten());
-        // params.extend(predicate_binding.params.into_iter());
-
-        // if self.returning.is_empty() {
-        //     ParameterBinding { stmt, params }
-        // } else {
-        //     let (ret_stmts, ret_params): (Vec<_>, Vec<_>) = self
-        //         .returning
-        //         .iter()
-        //         .map(|ret| ret.binding(expression_context).tupled())
-        //         .unzip();
-
-        //     let stmt = format!("{} RETURNING {}", stmt, ret_stmts.join(", "));
-        //     params.extend(ret_params.into_iter().flatten());
-
-        //     ParameterBinding { stmt, params }
-        // }
+        if !self.returning.is_empty() {
+            builder.push_str(" RETURNING ");
+            builder.push_elems(&self.returning, ", ");
+        }
     }
 }
 

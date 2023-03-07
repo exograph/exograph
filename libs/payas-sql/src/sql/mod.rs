@@ -7,7 +7,7 @@ use std::{
 };
 use tokio_postgres::types::{to_sql_checked, FromSql, ToSql, Type};
 
-use crate::{database_error::DatabaseError, Ordering, PhysicalColumn, PhysicalTable};
+use crate::database_error::DatabaseError;
 
 #[macro_use]
 #[cfg(test)]
@@ -215,444 +215,98 @@ impl Display for SQLBytes {
     }
 }
 
-#[derive(Debug)]
-pub enum ParameterBinding<'a> {
-    Literal(String),
-    Table(&'a PhysicalTable),
-    Column(&'a PhysicalColumn),
-    Star(Option<&'a str>), // table name is optional
-    PlainColumn(&'a PhysicalColumn),
-    Function(String, Box<ParameterBinding<'a>>),
-    Parameter(Arc<dyn SQLParam>),
-    SubExpressions(Vec<ParameterBinding<'a>>),
-    Static(&'static str),
-    Cast(Box<ParameterBinding<'a>>, &'static str),
-    JsonObject(Vec<(String, ParameterBinding<'a>)>),
-    Parenthetical(Box<ParameterBinding<'a>>),
-    Coalesce(Box<ParameterBinding<'a>>, &'static str),
-    OrderByElement(&'a PhysicalColumn, Ordering),
-    OrderBy(Vec<ParameterBinding<'a>>),
-    Predicate(Box<ParameterBinding<'a>>),
-    Boolean(bool),
-    RelationalOperator(
-        Box<ParameterBinding<'a>>,
-        Box<ParameterBinding<'a>>,
-        &'static str,
-    ),
-    LogicalOperator(
-        Box<ParameterBinding<'a>>,
-        Box<ParameterBinding<'a>>,
-        &'static str,
-    ),
-    GroupBy(Vec<ParameterBinding<'a>>),
-    LeftJoin(
-        Box<ParameterBinding<'a>>,
-        Box<ParameterBinding<'a>>,
-        Box<ParameterBinding<'a>>,
-    ),
-    Select {
-        columns: Vec<ParameterBinding<'a>>,
-        from: Box<ParameterBinding<'a>>,
-        predicate: Option<Box<ParameterBinding<'a>>>,
-        group_by: Option<Box<ParameterBinding<'a>>>,
-        order_by: Option<Box<ParameterBinding<'a>>>,
-        limit: Option<Box<ParameterBinding<'a>>>,
-        offset: Option<Box<ParameterBinding<'a>>>,
-        alias: Option<String>,
-        nested: bool,
-    },
-    Delete {
-        table: Box<ParameterBinding<'a>>,
-        predicate: Option<Box<ParameterBinding<'a>>>,
-        returning: Vec<ParameterBinding<'a>>,
-    },
-    Insert {
-        table: Box<ParameterBinding<'a>>,
-        columns: Vec<ParameterBinding<'a>>,
-        values: Vec<Vec<ParameterBinding<'a>>>,
-        returning: Vec<ParameterBinding<'a>>,
-    },
-    Update {
-        table: Box<ParameterBinding<'a>>,
-        assignments: Vec<(ParameterBinding<'a>, ParameterBinding<'a>)>,
-        predicate: Option<Box<ParameterBinding<'a>>>,
-        returning: Vec<ParameterBinding<'a>>,
-    },
-
-    CteExpression {
-        name: String,
-        operation: Box<ParameterBinding<'a>>,
-    },
-    Cte {
-        exprs: Vec<ParameterBinding<'a>>,
-        select: Box<ParameterBinding<'a>>,
-    },
+pub struct SQLBuilder {
+    sql: String,
+    params: Vec<Arc<dyn SQLParam>>,
+    plain: bool, // Indicates if column name should be rendered without the table name i.e. "col" instead of "table"."col" (needed for INSERT statements)
 }
 
-impl<'a> ParameterBinding<'a> {
-    pub fn string_expression(self) -> (String, Vec<Arc<dyn SQLParam>>) {
-        let mut buffer = String::with_capacity(100);
-        let mut params = Vec::new();
-        self._string_expression(&mut buffer, &mut params);
-        (buffer, params)
+impl SQLBuilder {
+    pub fn new() -> Self {
+        Self {
+            sql: String::new(),
+            params: Vec::new(),
+            plain: false,
+        }
     }
 
-    fn _string_expression(self, buffer: &mut String, params: &mut Vec<Arc<dyn SQLParam>>) {
-        fn push_quoted(s: &str, buffer: &mut String) {
-            buffer.push('\"');
-            buffer.push_str(s);
-            buffer.push('\"');
-        }
+    pub fn push_str<T: AsRef<str>>(&mut self, s: T) {
+        self.sql.push_str(s.as_ref());
+    }
 
-        match self {
-            ParameterBinding::Literal(l) => {
-                buffer.push('\'');
-                buffer.push_str(&l);
-                buffer.push('\'');
-            }
-            ParameterBinding::Table(t) => {
-                push_quoted(&t.name, buffer);
-            }
-            ParameterBinding::Column(c) => {
-                push_quoted(&c.table_name, buffer);
-                buffer.push('.');
-                push_quoted(&c.column_name, buffer);
-            }
-            ParameterBinding::PlainColumn(c) => {
-                push_quoted(&c.column_name, buffer);
-            }
-            ParameterBinding::Star(table_name) => {
-                if let Some(table_name) = table_name {
-                    push_quoted(table_name, buffer);
-                    buffer.push('.');
-                }
-                buffer.push('*');
-            }
-            ParameterBinding::Function(function_name, function_param) => {
-                buffer.push_str(&function_name);
-                buffer.push('(');
-                function_param._string_expression(buffer, params);
-                buffer.push(')');
-            }
-            ParameterBinding::Parameter(param) => {
-                params.push(param);
-                buffer.push('$');
-                buffer.push_str(&params.len().to_string());
-            }
-            ParameterBinding::Static(s) => buffer.push_str(s),
-            ParameterBinding::Cast(elem, typ) => {
-                elem._string_expression(buffer, params);
-                buffer.push_str("::");
-                buffer.push_str(typ);
-            }
-            ParameterBinding::JsonObject(elems) => {
-                let elems_len = elems.len();
+    pub fn push(&mut self, c: char) {
+        self.sql.push(c);
+    }
 
-                buffer.push_str("json_build_object(");
-                for (index, (key, value)) in elems.into_iter().enumerate() {
-                    buffer.push('\'');
-                    buffer.push_str(&key);
-                    buffer.push('\'');
-                    buffer.push_str(", ");
-                    value._string_expression(buffer, params);
-                    if index != elems_len - 1 {
-                        buffer.push_str(", ");
-                    }
-                }
-                buffer.push(')');
-            }
-            ParameterBinding::SubExpressions(elems) => {
-                for elem in elems {
-                    elem._string_expression(buffer, params);
-                }
-            }
-            ParameterBinding::Parenthetical(elem) => {
-                buffer.push('(');
-                elem._string_expression(buffer, params);
-                buffer.push(')');
-            }
-            ParameterBinding::Coalesce(elem, default) => {
-                buffer.push_str("COALESCE(");
-                elem._string_expression(buffer, params);
-                buffer.push_str(", ");
-                buffer.push_str(default);
-                buffer.push(')');
-            }
+    pub fn push_quoted<T: AsRef<str>>(&mut self, s: T) {
+        self.sql.push('"');
+        self.sql.push_str(s.as_ref());
+        self.sql.push('"');
+    }
 
-            ParameterBinding::OrderByElement(column, ordering) => {
-                push_quoted(&column.table_name, buffer);
-                buffer.push('.');
-                push_quoted(&column.column_name, buffer);
-                buffer.push(' ');
-                if ordering == Ordering::Asc {
-                    buffer.push_str("ASC");
-                } else {
-                    buffer.push_str("DESC");
-                }
-            }
-            ParameterBinding::OrderBy(elems) => {
-                let elems_len = elems.len();
-                buffer.push_str("ORDER BY ");
-                for (index, elem) in elems.into_iter().enumerate() {
-                    elem._string_expression(buffer, params);
-                    if index != elems_len - 1 {
-                        buffer.push_str(", ");
-                    }
-                }
-            }
-            ParameterBinding::Predicate(elem) => {
-                buffer.push_str("WHERE ");
-                elem._string_expression(buffer, params);
-            }
-            ParameterBinding::Boolean(b) => {
-                if b {
-                    buffer.push_str("TRUE");
-                } else {
-                    buffer.push_str("FALSE");
-                }
-            }
-            ParameterBinding::RelationalOperator(left, right, op) => {
-                left._string_expression(buffer, params);
-                buffer.push(' ');
-                buffer.push_str(op);
-                buffer.push(' ');
-                right._string_expression(buffer, params);
-            }
-            ParameterBinding::LogicalOperator(left, right, op) => {
-                buffer.push('(');
-                left._string_expression(buffer, params);
-                buffer.push(' ');
-                buffer.push_str(op);
-                buffer.push(' ');
-                right._string_expression(buffer, params);
-                buffer.push(')');
-            }
-            ParameterBinding::GroupBy(elems) => {
-                let elems_len = elems.len();
-                buffer.push_str("GROUP BY ");
-                for (index, elem) in elems.into_iter().enumerate() {
-                    elem._string_expression(buffer, params);
-                    if index != elems_len - 1 {
-                        buffer.push_str(", ");
-                    }
-                }
-            }
-            ParameterBinding::LeftJoin(left, right, on) => {
-                left._string_expression(buffer, params);
-                buffer.push_str(" LEFT JOIN ");
-                right._string_expression(buffer, params);
-                buffer.push_str(" ON ");
-                on._string_expression(buffer, params);
-            }
-            ParameterBinding::Select {
-                columns,
-                from,
-                predicate: filter,
-                group_by,
-                order_by,
-                limit,
-                offset,
-                alias,
-                nested,
-            } => {
-                if nested {
-                    buffer.push('(');
-                }
-                buffer.push_str("SELECT ");
-                let columns_len = columns.len();
-                for (index, column) in columns.into_iter().enumerate() {
-                    column._string_expression(buffer, params);
-                    if index != columns_len - 1 {
-                        buffer.push_str(", ");
-                    }
-                }
-                buffer.push_str(" FROM ");
-                from._string_expression(buffer, params);
-                if let Some(filter) = filter {
-                    buffer.push(' ');
-                    filter._string_expression(buffer, params);
-                }
-                if let Some(group_by) = group_by {
-                    buffer.push(' ');
-                    group_by._string_expression(buffer, params);
-                }
-                if let Some(order_by) = order_by {
-                    buffer.push(' ');
-                    order_by._string_expression(buffer, params);
-                }
-                if let Some(limit) = limit {
-                    buffer.push_str(" LIMIT ");
-                    limit._string_expression(buffer, params);
-                }
-                if let Some(offset) = offset {
-                    buffer.push_str(" OFFSET ");
-                    offset._string_expression(buffer, params);
-                }
-                if let Some(alias) = alias {
-                    buffer.push_str(" AS ");
-                    push_quoted(&alias, buffer);
-                }
-                if nested {
-                    buffer.push(')');
-                }
-            }
-            ParameterBinding::Delete {
-                table,
-                predicate,
-                returning,
-            } => {
-                buffer.push_str("DELETE FROM ");
-                table._string_expression(buffer, params);
+    pub fn push_param(&mut self, param: Arc<dyn SQLParam>) {
+        self.params.push(param);
+        self.push('$');
+        self.push_str(&self.params.len().to_string());
+    }
 
-                if let Some(predicate) = predicate {
-                    buffer.push_str(" WHERE ");
-                    predicate._string_expression(buffer, params);
-                }
-
-                if !returning.is_empty() {
-                    buffer.push_str(" RETURNING ");
-                    let returning_len = returning.len();
-                    for (index, elem) in returning.into_iter().enumerate() {
-                        elem._string_expression(buffer, params);
-                        if index != returning_len - 1 {
-                            buffer.push_str(", ");
-                        }
-                    }
-                }
-            }
-            ParameterBinding::Insert {
-                table,
-                columns,
-                values,
-                returning,
-            } => {
-                buffer.push_str("INSERT INTO ");
-                table._string_expression(buffer, params);
-                buffer.push_str(" (");
-                let columns_len = columns.len();
-                for (index, column) in columns.into_iter().enumerate() {
-                    column._string_expression(buffer, params);
-                    if index != columns_len - 1 {
-                        buffer.push_str(", ");
-                    }
-                }
-                buffer.push_str(") VALUES (");
-                let valuess_len = values.len();
-                for (index, values) in values.into_iter().enumerate() {
-                    let values_len = values.len();
-                    for (index, value) in values.into_iter().enumerate() {
-                        value._string_expression(buffer, params);
-                        if index != values_len - 1 {
-                            buffer.push_str(", ");
-                        }
-                    }
-                    if index != valuess_len - 1 {
-                        buffer.push_str("), (");
-                    }
-                }
-                buffer.push(')');
-
-                if !returning.is_empty() {
-                    buffer.push_str(" RETURNING ");
-                    let returning_len = returning.len();
-                    for (index, elem) in returning.into_iter().enumerate() {
-                        elem._string_expression(buffer, params);
-                        if index != returning_len - 1 {
-                            buffer.push_str(", ");
-                        }
-                    }
-                }
-            }
-            ParameterBinding::Update {
-                table,
-                assignments,
-                predicate,
-                returning,
-            } => {
-                buffer.push_str("UPDATE ");
-                table._string_expression(buffer, params);
-                buffer.push_str(" SET ");
-                let assignments_len = assignments.len();
-                for (index, (assignment_col, assignment_value)) in
-                    assignments.into_iter().enumerate()
-                {
-                    assignment_col._string_expression(buffer, params);
-                    buffer.push_str(" = ");
-                    assignment_value._string_expression(buffer, params);
-
-                    if index != assignments_len - 1 {
-                        buffer.push_str(", ");
-                    }
-                }
-                if let Some(predicate) = predicate {
-                    buffer.push_str(" WHERE ");
-                    predicate._string_expression(buffer, params);
-                }
-
-                if !returning.is_empty() {
-                    buffer.push_str(" RETURNING ");
-                    let returning_len = returning.len();
-                    for (index, elem) in returning.into_iter().enumerate() {
-                        elem._string_expression(buffer, params);
-                        if index != returning_len - 1 {
-                            buffer.push_str(", ");
-                        }
-                    }
-                }
-            }
-            ParameterBinding::CteExpression { name, operation } => {
-                push_quoted(&name, buffer);
-                buffer.push_str(" AS (");
-                operation._string_expression(buffer, params);
-                buffer.push(')');
-            }
-            ParameterBinding::Cte { exprs, select } => {
-                buffer.push_str("WITH ");
-                let exprs_len = exprs.len();
-                exprs.into_iter().enumerate().for_each(|(index, expr)| {
-                    expr._string_expression(buffer, params);
-                    if index != exprs_len - 1 {
-                        buffer.push_str(", ");
-                    }
-                });
-                buffer.push(' ');
-                select._string_expression(buffer, params);
+    pub fn push_iter<T>(
+        &mut self,
+        iter: impl ExactSizeIterator<Item = T>,
+        sep: &str,
+        mapping: impl Fn(&mut Self, T),
+    ) {
+        let len = iter.len();
+        for (i, item) in iter.enumerate() {
+            mapping(self, item);
+            if i < len - 1 {
+                self.sql.push_str(sep);
             }
         }
     }
-}
 
-// #[derive(Debug, Clone)]
-// pub struct ParameterBinding<'a> {
-//     elems: Vec<ExpressionElement<'a>>,
-//     // pub stmt: String,
-//     // pub params: Vec<&'a (dyn SQLParam + 'static)>,
-// }
+    pub fn push_elems<T: Expression>(&mut self, elems: &[T], sep: &str) {
+        self.push_iter(elems.iter(), sep, |builder, elem| {
+            elem.binding(builder);
+        });
+    }
 
-// impl<'a> ParameterBinding<'a> {
-//     fn new(stmt: String, params: Vec<&'a (dyn SQLParam + 'static)>) -> Self {
-//         Self { stmt, params }
-//     }
+    pub fn into_sql(self) -> (String, Vec<Arc<dyn SQLParam>>) {
+        (self.sql, self.params)
+    }
 
-//     fn tupled(self) -> (String, Vec<&'a (dyn SQLParam + 'static)>) {
-//         (self.stmt, self.params)
-//     }
-// }
-
-pub trait OperationExpression {
-    fn binding(&self) -> ParameterBinding;
+    fn with_plain<F, R>(&mut self, func: F) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        let cur_plain = self.plain;
+        self.plain = true;
+        let ret = func(self);
+        self.plain = cur_plain;
+        ret
+    }
 }
 
 pub trait Expression {
-    fn binding(&self) -> ParameterBinding;
+    fn binding(&self, builder: &mut SQLBuilder);
+
+    #[cfg(test)]
+    fn into_sql(self) -> (String, Vec<Arc<dyn SQLParam>>)
+    where
+        Self: Sized,
+    {
+        let mut builder = SQLBuilder::new();
+        self.binding(&mut builder);
+        builder.into_sql()
+    }
 }
 
 impl<T> Expression for Box<T>
 where
     T: Expression,
 {
-    fn binding(&self) -> ParameterBinding {
-        self.as_ref().binding()
+    fn binding(&self, builder: &mut SQLBuilder) {
+        self.as_ref().binding(builder)
     }
 }
 
@@ -660,7 +314,16 @@ impl<'a, T> Expression for MaybeOwned<'a, T>
 where
     T: Expression,
 {
-    fn binding(&self) -> ParameterBinding {
-        self.as_ref().binding()
+    fn binding(&self, builder: &mut SQLBuilder) {
+        self.as_ref().binding(builder)
+    }
+}
+
+impl<T> Expression for &T
+where
+    T: Expression,
+{
+    fn binding(&self, builder: &mut SQLBuilder) {
+        (**self).binding(builder)
     }
 }

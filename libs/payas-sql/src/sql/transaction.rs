@@ -1,11 +1,11 @@
 use tokio_postgres::{GenericClient, Row, Transaction};
 use tracing::{debug, error, instrument};
 
-use crate::database_error::DatabaseError;
+use crate::{database_error::DatabaseError, sql::SQLBuilder};
 
 use super::{
     sql_operation::{SQLOperation, TemplateSQLOperation},
-    OperationExpression, SQLValue,
+    Expression, SQLValue,
 };
 
 pub type TransactionStepResult = Vec<Row>;
@@ -134,9 +134,9 @@ impl<'a> ConcreteTransactionStep<'a> {
         &'a self,
         client: &mut impl GenericClient,
     ) -> Result<Vec<Row>, DatabaseError> {
-        let sql_operation = &self.operation;
-        let binding = sql_operation.binding();
-        let (stmt, params) = binding.string_expression();
+        let mut sql_builder = SQLBuilder::new();
+        self.operation.binding(&mut sql_builder);
+        let (stmt, params) = sql_builder.into_sql();
 
         let params: Vec<_> = params.iter().map(|p| p.as_pg()).collect();
 

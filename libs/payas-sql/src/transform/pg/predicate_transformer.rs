@@ -214,18 +214,20 @@ mod tests {
 
                 {
                     let predicate = Postgres {}.to_predicate(&abstract_predicate);
-
-                    let binding = predicate.binding();
-
-                    assert_binding!(binding, r#""concerts"."name" = $1"#, "v1".to_string());
+                    assert_binding!(
+                        predicate.into_sql(),
+                        r#""concerts"."name" = $1"#,
+                        "v1".to_string()
+                    );
                 }
 
                 {
                     let predicate = Postgres {}.to_subselect_predicate(&abstract_predicate);
-
-                    let binding = predicate.binding();
-
-                    assert_binding!(binding, r#""concerts"."name" = $1"#, "v1".to_string());
+                    assert_binding!(
+                        predicate.into_sql(),
+                        r#""concerts"."name" = $1"#,
+                        "v1".to_string()
+                    );
                 }
             },
         );
@@ -295,10 +297,8 @@ mod tests {
                 {
                     let predicate = Postgres {}.to_predicate(&abstract_predicate);
 
-                    let binding = predicate.binding();
-
                     assert_binding!(
-                        binding,
+                        predicate.into_sql(),
                         format!(r#""venues"."name" {sql_op}"#),
                         "v1".to_string()
                     );
@@ -307,10 +307,8 @@ mod tests {
                 {
                     let predicate = Postgres {}.to_subselect_predicate(&abstract_predicate);
 
-                    let binding = predicate.binding();
-
                     assert_binding!(
-                        binding,
+                        predicate.into_sql(),
                         format!(
                             r#""concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE "venues"."name" {sql_op})"#
                         ),

@@ -53,12 +53,12 @@ macro_rules! assert_params {
 
 macro_rules! assert_binding {
     ($actual:expr, $expected_stmt:expr) => {
-        let (actual_stmt, actual_params) = $actual.string_expression();
+        let (actual_stmt, actual_params) = $actual;
         assert_eq!(actual_stmt, $expected_stmt);
         assert_params!(actual_params);
     };
     ($actual:expr, $expected_stmt:expr, $($rest:expr), *) => {
-        let (actual_stmt, actual_params) = $actual.string_expression();
+        let (actual_stmt, actual_params) = $actual;
         assert_eq!(actual_stmt, $expected_stmt);
         assert_params!(actual_params, $($rest), *);
     };

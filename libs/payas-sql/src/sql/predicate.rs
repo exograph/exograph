@@ -1,4 +1,4 @@
-use super::{column::Column, Expression, ParameterBinding};
+use super::{column::Column, Expression, SQLBuilder};
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum CaseSensitivity {
@@ -152,17 +152,31 @@ impl LiteralEquality for Column<'_> {
 }
 
 impl<'a> Expression for ConcretePredicate<'a> {
-    fn binding(&self) -> ParameterBinding {
+    fn binding(&self, builder: &mut SQLBuilder) {
         match &self {
-            ConcretePredicate::True => ParameterBinding::Boolean(true),
-            ConcretePredicate::False => ParameterBinding::Boolean(false),
-            ConcretePredicate::Eq(column1, column2) => relational_combine(column1, column2, "="),
-            ConcretePredicate::Neq(column1, column2) => relational_combine(column1, column2, "<>"),
-            ConcretePredicate::Lt(column1, column2) => relational_combine(column1, column2, "<"),
-            ConcretePredicate::Lte(column1, column2) => relational_combine(column1, column2, "<="),
-            ConcretePredicate::Gt(column1, column2) => relational_combine(column1, column2, ">"),
-            ConcretePredicate::Gte(column1, column2) => relational_combine(column1, column2, ">="),
-            ConcretePredicate::In(column1, column2) => relational_combine(column1, column2, "IN"),
+            ConcretePredicate::True => builder.push_str("TRUE"),
+            ConcretePredicate::False => builder.push_str("FALSE"),
+            ConcretePredicate::Eq(column1, column2) => {
+                relational_combine(column1, column2, "=", builder)
+            }
+            ConcretePredicate::Neq(column1, column2) => {
+                relational_combine(column1, column2, "<>", builder)
+            }
+            ConcretePredicate::Lt(column1, column2) => {
+                relational_combine(column1, column2, "<", builder)
+            }
+            ConcretePredicate::Lte(column1, column2) => {
+                relational_combine(column1, column2, "<=", builder)
+            }
+            ConcretePredicate::Gt(column1, column2) => {
+                relational_combine(column1, column2, ">", builder)
+            }
+            ConcretePredicate::Gte(column1, column2) => {
+                relational_combine(column1, column2, ">=", builder)
+            }
+            ConcretePredicate::In(column1, column2) => {
+                relational_combine(column1, column2, "IN", builder)
+            }
 
             ConcretePredicate::StringLike(column1, column2, case_sensitivity) => {
                 relational_combine(
@@ -173,94 +187,100 @@ impl<'a> Expression for ConcretePredicate<'a> {
                     } else {
                         "LIKE"
                     },
+                    builder,
                 )
             }
             // we use the postgres concat operator (||) in order to handle both literals and column references
             ConcretePredicate::StringStartsWith(column1, column2) => {
-                ParameterBinding::SubExpressions(vec![
-                    column1.binding(),
-                    ParameterBinding::Static(" LIKE "),
-                    column2.binding(),
-                    ParameterBinding::Static(" || '%'"),
-                ])
+                column1.binding(builder);
+                builder.push_str(" LIKE ");
+                column2.binding(builder);
+                builder.push_str(" || '%'");
             }
             ConcretePredicate::StringEndsWith(column1, column2) => {
-                ParameterBinding::SubExpressions(vec![
-                    column1.binding(),
-                    ParameterBinding::Static(" LIKE '%' || "),
-                    column2.binding(),
-                ])
+                column1.binding(builder);
+                builder.push_str(" LIKE '%' || ");
+                column2.binding(builder);
             }
             ConcretePredicate::JsonContains(column1, column2) => {
-                relational_combine(column1, column2, "@>")
+                relational_combine(column1, column2, "@>", builder)
             }
             ConcretePredicate::JsonContainedBy(column1, column2) => {
-                relational_combine(column1, column2, "<@")
+                relational_combine(column1, column2, "<@", builder)
             }
             ConcretePredicate::JsonMatchKey(column1, column2) => {
-                relational_combine(column1, column2, "?")
+                relational_combine(column1, column2, "?", builder)
             }
             ConcretePredicate::JsonMatchAnyKey(column1, column2) => {
-                relational_combine(column1, column2, "?|")
+                relational_combine(column1, column2, "?|", builder)
             }
             ConcretePredicate::JsonMatchAllKeys(column1, column2) => {
-                relational_combine(column1, column2, "?&")
+                relational_combine(column1, column2, "?&", builder)
             }
             ConcretePredicate::And(predicate1, predicate2) => {
                 match (predicate1.as_ref(), predicate2.as_ref()) {
-                    (ConcretePredicate::True, ConcretePredicate::True) => {
-                        ConcretePredicate::True.binding()
-                    }
+                    (ConcretePredicate::True, ConcretePredicate::True) => builder.push_str("TRUE"),
                     (ConcretePredicate::False, _) | (_, ConcretePredicate::False) => {
-                        ConcretePredicate::False.binding()
+                        builder.push_str("FALSE")
                     }
                     (ConcretePredicate::True, predicate) | (predicate, ConcretePredicate::True) => {
-                        predicate.binding()
+                        predicate.binding(builder)
                     }
-                    (predicate1, predicate2) => logical_combine(predicate1, predicate2, "AND"),
+                    (predicate1, predicate2) => {
+                        logical_combine(predicate1, predicate2, "AND", builder)
+                    }
                 }
             }
             ConcretePredicate::Or(predicate1, predicate2) => {
                 match (predicate1.as_ref(), predicate2.as_ref()) {
                     (ConcretePredicate::False, ConcretePredicate::False) => {
-                        ConcretePredicate::False.binding()
+                        builder.push_str("FALSE")
                     }
                     (ConcretePredicate::True, _) | (_, ConcretePredicate::True) => {
-                        ConcretePredicate::True.binding()
+                        builder.push_str("TRUE")
                     }
                     (ConcretePredicate::False, predicate)
-                    | (predicate, ConcretePredicate::False) => predicate.binding(),
-                    (predicate1, predicate2) => logical_combine(predicate1, predicate2, "OR"),
+                    | (predicate, ConcretePredicate::False) => predicate.binding(builder),
+                    (predicate1, predicate2) => {
+                        logical_combine(predicate1, predicate2, "OR", builder)
+                    }
                 }
             }
             ConcretePredicate::Not(predicate) => {
-                let expr = predicate.binding();
-                ParameterBinding::Function("NOT".to_string(), Box::new(expr))
+                builder.push_str("NOT(");
+                predicate.binding(builder);
+                builder.push(')');
             }
         }
     }
 }
 
 fn relational_combine<'a, E1: Expression, E2: Expression>(
-    e1: &'a E1,
-    e2: &'a E2,
+    left: &'a E1,
+    right: &'a E2,
     op: &'static str,
-) -> ParameterBinding<'a> {
-    let expr1 = e1.binding();
-    let expr2 = e2.binding();
-
-    ParameterBinding::RelationalOperator(Box::new(expr1), Box::new(expr2), op)
+    builder: &mut SQLBuilder,
+) {
+    left.binding(builder);
+    builder.push(' ');
+    builder.push_str(op);
+    builder.push(' ');
+    right.binding(builder);
 }
 
 fn logical_combine<'a, E1: Expression, E2: Expression>(
-    e1: &'a E1,
-    e2: &'a E2,
+    left: &'a E1,
+    right: &'a E2,
     op: &'static str,
-) -> ParameterBinding<'a> {
-    let expr1 = e1.binding();
-    let expr2 = e2.binding();
-
-    ParameterBinding::LogicalOperator(Box::new(expr1), Box::new(expr2), op)
+    builder: &mut SQLBuilder,
+) {
+    builder.push('(');
+    left.binding(builder);
+    builder.push(' ');
+    builder.push_str(op);
+    builder.push(' ');
+    right.binding(builder);
+    builder.push(')');
 }
 
 #[cfg(test)]
@@ -277,12 +297,12 @@ mod tests {
 
     #[test]
     fn true_predicate() {
-        assert_binding!(ConcretePredicate::True.binding(), "TRUE");
+        assert_binding!(ConcretePredicate::True.into_sql(), "TRUE");
     }
 
     #[test]
     fn false_predicate() {
-        assert_binding!(ConcretePredicate::False.binding(), "FALSE");
+        assert_binding!(ConcretePredicate::False.into_sql(), "FALSE");
     }
 
     #[test]
@@ -298,7 +318,7 @@ mod tests {
 
         let predicate = Predicate::Eq(age_col, age_value_col);
 
-        assert_binding!(predicate.binding(), r#""people"."age" = $1"#, 5);
+        assert_binding!(predicate.into_sql(), r#""people"."age" = $1"#, 5);
     }
 
     #[test]
@@ -327,7 +347,7 @@ mod tests {
         let predicate = ConcretePredicate::And(Box::new(name_predicate), Box::new(age_predicate));
 
         assert_binding!(
-            predicate.binding(),
+            predicate.into_sql(),
             r#"("people"."name" = $1 AND "people"."age" = $2)"#,
             "foo",
             5
@@ -356,7 +376,7 @@ mod tests {
         let like_predicate =
             ConcretePredicate::StringLike(title_col, title_value_col, CaseSensitivity::Sensitive);
         assert_binding!(
-            like_predicate.binding(),
+            like_predicate.into_sql(),
             r#""videos"."title" LIKE $1"#,
             "utawaku"
         );
@@ -367,7 +387,7 @@ mod tests {
         let ilike_predicate =
             ConcretePredicate::StringLike(title_col, title_value_col, CaseSensitivity::Insensitive);
         assert_binding!(
-            ilike_predicate.binding(),
+            ilike_predicate.into_sql(),
             r#""videos"."title" ILIKE $1"#,
             "utawaku"
         );
@@ -377,7 +397,7 @@ mod tests {
 
         let starts_with_predicate = ConcretePredicate::StringStartsWith(title_col, title_value_col);
         assert_binding!(
-            starts_with_predicate.binding(),
+            starts_with_predicate.into_sql(),
             r#""videos"."title" LIKE $1 || '%'"#,
             "utawaku"
         );
@@ -387,7 +407,7 @@ mod tests {
 
         let ends_with_predicate = ConcretePredicate::StringEndsWith(title_col, title_value_col);
         assert_binding!(
-            ends_with_predicate.binding(),
+            ends_with_predicate.into_sql(),
             r#""videos"."title" LIKE '%' || $1"#,
             "utawaku"
         );
@@ -435,7 +455,7 @@ mod tests {
 
         let contains_predicate = ConcretePredicate::JsonContains(json_col, json_value_col);
         assert_binding!(
-            contains_predicate.binding(),
+            contains_predicate.into_sql(),
             r#""card"."data" @> $1"#,
             *json_value
         );
@@ -445,7 +465,7 @@ mod tests {
 
         let contained_by_predicate = ConcretePredicate::JsonContainedBy(json_col, json_value_col);
         assert_binding!(
-            contained_by_predicate.binding(),
+            contained_by_predicate.into_sql(),
             r#""card"."data" <@ $1"#,
             *json_value
         );
@@ -456,7 +476,7 @@ mod tests {
         let (json_col, _, _) = json_test_data(&json_physical_col);
 
         let match_key_predicate = ConcretePredicate::JsonMatchKey(json_col, json_key_col);
-        assert_binding!(match_key_predicate.binding(), r#""card"."data" ? $1"#, "a");
+        assert_binding!(match_key_predicate.into_sql(), r#""card"."data" ? $1"#, "a");
 
         // matchAnyKey
         let (json_col, _, _) = json_test_data(&json_physical_col);
@@ -464,7 +484,7 @@ mod tests {
         let match_any_key_predicate =
             ConcretePredicate::JsonMatchAnyKey(json_col, json_key_list_col);
         assert_binding!(
-            match_any_key_predicate.binding(),
+            match_any_key_predicate.into_sql(),
             r#""card"."data" ?| $1"#,
             json_key_list
         );
@@ -477,7 +497,7 @@ mod tests {
         let match_all_keys_predicate =
             ConcretePredicate::JsonMatchAllKeys(json_col, json_key_list_col);
         assert_binding!(
-            match_all_keys_predicate.binding(),
+            match_all_keys_predicate.into_sql(),
             r#""card"."data" ?& $1"#,
             json_key_list
         );

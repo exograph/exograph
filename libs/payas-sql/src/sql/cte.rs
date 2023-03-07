@@ -1,6 +1,4 @@
-use crate::sql::OperationExpression;
-
-use super::{select::Select, sql_operation::SQLOperation, Expression, ParameterBinding};
+use super::{select::Select, sql_operation::SQLOperation, Expression, SQLBuilder};
 
 #[derive(Debug)]
 pub struct Cte<'a> {
@@ -15,23 +13,20 @@ pub struct CteExpression<'a> {
 }
 
 impl<'a> Expression for Cte<'a> {
-    fn binding(&self) -> ParameterBinding {
-        let exprs: Vec<_> = self
-            .expressions
-            .iter()
-            .map(
-                |CteExpression { name, operation }| ParameterBinding::CteExpression {
-                    name: name.clone(),
-                    operation: Box::new(operation.binding()),
-                },
-            )
-            .collect();
+    fn binding(&self, builder: &mut SQLBuilder) {
+        builder.push_str("WITH ");
+        builder.push_elems(&self.expressions, ", ");
 
-        let select_expr = self.select.binding();
+        builder.push(' ');
+        self.select.binding(builder);
+    }
+}
 
-        ParameterBinding::Cte {
-            exprs,
-            select: Box::new(select_expr),
-        }
+impl Expression for CteExpression<'_> {
+    fn binding(&self, builder: &mut SQLBuilder) {
+        builder.push_quoted(&self.name);
+        builder.push_str(" AS (");
+        self.operation.binding(builder);
+        builder.push(')');
     }
 }

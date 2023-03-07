@@ -4,6 +4,7 @@ use super::{
     insert::Insert,
     predicate::ConcretePredicate,
     update::Update,
+    Expression,
 };
 
 use maybe_owned::MaybeOwned;
@@ -91,5 +92,11 @@ impl PhysicalTable {
             predicate,
             returning,
         }
+    }
+}
+
+impl Expression for PhysicalTable {
+    fn binding(&self, builder: &mut crate::sql::SQLBuilder) {
+        builder.push_quoted(&self.name);
     }
 }

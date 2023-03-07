@@ -1,4 +1,4 @@
-use super::{column::PhysicalColumn, Expression, ParameterBinding};
+use super::{column::PhysicalColumn, Expression, SQLBuilder};
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Ordering {
     Asc,
@@ -6,17 +6,33 @@ pub enum Ordering {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct OrderBy<'a>(pub Vec<(&'a PhysicalColumn, Ordering)>);
+pub struct OrderByElement<'a>(pub &'a PhysicalColumn, pub Ordering);
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct OrderBy<'a>(pub Vec<OrderByElement<'a>>);
+
+impl<'a> OrderByElement<'a> {
+    pub fn new(column: &'a PhysicalColumn, ordering: Ordering) -> Self {
+        Self(column, ordering)
+    }
+}
+
+impl<'a> Expression for OrderByElement<'a> {
+    fn binding(&self, builder: &mut SQLBuilder) {
+        self.0.binding(builder);
+        builder.push(' ');
+        if self.1 == Ordering::Asc {
+            builder.push_str("ASC");
+        } else {
+            builder.push_str("DESC");
+        }
+    }
+}
 
 impl<'a> Expression for OrderBy<'a> {
-    fn binding(&self) -> ParameterBinding {
-        let exprs = self
-            .0
-            .iter()
-            .map(|(column, order)| ParameterBinding::OrderByElement(column, *order))
-            .collect();
-
-        ParameterBinding::OrderBy(exprs)
+    fn binding(&self, builder: &mut SQLBuilder) {
+        builder.push_str("ORDER BY ");
+        builder.push_elems(&self.0, ", ");
     }
 }
 
@@ -34,11 +50,9 @@ mod test {
             ..Default::default()
         };
 
-        let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
+        let order_by = OrderBy(vec![OrderByElement::new(&age_col, Ordering::Desc)]);
 
-        let binding = order_by.binding();
-
-        assert_binding!(binding, r#"ORDER BY "people"."age" DESC"#);
+        assert_binding!(order_by.into_sql(), r#"ORDER BY "people"."age" DESC"#);
     }
 
     #[test]
@@ -58,24 +72,26 @@ mod test {
         };
 
         {
-            let order_by = OrderBy(vec![(&name_col, Ordering::Asc), (&age_col, Ordering::Desc)]);
-
-            let binding = order_by.binding();
+            let order_by = OrderBy(vec![
+                OrderByElement::new(&name_col, Ordering::Asc),
+                OrderByElement::new(&age_col, Ordering::Desc),
+            ]);
 
             assert_binding!(
-                binding,
+                order_by.into_sql(),
                 r#"ORDER BY "people"."name" ASC, "people"."age" DESC"#
             );
         }
 
         // Reverse the order and it should be reflected in the statement
         {
-            let order_by = OrderBy(vec![(&age_col, Ordering::Desc), (&name_col, Ordering::Asc)]);
-
-            let binding = order_by.binding();
+            let order_by = OrderBy(vec![
+                OrderByElement::new(&age_col, Ordering::Desc),
+                OrderByElement::new(&name_col, Ordering::Asc),
+            ]);
 
             assert_binding!(
-                binding,
+                order_by.into_sql(),
                 r#"ORDER BY "people"."age" DESC, "people"."name" ASC"#
             );
         }
