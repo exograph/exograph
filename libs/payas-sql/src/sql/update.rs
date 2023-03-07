@@ -3,10 +3,11 @@ use maybe_owned::MaybeOwned;
 use crate::PhysicalTable;
 
 use super::{
-    column::{Column, PhysicalColumn, ProxyColumn},
+    column::{Column, ProxyColumn},
+    physical_column::PhysicalColumn,
     predicate::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
-    Expression, ExpressionContext, ParameterBinding, SQLParamContainer,
+    ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
 
 #[derive(Debug)]
@@ -17,54 +18,31 @@ pub struct Update<'a> {
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
-impl<'a> Expression for Update<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let table_binding = self.table.binding(expression_context);
-
-        let (col_stmts, col_params): (Vec<_>, Vec<_>) =
-            expression_context.with_plain(|expression_context| {
-                self.column_values
-                    .iter()
-                    .map(|(column, value)| {
-                        let col_binding = column.binding(expression_context);
-                        let value_binding = value.binding(expression_context);
-
-                        let mut params = col_binding.params;
-                        params.extend(value_binding.params);
-                        (
-                            format!("{} = {}", col_binding.stmt, value_binding.stmt),
-                            params,
-                        )
-                    })
-                    .unzip()
-            });
-
-        let predicate_binding = self.predicate.binding(expression_context);
-
-        let stmt = format!(
-            "UPDATE {} SET {} WHERE {}",
-            table_binding.stmt,
-            col_stmts.join(", "),
-            predicate_binding.stmt
+impl<'a> ExpressionBuilder for Update<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
+        builder.push_str("UPDATE ");
+        self.table.build(builder);
+        builder.push_str(" SET ");
+        builder.push_iter(
+            self.column_values.iter(),
+            ", ",
+            |builder, (column, value)| {
+                builder.with_plain(|builder| {
+                    column.build(builder);
+                });
+                builder.push_str(" = ");
+                value.build(builder);
+            },
         );
 
-        let mut params = table_binding.params;
-        params.extend(col_params.into_iter().flatten());
-        params.extend(predicate_binding.params.into_iter());
+        if self.predicate.as_ref() != &ConcretePredicate::True {
+            builder.push_str(" WHERE ");
+            self.predicate.build(builder);
+        }
 
-        if self.returning.is_empty() {
-            ParameterBinding { stmt, params }
-        } else {
-            let (ret_stmts, ret_params): (Vec<_>, Vec<_>) = self
-                .returning
-                .iter()
-                .map(|ret| ret.binding(expression_context).tupled())
-                .unzip();
-
-            let stmt = format!("{} RETURNING {}", stmt, ret_stmts.join(", "));
-            params.extend(ret_params.into_iter().flatten());
-
-            ParameterBinding { stmt, params }
+        if !self.returning.is_empty() {
+            builder.push_str(" RETURNING ");
+            builder.push_elems(&self.returning, ", ");
         }
     }
 }

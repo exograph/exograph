@@ -1,8 +1,8 @@
 use maybe_owned::MaybeOwned;
 
 use super::{
-    column::Column, physical_table::PhysicalTable, predicate::ConcretePredicate, Expression,
-    ExpressionContext, ParameterBinding,
+    column::Column, physical_table::PhysicalTable, predicate::ConcretePredicate, ExpressionBuilder,
+    SQLBuilder,
 };
 
 #[derive(Debug)]
@@ -12,38 +12,19 @@ pub struct Delete<'a> {
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
-impl<'a> Expression for Delete<'a> {
-    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let table_binding = self.table.binding(expression_context);
+impl<'a> ExpressionBuilder for Delete<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
+        builder.push_str("DELETE FROM ");
+        self.table.build(builder);
 
-        let predicate_binding = self.predicate.binding(expression_context);
+        if self.predicate.as_ref() != &ConcretePredicate::True {
+            builder.push_str(" WHERE ");
+            self.predicate.build(builder);
+        }
 
-        let (stmt, mut params) = {
-            let mut params = table_binding.params;
-            params.extend(predicate_binding.params);
-
-            (
-                format!(
-                    "DELETE FROM {} WHERE {}",
-                    table_binding.stmt, predicate_binding.stmt
-                ),
-                params,
-            )
-        };
-
-        if self.returning.is_empty() {
-            ParameterBinding { stmt, params }
-        } else {
-            let (ret_stmts, ret_params): (Vec<_>, Vec<_>) = self
-                .returning
-                .iter()
-                .map(|ret| ret.binding(expression_context).tupled())
-                .unzip();
-
-            let stmt = format!("{} RETURNING {}", stmt, ret_stmts.join(", "));
-            params.extend(ret_params.into_iter().flatten());
-
-            ParameterBinding { stmt, params }
+        if !self.returning.is_empty() {
+            builder.push_str(" RETURNING ");
+            builder.push_elems(&self.returning, ", ");
         }
     }
 }

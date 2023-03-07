@@ -1,8 +1,7 @@
 use maybe_owned::MaybeOwned;
 
 use crate::{
-    sql::column::{Column, PhysicalColumn},
-    ColumnPathLink, PhysicalTable,
+    sql::column::Column, sql::physical_column::PhysicalColumn, ColumnPathLink, PhysicalTable,
 };
 
 use super::select::AbstractSelect;

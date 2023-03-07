@@ -1,10 +1,6 @@
 use super::{
-    column::{Column, PhysicalColumn},
-    delete::Delete,
-    insert::Insert,
-    predicate::ConcretePredicate,
-    update::Update,
-    Expression, ExpressionContext, ParameterBinding,
+    column::Column, delete::Delete, insert::Insert, physical_column::PhysicalColumn,
+    predicate::ConcretePredicate, update::Update, ExpressionBuilder,
 };
 
 use maybe_owned::MaybeOwned;
@@ -95,8 +91,8 @@ impl PhysicalTable {
     }
 }
 
-impl Expression for PhysicalTable {
-    fn binding(&self, _expression_context: &mut ExpressionContext) -> ParameterBinding {
-        ParameterBinding::new(format!(r#""{}""#, self.name.clone()), vec![])
+impl ExpressionBuilder for PhysicalTable {
+    fn build(&self, builder: &mut crate::sql::SQLBuilder) {
+        builder.push_identifier(&self.name);
     }
 }

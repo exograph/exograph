@@ -35,9 +35,7 @@ pub fn compute_join<'a>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        asql::column_path::ColumnPathLink,
-        sql::{Expression, ExpressionContext},
-        transform::test_util::TestSetup,
+        asql::column_path::ColumnPathLink, sql::ExpressionBuilder, transform::test_util::TestSetup,
     };
 
     #[test]
@@ -65,10 +63,8 @@ mod tests {
 
                 let join = super::compute_join(concerts_table, vec![concert_venue]);
 
-                let mut expr = ExpressionContext::default();
-                let join_binding = join.binding(&mut expr);
                 assert_binding!(
-                    join_binding,
+                    join.into_sql(),
                     r#""concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
                 );
             },
@@ -161,10 +157,8 @@ mod tests {
                     vec![concert_ca_artist, concert_ca_artist_address, concert_venue],
                 );
 
-                let mut expr = ExpressionContext::default();
-                let join_binding = join.binding(&mut expr);
                 assert_binding!(
-                    join_binding,
+                    join.into_sql(),
                     r#""concerts" LEFT JOIN "concert_artists" LEFT JOIN "artists" LEFT JOIN "addresses" ON "artists"."address_id" = "addresses"."id" ON "concert_artists"."artist_id" = "artists"."id" ON "concerts"."id" = "concert_artists"."concert_id" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
                 );
             },

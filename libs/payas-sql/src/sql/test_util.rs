@@ -19,7 +19,7 @@ macro_rules! assert_params {
                         );
                     },
                     None => {
-                        assert_eq!(actual_head, &(&$expected_param as &dyn $crate::sql::SQLParam), "Parameter mismatch");
+                        assert_eq!(&actual_head.as_ref(), &(&$expected_param as &dyn $crate::sql::SQLParam), "Parameter mismatch");
                     }
                 }
                 assert_eq!(actual_tail.len(), 0, "Extra actual parameters")
@@ -41,7 +41,7 @@ macro_rules! assert_params {
                         );
                     },
                     None => {
-                        assert_eq!(actual_head, &(&$expected_param as &dyn $crate::sql::SQLParam), "Parameter mismatch");
+                        assert_eq!(&actual_head.as_ref(), &(&$expected_param as &dyn $crate::sql::SQLParam), "Parameter mismatch");
                     }
                 }
                 assert_params!(actual_tail, $($rest), *);
@@ -53,11 +53,13 @@ macro_rules! assert_params {
 
 macro_rules! assert_binding {
     ($actual:expr, $expected_stmt:expr) => {
-        assert_eq!($actual.stmt.as_str(), $expected_stmt);
-        assert_params!($actual.params);
+        let (actual_stmt, actual_params) = $actual;
+        assert_eq!(actual_stmt, $expected_stmt);
+        assert_params!(actual_params);
     };
     ($actual:expr, $expected_stmt:expr, $($rest:expr), *) => {
-        assert_eq!($actual.stmt.as_str(), $expected_stmt);
-        assert_params!($actual.params, $($rest), *);
+        let (actual_stmt, actual_params) = $actual;
+        assert_eq!(actual_stmt, $expected_stmt);
+        assert_params!(actual_params, $($rest), *);
     };
 }

@@ -1,6 +1,6 @@
 use maybe_owned::MaybeOwned;
 
-use super::{predicate::ConcretePredicate, table::TableQuery, Expression, ParameterBinding};
+use super::{predicate::ConcretePredicate, table::TableQuery, ExpressionBuilder, SQLBuilder};
 
 /// Represents a join between two tables. Currently, supports only left join.
 #[derive(Debug, PartialEq)]
@@ -28,33 +28,20 @@ impl<'a> Join<'a> {
     }
 }
 
-impl Expression for Join<'_> {
-    fn binding(&self, expression_context: &mut super::ExpressionContext) -> ParameterBinding {
-        let left_binding = self.left.binding(expression_context);
-        let right_binding = self.right.binding(expression_context);
-        let predicate_binding = self.predicate.binding(expression_context);
-
-        let mut params = left_binding.params;
-        params.extend(right_binding.params);
-        params.extend(predicate_binding.params);
-
-        ParameterBinding {
-            stmt: format!(
-                "{} LEFT JOIN {} ON {}",
-                left_binding.stmt, right_binding.stmt, predicate_binding.stmt
-            ),
-            params,
-        }
+impl ExpressionBuilder for Join<'_> {
+    fn build(&self, builder: &mut SQLBuilder) {
+        self.left.build(builder);
+        builder.push_str(" LEFT JOIN ");
+        self.right.build(builder);
+        builder.push_str(" ON ");
+        self.predicate.build(builder);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        sql::{
-            column::{IntBits, PhysicalColumn, PhysicalColumnType},
-            ExpressionContext,
-        },
+        sql::physical_column::{IntBits, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     };
 
@@ -108,11 +95,11 @@ mod tests {
         .into();
         let join = Join::new(concert_table, venue_table, join_predicate);
 
-        let mut expression_context = ExpressionContext::default();
-        let binding = join.binding(&mut expression_context);
+        let mut builder = SQLBuilder::new();
+        join.build(&mut builder);
 
         assert_binding!(
-            binding,
+            builder.into_sql(),
             r#""concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
         );
     }
