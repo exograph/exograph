@@ -40,7 +40,6 @@ pub struct DenoSubsystem {
 impl DenoSubsystem {
     pub fn schema_queries(&self) -> Vec<FieldDefinition> {
         self.queries
-            .values
             .iter()
             .map(|(_, query)| query.field_definition(self))
             .collect()
@@ -48,7 +47,6 @@ impl DenoSubsystem {
 
     pub fn schema_mutations(&self) -> Vec<FieldDefinition> {
         self.mutations
-            .values
             .iter()
             .map(|(_, query)| query.field_definition(self))
             .collect()

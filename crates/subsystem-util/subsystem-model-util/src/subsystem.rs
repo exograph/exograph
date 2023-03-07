@@ -38,7 +38,6 @@ pub struct ServiceSubsystem {
 impl ServiceSubsystem {
     pub fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
         self.queries
-            .values
             .iter()
             .map(|query| default_positioned(query.1.field_definition(self)))
             .collect()
@@ -46,7 +45,6 @@ impl ServiceSubsystem {
 
     pub fn schema_mutations(&self) -> Vec<Positioned<FieldDefinition>> {
         self.mutations
-            .values
             .iter()
             .map(|query| default_positioned(query.1.field_definition(self)))
             .collect()

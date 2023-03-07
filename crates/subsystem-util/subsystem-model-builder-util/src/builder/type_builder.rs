@@ -75,13 +75,16 @@ fn expand_service_type_no_fields(
 ) {
     let existing_type_id = building.get_id(&resolved_type.name);
 
-    building.types.values[existing_type_id.unwrap()].kind =
+    building.types.get_by_id_mut(existing_type_id.unwrap()).kind =
         ServiceTypeKind::Composite(ServiceCompositeType {
             fields: vec![],
             access: Access::restrictive(),
             is_input: false,
         });
-    building.types.values[existing_type_id.unwrap()].is_input = resolved_type.is_input;
+    building
+        .types
+        .get_by_id_mut(existing_type_id.unwrap())
+        .is_input = resolved_type.is_input;
 }
 
 fn expand_service_type_fields(
@@ -102,7 +105,7 @@ fn expand_service_type_fields(
         access: Access::restrictive(),
     });
 
-    building.types.values[existing_type_id].kind = kind
+    building.types.get_by_id_mut(existing_type_id).kind = kind
 }
 
 fn expand_method_access(
@@ -112,7 +115,7 @@ fn expand_method_access(
 ) -> Result<(), ModelBuildingError> {
     let existing_method_id = building.methods.get_id(&resolved_method.name).unwrap();
     let expr = compute_access_method(&resolved_method.access, resolved_env)?;
-    building.methods.values[existing_method_id].access = expr;
+    building.methods.get_by_id_mut(existing_method_id).access = expr;
 
     Ok(())
 }
@@ -178,7 +181,7 @@ fn expand_type_access(
             access: expr,
         });
 
-        building.types.values[existing_type_id].kind = kind
+        building.types.get_by_id_mut(existing_type_id).kind = kind
     };
 
     Ok(())

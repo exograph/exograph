@@ -1,9 +1,19 @@
+//! A wrapper around a `typed_generational_arena::Arena` that also provides fast lookup.
+//!
+//! We use `MappedArena` to store queries, mutations, and contexts. In each of these cases, we need
+//! to lookup the underlying object given a key. For example, the key would be the name of the query
+//! or mutation (such as `concerts` or `deleteConcert`).
+//!
+//! We need a fast lookup during resolve time. For example, if we are resolving a query, we need to
+//! find the `Query` object associated with that name. If we don't maintain a map, we would have to
+//! a linear search.
+
 use std::{
     collections::{hash_map::Keys, HashMap},
     ops,
 };
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use typed_generational_arena::{Arena, IgnoreGeneration, Index};
 
@@ -12,11 +22,23 @@ pub type SerializableSlabIndex<T> = Index<T, usize, IgnoreGeneration>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MappedArena<V> {
-    pub values: SerializableSlab<V>,
+    values: SerializableSlab<V>,
     map: HashMap<String, SerializableSlabIndex<V>>,
 }
 
-impl<V: DeserializeOwned + Serialize> MappedArena<V> {
+impl<V> MappedArena<V> {
+    pub fn values(self) -> SerializableSlab<V> {
+        self.values
+    }
+
+    pub fn values_ref(&self) -> &SerializableSlab<V> {
+        &self.values
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
     pub fn keys(&self) -> Keys<String, SerializableSlabIndex<V>> {
         self.map.keys()
     }
@@ -30,12 +52,15 @@ impl<V: DeserializeOwned + Serialize> MappedArena<V> {
     }
 
     pub fn get_by_key_mut(&mut self, key: &str) -> Option<&mut V> {
-        #[allow(clippy::manual_map)]
         if let Some(id) = self.get_id(key) {
             Some(&mut self[id])
         } else {
             None
         }
+    }
+
+    pub fn get_by_id_mut(&mut self, id: SerializableSlabIndex<V>) -> &mut V {
+        &mut self.values[id]
     }
 
     pub fn add(&mut self, key: &str, typ: V) -> SerializableSlabIndex<V> {
@@ -47,28 +72,9 @@ impl<V: DeserializeOwned + Serialize> MappedArena<V> {
     pub fn iter(&self) -> typed_generational_arena::Iter<V, usize, IgnoreGeneration> {
         self.values.iter()
     }
-
-    pub fn iter_mut(&mut self) -> typed_generational_arena::IterMut<V, usize, IgnoreGeneration> {
-        self.values.iter_mut()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
-    }
 }
 
-// Needed for tests, should get DCEd for the main binary
-pub fn sorted_values<V: DeserializeOwned + Serialize>(arena: &MappedArena<V>) -> Vec<&V> {
-    let mut values = Vec::new();
-    let mut keys = arena.keys().collect::<Vec<&String>>();
-    keys.sort();
-    for key in keys.iter() {
-        values.push(arena.get_by_key(key).unwrap());
-    }
-    values
-}
-
-impl<V: DeserializeOwned + Serialize> Default for MappedArena<V> {
+impl<V> Default for MappedArena<V> {
     fn default() -> Self {
         MappedArena {
             values: SerializableSlab::new(),
@@ -77,18 +83,18 @@ impl<V: DeserializeOwned + Serialize> Default for MappedArena<V> {
     }
 }
 
-impl<T: DeserializeOwned + Serialize> ops::Index<SerializableSlabIndex<T>> for MappedArena<T> {
-    type Output = T;
+impl<V> ops::Index<SerializableSlabIndex<V>> for MappedArena<V> {
+    type Output = V;
 
     #[inline]
-    fn index(&self, id: SerializableSlabIndex<T>) -> &T {
+    fn index(&self, id: SerializableSlabIndex<V>) -> &V {
         &self.values[id]
     }
 }
 
-impl<T: DeserializeOwned + Serialize> ops::IndexMut<SerializableSlabIndex<T>> for MappedArena<T> {
+impl<V> ops::IndexMut<SerializableSlabIndex<V>> for MappedArena<V> {
     #[inline]
-    fn index_mut(&mut self, id: SerializableSlabIndex<T>) -> &mut T {
+    fn index_mut(&mut self, id: SerializableSlabIndex<V>) -> &mut V {
         &mut self.values[id]
     }
 }
