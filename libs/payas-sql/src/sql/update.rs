@@ -6,7 +6,7 @@ use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     predicate::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
-    Expression, SQLBuilder, SQLParamContainer,
+    ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
 
 #[derive(Debug)]
@@ -17,26 +17,26 @@ pub struct Update<'a> {
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
-impl<'a> Expression for Update<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+impl<'a> ExpressionBuilder for Update<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("UPDATE ");
-        self.table.binding(builder);
+        self.table.build(builder);
         builder.push_str(" SET ");
         builder.push_iter(
             self.column_values.iter(),
             ", ",
             |builder, (column, value)| {
                 builder.with_plain(|builder| {
-                    column.binding(builder);
+                    column.build(builder);
                 });
                 builder.push_str(" = ");
-                value.binding(builder);
+                value.build(builder);
             },
         );
 
         if self.predicate.as_ref() != &ConcretePredicate::True {
             builder.push_str(" WHERE ");
-            self.predicate.binding(builder);
+            self.predicate.build(builder);
         }
 
         if !self.returning.is_empty() {

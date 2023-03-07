@@ -5,7 +5,7 @@ use crate::PhysicalTable;
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     transaction::{TransactionContext, TransactionStepId},
-    Expression, SQLBuilder, SQLParamContainer,
+    ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
 
 #[derive(Debug)]
@@ -16,10 +16,10 @@ pub struct Insert<'a> {
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
-impl<'a> Expression for Insert<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+impl<'a> ExpressionBuilder for Insert<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("INSERT INTO ");
-        self.table.binding(builder);
+        self.table.build(builder);
         builder.push_str(" (");
         builder.with_plain(|builder| {
             builder.push_elems(&self.column_names, ", ");

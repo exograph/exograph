@@ -1,4 +1,4 @@
-use super::{select::Select, sql_operation::SQLOperation, Expression, SQLBuilder};
+use super::{select::Select, sql_operation::SQLOperation, ExpressionBuilder, SQLBuilder};
 
 #[derive(Debug)]
 pub struct Cte<'a> {
@@ -12,21 +12,22 @@ pub struct CteExpression<'a> {
     pub operation: SQLOperation<'a>,
 }
 
-impl<'a> Expression for Cte<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+impl<'a> ExpressionBuilder for Cte<'a> {
+    /// Build a CTE for the `WITH <expressions> <select>` syntax.
+    fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("WITH ");
         builder.push_elems(&self.expressions, ", ");
-
         builder.push(' ');
-        self.select.binding(builder);
+        self.select.build(builder);
     }
 }
 
-impl Expression for CteExpression<'_> {
-    fn binding(&self, builder: &mut SQLBuilder) {
-        builder.push_quoted(&self.name);
+impl ExpressionBuilder for CteExpression<'_> {
+    /// Build a CTE expression for the `<name> AS (<operation>)` syntax.
+    fn build(&self, builder: &mut SQLBuilder) {
+        builder.push_identifier(&self.name);
         builder.push_str(" AS (");
-        self.operation.binding(builder);
+        self.operation.build(builder);
         builder.push(')');
     }
 }

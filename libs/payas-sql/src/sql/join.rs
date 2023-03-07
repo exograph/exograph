@@ -1,6 +1,6 @@
 use maybe_owned::MaybeOwned;
 
-use super::{predicate::ConcretePredicate, table::TableQuery, Expression, SQLBuilder};
+use super::{predicate::ConcretePredicate, table::TableQuery, ExpressionBuilder, SQLBuilder};
 
 /// Represents a join between two tables. Currently, supports only left join.
 #[derive(Debug, PartialEq)]
@@ -28,13 +28,13 @@ impl<'a> Join<'a> {
     }
 }
 
-impl Expression for Join<'_> {
-    fn binding(&self, builder: &mut SQLBuilder) {
-        self.left.binding(builder);
+impl ExpressionBuilder for Join<'_> {
+    fn build(&self, builder: &mut SQLBuilder) {
+        self.left.build(builder);
         builder.push_str(" LEFT JOIN ");
-        self.right.binding(builder);
+        self.right.build(builder);
         builder.push_str(" ON ");
-        self.predicate.binding(builder);
+        self.predicate.build(builder);
     }
 }
 
@@ -96,7 +96,7 @@ mod tests {
         let join = Join::new(concert_table, venue_table, join_predicate);
 
         let mut builder = SQLBuilder::new();
-        join.binding(&mut builder);
+        join.build(&mut builder);
 
         assert_binding!(
             builder.into_sql(),

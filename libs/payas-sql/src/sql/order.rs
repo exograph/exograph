@@ -1,4 +1,4 @@
-use super::{column::PhysicalColumn, Expression, SQLBuilder};
+use super::{column::PhysicalColumn, ExpressionBuilder, SQLBuilder};
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Ordering {
     Asc,
@@ -17,9 +17,9 @@ impl<'a> OrderByElement<'a> {
     }
 }
 
-impl<'a> Expression for OrderByElement<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
-        self.0.binding(builder);
+impl<'a> ExpressionBuilder for OrderByElement<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
+        self.0.build(builder);
         builder.push(' ');
         if self.1 == Ordering::Asc {
             builder.push_str("ASC");
@@ -29,8 +29,8 @@ impl<'a> Expression for OrderByElement<'a> {
     }
 }
 
-impl<'a> Expression for OrderBy<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+impl<'a> ExpressionBuilder for OrderBy<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("ORDER BY ");
         builder.push_elems(&self.0, ", ");
     }

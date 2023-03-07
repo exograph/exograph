@@ -63,7 +63,7 @@ impl DeleteTransformer for Postgres {
 mod tests {
     use crate::{
         asql::selection::{ColumnSelection, Selection, SelectionElement},
-        sql::{predicate::Predicate, Expression, SQLParamContainer},
+        sql::{predicate::Predicate, ExpressionBuilder, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
         AbstractPredicate, AbstractSelect, ColumnPath, ColumnPathLink,
     };

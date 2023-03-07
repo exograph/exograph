@@ -5,7 +5,7 @@ use crate::{database_error::DatabaseError, sql::SQLBuilder};
 
 use super::{
     sql_operation::{SQLOperation, TemplateSQLOperation},
-    Expression, SQLValue,
+    ExpressionBuilder, SQLValue,
 };
 
 pub type TransactionStepResult = Vec<Row>;
@@ -135,7 +135,7 @@ impl<'a> ConcreteTransactionStep<'a> {
         client: &mut impl GenericClient,
     ) -> Result<Vec<Row>, DatabaseError> {
         let mut sql_builder = SQLBuilder::new();
-        self.operation.binding(&mut sql_builder);
+        self.operation.build(&mut sql_builder);
         let (stmt, params) = sql_builder.into_sql();
 
         let params: Vec<_> = params.iter().map(|p| p.as_pg()).collect();

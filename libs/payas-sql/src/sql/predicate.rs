@@ -1,4 +1,4 @@
-use super::{column::Column, Expression, SQLBuilder};
+use super::{column::Column, ExpressionBuilder, SQLBuilder};
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum CaseSensitivity {
@@ -151,8 +151,8 @@ impl LiteralEquality for Column<'_> {
     }
 }
 
-impl<'a> Expression for ConcretePredicate<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+impl<'a> ExpressionBuilder for ConcretePredicate<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         match &self {
             ConcretePredicate::True => builder.push_str("TRUE"),
             ConcretePredicate::False => builder.push_str("FALSE"),
@@ -192,15 +192,15 @@ impl<'a> Expression for ConcretePredicate<'a> {
             }
             // we use the postgres concat operator (||) in order to handle both literals and column references
             ConcretePredicate::StringStartsWith(column1, column2) => {
-                column1.binding(builder);
+                column1.build(builder);
                 builder.push_str(" LIKE ");
-                column2.binding(builder);
+                column2.build(builder);
                 builder.push_str(" || '%'");
             }
             ConcretePredicate::StringEndsWith(column1, column2) => {
-                column1.binding(builder);
+                column1.build(builder);
                 builder.push_str(" LIKE '%' || ");
-                column2.binding(builder);
+                column2.build(builder);
             }
             ConcretePredicate::JsonContains(column1, column2) => {
                 relational_combine(column1, column2, "@>", builder)
@@ -224,7 +224,7 @@ impl<'a> Expression for ConcretePredicate<'a> {
                         builder.push_str("FALSE")
                     }
                     (ConcretePredicate::True, predicate) | (predicate, ConcretePredicate::True) => {
-                        predicate.binding(builder)
+                        predicate.build(builder)
                     }
                     (predicate1, predicate2) => {
                         logical_combine(predicate1, predicate2, "AND", builder)
@@ -240,7 +240,7 @@ impl<'a> Expression for ConcretePredicate<'a> {
                         builder.push_str("TRUE")
                     }
                     (ConcretePredicate::False, predicate)
-                    | (predicate, ConcretePredicate::False) => predicate.binding(builder),
+                    | (predicate, ConcretePredicate::False) => predicate.build(builder),
                     (predicate1, predicate2) => {
                         logical_combine(predicate1, predicate2, "OR", builder)
                     }
@@ -248,38 +248,38 @@ impl<'a> Expression for ConcretePredicate<'a> {
             }
             ConcretePredicate::Not(predicate) => {
                 builder.push_str("NOT(");
-                predicate.binding(builder);
+                predicate.build(builder);
                 builder.push(')');
             }
         }
     }
 }
 
-fn relational_combine<'a, E1: Expression, E2: Expression>(
+fn relational_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
     left: &'a E1,
     right: &'a E2,
     op: &'static str,
     builder: &mut SQLBuilder,
 ) {
-    left.binding(builder);
+    left.build(builder);
     builder.push(' ');
     builder.push_str(op);
     builder.push(' ');
-    right.binding(builder);
+    right.build(builder);
 }
 
-fn logical_combine<'a, E1: Expression, E2: Expression>(
+fn logical_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
     left: &'a E1,
     right: &'a E2,
     op: &'static str,
     builder: &mut SQLBuilder,
 ) {
     builder.push('(');
-    left.binding(builder);
+    left.build(builder);
     builder.push(' ');
     builder.push_str(op);
     builder.push(' ');
-    right.binding(builder);
+    right.build(builder);
     builder.push(')');
 }
 

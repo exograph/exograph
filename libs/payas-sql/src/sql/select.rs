@@ -2,7 +2,7 @@ use crate::{Limit, Offset};
 
 use super::{
     column::Column, group_by::GroupBy, order::OrderBy, predicate::ConcretePredicate,
-    table::TableQuery, Expression, SQLBuilder,
+    table::TableQuery, ExpressionBuilder, SQLBuilder,
 };
 
 #[derive(Debug, PartialEq)]
@@ -17,8 +17,8 @@ pub struct Select<'a> {
     pub top_level_selection: bool,
 }
 
-impl<'a> Expression for Select<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+impl<'a> ExpressionBuilder for Select<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         let predicate = match &self.predicate {
             // Avoid correct, but inelegant "where true" clause
             ConcretePredicate::True => None,
@@ -28,7 +28,7 @@ impl<'a> Expression for Select<'a> {
         builder.push_str("SELECT ");
 
         builder.push_iter(self.columns.iter(), ", ", |builder, col| {
-            col.binding(builder);
+            col.build(builder);
             match col {
                 Column::JsonObject(_) | Column::JsonAgg(_) if self.top_level_selection => {
                     builder.push_str("::text");
@@ -39,25 +39,25 @@ impl<'a> Expression for Select<'a> {
 
         builder.push_str(" FROM ");
 
-        self.underlying.binding(builder);
+        self.underlying.build(builder);
 
         if let Some(predicate) = predicate {
             builder.push_str(" WHERE ");
-            predicate.binding(builder);
+            predicate.build(builder);
         }
         if let Some(group_by) = &self.group_by {
             builder.push(' ');
-            group_by.binding(builder);
+            group_by.build(builder);
         }
         if let Some(order_by) = &self.order_by {
             builder.push(' ');
-            order_by.binding(builder);
+            order_by.build(builder);
         }
         if let Some(limit) = &self.limit {
-            limit.binding(builder);
+            limit.build(builder);
         }
         if let Some(offset) = &self.offset {
-            offset.binding(builder);
+            offset.build(builder);
         }
     }
 }
@@ -65,7 +65,7 @@ impl<'a> Expression for Select<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        sql::column::{IntBits, PhysicalColumn, PhysicalColumnType},
+        sql::column::{IntBits, JsonObjectElement, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     };
 
@@ -96,8 +96,8 @@ mod tests {
 
         let name_col = physical_table.get_column("name").unwrap();
         let json_col = Column::JsonObject(vec![
-            ("namex".to_string(), name_col),
-            ("agex".to_string(), age_col),
+            JsonObjectElement::new("namex".to_string(), name_col),
+            JsonObjectElement::new("agex".to_string(), age_col),
         ]);
         let table = TableQuery::Physical(&physical_table);
         let selected_table = table.select(

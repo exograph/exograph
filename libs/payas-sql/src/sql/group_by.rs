@@ -1,15 +1,13 @@
 use crate::PhysicalColumn;
 
-use super::{Expression, SQLBuilder};
+use super::{ExpressionBuilder, SQLBuilder};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GroupBy<'a>(pub Vec<&'a PhysicalColumn>);
 
-impl<'a> Expression for GroupBy<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+impl<'a> ExpressionBuilder for GroupBy<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("GROUP BY ");
-        builder.push_iter(self.0.iter(), ", ", |builder, elem| {
-            elem.binding(builder);
-        });
+        builder.push_elems(&self.0, ", ");
     }
 }

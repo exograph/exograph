@@ -35,7 +35,7 @@ pub fn compute_join<'a>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        asql::column_path::ColumnPathLink, sql::Expression, transform::test_util::TestSetup,
+        asql::column_path::ColumnPathLink, sql::ExpressionBuilder, transform::test_util::TestSetup,
     };
 
     #[test]

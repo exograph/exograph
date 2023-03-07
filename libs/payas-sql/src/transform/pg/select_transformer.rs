@@ -9,7 +9,7 @@ use crate::{
         },
     },
     sql::{
-        column::Column,
+        column::{Column, JsonObjectElement},
         group_by::GroupBy,
         predicate::ConcretePredicate,
         select::Select,
@@ -147,7 +147,7 @@ impl<'a> Selection<'a> {
                 let object_elems = seq
                     .iter()
                     .map(|ColumnSelection { alias, column }| {
-                        (alias.clone(), column.to_sql(database_kind))
+                        JsonObjectElement::new(alias.clone(), column.to_sql(database_kind))
                     })
                     .collect();
 
@@ -179,7 +179,9 @@ impl<'a> SelectionElement<'a> {
             SelectionElement::Object(elements) => {
                 let elements = elements
                     .iter()
-                    .map(|(alias, column)| (alias.to_owned(), column.to_sql(database_kind)))
+                    .map(|(alias, column)| {
+                        JsonObjectElement::new(alias.to_owned(), column.to_sql(database_kind))
+                    })
                     .collect();
                 Column::JsonObject(elements)
             }
@@ -215,7 +217,7 @@ mod tests {
     };
 
     use super::AbstractSelect;
-    use crate::sql::Expression;
+    use crate::sql::ExpressionBuilder;
 
     #[test]
     fn simple_selection() {

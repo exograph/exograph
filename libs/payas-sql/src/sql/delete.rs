@@ -1,7 +1,7 @@
 use maybe_owned::MaybeOwned;
 
 use super::{
-    column::Column, physical_table::PhysicalTable, predicate::ConcretePredicate, Expression,
+    column::Column, physical_table::PhysicalTable, predicate::ConcretePredicate, ExpressionBuilder,
     SQLBuilder,
 };
 
@@ -12,21 +12,19 @@ pub struct Delete<'a> {
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
-impl<'a> Expression for Delete<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+impl<'a> ExpressionBuilder for Delete<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("DELETE FROM ");
-        self.table.binding(builder);
+        self.table.build(builder);
 
         if self.predicate.as_ref() != &ConcretePredicate::True {
             builder.push_str(" WHERE ");
-            self.predicate.binding(builder);
+            self.predicate.build(builder);
         }
 
         if !self.returning.is_empty() {
             builder.push_str(" RETURNING ");
-            builder.push_iter(self.returning.iter(), ", ", |builder, elem| {
-                elem.binding(builder)
-            });
+            builder.push_elems(&self.returning, ", ");
         }
     }
 }

@@ -2,7 +2,7 @@ use crate::{Limit, Offset, PhysicalTable};
 
 use super::{
     column::Column, group_by::GroupBy, join::Join, order::OrderBy, predicate::ConcretePredicate,
-    select::Select, Expression, SQLBuilder,
+    select::Select, ExpressionBuilder, SQLBuilder,
 };
 use maybe_owned::MaybeOwned;
 
@@ -57,17 +57,17 @@ impl<'a> TableQuery<'a> {
     }
 }
 
-impl<'a> Expression for TableQuery<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+impl<'a> ExpressionBuilder for TableQuery<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         match self {
-            TableQuery::Physical(physical_table) => builder.push_quoted(&physical_table.name),
-            TableQuery::Join(join) => join.binding(builder),
+            TableQuery::Physical(physical_table) => builder.push_identifier(&physical_table.name),
+            TableQuery::Join(join) => join.build(builder),
             TableQuery::SubSelect { select, alias } => {
                 builder.push('(');
-                select.binding(builder);
+                select.build(builder);
                 builder.push(')');
                 builder.push_str(" AS ");
-                builder.push_quoted(alias);
+                builder.push_identifier(alias);
             }
         }
     }

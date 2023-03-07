@@ -1,7 +1,8 @@
 use crate::database_error::DatabaseError;
 
 use super::{
-    select::Select, transaction::TransactionStepId, Expression, SQLBuilder, SQLParamContainer,
+    select::Select, transaction::TransactionStepId, ExpressionBuilder, SQLBuilder,
+    SQLParamContainer,
 };
 use maybe_owned::MaybeOwned;
 use regex::Regex;
@@ -45,13 +46,13 @@ impl Default for PhysicalColumn {
     }
 }
 
-impl Expression for PhysicalColumn {
-    fn binding(&self, builder: &mut SQLBuilder) {
-        if !builder.plain {
-            builder.push_quoted(&self.table_name);
+impl ExpressionBuilder for PhysicalColumn {
+    fn build(&self, builder: &mut SQLBuilder) {
+        if !builder.in_plain_mode() {
+            builder.push_identifier(&self.table_name);
             builder.push('.');
         }
-        builder.push_quoted(&self.column_name);
+        builder.push_identifier(&self.column_name);
     }
 }
 
@@ -303,7 +304,7 @@ impl PhysicalColumnType {
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
     Literal(SQLParamContainer),
-    JsonObject(Vec<(String, Column<'a>)>),
+    JsonObject(Vec<JsonObjectElement<'a>>),
     JsonAgg(Box<Column<'a>>),
     SelectionTableWrapper(Box<Select<'a>>),
     // TODO: Generalize the following to return any type of value, not just strings
@@ -316,62 +317,81 @@ pub enum Column<'a> {
     },
 }
 
-impl<'a> Expression for Column<'a> {
-    fn binding(&self, builder: &mut SQLBuilder) {
+#[derive(Debug, PartialEq)]
+pub struct JsonObjectElement<'a> {
+    pub key: String,
+    pub value: Column<'a>,
+}
+
+impl<'a> JsonObjectElement<'a> {
+    pub fn new(key: String, value: Column<'a>) -> Self {
+        Self { key, value }
+    }
+}
+
+/// Build a SQL query for an element in a JSON object. The SQL expression will be `'<key>',
+/// <value>`, where `<value>` is the SQL expression for the value of the JSON object element. The
+/// value of the JSON object element is encoded as base64 if it is a blob, and as text if it is a
+/// numeric.
+impl<'a> ExpressionBuilder for JsonObjectElement<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
+        builder.push_str("'");
+        builder.push_str(&self.key);
+        builder.push_str("', ");
+
+        if let Column::Physical(PhysicalColumn { typ, .. }) = self.value {
+            match &typ {
+                // encode blob fields in JSON objects as base64
+                // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
+                // need to filter out using translate(...) function
+                PhysicalColumnType::Blob => {
+                    builder.push_str("translate(encode(");
+                    self.value.build(builder);
+                    builder.push_str(", \'base64\'), E'\\n', '')");
+                }
+
+                // numerics must be outputted as text to avoid any loss in precision
+                PhysicalColumnType::Numeric { .. } => {
+                    self.value.build(builder);
+                    builder.push_str("::text");
+                }
+
+                _ => self.value.build(builder),
+            }
+        } else {
+            self.value.build(builder)
+        }
+    }
+}
+
+impl<'a> ExpressionBuilder for Column<'a> {
+    fn build(&self, builder: &mut SQLBuilder) {
         match self {
-            Column::Physical(pc) => pc.binding(builder),
+            Column::Physical(pc) => pc.build(builder),
             Column::Function {
                 function_name,
                 column,
             } => {
                 builder.push_str(function_name);
                 builder.push('(');
-                column.binding(builder);
+                column.build(builder);
                 builder.push(')');
             }
             Column::Literal(value) => builder.push_param(value.param()),
             Column::JsonObject(elems) => {
                 builder.push_str("json_build_object(");
-                builder.push_iter(elems.iter(), ", ", |builder, (key, value)| {
-                    builder.push_str("'");
-                    builder.push_str(key);
-                    builder.push_str("', ");
-
-                    if let Column::Physical(PhysicalColumn { typ, .. }) = value {
-                        match &typ {
-                            // encode blob fields in JSON objects as base64
-                            // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
-                            // need to filter out using translate(...) function
-                            PhysicalColumnType::Blob => {
-                                builder.push_str("translate(encode(");
-                                value.binding(builder);
-                                builder.push_str(", \'base64\'), E'\\n', '')");
-                            }
-
-                            // numerics must be outputted as text to avoid any loss in precision
-                            PhysicalColumnType::Numeric { .. } => {
-                                value.binding(builder);
-                                builder.push_str("::text");
-                            }
-
-                            _ => value.binding(builder),
-                        }
-                    } else {
-                        value.binding(builder)
-                    }
-                });
-
+                builder.push_elems(elems, ", ");
                 builder.push(')');
             }
             Column::JsonAgg(column) => {
                 // coalesce to return an empty array if we have no matching entities
                 builder.push_str("COALESCE(json_agg(");
-                column.binding(builder);
+                column.build(builder);
                 builder.push_str("), '[]'::json)");
             }
             Column::SelectionTableWrapper(selection_table) => {
                 builder.push('(');
-                selection_table.binding(builder);
+                selection_table.build(builder);
                 builder.push(')');
             }
             Column::Constant(value) => {
@@ -381,7 +401,7 @@ impl<'a> Expression for Column<'a> {
             }
             Column::Star(table_name) => {
                 if let Some(table_name) = table_name {
-                    builder.push_quoted(table_name);
+                    builder.push_identifier(table_name);
                     builder.push('.');
                 }
                 builder.push('*');

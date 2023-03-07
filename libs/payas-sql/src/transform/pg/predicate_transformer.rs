@@ -189,7 +189,7 @@ pub(super) fn column_path_components<'a, 'p>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        sql::{predicate::CaseSensitivity, Expression, SQLParamContainer},
+        sql::{predicate::CaseSensitivity, ExpressionBuilder, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
         AbstractPredicate, ColumnPath, ColumnPathLink,
     };
