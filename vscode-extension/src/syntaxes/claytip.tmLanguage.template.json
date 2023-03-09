@@ -244,12 +244,9 @@
               "name": "keyword.control.export.claytip"
             },
             "2": {
-              "name": "storage.modifier.async.claytip"
-            },
-            "3": {
               "name": "storage.type.function.claytip"
             },
-            "4": {
+            "3": {
               "name": "meta.definition.function.claytip entity.name.function.claytip"
             }
           },
