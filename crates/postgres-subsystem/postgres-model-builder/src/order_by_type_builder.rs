@@ -93,7 +93,7 @@ fn expand_type(
     let parameters = entity_type
         .fields
         .iter()
-        .map(|field| {
+        .flat_map(|field| {
             new_field_param(
                 field,
                 entity_type,
@@ -146,7 +146,19 @@ pub fn new_field_param(
     primitive_types: &MappedArena<PostgresPrimitiveType>,
     entity_types: &MappedArena<EntityType>,
     order_by_types: &MappedArena<OrderByParameterType>,
-) -> OrderByParameter {
+) -> Option<OrderByParameter> {
+    // If the field has one-to-many relationship, we cannot order by it. For example, it doesn't
+    // make sense to order venues by concert id (assuming venue hosts multiple concerts)
+    match &entity_field.typ {
+        FieldType::List(_) => return None,
+        FieldType::Optional(inner) => {
+            if matches!(inner.as_ref(), FieldType::List(_)) {
+                return None;
+            }
+        }
+        FieldType::Plain(_) => (),
+    }
+
     let field_type_id = &entity_field.typ.innermost().type_id;
     let field_entity_type =
         field_type_id.to_type(primitive_types.values_ref(), entity_types.values_ref());
@@ -157,13 +169,13 @@ pub fn new_field_param(
         entity_types,
     ));
 
-    new_param(
+    Some(new_param(
         &entity_field.name,
         field_entity_type.name(),
         matches!(field_entity_type, PostgresType::Primitive(_)),
         column_path_link,
         order_by_types,
-    )
+    ))
 }
 
 pub fn new_root_param(
