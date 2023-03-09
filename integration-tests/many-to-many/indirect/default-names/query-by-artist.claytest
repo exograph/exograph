@@ -1,7 +1,7 @@
 # Exercises the use of deep joins. In this case, concert -> concertArtist -> artist
 operation: |
-  query($A1b_id: Int!) {
-    artist1_concerts: concerts(where: {concertArtists: {artist: {name: {eq: "A1a"}}}}) {
+  query($A2_id: Int!) {
+    artist1_concerts: concerts(where: {concertArtists: {artist: {name: {eq: "A1"}}}}) {
       id
       concertArtists {
         artist {
@@ -10,7 +10,7 @@ operation: |
         }
       }
     }
-    artist2_concerts: concerts(where: {concertArtists: {artist: {name: {eq: "A1b"}}}}) {
+    artist2_concerts: concerts(where: {concertArtists: {artist: {name: {eq: "A2"}}}}) {
       id
       concertArtists {
         artist {
@@ -20,7 +20,7 @@ operation: |
       }
     }
     # The same as above, but use `and` to ensure that we perform a correct join even with logical expressions
-    by_artist_name_and_id_1: concerts(where: {concertArtists: {artist: {and: [{name: {eq: "A1b"}}, {id: {eq: $A1b_id}}]}}}) {
+    by_artist_name_and_id__artists_filter: concerts(where: {concertArtists: {artist: {and: [{name: {eq: "A2"}}, {id: {eq: $A2_id}}]}}}) {
       id
       concertArtists {
         artist {
@@ -29,8 +29,8 @@ operation: |
         }
       }
     }
-    # Effectively same as the above, but the logical expression is performed at a higher level  
-    by_artist_name_and_id_2: concerts(where: {concertArtists: {and: [{artist: {name: {eq: "A1b"}}}, {artist: {id: {eq: $A1b_id}}}]}}) {
+    # Effectively same as the above, but the logical expression is performed at a higher level (concertArtists, instead of artist) 
+    by_artist_name_and_id__concert_artist_filter: concerts(where: {concertArtists: {and: [{artist: {name: {eq: "A2"}}}, {artist: {id: {eq: $A2_id}}}]}}) {
       id
       concertArtists {
         artist {
@@ -39,7 +39,7 @@ operation: |
         }
       }
     }
-    by_artist_name_and_id_3: concerts(where: {and: [{concertArtists: {artist: {name: {eq: "A1b"}}}}, {concertArtists: {artist: {id: {eq: $A1b_id}}}}]}) {
+    by_artist_name_and_id__top_level: concerts(where: {and: [{concertArtists: {artist: {name: {eq: "A2"}}}}, {concertArtists: {artist: {id: {eq: $A2_id}}}}]}) {
       id
       concertArtists {
         artist {
@@ -48,7 +48,7 @@ operation: |
         }
       }
     }
-    by_artist_name_or_id_3: concerts(where: {or: [{concertArtists: {artist: {name: {eq: "A1b"}}}}, {concertArtists: {artist: {id: {eq: $A1b_id}}}}]}) {
+    by_artist_name_or_id: concerts(where: {or: [{concertArtists: {artist: {name: {eq: "A2"}}}}, {concertArtists: {artist: {id: {eq: $A2_id}}}}]}) {
       id
       concertArtists {
         artist {
@@ -69,7 +69,7 @@ operation: |
   }
 variable: |
   {
-    "A1b_id": $.A1b_id
+    "A2_id": $.A2_id
   }
 response: |
   {
@@ -80,20 +80,20 @@ response: |
           "concertArtists": [
             {
               "artist": {
-                "id": $.A1a_id,
-                "name": "A1a"
+                "id": $.A1_id,
+                "name": "A1"
               }
             },
             {
               "artist": {
-                "id": $.A1b_id,
-                "name": "A1b"
+                "id": $.A2_id,
+                "name": "A2"
               }
             },
             {
               "artist": {
-                "id": $.A2a_id,
-                "name": "A2a"
+                "id": $.A3_id,
+                "name": "A3"
               }
             }
           ]
@@ -103,14 +103,14 @@ response: |
           "concertArtists": [
             {
               "artist": {
-                "id": $.A1a_id,
-                "name": "A1a"
+                "id": $.A1_id,
+                "name": "A1"
               }
             },
             {
               "artist": {
-                "id": $.A2a_id,
-                "name": "A2a"
+                "id": $.A3_id,
+                "name": "A3"
               }
             }
           ]
@@ -122,120 +122,120 @@ response: |
           "concertArtists": [
             {
               "artist": {
-                "id": $.A1a_id,
-                "name": "A1a"
+                "id": $.A1_id,
+                "name": "A1"
               }
             },
             {
               "artist": {
-                "id": $.A1b_id,
-                "name": "A1b"
+                "id": $.A2_id,
+                "name": "A2"
               }
             },
             {
               "artist": {
-                "id": $.A2a_id,
-                "name": "A2a"
+                "id": $.A3_id,
+                "name": "A3"
               }
             }
           ]
         }
       ],
-      "by_artist_name_and_id_1": [
+      "by_artist_name_and_id__artists_filter": [
         {
           "id": $.c1_id,
           "concertArtists": [
             {
               "artist": {
-                "id": $.A1a_id,
-                "name": "A1a"
+                "id": $.A1_id,
+                "name": "A1"
               }
             },
             {
               "artist": {
-                "id": $.A1b_id,
-                "name": "A1b"
+                "id": $.A2_id,
+                "name": "A2"
               }
             },
             {
               "artist": {
-                "id": $.A2a_id,
-                "name": "A2a"
+                "id": $.A3_id,
+                "name": "A3"
               }
             }
           ]
         }
       ],
-      "by_artist_name_and_id_2": [
+      "by_artist_name_and_id__concert_artist_filter": [
         {
           "id": $.c1_id,
           "concertArtists": [
             {
               "artist": {
-                "id": $.A1a_id,
-                "name": "A1a"
+                "id": $.A1_id,
+                "name": "A1"
               }
             },
             {
               "artist": {
-                "id": $.A1b_id,
-                "name": "A1b"
+                "id": $.A2_id,
+                "name": "A2"
               }
             },
             {
               "artist": {
-                "id": $.A2a_id,
-                "name": "A2a"
+                "id": $.A3_id,
+                "name": "A3"
               }
             }
           ]
         }
       ],
-      "by_artist_name_and_id_3": [
+      "by_artist_name_and_id__top_level": [
         {
           "id": $.c1_id,
           "concertArtists": [
             {
               "artist": {
-                "id": $.A1a_id,
-                "name": "A1a"
+                "id": $.A1_id,
+                "name": "A1"
               }
             },
             {
               "artist": {
-                "id": $.A1b_id,
-                "name": "A1b"
+                "id": $.A2_id,
+                "name": "A2"
               }
             },
             {
               "artist": {
-                "id": $.A2a_id,
-                "name": "A2a"
+                "id": $.A3_id,
+                "name": "A3"
               }
             }
           ]
         }
       ],
-      "by_artist_name_or_id_3": [
+      "by_artist_name_or_id": [
         {
           "id": $.c1_id,
           "concertArtists": [
             {
               "artist": {
-                "id": $.A1a_id,
-                "name": "A1a"
+                "id": $.A1_id,
+                "name": "A1"
               }
             },
             {
               "artist": {
-                "id": $.A1b_id,
-                "name": "A1b"
+                "id": $.A2_id,
+                "name": "A2"
               }
             },
             {
               "artist": {
-                "id": $.A2a_id,
-                "name": "A2a"
+                "id": $.A3_id,
+                "name": "A3"
               }
             }
           ]
@@ -248,19 +248,19 @@ response: |
             {
               "artist": {
                 "id": 1,
-                "name": "A1a"
+                "name": "A1"
               }
             },
             {
               "artist": {
                 "id": 2,
-                "name": "A1b"
+                "name": "A2"
               }
             },
             {
               "artist": {
                 "id": 3,
-                "name": "A2a"
+                "name": "A3"
               }
             }
           ]
@@ -271,13 +271,13 @@ response: |
             {
               "artist": {
                 "id": 1,
-                "name": "A1a"
+                "name": "A1"
               }
             },
             {
               "artist": {
                 "id": 3,
-                "name": "A2a"
+                "name": "A3"
               }
             }
           ]
