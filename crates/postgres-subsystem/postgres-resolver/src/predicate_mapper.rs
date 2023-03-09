@@ -1,6 +1,6 @@
 use async_graphql_value::ConstValue;
 
-use payas_sql::{AbstractPredicate, ColumnPath};
+use payas_sql::{AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, Predicate};
 use postgres_model::{
     column_path::ColumnIdPath,
     predicate::{PredicateParameter, PredicateParameterTypeKind},
@@ -50,7 +50,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
                                         subsystem,
                                     )
                                     .expect("Could not get operands");
-                                    AbstractPredicate::from_name(
+                                    predicate_from_name(
                                         &parameter.name,
                                         op_key_column,
                                         op_value_column,
@@ -191,6 +191,32 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
 
     fn param_name(&self) -> &str {
         &self.param.name
+    }
+}
+
+/// Map predicate from GraphQL operation name to a Predicate
+pub fn predicate_from_name<C: PartialEq + ParamEquality>(
+    op_name: &str,
+    lhs: C,
+    rhs: C,
+) -> Predicate<C> {
+    match op_name {
+        "eq" => Predicate::Eq(lhs, rhs),
+        "neq" => Predicate::Neq(lhs, rhs),
+        "lt" => Predicate::Lt(lhs, rhs),
+        "lte" => Predicate::Lte(lhs, rhs),
+        "gt" => Predicate::Gt(lhs, rhs),
+        "gte" => Predicate::Gte(lhs, rhs),
+        "like" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Sensitive),
+        "ilike" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Insensitive),
+        "startsWith" => Predicate::StringStartsWith(lhs, rhs),
+        "endsWith" => Predicate::StringEndsWith(lhs, rhs),
+        "contains" => Predicate::JsonContains(lhs, rhs),
+        "containedBy" => Predicate::JsonContainedBy(lhs, rhs),
+        "matchKey" => Predicate::JsonMatchKey(lhs, rhs),
+        "matchAnyKey" => Predicate::JsonMatchAnyKey(lhs, rhs),
+        "matchAllKeys" => Predicate::JsonMatchAllKeys(lhs, rhs),
+        _ => todo!(),
     }
 }
 

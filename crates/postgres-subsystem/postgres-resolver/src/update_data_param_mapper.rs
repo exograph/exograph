@@ -78,7 +78,7 @@ fn compute_update_columns<'a>(
                             let other_type = &subsystem.entity_types[*other_type_id];
                             let other_type_pk_field_name = other_type
                                 .pk_column_id()
-                                .map(|column_id| &column_id.get_column(subsystem).column_name)
+                                .map(|column_id| &column_id.get_column(subsystem).name)
                                 .unwrap();
                             match get_argument_field(argument_value, other_type_pk_field_name) {
                                 Some(other_type_pk_arg) => other_type_pk_arg,
@@ -173,9 +173,7 @@ fn compute_nested_reference_column<'a>(
                 ref_table_name,
                 ref_column_name,
                 ..
-            } => {
-                &pk_column.table_name == ref_table_name && &pk_column.column_name == ref_column_name
-            }
+            } => &pk_column.table_name == ref_table_name && &pk_column.name == ref_column_name,
             _ => false,
         })
 }
@@ -242,7 +240,7 @@ fn compute_nested_update_object_arg<'a>(
         .into_iter()
         .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
             let value = match value {
-                Column::Literal(value) => ColumnPath::Literal(value),
+                Column::Param(value) => ColumnPath::Literal(value),
                 _ => panic!("Expected literal"),
             };
             AbstractPredicate::and(
@@ -412,7 +410,7 @@ fn compute_nested_delete_object_arg<'a>(
         .into_iter()
         .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
             let value = match value {
-                Column::Literal(value) => ColumnPath::Literal(value),
+                Column::Param(value) => ColumnPath::Literal(value),
                 _ => panic!("Expected literal"),
             };
             AbstractPredicate::and(

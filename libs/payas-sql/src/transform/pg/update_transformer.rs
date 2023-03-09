@@ -10,7 +10,7 @@ use crate::{
     },
     sql::{
         column::{Column, ProxyColumn},
-        cte::{Cte, CteExpression},
+        cte::{CteExpression, WithQuery},
         delete::TemplateDelete,
         insert::TemplateInsert,
         physical_column::PhysicalColumn,
@@ -122,7 +122,7 @@ impl UpdateTransformer for Postgres {
             ));
         } else {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::Cte(Cte {
+                SQLOperation::Cte(WithQuery {
                     expressions: vec![CteExpression {
                         name: abstract_update.table.name.clone(),
                         operation: root_update,
@@ -268,7 +268,7 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Literal(SQLParamContainer::new("new_name".to_string())),
+                        Column::Param(SQLParamContainer::new("new_name".to_string())),
                     )],
                     nested_updates: vec![],
                     nested_inserts: vec![],
@@ -329,7 +329,7 @@ mod tests {
                         predicate: Predicate::True,
                         column_values: vec![(
                             concerts_name_column,
-                            Column::Literal(SQLParamContainer::new("new_concert_name".to_string())),
+                            Column::Param(SQLParamContainer::new("new_concert_name".to_string())),
                         )],
                         selection: AbstractSelect {
                             selection: Selection::Seq(vec![]),
@@ -350,7 +350,7 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Literal(SQLParamContainer::new("new_name".to_string())),
+                        Column::Param(SQLParamContainer::new("new_name".to_string())),
                     )],
                     nested_updates: vec![nested_abs_update],
                     nested_inserts: vec![],

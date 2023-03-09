@@ -17,17 +17,15 @@ impl PhysicalTable {
 
         let existing_column_map: HashMap<_, _> = existing_columns
             .iter()
-            .map(|c| (c.column_name.clone(), c))
+            .map(|c| (c.name.clone(), c))
             .collect();
-        let new_column_map: HashMap<_, _> = new_columns
-            .iter()
-            .map(|c| (c.column_name.clone(), c))
-            .collect();
+        let new_column_map: HashMap<_, _> =
+            new_columns.iter().map(|c| (c.name.clone(), c)).collect();
 
         let mut changes = vec![];
 
         for existing_column in self.columns.iter() {
-            let new_column = new_column_map.get(&existing_column.column_name);
+            let new_column = new_column_map.get(&existing_column.name);
 
             match new_column {
                 Some(new_column) => {
@@ -43,7 +41,7 @@ impl PhysicalTable {
         }
 
         for new_column in new.columns.iter() {
-            let existing_column = existing_column_map.get(&new_column.column_name);
+            let existing_column = existing_column_map.get(&new_column.name);
 
             if existing_column.is_none() {
                 // new column
@@ -248,7 +246,7 @@ impl PhysicalTable {
             {
                 for name in c.unique_constraints.iter() {
                     let entry: &mut Vec<String> = map.entry(name).or_insert_with(Vec::new);
-                    (*entry).push(c.column_name.clone());
+                    (*entry).push(c.name.clone());
                 }
             }
             map

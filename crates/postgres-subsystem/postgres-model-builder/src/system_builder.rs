@@ -355,7 +355,7 @@ mod tests {
 
     fn get_column_from_table<'a>(name: &'a str, table: &'a PhysicalTable) -> &'a PhysicalColumn {
         for item in table.columns.iter() {
-            if item.column_name == name {
+            if item.name == name {
                 return item;
             }
         }

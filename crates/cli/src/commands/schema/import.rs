@@ -151,7 +151,7 @@ impl ToModel for PhysicalColumn {
         WithIssues {
             value: format!(
                 "{}: {}{}{}",
-                self.column_name,
+                self.name,
                 data_type + &annots,
                 autoinc_str,
                 pk_str,

@@ -78,7 +78,7 @@ impl<'a> TemplateUpdate<'a> {
                         let resolved_col = match col {
                             ProxyColumn::Concrete(col) => col.as_ref().into(),
                             ProxyColumn::Template { col_index, step_id } => {
-                                MaybeOwned::Owned(Column::Literal(SQLParamContainer::new(
+                                MaybeOwned::Owned(Column::Param(SQLParamContainer::new(
                                     transaction_context
                                         .resolve_value(*step_id, row_index, *col_index),
                                 )))

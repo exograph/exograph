@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::{
-    sql::{physical_column::PhysicalColumn, predicate::LiteralEquality, SQLParamContainer},
+    sql::{physical_column::PhysicalColumn, predicate::ParamEquality, SQLParamContainer},
     PhysicalTable,
 };
 
@@ -18,8 +18,8 @@ pub enum ColumnPath<'a> {
     Null,
 }
 
-impl LiteralEquality for ColumnPath<'_> {
-    fn literal_eq(&self, other: &Self) -> Option<bool> {
+impl ParamEquality for ColumnPath<'_> {
+    fn param_eq(&self, other: &Self) -> Option<bool> {
         match (self, other) {
             (Self::Literal(v1), Self::Literal(v2)) => Some(v1 == v2),
             _ => None,
@@ -39,9 +39,9 @@ impl<'a> Ord for ColumnPathLink<'a> {
             link: &'a ColumnPathLink,
         ) -> (&'a str, &'a str, Option<&'a str>, Option<&'a str>) {
             (
-                &link.self_column.0.column_name,
+                &link.self_column.0.name,
                 &link.self_column.1.name,
-                link.linked_column.map(|ref c| c.0.column_name.as_str()),
+                link.linked_column.map(|ref c| c.0.name.as_str()),
                 link.linked_column.map(|ref c| c.1.name.as_str()),
             )
         }

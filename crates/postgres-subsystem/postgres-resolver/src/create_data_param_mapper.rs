@@ -105,7 +105,7 @@ fn map_self_column<'a>(
             let other_type = &subsystem.entity_types[*other_type_id];
             let other_type_pk_field_name = other_type
                 .pk_column_id()
-                .map(|column_id| &column_id.get_column(subsystem).column_name)
+                .map(|column_id| &column_id.get_column(subsystem).name)
                 .ok_or_else(|| {
                     PostgresExecutionError::Generic(format!(
                         "{} did not have a primary key field when computing many-to-one for {}",
@@ -122,7 +122,7 @@ fn map_self_column<'a>(
 
     let value_column = cast::literal_column(argument_value, key_column).with_context(format!(
         "While trying to get literal column for {}.{}",
-        key_column.table_name, key_column.column_name
+        key_column.table_name, key_column.name
     ))?;
 
     Ok(InsertionElement::SelfInsert(ColumnValuePair::new(
@@ -185,7 +185,7 @@ fn map_foreign<'a>(
                     ..
                 } => {
                     ref_table_name == &parent_pk_physical_column.table_name
-                        && ref_column_name == &parent_pk_physical_column.column_name
+                        && ref_column_name == &parent_pk_physical_column.name
                 }
                 _ => false,
             },

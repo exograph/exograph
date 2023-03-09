@@ -1,17 +1,17 @@
 use super::{column::Column, ExpressionBuilder, SQLBuilder};
 
+/// Case sensitivity for string predicates.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum CaseSensitivity {
     Sensitive,
     Insensitive,
 }
 
-pub type ConcretePredicate<'a> = Predicate<Column<'a>>;
-
+/// A predicate is a boolean expression that can be used in a WHERE clause.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Predicate<C>
 where
-    C: PartialEq + LiteralEquality,
+    C: PartialEq + ParamEquality,
 {
     True,
     False,
@@ -22,12 +22,6 @@ where
     Gt(C, C),
     Gte(C, C),
     In(C, C),
-    // Prefer Predicate::and(), which simplifies the clause, to construct an And expression
-    And(Box<Predicate<C>>, Box<Predicate<C>>),
-    // Prefer Predicate::or(), which simplifies the clause, to construct an Or expression
-    Or(Box<Predicate<C>>, Box<Predicate<C>>),
-    // Prefer Predicate::not(), which simplifies the clause, to construct a Not expression
-    Not(Box<Predicate<C>>),
 
     // string predicates
     StringLike(C, C, CaseSensitivity),
@@ -40,50 +34,40 @@ where
     JsonMatchKey(C, C),
     JsonMatchAnyKey(C, C),
     JsonMatchAllKeys(C, C),
+
+    // Prefer Predicate::and(), which simplifies the clause
+    And(Box<Predicate<C>>, Box<Predicate<C>>),
+    // Prefer Predicate::or(), which simplifies the clause
+    Or(Box<Predicate<C>>, Box<Predicate<C>>),
+    // Prefer Predicate::not(), which simplifies the clause
+    Not(Box<Predicate<C>>),
 }
+
+pub type ConcretePredicate<'a> = Predicate<Column<'a>>;
 
 impl<C> Predicate<C>
 where
-    C: PartialEq + LiteralEquality,
+    C: PartialEq + ParamEquality,
 {
-    pub fn from_name(op_name: &str, lhs: C, rhs: C) -> Predicate<C> {
-        match op_name {
-            "eq" => Predicate::Eq(lhs, rhs),
-            "neq" => Predicate::Neq(lhs, rhs),
-            "lt" => Predicate::Lt(lhs, rhs),
-            "lte" => Predicate::Lte(lhs, rhs),
-            "gt" => Predicate::Gt(lhs, rhs),
-            "gte" => Predicate::Gte(lhs, rhs),
-            "like" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Sensitive),
-            "ilike" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Insensitive),
-            "startsWith" => Predicate::StringStartsWith(lhs, rhs),
-            "endsWith" => Predicate::StringEndsWith(lhs, rhs),
-            "contains" => Predicate::JsonContains(lhs, rhs),
-            "containedBy" => Predicate::JsonContainedBy(lhs, rhs),
-            "matchKey" => Predicate::JsonMatchKey(lhs, rhs),
-            "matchAnyKey" => Predicate::JsonMatchAnyKey(lhs, rhs),
-            "matchAllKeys" => Predicate::JsonMatchAllKeys(lhs, rhs),
-            _ => todo!(),
-        }
-    }
-
-    // The next set of methods try to minimize the expression
+    /// Compare two columns and reduce to a simpler predicate if possible.
     pub fn eq(lhs: C, rhs: C) -> Predicate<C> {
         if lhs == rhs {
             Predicate::True
         } else {
             // For literal columns, we can check for Predicate::False directly
-            match lhs.literal_eq(&rhs) {
-                Some(false) => Predicate::False,
+            match lhs.param_eq(&rhs) {
+                Some(false) => Predicate::False, // We don't need to check for `Some(true)`, since the above `lhs == rhs` check would have taken care of that
                 _ => Predicate::Eq(lhs, rhs),
             }
         }
     }
 
+    /// Compare two columns and reduce to a simpler predicate if possible
     pub fn neq(lhs: C, rhs: C) -> Predicate<C> {
         !Self::eq(lhs, rhs)
     }
 
+    /// Logical and of two predicates, reducing to a simpler predicate if possible.
     pub fn and(lhs: Predicate<C>, rhs: Predicate<C>) -> Predicate<C> {
         match (lhs, rhs) {
             (Predicate::False, _) | (_, Predicate::False) => Predicate::False,
@@ -93,6 +77,7 @@ where
         }
     }
 
+    /// Logical or of two predicates, reducing to a simpler predicate if possible.
     pub fn or(lhs: Predicate<C>, rhs: Predicate<C>) -> Predicate<C> {
         match (lhs, rhs) {
             (Predicate::True, _) | (_, Predicate::True) => Predicate::True,
@@ -105,7 +90,7 @@ where
 
 impl<C> From<bool> for Predicate<C>
 where
-    C: PartialEq + LiteralEquality,
+    C: PartialEq + ParamEquality,
 {
     fn from(b: bool) -> Predicate<C> {
         if b {
@@ -118,7 +103,7 @@ where
 
 impl<C> std::ops::Not for Predicate<C>
 where
-    C: PartialEq + LiteralEquality,
+    C: PartialEq + ParamEquality,
 {
     type Output = Predicate<C>;
 
@@ -138,20 +123,27 @@ where
     }
 }
 
-pub trait LiteralEquality {
-    fn literal_eq(&self, other: &Self) -> Option<bool>;
+/// Compare two parameters so that we can reduce a predicate to a boolean before passing it to
+/// the database. With a simpler form, we may be able to skip passing it to the database completely. For
+/// example, `Predicate::Eq(Column::Param(1), Column::Param(1))` can be reduced to
+/// true.
+pub trait ParamEquality {
+    /// Returns `None` if one of the columns is not a parameter, otherwise returns `Some(true)` if
+    /// the parameters are equal, and `Some(false)` if they are not.
+    fn param_eq(&self, other: &Self) -> Option<bool>;
 }
 
-impl LiteralEquality for Column<'_> {
-    fn literal_eq(&self, other: &Self) -> Option<bool> {
+impl ParamEquality for Column<'_> {
+    fn param_eq(&self, other: &Self) -> Option<bool> {
         match (self, other) {
-            (Column::Literal(v1), Column::Literal(v2)) => Some(v1 == v2),
+            (Column::Param(v1), Column::Param(v2)) => Some(v1 == v2),
             _ => None,
         }
     }
 }
 
 impl<'a> ExpressionBuilder for ConcretePredicate<'a> {
+    /// Build a predicate into a SQL string.
     fn build(&self, builder: &mut SQLBuilder) {
         match &self {
             ConcretePredicate::True => builder.push_str("TRUE"),
@@ -218,33 +210,10 @@ impl<'a> ExpressionBuilder for ConcretePredicate<'a> {
                 relational_combine(column1, column2, "?&", builder)
             }
             ConcretePredicate::And(predicate1, predicate2) => {
-                match (predicate1.as_ref(), predicate2.as_ref()) {
-                    (ConcretePredicate::True, ConcretePredicate::True) => builder.push_str("TRUE"),
-                    (ConcretePredicate::False, _) | (_, ConcretePredicate::False) => {
-                        builder.push_str("FALSE")
-                    }
-                    (ConcretePredicate::True, predicate) | (predicate, ConcretePredicate::True) => {
-                        predicate.build(builder)
-                    }
-                    (predicate1, predicate2) => {
-                        logical_combine(predicate1, predicate2, "AND", builder)
-                    }
-                }
+                logical_combine(predicate1, predicate2, "AND", builder)
             }
             ConcretePredicate::Or(predicate1, predicate2) => {
-                match (predicate1.as_ref(), predicate2.as_ref()) {
-                    (ConcretePredicate::False, ConcretePredicate::False) => {
-                        builder.push_str("FALSE")
-                    }
-                    (ConcretePredicate::True, _) | (_, ConcretePredicate::True) => {
-                        builder.push_str("TRUE")
-                    }
-                    (ConcretePredicate::False, predicate)
-                    | (predicate, ConcretePredicate::False) => predicate.build(builder),
-                    (predicate1, predicate2) => {
-                        logical_combine(predicate1, predicate2, "OR", builder)
-                    }
-                }
+                logical_combine(predicate1, predicate2, "OR", builder)
             }
             ConcretePredicate::Not(predicate) => {
                 builder.push_str("NOT(");
@@ -255,6 +224,7 @@ impl<'a> ExpressionBuilder for ConcretePredicate<'a> {
     }
 }
 
+/// Combine two expressions with a relational operator.
 fn relational_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
     left: &'a E1,
     right: &'a E2,
@@ -262,12 +232,13 @@ fn relational_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
     builder: &mut SQLBuilder,
 ) {
     left.build(builder);
-    builder.push(' ');
+    builder.push_space();
     builder.push_str(op);
-    builder.push(' ');
+    builder.push_space();
     right.build(builder);
 }
 
+/// Combine two expressions with a logical binary operator.
 fn logical_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
     left: &'a E1,
     right: &'a E2,
@@ -276,9 +247,9 @@ fn logical_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
 ) {
     builder.push('(');
     left.build(builder);
-    builder.push(' ');
+    builder.push_space();
     builder.push_str(op);
-    builder.push(' ');
+    builder.push_space();
     right.build(builder);
     builder.push(')');
 }
@@ -309,12 +280,12 @@ mod tests {
     fn eq_predicate() {
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
-            column_name: "age".to_string(),
+            name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
             ..Default::default()
         };
         let age_col = Column::Physical(&age_col);
-        let age_value_col = Column::Literal(SQLParamContainer::new(5));
+        let age_value_col = Column::Param(SQLParamContainer::new(5));
 
         let predicate = Predicate::Eq(age_col, age_value_col);
 
@@ -325,21 +296,21 @@ mod tests {
     fn and_predicate() {
         let name_col = PhysicalColumn {
             table_name: "people".to_string(),
-            column_name: "name".to_string(),
+            name: "name".to_string(),
             typ: PhysicalColumnType::String { length: None },
             ..Default::default()
         };
         let name_col = Column::Physical(&name_col);
-        let name_value_col = Column::Literal(SQLParamContainer::new("foo"));
+        let name_value_col = Column::Param(SQLParamContainer::new("foo"));
 
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
-            column_name: "age".to_string(),
+            name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
             ..Default::default()
         };
         let age_col = Column::Physical(&age_col);
-        let age_value_col = Column::Literal(SQLParamContainer::new(5));
+        let age_value_col = Column::Param(SQLParamContainer::new(5));
 
         let name_predicate = ConcretePredicate::Eq(name_col, name_value_col);
         let age_predicate = ConcretePredicate::Eq(age_col, age_value_col);
@@ -358,14 +329,14 @@ mod tests {
     fn string_predicates() {
         let title_physical_col = PhysicalColumn {
             table_name: "videos".to_string(),
-            column_name: "title".to_string(),
+            name: "title".to_string(),
             typ: PhysicalColumnType::String { length: None },
             ..Default::default()
         };
 
         fn title_test_data(title_physical_col: &PhysicalColumn) -> (Column<'_>, Column<'_>) {
             let title_col = Column::Physical(title_physical_col);
-            let title_value_col = Column::Literal(SQLParamContainer::new("utawaku"));
+            let title_value_col = Column::Param(SQLParamContainer::new("utawaku"));
 
             (title_col, title_value_col)
         }
@@ -419,7 +390,7 @@ mod tests {
 
         let json_physical_col = PhysicalColumn {
             table_name: "card".to_string(),
-            column_name: "data".to_string(),
+            name: "data".to_string(),
             typ: PhysicalColumnType::Json,
             ..Default::default()
         };
@@ -439,14 +410,14 @@ mod tests {
                 "#,
             )
             .unwrap();
-            let json_value_col = Column::Literal(SQLParamContainer::new(json_value.clone()));
+            let json_value_col = Column::Param(SQLParamContainer::new(json_value.clone()));
 
             (json_col, Arc::new(json_value), json_value_col)
         }
 
         let json_key_list: serde_json::Value = serde_json::from_str(r#"["a", "b"]"#).unwrap();
 
-        let json_key_col = Column::Literal(SQLParamContainer::new("a"));
+        let json_key_col = Column::Param(SQLParamContainer::new("a"));
 
         //// Test bindings starting now
 
@@ -471,7 +442,7 @@ mod tests {
         );
 
         // matchKey
-        let json_key_list_col = Column::Literal(SQLParamContainer::new(json_key_list.clone()));
+        let json_key_list_col = Column::Param(SQLParamContainer::new(json_key_list.clone()));
 
         let (json_col, _, _) = json_test_data(&json_physical_col);
 
@@ -490,7 +461,7 @@ mod tests {
         );
 
         // matchAllKeys
-        let json_key_list_col = Column::Literal(SQLParamContainer::new(json_key_list.clone()));
+        let json_key_list_col = Column::Param(SQLParamContainer::new(json_key_list.clone()));
 
         let (json_col, _, _) = json_test_data(&json_physical_col);
 

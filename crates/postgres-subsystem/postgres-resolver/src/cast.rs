@@ -45,7 +45,7 @@ pub(crate) fn literal_column<'a>(
     associated_column: &PhysicalColumn,
 ) -> Result<Column<'a>, PostgresExecutionError> {
     cast_value(value, &associated_column.typ)
-        .map(|value| value.map(Column::Literal).unwrap_or(Column::Null))
+        .map(|value| value.map(Column::Param).unwrap_or(Column::Null))
         .map_err(PostgresExecutionError::CastError)
 }
 

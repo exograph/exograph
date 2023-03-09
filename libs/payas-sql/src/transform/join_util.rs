@@ -1,6 +1,6 @@
 use crate::{
     asql::column_path::ColumnPathLink,
-    sql::{column::Column, predicate::ConcretePredicate, table::TableQuery},
+    sql::{column::Column, predicate::ConcretePredicate, table::Table},
     transform::table_dependency::{DependencyLink, TableDependency},
     PhysicalTable,
 };
@@ -8,10 +8,10 @@ use crate::{
 pub fn compute_join<'a>(
     table: &'a PhysicalTable,
     paths_list: Vec<Vec<ColumnPathLink<'a>>>,
-) -> TableQuery<'a> {
-    fn from_dependency(dependency: TableDependency) -> TableQuery {
+) -> Table<'a> {
+    fn from_dependency(dependency: TableDependency) -> Table {
         dependency.dependencies.into_iter().fold(
-            TableQuery::Physical(dependency.table),
+            Table::Physical(dependency.table),
             |acc, DependencyLink { link, dependency }| {
                 let join_predicate = ConcretePredicate::Eq(
                     Column::Physical(link.self_column.0),

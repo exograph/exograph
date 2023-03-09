@@ -5,14 +5,21 @@ use super::{
     SQLBuilder,
 };
 
+/// A delete operation.
 #[derive(Debug)]
 pub struct Delete<'a> {
+    /// The table to delete from.
     pub table: &'a PhysicalTable,
+    /// The predicate to filter rows by.
     pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
+    /// The columns to return.
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> ExpressionBuilder for Delete<'a> {
+    /// Build a delete operation for the `DELETE FROM <table> WHERE <predicate> RETURNING <returning>`.
+    /// The `WHERE` clause is omitted if the predicate is `true` and the `RETURNING` clause is omitted
+    /// if the list of columns to return is empty.
     fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("DELETE FROM ");
         self.table.build(builder);

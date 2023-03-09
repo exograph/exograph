@@ -9,26 +9,35 @@ use super::{
     ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
 
+/// An insert operation.
 #[derive(Debug)]
 pub struct Insert<'a> {
+    /// The table to insert into.
     pub table: &'a PhysicalTable,
-    pub column_names: Vec<&'a PhysicalColumn>,
-    pub column_values_seq: Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
+    /// The columns to insert into such as `(age, name)`
+    pub columns: Vec<&'a PhysicalColumn>,
+    /// The values to insert such as `(30, "John"), (35, "Jane")`
+    pub values_seq: Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
+    /// The columns to return.
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> ExpressionBuilder for Insert<'a> {
+    /// Build the insert statement for the form `INSERT INTO <table> (<columns>) VALUES (<values>)
+    /// RETURNING <returning-columns>`. The `RETURNING` clause is omitted if the list of columns to
+    /// return is empty.
     fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("INSERT INTO ");
         self.table.build(builder);
+
         builder.push_str(" (");
         builder.with_plain(|builder| {
-            builder.push_elems(&self.column_names, ", ");
+            builder.push_elems(&self.columns, ", ");
         });
 
         builder.push_str(") VALUES (");
 
-        builder.push_iter(self.column_values_seq.iter(), "), (", |builder, values| {
+        builder.push_iter(self.values_seq.iter(), "), (", |builder, values| {
             builder.push_elems(values, ", ");
         });
         builder.push(')');
@@ -69,7 +78,7 @@ impl<'a> TemplateInsert<'a> {
                     .map(|col| match col {
                         ProxyColumn::Concrete(col) => col.as_ref().into(),
                         ProxyColumn::Template { col_index, step_id } => {
-                            MaybeOwned::Owned(Column::Literal(SQLParamContainer::new(
+                            MaybeOwned::Owned(Column::Param(SQLParamContainer::new(
                                 transaction_context.resolve_value(*step_id, row_index, *col_index),
                             )))
                         }
@@ -107,8 +116,8 @@ impl<'a> TemplateInsert<'a> {
 
             Some(Insert {
                 table,
-                column_names: column_names.clone(),
-                column_values_seq: resolved_cols,
+                columns: column_names.clone(),
+                values_seq: resolved_cols,
                 returning: returning.iter().map(|ret| ret.into()).collect(),
             })
         }

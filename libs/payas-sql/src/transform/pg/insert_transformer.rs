@@ -11,12 +11,12 @@ use crate::{
     },
     sql::{
         column::Column,
-        cte::{Cte, CteExpression},
+        cte::{CteExpression, WithQuery},
         physical_column::PhysicalColumn,
         predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
-        table::TableQuery,
+        table::Table,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::transformer::{InsertTransformer, SelectTransformer},
@@ -95,8 +95,8 @@ impl InsertTransformer for Postgres {
                         .expect("Could not find primary key");
                     let parent_index: Option<u32> = None;
                     column_values_seq.iter_mut().for_each(|value| {
-                        let parent_reference = Column::SelectionTableWrapper(Box::new(Select {
-                            underlying: TableQuery::Physical(parent_table),
+                        let parent_reference = Column::SubSelect(Box::new(Select {
+                            table: Table::Physical(parent_table),
                             columns: vec![Column::Physical(parent_pk_physical_column)],
                             predicate: ConcretePredicate::True,
                             order_by: None,
@@ -126,14 +126,14 @@ impl InsertTransformer for Postgres {
             ctes.extend(nested_ctes);
 
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::Cte(Cte {
+                SQLOperation::Cte(WithQuery {
                     expressions: ctes,
                     select,
                 }),
             )));
         } else {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::Cte(Cte {
+                SQLOperation::Cte(WithQuery {
                     expressions: vec![CteExpression {
                         name: table.name.clone(),
                         operation: root_update,

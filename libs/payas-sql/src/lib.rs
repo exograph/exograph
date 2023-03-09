@@ -57,5 +57,6 @@ pub use sql::{
     order::Ordering,
     physical_column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
     physical_table::PhysicalTable,
+    predicate::{CaseSensitivity, ParamEquality, Predicate},
     SQLBytes, SQLParam, SQLParamContainer,
 };
