@@ -37,7 +37,7 @@ impl TestSetup<'_> {
             columns: vec![
                 PhysicalColumn {
                     table_name: "concerts".to_string(),
-                    column_name: "id".to_string(),
+                    name: "id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: true,
                     is_auto_increment: false,
@@ -47,7 +47,7 @@ impl TestSetup<'_> {
                 },
                 PhysicalColumn {
                     table_name: "concerts".to_string(),
-                    column_name: "name".to_string(),
+                    name: "name".to_string(),
                     typ: PhysicalColumnType::String { length: None },
                     is_pk: false,
                     is_auto_increment: false,
@@ -57,7 +57,7 @@ impl TestSetup<'_> {
                 },
                 PhysicalColumn {
                     table_name: "concerts".to_string(),
-                    column_name: "venue_id".to_string(),
+                    name: "venue_id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
                     is_auto_increment: false,
@@ -77,7 +77,7 @@ impl TestSetup<'_> {
             columns: vec![
                 PhysicalColumn {
                     table_name: "venues".to_string(),
-                    column_name: "id".to_string(),
+                    name: "id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: true,
                     is_auto_increment: false,
@@ -87,7 +87,7 @@ impl TestSetup<'_> {
                 },
                 PhysicalColumn {
                     table_name: "venues".to_string(),
-                    column_name: "name".to_string(),
+                    name: "name".to_string(),
                     typ: PhysicalColumnType::String { length: None },
                     is_pk: false,
                     is_auto_increment: false,
@@ -106,7 +106,7 @@ impl TestSetup<'_> {
             columns: vec![
                 PhysicalColumn {
                     table_name: "concert_artists".to_string(),
-                    column_name: "id".to_string(),
+                    name: "id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: true,
                     is_auto_increment: false,
@@ -116,7 +116,7 @@ impl TestSetup<'_> {
                 },
                 PhysicalColumn {
                     table_name: "concert_artists".to_string(),
-                    column_name: "concert_id".to_string(),
+                    name: "concert_id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
                     is_auto_increment: false,
@@ -126,7 +126,7 @@ impl TestSetup<'_> {
                 },
                 PhysicalColumn {
                     table_name: "concert_artists".to_string(),
-                    column_name: "artist_id".to_string(),
+                    name: "artist_id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
                     is_auto_increment: false,
@@ -150,7 +150,7 @@ impl TestSetup<'_> {
             columns: vec![
                 PhysicalColumn {
                     table_name: "artists".to_string(),
-                    column_name: "id".to_string(),
+                    name: "id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: true,
                     is_auto_increment: false,
@@ -160,7 +160,7 @@ impl TestSetup<'_> {
                 },
                 PhysicalColumn {
                     table_name: "artists".to_string(),
-                    column_name: "name".to_string(),
+                    name: "name".to_string(),
                     typ: PhysicalColumnType::String { length: None },
                     is_pk: false,
                     is_auto_increment: false,
@@ -170,7 +170,7 @@ impl TestSetup<'_> {
                 },
                 PhysicalColumn {
                     table_name: "artists".to_string(),
-                    column_name: "address_id".to_string(),
+                    name: "address_id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
                     is_auto_increment: false,
@@ -190,7 +190,7 @@ impl TestSetup<'_> {
             columns: vec![
                 PhysicalColumn {
                     table_name: "addresses".to_string(),
-                    column_name: "id".to_string(),
+                    name: "id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: true,
                     is_auto_increment: false,
@@ -200,7 +200,7 @@ impl TestSetup<'_> {
                 },
                 PhysicalColumn {
                     table_name: "addresses".to_string(),
-                    column_name: "city".to_string(),
+                    name: "city".to_string(),
                     typ: PhysicalColumnType::String { length: None },
                     is_pk: false,
                     is_auto_increment: false,

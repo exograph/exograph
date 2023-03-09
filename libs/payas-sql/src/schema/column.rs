@@ -12,7 +12,7 @@ impl PhysicalColumn {
     pub fn diff<'a>(&'a self, new: &'a Self) -> Vec<SchemaOp<'a>> {
         let mut changes = vec![];
         let table_name_same = self.table_name == new.table_name;
-        let column_name_same = self.column_name == new.column_name;
+        let column_name_same = self.name == new.name;
         let type_same = self.typ == new.typ;
         let is_pk_same = self.is_pk == new.is_pk;
         let is_auto_increment_same = self.is_auto_increment == new.is_auto_increment;
@@ -150,7 +150,7 @@ impl PhysicalColumn {
         Ok(WithIssues {
             value: db_type.map(|typ| PhysicalColumn {
                 table_name: table_name.to_owned(),
-                column_name: column_name.to_owned(),
+                name: column_name.to_owned(),
                 typ,
                 is_pk,
                 is_auto_increment,
@@ -170,7 +170,7 @@ impl PhysicalColumn {
             ..
         } = self
             .typ
-            .to_sql(&self.table_name, &self.column_name, self.is_auto_increment);
+            .to_sql(&self.table_name, &self.name, self.is_auto_increment);
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
         let not_null_str = if !self.is_nullable && !self.is_pk {
             // primary keys are implied to be not null
@@ -187,7 +187,7 @@ impl PhysicalColumn {
         SchemaStatement {
             statement: format!(
                 "\"{}\" {}{}{}{}",
-                self.column_name, statement, pk_str, not_null_str, default_value_part
+                self.name, statement, pk_str, not_null_str, default_value_part
             ),
             pre_statements: vec![],
             post_statements,

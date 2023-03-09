@@ -20,7 +20,7 @@ impl<'a> OrderByElement<'a> {
 impl<'a> ExpressionBuilder for OrderByElement<'a> {
     fn build(&self, builder: &mut SQLBuilder) {
         self.0.build(builder);
-        builder.push(' ');
+        builder.push_space();
         if self.1 == Ordering::Asc {
             builder.push_str("ASC");
         } else {
@@ -45,7 +45,7 @@ mod test {
     fn single() {
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
-            column_name: "age".to_string(),
+            name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
             ..Default::default()
         };
@@ -59,14 +59,14 @@ mod test {
     fn multiple() {
         let name_col = PhysicalColumn {
             table_name: "people".to_string(),
-            column_name: "name".to_string(),
+            name: "name".to_string(),
             typ: PhysicalColumnType::String { length: None },
             ..Default::default()
         };
 
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
-            column_name: "age".to_string(),
+            name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
             ..Default::default()
         };

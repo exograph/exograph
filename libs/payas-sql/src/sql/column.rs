@@ -4,20 +4,37 @@ use super::{
 };
 use maybe_owned::MaybeOwned;
 
-/// A column in a table. Essentially `<column>` in a `select <column>, <column> from <table>`
+/// A column-like concept covering any usage where a database table column could be used. For
+/// example, in a predicate you can say `first_name = 'Sam'` or `first_name = last_name`. Here,
+/// first_name, last_name, and `'Sam'` are serve as columns from our perspective. The variants
+/// encode the exact semantics of each kind.
+///
+/// Essentially represents `<column>` in a `select <column>, <column> from <table>` or `<column> <>
+/// <value>` in a predicate or `<column> = <value>` in an `update <table> set <column> = <value>`,
+/// etc.
 #[derive(Debug, PartialEq)]
 pub enum Column<'a> {
+    /// An actual physical column in a table
     Physical(&'a PhysicalColumn),
-    Literal(SQLParamContainer),
+    /// A literal value such as a string or number e.g. 'Sam'. This will be mapped to a placeholder
+    /// to avoid SQL injection.
+    Param(SQLParamContainer),
+    /// A JSON object. This is used to represent the result of a JSON object aggregation.
     JsonObject(JsonObject<'a>),
+    /// A JSON array. This is used to represent the result of a JSON array aggregation.
     JsonAgg(JsonAgg<'a>),
-    SelectionTableWrapper(Box<Select<'a>>),
+    /// A sub-select query.
+    SubSelect(Box<Select<'a>>),
     // TODO: Generalize the following to return any type of value, not just strings
-    /// Needed to have a query return __typename set to a constant value
+    /// A constant string so that we can have a query return a particular value passed in as in
+    /// `select 'Concert', id from "concerts"`. Here 'Concert' is the constant string. Needed to
+    /// have a query return __typename set to a constant value
     Constant(String),
-    /// All columns of a tables. If the table is None should translate to `*`, else  "table_name".*
+    /// All columns of a table. If the table is `None` should translate to `*`, else  `"table_name".*`
     Star(Option<String>),
+    /// A null value
     Null,
+    /// A function applied to a column. For example, `count(*)` or `lower(first_name)`.
     Function {
         function_name: String,
         column: &'a PhysicalColumn,
@@ -37,12 +54,12 @@ impl<'a> ExpressionBuilder for Column<'a> {
                 column.build(builder);
                 builder.push(')');
             }
-            Column::Literal(value) => builder.push_param(value.param()),
+            Column::Param(value) => builder.push_param(value.param()),
             Column::JsonObject(obj) => {
                 obj.build(builder);
             }
             Column::JsonAgg(agg) => agg.build(builder),
-            Column::SelectionTableWrapper(selection_table) => {
+            Column::SubSelect(selection_table) => {
                 builder.push('(');
                 selection_table.build(builder);
                 builder.push(')');
@@ -66,6 +83,8 @@ impl<'a> ExpressionBuilder for Column<'a> {
     }
 }
 
+/// A column bound to a particular transaction step. This is used to represent a column in a
+/// multi-step insert/update.
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
     Concrete(MaybeOwned<'a, Column<'a>>),

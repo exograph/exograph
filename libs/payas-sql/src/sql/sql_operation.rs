@@ -1,5 +1,5 @@
 use super::{
-    cte::Cte,
+    cte::WithQuery,
     delete::Delete,
     delete::TemplateDelete,
     insert::{Insert, TemplateInsert},
@@ -15,7 +15,7 @@ pub enum SQLOperation<'a> {
     Insert(Insert<'a>),
     Delete(Delete<'a>),
     Update(Update<'a>),
-    Cte(Cte<'a>),
+    Cte(WithQuery<'a>),
 }
 
 impl<'a> ExpressionBuilder for SQLOperation<'a> {

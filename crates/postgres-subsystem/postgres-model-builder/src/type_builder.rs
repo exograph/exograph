@@ -348,7 +348,7 @@ fn create_column(
             match field_type {
                 ResolvedType::Primitive(pt) => Some(PhysicalColumn {
                     table_name: table_name.to_string(),
-                    column_name: field.column_name.to_string(),
+                    name: field.column_name.to_string(),
                     typ: determine_column_type(pt, field),
                     is_pk: field.is_pk,
                     is_auto_increment: if field.get_is_auto_increment() {
@@ -371,7 +371,7 @@ fn create_column(
                     let other_pk_field = ct.pk_field().unwrap();
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
-                        column_name: field.column_name.to_string(),
+                        name: field.column_name.to_string(),
                         typ: PhysicalColumnType::ColumnReference {
                             ref_table_name: ct.table_name.to_string(),
                             ref_column_name: other_pk_field.column_name.to_string(),
@@ -424,7 +424,7 @@ fn create_column(
 
                 Some(PhysicalColumn {
                     table_name: table_name.to_string(),
-                    column_name: field.column_name.to_string(),
+                    name: field.column_name.to_string(),
                     typ: determine_column_type(&pt, field),
                     is_pk: false,
                     is_auto_increment: false,

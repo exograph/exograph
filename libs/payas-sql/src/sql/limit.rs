@@ -6,8 +6,9 @@ use super::{ExpressionBuilder, SQLBuilder};
 pub struct Limit(pub i64);
 
 impl ExpressionBuilder for Limit {
+    /// Build expression of the form `LIMIT <limit>`
     fn build(&self, builder: &mut SQLBuilder) {
-        builder.push_str(" LIMIT ");
+        builder.push_str("LIMIT ");
         builder.push_param(Arc::new(self.0))
     }
 }

@@ -4,7 +4,7 @@ use crate::{
     asql::{delete::AbstractDelete, select::SelectionLevel},
     sql::{
         column::Column,
-        cte::{Cte, CteExpression},
+        cte::{CteExpression, WithQuery},
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
@@ -33,7 +33,7 @@ impl DeleteTransformer for Postgres {
     /// Ignore the selection (instead returns a `*` and relies on to_transaction_script to use a CTE to do the selection).
     /// This way, we can do nested selection if needed.
     #[instrument(name = "DeleteTransformer::to_delete for Postgres", skip(self))]
-    fn to_delete<'a>(&self, abstract_delete: &'a AbstractDelete) -> Cte<'a> {
+    fn to_delete<'a>(&self, abstract_delete: &'a AbstractDelete) -> WithQuery<'a> {
         let predicate = self.to_subselect_predicate(&abstract_delete.predicate);
 
         let root_delete = SQLOperation::Delete(
@@ -49,7 +49,7 @@ impl DeleteTransformer for Postgres {
             SelectionLevel::TopLevel,
         );
 
-        Cte {
+        WithQuery {
             expressions: vec![CteExpression {
                 name: abstract_delete.table.name.clone(),
                 operation: root_delete,
