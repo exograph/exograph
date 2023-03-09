@@ -9,7 +9,10 @@ use crate::{
 use super::Postgres;
 
 impl PredicateTransformer for Postgres {
-    /// Predicate suitable to use with a join of the relevant tables
+    /// Predicate suitable to use along with a join of the relevant tables
+    ///
+    /// The predicate generated will look like "concert.price = $1 AND value.name = $2". It assumes
+    /// that the join would have brought in "table1" and "table2" through a join.
     fn to_join_predicate<'a>(&self, predicate: &AbstractPredicate<'a>) -> ConcretePredicate<'a> {
         match predicate {
             AbstractPredicate::True => ConcretePredicate::True,
@@ -61,6 +64,11 @@ impl PredicateTransformer for Postgres {
         }
     }
 
+    /// Predicate that uses a subselect to implement the predicate
+    ///
+    /// The predicate generated will look like "concert.venue_id IN (SELECT venues.id FROM venues
+    /// WHERE venues.name = $1)". It will detect if a subselect is needed (i.e. if the predicate
+    /// uses a one-to-many relationship). If not, it falls back to the join predicate.
     fn to_subselect_predicate<'a>(
         &self,
         predicate: &AbstractPredicate<'a>,
