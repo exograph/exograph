@@ -1,0 +1,48 @@
+operation: |
+    query {
+        order_by_name_asc: venues(where: {concerts: {id: {lt: 100}}}, orderBy: {name: ASC}) { # Essentially, all venues, but with a nested where clause
+            id
+            name
+            published
+            latitude
+        }
+        order_by_name_desc: venues(where: {concerts: {id: {lt: 100}}}, orderBy: {name: DESC}) { # Essentially, all venues, but with a nested where clause
+            id
+            name
+            published
+            latitude
+        }
+    } 
+response: |
+    {
+      "data": {
+        "order_by_name_asc": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "latitude": 37.7749
+          },
+          {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "latitude": 35.6762
+          }
+        ],
+        "order_by_name_desc": [
+          {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "latitude": 35.6762
+          },
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "latitude": 37.7749
+          }
+        ]
+      }
+    }

@@ -30,16 +30,16 @@ response: |
             {
               "id": 1,
               "artist": {
-                "id": $.A1a_id,
-                "name": "A1a"
+                "id": $.A1_id,
+                "name": "A1"
               },
               "rank": 1
             },
             {
               "id": 2,
               "artist": {
-                "id": $.A1b_id,
-                "name": "A1b"
+                "id": $.A2_id,
+                "name": "A2"
               },
               "rank": 2
             }
@@ -48,8 +48,8 @@ response: |
             {
               "id": 3,
               "artist": {
-                "id": $.A2a_id,
-                "name": "A2a"
+                "id": $.A3_id,
+                "name": "A3"
               },
               "rank": 3
             }
@@ -57,13 +57,13 @@ response: |
         },
         {
           "id": $.c2_id,
-          "title": "C1",
+          "title": "C2",
           "mainArtists": [
             {
               "id": 4,
               "artist": {
-                "id": $.A1a_id,
-                "name": "A1a"
+                "id": $.A1_id,
+                "name": "A1"
               },
               "rank": 1
             }
@@ -72,8 +72,8 @@ response: |
             {
               "id": 5,
               "artist": {
-                "id": $.A2a_id,
-                "name": "A2a"
+                "id": $.A3_id,
+                "name": "A3"
               },
               "rank": 3
             }

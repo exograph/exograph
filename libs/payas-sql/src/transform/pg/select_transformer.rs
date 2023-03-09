@@ -60,10 +60,15 @@ impl SelectTransformer for Postgres {
             .map(|ob| column_path_owned(ob.column_paths()))
             .unwrap_or_else(Vec::new);
 
-        let columns_paths = predicate_column_paths
+        let columns_paths: Vec<Vec<ColumnPathLink>> = predicate_column_paths
             .into_iter()
             .chain(order_by_column_paths.into_iter())
             .collect();
+
+        let has_a_many_to_one_clause = columns_paths.iter().any(|path| {
+            path.iter()
+                .any(|link| link.self_column.0.is_pk && link.linked_column.is_some())
+        });
 
         let join = join_util::compute_join(abstract_select.table, columns_paths);
 
@@ -72,26 +77,42 @@ impl SelectTransformer for Postgres {
             SelectionSQL::Seq(elems) => elems,
         };
 
-        let predicate = ConcretePredicate::and(
-            self.to_predicate(&abstract_select.predicate),
-            additional_predicate.unwrap_or(ConcretePredicate::True),
-        );
-
-        if abstract_select.order_by.is_some()
+        let has_non_predicate_clauses = abstract_select.order_by.is_some()
             || abstract_select.offset.is_some()
-            || abstract_select.limit.is_some()
-        {
-            let inner_select = Select {
-                underlying: join,
-                columns: vec![Column::Star(Some(abstract_select.table.name.clone()))],
-                predicate,
-                order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
-                offset: abstract_select.offset.clone(),
-                limit: abstract_select.limit.clone(),
-                group_by,
-                top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
+            || abstract_select.limit.is_some();
+
+        if has_a_many_to_one_clause || has_non_predicate_clauses {
+            let inner_select = {
+                let (predicate, selection_table_query) = if has_a_many_to_one_clause {
+                    // If we have a many to one clause, we need to use a subselect along with
+                    // the basic table (not a join) to avoid returning duplicate rows (that would be returned by the join)
+                    (
+                        self.to_subselect_predicate(&abstract_select.predicate),
+                        TableQuery::Physical(abstract_select.table),
+                    )
+                } else {
+                    (self.to_join_predicate(&abstract_select.predicate), join)
+                };
+
+                let predicate = ConcretePredicate::and(
+                    predicate,
+                    additional_predicate.unwrap_or(ConcretePredicate::True),
+                );
+
+                // Inner select gives the data matching the predicate, order by, offset, limit
+                Select {
+                    underlying: selection_table_query,
+                    columns: vec![Column::Star(Some(abstract_select.table.name.clone()))],
+                    predicate,
+                    order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
+                    offset: abstract_select.offset.clone(),
+                    limit: abstract_select.limit.clone(),
+                    group_by,
+                    top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
+                }
             };
 
+            // We then use the inner select to build the final select
             Select {
                 underlying: TableQuery::SubSelect {
                     select: Box::new(inner_select),
@@ -106,6 +127,11 @@ impl SelectTransformer for Postgres {
                 top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
             }
         } else {
+            let predicate = ConcretePredicate::and(
+                self.to_join_predicate(&abstract_select.predicate),
+                additional_predicate.unwrap_or(ConcretePredicate::True),
+            );
+
             Select {
                 underlying: join,
                 columns,
