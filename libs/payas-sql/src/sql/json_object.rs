@@ -5,9 +5,11 @@ use super::{
     ExpressionBuilder, SQLBuilder,
 };
 
+/// A JSON object corresponding to the Postgres' `json_build_object` function.
 #[derive(Debug, PartialEq)]
 pub struct JsonObject<'a>(pub Vec<JsonObjectElement<'a>>);
 
+/// A key-value pair in a JSON object.
 #[derive(Debug, PartialEq)]
 pub struct JsonObjectElement<'a> {
     pub key: String,
@@ -21,6 +23,7 @@ impl<'a> JsonObjectElement<'a> {
 }
 
 impl<'a> ExpressionBuilder for JsonObject<'a> {
+    /// Build expression of the form `json_build_object(<comma-separated-elements>)`.
     fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("json_build_object(");
         builder.push_elems(&self.0, ", ");
@@ -28,11 +31,11 @@ impl<'a> ExpressionBuilder for JsonObject<'a> {
     }
 }
 
-/// Build a SQL query for an element in a JSON object. The SQL expression will be `'<key>',
-/// <value>`, where `<value>` is the SQL expression for the value of the JSON object element. The
-/// value of the JSON object element is encoded as base64 if it is a blob, and as text if it is a
-/// numeric.
 impl<'a> ExpressionBuilder for JsonObjectElement<'a> {
+    /// Build an SQL query for an element in a JSON object. The SQL expression will be `'<key>',
+    /// <value>`, where `<value>` is the SQL expression for the value of the JSON object element. The
+    /// value of the JSON object element is encoded as base64 if it is a blob, and as text if it is a
+    /// numeric.
     fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("'");
         builder.push_str(&self.key);

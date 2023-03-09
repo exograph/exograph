@@ -58,7 +58,7 @@ impl SchemaOp<'_> {
             if !column.is_pk {
                 post_statements.push(format!(
                     "CREATE INDEX ON \"{}\" ({});",
-                    column.table_name, column.column_name
+                    column.table_name, column.name
                 ))
             }
         }
@@ -91,7 +91,7 @@ impl SchemaOp<'_> {
             SchemaOp::DeleteColumn { column } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" DROP COLUMN \"{}\";",
-                    &column.table_name, column.column_name
+                    &column.table_name, column.name
                 ),
                 ..Default::default()
             },
@@ -101,14 +101,14 @@ impl SchemaOp<'_> {
             } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" SET DEFAULT {};",
-                    column.table_name, column.column_name, default_value
+                    column.table_name, column.name, default_value
                 ),
                 ..Default::default()
             },
             SchemaOp::UnsetColumnDefaultValue { column } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" DROP DEFAULT;",
-                    column.table_name, column.column_name
+                    column.table_name, column.name
                 ),
                 ..Default::default()
             },
@@ -143,14 +143,14 @@ impl SchemaOp<'_> {
             SchemaOp::SetNotNull { column } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" SET NOT NULL;",
-                    column.table_name, column.column_name,
+                    column.table_name, column.name,
                 ),
                 ..Default::default()
             },
             SchemaOp::UnsetNotNull { column } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" DROP NOT NULL;",
-                    column.table_name, column.column_name
+                    column.table_name, column.name
                 ),
                 ..Default::default()
             },

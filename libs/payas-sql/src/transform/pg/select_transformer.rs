@@ -16,7 +16,7 @@ use crate::{
         predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
-        table::TableQuery,
+        table::Table,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::{
@@ -88,7 +88,7 @@ impl SelectTransformer for Postgres {
                     // the basic table (not a join) to avoid returning duplicate rows (that would be returned by the join)
                     (
                         self.to_subselect_predicate(&abstract_select.predicate),
-                        TableQuery::Physical(abstract_select.table),
+                        Table::Physical(abstract_select.table),
                     )
                 } else {
                     (self.to_join_predicate(&abstract_select.predicate), join)
@@ -101,7 +101,7 @@ impl SelectTransformer for Postgres {
 
                 // Inner select gives the data matching the predicate, order by, offset, limit
                 Select {
-                    underlying: selection_table_query,
+                    table: selection_table_query,
                     columns: vec![Column::Star(Some(abstract_select.table.name.clone()))],
                     predicate,
                     order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
@@ -114,7 +114,7 @@ impl SelectTransformer for Postgres {
 
             // We then use the inner select to build the final select
             Select {
-                underlying: TableQuery::SubSelect {
+                table: Table::SubSelect {
                     select: Box::new(inner_select),
                     alias: abstract_select.table.name.clone(),
                 },
@@ -133,7 +133,7 @@ impl SelectTransformer for Postgres {
             );
 
             Select {
-                underlying: join,
+                table: join,
                 columns,
                 predicate,
                 order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
@@ -214,7 +214,7 @@ impl<'a> SelectionElement<'a> {
                 Column::JsonObject(JsonObject(elements))
             }
             SelectionElement::Nested(relation, select) => {
-                Column::SelectionTableWrapper(Box::new(database_kind.to_select(
+                Column::SubSelect(Box::new(database_kind.to_select(
                     select,
                     relation.linked_column.map(|linked_column| {
                         ConcretePredicate::Eq(

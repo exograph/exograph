@@ -33,11 +33,17 @@ impl SQLBuilder {
         self.sql.push(c);
     }
 
-    /// Push a string surrounded by double quotes. Useful for identifier.
+    /// Push a string surrounded by double quotes. Useful for identifier such as table names, column
+    /// names, etc. Without the quotes, the identifier with uppercase letters will be interpreted
+    /// the same as the identifier with lowercase letters.
     pub fn push_identifier<T: AsRef<str>>(&mut self, s: T) {
         self.sql.push('"');
         self.sql.push_str(s.as_ref());
         self.sql.push('"');
+    }
+
+    pub fn push_space(&mut self) {
+        self.sql.push(' ');
     }
 
     /// Push a parameter, which will be replaced with a placeholder in the SQL string
@@ -48,18 +54,19 @@ impl SQLBuilder {
         self.push_str(&self.params.len().to_string());
     }
 
-    /// Push elements of an iterator, separated by `sep`. The `mapping` function provides
+    /// Push elements of an iterator, separated by `sep`. The `push_elem` function provides
     /// the flexibility to map the elements (compared to [`SQLBuilder::push_elems`], which assumes that
     /// the elements implement [`ExpressionBuilder`] and [`build`](ExpressionBuilder::build) is all you need to call).
     pub fn push_iter<T>(
         &mut self,
         iter: impl ExactSizeIterator<Item = T>,
         sep: &str,
-        mapping: impl Fn(&mut Self, T),
+        push_elem: impl Fn(&mut Self, T),
     ) {
         let len = iter.len();
         for (i, item) in iter.enumerate() {
-            mapping(self, item);
+            push_elem(self, item);
+
             if i < len - 1 {
                 self.sql.push_str(sep);
             }

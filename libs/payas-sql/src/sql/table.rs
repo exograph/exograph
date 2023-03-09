@@ -1,68 +1,40 @@
-use crate::{Limit, Offset, PhysicalTable};
+use crate::PhysicalTable;
 
 use super::{
-    column::Column, group_by::GroupBy, join::Join, order::OrderBy, predicate::ConcretePredicate,
-    select::Select, ExpressionBuilder, SQLBuilder,
+    join::LeftJoin, predicate::ConcretePredicate, select::Select, ExpressionBuilder, SQLBuilder,
 };
 use maybe_owned::MaybeOwned;
 
+/// A table-like concept that can be used in in place of `SELECT FROM <table-query> ...`.
 #[derive(Debug, PartialEq)]
-pub enum TableQuery<'a> {
+pub enum Table<'a> {
+    /// A physical table such as `concerts`.
     Physical(&'a PhysicalTable),
-    Join(Join<'a>),
+    /// A join between two tables such as `concerts LEFT JOIN venues ON concerts.venue_id = venues.id`.
+    Join(LeftJoin<'a>),
+    /// A sub-select such as `(SELECT * FROM concerts) AS concerts`.
     SubSelect {
         select: Box<Select<'a>>,
         alias: String,
     },
 }
 
-impl<'a> TableQuery<'a> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn select(
-        self,
-        columns: Vec<Column<'a>>,
-        predicate: ConcretePredicate<'a>,
-        order_by: Option<OrderBy<'a>>,
-        offset: Option<Offset>,
-        limit: Option<Limit>,
-        group_by: Option<GroupBy<'a>>,
-        top_level_selection: bool,
-    ) -> Select<'a> {
-        Select {
-            underlying: self,
-            columns,
-            predicate,
-            order_by,
-            offset,
-            limit,
-            group_by,
-            top_level_selection,
-        }
-    }
-
+impl<'a> Table<'a> {
     pub fn join(
         self,
-        other_table: TableQuery<'a>,
+        other_table: Table<'a>,
         predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
-    ) -> TableQuery<'a> {
-        TableQuery::Join(Join::new(self, other_table, predicate))
-    }
-
-    pub fn base_table(&self) -> &PhysicalTable {
-        match self {
-            TableQuery::Physical(table) => table,
-            TableQuery::Join(join) => join.left().base_table(),
-            TableQuery::SubSelect { select, .. } => select.underlying.base_table(),
-        }
+    ) -> Table<'a> {
+        Table::Join(LeftJoin::new(self, other_table, predicate))
     }
 }
 
-impl<'a> ExpressionBuilder for TableQuery<'a> {
+impl<'a> ExpressionBuilder for Table<'a> {
     fn build(&self, builder: &mut SQLBuilder) {
         match self {
-            TableQuery::Physical(physical_table) => builder.push_identifier(&physical_table.name),
-            TableQuery::Join(join) => join.build(builder),
-            TableQuery::SubSelect { select, alias } => {
+            Table::Physical(physical_table) => builder.push_identifier(&physical_table.name),
+            Table::Join(join) => join.build(builder),
+            Table::SubSelect { select, alias } => {
                 builder.push('(');
                 select.build(builder);
                 builder.push(')');

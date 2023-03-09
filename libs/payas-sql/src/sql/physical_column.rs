@@ -4,26 +4,37 @@ use super::{ExpressionBuilder, SQLBuilder};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
+/// A column in a physical table
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub struct PhysicalColumn {
+    /// The name of the table this column belongs to
     pub table_name: String,
-    pub column_name: String,
+    /// The name of the column
+    pub name: String,
+    /// The type of the column
     pub typ: PhysicalColumnType,
-    pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
-    pub is_auto_increment: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
-    pub is_nullable: bool,       // should this type have a NOT NULL constraint or not?
+    /// Is this column a part of the PK for the table
+    pub is_pk: bool,
+    /// Is this column an auto-incrementing column (TODO: temporarily keeping it here until we revamp how we represent types and column attributes)
+    pub is_auto_increment: bool,
+    /// should this type have a NOT NULL constraint or not?
+    pub is_nullable: bool,
 
-    pub unique_constraints: Vec<String>, // optional names for unique constraints
+    /// optional names for unique constraints that this column is a part of
+    pub unique_constraints: Vec<String>,
 
-    pub default_value: Option<String>, // the default constraint
+    /// optional default value for this column
+    pub default_value: Option<String>,
 }
 
+/// Simpler implementation of Debug for PhysicalColumn.
+///
+/// The derived implementation of Debug for PhysicalColumn is not very useful, since it includes
+/// every field of the struct and obscures the actual useful information. This implementation only
+/// prints the table name and column name.
 impl std::fmt::Debug for PhysicalColumn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!(
-            "Column: {}.{}",
-            &self.table_name, &self.column_name
-        ))
+        f.write_str(&format!("Column: {}.{}", &self.table_name, &self.name))
     }
 }
 
@@ -31,7 +42,7 @@ impl Default for PhysicalColumn {
     fn default() -> Self {
         Self {
             table_name: Default::default(),
-            column_name: Default::default(),
+            name: Default::default(),
             typ: PhysicalColumnType::Blob,
             is_pk: false,
             is_auto_increment: false,
@@ -43,15 +54,19 @@ impl Default for PhysicalColumn {
 }
 
 impl ExpressionBuilder for PhysicalColumn {
+    /// Build expression of the form `<table_name>.<column_name>` if not in plain mode, otherwise
+    /// just `<column_name>`
     fn build(&self, builder: &mut SQLBuilder) {
         if !builder.in_plain_mode() {
             builder.push_identifier(&self.table_name);
             builder.push('.');
         }
-        builder.push_identifier(&self.column_name);
+        builder.push_identifier(&self.name);
     }
 }
 
+/// The type of a column in a physical table to include more precise information than just the type
+/// name.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PhysicalColumnType {
     Int {
@@ -104,7 +119,8 @@ pub enum FloatBits {
 }
 
 impl PhysicalColumnType {
-    /// Create a new physical column type given the SQL type string.
+    /// Create a new physical column type given the SQL type string. This is used to reverse-engineer
+    /// a database schema to a Claytip model.
     pub fn from_string(s: &str) -> Result<PhysicalColumnType, DatabaseError> {
         let s = s.to_uppercase();
 

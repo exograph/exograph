@@ -85,7 +85,7 @@ impl PredicateTransformer for Postgres {
                         table,
                         selection: Selection::Seq(vec![ColumnSelection {
                             column: SelectionElement::Physical(foreign_column),
-                            alias: foreign_column.column_name.clone(),
+                            alias: foreign_column.name.clone(),
                         }]),
                         predicate: predicate_op(
                             ColumnPath::Physical(tail_links.to_vec()),
@@ -103,7 +103,7 @@ impl PredicateTransformer for Postgres {
                         SelectionLevel::Nested,
                     );
 
-                    let right_select_column = Column::SelectionTableWrapper(Box::new(right_select));
+                    let right_select_column = Column::SubSelect(Box::new(right_select));
 
                     Some(ConcretePredicate::In(
                         Column::Physical(left_column),
@@ -169,7 +169,7 @@ impl PredicateTransformer for Postgres {
 fn leaf_column<'c>(column_path: &ColumnPath<'c>) -> Column<'c> {
     match column_path {
         ColumnPath::Physical(links) => Column::Physical(links.last().unwrap().self_column.0),
-        ColumnPath::Literal(l) => Column::Literal(l.clone()),
+        ColumnPath::Literal(l) => Column::Param(l.clone()),
         ColumnPath::Null => Column::Null,
     }
 }

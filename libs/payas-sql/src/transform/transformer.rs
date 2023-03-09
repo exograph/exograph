@@ -7,7 +7,7 @@ use crate::{
         update::AbstractUpdate,
     },
     sql::{
-        cte::Cte, group_by::GroupBy, predicate::ConcretePredicate, select::Select,
+        cte::WithQuery, group_by::GroupBy, predicate::ConcretePredicate, select::Select,
         transaction::TransactionScript,
     },
     AbstractPredicate,
@@ -60,7 +60,7 @@ pub trait SelectTransformer {
 }
 
 pub trait DeleteTransformer {
-    fn to_delete<'a>(&self, abstract_delete: &'a AbstractDelete) -> Cte<'a>;
+    fn to_delete<'a>(&self, abstract_delete: &'a AbstractDelete) -> WithQuery<'a>;
 
     fn to_transaction_script<'a>(
         &self,
