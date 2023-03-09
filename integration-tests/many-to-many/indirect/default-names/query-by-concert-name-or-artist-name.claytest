@@ -1,0 +1,60 @@
+# Exercise that even if we return a non-duplicate result even when we have deeper nested relations and they match all concerts
+operation: |
+  query {
+    concerts(where: {or: [{title: {startsWith: "C"}}, {concertArtists: {artist: {name: {startsWith: "A"}}}}]}) {
+      id
+      concertArtists {
+        artist {
+          id
+          name
+        }
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "concerts": [
+        {
+          "id": 1,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 2,
+                "name": "A1b"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }

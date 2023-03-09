@@ -1,0 +1,143 @@
+operation: |
+    query {
+        # Ensure that we don't get duplicate results
+        allVenues: venues(where: {or: [{concerts: {title: {startsWith: "Concert"}}}, {name: {startsWith: "Venue"}}]}) {
+            id
+            name
+            published
+            concerts {
+                id
+                title
+                published
+                price
+            }
+        }
+        allVenues_through_or: venues(where: {or: [{concerts: {title: {eq: "Concert1"}}}, {name: {startsWith: "Venue"}}]}) {
+            id
+            name
+            published
+            concerts {
+                id
+                title
+                published
+                price
+            }
+        }        
+        venue1: venues(where: {and: [{concerts: {title: {eq: "Concert1"}}}, {name: {eq: "Venue1"}}]}) { # The concert selection is spurious, but it's there to ensure that the AND is working
+            id
+            name
+            published
+            concerts {
+                id
+                title
+                published
+                price
+            }
+        }        
+    } 
+response: |
+    {
+      "data": {
+        "allVenues": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "concerts": [
+              {
+                "id": 1,
+                "title": "Concert1",
+                "published": true,
+                "price": "20.50"
+              },
+              {
+                "id": 3,
+                "title": "Concert3",
+                "published": true,
+                "price": "30.50"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "concerts": [
+              {
+                "id": 2,
+                "title": "Concert2",
+                "published": false,
+                "price": "12.50"
+              },
+              {
+                "id": 4,
+                "title": "Concert4",
+                "published": false,
+                "price": "22.50"
+              }
+            ]
+          }
+        ],
+        "allVenues_through_or": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "concerts": [
+              {
+                "id": 1,
+                "title": "Concert1",
+                "published": true,
+                "price": "20.50"
+              },
+              {
+                "id": 3,
+                "title": "Concert3",
+                "published": true,
+                "price": "30.50"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "name": "Venue2",
+            "published": false,
+            "concerts": [
+              {
+                "id": 2,
+                "title": "Concert2",
+                "published": false,
+                "price": "12.50"
+              },
+              {
+                "id": 4,
+                "title": "Concert4",
+                "published": false,
+                "price": "22.50"
+              }
+            ]
+          }
+        ],
+        "venue1": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "concerts": [
+              {
+                "id": 1,
+                "title": "Concert1",
+                "published": true,
+                "price": "20.50"
+              },
+              {
+                "id": 3,
+                "title": "Concert3",
+                "published": true,
+                "price": "30.50"
+              }
+            ]
+          }
+        ]
+      }
+    }

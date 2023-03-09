@@ -47,6 +47,24 @@ operation: |
           name
         }
       }
+    }
+    by_artist_name_or_id_3: concerts(where: {or: [{concertArtists: {artist: {name: {eq: "A1b"}}}}, {concertArtists: {artist: {id: {eq: $A1b_id}}}}]}) {
+      id
+      concertArtists {
+        artist {
+          id
+          name
+        }
+      }
+    }            
+    by_artist_who_is_in_two_concerts: concerts(where: {concertArtists: {artist: {id: {eq: 1}}}}) {
+      id
+      concertArtists {
+        artist {
+          id
+          name
+        }
+      }
     }            
   }
 variable: |
@@ -197,6 +215,73 @@ response: |
             }
           ]
         }
-      ]                   
+      ],
+      "by_artist_name_or_id_3": [
+        {
+          "id": $.c1_id,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": $.A1a_id,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": $.A1b_id,
+                "name": "A1b"
+              }
+            },
+            {
+              "artist": {
+                "id": $.A2a_id,
+                "name": "A2a"
+              }
+            }
+          ]
+        }
+      ],
+      "by_artist_who_is_in_two_concerts": [
+        {
+          "id": 1,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 2,
+                "name": "A1b"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        }
+      ]                         
     }
   }

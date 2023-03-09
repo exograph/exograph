@@ -83,7 +83,7 @@ pub trait UpdateTransformer {
 }
 
 pub trait PredicateTransformer {
-    fn to_predicate<'a>(&self, predicate: &AbstractPredicate<'a>) -> ConcretePredicate<'a>;
+    fn to_join_predicate<'a>(&self, predicate: &AbstractPredicate<'a>) -> ConcretePredicate<'a>;
     fn to_subselect_predicate<'a>(
         &self,
         predicate: &AbstractPredicate<'a>,

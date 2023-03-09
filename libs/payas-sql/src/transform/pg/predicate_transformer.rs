@@ -9,7 +9,8 @@ use crate::{
 use super::Postgres;
 
 impl PredicateTransformer for Postgres {
-    fn to_predicate<'a>(&self, predicate: &AbstractPredicate<'a>) -> ConcretePredicate<'a> {
+    /// Predicate suitable to use with a join of the relevant tables
+    fn to_join_predicate<'a>(&self, predicate: &AbstractPredicate<'a>) -> ConcretePredicate<'a> {
         match predicate {
             AbstractPredicate::True => ConcretePredicate::True,
             AbstractPredicate::False => ConcretePredicate::False,
@@ -49,12 +50,14 @@ impl PredicateTransformer for Postgres {
             }
 
             AbstractPredicate::And(l, r) => {
-                ConcretePredicate::and(self.to_predicate(l), self.to_predicate(r))
+                ConcretePredicate::and(self.to_join_predicate(l), self.to_join_predicate(r))
             }
             AbstractPredicate::Or(l, r) => {
-                ConcretePredicate::or(self.to_predicate(l), self.to_predicate(r))
+                ConcretePredicate::or(self.to_join_predicate(l), self.to_join_predicate(r))
             }
-            AbstractPredicate::Not(p) => ConcretePredicate::Not(Box::new(self.to_predicate(p))),
+            AbstractPredicate::Not(p) => {
+                ConcretePredicate::Not(Box::new(self.to_join_predicate(p)))
+            }
         }
     }
 
@@ -151,7 +154,7 @@ impl PredicateTransformer for Postgres {
                 self.to_subselect_predicate(p),
             ))),
         }
-        .unwrap_or(self.to_predicate(predicate))
+        .unwrap_or(self.to_join_predicate(predicate))
     }
 }
 
@@ -213,7 +216,7 @@ mod tests {
                 );
 
                 {
-                    let predicate = Postgres {}.to_predicate(&abstract_predicate);
+                    let predicate = Postgres {}.to_join_predicate(&abstract_predicate);
                     assert_binding!(
                         predicate.into_sql(),
                         r#""concerts"."name" = $1"#,
@@ -295,7 +298,7 @@ mod tests {
                 );
 
                 {
-                    let predicate = Postgres {}.to_predicate(&abstract_predicate);
+                    let predicate = Postgres {}.to_join_predicate(&abstract_predicate);
 
                     assert_binding!(
                         predicate.into_sql(),
