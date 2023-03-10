@@ -7146,7 +7146,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-resolver"
+name = "wasm-resolver-dynamic"
 version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
