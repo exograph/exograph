@@ -2,10 +2,12 @@ use std::any::Any;
 
 use tokio_postgres::types::ToSql;
 
+/// A trait to simplify our use of SQL parameters, specifically to have the [Send] and [Sync] bounds.
 pub trait SQLParam: ToSql + Send + Sync {
     fn as_any(&self) -> &dyn Any;
     fn eq(&self, other: &dyn SQLParam) -> bool;
 
+    /// Create type-compatible version that we can pass to the Postgres driver.
     fn as_pg(&self) -> &(dyn ToSql + Sync);
 }
 

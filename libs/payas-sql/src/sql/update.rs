@@ -10,27 +10,38 @@ use super::{
     ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
 
+/// An update operation.
 #[derive(Debug)]
 pub struct Update<'a> {
+    /// The table to update.
     pub table: &'a PhysicalTable,
+    /// The predicate to filter rows to update.
     pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
+    /// The columns to update and their values.
     pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)>,
+    /// The columns to return.
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> ExpressionBuilder for Update<'a> {
+    /// Build the update statement for the form `UPDATE <table> SET <column = value, ...> WHERE
+    /// <predicate> RETURNING <returning-columns>`. The `WHERE` is omitted if the predicate is
+    /// `True` and `RETURNING` is omitted if the list of columns to return is empty.
     fn build(&self, builder: &mut SQLBuilder) {
         builder.push_str("UPDATE ");
         self.table.build(builder);
+
         builder.push_str(" SET ");
         builder.push_iter(
             self.column_values.iter(),
             ", ",
             |builder, (column, value)| {
-                builder.with_plain(|builder| {
+                builder.without_fully_qualified_column_names(|builder| {
                     column.build(builder);
                 });
+
                 builder.push_str(" = ");
+
                 value.build(builder);
             },
         );

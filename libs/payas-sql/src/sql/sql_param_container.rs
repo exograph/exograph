@@ -6,10 +6,9 @@ use tokio_postgres::types::{to_sql_checked, ToSql, Type};
 
 use crate::SQLParam;
 
-/// A wrapper type for SQL parameters that can be used in a prepared statement.
-/// We would have been fine with just using `Arc<dyn SQLParam>` but we need to
-/// implement `ToSql` for it and since `Arc` (unlike `Box`) is not a `#[fundamental]`
-/// type, so we have to wrap it in a newtype.
+/// Newtype for SQL parameters that can be used in a prepared statement. We would have been fine
+/// with just using `Arc<dyn SQLParam>` but we need to implement `ToSql` for it and since `Arc`
+/// (unlike `Box`) is not a `#[fundamental]` type, we have to wrap it in a newtype.
 #[derive(Clone)]
 pub struct SQLParamContainer(Arc<dyn SQLParam>);
 

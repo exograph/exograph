@@ -122,7 +122,7 @@ impl UpdateTransformer for Postgres {
             ));
         } else {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::Cte(WithQuery {
+                SQLOperation::WithQuery(WithQuery {
                     expressions: vec![CteExpression {
                         name: abstract_update.table.name.clone(),
                         operation: root_update,
