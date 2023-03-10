@@ -1525,6 +1525,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "deno-resolver-dynamic"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "deno-resolver",
+]
+
+[[package]]
 name = "deno_ast"
 version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4509,6 +4517,14 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "uuid",
+]
+
+[[package]]
+name = "postgres-resolver-dynamic"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "postgres-resolver",
 ]
 
 [[package]]

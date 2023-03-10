@@ -62,7 +62,7 @@ impl SystemLoader {
                     None => {
                         // Then try to load a dynamic loader
                         debug!("Using dynamic loader for {}", subsystem_id);
-                        let subsystem_library_name = format!("{subsystem_id}_resolver");
+                        let subsystem_library_name = format!("{subsystem_id}_resolver_dynamic");
 
                         core_plugin_interface::interface::load_subsystem_loader(
                             &subsystem_library_name,

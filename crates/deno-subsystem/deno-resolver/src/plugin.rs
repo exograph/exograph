@@ -33,7 +33,6 @@ pub type ClayDenoExecutorPool = DenoExecutorPool<
 >;
 
 pub struct DenoSubsystemLoader {}
-core_plugin_interface::export_subsystem_loader!(DenoSubsystemLoader {});
 
 impl SubsystemLoader for DenoSubsystemLoader {
     fn id(&self) -> &'static str {
