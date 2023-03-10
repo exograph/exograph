@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display};
 use bytes::Bytes;
 use tokio_postgres::types::{to_sql_checked, ToSql, Type};
 
-// Wrapper type for bytes::Bytes for use with BYTEA, since [`Bytes`] does not implement ToSql.
+/// Newtype for bytes::Bytes for use with BYTEA, since [`Bytes`] does not implement ToSql.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SQLBytes(pub Bytes);
 

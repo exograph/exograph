@@ -30,6 +30,7 @@ impl<'a> Table<'a> {
 }
 
 impl<'a> ExpressionBuilder for Table<'a> {
+    /// Build the table into a SQL string.
     fn build(&self, builder: &mut SQLBuilder) {
         match self {
             Table::Physical(physical_table) => builder.push_identifier(&physical_table.name),

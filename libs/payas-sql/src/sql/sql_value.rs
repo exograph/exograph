@@ -4,7 +4,7 @@ use tokio_postgres::types::{to_sql_checked, FromSql, ToSql, Type};
 
 use crate::database_error::DatabaseError;
 
-/// An SQL value to transfer result of a step to another
+/// An SQL value to transfer the result of one transaction step to another.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SQLValue {
     value: Vec<u8>,

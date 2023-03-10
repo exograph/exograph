@@ -1,7 +1,41 @@
 #![cfg(test)]
 
-// TODO: Do we really need three cases here (the middle one looks unnecessary)
+//! Test assertion to check SQL statements and parameters.
+
+/// Assert that the given parameters match the expected ones.
+///
+/// # Usage:
+/// ```no_run
+/// assert_params!(actual_params, expected_param1, expected_param2, ...);`
+/// ```
+///
+/// # Example:
+/// ```
+/// let actual_params = vec![Box::new(1), Box::new("hello")];
+/// assert_params!(actual_params, 1, "hello"); // will pass
+/// ```
+///
+/// ```
+/// let actual_params = vec![];
+/// assert_params!(actual_params); // will pass
+/// ```
+///
+/// ```should_panic
+/// let actual_params = vec![Box::new(1), Box::new("hello")];
+/// assert_params!(actual_params, 1, "world"); // will fail (parameter mismatch)
+/// ```
+///
+/// ```should_panic
+/// let actual_params = vec![Box::new(1), Box::new("hello")];
+/// assert_params!(actual_params, 1); // will fail (too few parameters)
+/// ```
+///
+/// ```should_panic
+/// let actual_params = vec![Box::new(1), Box::new("hello")];
+/// assert_params!(actual_params, 1, "hello", 2); // will fail (too many parameters)
+/// ```
 macro_rules! assert_params {
+    // TODO: Do we really need three cases here (the middle one looks unnecessary)
     ($actual_params:expr) => {
         assert!($actual_params.is_empty(), "Extra actual parameters");
     };

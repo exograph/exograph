@@ -9,13 +9,14 @@ use super::{
     ExpressionBuilder, SQLBuilder,
 };
 
+/// Top-level SQL operation, which may be executed by the database.
 #[derive(Debug)]
 pub enum SQLOperation<'a> {
     Select(Select<'a>),
     Insert(Insert<'a>),
     Delete(Delete<'a>),
     Update(Update<'a>),
-    Cte(WithQuery<'a>),
+    WithQuery(WithQuery<'a>),
 }
 
 impl<'a> ExpressionBuilder for SQLOperation<'a> {
@@ -25,7 +26,7 @@ impl<'a> ExpressionBuilder for SQLOperation<'a> {
             SQLOperation::Insert(insert) => insert.build(builder),
             SQLOperation::Delete(delete) => delete.build(builder),
             SQLOperation::Update(update) => update.build(builder),
-            SQLOperation::Cte(cte) => cte.build(builder),
+            SQLOperation::WithQuery(cte) => cte.build(builder),
         }
     }
 }

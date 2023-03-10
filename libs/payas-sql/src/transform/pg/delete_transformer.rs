@@ -25,7 +25,7 @@ impl DeleteTransformer for Postgres {
         let delete = self.to_delete(abstract_delete);
         let mut transaction_script = TransactionScript::default();
         transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-            SQLOperation::Cte(delete),
+            SQLOperation::WithQuery(delete),
         )));
         transaction_script
     }

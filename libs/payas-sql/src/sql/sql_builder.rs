@@ -5,9 +5,13 @@ use crate::SQLParam;
 use super::ExpressionBuilder;
 
 pub struct SQLBuilder {
+    /// The SQL being built with placeholders for each parameter
     sql: String,
+    /// The list of parameters
     params: Vec<Arc<dyn SQLParam>>,
-    plain: bool, // Indicates if column name should be rendered without the table name i.e. "col" instead of "table"."col" (needed for INSERT statements)
+    /// Indicates if column name should be rendered with the table name i.e. "table"."col"  instead
+    /// of "col" (needed for INSERT/UPDATE statements)
+    fully_qualify_column_names: bool,
 }
 
 impl SQLBuilder {
@@ -15,12 +19,8 @@ impl SQLBuilder {
         Self {
             sql: String::new(),
             params: Vec::new(),
-            plain: false,
+            fully_qualify_column_names: true,
         }
-    }
-
-    pub fn in_plain_mode(&self) -> bool {
-        self.plain
     }
 
     /// Push a string
@@ -42,6 +42,17 @@ impl SQLBuilder {
         self.sql.push('"');
     }
 
+    /// Push a column. Push `<table_name>.<column_name>` if in fully_qualify_column_names mode, otherwise
+    /// just `<column_name>`. See [`SQLBuilder::plain`].
+    pub fn push_column<T: AsRef<str>>(&mut self, table_name: T, column_name: T) {
+        if self.fully_qualify_column_names {
+            self.push_identifier(table_name);
+            self.push('.');
+        }
+        self.push_identifier(column_name);
+    }
+
+    /// Push a space. This is a common operation, so it is provided as a separate method.
     pub fn push_space(&mut self) {
         self.sql.push(' ');
     }
@@ -88,18 +99,18 @@ impl SQLBuilder {
         (self.sql, self.params)
     }
 
-    /// Execute the given function with the `plain` flag set to true. This is useful for building
-    /// SQL expressions that need to be rendered without the table name, e.g. for INSERT and UPDATE
-    /// statements. This takes a closure, so that we can restore the original value of the `plain`
-    /// flag after the function has been executed.
-    pub fn with_plain<F, R>(&mut self, func: F) -> R
+    /// Execute the given function with the [`Self::fully_qualify_column_names`] flag set to false.
+    /// This is useful for building SQL expressions that need to be rendered without the table name,
+    /// e.g. for INSERT and UPDATE statements. This takes a closure, so that we can restore the
+    /// original value of the flag after executing the function.
+    pub fn without_fully_qualified_column_names<F, R>(&mut self, func: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
-        let cur_plain = self.plain;
-        self.plain = true;
+        let cur_fully_qualify_column_names = self.fully_qualify_column_names;
+        self.fully_qualify_column_names = false;
         let ret = func(self);
-        self.plain = cur_plain;
+        self.fully_qualify_column_names = cur_fully_qualify_column_names;
         ret
     }
 }

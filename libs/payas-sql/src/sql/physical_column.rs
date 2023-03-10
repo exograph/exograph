@@ -54,14 +54,8 @@ impl Default for PhysicalColumn {
 }
 
 impl ExpressionBuilder for PhysicalColumn {
-    /// Build expression of the form `<table_name>.<column_name>` if not in plain mode, otherwise
-    /// just `<column_name>`
     fn build(&self, builder: &mut SQLBuilder) {
-        if !builder.in_plain_mode() {
-            builder.push_identifier(&self.table_name);
-            builder.push('.');
-        }
-        builder.push_identifier(&self.name);
+        builder.push_column(&self.table_name, &self.name)
     }
 }
 

@@ -31,7 +31,7 @@ impl<'a> ExpressionBuilder for Insert<'a> {
         self.table.build(builder);
 
         builder.push_str(" (");
-        builder.with_plain(|builder| {
+        builder.without_fully_qualified_column_names(|builder| {
             builder.push_elems(&self.columns, ", ");
         });
 
