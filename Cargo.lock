@@ -5279,6 +5279,7 @@ dependencies = [
  "futures",
  "resolver",
  "serde_json",
+ "server-common",
  "tracing",
  "tracing-actix-web",
 ]
@@ -5296,7 +5297,19 @@ dependencies = [
  "opentelemetry-jaeger",
  "resolver",
  "serde_json",
+ "server-common",
  "tokio",
+]
+
+[[package]]
+name = "server-common"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "core-resolver",
+ "deno-resolver",
+ "postgres-resolver",
+ "resolver",
 ]
 
 [[package]]

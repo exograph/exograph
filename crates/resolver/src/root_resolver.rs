@@ -4,6 +4,8 @@ use std::{fs::File, io::BufReader, path::Path};
 
 use crate::system_loader::SystemLoadingError;
 
+use core_plugin_interface::interface::SubsystemLoader;
+
 use super::system_loader::SystemLoader;
 use ::tracing::instrument;
 use async_graphql_parser::Pos;
@@ -134,7 +136,10 @@ pub fn get_endpoint_http_path() -> String {
     std::env::var("CLAY_ENDPOINT_HTTP_PATH").unwrap_or_else(|_| "/graphql".to_string())
 }
 
-fn create_system_resolver(claypot_file: &str) -> Result<SystemResolver, SystemLoadingError> {
+fn create_system_resolver(
+    claypot_file: &str,
+    static_loaders: Vec<Box<dyn SubsystemLoader>>,
+) -> Result<SystemResolver, SystemLoadingError> {
     if !Path::new(&claypot_file).exists() {
         return Err(SystemLoadingError::FileNotFound(claypot_file.to_string()));
     }
@@ -142,7 +147,7 @@ fn create_system_resolver(claypot_file: &str) -> Result<SystemResolver, SystemLo
         Ok(file) => {
             let claypot_file_buffer = BufReader::new(file);
 
-            SystemLoader::load(claypot_file_buffer)
+            SystemLoader::load(claypot_file_buffer, static_loaders)
         }
         Err(e) => Err(SystemLoadingError::FileOpen(claypot_file.into(), e)),
     }
@@ -150,12 +155,16 @@ fn create_system_resolver(claypot_file: &str) -> Result<SystemResolver, SystemLo
 
 pub fn create_system_resolver_from_serialized_bytes(
     bytes: Vec<u8>,
+    static_loaders: Vec<Box<dyn SubsystemLoader>>,
 ) -> Result<SystemResolver, SystemLoadingError> {
-    SystemLoader::load_from_bytes(bytes)
+    SystemLoader::load_from_bytes(bytes, static_loaders)
 }
 
-pub fn create_system_resolver_or_exit(claypot_file: &str) -> SystemResolver {
-    match create_system_resolver(claypot_file) {
+pub fn create_system_resolver_or_exit(
+    claypot_file: &str,
+    static_loaders: Vec<Box<dyn SubsystemLoader>>,
+) -> SystemResolver {
+    match create_system_resolver(claypot_file, static_loaders) {
         Ok(system_resolver) => system_resolver,
         Err(error) => {
             println!("{error}");

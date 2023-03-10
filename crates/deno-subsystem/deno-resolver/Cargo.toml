@@ -29,4 +29,4 @@ builder = { path = "../../builder" }
 
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib", "cdylib"]

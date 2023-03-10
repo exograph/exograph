@@ -2,10 +2,8 @@ use actix_cors::Cors;
 use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use core_resolver::system_resolver::SystemResolver;
-use resolver::{
-    allow_introspection, create_system_resolver_or_exit, get_endpoint_http_path,
-    get_playground_http_path, graphiql,
-};
+
+use resolver::{allow_introspection, get_endpoint_http_path, get_playground_http_path, graphiql};
 use server_actix::resolve;
 use tracing_actix_web::TracingLogger;
 
@@ -18,11 +16,8 @@ use std::{env, process::exit};
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let start_time = time::SystemTime::now();
-    let claypot_file = get_claypot_file_name();
 
-    resolver::init();
-
-    let system_resolver = web::Data::new(create_system_resolver_or_exit(&claypot_file));
+    let system_resolver = web::Data::new(server_common::init());
 
     let server_port = env::var("CLAY_SERVER_PORT")
         .map(|port_str| {
@@ -83,34 +78,6 @@ async fn main() -> std::io::Result<()> {
             } else {
                 eprintln!("Error: Failed to start server: {e}");
             }
-            exit(1);
-        }
-    }
-}
-
-fn get_claypot_file_name() -> String {
-    let mut args = env::args().skip(1);
-
-    if args.len() > 1 {
-        // $ clay-server <model-file-name> extra-arguments...
-        println!("Usage: clay-server <claypot-file>");
-        exit(1)
-    }
-
-    if args.len() == 0 {
-        // $ clay-server
-        "index.claypot".to_string()
-    } else {
-        let file_name = args.next().unwrap();
-
-        if file_name.ends_with(".claypot") {
-            // $ clay-server concerts.claypot
-            file_name
-        } else if file_name.ends_with(".clay") {
-            // $ clay-server concerts.clay
-            format!("{file_name}pot")
-        } else {
-            println!("The input file {file_name} doesn't appear to be a claypot. You need build one with the 'clay build <model-file-name>' command.");
             exit(1);
         }
     }

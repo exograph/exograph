@@ -17,7 +17,7 @@ pub async fn test_query(json_input: Value, clay_model: &str, expected: Value) {
     let model_system =
         builder::build_system_from_str(clay_model, "index.clay".to_string()).unwrap();
     let system_resolver =
-        Arc::new(create_system_resolver_from_serialized_bytes(model_system).unwrap());
+        Arc::new(create_system_resolver_from_serialized_bytes(model_system, vec![]).unwrap());
 
     let result = resolve(event, system_resolver).await.unwrap();
 

@@ -1,0 +1,17 @@
+[package]
+name = "server-common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+resolver = { path = "../resolver" }
+core-resolver = { path = "../core-subsystem/core-resolver" }
+core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
+postgres-resolver = { path = "../postgres-subsystem/postgres-resolver", optional = true }
+deno-resolver = { path = "../deno-subsystem/deno-resolver", optional = true }
+
+[features]
+static-postgres-resolver = ["postgres-resolver"]
+static-deno-resolver = ["deno-resolver"]
+
+[lib]

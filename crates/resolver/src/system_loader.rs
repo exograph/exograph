@@ -1,6 +1,7 @@
 use introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
 
+use core_plugin_interface::interface::SubsystemLoader;
 use core_plugin_interface::interface::{LibraryLoadingError, SubsystemLoadingError};
 use core_plugin_shared::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
@@ -9,25 +10,33 @@ use core_plugin_shared::{
 
 use core_resolver::plugin::SubsystemResolver;
 use core_resolver::{introspection::definition::schema::Schema, system_resolver::SystemResolver};
+use tracing::debug;
 pub struct SystemLoader;
 
 impl SystemLoader {
-    pub fn load(read: impl std::io::Read) -> Result<SystemResolver, SystemLoadingError> {
+    pub fn load(
+        read: impl std::io::Read,
+        static_loaders: Vec<Box<dyn SubsystemLoader>>,
+    ) -> Result<SystemResolver, SystemLoadingError> {
         let serialized_system = SerializableSystem::deserialize_reader(read)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
-        Self::process(serialized_system)
+        Self::process(serialized_system, static_loaders)
     }
 
-    pub fn load_from_bytes(bytes: Vec<u8>) -> Result<SystemResolver, SystemLoadingError> {
+    pub fn load_from_bytes(
+        bytes: Vec<u8>,
+        static_loaders: Vec<Box<dyn SubsystemLoader>>,
+    ) -> Result<SystemResolver, SystemLoadingError> {
         let serialized_system = SerializableSystem::deserialize(bytes)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
-        Self::process(serialized_system)
+        Self::process(serialized_system, static_loaders)
     }
 
     fn process(
         serialized_system: SerializableSystem,
+        mut static_loaders: Vec<Box<dyn SubsystemLoader>>,
     ) -> Result<SystemResolver, SystemLoadingError> {
         let SerializableSystem {
             subsystems,
@@ -39,11 +48,27 @@ impl SystemLoader {
         let subsystem_resolvers: Result<Vec<_>, _> = subsystems
             .into_iter()
             .map(|serialized_subsystem| {
-                let subsystem_library_name = format!("{}_resolver", serialized_subsystem.id);
+                let subsystem_id = serialized_subsystem.id;
+                // First try to load a static loader
+                let index = static_loaders
+                    .iter()
+                    .position(|loader| loader.id() == subsystem_id);
 
-                let subsystem_loader = core_plugin_interface::interface::load_subsystem_loader(
-                    &subsystem_library_name,
-                )?;
+                let subsystem_loader = match index {
+                    Some(index) => {
+                        debug!("Using static loader for {}", subsystem_id);
+                        static_loaders.remove(index)
+                    }
+                    None => {
+                        // Then try to load a dynamic loader
+                        debug!("Using dynamic loader for {}", subsystem_id);
+                        let subsystem_library_name = format!("{subsystem_id}_resolver");
+
+                        core_plugin_interface::interface::load_subsystem_loader(
+                            &subsystem_library_name,
+                        )?
+                    }
+                };
 
                 subsystem_loader
                     .init(serialized_subsystem.serialized_subsystem)

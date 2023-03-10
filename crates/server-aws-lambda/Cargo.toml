@@ -14,9 +14,15 @@ tokio = { version = "1", features = ["full"] }
 
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
+server-common = { path = "../server-common", features = ["static-postgres-resolver", "static-deno-resolver"] }
 
 [dev-dependencies]
 builder = { path = "../builder" }
+
+[features]
+static-postgres-resolver = ["server-common/static-postgres-resolver"]
+static-deno-resolver = ["server-common/static-deno-resolver"]
+default = ["static-postgres-resolver", "static-deno-resolver"]
 
 [[bin]]
 name = "bootstrap"
