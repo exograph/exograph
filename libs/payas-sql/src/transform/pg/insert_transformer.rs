@@ -126,14 +126,14 @@ impl InsertTransformer for Postgres {
             ctes.extend(nested_ctes);
 
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::Cte(WithQuery {
+                SQLOperation::WithQuery(WithQuery {
                     expressions: ctes,
                     select,
                 }),
             )));
         } else {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::Cte(WithQuery {
+                SQLOperation::WithQuery(WithQuery {
                     expressions: vec![CteExpression {
                         name: table.name.clone(),
                         operation: root_update,

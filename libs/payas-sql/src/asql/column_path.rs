@@ -41,8 +41,8 @@ impl<'a> Ord for ColumnPathLink<'a> {
             (
                 &link.self_column.0.name,
                 &link.self_column.1.name,
-                link.linked_column.map(|ref c| c.0.name.as_str()),
-                link.linked_column.map(|ref c| c.1.name.as_str()),
+                link.linked_column.map(|c| c.0.name.as_str()),
+                link.linked_column.map(|c| c.1.name.as_str()),
             )
         }
 
