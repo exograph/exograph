@@ -5,10 +5,22 @@ use core_resolver::system_resolver::SystemResolver;
 
 use resolver::create_system_resolver_or_exit;
 
-pub fn init() -> SystemResolver {
-    let claypot_file = get_claypot_file_name();
+mod logging_tracing;
 
-    resolver::init();
+/// Initialize the server by:
+/// - Initializing logging and tracing
+/// - Creating the system resolver (and return it)
+///
+/// The `[SystemResolver]` uses static resolvers for Postgres and Deno if the corresponding features
+/// ("static-postgres-resolver" and "static-deno-resolver") are enabled. Note that these feature
+/// flags also control if the corresponding libraries are statically linked it.
+///
+/// # Exit codes
+/// - 1 - If the claypot file doesn't exist or can't be loaded.
+pub fn init() -> SystemResolver {
+    logging_tracing::init();
+
+    let claypot_file = get_claypot_file_name();
 
     let static_loaders: Vec<Box<dyn SubsystemLoader>> = vec![
         #[cfg(feature = "static-postgres-resolver")]

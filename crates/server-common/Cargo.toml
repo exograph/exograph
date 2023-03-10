@@ -4,6 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.1"
+tracing-opentelemetry = "0.17.2"
+opentelemetry-jaeger = "0.16"
+pretty_env_logger = "0.4"
+opentelemetry = { version = "0.17", default-features = false, features = [
+    "trace",
+] }
+
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }

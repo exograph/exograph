@@ -172,8 +172,3 @@ pub fn create_system_resolver_or_exit(
         }
     }
 }
-
-/// Initializes logging for resolver.
-pub fn init() {
-    super::logging_tracing::init()
-}
