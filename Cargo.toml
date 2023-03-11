@@ -6,6 +6,7 @@ members = [
     "crates/resolver",
     "crates/server-actix",
     "crates/server-aws-lambda",
+    "crates/server-common",
     "crates/testing",
     "crates/core-subsystem/*",
     "crates/postgres-subsystem/*",
@@ -19,7 +20,7 @@ members = [
 ]
 
 # The default workspace member to run `cargo` commands on (we exclude server-aws-lambda here, since we don't need to build it during normal development)
-# Pass --all to `cargo` to include it)
+# Pass --all to `cargo` to include it
 default-members = [
     "crates/builder",
     "crates/cli",
@@ -32,6 +33,7 @@ default-members = [
     "crates/wasm-subsystem/*",
     "crates/subsystem-util/*",
     "crates/introspection-subsystem/*",
+    "crates/server-common",
     "libs/payas-deno",
     "libs/payas-sql",
     "libs/payas-wasm"

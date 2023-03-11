@@ -23,6 +23,7 @@ ln -s $PWD/vscode-extension/out $HOME/.vscode/extensions/clay.vscode
 ```
 
 ## Building
+
 Build the `clay` and `clay-server` binaries:
 
 ```
@@ -33,6 +34,19 @@ To create a production build:
 
 ```
 cargo build --release
+```
+
+By default, cargo will build the `clay-server` binary with statically linked in Postgres and Deno plugins. If you want to build a binary that dynamically links these plugins, you can use the `--no-default-features` flag:
+
+```
+cargo build --no-default-features
+```
+
+You can also selectively enable static linking for either Postgres or Deno:
+
+```
+cargo build --no-default-features --features static-postgres-resolver
+cargo build --no-default-features --features static-deno-resolver
 ```
 
 ## Testing the setup

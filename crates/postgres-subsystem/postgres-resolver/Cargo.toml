@@ -34,4 +34,4 @@ core-resolver = { path = "../../core-subsystem/core-resolver", features = [
 resolver = { path = "../../resolver" }
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib"]

@@ -1,5 +1,5 @@
 [package]
-name = "wasm-resolver"
+name = "wasm-resolver-dynamic"
 version = "0.1.0"
 edition = "2021"
 

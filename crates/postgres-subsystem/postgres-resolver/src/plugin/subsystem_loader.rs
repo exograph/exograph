@@ -8,7 +8,6 @@ use payas_sql::{Database, DatabaseExecutor};
 use postgres_model::subsystem::PostgresSubsystem;
 
 pub struct PostgresSubsystemLoader {}
-core_plugin_interface::export_subsystem_loader!(PostgresSubsystemLoader {});
 
 impl SubsystemLoader for PostgresSubsystemLoader {
     fn id(&self) -> &'static str {
