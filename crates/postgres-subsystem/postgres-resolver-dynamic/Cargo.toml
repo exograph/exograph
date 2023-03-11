@@ -1,0 +1,13 @@
+[package]
+name = "postgres-resolver-dynamic"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+postgres-resolver = { path = "../postgres-resolver" }
+
+[dev-dependencies]
+
+[lib]
+crate-type = ["cdylib"]

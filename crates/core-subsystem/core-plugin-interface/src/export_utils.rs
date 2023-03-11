@@ -23,6 +23,10 @@ macro_rules! export_subsystem_builder {
 ///
 /// This should be invoked once for every subsystem loader library to
 /// export the subsystem loader.
+///
+/// Caution: You must not call this macro from a crate with `crate-type` other than `cdynlib`.
+/// Otherwise, the symbol will be exported once for each plugin, which will cause a linker error.
+/// See postgres-resolver-dynamic and deno-resolver-dynamic for examples.
 #[macro_export]
 macro_rules! export_subsystem_loader {
     ($loader:expr) => {

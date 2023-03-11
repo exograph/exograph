@@ -77,7 +77,7 @@ dependencies = [
  "actix-rt",
  "actix-service",
  "actix-utils",
- "ahash",
+ "ahash 0.7.6",
  "base64",
  "bitflags",
  "bytes",
@@ -188,7 +188,7 @@ dependencies = [
  "actix-service",
  "actix-utils",
  "actix-web-codegen",
- "ahash",
+ "ahash 0.7.6",
  "bytes",
  "bytestring",
  "cfg-if 1.0.0",
@@ -291,6 +291,18 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
 dependencies = [
+ "getrandom 0.2.7",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
+name = "ahash"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c99f64d1e06488f620f932677e24bc6e2897582980441ae90a671415bd7ec2f"
+dependencies = [
+ "cfg-if 1.0.0",
  "getrandom 0.2.7",
  "once_cell",
  "version_check",
@@ -1525,6 +1537,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "deno-resolver-dynamic"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "deno-resolver",
+]
+
+[[package]]
 name = "deno_ast"
 version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2701,7 +2721,7 @@ version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
 ]
 
 [[package]]
@@ -4512,6 +4532,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-resolver-dynamic"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "postgres-resolver",
+]
+
+[[package]]
 name = "postgres-types"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4877,22 +4905,15 @@ dependencies = [
  "include_dir",
  "insta",
  "introspection-resolver",
- "opentelemetry",
- "opentelemetry-jaeger",
  "payas-deno",
  "payas-sql",
  "postgres-model",
- "pretty_env_logger",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
  "tokio-postgres",
  "tracing",
- "tracing-bunyan-formatter",
- "tracing-log",
- "tracing-opentelemetry",
- "tracing-subscriber",
  "typed-generational-arena",
  "wasm-model",
 ]
@@ -5279,6 +5300,7 @@ dependencies = [
  "futures",
  "resolver",
  "serde_json",
+ "server-common",
  "tracing",
  "tracing-actix-web",
 ]
@@ -5296,7 +5318,27 @@ dependencies = [
  "opentelemetry-jaeger",
  "resolver",
  "serde_json",
+ "server-common",
  "tokio",
+]
+
+[[package]]
+name = "server-common"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "core-resolver",
+ "deno-resolver",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "postgres-resolver",
+ "pretty_env_logger",
+ "resolver",
+ "tracing",
+ "tracing-bunyan-formatter",
+ "tracing-log",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5649,7 +5691,7 @@ version = "0.29.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "506321cad7393893018aac83a3b3bd25203883e8c47ab0864bb43195d43b22dd"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
  "ast_node",
  "better_scoped_tls",
  "cfg-if 1.0.0",
@@ -5751,7 +5793,7 @@ version = "0.41.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42710b93ec010a5e0354cc86d621a3dd0243351d649d0c273c1887035a256151"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
  "anyhow",
  "pathdiff",
  "serde",
@@ -5852,7 +5894,7 @@ version = "0.156.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd4b1e06d0c517dbc308d6ba9004c1d8bd3e271f2bff445ac2226536e3893e67"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
  "base64",
  "dashmap",
  "indexmap",
@@ -6414,10 +6456,11 @@ dependencies = [
 
 [[package]]
 name = "tracing-bunyan-formatter"
-version = "0.3.4"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2445962f94a813b2aaea29ceeccb6dce9fd3aa5b1cb45595cde755b00d021ad"
+checksum = "78fa7c4b548e5c79a0300396f36f175da001e9933dfb5960b326db25fddbaee7"
 dependencies = [
+ "ahash 0.8.3",
  "gethostname",
  "log",
  "serde",
@@ -7103,7 +7146,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-resolver"
+name = "wasm-resolver-dynamic"
 version = "0.1.0"
 dependencies = [
  "async-graphql-parser",

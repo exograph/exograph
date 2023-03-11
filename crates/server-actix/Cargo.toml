@@ -15,6 +15,12 @@ tracing = "0.1"
 tracing-actix-web = "0.6.0"
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
+server-common = { path = "../server-common" }
+
+[features]
+static-postgres-resolver = ["server-common/static-postgres-resolver"]
+static-deno-resolver = ["server-common/static-deno-resolver"]
+default = ["static-postgres-resolver", "static-deno-resolver"]
 
 [[bin]]
 name = "clay-server"
