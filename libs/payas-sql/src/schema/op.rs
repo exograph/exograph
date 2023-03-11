@@ -57,7 +57,7 @@ impl SchemaOp<'_> {
             // create indices for all columns except pk columns
             if !column.is_pk {
                 post_statements.push(format!(
-                    "CREATE INDEX ON \"{}\" ({});",
+                    r#"CREATE INDEX ON "{}" ("{}");"#,
                     column.table_name, column.name
                 ))
             }
@@ -129,7 +129,11 @@ impl SchemaOp<'_> {
                     "ALTER TABLE \"{}\" ADD CONSTRAINT \"{}\" UNIQUE ({});",
                     table.name,
                     constraint_name,
-                    columns.join(", ")
+                    columns
+                        .iter()
+                        .map(|c| format!("\"{c}\""))
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ),
                 ..Default::default()
             },
