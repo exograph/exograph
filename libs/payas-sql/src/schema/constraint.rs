@@ -132,3 +132,22 @@ impl Constraints {
             .collect()
     }
 }
+
+/// Returns a comma separated list of the items in the set, sorted alphabetically If `quote_name` is
+/// true, then the items will be quoted Useful when generating SQL unique constraints, where columns
+/// provided will be a set but we need to generate a stable string to compare against the existing
+/// constraints
+pub(super) fn sorted_comma_list<T: ToString>(list: &HashSet<T>, quote_name: bool) -> String {
+    let mut list = list
+        .iter()
+        .map(|item| {
+            if quote_name {
+                format!("\"{}\"", item.to_string())
+            } else {
+                item.to_string()
+            }
+        })
+        .collect::<Vec<_>>();
+    list.sort();
+    list.join(", ")
+}

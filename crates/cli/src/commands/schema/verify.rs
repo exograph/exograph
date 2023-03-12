@@ -2,10 +2,7 @@
 
 use anyhow::{anyhow, Result};
 use builder::error::ParserError;
-use payas_sql::{
-    database_error::DatabaseError,
-    schema::{op::SchemaOp, spec::SchemaSpec},
-};
+use payas_sql::{database_error::DatabaseError, schema::spec::SchemaSpec};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
@@ -93,16 +90,9 @@ pub async fn verify(model: &Path, database: Option<&str>) -> Result<(), Verifica
     let mut errors = vec![];
 
     for op in migration.iter() {
-        match op {
-                    SchemaOp::CreateTable { table } => errors.push(format!("The table `{}` exists in the model, but does not exist in the database.", table.name)),
-                    SchemaOp::CreateColumn { column } => errors.push(format!("The column `{}` in the table `{}` exists in the model, but does not exist in the database table.", column.name, column.table_name)),
-                    SchemaOp::SetColumnDefaultValue { column, default_value } => errors.push(format!("The default value for column `{}` in table `{}` does not match `{}`", column.name, column.table_name, default_value)),
-                    SchemaOp::UnsetColumnDefaultValue { column } => errors.push(format!("The column `{}` in table `{}` is not set in the model.", column.name, column.table_name)),
-                    SchemaOp::CreateExtension { extension } => errors.push(format!("The model requires the extension `{extension}`.")),
-                    SchemaOp::CreateUniqueConstraint { table, columns, constraint_name } => errors.push(format!("The model requires a unique constraint named `{}` for the following columns in table `{}`: {}", constraint_name, table.name, columns.join(", "))),
-                    SchemaOp::SetNotNull { column } => errors.push(format!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.name, column.table_name)),
-                    _ => {}
-                }
+        if let Some(error) = op.error_string() {
+            errors.push(error);
+        }
     }
 
     if !errors.is_empty() {
