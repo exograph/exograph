@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-typed-generational-arena = { version = "0.2", features = ["serde"] }
-serde = "1.0"
-async-graphql-parser = "5.0.6"
-async-graphql-value = "5.0.6"
-bincode = "1.3.3"
+typed-generational-arena.workspace = true
+serde.workspace = true
+bincode.workspace = true
+async-graphql-parser.workspace = true
+async-graphql-value.workspace = true
 
 payas-sql = { path = "../../../libs/payas-sql" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }

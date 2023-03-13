@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-typed-generational-arena = { version = "0.2", features = ["serde"] }
-serde = "1.0"
-async-graphql-parser = "5.0.6"
-async-graphql-value = "5.0.6"
+typed-generational-arena.workspace = true
+serde.workspace = true
+async-graphql-parser.workspace = true
+async-graphql-value.workspace = true
 
 core-model = { path = "../../core-subsystem/core-model" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }

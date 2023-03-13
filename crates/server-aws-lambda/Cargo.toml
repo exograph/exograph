@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-async-trait = "0.1.53"
+async-trait.workspace = true
 lambda_runtime = "0.6.1"
-futures = "0.3"
+futures.workspace = true
 opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
 opentelemetry-jaeger = "0.16"
-serde_json = { version = "1.0", features = ["preserve_order"] }
-tokio = { version = "1", features = ["full"] }
+serde_json = { workspace = true, features = ["preserve_order"] }
+tokio = { workspace = true, features = ["full"] }
 
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }

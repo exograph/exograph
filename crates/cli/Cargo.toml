@@ -8,18 +8,18 @@ name = "clay"
 path = "src/main.rs"
 
 [dependencies]
-ansi_term = "0.12"
-tokio = "1"
-anyhow = "1.0"
-clap = "4.1.4"
-heck = "0.4.0"
-lazy_static = "1.4.0"
+ansi_term.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+heck.workspace = true
+lazy_static.workspace = true
 notify-debouncer-mini = "0.2.1"
-serde = { version = "1.0", features = ["derive"] }
-futures = "0.3.25"
-rand = "0.8"
+serde.workspace = true
+clap = "4.1.4"
+futures.workspace = true
+rand.workspace = true
 ctrlc = "3.2"
-tempfile = "3.3.0"
+tempfile.workspace = true
 urlencoding = "2.1.2"
 which = "4.4.0"
 

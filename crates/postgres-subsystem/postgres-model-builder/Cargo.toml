@@ -4,20 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-heck = "0.4.0"
-bincode = "1.3.3"
-serde = { version = "1.0.136", features = ["derive"] }
-codemap = "0.1.3"
-codemap-diagnostic = "0.1.1"
-lazy_static = "1.4.0"
-typed-generational-arena = { version = "0.2", features = ["serde"] }
+heck.workspace = true
+bincode.workspace = true
+serde.workspace = true
+codemap-diagnostic.workspace = true
+codemap.workspace = true
+lazy_static.workspace = true
+typed-generational-arena.workspace = true
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-model = { path = "../postgres-model" }
 payas-sql = { path = "../../../libs/payas-sql" }
 
 [dev-dependencies]
-insta = "1.14.0"
+insta.workspace = true
 builder = { path = "../../builder" }
 
 
