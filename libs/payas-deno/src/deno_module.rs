@@ -573,8 +573,13 @@ mod tests {
         Ok(format!("Register Op: {arg}"))
     }
 
+    #[op]
+    async fn async_rust_impl(arg: String) -> Result<String, AnyError> {
+        Ok(format!("Register Async Op: {arg}"))
+    }
+
     #[tokio::test]
-    async fn test_register_ops() {
+    async fn test_register_sync_ops() {
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(Path::new("src/test_js/through_rust_fn.js").to_owned()),
             "deno_module",
@@ -599,5 +604,36 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(sync_ret_value, Value::String("Register Op: param".into()));
+    }
+
+    #[tokio::test]
+    async fn test_register_async_ops() {
+        let mut deno_module = DenoModule::new(
+            UserCode::LoadFromFs(Path::new("src/test_js/through_rust_fn.js").to_owned()),
+            "deno_module",
+            vec![],
+            vec![],
+            vec![Extension::builder("test")
+                .ops(vec![async_rust_impl::decl()])
+                .build()],
+            DenoModuleSharedState::default(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+        let async_ret_value = deno_module
+            .execute_function(
+                "asyncUsingRegisteredFunction",
+                vec![Arg::Serde(Value::String("param".into()))],
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            async_ret_value,
+            Value::String("Register Async Op: param".into())
+        );
     }
 }
