@@ -4,24 +4,21 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
-async-recursion = "1.0.0"
-async-graphql-parser = "5.0.6"
-async-graphql-value = "5.0.6"
+anyhow.workspace = true
+async-recursion.workspace = true
+async-graphql-parser.workspace = true
+async-graphql-value.workspace = true
 async-stream = "0.3.3"
-async-trait = "0.1.53"
-bytes = "1"
-futures = "0.3"
-serde_json = { version = "1.0", features = ["preserve_order"] }
-serde = { version = "1.0", features = ["derive"] }
-tokio-postgres = "0.7.6"
-
-typed-generational-arena = { version = "0.2", features = ["serde"] }
-thiserror = "1.0.30"
-include_dir = "0.7.2"
-bincode = "1.3.3"
-tokio = "1"
-
+async-trait.workspace = true
+bytes.workspace = true
+futures.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+insta.workspace = true
+serde.workspace = true
+tokio.workspace = true
+thiserror.workspace = true
+include_dir.workspace = true
+bincode.workspace = true
 tracing = { version = "0.1", features = ["log"] }
 
 payas-sql = { path = "../../libs/payas-sql" }
@@ -36,6 +33,5 @@ wasm-model = { path = "../wasm-subsystem/wasm-model" }
 introspection-resolver = { path = "../introspection-subsystem/introspection-resolver" }
 
 [dev-dependencies]
-insta = "1.14.0"
-tokio = "1"
+tokio.workspace = true
 builder = { path = "../builder" }

@@ -6,26 +6,26 @@ edition = "2021"
 [lib]
 
 [dependencies]
-anyhow = "1.0"
-ansi_term = "0.12"
-jsonwebtoken = "8.0.1"
+anyhow.workspace = true
+ansi_term.workspace = true
 isahc = { version = "1.7", features = ["json", "cookies"] }
 num_cpus = "1.13.1"
-serde = { version = "1.0", features = ["derive"] }
+serde.workspace = true
+jsonwebtoken.workspace = true
 serde_yaml = "0.9.4"
-serde_json = "1.0"
+serde_json.workspace = true
 postgres = { version = "0.19.2", features = ["with-chrono-0_4"] }
-rand = "0.8"
+rand.workspace = true
 rayon = "1.5.1"
-regex = "1"
-tokio = "1"
-async-graphql-parser = "5.0.6"
-async-graphql-value = "5.0.6"
+regex.workspace = true
+tokio.workspace = true
+async-graphql-parser.workspace = true
+async-graphql-value.workspace = true
 md5 = "0.7"
-wildmatch = "2.1.0"
-include_dir = "0.7.2"
+wildmatch.workspace = true
+include_dir.workspace = true
 
 payas-deno = { path = "../../libs/payas-deno" }
 
 [dev-dependencies]
-insta = { version = "1.14.0", features = [ "yaml" ] }
+insta = { workspace = true, features = [ "yaml" ] }

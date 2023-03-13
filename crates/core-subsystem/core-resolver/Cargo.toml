@@ -7,28 +7,28 @@ edition = "2021"
 test-context = []
 
 [dependencies]
-async-graphql-parser = "5.0.6"
-async-graphql-value = "5.0.6"
-async-recursion = "1.0.0"
-async-trait = "0.1.53"
-bytes = "1"
-futures = "0.3"
-serde_json = { version = "1.0", features = ["preserve_order"] }
-serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0.30"
-jsonwebtoken = "8.1.1"
+async-graphql-parser.workspace = true
+async-graphql-value.workspace = true
+async-recursion.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+futures.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+jsonwebtoken.workspace = true
+serde.workspace = true
+thiserror.workspace = true
 cookie = "0.16"
-tokio = "1"
+tokio.workspace = true
 
-tracing = "0.1"
+tracing.workspace = true
 
 payas-sql = { path = "../../../libs/payas-sql" }
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
 
 [dev-dependencies]
-tokio = "1"
-insta = "1.14.0"
+tokio.workspace = true
+insta.workspace = true
 
 builder = { path = "../../builder", features = ["test-context"] }
 resolver = { path = "../../resolver" }

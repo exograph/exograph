@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-async-graphql-parser = "5.0.6"
-async-graphql-value = "5.0.6"
-async-recursion = "1.0.0"
-async-trait = "0.1.53"
-futures = "0.3"
-serde_json = { version = "1.0", features = ["preserve_order"] }
-thiserror = "1.0.30"
-wasmtime = "2.0.0"
-wasmtime-wasi = "2.0.0"
+async-graphql-parser.workspace = true
+async-graphql-value.workspace = true
+async-recursion.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+thiserror.workspace = true
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
 
 payas-wasm = { path = "../../../libs/payas-wasm" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
