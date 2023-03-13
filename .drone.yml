@@ -22,8 +22,8 @@ steps:
     - name: sccache
       path: /sccache
     commands:
-      - cargo fmt --all -- --check
-      - cargo clippy --all --all-targets --all-features -- -D warnings --no-deps
+      - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo fmt --all -- --check
+      - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo clippy --all --all-targets --all-features -- -D warnings --no-deps
 
   - name: build
     image: payas-ci-image
@@ -34,7 +34,7 @@ steps:
     - name: sccache
       path: /sccache
     commands:
-      - cargo build 
+      - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build 
 
   - name: test
     image: payas-ci-image
@@ -47,7 +47,7 @@ steps:
     commands:
         # TODO: figure out how to build cdylibs during tests implicitly
         # see https://github.com/rust-lang/cargo/issues/8311
-      - CLAY_TEST_POSTGRES_URL=postgresql://postgres@database:5432 cargo test --workspace
+      - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CLAY_TEST_POSTGRES_URL=postgresql://postgres@database:5432 cargo test --workspace
 
   - name: test-integration
     image: payas-ci-image
