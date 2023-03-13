@@ -5,7 +5,7 @@ use crate::sql::physical_column::PhysicalColumnType;
 use crate::{PhysicalColumn, PhysicalTable};
 use deadpool_postgres::Client;
 
-use super::constraint::Constraints;
+use super::constraint::{sorted_comma_list, Constraints};
 use super::issue::WithIssues;
 use super::op::SchemaOp;
 use super::statement::SchemaStatement;
@@ -193,11 +193,7 @@ impl PhysicalTable {
             .join(",\n\t");
 
         for (unique_constraint_name, columns) in self.named_unique_constraints().iter() {
-            let columns_part = columns
-                .iter()
-                .map(|c| format!("\"{c}\""))
-                .collect::<Vec<_>>()
-                .join(", ");
+            let columns_part = sorted_comma_list(columns, true);
 
             post_statements.push(format!(
                 "ALTER TABLE \"{}\" ADD CONSTRAINT \"{}\" UNIQUE ({});",
@@ -241,12 +237,12 @@ impl PhysicalTable {
         required_extensions
     }
 
-    fn named_unique_constraints(&self) -> HashMap<&String, Vec<String>> {
+    fn named_unique_constraints(&self) -> HashMap<&String, HashSet<String>> {
         self.columns.iter().fold(HashMap::new(), |mut map, c| {
             {
                 for name in c.unique_constraints.iter() {
-                    let entry: &mut Vec<String> = map.entry(name).or_insert_with(Vec::new);
-                    (*entry).push(c.name.clone());
+                    let entry: &mut HashSet<String> = map.entry(name).or_insert_with(HashSet::new);
+                    (*entry).insert(c.name.clone());
                 }
             }
             map
