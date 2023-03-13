@@ -23,7 +23,6 @@ impl Request for ActixRequest {
     fn get_headers(&self, key: &str) -> Vec<String> {
         self.headers
             .get_all(key.to_lowercase())
-            .into_iter()
             .map(|h| h.to_str().unwrap().to_string())
             .collect()
     }

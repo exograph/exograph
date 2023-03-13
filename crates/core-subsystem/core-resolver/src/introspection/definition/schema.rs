@@ -163,7 +163,7 @@ impl Schema {
             .map(|td| (td.name.node.as_str().to_string(), td))
             .collect();
 
-        type_definitions.extend(unique_scalars.into_values().into_iter());
+        type_definitions.extend(unique_scalars.into_values());
 
         Schema {
             type_definitions,
