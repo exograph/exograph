@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+serde.workspace = true
 typed-generational-arena = { version = "0.2", features = ["serde"] }
-serde = "1.0"
-async-graphql-parser = "5.0.6"
-async-graphql-value = "5.0.6"
+async-graphql-parser.workspace = true
+async-graphql-value.workspace = true
 
 [dev-dependencies]
 

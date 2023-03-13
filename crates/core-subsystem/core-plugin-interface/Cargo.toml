@@ -8,11 +8,11 @@ built = "0.5"
 
 [dependencies]
 libloading = "0.7.3"
-thiserror = "1.0.30"
-async-trait = "0.1.57"
-async-graphql-value = "5.0.6"
-async-graphql-parser = "5.0.6"
-codemap-diagnostic = "0.1.1"
+thiserror.workspace = true
+async-trait.workspace = true
+async-graphql-value.workspace = true
+async-graphql-parser.workspace = true
+codemap-diagnostic.workspace = true
 core-model-builder = { path = "../core-model-builder" }
 core-resolver = { path = "../core-resolver" }
 core-model = { path = "../core-model" }
