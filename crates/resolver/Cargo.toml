@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow.workspace = true
 async-recursion.workspace = true
 async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
@@ -13,7 +12,6 @@ async-trait.workspace = true
 bytes.workspace = true
 futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
-insta.workspace = true
 serde.workspace = true
 tokio.workspace = true
 thiserror.workspace = true
@@ -21,15 +19,10 @@ include_dir.workspace = true
 bincode.workspace = true
 tracing = { version = "0.1", features = ["log"] }
 
-payas-sql = { path = "../../libs/payas-sql" }
-payas-deno = { path = "../../libs/payas-deno" }
 core-model = { path = "../core-subsystem/core-model" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
-postgres-model = { path = "../postgres-subsystem/postgres-model" }
-deno-model = { path = "../deno-subsystem/deno-model" }
-wasm-model = { path = "../wasm-subsystem/wasm-model" }
 introspection-resolver = { path = "../introspection-subsystem/introspection-resolver" }
 
 [dev-dependencies]

@@ -27,12 +27,9 @@ core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
 
 [dev-dependencies]
-tokio.workspace = true
 insta.workspace = true
 
 builder = { path = "../../builder", features = ["test-context"] }
-resolver = { path = "../../resolver" }
 postgres-model = { path = "../../postgres-subsystem/postgres-model" }
-postgres-resolver = { path = "../../postgres-subsystem/postgres-resolver" }
 
 [lib]
