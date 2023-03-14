@@ -9,8 +9,6 @@ bincode.workspace = true
 thiserror.workspace = true
 bytes.workspace = true
 
-core-model = { path = "../core-model" }
-
 [dev-dependencies]
 
 [lib]

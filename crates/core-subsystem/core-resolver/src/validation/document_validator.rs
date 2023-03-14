@@ -92,6 +92,9 @@ impl<'a> DocumentValidator<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use std::env;
+
     use async_graphql_parser::parse_query;
     use core_plugin_shared::{
         serializable_system::SerializableSystem, system_serializer::SystemSerializer,
@@ -629,34 +632,46 @@ mod tests {
         parse_query(query_str).unwrap()
     }
 
-    // TODO: Rethink this approach, where core (even though it's a test) depends on a specific subsystem (database)
-
-    use postgres_model::subsystem::PostgresSubsystem;
+    /// Creates a postgres subsystem from a clay file for test purposes. This creates a soft
+    /// dependency on the postgres subsystem (its shared library must be build before executing the
+    /// tests).
+    ///
+    /// Note: This arrangement is not ideal, since this make rust-analyzer think we have two cyclic
+    /// dependencies due to `dev-dependencies`: `this crate -> (core_plugin_interface) -> this
+    /// crate` and `this crate -> builder -> core_plugin_interface -> this crate`. However, this is
+    /// a rust-analyzer bug (https://github.com/rust-lang/rust-analyzer/issues/14167). An
+    /// alternative would be to create a separate crate for these tests, but that would be overkill
+    /// for now and will make these test live outside of the core being tested. A more dramatic
+    /// solution would be to create a "test" subsystem that can be used for testing
+    /// purposes--something to consider in the future.
     pub fn create_postgres_system_from_str(
         model_str: &str,
         file_name: String,
-    ) -> PostgresSubsystem {
+    ) -> Box<dyn core_plugin_interface::core_resolver::plugin::SubsystemResolver> {
         let serialized_system = builder::build_system_from_str(model_str, file_name).unwrap();
         let system = SerializableSystem::deserialize(serialized_system).unwrap();
 
-        deserialize_postgres_subsystem(system)
-    }
+        let subsystem_id = "postgres";
+        let subsystem_library_name = format!("{subsystem_id}_resolver_dynamic");
+        let loader =
+            core_plugin_interface::interface::load_subsystem_loader(&subsystem_library_name)
+                .unwrap();
 
-    fn deserialize_postgres_subsystem(system: SerializableSystem) -> PostgresSubsystem {
-        system
+        let subsystem = system
             .subsystems
             .into_iter()
-            .find_map(|subsystem| {
-                if subsystem.id == "postgres" {
-                    Some(PostgresSubsystem::deserialize(
-                        subsystem.serialized_subsystem,
-                    ))
-                } else {
-                    None
-                }
-            })
-            // If there is no database subsystem in the serialized system, create an empty one
-            .unwrap_or_else(|| Ok(PostgresSubsystem::default()))
+            .find(|subsystem| subsystem.id == subsystem_id)
             .unwrap()
+            .serialized_subsystem;
+
+        // Set the CLAY_POSTGRES_URL to avoid failure of `loader::init` later. Since we are not actually
+        // connecting to a database, this is fine (we are only interested get queries, mutations, and types
+        // to build the schema)
+        env::set_var(
+            "CLAY_POSTGRES_URL",
+            "postgres://postgres:postgres@localhost:5432/clay_test",
+        );
+
+        loader.init(subsystem).unwrap()
     }
 }
