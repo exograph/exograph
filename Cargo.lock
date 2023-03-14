@@ -1080,7 +1080,6 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "bytes",
- "core-model",
  "serde",
  "thiserror",
 ]
@@ -1097,14 +1096,12 @@ dependencies = [
  "bytes",
  "cookie",
  "core-model",
+ "core-plugin-interface",
  "core-plugin-shared",
  "futures",
  "insta",
  "jsonwebtoken",
  "payas-sql",
- "postgres-model",
- "postgres-resolver",
- "resolver",
  "serde",
  "serde_json",
  "thiserror",
@@ -4211,7 +4208,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "lazy_static",
  "serde",
  "serde_json",
  "thiserror",
@@ -4887,7 +4883,6 @@ dependencies = [
 name = "resolver"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-graphql-parser",
  "async-graphql-value",
  "async-recursion",
@@ -4900,20 +4895,14 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "core-resolver",
- "deno-model",
  "futures",
  "include_dir",
- "insta",
  "introspection-resolver",
- "payas-deno",
- "payas-sql",
- "postgres-model",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
  "tracing",
- "wasm-model",
 ]
 
 [[package]]

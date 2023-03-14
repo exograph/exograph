@@ -10,7 +10,6 @@ async-trait.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 wasi-common = "2.0.0"
-lazy_static.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
