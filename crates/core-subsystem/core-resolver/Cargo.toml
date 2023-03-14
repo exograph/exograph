@@ -30,6 +30,6 @@ core-plugin-shared = { path = "../core-plugin-shared" }
 insta.workspace = true
 
 builder = { path = "../../builder", features = ["test-context"] }
-postgres-model = { path = "../../postgres-subsystem/postgres-model" }
+core-plugin-interface = { path = "../core-plugin-interface" }
 
 [lib]
