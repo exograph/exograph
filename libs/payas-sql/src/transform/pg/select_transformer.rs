@@ -65,6 +65,10 @@ impl SelectTransformer for Postgres {
             .chain(order_by_column_paths.into_iter())
             .collect();
 
+        let has_top_many_to_one_clause = columns_paths
+            .iter()
+            .any(|path| path[0].self_column.0.is_pk && path[0].linked_column.is_some());
+
         let has_a_many_to_one_clause = columns_paths.iter().any(|path| {
             path.iter()
                 .any(|link| link.self_column.0.is_pk && link.linked_column.is_some())
@@ -83,11 +87,54 @@ impl SelectTransformer for Postgres {
 
         if has_a_many_to_one_clause || has_non_predicate_clauses {
             let inner_select = {
-                let (predicate, selection_table_query) = if has_a_many_to_one_clause {
+                let (predicate, selection_table_query) = if has_top_many_to_one_clause
+                    && selection_level == SelectionLevel::TopLevel
+                {
                     // If we have a many to one clause, we need to use a subselect along with
                     // the basic table (not a join) to avoid returning duplicate rows (that would be returned by the join)
                     (
                         self.to_subselect_predicate(&abstract_select.predicate),
+                        Table::Physical(abstract_select.table),
+                    )
+                } else if has_a_many_to_one_clause {
+                    let predicate = self.to_join_predicate(&abstract_select.predicate);
+
+                    let inner_select = Select {
+                        table: join,
+                        columns: vec![Column::Physical(
+                            abstract_select.table.get_pk_physical_column().unwrap(),
+                        )],
+                        predicate: ConcretePredicate::In(
+                            Column::Physical(
+                                abstract_select.table.get_pk_physical_column().unwrap(),
+                            ),
+                            Column::SubSelect(Box::new(Select {
+                                table: Table::Physical(abstract_select.table),
+                                columns: vec![Column::Physical(
+                                    abstract_select.table.get_pk_physical_column().unwrap(),
+                                )],
+                                predicate,
+                                order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
+                                offset: abstract_select.offset.clone(),
+                                limit: abstract_select.limit.clone(),
+                                group_by: None,
+                                top_level_selection: false,
+                            })),
+                        ),
+                        order_by: None,
+                        offset: None,
+                        limit: None,
+                        group_by: None,
+                        top_level_selection: false,
+                    };
+
+                    (
+                        ConcretePredicate::In(
+                            Column::Physical(
+                                abstract_select.table.get_pk_physical_column().unwrap(),
+                            ),
+                            Column::SubSelect(Box::new(inner_select)),
+                        ),
                         Table::Physical(abstract_select.table),
                     )
                 } else {
@@ -108,7 +155,7 @@ impl SelectTransformer for Postgres {
                     offset: abstract_select.offset.clone(),
                     limit: abstract_select.limit.clone(),
                     group_by,
-                    top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
+                    top_level_selection: false,
                 }
             };
 
@@ -116,7 +163,7 @@ impl SelectTransformer for Postgres {
             Select {
                 table: Table::SubSelect {
                     select: Box::new(inner_select),
-                    alias: abstract_select.table.name.clone(),
+                    alias: Some(abstract_select.table.name.clone()),
                 },
                 columns,
                 predicate: ConcretePredicate::True,
@@ -124,7 +171,7 @@ impl SelectTransformer for Postgres {
                 offset: None,
                 limit: None,
                 group_by: None,
-                top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
+                top_level_selection: selection_level == SelectionLevel::TopLevel,
             }
         } else {
             let predicate = ConcretePredicate::and(
@@ -140,7 +187,7 @@ impl SelectTransformer for Postgres {
                 offset: abstract_select.offset.clone(),
                 limit: abstract_select.limit.clone(),
                 group_by,
-                top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
+                top_level_selection: selection_level == SelectionLevel::TopLevel,
             }
         }
     }

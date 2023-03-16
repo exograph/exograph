@@ -12,7 +12,7 @@ pub struct AbstractSelect<'a> {
     pub limit: Option<Limit>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectionLevel {
     TopLevel,
     Nested,

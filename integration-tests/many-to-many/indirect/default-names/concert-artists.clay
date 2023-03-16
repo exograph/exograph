@@ -5,6 +5,7 @@ service ConcertsService {
     @pk id: Int = autoIncrement()
     title: String
     concertArtists: Set<ConcertArtist>
+    notifications: Set<Notification>? // A concert may not have any notifications yet, hence optional
   }
   
   @access(true)
@@ -21,5 +22,13 @@ service ConcertsService {
     @pk id: Int = autoIncrement()
     name: String
     concertArtists: Set<ConcertArtist>? // An artist may yet to participate in a concert, hence optional
+  }
+
+  @access(true)
+  type Notification {
+    @pk id: Int = autoIncrement()
+    concert: Concert? // A notification need not be associated with a concert (e.g. general notifications), hence optional
+    title: String
+    message: String
   }
 }
