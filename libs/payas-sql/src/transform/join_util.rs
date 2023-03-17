@@ -64,7 +64,7 @@ mod tests {
                 let join = super::compute_join(concerts_table, vec![concert_venue]);
 
                 assert_binding!(
-                    join.into_sql(),
+                    join.to_sql(),
                     r#""concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
                 );
             },
@@ -158,7 +158,7 @@ mod tests {
                 );
 
                 assert_binding!(
-                    join.into_sql(),
+                    join.to_sql(),
                     r#""concerts" LEFT JOIN "concert_artists" LEFT JOIN "artists" LEFT JOIN "addresses" ON "artists"."address_id" = "addresses"."id" ON "concert_artists"."artist_id" = "artists"."id" ON "concerts"."id" = "concert_artists"."concert_id" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
                 );
             },

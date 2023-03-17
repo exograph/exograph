@@ -1,7 +1,9 @@
 use crate::{
-    asql::select::SelectionLevel,
     sql::predicate::ConcretePredicate,
-    transform::transformer::{PredicateTransformer, SelectTransformer},
+    transform::{
+        transformer::{PredicateTransformer, SelectTransformer},
+        SelectionLevel,
+    },
     AbstractPredicate, AbstractSelect, Column, ColumnPath, ColumnPathLink, ColumnSelection,
     PhysicalColumn, PhysicalTable, Selection, SelectionElement,
 };
@@ -226,7 +228,7 @@ mod tests {
                 {
                     let predicate = Postgres {}.to_join_predicate(&abstract_predicate);
                     assert_binding!(
-                        predicate.into_sql(),
+                        predicate.to_sql(),
                         r#""concerts"."name" = $1"#,
                         "v1".to_string()
                     );
@@ -235,7 +237,7 @@ mod tests {
                 {
                     let predicate = Postgres {}.to_subselect_predicate(&abstract_predicate);
                     assert_binding!(
-                        predicate.into_sql(),
+                        predicate.to_sql(),
                         r#""concerts"."name" = $1"#,
                         "v1".to_string()
                     );
@@ -309,7 +311,7 @@ mod tests {
                     let predicate = Postgres {}.to_join_predicate(&abstract_predicate);
 
                     assert_binding!(
-                        predicate.into_sql(),
+                        predicate.to_sql(),
                         format!(r#""venues"."name" {sql_op}"#),
                         "v1".to_string()
                     );
@@ -319,7 +321,7 @@ mod tests {
                     let predicate = Postgres {}.to_subselect_predicate(&abstract_predicate);
 
                     assert_binding!(
-                        predicate.into_sql(),
+                        predicate.to_sql(),
                         format!(
                             r#""concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE "venues"."name" {sql_op})"#
                         ),

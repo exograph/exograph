@@ -1,14 +1,17 @@
 use tracing::instrument;
 
 use crate::{
-    asql::{delete::AbstractDelete, select::SelectionLevel},
+    asql::delete::AbstractDelete,
     sql::{
         column::Column,
         cte::{CteExpression, WithQuery},
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
+    transform::{
+        transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
+        SelectionLevel,
+    },
 };
 
 use super::Postgres;
@@ -96,7 +99,7 @@ mod tests {
 
                 let delete = Postgres {}.to_delete(&adelete);
                 assert_binding!(
-                    delete.into_sql(),
+                    delete.to_sql(),
                     r#"WITH "concerts" AS (DELETE FROM "concerts" RETURNING *) SELECT "concerts"."id" FROM "concerts""#
                 );
             },
@@ -139,7 +142,7 @@ mod tests {
                 let delete = Postgres {}.to_delete(&adelete);
 
                 assert_binding!(
-                    delete.into_sql(),
+                    delete.to_sql(),
                     r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."name" = $1 RETURNING *) SELECT "concerts"."id" FROM "concerts""#,
                     "v1".to_string()
                 );
@@ -192,7 +195,7 @@ mod tests {
                 let delete = Postgres {}.to_delete(&adelete);
 
                 assert_binding!(
-                    delete.into_sql(),
+                    delete.to_sql(),
                     r#"WITH "concerts" AS (DELETE FROM "concerts" WHERE "concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE "venues"."name" = $1) RETURNING *) SELECT "concerts"."id" FROM "concerts""#,
                     "v1".to_string()
                 );

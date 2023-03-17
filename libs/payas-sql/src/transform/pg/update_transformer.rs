@@ -2,11 +2,8 @@ use maybe_owned::MaybeOwned;
 use tracing::instrument;
 
 use crate::{
-    asql::{
-        select::SelectionLevel,
-        update::{
-            AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
-        },
+    asql::update::{
+        AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
     },
     sql::{
         column::{Column, ProxyColumn},
@@ -21,7 +18,10 @@ use crate::{
         },
         update::TemplateUpdate,
     },
-    transform::transformer::{PredicateTransformer, SelectTransformer, UpdateTransformer},
+    transform::{
+        transformer::{PredicateTransformer, SelectTransformer, UpdateTransformer},
+        SelectionLevel,
+    },
 };
 
 use super::Postgres;

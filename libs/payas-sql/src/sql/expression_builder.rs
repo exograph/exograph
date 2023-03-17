@@ -18,7 +18,7 @@ pub trait ExpressionBuilder {
     /// want to assert on the generated SQL without going through the whole process of creating an
     /// SQLBuilder, then building the SQL expression into it, and finally extracting the SQL string
     /// and params.
-    fn into_sql(&self) -> (String, Vec<Arc<dyn SQLParam>>)
+    fn to_sql(&self) -> (String, Vec<Arc<dyn SQLParam>>)
     where
         Self: Sized,
     {

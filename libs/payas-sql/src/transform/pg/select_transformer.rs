@@ -3,7 +3,7 @@ use tracing::instrument;
 use crate::{
     asql::{
         column_path::{ColumnPath, ColumnPathLink},
-        select::{AbstractSelect, SelectionLevel},
+        select::AbstractSelect,
         selection::{
             ColumnSelection, Selection, SelectionCardinality, SelectionElement, SelectionSQL,
         },
@@ -21,7 +21,8 @@ use crate::{
     },
     transform::{
         join_util,
-        transformer::{PredicateTransformer, SelectTransformer},
+        transformer::{OrderByTransformer, PredicateTransformer, SelectTransformer},
+        SelectionLevel,
     },
 };
 
@@ -83,7 +84,7 @@ impl SelectTransformer for Postgres {
     /// SELECT json_build_object('id', "concerts"."id")::text FROM "concerts" WHERE "concerts"."id" = $1
     /// ```
     /// - For a multiple rows selection:
-    /// ```
+    /// ```sql
     /// SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts" WHERE "concerts"."id" > $1
     /// ```
     ///
@@ -165,7 +166,7 @@ impl SelectTransformer for Postgres {
 
         let join = join_util::compute_join(abstract_select.table, columns_paths);
 
-        println!("Join: {:?}", crate::sql::ExpressionBuilder::into_sql(&join));
+        println!("Join: {:?}", crate::sql::ExpressionBuilder::to_sql(&join));
 
         let selection_columns = abstract_select.selection.selection_columns(self);
 
@@ -181,59 +182,61 @@ impl SelectTransformer for Postgres {
 
         if has_a_many_to_one_clause || has_non_predicate_clauses {
             let inner_select = {
-                let (predicate, selection_table_query) = if has_top_many_to_one_clause
-                    && selection_level == SelectionLevel::TopLevel
-                {
-                    // If we have a many to one clause, we need to use a subselect along with
-                    // the basic table (not a join) to avoid returning duplicate rows (that would be returned by the join)
-                    (
-                        self.to_subselect_predicate(&abstract_select.predicate),
-                        Table::Physical(abstract_select.table),
-                    )
-                } else if has_a_many_to_one_clause {
-                    let predicate = self.to_join_predicate(&abstract_select.predicate);
+                let (predicate, selection_table_query) =
+                    if has_top_many_to_one_clause && selection_level == SelectionLevel::TopLevel {
+                        // If we have a many to one clause, we need to use a subselect along with
+                        // the basic table (not a join) to avoid returning duplicate rows (that would be returned by the join)
+                        (
+                            self.to_subselect_predicate(&abstract_select.predicate),
+                            Table::Physical(abstract_select.table),
+                        )
+                    } else if has_a_many_to_one_clause {
+                        let predicate = self.to_join_predicate(&abstract_select.predicate);
 
-                    let inner_select = Select {
-                        table: join,
-                        columns: vec![Column::Physical(
-                            abstract_select.table.get_pk_physical_column().unwrap(),
-                        )],
-                        predicate: ConcretePredicate::In(
-                            Column::Physical(
+                        let inner_select = Select {
+                            table: join,
+                            columns: vec![Column::Physical(
                                 abstract_select.table.get_pk_physical_column().unwrap(),
-                            ),
-                            Column::SubSelect(Box::new(Select {
-                                table: Table::Physical(abstract_select.table),
-                                columns: vec![Column::Physical(
+                            )],
+                            predicate: ConcretePredicate::In(
+                                Column::Physical(
                                     abstract_select.table.get_pk_physical_column().unwrap(),
-                                )],
-                                predicate,
-                                order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
-                                offset: abstract_select.offset.clone(),
-                                limit: abstract_select.limit.clone(),
-                                group_by: None,
-                                top_level_selection: false,
-                            })),
-                        ),
-                        order_by: None,
-                        offset: None,
-                        limit: None,
-                        group_by: None,
-                        top_level_selection: false,
-                    };
-
-                    (
-                        ConcretePredicate::In(
-                            Column::Physical(
-                                abstract_select.table.get_pk_physical_column().unwrap(),
+                                ),
+                                Column::SubSelect(Box::new(Select {
+                                    table: Table::Physical(abstract_select.table),
+                                    columns: vec![Column::Physical(
+                                        abstract_select.table.get_pk_physical_column().unwrap(),
+                                    )],
+                                    predicate,
+                                    order_by: abstract_select
+                                        .order_by
+                                        .as_ref()
+                                        .map(|ob| self.to_order_by(ob)),
+                                    offset: abstract_select.offset.clone(),
+                                    limit: abstract_select.limit.clone(),
+                                    group_by: None,
+                                    top_level_selection: false,
+                                })),
                             ),
-                            Column::SubSelect(Box::new(inner_select)),
-                        ),
-                        Table::Physical(abstract_select.table),
-                    )
-                } else {
-                    (self.to_join_predicate(&abstract_select.predicate), join)
-                };
+                            order_by: None,
+                            offset: None,
+                            limit: None,
+                            group_by: None,
+                            top_level_selection: false,
+                        };
+
+                        (
+                            ConcretePredicate::In(
+                                Column::Physical(
+                                    abstract_select.table.get_pk_physical_column().unwrap(),
+                                ),
+                                Column::SubSelect(Box::new(inner_select)),
+                            ),
+                            Table::Physical(abstract_select.table),
+                        )
+                    } else {
+                        (self.to_join_predicate(&abstract_select.predicate), join)
+                    };
 
                 let predicate = ConcretePredicate::and(
                     predicate,
@@ -245,7 +248,10 @@ impl SelectTransformer for Postgres {
                     table: selection_table_query,
                     columns: vec![Column::Star(Some(abstract_select.table.name.clone()))],
                     predicate,
-                    order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
+                    order_by: abstract_select
+                        .order_by
+                        .as_ref()
+                        .map(|ob| self.to_order_by(ob)),
                     offset: abstract_select.offset.clone(),
                     limit: abstract_select.limit.clone(),
                     group_by,
@@ -277,14 +283,17 @@ impl SelectTransformer for Postgres {
                 table: join,
                 columns: selection_columns,
                 predicate,
-                order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
+                order_by: abstract_select
+                    .order_by
+                    .as_ref()
+                    .map(|ob| self.to_order_by(ob)),
                 offset: abstract_select.offset.clone(),
                 limit: abstract_select.limit.clone(),
                 group_by,
                 top_level_selection: selection_level == SelectionLevel::TopLevel,
             };
 
-            println!("Select: {:?}", crate::sql::ExpressionBuilder::into_sql(&x));
+            println!("Select: {:?}", crate::sql::ExpressionBuilder::to_sql(&x));
             x
         }
     }
@@ -302,33 +311,37 @@ impl SelectTransformer for Postgres {
     }
 }
 
-/// Compute select for a simple query that involves only one table.
-/// This common case is optimized to avoid the joins or subselects.
-fn single_table_select<'a>(
-    abstract_select: &AbstractSelect<'a>,
-    additional_predicate: Option<ConcretePredicate<'a>>,
-    selection_level: SelectionLevel,
-    select_transformer: &impl SelectTransformer,
-    predicate_transformer: &impl PredicateTransformer,
-) -> Select<'a> {
-    let predicate: crate::Predicate<Column<'a>> = ConcretePredicate::and(
-        predicate_transformer.to_join_predicate(&abstract_select.predicate),
-        additional_predicate.unwrap_or(ConcretePredicate::True),
-    );
+// Compute select for a simple query that involves only one table.
+// This common case is optimized to avoid the joins or subselects.
+// fn single_table_select<'a>(
+//     abstract_select: &AbstractSelect<'a>,
+//     additional_predicate: Option<ConcretePredicate<'a>>,
+//     selection_level: SelectionLevel,
+//     select_transformer: &impl SelectTransformer,
+//     predicate_transformer: &impl PredicateTransformer,
+//     order_by_transformer: &impl OrderByTransformer,
+// ) -> Select<'a> {
+//     let predicate: crate::Predicate<Column<'a>> = ConcretePredicate::and(
+//         predicate_transformer.to_join_predicate(&abstract_select.predicate),
+//         additional_predicate.unwrap_or(ConcretePredicate::True),
+//     );
 
-    Select {
-        table: Table::Physical(abstract_select.table),
-        columns: abstract_select
-            .selection
-            .selection_columns(select_transformer),
-        predicate,
-        order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
-        offset: abstract_select.offset.clone(),
-        limit: abstract_select.limit.clone(),
-        group_by: None,
-        top_level_selection: selection_level == SelectionLevel::TopLevel,
-    }
-}
+//     Select {
+//         table: Table::Physical(abstract_select.table),
+//         columns: abstract_select
+//             .selection
+//             .selection_columns(select_transformer),
+//         predicate,
+//         order_by: abstract_select
+//             .order_by
+//             .as_ref()
+//             .map(|ob| order_by_transformer.to_order_by(ob)),
+//         offset: abstract_select.offset.clone(),
+//         limit: abstract_select.limit.clone(),
+//         group_by: None,
+//         top_level_selection: selection_level == SelectionLevel::TopLevel,
+//     }
+// }
 
 impl<'a> Selection<'a> {
     pub fn to_sql(&self, select_transformer: &impl SelectTransformer) -> SelectionSQL<'a> {
@@ -418,11 +431,12 @@ mod tests {
         asql::{
             column_path::{ColumnPath, ColumnPathLink},
             predicate::AbstractPredicate,
-            select::SelectionLevel,
             selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
         sql::{predicate::Predicate, SQLParamContainer},
-        transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
+        transform::{
+            pg::Postgres, test_util::TestSetup, transformer::SelectTransformer, SelectionLevel,
+        },
         AbstractOrderBy, Limit, Offset, Ordering,
     };
 
@@ -450,10 +464,7 @@ mod tests {
                 };
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                assert_binding!(
-                    select.into_sql(),
-                    r#"SELECT "concerts"."id" FROM "concerts""#
-                );
+                assert_binding!(select.to_sql(), r#"SELECT "concerts"."id" FROM "concerts""#);
             },
         );
     }
@@ -487,7 +498,7 @@ mod tests {
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."id" = $1"#,
                     5
                 );
@@ -520,7 +531,7 @@ mod tests {
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts""#
                 );
             },
@@ -586,7 +597,7 @@ mod tests {
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id", 'venue', (SELECT json_build_object('id', "venues"."id") FROM "venues" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "concerts""#
                 );
             },
@@ -646,7 +657,7 @@ mod tests {
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "venues""#
                 );
             },
@@ -700,7 +711,7 @@ mod tests {
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
                     "v1".to_string()
                 );
@@ -736,7 +747,7 @@ mod tests {
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" ORDER BY "concerts"."name" ASC) AS "concerts""#
                 );
             },
@@ -774,7 +785,7 @@ mod tests {
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" WHERE "concerts"."name" = $1 LIMIT $2 OFFSET $3) AS "concerts""#,
                     "c1".to_string(),
                     20i64,
@@ -821,7 +832,7 @@ mod tests {
 
                 let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC) AS "concerts""#
                 );
             },

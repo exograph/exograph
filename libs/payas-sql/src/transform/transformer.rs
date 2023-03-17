@@ -1,19 +1,17 @@
 use crate::{
     asql::{
-        abstract_operation::AbstractOperation,
-        delete::AbstractDelete,
-        insert::AbstractInsert,
-        select::{AbstractSelect, SelectionLevel},
-        update::AbstractUpdate,
+        abstract_operation::AbstractOperation, delete::AbstractDelete, insert::AbstractInsert,
+        select::AbstractSelect, update::AbstractUpdate,
     },
     sql::{
-        cte::WithQuery, group_by::GroupBy, predicate::ConcretePredicate, select::Select,
-        transaction::TransactionScript,
+        cte::WithQuery, group_by::GroupBy, order::OrderBy, predicate::ConcretePredicate,
+        select::Select, transaction::TransactionScript,
     },
-    AbstractPredicate,
+    AbstractOrderBy, AbstractPredicate,
 };
 
 use super::pg::Postgres;
+use super::SelectionLevel;
 
 pub trait Transformer {
     fn to_transaction_script<'a>(
@@ -88,4 +86,8 @@ pub trait PredicateTransformer {
         &self,
         predicate: &AbstractPredicate<'a>,
     ) -> ConcretePredicate<'a>;
+}
+
+pub trait OrderByTransformer {
+    fn to_order_by<'a>(&self, order_by: &AbstractOrderBy<'a>) -> OrderBy<'a>;
 }

@@ -121,7 +121,7 @@ mod tests {
         };
 
         assert_binding!(
-            selected_table.into_sql(),
+            selected_table.to_sql(),
             r#"SELECT "people"."age", json_build_object('namex', "people"."name", 'agex', "people"."age")::text FROM "people""#
         );
     }
