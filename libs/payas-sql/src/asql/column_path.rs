@@ -5,12 +5,26 @@ use crate::{
     PhysicalTable,
 };
 
+/// A link in [`ColumnPath`] to connect two tables.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ColumnPathLink<'a> {
-    pub self_column: (&'a PhysicalColumn, &'a PhysicalTable), // We need to keep the table since a column carries the table name and not the table itself
+    /// The column in the current table that is linked to the next table.
+    pub self_column: (&'a PhysicalColumn, &'a PhysicalTable), // We keep the table since a column carries the table name and not the table itself
+    /// The column in the next table that is linked to the current table. None implies that this is a terminal column (such as artist.name).
     pub linked_column: Option<(&'a PhysicalColumn, &'a PhysicalTable)>,
 }
 
+/// A link in `ColumnPath` to a column starting at a root table and ending at a leaf column. This
+/// allows us to represent a column path that goes through multiple tables and help the query
+/// planner to determine which tables to join or perform subselects. For example, to represent the
+/// path starting at the concert table and ending at the artist.name column, we would have:
+/// ```text
+/// [
+///    { self_column: ("concert", "id"), linked_column: ("concert_artist", "concert_id") },
+///    { self_column: ("concert_artist", "artist_id"), linked_column: ("artist", "id") },
+///    { self_column: ("artist", "name"), linked_column: None },
+/// ]
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum ColumnPath<'a> {
     Physical(Vec<ColumnPathLink<'a>>),

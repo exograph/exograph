@@ -7,7 +7,6 @@ use crate::{
     asql::{
         insert::ColumnValuePair,
         insert::{AbstractInsert, NestedInsertion},
-        select::SelectionLevel,
     },
     sql::{
         column::Column,
@@ -19,7 +18,10 @@ use crate::{
         table::Table,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::transformer::{InsertTransformer, SelectTransformer},
+    transform::{
+        transformer::{InsertTransformer, SelectTransformer},
+        SelectionLevel,
+    },
     Limit, Offset,
 };
 
