@@ -3,7 +3,7 @@ use tracing::instrument;
 use crate::{
     asql::{
         column_path::{ColumnPath, ColumnPathLink},
-        select::{AbstractSelect, SelectionLevel},
+        select::AbstractSelect,
         selection::{
             ColumnSelection, Selection, SelectionCardinality, SelectionElement, SelectionSQL,
         },
@@ -21,7 +21,8 @@ use crate::{
     },
     transform::{
         join_util,
-        transformer::{PredicateTransformer, SelectTransformer},
+        transformer::{OrderByTransformer, PredicateTransformer, SelectTransformer},
+        SelectionLevel,
     },
 };
 
@@ -104,7 +105,10 @@ impl SelectTransformer for Postgres {
                     table: selection_table_query,
                     columns: vec![Column::Star(Some(abstract_select.table.name.clone()))],
                     predicate,
-                    order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
+                    order_by: abstract_select
+                        .order_by
+                        .as_ref()
+                        .map(|ob| self.to_order_by(ob)),
                     offset: abstract_select.offset.clone(),
                     limit: abstract_select.limit.clone(),
                     group_by,
@@ -136,7 +140,10 @@ impl SelectTransformer for Postgres {
                 table: join,
                 columns,
                 predicate,
-                order_by: abstract_select.order_by.as_ref().map(|ob| ob.order_by()),
+                order_by: abstract_select
+                    .order_by
+                    .as_ref()
+                    .map(|ob| self.to_order_by(ob)),
                 offset: abstract_select.offset.clone(),
                 limit: abstract_select.limit.clone(),
                 group_by,
@@ -236,11 +243,12 @@ mod tests {
         asql::{
             column_path::{ColumnPath, ColumnPathLink},
             predicate::AbstractPredicate,
-            select::SelectionLevel,
             selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
         sql::{predicate::Predicate, SQLParamContainer},
-        transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
+        transform::{
+            pg::Postgres, test_util::TestSetup, transformer::SelectTransformer, SelectionLevel,
+        },
         AbstractOrderBy, Limit, Offset, Ordering,
     };
 

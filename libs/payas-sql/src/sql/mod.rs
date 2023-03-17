@@ -1,3 +1,8 @@
+//! Low-level SQL primitives with a few PostgreSQL-specific extensions (json_agg, json_object, etc.)
+//! We form these primitives from the higher-level SQL operations from the `asql` module. Primitives
+//! such as `Select` and `Insert` are used to execute the corresponding SQL operations on the
+//! database.
+
 #[macro_use]
 #[cfg(test)]
 mod test_util;
