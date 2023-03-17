@@ -2,9 +2,13 @@ use crate::sql::predicate::Predicate;
 
 use super::column_path::ColumnPath;
 
+/// A version of predicate that uses `ColumnPath`s so that resolvers don't have to deal with
+/// low-level concepts such as joins and subselects. These are handled by the
+/// `transformer::*_transformer` modules.
 pub type AbstractPredicate<'a> = Predicate<ColumnPath<'a>>;
 
 impl<'a> AbstractPredicate<'a> {
+    /// Compute the set of column paths that are referenced by this predicate.
     pub fn column_paths(&self) -> Vec<&ColumnPath<'a>> {
         match self {
             AbstractPredicate::True | AbstractPredicate::False => vec![],

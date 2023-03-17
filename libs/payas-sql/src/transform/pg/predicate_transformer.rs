@@ -1,7 +1,9 @@
 use crate::{
-    asql::select::SelectionLevel,
     sql::predicate::ConcretePredicate,
-    transform::transformer::{PredicateTransformer, SelectTransformer},
+    transform::{
+        transformer::{PredicateTransformer, SelectTransformer},
+        SelectionLevel,
+    },
     AbstractPredicate, AbstractSelect, Column, ColumnPath, ColumnPathLink, ColumnSelection,
     PhysicalColumn, PhysicalTable, Selection, SelectionElement,
 };

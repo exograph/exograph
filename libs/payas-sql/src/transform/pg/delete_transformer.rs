@@ -1,14 +1,17 @@
 use tracing::instrument;
 
 use crate::{
-    asql::{delete::AbstractDelete, select::SelectionLevel},
+    asql::delete::AbstractDelete,
     sql::{
         column::Column,
         cte::{CteExpression, WithQuery},
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
+    transform::{
+        transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
+        SelectionLevel,
+    },
 };
 
 use super::Postgres;
