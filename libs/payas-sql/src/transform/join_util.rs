@@ -1,13 +1,13 @@
 use crate::{
     asql::column_path::ColumnPathLink,
-    sql::{column::Column, predicate::ConcretePredicate, table::Table},
+    sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
     transform::table_dependency::{DependencyLink, TableDependency},
     PhysicalTable,
 };
 
 pub fn compute_join<'a>(
     table: &'a PhysicalTable,
-    paths_list: Vec<Vec<ColumnPathLink<'a>>>,
+    paths_list: &[Vec<ColumnPathLink<'a>>],
 ) -> Table<'a> {
     fn from_dependency(dependency: TableDependency) -> Table {
         dependency.dependencies.into_iter().fold(
@@ -20,7 +20,7 @@ pub fn compute_join<'a>(
 
                 let join_table_query = from_dependency(dependency);
 
-                acc.join(join_table_query, join_predicate.into())
+                Table::Join(LeftJoin::new(acc, join_table_query, join_predicate.into()))
             },
         )
     }
@@ -61,7 +61,7 @@ mod tests {
                     },
                 ];
 
-                let join = super::compute_join(concerts_table, vec![concert_venue]);
+                let join = super::compute_join(concerts_table, &[concert_venue]);
 
                 assert_binding!(
                     join.to_sql(),
@@ -154,7 +154,7 @@ mod tests {
 
                 let join = super::compute_join(
                     concerts_table,
-                    vec![concert_ca_artist, concert_ca_artist_address, concert_venue],
+                    &[concert_ca_artist, concert_ca_artist_address, concert_venue],
                 );
 
                 assert_binding!(

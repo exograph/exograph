@@ -22,6 +22,7 @@ pub(crate) mod cte;
 pub(crate) mod delete;
 pub(crate) mod group_by;
 pub(crate) mod insert;
+pub(crate) mod join;
 pub(crate) mod json_agg;
 pub(crate) mod json_object;
 pub(crate) mod limit;
@@ -38,7 +39,7 @@ pub(crate) use sql_builder::SQLBuilder;
 pub(crate) use sql_value::SQLValue;
 
 mod expression_builder;
-mod join;
+
 mod sql_builder;
 mod sql_bytes;
 mod sql_param;
