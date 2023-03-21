@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use async_graphql_parser::{
     types::{
@@ -58,19 +58,20 @@ impl<'a> SelectionSetValidator<'a> {
         &self,
         selection_set: &Positioned<SelectionSet>,
     ) -> Result<Vec<ValidatedField>, ValidationError> {
-        self.validate_selection_set(selection_set)
+        self.validate_selection_set(selection_set, HashSet::new())
             .map(|fields| fields.into_iter().map(|(_, field)| field).collect())
     }
 
     fn validate_selection_set(
         &self,
         selection_set: &Positioned<SelectionSet>,
+        fragment_trail: HashSet<String>,
     ) -> Result<Vec<(Pos, ValidatedField)>, ValidationError> {
         let fields = selection_set
             .node
             .items
             .iter()
-            .map(|selection| self.validate_selection(selection));
+            .map(|selection| self.validate_selection(selection, fragment_trail.clone()));
 
         let fields: Vec<(Pos, ValidatedField)> = fields
             .collect::<Result<Vec<_>, _>>()
@@ -142,14 +143,30 @@ impl<'a> SelectionSetValidator<'a> {
     fn validate_selection(
         &self,
         selection: &Positioned<Selection>,
+        fragment_trail: HashSet<String>,
     ) -> Result<Vec<(Pos, ValidatedField)>, ValidationError> {
         match &selection.node {
             Selection::Field(field) => self.validate_field(field).map(|field| vec![field]),
-            Selection::FragmentSpread(fragment_spread) => self
-                .fragment_definition(fragment_spread)
-                .and_then(|fragment_definition| {
-                    self.validate_selection_set(&fragment_definition.selection_set)
-                }),
+            Selection::FragmentSpread(fragment_spread) => {
+                if fragment_trail.contains(&fragment_spread.node.fragment_name.node.to_string()) {
+                    return Err(ValidationError::FragmentCycle(
+                        fragment_spread.node.fragment_name.node.to_string(),
+                        fragment_spread.pos,
+                    ));
+                }
+                let fragment_trail = {
+                    let mut fragment_trail = fragment_trail;
+                    fragment_trail.insert(fragment_spread.node.fragment_name.node.to_string());
+                    fragment_trail
+                };
+                self.fragment_definition(fragment_spread)
+                    .and_then(|fragment_definition| {
+                        self.validate_selection_set(
+                            &fragment_definition.selection_set,
+                            fragment_trail,
+                        )
+                    })
+            }
             Selection::InlineFragment(inline_fragment) => Err(
                 ValidationError::InlineFragmentNotSupported(inline_fragment.pos),
             ),

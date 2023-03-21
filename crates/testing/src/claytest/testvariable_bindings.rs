@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, Result};
 use async_graphql_parser::{
@@ -44,7 +44,12 @@ pub fn build_testvariable_bindings(document: &ExecutableDocument) -> Testvariabl
     match &document.operations {
         DocumentOperations::Single(operation) => {
             let selection_set = &operation.node.selection_set.node;
-            process_selection_set(selection_set, vec!["data".to_owned()], &document.fragments)
+            process_selection_set(
+                selection_set,
+                vec!["data".to_owned()],
+                &document.fragments,
+                HashSet::new(),
+            )
         }
         DocumentOperations::Multiple(operations) => operations
             .iter()
@@ -54,6 +59,7 @@ pub fn build_testvariable_bindings(document: &ExecutableDocument) -> Testvariabl
                     selection_set,
                     vec!["data".to_owned(), name.to_string()],
                     &document.fragments,
+                    HashSet::new(),
                 )
             })
             .collect(),
@@ -64,6 +70,7 @@ fn process_selection_set(
     selection_set: &SelectionSet,
     current_path: Vec<TestvariablePathElements>,
     fragments: &HashMap<Name, Positioned<FragmentDefinition>>,
+    fragment_trail: HashSet<String>,
 ) -> TestvariableBindings {
     selection_set
         .items
@@ -112,6 +119,7 @@ fn process_selection_set(
                         selection_set,
                         new_path.clone(),
                         fragments,
+                        fragment_trail.clone(),
                     ));
 
                     bindings
@@ -127,12 +135,32 @@ fn process_selection_set(
                         return Default::default();
                     };
 
-                    process_selection_set(selection_set, current_path.clone(), fragments)
+                    if fragment_trail.contains(fragment_name.as_str()) {
+                        // soft fail - some tests may actually depend on circular fragments (will fail at runtime)
+                        return Default::default();
+                    }
+                    let fragment_trail = {
+                        let mut fragment_trail = fragment_trail.clone();
+                        fragment_trail.insert(fragment_name.to_string());
+                        fragment_trail
+                    };
+
+                    process_selection_set(
+                        selection_set,
+                        current_path.clone(),
+                        fragments,
+                        fragment_trail,
+                    )
                 }
                 Selection::InlineFragment(inline_fragment) => {
                     let selection_set = &inline_fragment.node.selection_set.node;
 
-                    process_selection_set(selection_set, current_path.clone(), fragments)
+                    process_selection_set(
+                        selection_set,
+                        current_path.clone(),
+                        fragments,
+                        fragment_trail.clone(),
+                    )
                 }
             }
         })
