@@ -7,4 +7,3 @@ mod selection_context;
 mod selection_strategy;
 mod selection_strategy_chain;
 mod subquery_with_in_predicate_strategy;
-mod unconditional_strategy;

@@ -1,6 +1,6 @@
 use crate::{
-    sql::{predicate::ConcretePredicate, select::Select, table::Table},
-    transform::transformer::PredicateTransformer,
+    sql::{predicate::ConcretePredicate, select::Select},
+    transform::{join_util, transformer::PredicateTransformer},
 };
 
 use super::{
@@ -10,11 +10,15 @@ use super::{
 
 pub struct SubqueryWithInPredicateStrategy {}
 
-/// Strategy for one-to-many predicates with an optional order by for root-level fields, limit/offset may be present
+/// Strategy that uses a subquery with an `IN` predicate to filter the rows of the table.
+///
+/// Suitable for any kind of relationship (with more suitability for one-to-many predicates) with an
+/// optional order by, limit/offset may be present (this is a catch-all strategy that is used when
+/// no other strategy is suitable).
 ///
 /// Pre-conditions:
-/// - Predicate unrestricted (but an overkill for the cases without one-to-many predicates)
-/// - Order by restricted to the columns of the root table
+/// - Predicate unrestricted (but an overkill for the cases without a one-to-many predicate)
+/// - Order by may be present
 /// - Limit and offset may be present
 ///
 /// An example of this is:
@@ -25,7 +29,7 @@ pub struct SubqueryWithInPredicateStrategy {}
 ///    }
 /// }
 /// ```
-/// Here, we need to use a subselect to filter the rows of the table. We will produce a statement:
+/// Here, we use a subselect to filter the rows of the table to produce a statement like:
 /// ```sql
 /// SELECT COALESCE(...)::text FROM (
 ///     SELECT "venues".* FROM "venues" WHERE "venues"."id" IN (
@@ -51,8 +55,8 @@ pub struct SubqueryWithInPredicateStrategy {}
 /// }
 /// ```
 ///
-/// In this case, we use essentially the same subselect, but we add an order by
-/// clause to it. We will produce a statement like:
+/// In this case, we  add an order by clause to it. We will produce a statement like:
+///
 /// ```sql
 /// SELECT COALESCE(...)::text FROM (
 ///     SELECT "venues".* FROM "venues" WHERE "venues"."id" IN (
@@ -65,33 +69,61 @@ pub struct SubqueryWithInPredicateStrategy {}
 /// to order them (and even if we did supply the order by, `IN` doesn't guarantee that the order
 /// will be preserved).
 ///
+/// If an order by refers to a field in a related table, we essentially use the same strategy except
+/// we form a join with the tables involved in the order by. For example:
+///
+/// ```graphql
+//  notifications(
+//     where: {or: [{title: {ilike: '$search'}}, {concert: {or: [{title: {ilike: $search}}, {concertArtists: {artist: {name: {ilike: $search}}}}]}}]}
+//     orderBy: {concert: {title: ASC}}
+//     limit: 20
+//     offset: 1o
+//  ) {
+//     id
+//  }
+/// ```
+/// We will produce a statement like:
+/// ```sql
+// SELECT COALESCE(json_agg(json_build_object('id', "notifications"."id")), '[]'::json)::text FROM (
+//     SELECT "notifications".* FROM "notifications" LEFT JOIN "concerts" ON "notifications"."concert_id" = "concerts"."id"
+//         WHERE "notifications"."id" IN (
+//           SELECT "notifications"."id" FROM "notifications" LEFT JOIN "concerts" LEFT JOIN "concert_artists"
+//             ON "concerts"."id" = "concert_artists"."concert_id" ON "notifications"."concert_id" = "concerts"."id" WHERE "concert_artists"."rank" = 1
+//         ) ORDER BY "concerts"."title" DESC LIMIT 20 OFFSET 10
+//   )  AS "notifications";
+/// ```
+///
+/// Here, instead of using "notifications", we use a join to involve "concerts", since the order by uses its column.
+///
 /// Note that order by a column in the "many" table is not supported (such as "order venues by its
 /// concerts"). Those are ill-defined operations, since there can be multiple rows for each "one"
 /// row.
-///
 impl SelectionStrategy for SubqueryWithInPredicateStrategy {
     fn id(&self) -> &'static str {
         "SubqueryWithInPredicateStrategy"
     }
 
-    fn suitable(&self, selection_context: &SelectionContext) -> bool {
-        selection_context
-            .order_by_column_paths
-            .iter()
-            .all(|path| path.len() == 1)
+    fn suitable(&self, _selection_context: &SelectionContext) -> bool {
+        true
     }
 
     fn to_select<'a>(&self, selection_context: SelectionContext<'_, 'a>) -> Select<'a> {
         let SelectionContext {
             abstract_select,
             additional_predicate,
+            order_by_column_paths,
             selection_level,
             transformer,
             ..
         } = selection_context;
 
         let predicate = transformer.to_subselect_predicate(&abstract_select.predicate);
-        let table = Table::Physical(abstract_select.table);
+
+        // Use only order by columns to form the join, since the predicate part is already taken
+        // care by the `to_subselect_predicate` call above. The use of `order_by_column_paths` is
+        // essential to be able to refer to columns in related field in the order by clause.
+        let table = join_util::compute_join(abstract_select.table, &order_by_column_paths);
+
         let predicate = ConcretePredicate::and(
             predicate,
             additional_predicate.unwrap_or(ConcretePredicate::True),

@@ -6,18 +6,23 @@ use super::{
     plain_join_strategy::PlainJoinStrategy, plain_subquery_strategy::PlainSubqueryStrategy,
     selection_context::SelectionContext, selection_strategy::SelectionStrategy,
     subquery_with_in_predicate_strategy::SubqueryWithInPredicateStrategy,
-    unconditional_strategy::Unconditional,
 };
 
+/// Chain of various selection strategies.
+/// Currently, the default setup put the cheapest strategy first, and the most expensive last based
+/// solely on the complexity of the SQL query.
 pub(crate) struct SelectionStrategyChain<'s> {
     strategies: Vec<&'s dyn SelectionStrategy>,
 }
 
 impl<'s> SelectionStrategyChain<'s> {
+    /// Create a new selection strategy chain.
     pub fn new(strategies: Vec<&'s dyn SelectionStrategy>) -> Self {
         Self { strategies }
     }
 
+    /// Find the first strategy that is suitable for the given selection context, and return a
+    /// `Select` object that can be used to generate the SQL query.
     pub fn to_select<'a>(&self, selection_context: SelectionContext<'_, 'a>) -> Option<Select<'a>> {
         let strategy = self
             .strategies
@@ -36,7 +41,6 @@ impl Default for SelectionStrategyChain<'_> {
             &PlainJoinStrategy {},
             &PlainSubqueryStrategy {},
             &SubqueryWithInPredicateStrategy {},
-            &Unconditional {},
         ])
     }
 }

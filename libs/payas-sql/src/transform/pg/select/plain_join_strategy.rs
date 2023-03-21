@@ -1,20 +1,20 @@
 use crate::{
-    sql::{predicate::ConcretePredicate, select::Select},
-    transform::{
-        join_util,
-        transformer::{OrderByTransformer, PredicateTransformer},
-        SelectionLevel,
-    },
+    sql::select::Select,
+    transform::{transformer::OrderByTransformer, SelectionLevel},
     Selection,
 };
 
-use super::{selection_context::SelectionContext, selection_strategy::SelectionStrategy};
+use super::{
+    selection_context::SelectionContext,
+    selection_strategy::{join_info, SelectionStrategy},
+};
 
-/// Strategy that uses a plain join of tables invoked in clauses
+/// Strategy that uses a plain join of tables involved in clauses
 ///
 /// Suitable for:
-/// - For aggregate output: Many-to-one predicate without order-by, limit or offset
-/// - For non-aggregate output: Many-to-one predicate or order-by; or duplicate rows can be tolerated
+/// - For aggregate output: Many-to-one predicate without order-by, limit or offset.
+/// - For non-aggregate output: Many-to-one predicate or order-by; or where duplicate rows can be
+///   tolerated (typically for a subquery)
 ///
 /// Pre-conditions (for aggregate output):
 /// - Order by is none
@@ -26,19 +26,19 @@ use super::{selection_context::SelectionContext, selection_strategy::SelectionSt
 ///         - `concerts(where: {venue: {id: {gt: 10}}})`
 ///         - `concerts(where: {venue: {city: {name: {eq: "San Francisco"}}}})`)
 /// Pre-conditions (for non-aggregate output):
-/// - Predicate along with order by refers to only many-to-one relationships (such as `concerts(orderBy: {venue: {name: asc}})`)
-/// - Duplicate rows can be tolerated (such as as a subquery to form a predicate for a delete mutation)
+/// - Predicate along with order by refers to only many-to-one relationships (such as `concerts(orderBy: {venue: {name: ASC}})`)
+///   -- or --
+/// - Explicit specification indicated that duplicate rows are allowed
 ///
-///
-/// If the predicate refers to a single table, we can build the aggregate directly from the table's
-/// data to produce a statement like:
+/// If the predicate refers to a single table, we build the aggregate directly from the table's data
+/// to produce a statement like:
 ///
 /// ```sql
 /// SELECT COALESCE(...)::text FROM "concerts" WHERE "concerts"."id" > $1
 /// ```
 ///
-/// If the predicate refers to multiple tables connected by many-to-one relationships, we use a join of the tables.
-/// For example, consider the following query:
+/// If the predicate refers to multiple tables connected by many-to-one relationships, we use a join
+/// of the tables. For example, consider the following query:
 ///
 /// ```graphql
 /// {
@@ -100,17 +100,14 @@ impl SelectionStrategy for PlainJoinStrategy {
             ..
         } = selection_context;
 
-        let predicate = ConcretePredicate::and(
-            transformer.to_join_predicate(&abstract_select.predicate),
-            additional_predicate.unwrap_or(ConcretePredicate::True),
+        let (join, predicate) = join_info(
+            abstract_select.table,
+            &abstract_select.predicate,
+            predicate_column_paths,
+            order_by_column_paths,
+            additional_predicate,
+            transformer,
         );
-
-        let column_paths = predicate_column_paths
-            .into_iter()
-            .chain(order_by_column_paths.into_iter())
-            .collect::<Vec<_>>();
-
-        let join = join_util::compute_join(abstract_select.table, &column_paths);
 
         let selection_aggregate = abstract_select.selection.selection_aggregate(transformer);
 

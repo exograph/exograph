@@ -91,36 +91,10 @@ use crate::transform::pg::Postgres;
 /// - Does it use any order-by, limit or offset?
 /// - Does it use any one-to-many clauses (in either predicate or order-by clause)?
 ///
-/// We then use this information to determine the best way to select the raw data. The following
-/// cases are possible:
-///
-///
-
-///
-/// # Case 4: A many-to-one order by clause
-///
-/// An example of this is: `concerts(orderBy: {venue: {id: ASC}})`. In this case, we need to use a subselect to order the rows of the table. We will produce a statement:
-/// ```sql
-/// SELECT COALESCE(...)::text FROM (
-///     SELECT "concerts".* FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."id" < $1 ORDER BY "venues"."id" ASC
-/// ) AS "concerts"
-/// ```
-///
-
-///
-///
-/// Summary of the cases:
-/// -------| --------------------------------------------------------------------- | ----
-/// Case   | Description                                                           | Strategy for raw data selection
-/// -------| --------------------------------------------------------------------- | ----
-/// Case 1 | Root-level or many-to-one predicate without order-by, limit or offset | A direct selection from the table or join
-/// Case 2 | One-to-many predicates with an optional order by                      | A subselect with another subselect for the `IN` predicate
-/// Case 2 | Root-level predicate with order by, limit or offset                   | A subselect with order by, limit and offset
-/// Case 3 | Many-to-one order by, limit or offset                                 | A subselect containing join
-/// -------| --------------------------------------------------------------------- | ----
+/// We then use this information to determine the best way to select the raw data. See [`SelectionStrategyChain`]
+/// for more details.
 impl SelectTransformer for Postgres {
     /// Form a [`Select`] from a given [`AbstractSelect`].
-
     #[instrument(
         name = "SelectTransformer::to_select for Postgres"
         skip(self)
