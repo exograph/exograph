@@ -1,162 +1,113 @@
 use tracing::instrument;
 
 use crate::{
-    asql::{
-        column_path::{ColumnPath, ColumnPathLink},
-        select::AbstractSelect,
-        selection::{
-            ColumnSelection, Selection, SelectionCardinality, SelectionElement, SelectionSQL,
-        },
-    },
+    asql::select::AbstractSelect,
     sql::{
-        column::Column,
-        group_by::GroupBy,
-        json_agg::JsonAgg,
-        json_object::{JsonObject, JsonObjectElement},
         predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
-        table::Table,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{
-        join_util,
-        transformer::{OrderByTransformer, PredicateTransformer, SelectTransformer},
-        SelectionLevel,
-    },
+    transform::{transformer::SelectTransformer, SelectionLevel},
 };
 
-use super::Postgres;
+use super::{
+    selection_context::SelectionContext, selection_strategy_chain::SelectionStrategyChain,
+};
 
+use crate::transform::pg::Postgres;
+
+/// The current implementation makes the assumption that the return value of the select statement is a JSON object.
+///
+/// There are two axis to implement here:
+/// 1. Return Aggregate: The assembly of the return value aggregate. This should match the shape of the return data in GraphQL query.
+/// 2. Raw Data: Rows to feed into the return aggregate. This should match the data matching queries predicates, order by, limit, and offset.
+///
+/// Our current implementation decouples the two axis.
+///
+/// Consider the following GraphQL query (assuming the typical Concert/Venue schema):
+/// ```graphql
+/// {
+///    concerts(where: {id: {gt: 10}}, orderBy: {id: asc}, limit: 10, offset: 20) {
+///       id
+///       title
+///       venue {
+///         id
+///         name
+///      }
+///    }
+/// }
+/// ```
+///
+/// We will need to create a select statement with two components:
+///
+/// # Return Aggregate
+///
+/// Since the return value is a JSON array, we will use a `json_agg` to aggregate the rows into a JSON array. The `::text` cast is
+/// necessary to convert the JSON array into a string, so that we the GraphQL query can just return the string as-is. See [`Select`]
+/// for more details.
+///
+/// ```sql
+/// COALESCE(
+///     json_agg(
+///         json_build_object(
+///             'id', "concerts"."id",
+///             'title', "concerts"."title",
+///             'venue', (SELECT json_build_object(
+///                 'id', "venues"."id",
+///                 'name', "venues"."name") FROM "venues" WHERE "concerts"."venue_id" = "venues"."id")
+///         )
+///     ), '[]'::json
+/// )::text
+/// ```
+///
+/// If we were to return a single concert (for query such as `concert(id: 5)`), we would use a
+/// `json_build_object` aggregate:
+/// ```sql
+/// SELECT json_build_object(
+///    'id', "concerts"."id",
+///    'title', "concerts"."title",
+///    'venue', (SELECT json_build_object(
+///       'id', "venues"."id",
+///      'name', "venues"."name") FROM "venues" WHERE "concerts"."venue_id" = "venues"."id")
+/// )::text FROM "concerts" WHERE "concerts"."id" = $1
+/// ```
+///
+/// The forming of this json aggregate is done in [`selection_columns`] along with `[Selection`] and
+/// [`SelectionElement`], so we won't discuss it here further. However, the important point here is
+/// that the "Raw Data" part needs to return only the matching rows for the top-level table (in this
+/// case, `concerts`). Any subfield of a relation (in this case, `venue`) will be handled by a
+/// subselect in the aggregate formation. In our example, it will be handled by the subselect for
+/// the `venue` field (note how it uses the `where` to pick up only the relevant venues).
+///
+/// # Raw data selection.
+///
+/// This is the selection of the rows that will be fed into the return aggregate. As mentioned
+/// earlier, this should match the data matching queries predicates, order by, limit, and
+/// offset--but only for the top-level table. An important consideration is making sure that we
+/// don't return the same row more than once.
+///
+/// We first analyze the selection to determine characteristics of the selection:
+/// - Does it use any order-by, limit or offset?
+/// - Does it use any one-to-many clauses (in either predicate or order-by clause)?
+///
+/// We then use this information to determine the best way to select the raw data. See [`SelectionStrategyChain`]
+/// for more details.
 impl SelectTransformer for Postgres {
+    /// Form a [`Select`] from a given [`AbstractSelect`].
     #[instrument(
         name = "SelectTransformer::to_select for Postgres"
         skip(self)
         )]
-    fn to_select<'a>(
-        &self,
-        abstract_select: &AbstractSelect<'a>,
-        additional_predicate: Option<ConcretePredicate<'a>>,
-        group_by: Option<GroupBy<'a>>,
-        selection_level: SelectionLevel,
-    ) -> Select<'a> {
-        fn column_path_owned<'a>(
-            column_paths: Vec<&ColumnPath<'a>>,
-        ) -> Vec<Vec<ColumnPathLink<'a>>> {
-            column_paths
-                .into_iter()
-                .filter_map(|path| match path {
-                    ColumnPath::Physical(links) => Some(links.to_vec()),
-                    _ => None,
-                })
-                .collect()
-        }
-
-        let predicate_column_paths: Vec<Vec<ColumnPathLink>> =
-            column_path_owned(abstract_select.predicate.column_paths());
-
-        let order_by_column_paths = abstract_select
-            .order_by
-            .as_ref()
-            .map(|ob| column_path_owned(ob.column_paths()))
-            .unwrap_or_else(Vec::new);
-
-        let columns_paths: Vec<Vec<ColumnPathLink>> = predicate_column_paths
-            .into_iter()
-            .chain(order_by_column_paths.into_iter())
-            .collect();
-
-        let has_a_many_to_one_clause = columns_paths.iter().any(|path| {
-            path.iter()
-                .any(|link| link.self_column.0.is_pk && link.linked_column.is_some())
-        });
-
-        let join = join_util::compute_join(abstract_select.table, columns_paths);
-
-        let columns = match abstract_select.selection.to_sql(self) {
-            SelectionSQL::Single(elem) => vec![elem],
-            SelectionSQL::Seq(elems) => elems,
-        };
-
-        let has_non_predicate_clauses = abstract_select.order_by.is_some()
-            || abstract_select.offset.is_some()
-            || abstract_select.limit.is_some();
-
-        if has_a_many_to_one_clause || has_non_predicate_clauses {
-            let inner_select = {
-                let (predicate, selection_table_query) = if has_a_many_to_one_clause {
-                    // If we have a many to one clause, we need to use a subselect along with
-                    // the basic table (not a join) to avoid returning duplicate rows (that would be returned by the join)
-                    (
-                        self.to_subselect_predicate(&abstract_select.predicate),
-                        Table::Physical(abstract_select.table),
-                    )
-                } else {
-                    (self.to_join_predicate(&abstract_select.predicate), join)
-                };
-
-                let predicate = ConcretePredicate::and(
-                    predicate,
-                    additional_predicate.unwrap_or(ConcretePredicate::True),
-                );
-
-                // Inner select gives the data matching the predicate, order by, offset, limit
-                Select {
-                    table: selection_table_query,
-                    columns: vec![Column::Star(Some(abstract_select.table.name.clone()))],
-                    predicate,
-                    order_by: abstract_select
-                        .order_by
-                        .as_ref()
-                        .map(|ob| self.to_order_by(ob)),
-                    offset: abstract_select.offset.clone(),
-                    limit: abstract_select.limit.clone(),
-                    group_by,
-                    top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
-                }
-            };
-
-            // We then use the inner select to build the final select
-            Select {
-                table: Table::SubSelect {
-                    select: Box::new(inner_select),
-                    alias: abstract_select.table.name.clone(),
-                },
-                columns,
-                predicate: ConcretePredicate::True,
-                order_by: None,
-                offset: None,
-                limit: None,
-                group_by: None,
-                top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
-            }
-        } else {
-            let predicate = ConcretePredicate::and(
-                self.to_join_predicate(&abstract_select.predicate),
-                additional_predicate.unwrap_or(ConcretePredicate::True),
-            );
-
-            Select {
-                table: join,
-                columns,
-                predicate,
-                order_by: abstract_select
-                    .order_by
-                    .as_ref()
-                    .map(|ob| self.to_order_by(ob)),
-                offset: abstract_select.offset.clone(),
-                limit: abstract_select.limit.clone(),
-                group_by,
-                top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
-            }
-        }
+    fn to_select<'a>(&self, abstract_select: &AbstractSelect<'a>) -> Select<'a> {
+        self.compute_select(abstract_select, None, SelectionLevel::TopLevel, false)
     }
 
     fn to_transaction_script<'a>(
         &self,
         abstract_select: &'a AbstractSelect,
     ) -> TransactionScript<'a> {
-        let select = self.to_select(abstract_select, None, None, SelectionLevel::TopLevel);
+        let select = self.to_select(abstract_select);
         let mut transaction_script = TransactionScript::default();
         transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
             SQLOperation::Select(select),
@@ -165,75 +116,23 @@ impl SelectTransformer for Postgres {
     }
 }
 
-impl<'a> Selection<'a> {
-    pub fn to_sql(&self, database_kind: &impl SelectTransformer) -> SelectionSQL<'a> {
-        match self {
-            Selection::Seq(seq) => SelectionSQL::Seq(
-                seq.iter()
-                    .map(
-                        |ColumnSelection {
-                             alias: _alias,
-                             column,
-                         }| column.to_sql(database_kind),
-                    )
-                    .collect(),
-            ),
-            Selection::Json(seq, cardinality) => {
-                let object_elems = seq
-                    .iter()
-                    .map(|ColumnSelection { alias, column }| {
-                        JsonObjectElement::new(alias.clone(), column.to_sql(database_kind))
-                    })
-                    .collect();
-
-                let json_obj = Column::JsonObject(JsonObject(object_elems));
-
-                match cardinality {
-                    SelectionCardinality::One => SelectionSQL::Single(json_obj),
-                    SelectionCardinality::Many => {
-                        SelectionSQL::Single(Column::JsonAgg(JsonAgg(Box::new(json_obj))))
-                    }
-                }
-            }
-        }
-    }
-}
-
-impl<'a> SelectionElement<'a> {
-    pub fn to_sql(&self, database_kind: &impl SelectTransformer) -> Column<'a> {
-        match self {
-            SelectionElement::Physical(pc) => Column::Physical(pc),
-            SelectionElement::Function {
-                function_name,
-                column,
-            } => Column::Function {
-                function_name: function_name.clone(),
-                column,
-            },
-            SelectionElement::Constant(s) => Column::Constant(s.clone()),
-            SelectionElement::Object(elements) => {
-                let elements = elements
-                    .iter()
-                    .map(|(alias, column)| {
-                        JsonObjectElement::new(alias.to_owned(), column.to_sql(database_kind))
-                    })
-                    .collect();
-                Column::JsonObject(JsonObject(elements))
-            }
-            SelectionElement::Nested(relation, select) => {
-                Column::SubSelect(Box::new(database_kind.to_select(
-                    select,
-                    relation.linked_column.map(|linked_column| {
-                        ConcretePredicate::Eq(
-                            Column::Physical(relation.self_column.0),
-                            Column::Physical(linked_column.0),
-                        )
-                    }),
-                    None,
-                    SelectionLevel::Nested,
-                )))
-            }
-        }
+impl Postgres {
+    pub fn compute_select<'a>(
+        &self,
+        abstract_select: &AbstractSelect<'a>,
+        additional_predicate: Option<ConcretePredicate<'a>>,
+        selection_level: SelectionLevel,
+        allow_duplicate_rows: bool,
+    ) -> Select<'a> {
+        let chain = SelectionStrategyChain::default();
+        let selection_context = SelectionContext::new(
+            abstract_select,
+            additional_predicate,
+            selection_level,
+            allow_duplicate_rows,
+            self,
+        );
+        chain.to_select(selection_context).unwrap()
     }
 }
 
@@ -246,9 +145,7 @@ mod tests {
             selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
         sql::{predicate::Predicate, SQLParamContainer},
-        transform::{
-            pg::Postgres, test_util::TestSetup, transformer::SelectTransformer, SelectionLevel,
-        },
+        transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
         AbstractOrderBy, Limit, Offset, Ordering,
     };
 
@@ -275,11 +172,8 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
-                assert_binding!(
-                    select.into_sql(),
-                    r#"SELECT "concerts"."id" FROM "concerts""#
-                );
+                let select = Postgres {}.to_select(&aselect);
+                assert_binding!(select.to_sql(), r#"SELECT "concerts"."id" FROM "concerts""#);
             },
         );
     }
@@ -311,9 +205,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."id" = $1"#,
                     5
                 );
@@ -344,9 +238,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts""#
                 );
             },
@@ -410,9 +304,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id", 'venue', (SELECT json_build_object('id', "venues"."id") FROM "venues" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "concerts""#
                 );
             },
@@ -470,9 +364,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "venues""#
                 );
             },
@@ -524,9 +418,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
-                    select.into_sql(),
+                    select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
                     "v1".to_string()
                 );
@@ -560,10 +454,10 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
-                    select.into_sql(),
-                    r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" ORDER BY "concerts"."name" ASC) AS "concerts""#
+                    select.to_sql(),
+                    r#"SELECT "concerts"."id" FROM "concerts" ORDER BY "concerts"."name" ASC"#
                 );
             },
         );
@@ -598,10 +492,10 @@ mod tests {
                     limit: Some(Limit(20)),
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
-                    select.into_sql(),
-                    r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" WHERE "concerts"."name" = $1 LIMIT $2 OFFSET $3) AS "concerts""#,
+                    select.to_sql(),
+                    r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."name" = $1 LIMIT $2 OFFSET $3"#,
                     "c1".to_string(),
                     20i64,
                     10i64
@@ -645,10 +539,10 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
-                    select.into_sql(),
-                    r#"SELECT "concerts"."id" FROM (SELECT "concerts".* FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC) AS "concerts""#
+                    select.to_sql(),
+                    r#"SELECT "concerts"."id" FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC"#
                 );
             },
         );

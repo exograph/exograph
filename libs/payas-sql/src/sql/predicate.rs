@@ -268,12 +268,12 @@ mod tests {
 
     #[test]
     fn true_predicate() {
-        assert_binding!(ConcretePredicate::True.into_sql(), "TRUE");
+        assert_binding!(ConcretePredicate::True.to_sql(), "TRUE");
     }
 
     #[test]
     fn false_predicate() {
-        assert_binding!(ConcretePredicate::False.into_sql(), "FALSE");
+        assert_binding!(ConcretePredicate::False.to_sql(), "FALSE");
     }
 
     #[test]
@@ -289,7 +289,7 @@ mod tests {
 
         let predicate = Predicate::Eq(age_col, age_value_col);
 
-        assert_binding!(predicate.into_sql(), r#""people"."age" = $1"#, 5);
+        assert_binding!(predicate.to_sql(), r#""people"."age" = $1"#, 5);
     }
 
     #[test]
@@ -318,7 +318,7 @@ mod tests {
         let predicate = ConcretePredicate::And(Box::new(name_predicate), Box::new(age_predicate));
 
         assert_binding!(
-            predicate.into_sql(),
+            predicate.to_sql(),
             r#"("people"."name" = $1 AND "people"."age" = $2)"#,
             "foo",
             5
@@ -347,7 +347,7 @@ mod tests {
         let like_predicate =
             ConcretePredicate::StringLike(title_col, title_value_col, CaseSensitivity::Sensitive);
         assert_binding!(
-            like_predicate.into_sql(),
+            like_predicate.to_sql(),
             r#""videos"."title" LIKE $1"#,
             "utawaku"
         );
@@ -358,7 +358,7 @@ mod tests {
         let ilike_predicate =
             ConcretePredicate::StringLike(title_col, title_value_col, CaseSensitivity::Insensitive);
         assert_binding!(
-            ilike_predicate.into_sql(),
+            ilike_predicate.to_sql(),
             r#""videos"."title" ILIKE $1"#,
             "utawaku"
         );
@@ -368,7 +368,7 @@ mod tests {
 
         let starts_with_predicate = ConcretePredicate::StringStartsWith(title_col, title_value_col);
         assert_binding!(
-            starts_with_predicate.into_sql(),
+            starts_with_predicate.to_sql(),
             r#""videos"."title" LIKE $1 || '%'"#,
             "utawaku"
         );
@@ -378,7 +378,7 @@ mod tests {
 
         let ends_with_predicate = ConcretePredicate::StringEndsWith(title_col, title_value_col);
         assert_binding!(
-            ends_with_predicate.into_sql(),
+            ends_with_predicate.to_sql(),
             r#""videos"."title" LIKE '%' || $1"#,
             "utawaku"
         );
@@ -426,7 +426,7 @@ mod tests {
 
         let contains_predicate = ConcretePredicate::JsonContains(json_col, json_value_col);
         assert_binding!(
-            contains_predicate.into_sql(),
+            contains_predicate.to_sql(),
             r#""card"."data" @> $1"#,
             *json_value
         );
@@ -436,7 +436,7 @@ mod tests {
 
         let contained_by_predicate = ConcretePredicate::JsonContainedBy(json_col, json_value_col);
         assert_binding!(
-            contained_by_predicate.into_sql(),
+            contained_by_predicate.to_sql(),
             r#""card"."data" <@ $1"#,
             *json_value
         );
@@ -447,7 +447,7 @@ mod tests {
         let (json_col, _, _) = json_test_data(&json_physical_col);
 
         let match_key_predicate = ConcretePredicate::JsonMatchKey(json_col, json_key_col);
-        assert_binding!(match_key_predicate.into_sql(), r#""card"."data" ? $1"#, "a");
+        assert_binding!(match_key_predicate.to_sql(), r#""card"."data" ? $1"#, "a");
 
         // matchAnyKey
         let (json_col, _, _) = json_test_data(&json_physical_col);
@@ -455,7 +455,7 @@ mod tests {
         let match_any_key_predicate =
             ConcretePredicate::JsonMatchAnyKey(json_col, json_key_list_col);
         assert_binding!(
-            match_any_key_predicate.into_sql(),
+            match_any_key_predicate.to_sql(),
             r#""card"."data" ?| $1"#,
             json_key_list
         );
@@ -468,7 +468,7 @@ mod tests {
         let match_all_keys_predicate =
             ConcretePredicate::JsonMatchAllKeys(json_col, json_key_list_col);
         assert_binding!(
-            match_all_keys_predicate.into_sql(),
+            match_all_keys_predicate.to_sql(),
             r#""card"."data" ?& $1"#,
             json_key_list
         );

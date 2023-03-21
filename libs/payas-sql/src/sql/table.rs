@@ -1,9 +1,6 @@
 use crate::PhysicalTable;
 
-use super::{
-    join::LeftJoin, predicate::ConcretePredicate, select::Select, ExpressionBuilder, SQLBuilder,
-};
-use maybe_owned::MaybeOwned;
+use super::{join::LeftJoin, select::Select, ExpressionBuilder, SQLBuilder};
 
 /// A table-like concept that can be used in in place of `SELECT FROM <table-query> ...`.
 #[derive(Debug, PartialEq)]
@@ -15,18 +12,9 @@ pub enum Table<'a> {
     /// A sub-select such as `(SELECT * FROM concerts) AS concerts`.
     SubSelect {
         select: Box<Select<'a>>,
-        alias: String,
+        /// The alias of the sub-select (optional, since we need to alias the sub-select when used in a FROM clause)
+        alias: Option<String>,
     },
-}
-
-impl<'a> Table<'a> {
-    pub fn join(
-        self,
-        other_table: Table<'a>,
-        predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
-    ) -> Table<'a> {
-        Table::Join(LeftJoin::new(self, other_table, predicate))
-    }
 }
 
 impl<'a> ExpressionBuilder for Table<'a> {
@@ -39,8 +27,10 @@ impl<'a> ExpressionBuilder for Table<'a> {
                 builder.push('(');
                 select.build(builder);
                 builder.push(')');
-                builder.push_str(" AS ");
-                builder.push_identifier(alias);
+                if let Some(alias) = alias {
+                    builder.push_str(" AS ");
+                    builder.push_identifier(alias);
+                }
             }
         }
     }
