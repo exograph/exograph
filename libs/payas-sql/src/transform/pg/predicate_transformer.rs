@@ -1,7 +1,7 @@
 use crate::{
     sql::predicate::ConcretePredicate,
     transform::{transformer::PredicateTransformer, SelectionLevel},
-    AbstractPredicate, AbstractSelect, Column, ColumnPath, ColumnPathLink, ColumnSelection,
+    AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, ColumnPathLink,
     PhysicalColumn, PhysicalTable, Selection, SelectionElement,
 };
 
@@ -82,10 +82,10 @@ impl PredicateTransformer for Postgres {
                 Some((left_column, table, foreign_column, tail_links)) => {
                     let right_abstract_select = AbstractSelect {
                         table,
-                        selection: Selection::Seq(vec![ColumnSelection {
-                            column: SelectionElement::Physical(foreign_column),
-                            alias: foreign_column.name.clone(),
-                        }]),
+                        selection: Selection::Seq(vec![AliasedSelectionElement::new(
+                            foreign_column.name.clone(),
+                            SelectionElement::Physical(foreign_column),
+                        )]),
                         predicate: predicate_op(
                             ColumnPath::Physical(tail_links.to_vec()),
                             right.clone(),

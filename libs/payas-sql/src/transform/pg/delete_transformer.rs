@@ -57,7 +57,7 @@ impl DeleteTransformer for Postgres {
 #[cfg(test)]
 mod tests {
     use crate::{
-        asql::selection::{ColumnSelection, Selection, SelectionElement},
+        asql::selection::{AliasedSelectionElement, Selection, SelectionElement},
         sql::{predicate::Predicate, ExpressionBuilder, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
         AbstractPredicate, AbstractSelect, ColumnPath, ColumnPathLink,
@@ -77,7 +77,7 @@ mod tests {
                     table: concerts_table,
                     selection: AbstractSelect {
                         table: concerts_table,
-                        selection: Selection::Seq(vec![ColumnSelection::new(
+                        selection: Selection::Seq(vec![AliasedSelectionElement::new(
                             "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )]),
@@ -119,7 +119,7 @@ mod tests {
                     table: concerts_table,
                     selection: AbstractSelect {
                         table: concerts_table,
-                        selection: Selection::Seq(vec![ColumnSelection::new(
+                        selection: Selection::Seq(vec![AliasedSelectionElement::new(
                             "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )]),
@@ -172,7 +172,7 @@ mod tests {
                     table: concerts_table,
                     selection: AbstractSelect {
                         table: concerts_table,
-                        selection: Selection::Seq(vec![ColumnSelection::new(
+                        selection: Selection::Seq(vec![AliasedSelectionElement::new(
                             "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )]),

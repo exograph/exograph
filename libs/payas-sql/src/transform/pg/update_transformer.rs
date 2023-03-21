@@ -230,7 +230,9 @@ mod tests {
             column_path::{ColumnPath, ColumnPathLink},
             predicate::AbstractPredicate,
             select::AbstractSelect,
-            selection::{ColumnSelection, NestedElementRelation, Selection, SelectionElement},
+            selection::{
+                AliasedSelectionElement, NestedElementRelation, Selection, SelectionElement,
+            },
             update::NestedAbstractUpdate,
         },
         sql::{column::Column, predicate::Predicate, SQLParamContainer},
@@ -267,11 +269,11 @@ mod tests {
                     nested_deletes: vec![],
                     selection: AbstractSelect {
                         selection: Selection::Seq(vec![
-                            ColumnSelection::new(
+                            AliasedSelectionElement::new(
                                 "id".to_string(),
                                 SelectionElement::Physical(venues_id_column),
                             ),
-                            ColumnSelection::new(
+                            AliasedSelectionElement::new(
                                 "name".to_string(),
                                 SelectionElement::Physical(venues_name_column),
                             ),
@@ -349,11 +351,11 @@ mod tests {
                     nested_deletes: vec![],
                     selection: AbstractSelect {
                         selection: Selection::Seq(vec![
-                            ColumnSelection::new(
+                            AliasedSelectionElement::new(
                                 "id".to_string(),
                                 SelectionElement::Physical(venues_id_column),
                             ),
-                            ColumnSelection::new(
+                            AliasedSelectionElement::new(
                                 "name".to_string(),
                                 SelectionElement::Physical(venues_name_column),
                             ),

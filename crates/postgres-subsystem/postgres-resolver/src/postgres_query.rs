@@ -15,8 +15,8 @@ use core_plugin_interface::core_resolver::{
 };
 use futures::StreamExt;
 use payas_sql::{
-    AbstractOrderBy, AbstractPredicate, AbstractSelect, ColumnPathLink, ColumnSelection, Limit,
-    Offset, SelectionCardinality, SelectionElement,
+    AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, ColumnPathLink,
+    Limit, Offset, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
     aggregate::AggregateField,
@@ -149,7 +149,7 @@ async fn content_select<'content>(
     fields: &'content [ValidatedField],
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<Vec<ColumnSelection<'content>>, PostgresExecutionError> {
+) -> Result<Vec<AliasedSelectionElement<'content>>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
         .then(|field| async { map_field(return_type, field, subsystem, request_context).await })
         .collect::<Vec<Result<_, _>>>()
@@ -163,7 +163,7 @@ async fn map_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
+) -> Result<AliasedSelectionElement<'content>, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.to_owned())
     } else {
@@ -182,7 +182,10 @@ async fn map_field<'content>(
         }
     };
 
-    Ok(ColumnSelection::new(field.output_name(), selection_elem))
+    Ok(AliasedSelectionElement::new(
+        field.output_name(),
+        selection_elem,
+    ))
 }
 
 async fn map_persistent_field<'content>(
@@ -221,7 +224,7 @@ async fn map_persistent_field<'content>(
                 .resolve_select(field, request_context, subsystem)
                 .await?;
 
-            Ok(SelectionElement::Nested(
+            Ok(SelectionElement::SubSelect(
                 relation_link,
                 nested_abstract_select,
             ))
@@ -262,7 +265,7 @@ async fn map_persistent_field<'content>(
                 }
             };
 
-            Ok(SelectionElement::Nested(
+            Ok(SelectionElement::SubSelect(
                 relation_link,
                 nested_abstract_select,
             ))
@@ -314,7 +317,7 @@ async fn map_aggregate_field<'content>(
             }
         }?;
 
-        Ok(SelectionElement::Nested(
+        Ok(SelectionElement::SubSelect(
             relation_link,
             nested_abstract_select,
         ))
