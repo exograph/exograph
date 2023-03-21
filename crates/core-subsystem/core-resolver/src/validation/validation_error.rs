@@ -59,6 +59,9 @@ pub enum ValidationError {
 
     #[error("operationName '{0}' doesn't match any operation")]
     MultipleOperationsUnmatchedOperationName(String),
+
+    #[error("Fragment cycle detected: {0}")]
+    FragmentCycle(String, Pos),
 }
 
 impl ValidationError {
@@ -82,6 +85,7 @@ impl ValidationError {
             ValidationError::MultipleOperationsNoOperationName => vec![],
             ValidationError::MultipleOperationsUnmatchedOperationName(_) => vec![],
             ValidationError::InvalidArgumentType { pos, .. } => vec![*pos],
+            ValidationError::FragmentCycle(_, pos) => vec![*pos],
         }
     }
 }

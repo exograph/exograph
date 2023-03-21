@@ -1,0 +1,24 @@
+# Fragment directly referenced itself
+operation: |
+    query {
+      venues {
+        ...VenueInfo
+      }
+    }
+    fragment VenueInfo on Venue {
+      ...VenueInfo
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Fragment cycle detected: VenueInfo",
+          "locations": [
+            {
+              "line": 7,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
