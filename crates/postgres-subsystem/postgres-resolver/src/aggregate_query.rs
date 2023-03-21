@@ -12,7 +12,8 @@ use core_plugin_interface::core_resolver::{
 use futures::StreamExt;
 use maybe_owned::MaybeOwned;
 use payas_sql::{
-    AbstractPredicate, AbstractSelect, ColumnSelection, SelectionCardinality, SelectionElement,
+    AbstractPredicate, AbstractSelect, AliasedSelectionElement, SelectionCardinality,
+    SelectionElement,
 };
 use postgres_model::{
     query::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
@@ -70,7 +71,7 @@ async fn content_select<'content>(
     fields: &'content [ValidatedField],
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<Vec<ColumnSelection<'content>>, PostgresExecutionError> {
+) -> Result<Vec<AliasedSelectionElement<'content>>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
         .then(|field| async { map_field(return_type, field, subsystem, request_context).await })
         .collect::<Vec<Result<_, _>>>()
@@ -84,7 +85,7 @@ async fn map_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     _request_context: &'content RequestContext<'content>,
-) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
+) -> Result<AliasedSelectionElement<'content>, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.type_name().to_string())
     } else {
@@ -124,5 +125,8 @@ async fn map_field<'content>(
         }
     };
 
-    Ok(ColumnSelection::new(field.output_name(), selection_elem))
+    Ok(AliasedSelectionElement::new(
+        field.output_name(),
+        selection_elem,
+    ))
 }
