@@ -50,7 +50,7 @@ impl<'a> TableDependency<'a> {
     ///    ]
     /// }
     /// ```
-    pub fn from_column_path(paths_list: Vec<Vec<ColumnPathLink<'a>>>) -> Option<Self> {
+    pub fn from_column_path(paths_list: &[Vec<ColumnPathLink<'a>>]) -> Option<Self> {
         let table = paths_list.get(0)?.get(0)?.self_column.1;
 
         assert!(
@@ -66,7 +66,7 @@ impl<'a> TableDependency<'a> {
         // Group by the `ColumnPathLink` to paths that start with it.
         // Later the key (`ColumnPathLink`) and values (`Vec<ColumnPathLink>`) will
         // be used to create `DependencyLink`s.
-        let grouped = paths_list.into_iter().fold(
+        let grouped = paths_list.iter().fold(
             BTreeMap::<ColumnPathLink, Vec<Vec<ColumnPathLink<'a>>>>::new(),
             |mut acc, paths| match &paths[..] {
                 [head, tail @ ..] => {
@@ -84,7 +84,7 @@ impl<'a> TableDependency<'a> {
         let dependencies = grouped
             .into_iter()
             .map(|(link, paths)| {
-                let dependency = Self::from_column_path(paths).unwrap();
+                let dependency = Self::from_column_path(&paths).unwrap();
                 DependencyLink { link, dependency }
             })
             .collect();

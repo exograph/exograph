@@ -4,14 +4,13 @@ use crate::{
         select::AbstractSelect, update::AbstractUpdate,
     },
     sql::{
-        cte::WithQuery, group_by::GroupBy, order::OrderBy, predicate::ConcretePredicate,
-        select::Select, transaction::TransactionScript,
+        cte::WithQuery, order::OrderBy, predicate::ConcretePredicate, select::Select,
+        transaction::TransactionScript,
     },
     AbstractOrderBy, AbstractPredicate,
 };
 
 use super::pg::Postgres;
-use super::SelectionLevel;
 
 pub trait Transformer {
     fn to_transaction_script<'a>(
@@ -43,13 +42,7 @@ impl Transformer for Postgres {
 }
 
 pub trait SelectTransformer {
-    fn to_select<'a>(
-        &self,
-        abstract_select: &AbstractSelect<'a>,
-        additional_predicate: Option<ConcretePredicate<'a>>,
-        group_by: Option<GroupBy<'a>>,
-        selection_level: SelectionLevel,
-    ) -> Select<'a>;
+    fn to_select<'a>(&self, abstract_select: &AbstractSelect<'a>) -> Select<'a>;
 
     fn to_transaction_script<'a>(
         &self,

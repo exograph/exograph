@@ -1,9 +1,6 @@
 use crate::{
     sql::predicate::ConcretePredicate,
-    transform::{
-        transformer::{PredicateTransformer, SelectTransformer},
-        SelectionLevel,
-    },
+    transform::{transformer::PredicateTransformer, SelectionLevel},
     AbstractPredicate, AbstractSelect, Column, ColumnPath, ColumnPathLink, ColumnSelection,
     PhysicalColumn, PhysicalTable, Selection, SelectionElement,
 };
@@ -79,7 +76,7 @@ impl PredicateTransformer for Postgres {
             left: &ColumnPath<'p>,
             right: &ColumnPath<'p>,
             predicate_op: impl Fn(ColumnPath<'p>, ColumnPath<'p>) -> AbstractPredicate<'p>,
-            select_transformer: &impl SelectTransformer,
+            select_transformer: &Postgres,
         ) -> Option<ConcretePredicate<'p>> {
             match column_path_components(left) {
                 Some((left_column, table, foreign_column, tail_links)) => {
@@ -98,11 +95,11 @@ impl PredicateTransformer for Postgres {
                         limit: None,
                     };
 
-                    let right_select = select_transformer.to_select(
+                    let right_select = select_transformer.compute_select(
                         &right_abstract_select,
                         None,
-                        None,
                         SelectionLevel::Nested,
+                        true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
                     );
 
                     let right_select_column = Column::SubSelect(Box::new(right_select));
@@ -228,7 +225,7 @@ mod tests {
                 {
                     let predicate = Postgres {}.to_join_predicate(&abstract_predicate);
                     assert_binding!(
-                        predicate.into_sql(),
+                        predicate.to_sql(),
                         r#""concerts"."name" = $1"#,
                         "v1".to_string()
                     );
@@ -237,7 +234,7 @@ mod tests {
                 {
                     let predicate = Postgres {}.to_subselect_predicate(&abstract_predicate);
                     assert_binding!(
-                        predicate.into_sql(),
+                        predicate.to_sql(),
                         r#""concerts"."name" = $1"#,
                         "v1".to_string()
                     );
@@ -311,7 +308,7 @@ mod tests {
                     let predicate = Postgres {}.to_join_predicate(&abstract_predicate);
 
                     assert_binding!(
-                        predicate.into_sql(),
+                        predicate.to_sql(),
                         format!(r#""venues"."name" {sql_op}"#),
                         "v1".to_string()
                     );
@@ -321,7 +318,7 @@ mod tests {
                     let predicate = Postgres {}.to_subselect_predicate(&abstract_predicate);
 
                     assert_binding!(
-                        predicate.into_sql(),
+                        predicate.to_sql(),
                         format!(
                             r#""concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE "venues"."name" {sql_op})"#
                         ),

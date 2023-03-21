@@ -52,7 +52,7 @@ mod test {
 
         let order_by = OrderBy(vec![OrderByElement::new(&age_col, Ordering::Desc)]);
 
-        assert_binding!(order_by.into_sql(), r#"ORDER BY "people"."age" DESC"#);
+        assert_binding!(order_by.to_sql(), r#"ORDER BY "people"."age" DESC"#);
     }
 
     #[test]
@@ -78,7 +78,7 @@ mod test {
             ]);
 
             assert_binding!(
-                order_by.into_sql(),
+                order_by.to_sql(),
                 r#"ORDER BY "people"."name" ASC, "people"."age" DESC"#
             );
         }
@@ -91,7 +91,7 @@ mod test {
             ]);
 
             assert_binding!(
-                order_by.into_sql(),
+                order_by.to_sql(),
                 r#"ORDER BY "people"."age" DESC, "people"."name" ASC"#
             );
         }

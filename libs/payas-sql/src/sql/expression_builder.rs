@@ -1,11 +1,9 @@
-use maybe_owned::MaybeOwned;
-
-#[cfg(test)]
-use crate::SQLParam;
-#[cfg(test)]
 use std::sync::Arc;
 
+use maybe_owned::MaybeOwned;
+
 use super::SQLBuilder;
+use crate::SQLParam;
 
 /// A trait for types that can build themselves into an SQL expression.
 ///
@@ -16,12 +14,11 @@ pub trait ExpressionBuilder {
     /// Build the SQL expression into the given SQL builder
     fn build(&self, builder: &mut SQLBuilder);
 
-    /// Build the SQL expression into a string and return it This is useful for testing, where we
+    /// Build the SQL expression into a string and return it This is useful for testing/debugging, where we
     /// want to assert on the generated SQL without going through the whole process of creating an
     /// SQLBuilder, then building the SQL expression into it, and finally extracting the SQL string
     /// and params.
-    #[cfg(test)]
-    fn into_sql(self) -> (String, Vec<Arc<dyn SQLParam>>)
+    fn to_sql(&self) -> (String, Vec<Arc<dyn SQLParam>>)
     where
         Self: Sized,
     {

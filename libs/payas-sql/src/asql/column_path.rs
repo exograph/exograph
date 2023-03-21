@@ -14,6 +14,17 @@ pub struct ColumnPathLink<'a> {
     pub linked_column: Option<(&'a PhysicalColumn, &'a PhysicalTable)>,
 }
 
+impl ColumnPathLink<'_> {
+    /// Determines if this link is a one-to-many link.
+    ///
+    /// If the self column is a primary key and the linked column links to a table, then this is a
+    /// one-to-many link. For example, when referring from a venue to concerts, the `venue.id` would
+    /// be the self column and `concert.venue_id` would be the linked column.
+    pub fn is_one_to_many(&self) -> bool {
+        self.self_column.0.is_pk && self.linked_column.is_some()
+    }
+}
+
 /// A link in `ColumnPath` to a column starting at a root table and ending at a leaf column. This
 /// allows us to represent a column path that goes through multiple tables and help the query
 /// planner to determine which tables to join or perform subselects. For example, to represent the
