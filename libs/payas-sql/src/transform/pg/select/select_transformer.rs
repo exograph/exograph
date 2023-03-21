@@ -3,23 +3,17 @@ use tracing::instrument;
 use crate::{
     asql::select::AbstractSelect,
     sql::{
-        group_by::GroupBy,
         predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{
-        pg::select::selection_strategy::ManyToOnePredicateWithoutOrderWithoutLimitOffset,
-        transformer::SelectTransformer, SelectionLevel,
-    },
+    transform::{transformer::SelectTransformer, SelectionLevel},
 };
 
-use super::selection_strategy::{
-    ManyToOnePredicateWithOrderLimitOffset, OneToManyPredicateWithRootLevelOrderByWithLimitOffset,
-    Unconditional,
+use super::{
+    selection_context::SelectionContext, selection_strategy_chain::SelectionStrategyChain,
 };
-use super::{selection_context::SelectionContext, selection_strategy::SelectionStrategyChain};
 
 use crate::transform::pg::Postgres;
 
@@ -126,40 +120,45 @@ use crate::transform::pg::Postgres;
 /// -------| --------------------------------------------------------------------- | ----
 impl SelectTransformer for Postgres {
     /// Form a [`Select`] from a given [`AbstractSelect`].
+
     #[instrument(
         name = "SelectTransformer::to_select for Postgres"
         skip(self)
         )]
-    fn to_select<'a>(
-        &self,
-        abstract_select: &AbstractSelect<'a>,
-        additional_predicate: Option<ConcretePredicate<'a>>,
-        group_by: Option<GroupBy<'a>>,
-        selection_level: SelectionLevel,
-    ) -> Select<'a> {
-        let selection_context =
-            SelectionContext::new(abstract_select, additional_predicate, selection_level, self);
-
-        let chain = SelectionStrategyChain::new(vec![
-            &ManyToOnePredicateWithoutOrderWithoutLimitOffset {},
-            &ManyToOnePredicateWithOrderLimitOffset {},
-            &OneToManyPredicateWithRootLevelOrderByWithLimitOffset {},
-            &Unconditional {},
-        ]);
-
-        chain.to_select(selection_context).unwrap()
+    fn to_select<'a>(&self, abstract_select: &AbstractSelect<'a>) -> Select<'a> {
+        self.compute_select(abstract_select, None, SelectionLevel::TopLevel, false)
     }
 
     fn to_transaction_script<'a>(
         &self,
         abstract_select: &'a AbstractSelect,
     ) -> TransactionScript<'a> {
-        let select = self.to_select(abstract_select, None, None, SelectionLevel::TopLevel);
+        let select = self.to_select(abstract_select);
         let mut transaction_script = TransactionScript::default();
         transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
             SQLOperation::Select(select),
         )));
         transaction_script
+    }
+}
+
+impl Postgres {
+    pub fn compute_select<'a>(
+        &self,
+        abstract_select: &AbstractSelect<'a>,
+        additional_predicate: Option<ConcretePredicate<'a>>,
+        selection_level: SelectionLevel,
+        allow_duplicate_rows: bool,
+    ) -> Select<'a> {
+        let chain = SelectionStrategyChain::default();
+        let selection_context = SelectionContext::new(
+            abstract_select,
+            additional_predicate,
+            selection_level,
+            allow_duplicate_rows,
+            self,
+        );
+        chain.to_select(selection_context).unwrap()
     }
 }
 
@@ -172,9 +171,7 @@ mod tests {
             selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
         sql::{predicate::Predicate, SQLParamContainer},
-        transform::{
-            pg::Postgres, test_util::TestSetup, transformer::SelectTransformer, SelectionLevel,
-        },
+        transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
         AbstractOrderBy, Limit, Offset, Ordering,
     };
 
@@ -201,7 +198,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(select.to_sql(), r#"SELECT "concerts"."id" FROM "concerts""#);
             },
         );
@@ -234,7 +231,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
                     select.to_sql(),
                     r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."id" = $1"#,
@@ -267,7 +264,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
                     select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts""#
@@ -333,7 +330,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
                     select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id", 'venue', (SELECT json_build_object('id', "venues"."id") FROM "venues" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "concerts""#
@@ -393,7 +390,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
                     select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "venues""#
@@ -447,7 +444,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
                     select.to_sql(),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
@@ -483,7 +480,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
                     select.to_sql(),
                     r#"SELECT "concerts"."id" FROM "concerts" ORDER BY "concerts"."name" ASC"#
@@ -521,7 +518,7 @@ mod tests {
                     limit: Some(Limit(20)),
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
                     select.to_sql(),
                     r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."name" = $1 LIMIT $2 OFFSET $3"#,
@@ -568,7 +565,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, None, None, SelectionLevel::TopLevel);
+                let select = Postgres {}.to_select(&aselect);
                 assert_binding!(
                     select.to_sql(),
                     r#"SELECT "concerts"."id" FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC"#

@@ -8,10 +8,7 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{
-        transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
-        SelectionLevel,
-    },
+    transform::transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
 };
 
 use super::Postgres;
@@ -45,12 +42,7 @@ impl DeleteTransformer for Postgres {
                 .delete(predicate.into(), vec![Column::Star(None).into()]),
         );
 
-        let select = self.to_select(
-            &abstract_delete.selection,
-            None,
-            None,
-            SelectionLevel::TopLevel,
-        );
+        let select = self.to_select(&abstract_delete.selection);
 
         WithQuery {
             expressions: vec![CteExpression {

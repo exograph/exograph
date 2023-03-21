@@ -18,10 +18,7 @@ use crate::{
         table::Table,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{
-        transformer::{InsertTransformer, SelectTransformer},
-        SelectionLevel,
-    },
+    transform::transformer::{InsertTransformer, SelectTransformer},
     Limit, Offset,
 };
 
@@ -42,7 +39,7 @@ impl InsertTransformer for Postgres {
             selection,
         } = abstract_insert;
 
-        let select = self.to_select(selection, None, None, SelectionLevel::TopLevel);
+        let select = self.to_select(selection);
 
         let (self_elems, mut nested_elems): (Vec<_>, Vec<_>) = rows
             .iter()

@@ -5,12 +5,12 @@ use crate::{
         json_object::{JsonObject, JsonObjectElement},
         predicate::ConcretePredicate,
     },
-    transform::{transformer::SelectTransformer, SelectionLevel},
+    transform::{pg::Postgres, SelectionLevel},
     Column, ColumnSelection, Selection, SelectionCardinality, SelectionElement,
 };
 
 impl<'a> Selection<'a> {
-    pub fn to_sql(&self, select_transformer: &impl SelectTransformer) -> SelectionSQL<'a> {
+    pub fn to_sql(&self, select_transformer: &Postgres) -> SelectionSQL<'a> {
         match self {
             Selection::Seq(seq) => SelectionSQL::Seq(
                 seq.iter()
@@ -42,10 +42,7 @@ impl<'a> Selection<'a> {
         }
     }
 
-    pub fn selection_aggregate(
-        &self,
-        select_transformer: &impl SelectTransformer,
-    ) -> Vec<Column<'a>> {
+    pub fn selection_aggregate(&self, select_transformer: &Postgres) -> Vec<Column<'a>> {
         match self.to_sql(select_transformer) {
             SelectionSQL::Single(elem) => vec![elem],
             SelectionSQL::Seq(elems) => elems,
@@ -54,7 +51,7 @@ impl<'a> Selection<'a> {
 }
 
 impl<'a> SelectionElement<'a> {
-    pub fn to_sql(&self, database_kind: &impl SelectTransformer) -> Column<'a> {
+    pub fn to_sql(&self, transformer: &Postgres) -> Column<'a> {
         match self {
             SelectionElement::Physical(pc) => Column::Physical(pc),
             SelectionElement::Function {
@@ -69,13 +66,13 @@ impl<'a> SelectionElement<'a> {
                 let elements = elements
                     .iter()
                     .map(|(alias, column)| {
-                        JsonObjectElement::new(alias.to_owned(), column.to_sql(database_kind))
+                        JsonObjectElement::new(alias.to_owned(), column.to_sql(transformer))
                     })
                     .collect();
                 Column::JsonObject(JsonObject(elements))
             }
             SelectionElement::Nested(relation, select) => {
-                Column::SubSelect(Box::new(database_kind.to_select(
+                Column::SubSelect(Box::new(transformer.compute_select(
                     select,
                     relation.linked_column.map(|linked_column| {
                         ConcretePredicate::Eq(
@@ -83,8 +80,8 @@ impl<'a> SelectionElement<'a> {
                             Column::Physical(linked_column.0),
                         )
                     }),
-                    None,
                     SelectionLevel::Nested,
+                    false,
                 )))
             }
         }
