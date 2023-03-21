@@ -18,7 +18,7 @@ use core_resolver::{request_context::RequestContext, QueryResponseBody};
 use futures::Stream;
 
 pub type Headers = Vec<(String, String)>;
-
+pub type ResponseStream<E> = (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers);
 /// Resolves an incoming query, returning a response stream containing JSON and a set
 /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
 /// if something went wrong.
@@ -34,7 +34,7 @@ pub async fn resolve<'a, E: 'static>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
     request_context: RequestContext<'a>,
-) -> (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers) {
+) -> ResponseStream<E> {
     let response = system_resolver
         .resolve_operations(operations_payload, &request_context)
         .await;
@@ -107,9 +107,9 @@ pub async fn resolve<'a, E: 'static>(
             Err(err) => {
                 yield Bytes::from_static(br#"{"errors": [{"message":""#);
                 yield Bytes::from(
-                    format!("{}", err.user_error_message())
-                        .replace("\"", "")
-                        .replace("\n", "; ")
+                    err.user_error_message().to_string()
+                        .replace('\"', "")
+                        .replace('\n', "; ")
                 );
                 yield Bytes::from_static(br#"""#);
                 if let SystemResolutionError::Validation(err) = err {
