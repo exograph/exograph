@@ -596,6 +596,60 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
+    #[test]
+    fn fragment_recursion_direct() {
+        let schema = create_test_schema();
+
+        let query = r#"
+            query {
+                concerts {
+                    ...concertFields
+                }
+            }
+
+            fragment concertFields on Concert {
+                ...concertFields
+            }
+        "#;
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn fragment_recursion_indirect() {
+        let schema = create_test_schema();
+
+        let query = r#"
+            query {
+                concerts {
+                    ...concertInfo
+                }
+            }
+
+            fragment concertInfo on Concert {
+                ...concertDetails
+            }
+
+            fragment concertDetails on Concert {
+                ...concertInfo
+            }
+        "#;
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
     fn create_variables(variables: &str) -> Map<String, Value> {
         serde_json::from_str(variables).unwrap()
     }
