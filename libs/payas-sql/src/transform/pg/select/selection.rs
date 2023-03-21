@@ -1,13 +1,17 @@
 use crate::{
-    asql::selection::SelectionSQL,
     sql::{
         json_agg::JsonAgg,
         json_object::{JsonObject, JsonObjectElement},
         predicate::ConcretePredicate,
     },
     transform::{pg::Postgres, SelectionLevel},
-    Column, ColumnSelection, Selection, SelectionCardinality, SelectionElement,
+    AliasedSelectionElement, Column, Selection, SelectionCardinality, SelectionElement,
 };
+
+pub enum SelectionSQL<'a> {
+    Single(Column<'a>),
+    Seq(Vec<Column<'a>>),
+}
 
 impl<'a> Selection<'a> {
     pub fn to_sql(&self, select_transformer: &Postgres) -> SelectionSQL<'a> {
@@ -15,7 +19,7 @@ impl<'a> Selection<'a> {
             Selection::Seq(seq) => SelectionSQL::Seq(
                 seq.iter()
                     .map(
-                        |ColumnSelection {
+                        |AliasedSelectionElement {
                              alias: _alias,
                              column,
                          }| column.to_sql(select_transformer),
@@ -25,7 +29,7 @@ impl<'a> Selection<'a> {
             Selection::Json(seq, cardinality) => {
                 let object_elems = seq
                     .iter()
-                    .map(|ColumnSelection { alias, column }| {
+                    .map(|AliasedSelectionElement { alias, column }| {
                         JsonObjectElement::new(alias.clone(), column.to_sql(select_transformer))
                     })
                     .collect();
@@ -71,7 +75,7 @@ impl<'a> SelectionElement<'a> {
                     .collect();
                 Column::JsonObject(JsonObject(elements))
             }
-            SelectionElement::Nested(relation, select) => {
+            SelectionElement::SubSelect(relation, select) => {
                 Column::SubSelect(Box::new(transformer.compute_select(
                     select,
                     relation.linked_column.map(|linked_column| {

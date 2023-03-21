@@ -43,7 +43,8 @@ pub use asql::{
     predicate::AbstractPredicate,
     select::AbstractSelect,
     selection::{
-        ColumnSelection, NestedElementRelation, Selection, SelectionCardinality, SelectionElement,
+        AliasedSelectionElement, NestedElementRelation, Selection, SelectionCardinality,
+        SelectionElement,
     },
     update::{AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate},
 };

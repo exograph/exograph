@@ -142,7 +142,9 @@ mod tests {
         asql::{
             column_path::{ColumnPath, ColumnPathLink},
             predicate::AbstractPredicate,
-            selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
+            selection::{
+                AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement,
+            },
         },
         sql::{predicate::Predicate, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
@@ -162,7 +164,7 @@ mod tests {
              }| {
                 let aselect = AbstractSelect {
                     table: concerts_table,
-                    selection: Selection::Seq(vec![ColumnSelection::new(
+                    selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
@@ -195,7 +197,7 @@ mod tests {
 
                 let aselect = AbstractSelect {
                     table: concerts_table,
-                    selection: Selection::Seq(vec![ColumnSelection::new(
+                    selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
@@ -226,7 +228,7 @@ mod tests {
                 let aselect = AbstractSelect {
                     table: concerts_table,
                     selection: Selection::Json(
-                        vec![ColumnSelection::new(
+                        vec![AliasedSelectionElement::new(
                             "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )],
@@ -268,13 +270,13 @@ mod tests {
                     table: concerts_table,
                     selection: Selection::Json(
                         vec![
-                            ColumnSelection::new(
+                            AliasedSelectionElement::new(
                                 "id".to_string(),
                                 SelectionElement::Physical(concerts_id_column),
                             ),
-                            ColumnSelection::new(
+                            AliasedSelectionElement::new(
                                 "venue".to_string(),
-                                SelectionElement::Nested(
+                                SelectionElement::SubSelect(
                                     ColumnPathLink {
                                         self_column: (concerts_venue_id_column, concerts_table),
                                         linked_column: Some((venues_id_column, venues_table)),
@@ -282,7 +284,7 @@ mod tests {
                                     AbstractSelect {
                                         table: venues_table,
                                         selection: Selection::Json(
-                                            vec![ColumnSelection::new(
+                                            vec![AliasedSelectionElement::new(
                                                 "id".to_string(),
                                                 SelectionElement::Physical(venues_id_column),
                                             )],
@@ -328,13 +330,13 @@ mod tests {
                     table: venues_table,
                     selection: Selection::Json(
                         vec![
-                            ColumnSelection::new(
+                            AliasedSelectionElement::new(
                                 "id".to_string(),
                                 SelectionElement::Physical(venues_id_column),
                             ),
-                            ColumnSelection::new(
+                            AliasedSelectionElement::new(
                                 "concerts".to_string(),
-                                SelectionElement::Nested(
+                                SelectionElement::SubSelect(
                                     ColumnPathLink {
                                         self_column: (concerts_venue_id_column, concerts_table),
                                         linked_column: Some((venues_id_column, venues_table)),
@@ -342,7 +344,7 @@ mod tests {
                                     AbstractSelect {
                                         table: concerts_table,
                                         selection: Selection::Json(
-                                            vec![ColumnSelection::new(
+                                            vec![AliasedSelectionElement::new(
                                                 "id".to_string(),
                                                 SelectionElement::Physical(concerts_id_column),
                                             )],
@@ -406,7 +408,7 @@ mod tests {
                 let aselect = AbstractSelect {
                     table: concerts_table,
                     selection: Selection::Json(
-                        vec![ColumnSelection::new(
+                        vec![AliasedSelectionElement::new(
                             "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )],
@@ -444,7 +446,7 @@ mod tests {
 
                 let aselect = AbstractSelect {
                     table: concerts_table,
-                    selection: Selection::Seq(vec![ColumnSelection::new(
+                    selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
@@ -482,7 +484,7 @@ mod tests {
 
                 let aselect = AbstractSelect {
                     table: concerts_table,
-                    selection: Selection::Seq(vec![ColumnSelection::new(
+                    selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
@@ -529,7 +531,7 @@ mod tests {
 
                 let aselect = AbstractSelect {
                     table: concerts_table,
-                    selection: Selection::Seq(vec![ColumnSelection::new(
+                    selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),

@@ -1,50 +1,55 @@
+//! Support for selecting columns in a table, including json aggregates
 use maybe_owned::MaybeOwned;
 
-use crate::{
-    sql::column::Column, sql::physical_column::PhysicalColumn, ColumnPathLink, PhysicalTable,
-};
+use crate::{sql::physical_column::PhysicalColumn, ColumnPathLink, PhysicalTable};
 
 use super::select::AbstractSelect;
 
+/// A selection element along with its alias
 #[derive(Debug)]
-pub struct ColumnSelection<'a> {
+pub struct AliasedSelectionElement<'a> {
     pub(crate) alias: String,
     pub(crate) column: SelectionElement<'a>,
 }
 
-impl<'a> ColumnSelection<'a> {
+impl<'a> AliasedSelectionElement<'a> {
     pub fn new(alias: String, column: SelectionElement<'a>) -> Self {
         Self { alias, column }
     }
 }
 
+/// The cardinality of a json aggregate
 #[derive(Debug)]
 pub enum SelectionCardinality {
     One,
     Many,
 }
 
+/// A selection of columns in a table
 #[derive(Debug)]
 pub enum Selection<'a> {
-    Seq(Vec<ColumnSelection<'a>>),
-    Json(Vec<ColumnSelection<'a>>, SelectionCardinality),
+    /// A sequence of columns
+    Seq(Vec<AliasedSelectionElement<'a>>),
+    /// A json aggregate. The cardinality determines whether it is a single json object or an array of json objects
+    Json(Vec<AliasedSelectionElement<'a>>, SelectionCardinality),
 }
 
-pub enum SelectionSQL<'a> {
-    Single(Column<'a>),
-    Seq(Vec<Column<'a>>),
-}
-
+/// An element that could be selected as a part of a `SELECT <selection-element> <selection-element>` clause.
 #[derive(Debug)]
 pub enum SelectionElement<'a> {
+    /// A column in the table
     Physical(&'a PhysicalColumn),
+    /// A function such as `SUM(price)`
     Function {
         function_name: String,
         column: &'a PhysicalColumn,
     },
+    /// A json object such as `{"name": "concerts"."name", "price": "concerts"."price"}`
     Object(Vec<(String, MaybeOwned<'a, SelectionElement<'a>>)>),
-    Constant(String), // To support __typename
-    Nested(ColumnPathLink<'a>, AbstractSelect<'a>),
+    /// A constant such as `"hello"` (useful to supply it to database and get back the same value). Useful for `__typename` field.
+    Constant(String),
+    /// A subselect such as `... FROM (SELECT * FROM table)`
+    SubSelect(ColumnPathLink<'a>, AbstractSelect<'a>),
 }
 
 /// Relation between two tables
