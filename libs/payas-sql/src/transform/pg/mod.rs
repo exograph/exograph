@@ -6,3 +6,9 @@ mod select;
 mod update_transformer;
 
 pub struct Postgres {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SelectionLevel {
+    TopLevel,
+    Nested,
+}

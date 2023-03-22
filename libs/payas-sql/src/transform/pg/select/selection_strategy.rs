@@ -2,9 +2,8 @@ use crate::{
     sql::{predicate::ConcretePredicate, select::Select, table::Table},
     transform::{
         join_util,
-        pg::Postgres,
+        pg::{Postgres, SelectionLevel},
         transformer::{OrderByTransformer, PredicateTransformer},
-        SelectionLevel,
     },
     AbstractOrderBy, AbstractPredicate, Column, ColumnPathLink, Limit, Offset, PhysicalTable,
     Selection,

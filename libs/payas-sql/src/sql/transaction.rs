@@ -10,6 +10,7 @@ use super::{
 
 pub type TransactionStepResult = Vec<Row>;
 
+/// Sequence of SQL operations that are executed in a transaction
 #[derive(Default, Debug)]
 pub struct TransactionScript<'a> {
     steps: Vec<TransactionStep<'a>>,

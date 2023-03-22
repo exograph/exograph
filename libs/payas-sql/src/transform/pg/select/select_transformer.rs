@@ -8,7 +8,7 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{transformer::SelectTransformer, SelectionLevel},
+    transform::{pg::SelectionLevel, transformer::SelectTransformer},
 };
 
 use super::{
@@ -17,15 +17,17 @@ use super::{
 
 use crate::transform::pg::Postgres;
 
-/// The current implementation makes the assumption that the return value of the select statement is a JSON object.
+/// Transform an abstract select into a select statement
 ///
-/// There are two axis to implement here:
-/// 1. Return Aggregate: The assembly of the return value aggregate. This should match the shape of the return data in GraphQL query.
-/// 2. Raw Data: Rows to feed into the return aggregate. This should match the data matching queries predicates, order by, limit, and offset.
+/// There are two parts to implement here:
+/// 1. Return Aggregate: The assembly of the return value. This should match the shape of the return
+///    data in the GraphQL query or the columns specified in the `SELECT` clause.
+/// 2. Raw Data: Rows to feed into the return aggregate. This should return the data matching the query's
+///    predicate, order by, limit, and offset.
 ///
-/// Our current implementation decouples the two axis.
+/// Our current implementation decouples the two parts.
 ///
-/// Consider the following GraphQL query (assuming the typical Concert/Venue schema):
+/// Consider the following GraphQL query (assuming the typical `Venue -> [Concert]` schema):
 /// ```graphql
 /// {
 ///    concerts(where: {id: {gt: 10}}, orderBy: {id: asc}, limit: 10, offset: 20) {
@@ -43,9 +45,10 @@ use crate::transform::pg::Postgres;
 ///
 /// # Return Aggregate
 ///
-/// Since the return value is a JSON array, we will use a `json_agg` to aggregate the rows into a JSON array. The `::text` cast is
-/// necessary to convert the JSON array into a string, so that we the GraphQL query can just return the string as-is. See [`Select`]
-/// for more details.
+/// Since the return value is a JSON array, we will use a `json_agg` to aggregate the rows into a
+/// JSON array. The `::text` cast is necessary to convert the JSON array into a string, so that the
+/// GraphQL query can just return the string obtained from the database as-is. See [`Select`] for
+/// more details.
 ///
 /// ```sql
 /// COALESCE(
@@ -61,7 +64,7 @@ use crate::transform::pg::Postgres;
 /// )::text
 /// ```
 ///
-/// If we were to return a single concert (for query such as `concert(id: 5)`), we would use a
+/// If we were to return a single concert (for a query such as `concert(id: 5)`), we would use a
 /// `json_build_object` aggregate:
 /// ```sql
 /// SELECT json_build_object(
@@ -83,11 +86,11 @@ use crate::transform::pg::Postgres;
 /// # Raw data selection.
 ///
 /// This is the selection of the rows that will be fed into the return aggregate. As mentioned
-/// earlier, this should match the data matching queries predicates, order by, limit, and
+/// earlier, this should return the data matching query's predicates, order by, limit, and
 /// offset--but only for the top-level table. An important consideration is making sure that we
 /// don't return the same row more than once.
 ///
-/// We first analyze the selection to determine characteristics of the selection:
+/// We first analyze the selection to determine characteristics, such as:
 /// - Does it use any order-by, limit or offset?
 /// - Does it use any one-to-many clauses (in either predicate or order-by clause)?
 ///
@@ -117,6 +120,8 @@ impl SelectTransformer for Postgres {
 }
 
 impl Postgres {
+    /// A lower-level version of [`to_select`] that allows for additional predicates and
+    /// control over whether duplicate rows are allowed.
     pub fn compute_select<'a>(
         &self,
         abstract_select: &AbstractSelect<'a>,
@@ -124,7 +129,6 @@ impl Postgres {
         selection_level: SelectionLevel,
         allow_duplicate_rows: bool,
     ) -> Select<'a> {
-        let chain = SelectionStrategyChain::default();
         let selection_context = SelectionContext::new(
             abstract_select,
             additional_predicate,
@@ -132,6 +136,7 @@ impl Postgres {
             allow_duplicate_rows,
             self,
         );
+        let chain = SelectionStrategyChain::default();
         chain.to_select(selection_context).unwrap()
     }
 }

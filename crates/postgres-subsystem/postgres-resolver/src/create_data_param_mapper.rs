@@ -204,7 +204,6 @@ fn map_foreign<'a>(
             column: self_reference_column,
             table: self_table,
         },
-        self_table,
         parent_table,
         insertions: insertion,
     }))

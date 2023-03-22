@@ -1,6 +1,6 @@
 use crate::{
     sql::predicate::ConcretePredicate,
-    transform::{transformer::PredicateTransformer, SelectionLevel},
+    transform::{pg::SelectionLevel, transformer::PredicateTransformer},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, ColumnPathLink,
     PhysicalColumn, PhysicalTable, Selection, SelectionElement,
 };

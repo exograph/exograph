@@ -7,7 +7,7 @@ use crate::{
         database::Database,
         transaction::{TransactionScript, TransactionStepResult},
     },
-    transform::{pg::Postgres, transformer::Transformer},
+    transform::{pg::Postgres, transformer::OperationTransformer},
 };
 
 use super::abstract_operation::AbstractOperation;

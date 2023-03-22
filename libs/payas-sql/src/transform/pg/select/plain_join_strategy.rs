@@ -1,6 +1,6 @@
 use crate::{
     sql::select::Select,
-    transform::{transformer::OrderByTransformer, SelectionLevel},
+    transform::{pg::SelectionLevel, transformer::OrderByTransformer},
     Selection,
 };
 
@@ -12,23 +12,24 @@ use super::{
 /// Strategy that uses a plain join of tables involved in clauses
 ///
 /// Suitable for:
-/// - For aggregate output: Many-to-one predicate without order-by, limit or offset.
-/// - For non-aggregate output: Many-to-one predicate or order-by; or where duplicate rows can be
-///   tolerated (typically for a subquery)
+/// - For aggregate output: Only many-to-one predicates without order-by, limit or offset.
+/// - For non-aggregate output: Only many-to-one predicates or order-by; or where duplicate rows can
+///   be tolerated (typically for a subquery)
 ///
 /// Pre-conditions (for aggregate output):
 /// - Order by is none
 /// - Limit and offsets are none
-/// - Predicate meets one of the following conditions:
+/// - Predicates that are only of many-to-one kind. Specifically, meeting one of the following conditions:
 ///     - No predicate (such as `concerts { ... }`)
 ///     - Predicate referring to columns of the root table (such as `concerts(where: {id: {gt: 10}})`)
 ///     - Predicate referring to columns of a table navigable though many-to-one relationships such as:
 ///         - `concerts(where: {venue: {id: {gt: 10}}})`
 ///         - `concerts(where: {venue: {city: {name: {eq: "San Francisco"}}}})`)
+///
 /// Pre-conditions (for non-aggregate output):
-/// - Predicate along with order by refers to only many-to-one relationships (such as `concerts(orderBy: {venue: {name: ASC}})`)
+/// - Predicate along with order-by refers to only many-to-one relationships (such as `concerts(orderBy: {venue: {name: ASC}})`)
 ///   -- or --
-/// - Explicit specification indicated that duplicate rows are allowed
+/// - Explicit specification indicating that duplicate rows are allowed
 ///
 /// If the predicate refers to a single table, we build the aggregate directly from the table's data
 /// to produce a statement like:
@@ -47,13 +48,12 @@ use super::{
 ///   }
 /// }
 /// ```
-/// Here, we join the root table with the one that the predicate refers and produce a statement
-/// like:
+/// Here, we join the root table with the one that the predicate refers to produce a statement like:
 ///
 /// ```sql
 /// SELECT COALESCE(...)::text FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."id" < $1
 /// ```
-/// We can do the same for any level of predicates as long as relationships are of many-to-one kind.
+/// We can do the same for any depth of predicates as long as the relationships are of many-to-one kind.
 ///
 /// These single-table and multi-many-to-one work in the same conceptual way, since with a single
 /// table, the "join" becomes just the table itself.

@@ -1,9 +1,11 @@
 use crate::{
     sql::predicate::ConcretePredicate,
-    transform::{pg::Postgres, SelectionLevel},
+    transform::pg::{Postgres, SelectionLevel},
     AbstractSelect, ColumnPath, ColumnPathLink,
 };
 
+/// A context for the selection transformation to avoid repeating the same work
+/// by each strategy.
 pub(crate) struct SelectionContext<'c, 'a> {
     pub abstract_select: &'c AbstractSelect<'a>,
     pub has_a_one_to_many_predicate: bool,
