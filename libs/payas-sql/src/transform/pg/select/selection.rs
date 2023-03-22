@@ -4,7 +4,7 @@ use crate::{
         json_object::{JsonObject, JsonObjectElement},
         predicate::ConcretePredicate,
     },
-    transform::{pg::Postgres, SelectionLevel},
+    transform::pg::{Postgres, SelectionLevel},
     AliasedSelectionElement, Column, Selection, SelectionCardinality, SelectionElement,
 };
 
