@@ -72,8 +72,8 @@ tokio = "1"
 tokio-postgres = "0.7.6"
 tree-sitter = "0.20.6"
 typed-generational-arena = "0.2"
-wasmtime = "2.0.0"
-wasmtime-wasi = "2.0.0"
+wasmtime = "6.0.1"
+wasmtime-wasi = "6.0.1"
 wildmatch = "2.1.0"
 
 [profile.release]
