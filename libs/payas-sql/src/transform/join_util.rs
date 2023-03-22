@@ -5,10 +5,13 @@ use crate::{
     PhysicalTable,
 };
 
+/// Compute the join needed to access the leaf columns of a list of column paths. Will return a
+/// `Table::Physical` if there are no dependencies to join otherwise a `Table::Join`.
 pub fn compute_join<'a>(
     table: &'a PhysicalTable,
     paths_list: &[Vec<ColumnPathLink<'a>>],
 ) -> Table<'a> {
+    /// Recursively build the join tree.
     fn from_dependency(dependency: TableDependency) -> Table {
         dependency.dependencies.into_iter().fold(
             Table::Physical(dependency.table),

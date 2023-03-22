@@ -12,14 +12,15 @@ use crate::{
 
 use super::pg::Postgres;
 
-pub trait Transformer {
+/// Transform an abstract operation into a transaction script
+pub trait OperationTransformer {
     fn to_transaction_script<'a>(
         &self,
         abstract_operation: &'a AbstractOperation,
     ) -> TransactionScript<'a>;
 }
 
-impl Transformer for Postgres {
+impl OperationTransformer for Postgres {
     fn to_transaction_script<'a>(
         &self,
         abstract_operation: &'a AbstractOperation,

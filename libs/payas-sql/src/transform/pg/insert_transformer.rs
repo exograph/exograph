@@ -78,7 +78,6 @@ impl InsertTransformer for Postgres {
             let nested_ctes = nested_elems.into_iter().map(
                 |NestedInsertion {
                      relation,
-                     self_table,
                      parent_table,
                      insertions,
                  }| {
@@ -108,8 +107,8 @@ impl InsertTransformer for Postgres {
                         value.push(parent_reference.into())
                     });
                     CteExpression {
-                        name: self_table.name.clone(),
-                        operation: SQLOperation::Insert(self_table.insert(
+                        name: relation.table.name.clone(),
+                        operation: SQLOperation::Insert(relation.table.insert(
                             column_names,
                             column_values_seq,
                             vec![Column::Star(None).into()],
