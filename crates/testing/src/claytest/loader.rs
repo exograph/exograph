@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::fs::DirEntry;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
@@ -249,11 +250,24 @@ Error as a multistage test: {}
         testfile_folder.to_owned().join(path)
     } else {
         // see if the testfile's directory has a single clay file we can use
-        let clay_files = std::fs::read_dir(testfile_folder)?
-            .collect::<Result<Vec<_>, std::io::Error>>()?
-            .into_iter()
-            .filter(|dir| matches!(dir.path().extension().and_then(OsStr::to_str), Some("clay")))
-            .collect::<Vec<_>>();
+        fn read_clay_files(folder: &Path) -> Result<Vec<DirEntry>> {
+            let clay_files = std::fs::read_dir(folder)?
+                .collect::<Result<Vec<_>, std::io::Error>>()?
+                .into_iter()
+                .filter(|dir| {
+                    matches!(dir.path().extension().and_then(OsStr::to_str), Some("clay"))
+                })
+                .collect::<Vec<_>>();
+            Ok(clay_files)
+        }
+        let mut clay_files = read_clay_files(testfile_folder)?;
+
+        // If not, check parent directories until we reach the test root
+        let mut current_folder = testfile_folder;
+        while clay_files.is_empty() && current_folder != root_directory {
+            current_folder = current_folder.parent().expect("Folder has not parent!");
+            clay_files = read_clay_files(current_folder)?;
+        }
 
         match clay_files.len().cmp(&1) {
             Ordering::Equal => clay_files[0].path(),

@@ -1,6 +1,6 @@
 operation: |
     mutation {
-      updateConcerts(where: {title: {eq: "Concert1"}}, data: {price: "50"}) {
+      updateConcerts(where: {title: {eq: "Sol Gabetta - Saint-Saëns: Cello Concerto No. 2"}}, data: {price: "40"}) {
         id
         price
         venue {
@@ -14,14 +14,13 @@ response: |
       "data": {
         "updateConcerts": [
           {
-            "id": 1,
-            "price": "50.00",
+            "id": 5,
+            "price": "40.00",
             "venue": {
-              "id": 1,
-              "name": "Venue1"
+              "id": 3,
+              "name": "Casino Bern"
             }
           }
         ]
       }
     }
-    
