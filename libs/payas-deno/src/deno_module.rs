@@ -5,8 +5,8 @@ use deno_core::v8;
 use deno_core::Extension;
 use deno_core::ModuleSpecifier;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
+use deno_runtime::deno_io::Stdio;
 use deno_runtime::deno_web::BlobStore;
-use deno_runtime::ops::io::Stdio;
 use deno_runtime::permissions::PermissionsContainer;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
@@ -184,9 +184,9 @@ impl DenoModule {
             npm_resolver: None,
             web_worker_pre_execute_module_cb: Arc::new(|_| todo!()),
             cache_storage_dir: None,
-            extensions_with_js: vec![],
             should_wait_for_inspector_session: false,
             startup_snapshot: None,
+            leak_isolate: false,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
@@ -573,8 +573,13 @@ mod tests {
         Ok(format!("Register Op: {arg}"))
     }
 
+    #[op]
+    async fn async_rust_impl(arg: String) -> Result<String, AnyError> {
+        Ok(format!("Register Async Op: {arg}"))
+    }
+
     #[tokio::test]
-    async fn test_register_ops() {
+    async fn test_register_sync_ops() {
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(Path::new("src/test_js/through_rust_fn.js").to_owned()),
             "deno_module",
@@ -599,5 +604,36 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(sync_ret_value, Value::String("Register Op: param".into()));
+    }
+
+    #[tokio::test]
+    async fn test_register_async_ops() {
+        let mut deno_module = DenoModule::new(
+            UserCode::LoadFromFs(Path::new("src/test_js/through_rust_fn.js").to_owned()),
+            "deno_module",
+            vec![],
+            vec![],
+            vec![Extension::builder("test")
+                .ops(vec![async_rust_impl::decl()])
+                .build()],
+            DenoModuleSharedState::default(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+        let async_ret_value = deno_module
+            .execute_function(
+                "asyncUsingRegisteredFunction",
+                vec![Arg::Serde(Value::String("param".into()))],
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            async_ret_value,
+            Value::String("Register Async Op: param".into())
+        );
     }
 }
