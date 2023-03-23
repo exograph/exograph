@@ -38,7 +38,7 @@ impl UpdateTransformer for Postgres {
             .map(|(c, v)| (*c, v.into()))
             .collect();
 
-        let predicate = self.to_subselect_predicate(&abstract_update.predicate);
+        let predicate = self.to_predicate(&abstract_update.predicate, false);
 
         let select = self.to_select(&abstract_update.selection);
 
@@ -149,7 +149,7 @@ fn update_op<'a>(
 
     TemplateSQLOperation::Update(TemplateUpdate {
         table: nested_update.update.table,
-        predicate: predicate_transformer.to_join_predicate(&nested_update.update.predicate),
+        predicate: predicate_transformer.to_predicate(&nested_update.update.predicate, false),
         column_values,
         returning: vec![],
     })
@@ -214,7 +214,7 @@ fn delete_op<'a>(
     //     ),
     // );
 
-    let predicate = predicate_transformer.to_join_predicate(&nested_delete.delete.predicate);
+    let predicate = predicate_transformer.to_predicate(&nested_delete.delete.predicate, false);
 
     TemplateSQLOperation::Delete(TemplateDelete {
         table: nested_delete.delete.table,

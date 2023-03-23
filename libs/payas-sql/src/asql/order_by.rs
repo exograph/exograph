@@ -2,7 +2,7 @@ use crate::sql::order::Ordering;
 
 use super::column_path::ColumnPath;
 
-/// Represents an abstract order by clause
+/// Represents an abstract order-by clause
 #[derive(Debug)]
 pub struct AbstractOrderBy<'a>(pub Vec<(ColumnPath<'a>, Ordering)>);
 

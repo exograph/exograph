@@ -7,6 +7,13 @@ use crate::{
 use super::Postgres;
 
 impl OrderByTransformer for Postgres {
+    /// Transforms an abstract order-by clause into a concrete one
+    /// by replacing the abstract column paths with physical ones,
+    /// which will be used to generate the SQL query like:
+    ///
+    /// ```sql
+    /// ORDER BY table.column ASC, table2.column2 DESC
+    /// ```
     fn to_order_by<'a>(&self, order_by: &AbstractOrderBy<'a>) -> OrderBy<'a> {
         OrderBy(
             order_by

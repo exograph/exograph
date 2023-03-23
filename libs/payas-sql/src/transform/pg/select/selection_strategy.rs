@@ -95,7 +95,7 @@ pub(super) fn join_info<'a>(
         .collect();
 
     let join = join_util::compute_join(base_table, &columns_paths);
-    let predicate = transformer.to_join_predicate(predicate);
+    let predicate = transformer.to_predicate(predicate, true);
 
     let predicate = ConcretePredicate::and(
         predicate,
