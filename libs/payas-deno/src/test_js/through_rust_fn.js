@@ -3,5 +3,5 @@ export function syncUsingRegisteredFunction(value) {
 }
 
 export async function asyncUsingRegisteredFunction(value) {
-  return await Deno[Deno.internal].core.ops.async_rust_impl(value)
+  return Deno[Deno.internal].core.opAsync("async_rust_impl", value)
 }

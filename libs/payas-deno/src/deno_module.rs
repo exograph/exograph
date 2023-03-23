@@ -5,8 +5,8 @@ use deno_core::v8;
 use deno_core::Extension;
 use deno_core::ModuleSpecifier;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
+use deno_runtime::deno_io::Stdio;
 use deno_runtime::deno_web::BlobStore;
-use deno_runtime::ops::io::Stdio;
 use deno_runtime::permissions::PermissionsContainer;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
@@ -184,9 +184,9 @@ impl DenoModule {
             npm_resolver: None,
             web_worker_pre_execute_module_cb: Arc::new(|_| todo!()),
             cache_storage_dir: None,
-            extensions_with_js: vec![],
             should_wait_for_inspector_session: false,
             startup_snapshot: None,
+            leak_isolate: false,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
