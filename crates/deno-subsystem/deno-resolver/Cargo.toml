@@ -9,8 +9,9 @@ async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
 async-recursion.workspace = true
 async-trait.workspace = true
-# Make sure deno_core version matches the one in the Cargo.toml of the payas_deno crate
-# It looks like if we re-export the deno_core crate from the payas_deno crate, the #[op] macro panics (it looks for the deno_core crate local Cargo.toml)
+# Make sure deno_core version matches the one in the payas_deno's Cargo.toml
+# If we re-export the deno_core crate from the payas_deno crate (instead of declaring a dependency here), 
+# the #[op] macro panics (it looks for the deno_core crate in crate's local dependencies)
 deno_core.workspace = true
 futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
