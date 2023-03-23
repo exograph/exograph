@@ -1,0 +1,9 @@
+operation: |
+    mutation {
+        bern: createVenue(data: { name: "Casino Bern", published: true, latitude: 46.93 }) {
+            id
+        }
+        cello_concerto: createConcert(data: { title: "Sol Gabetta - Saint-Saëns: Cello Concerto No. 2", venue: {id: 3}, published: false, price: "35.00" }) {
+            id
+        }
+    }
