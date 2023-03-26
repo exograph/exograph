@@ -254,7 +254,7 @@ mod tests {
                     self_column: (venues_id_column, venues_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(SQLParamContainer::new(5));
+                let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let abs_update = AbstractUpdate {
@@ -310,7 +310,7 @@ mod tests {
                     self_column: (venues_id_column, venues_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(SQLParamContainer::new(5));
+                let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {

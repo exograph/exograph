@@ -1,8 +1,8 @@
 stages:
-  # User 2 trying to update own membership 
+  # User 2 trying to delete user 2's membership 
   - operation: |
       mutation {
-        updateMembership(id: 1, data: {kind: "xfree"}) {
+        deleteMembership(id: 1) {
           id
           kind
           user {
@@ -19,9 +19,9 @@ stages:
     response: |
       {
         "data": {
-          "updateMembership": {
+          "deleteMembership": {
             "id": 1,
-            "kind": "xfree",
+            "kind": "individual",
             "user": {
               "id": 2,
               "name": "u2"
@@ -29,10 +29,10 @@ stages:
           }
         }
       }
-  # Ensure that the earlier mutation didn't work
+  # Ensure that the earlier mutation did work
   - operation: |
       query {
-        memberships(orderBy: {id: ASC}) {
+        memberships {
           id
           kind
           user {
@@ -49,14 +49,6 @@ stages:
       {
         "data": {
           "memberships": [
-            {
-              "id": 1,
-              "kind": "xfree",
-              "user": {
-                "id": 2,
-                "name": "u2"
-              }
-            },
             {
               "id": 2,
               "kind": "family",
