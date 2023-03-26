@@ -1,0 +1,80 @@
+stages:
+  # User deletes only their own documents (user 2 owns document 1 and 2)
+  - operation: |
+      mutation {
+        deleteDocuments {
+          id
+          content
+          user {
+            id
+            name
+          }
+        }
+      }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "data": {
+          "deleteDocuments": [
+            {
+              "id": 1,
+              "content": "content1",
+              "user": {
+                "id": 2,
+                "name": "u2"
+              }
+            },
+            {
+              "id": 2,
+              "content": "content2",
+              "user": {
+                "id": 2,
+                "name": "u2"
+              }
+            }
+          ]
+        }
+      }
+  # Ensure that the earlier mutation did work
+  - operation: |
+      query {
+        documents(orderBy: {id: ASC}) {
+          id
+          content
+          user {
+            id
+            name
+          }
+        }
+      }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": 3,
+              "content": "content3",
+              "user": {
+                "id": 1,
+                "name": "u1"
+              }
+            },
+            {
+              "id": 4,
+              "content": "content4",
+              "user": {
+                "id": 3,
+                "name": "u3"
+              }
+            }
+          ]
+        }
+      }
