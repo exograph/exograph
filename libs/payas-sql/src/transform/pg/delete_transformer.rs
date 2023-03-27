@@ -140,7 +140,7 @@ mod tests {
                         self_column: (concerts_name_column, concerts_table),
                         linked_column: None,
                     }]),
-                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())),
+                    ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 
                 let adelete = AbstractDelete {
@@ -193,7 +193,7 @@ mod tests {
                             linked_column: None,
                         },
                     ]),
-                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())),
+                    ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 
                 let adelete = AbstractDelete {

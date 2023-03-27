@@ -1,0 +1,53 @@
+stages:
+  # User 3 trying to delete user 2's membership 
+  - operation: |
+      mutation {
+        deleteMembership(id: 1) {
+          id
+          kind
+          user {
+            id
+            name
+          }
+        }
+      }
+    auth: |
+      {
+        "sub": 3,
+        "role": "USER"
+      }
+    response: |
+      {
+        "data": {
+          "deleteMembership": null
+        }
+      }
+  # Check to make sure that the earlier mutation didn't work
+  - operation: |
+      query {
+        membership(id: 1) {
+          id
+          kind
+          user {
+            id
+            name
+          }
+        }
+      }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "membership": {
+            "id": 1,
+            "kind": "individual",
+            "user": {
+              "id": 2,
+              "name": "u2"
+            }
+          }
+        }
+      }
