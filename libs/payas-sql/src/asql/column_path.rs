@@ -39,14 +39,14 @@ impl ColumnPathLink<'_> {
 #[derive(Debug, PartialEq, Clone)]
 pub enum ColumnPath<'a> {
     Physical(Vec<ColumnPathLink<'a>>),
-    Literal(SQLParamContainer),
+    Param(SQLParamContainer),
     Null,
 }
 
 impl ParamEquality for ColumnPath<'_> {
     fn param_eq(&self, other: &Self) -> Option<bool> {
         match (self, other) {
-            (Self::Literal(v1), Self::Literal(v2)) => Some(v1 == v2),
+            (Self::Param(v1), Self::Param(v2)) => Some(v1 == v2),
             _ => None,
         }
     }

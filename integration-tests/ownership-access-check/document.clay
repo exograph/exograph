@@ -1,0 +1,29 @@
+context AuthContext {
+  @jwt("sub") id: Int 
+  @jwt("role") role: String 
+}
+
+@postgres
+service DocumentService {
+  // A user may own multiple documents
+  @access(true) // Setting access to true to focus on the access rules for the documents
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    documents: Set<Document>?
+  }
+  
+  // Admin can do anything
+  // User can only query/mutate their own documents
+  @access(
+    query = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id, 
+    create = AuthContext.role == "ADMIN" || AuthContext.role == "USER",
+    update = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id,
+    delete = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id
+  )
+  type Document {
+    @pk id: Int = autoIncrement()
+    content: String
+    user: User
+  }
+}

@@ -238,7 +238,7 @@ fn operands<'a>(
         .map(move |op_value| {
             (
                 to_column_path(&parent_column_path, &param.column_path_link, subsystem),
-                ColumnPath::Literal(op_value.unwrap()),
+                ColumnPath::Param(op_value.unwrap()),
             )
         })
         .map_err(PostgresExecutionError::CastError)

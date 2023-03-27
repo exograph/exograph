@@ -240,7 +240,7 @@ fn compute_nested_update_object_arg<'a>(
         .into_iter()
         .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
             let value = match value {
-                Column::Param(value) => ColumnPath::Literal(value),
+                Column::Param(value) => ColumnPath::Param(value),
                 _ => panic!("Expected literal"),
             };
             AbstractPredicate::and(
@@ -410,7 +410,7 @@ fn compute_nested_delete_object_arg<'a>(
         .into_iter()
         .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
             let value = match value {
-                Column::Param(value) => ColumnPath::Literal(value),
+                Column::Param(value) => ColumnPath::Param(value),
                 _ => panic!("Expected literal"),
             };
             AbstractPredicate::and(

@@ -108,45 +108,63 @@ fn to_subselect_predicate<'a>(
     transformer: &Postgres,
     predicate: &AbstractPredicate<'a>,
 ) -> ConcretePredicate<'a> {
+    println!("to_subselect_predicate: {:?}", predicate);
     fn binary_operator<'p>(
         left: &ColumnPath<'p>,
         right: &ColumnPath<'p>,
         predicate_op: impl Fn(ColumnPath<'p>, ColumnPath<'p>) -> AbstractPredicate<'p>,
         select_transformer: &Postgres,
     ) -> Option<ConcretePredicate<'p>> {
-        match column_path_components(left) {
-            Some((left_column, table, foreign_column, tail_links)) => {
-                let right_abstract_select = AbstractSelect {
-                    table,
-                    selection: Selection::Seq(vec![AliasedSelectionElement::new(
-                        foreign_column.name.clone(),
-                        SelectionElement::Physical(foreign_column),
-                    )]),
-                    predicate: predicate_op(
-                        ColumnPath::Physical(tail_links.to_vec()),
-                        right.clone(),
-                    ),
-                    order_by: None,
-                    offset: None,
-                    limit: None,
-                };
+        fn form_subselect<'p>(
+            path: &ColumnPath<'p>,
+            other: &ColumnPath<'p>,
+            predicate_op: impl Fn(Vec<ColumnPathLink<'p>>, ColumnPath<'p>) -> AbstractPredicate<'p>,
+            select_transformer: &Postgres,
+        ) -> Option<ConcretePredicate<'p>> {
+            column_path_components(path).map(
+                |(self_column, self_table, foreign_column, tail_links)| {
+                    let abstract_select = AbstractSelect {
+                        table: self_table,
+                        selection: Selection::Seq(vec![AliasedSelectionElement::new(
+                            foreign_column.name.clone(),
+                            SelectionElement::Physical(foreign_column),
+                        )]),
+                        predicate: predicate_op(tail_links.to_vec(), other.clone()),
+                        order_by: None,
+                        offset: None,
+                        limit: None,
+                    };
 
-                let right_select = select_transformer.compute_select(
-                    &right_abstract_select,
-                    None,
-                    SelectionLevel::Nested,
-                    true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
-                );
+                    let select = select_transformer.compute_select(
+                        &abstract_select,
+                        None,
+                        SelectionLevel::Nested,
+                        true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
+                    );
 
-                let right_select_column = Column::SubSelect(Box::new(right_select));
+                    let select_column = Column::SubSelect(Box::new(select));
 
-                Some(ConcretePredicate::In(
-                    Column::Physical(left_column),
-                    right_select_column,
-                ))
-            }
-            None => None,
+                    ConcretePredicate::In(Column::Physical(self_column), select_column)
+                },
+            )
         }
+
+        form_subselect(
+            left,
+            right,
+            |tail_links, right| predicate_op(ColumnPath::Physical(tail_links), right),
+            select_transformer,
+        )
+        .or_else(|| {
+            form_subselect(
+                right,
+                left,
+                |tail_links, left| {
+                    predicate_op(left.clone(), ColumnPath::Physical(tail_links.to_vec()))
+                },
+                select_transformer,
+            )
+        })
     }
 
     match predicate {
@@ -206,7 +224,7 @@ fn to_subselect_predicate<'a>(
 fn leaf_column<'c>(column_path: &ColumnPath<'c>) -> Column<'c> {
     match column_path {
         ColumnPath::Physical(links) => Column::Physical(links.last().unwrap().self_column.0),
-        ColumnPath::Literal(l) => Column::Param(l.clone()),
+        ColumnPath::Param(l) => Column::Param(l.clone()),
         ColumnPath::Null => Column::Null,
     }
 }
@@ -261,7 +279,7 @@ mod tests {
                         self_column: (concerts_name_column, concerts_table),
                         linked_column: None,
                     }]),
-                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())),
+                    ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 
                 {
@@ -287,42 +305,76 @@ mod tests {
 
     #[test]
     fn nested_op_predicate() {
-        test_nested_op_predicate(|l, r| AbstractPredicate::Eq(l, r), "= $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::Neq(l, r), "<> $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::Lt(l, r), "< $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::Lte(l, r), "<= $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::Gt(l, r), "> $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::Gte(l, r), ">= $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::In(l, r), "IN $1");
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::Eq(l, r),
+            |l, r| format!("{l} = {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::Neq(l, r),
+            |l, r| format!("{l} <> {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::Lt(l, r),
+            |l, r| format!("{l} < {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::Lte(l, r),
+            |l, r| format!("{l} <= {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::Gt(l, r),
+            |l, r| format!("{l} > {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::Gte(l, r),
+            |l, r| format!("{l} >= {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::In(l, r),
+            |l, r| format!("{l} IN {r}"),
+        );
 
         test_nested_op_predicate(
             |l, r| AbstractPredicate::StringStartsWith(l, r),
-            "LIKE $1 || '%'",
+            |l, r| format!("{l} LIKE {r} || '%'"),
         );
         test_nested_op_predicate(
             |l, r| AbstractPredicate::StringEndsWith(l, r),
-            "LIKE '%' || $1",
+            |l, r| format!("{l} LIKE '%' || {r}"),
         );
         test_nested_op_predicate(
             |l, r| AbstractPredicate::StringLike(l, r, CaseSensitivity::Insensitive),
-            "ILIKE $1",
+            |l, r| format!("{l} ILIKE {r}"),
         );
         test_nested_op_predicate(
             |l, r| AbstractPredicate::StringLike(l, r, CaseSensitivity::Sensitive),
-            "LIKE $1",
+            |l, r| format!("{l} LIKE {r}"),
         );
 
-        test_nested_op_predicate(|l, r| AbstractPredicate::JsonContainedBy(l, r), "<@ $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::JsonContains(l, r), "@> $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::JsonMatchAllKeys(l, r), "?& $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::JsonMatchAnyKey(l, r), "?| $1");
-        test_nested_op_predicate(|l, r| AbstractPredicate::JsonMatchKey(l, r), "? $1");
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::JsonContainedBy(l, r),
+            |l, r| format!("{l} <@ {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::JsonContains(l, r),
+            |l, r| format!("{l} @> {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::JsonMatchAllKeys(l, r),
+            |l, r| format!("{l} ?& {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::JsonMatchAnyKey(l, r),
+            |l, r| format!("{l} ?| {r}"),
+        );
+        test_nested_op_predicate(
+            |l, r| AbstractPredicate::JsonMatchKey(l, r),
+            |l, r| format!("{l} ? {r}"),
+        );
     }
 
-    fn test_nested_op_predicate(
-        op: impl for<'a> Fn(ColumnPath<'a>, ColumnPath<'a>) -> AbstractPredicate<'a>,
-        sql_op: &'static str,
-    ) {
+    #[test]
+    fn test_and() {
         TestSetup::with_setup(
             move |TestSetup {
                       concerts_table,
@@ -332,18 +384,27 @@ mod tests {
                       venues_table,
                       ..
                   }| {
-                let abstract_predicate = op(
-                    ColumnPath::Physical(vec![
-                        ColumnPathLink {
+                let abstract_predicate = AbstractPredicate::and(
+                    AbstractPredicate::Eq(
+                        ColumnPath::Physical(vec![ColumnPathLink {
                             self_column: (concerts_venue_id_column, concerts_table),
-                            linked_column: Some((venues_id_column, venues_table)),
-                        },
-                        ColumnPathLink {
-                            self_column: (venues_name_column, venues_table),
                             linked_column: None,
-                        },
-                    ]),
-                    ColumnPath::Literal(SQLParamContainer::new("v1".to_string())),
+                        }]),
+                        ColumnPath::Param(SQLParamContainer::new(1)),
+                    ),
+                    AbstractPredicate::Eq(
+                        ColumnPath::Physical(vec![
+                            ColumnPathLink {
+                                self_column: (concerts_venue_id_column, concerts_table),
+                                linked_column: Some((venues_id_column, venues_table)),
+                            },
+                            ColumnPathLink {
+                                self_column: (venues_name_column, venues_table),
+                                linked_column: None,
+                            },
+                        ]),
+                        ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
+                    ),
                 );
 
                 {
@@ -351,7 +412,8 @@ mod tests {
 
                     assert_binding!(
                         predicate.to_sql(),
-                        format!(r#""venues"."name" {sql_op}"#),
+                        format!(r#"("concerts"."venue_id" = $1 AND "venues"."name" = $2)"#),
+                        1,
                         "v1".to_string()
                     );
                 }
@@ -362,12 +424,70 @@ mod tests {
                     assert_binding!(
                         predicate.to_sql(),
                         format!(
-                            r#""concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE "venues"."name" {sql_op})"#
+                            r#"("concerts"."venue_id" = $1 AND "concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE "venues"."name" = $2))"#
                         ),
+                        1,
                         "v1".to_string()
                     );
                 }
             },
         );
+    }
+
+    fn test_nested_op_predicate<OP>(op: OP, op_combinator: fn(&str, &str) -> String)
+    where
+        OP: Clone + for<'a> Fn(ColumnPath<'a>, ColumnPath<'a>) -> AbstractPredicate<'a>,
+    {
+        for literal_on_the_right in [true, false] {
+            let op = op.clone();
+            TestSetup::with_setup(
+                move |TestSetup {
+                          concerts_table,
+                          concerts_venue_id_column,
+                          venues_id_column,
+                          venues_name_column,
+                          venues_table,
+                          ..
+                      }| {
+                    let physical_column = ColumnPath::Physical(vec![
+                        ColumnPathLink {
+                            self_column: (concerts_venue_id_column, concerts_table),
+                            linked_column: Some((venues_id_column, venues_table)),
+                        },
+                        ColumnPathLink {
+                            self_column: (venues_name_column, venues_table),
+                            linked_column: None,
+                        },
+                    ]);
+                    let literal_column =
+                        ColumnPath::Param(SQLParamContainer::new("v1".to_string()));
+
+                    let abstract_predicate = if literal_on_the_right {
+                        op(physical_column, literal_column)
+                    } else {
+                        op(literal_column, physical_column)
+                    };
+
+                    let predicate_stmt = if literal_on_the_right {
+                        op_combinator(r#""venues"."name""#, "$1")
+                    } else {
+                        op_combinator("$1", r#""venues"."name""#)
+                    };
+
+                    {
+                        let predicate = Postgres {}.to_predicate(&abstract_predicate, true);
+                        assert_binding!(predicate.to_sql(), predicate_stmt, "v1".to_string());
+                    }
+
+                    {
+                        let predicate = Postgres {}.to_predicate(&abstract_predicate, false);
+                        let stmt = format!(
+                            r#""concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE {predicate_stmt})"#
+                        );
+                        assert_binding!(predicate.to_sql(), stmt, "v1".to_string());
+                    }
+                },
+            );
+        }
     }
 }

@@ -1,10 +1,10 @@
 stages:
-  # User 2 trying to update own membership 
+  # User cannot update a document that is not theirs
   - operation: |
       mutation {
-        updateMembership(id: 1, data: {kind: "xfree"}) {
+        deleteDocument(id: 1) {
           id
-          kind
+          content
           user {
             id
             name
@@ -13,28 +13,21 @@ stages:
       }
     auth: |
       {
-        "sub": 2,
+        "sub": 3,
         "role": "USER"
       }
     response: |
       {
         "data": {
-          "updateMembership": {
-            "id": 1,
-            "kind": "xfree",
-            "user": {
-              "id": 2,
-              "name": "u2"
-            }
-          }
+          "deleteDocument": null
         }
       }
-  # Ensure that the earlier mutation didn't work
+  # Ensure that the earlier mutation did work
   - operation: |
       query {
-        memberships(orderBy: {id: ASC}) {
+        documents(orderBy: {id: ASC}) {
           id
-          kind
+          content
           user {
             id
             name
@@ -48,10 +41,10 @@ stages:
     response: |
       {
         "data": {
-          "memberships": [
+          "documents": [
             {
               "id": 1,
-              "kind": "xfree",
+              "content": "content1",
               "user": {
                 "id": 2,
                 "name": "u2"
@@ -59,26 +52,26 @@ stages:
             },
             {
               "id": 2,
-              "kind": "family",
+              "content": "content2",
               "user": {
-                "id": 3,
-                "name": "u3"
+                "id": 2,
+                "name": "u2"
               }
             },
             {
               "id": 3,
-              "kind": "individual",
+              "content": "content3",
               "user": {
-                "id": 4,
-                "name": "u4"
+                "id": 1,
+                "name": "u1"
               }
             },
             {
               "id": 4,
-              "kind": "family",
+              "content": "content4",
               "user": {
-                "id": 5,
-                "name": "u5"
+                "id": 3,
+                "name": "u3"
               }
             }
           ]

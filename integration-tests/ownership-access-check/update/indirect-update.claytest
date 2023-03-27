@@ -1,0 +1,150 @@
+stages:
+  # User updates only their own documents (user 2 owns document 1 and 2)
+  - operation: |
+      mutation {
+        # Update all documents through user, but implicitly only if the user owns them
+        # Note that in this example (in practice, unrealistically, but appropriate for testing) there is no access control for the User type
+        updateUsers(where: {id: {gt: 0}}, data: {name: "updated-user2", documents: {update: {id: 1, content: "indirect-update"}}}) { 
+          id
+          name
+          documents {
+            id
+            content
+            user {
+              id
+            }
+          }
+        }
+      }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "data": {
+          "updateUsers": [
+            {
+              "id": 1,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 2,
+                  "content": "content2",
+                  "user": {
+                    "id": 2
+                  }
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 2,
+                  "content": "content2",
+                  "user": {
+                    "id": 2
+                  }
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 2,
+                  "content": "content2",
+                  "user": {
+                    "id": 2
+                  }
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 2,
+                  "content": "content2",
+                  "user": {
+                    "id": 2
+                  }
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 2,
+                  "content": "content2",
+                  "user": {
+                    "id": 2
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+  # Ensure that the earlier mutation did work
+  - operation: |
+      query {
+        documents(orderBy: {id: ASC}) {
+          id
+          content
+          user {
+            id
+            name
+          }
+        }
+      }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": 1,
+              "content": "indirect-update",
+              "user": {
+                "id": 5,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 2,
+              "content": "content2",
+              "user": {
+                "id": 2,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 3,
+              "content": "content3",
+              "user": {
+                "id": 1,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 4,
+              "content": "content4",
+              "user": {
+                "id": 3,
+                "name": "updated-user2"
+              }
+            }
+          ]
+        }
+      }
