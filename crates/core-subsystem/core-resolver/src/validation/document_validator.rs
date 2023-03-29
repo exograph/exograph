@@ -13,6 +13,8 @@ pub struct DocumentValidator<'a> {
     schema: &'a Schema,
     operation_name: Option<String>,
     variables: Option<Map<String, Value>>,
+    normal_query_depth_limit: usize,
+    introspection_query_depth_limit: usize,
 }
 
 impl<'a> DocumentValidator<'a> {
@@ -20,11 +22,15 @@ impl<'a> DocumentValidator<'a> {
         schema: &'a Schema,
         operation_name: Option<String>,
         variables: Option<Map<String, Value>>,
+        normal_query_depth_limit: usize,
+        introspection_query_depth_limit: usize,
     ) -> Self {
         Self {
             schema,
             operation_name,
             variables,
+            normal_query_depth_limit,
+            introspection_query_depth_limit,
         }
     }
 
@@ -83,6 +89,8 @@ impl<'a> DocumentValidator<'a> {
             operation_name,
             self.variables,
             document.fragments,
+            self.normal_query_depth_limit,
+            self.introspection_query_depth_limit,
         );
 
         operation_validator.validate(raw_operation)
@@ -104,11 +112,7 @@ mod tests {
     fn argument_valid() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -130,11 +134,7 @@ mod tests {
     fn with_operation_name_valid() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query ConcertById {
@@ -156,11 +156,7 @@ mod tests {
     fn stray_argument_invalid() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -182,11 +178,7 @@ mod tests {
     fn unspecified_required_argument_invalid() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -216,11 +208,7 @@ mod tests {
             }"#,
         );
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: Some(variables),
-        };
+        let validator = DocumentValidator::new(&schema, None, Some(variables), 10, 10);
 
         let query = r#"
             query($concert_id: Int!, $venue_id: Int!) {
@@ -243,11 +231,7 @@ mod tests {
         let schema = create_test_schema();
 
         let variables = create_variables(r#"{ "concert_id": 2 }"#);
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: Some(variables),
-        };
+        let validator = DocumentValidator::new(&schema, None, Some(variables), 10, 10);
 
         let query = r#"
             query($concert_id: Int!, $venue_id: Int!) { # venue_id is not a specified in variables
@@ -269,11 +253,7 @@ mod tests {
     fn invalid_subfield() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -292,11 +272,7 @@ mod tests {
     fn aliases_valid() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -314,11 +290,7 @@ mod tests {
     fn mergeable_leaf_fields() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -339,11 +311,7 @@ mod tests {
     fn mergeable_leaf_fields_with_alias() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -364,11 +332,7 @@ mod tests {
     fn unmergeable_leaf_fields_all_aliases() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -387,11 +351,7 @@ mod tests {
     fn unmergeable_leaf_fields_mixed_aliases() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -410,11 +370,7 @@ mod tests {
     fn mergeable_non_leaf_fields() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -443,11 +399,7 @@ mod tests {
     fn unmergeable_non_leaf_fields() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -472,11 +424,7 @@ mod tests {
     fn mergeable_non_leaf_fields_with_alias() {
         let schema = create_test_schema();
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         let query = r#"
             query {
@@ -521,19 +469,11 @@ mod tests {
             }
         "#;
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: Some("concert1".to_string()),
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, Some("concert1".to_string()), None, 10, 10);
 
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: Some("concert2".to_string()),
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, Some("concert2".to_string()), None, 10, 10);
 
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
@@ -558,11 +498,7 @@ mod tests {
             }
         "#;
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
@@ -587,11 +523,7 @@ mod tests {
             }
         "#;
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: Some("foo".to_string()),
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, Some("foo".to_string()), None, 10, 10);
 
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
@@ -612,11 +544,7 @@ mod tests {
             }
         "#;
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
@@ -641,12 +569,94 @@ mod tests {
             }
         "#;
 
-        let validator = DocumentValidator {
-            schema: &schema,
-            operation_name: None,
-            variables: None,
-        };
+        let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn query_depth_limit_direct() {
+        let schema = create_test_schema();
+
+        let query = r#"
+            query {
+                concerts { # 1
+                    venue { # 2
+                        concerts { # 3
+                            venue { # 4
+                                concerts { # 5
+                                    id # 6
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        "#;
+
+        // valid
+        let validator = DocumentValidator::new(&schema, None, None, 6, usize::MAX);
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+
+        // invalid: one level too deep
+        let validator = DocumentValidator::new(&schema, None, None, 5, usize::MAX);
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn query_depth_limit_through_fragment() {
+        let schema = create_test_schema();
+
+        let query = r#"
+            query {
+                concerts { # 1
+                    venue { # 2
+                        concerts { # 3
+                            ...venueInfo
+                        }
+                    }
+                }
+            }
+            fragment venueInfo on Venue {
+                venue { # 4
+                    concerts { # 5
+                        id # 6
+                    }
+                }
+            }
+        "#;
+
+        // valid
+        let validator = DocumentValidator::new(&schema, None, None, 6, usize::MAX);
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+
+        // invalid: one level too deep
+        let validator = DocumentValidator::new(&schema, None, None, 5, usize::MAX);
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn introspection_query_depth_limit_direct() {
+        let schema = create_test_schema();
+
+        let query = r#"
+            query {
+                __schema { # 1
+                    types { # 2
+                        name # 3
+                    }
+                }
+            }
+
+        "#;
+
+        // valid
+        let validator = DocumentValidator::new(&schema, None, None, usize::MAX, 3);
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+
+        // invalid: one level too deep
+        let validator = DocumentValidator::new(&schema, None, None, usize::MAX, 2);
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
