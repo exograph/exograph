@@ -27,6 +27,7 @@ pub struct SelectionSetValidator<'a> {
     container_type: &'a TypeDefinition,
     variables: &'a HashMap<Name, ConstValue>,
     fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
+    is_introspection: Option<bool>,
 }
 
 impl<'a> SelectionSetValidator<'a> {
@@ -36,12 +37,14 @@ impl<'a> SelectionSetValidator<'a> {
         container_type: &'a TypeDefinition,
         variables: &'a HashMap<Name, ConstValue>,
         fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
+        is_introspection: Option<bool>,
     ) -> Self {
         Self {
             schema,
             container_type,
             variables,
             fragment_definitions,
+            is_introspection,
         }
     }
 
@@ -57,21 +60,33 @@ impl<'a> SelectionSetValidator<'a> {
     pub(super) fn validate(
         &self,
         selection_set: &Positioned<SelectionSet>,
+        selection_depth: usize,
+        selection_depth_check: &impl Fn(usize, Option<bool>, Pos) -> Result<bool, ValidationError>,
     ) -> Result<Vec<ValidatedField>, ValidationError> {
-        self.validate_selection_set(selection_set, HashSet::new())
-            .map(|fields| fields.into_iter().map(|(_, field)| field).collect())
+        self.validate_selection_set(
+            selection_set,
+            HashSet::new(),
+            selection_depth,
+            selection_depth_check,
+        )
+        .map(|fields| fields.into_iter().map(|(_, field)| field).collect())
     }
 
     fn validate_selection_set(
         &self,
         selection_set: &Positioned<SelectionSet>,
         fragment_trail: HashSet<String>,
+        selection_depth: usize,
+        selection_depth_check: &impl Fn(usize, Option<bool>, Pos) -> Result<bool, ValidationError>,
     ) -> Result<Vec<(Pos, ValidatedField)>, ValidationError> {
-        let fields = selection_set
-            .node
-            .items
-            .iter()
-            .map(|selection| self.validate_selection(selection, fragment_trail.clone()));
+        let fields = selection_set.node.items.iter().map(|selection| {
+            self.validate_selection(
+                selection,
+                fragment_trail.clone(),
+                selection_depth,
+                selection_depth_check,
+            )
+        });
 
         let fields: Vec<(Pos, ValidatedField)> = fields
             .collect::<Result<Vec<_>, _>>()
@@ -144,9 +159,13 @@ impl<'a> SelectionSetValidator<'a> {
         &self,
         selection: &Positioned<Selection>,
         fragment_trail: HashSet<String>,
+        selection_depth: usize,
+        selection_depth_check: &impl Fn(usize, Option<bool>, Pos) -> Result<bool, ValidationError>,
     ) -> Result<Vec<(Pos, ValidatedField)>, ValidationError> {
         match &selection.node {
-            Selection::Field(field) => self.validate_field(field).map(|field| vec![field]),
+            Selection::Field(field) => self
+                .validate_field(field, selection_depth, selection_depth_check)
+                .map(|field| vec![field]),
             Selection::FragmentSpread(fragment_spread) => {
                 if fragment_trail.contains(&fragment_spread.node.fragment_name.node.to_string()) {
                     return Err(ValidationError::FragmentCycle(
@@ -164,6 +183,8 @@ impl<'a> SelectionSetValidator<'a> {
                         self.validate_selection_set(
                             &fragment_definition.selection_set,
                             fragment_trail,
+                            selection_depth,
+                            selection_depth_check,
                         )
                     })
             }
@@ -176,6 +197,8 @@ impl<'a> SelectionSetValidator<'a> {
     fn validate_field(
         &self,
         field: &Positioned<Field>,
+        selection_depth: usize,
+        selection_depth_check: &impl Fn(usize, Option<bool>, Pos) -> Result<bool, ValidationError>,
     ) -> Result<(Pos, ValidatedField), ValidationError> {
         // Special treatment for the __typename field, since we are not supposed to expose it as
         // a normal field (for example, we should not declare that the "Concert" type has a __typename field")
@@ -208,32 +231,41 @@ impl<'a> SelectionSetValidator<'a> {
                 ))
             }
         } else {
-            let field_definition = if self.container_type.name.node.as_str() == QUERY_ROOT_TYPENAME
-            {
-                // We have to treat the query root type specially, since its __schema and __type fields are not
-                // "ordinary" fields, but are instead special-cased in the introspection query (much the same way
-                // as the __typename field).
-                if field.node.name.node.as_str() == "__schema" {
-                    &self.schema.schema_field_definition
-                } else if field.node.name.node.as_str() == "__type" {
-                    &self.schema.type_field_definition
+            let (field_definition, is_introspection) =
+                if self.container_type.name.node.as_str() == QUERY_ROOT_TYPENAME {
+                    // We have to treat the query root type specially, since its __schema and __type fields are not
+                    // "ordinary" fields, but are instead special-cased in the introspection query (much the same way
+                    // as the __typename field).
+                    if field.node.name.node.as_str() == "__schema" {
+                        (&self.schema.schema_field_definition, true)
+                    } else if field.node.name.node.as_str() == "__type" {
+                        (&self.schema.type_field_definition, true)
+                    } else {
+                        (self.get_field_definition(field)?, false)
+                    }
                 } else {
-                    self.get_field_definition(field)?
-                }
-            } else {
-                self.get_field_definition(field)?
-            };
+                    (self.get_field_definition(field)?, false)
+                };
 
             let field_type_definition = self.get_type_definition(&field_definition.ty, field)?;
+            let is_introspection: Option<bool> = self.is_introspection.or(Some(is_introspection));
 
             let subfield_validator = SelectionSetValidator::new(
                 self.schema,
                 field_type_definition,
                 self.variables,
                 self.fragment_definitions,
+                is_introspection,
             );
 
-            let subfields = subfield_validator.validate(&field.node.selection_set)?;
+            let new_selection_depth = selection_depth + 1;
+            selection_depth_check(new_selection_depth, is_introspection, field.pos)?;
+
+            let subfields = subfield_validator.validate(
+                &field.node.selection_set,
+                new_selection_depth,
+                selection_depth_check,
+            )?;
 
             let field_validator = ArgumentValidator::new(self.schema, self.variables, field);
 

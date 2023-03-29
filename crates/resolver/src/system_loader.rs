@@ -87,11 +87,15 @@ impl SystemLoader {
             subsystem_resolvers.push(introspection_resolver);
         }
 
+        let (normal_query_depth_limit, introspection_query_depth_limit) = query_depth_limits()?;
+
         Ok(SystemResolver::new(
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
             schema,
+            normal_query_depth_limit,
+            introspection_query_depth_limit,
         ))
     }
 
@@ -120,6 +124,26 @@ pub fn allow_introspection() -> Result<bool, SystemLoadingError> {
         },
         None => Ok(false),
     }
+}
+
+/// Returns the maximum depth of a selection set for normal queries and introspection queries. We
+/// hard-code the introspection query depth to 15 to accomodate the query invoked by GraphQL
+/// Playground
+pub fn query_depth_limits() -> Result<(usize, usize), SystemLoadingError> {
+    const DEFAULT_QUERY_DEPTH: usize = 5;
+    const DEFAULT_INTROSPECTION_QUERY_DEPTH: usize = 15;
+
+    let query_depth = match std::env::var("CLAY_MAX_SELECTION_DEPTH").ok() {
+        Some(e) => match e.parse::<usize>() {
+            Ok(v) => Ok(v),
+            Err(_) => Err(SystemLoadingError::Config(
+                "CLAY_MAX_SELECTION_DEPTH env var must be set to a positive integer".into(),
+            )),
+        },
+        None => Ok(DEFAULT_QUERY_DEPTH),
+    }?;
+
+    Ok((query_depth, DEFAULT_INTROSPECTION_QUERY_DEPTH))
 }
 
 #[derive(Error, Debug)]
