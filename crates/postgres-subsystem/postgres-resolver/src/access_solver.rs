@@ -343,6 +343,8 @@ mod tests {
                 map: HashMap::new(),
             },
             Schema::new(vec![], vec![], vec![]),
+            10,
+            10,
         );
 
         TestSystem {

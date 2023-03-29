@@ -1,0 +1,35 @@
+operation: |
+    query {
+      venues { # level 1
+        id # level 2
+        concerts {
+          id
+          venue { # level 3
+            id
+            concerts { # level 4
+              id
+              venue { # level 5
+                id
+                concerts { # level 6
+                  id
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Selection set too deep",
+          "locations": [
+            {
+              "line": 11,
+              "column": 13
+            }
+          ]
+        }
+      ]
+    }

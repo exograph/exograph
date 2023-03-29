@@ -20,6 +20,8 @@ pub struct OperationValidator<'a> {
     operation_name: Option<String>,
     variables: Option<Map<String, Value>>,
     fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
+    normal_query_depth_limit: usize,
+    introspection_query_depth_limit: usize,
 }
 
 impl<'a> OperationValidator<'a> {
@@ -29,15 +31,45 @@ impl<'a> OperationValidator<'a> {
         operation_name: Option<String>,
         variables: Option<Map<String, Value>>,
         fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
+        normal_query_depth_limit: usize,
+        introspection_query_depth_limit: usize,
     ) -> Self {
         Self {
             schema,
             operation_name,
             variables,
             fragment_definitions,
+            normal_query_depth_limit,
+            introspection_query_depth_limit,
         }
     }
 
+    /// Check if the query depth is within the allowed limits
+    /// Note that is_introspection is optional, since until we go one level deeper that the
+    /// top-level selection set, we don't know if it's an introspection query or not.
+    fn selection_depth_check(
+        &self,
+    ) -> impl Fn(usize, Option<bool>, Pos) -> Result<bool, ValidationError> + '_ {
+        move |depth: usize,
+              is_introspection: Option<bool>,
+              pos: Pos|
+              -> Result<bool, ValidationError> {
+            if let Some(is_introspection) = is_introspection {
+                let max_depth = if is_introspection {
+                    self.introspection_query_depth_limit
+                } else {
+                    self.normal_query_depth_limit
+                };
+                if depth > max_depth {
+                    Err(ValidationError::SelectionSetTooDeep(pos))
+                } else {
+                    Ok(true)
+                }
+            } else {
+                Ok(true)
+            }
+        }
+    }
     /// Validate operation. Operation defines a GraphQL top-level operation such
     /// as
     /// ```graphql
@@ -82,9 +114,14 @@ impl<'a> OperationValidator<'a> {
             container_type,
             &variables,
             &self.fragment_definitions,
+            None,
         );
 
-        let fields = selection_set_validator.validate(&operation.node.selection_set)?;
+        let fields = selection_set_validator.validate(
+            &operation.node.selection_set,
+            0,
+            &self.selection_depth_check(),
+        )?;
 
         Ok(ValidatedOperation {
             name: self.operation_name,

@@ -39,6 +39,8 @@ pub struct SystemResolver {
     query_interception_map: InterceptionMap,
     mutation_interception_map: InterceptionMap,
     schema: Schema,
+    normal_query_depth_limit: usize,
+    introspection_query_depth_limit: usize,
 }
 
 impl SystemResolver {
@@ -47,12 +49,16 @@ impl SystemResolver {
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
         schema: Schema,
+        normal_query_depth_limit: usize,
+        introspection_query_depth_limit: usize,
     ) -> Self {
         Self {
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
             schema,
+            normal_query_depth_limit,
+            introspection_query_depth_limit,
         }
     }
 
@@ -189,6 +195,8 @@ impl SystemResolver {
             &self.schema,
             operations_payload.operation_name,
             operations_payload.variables,
+            self.normal_query_depth_limit,
+            self.introspection_query_depth_limit,
         );
 
         document_validator.validate(document)
