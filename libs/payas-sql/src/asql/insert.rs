@@ -58,7 +58,7 @@ impl<'a> InsertionRow<'a> {
 
 #[derive(Debug)]
 pub struct NestedInsertion<'a> {
-    /// The parent table (from from example the `venues` table in `Venue <-> [Concert]`)
+    /// The parent table (for example the `venues` table in `Venue <-> [Concert]`)
     pub parent_table: &'a PhysicalTable,
     /// Relation between the parent table and the nested table (column: concerts.venue_id, table: concerts)
     pub relation: NestedElementRelation<'a>,

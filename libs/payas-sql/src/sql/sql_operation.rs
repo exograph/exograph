@@ -31,6 +31,7 @@ impl<'a> ExpressionBuilder for SQLOperation<'a> {
     }
 }
 
+/// A SQL operation that may contain template columns (whose value isn't know until an earlier step is executed)
 #[derive(Debug)]
 pub enum TemplateSQLOperation<'a> {
     Insert(TemplateInsert<'a>),
@@ -39,6 +40,7 @@ pub enum TemplateSQLOperation<'a> {
 }
 
 impl<'a> TemplateSQLOperation<'a> {
+    // Resolve the template operation into a concrete operation.
     pub fn resolve(
         &'a self,
         prev_step_id: TransactionStepId,
