@@ -1,3 +1,18 @@
+//! Transform an abstract insert into a concrete insert for Postgres.
+//!
+//! This allows us to execute GraphQL mutations like this:
+//!
+//! ```graphql
+//! mutation {
+//!   createVenue(data: {name: "v1", published: true, latitude: 1.2, concerts: [
+//!     {title: "c1", published: true, price: 1.2},
+//!     {title: "c2", published: false, price: 2.4}
+//!   ]}) {
+//!     id
+//!   }
+//! }
+//! ```
+
 use std::collections::{HashMap, HashSet};
 
 use maybe_owned::MaybeOwned;
@@ -39,43 +54,102 @@ impl InsertTransformer for Postgres {
             selection,
         } = abstract_insert;
 
-        let select = self.to_select(selection);
-
-        let (self_elems, mut nested_elems): (Vec<_>, Vec<_>) = rows
+        let (self_rows, mut nested_rows): (Vec<_>, Vec<_>) = rows
             .iter()
             .map(|row| row.partition_self_and_nested())
             .unzip();
 
-        let (column_names, column_values_seq) = align(self_elems);
+        // Align the columns and values for the top-level table. This way, if there are multiple rows,
+        // we can insert them in a single statement.
+        let (self_column_names, self_column_values_seq) = align(self_rows);
 
-        let root_update = SQLOperation::Insert(table.insert(
-            column_names,
-            column_values_seq,
+        // Insert statements for the top-level table.
+        // For a single row insertion, this will look like:
+        // ```sql
+        // INSERT INTO "venues" ("name", "published", "latitude") VALUES ($1, $2, $3) RETURNING *
+        // ```
+        // For multiple row insertion, this will look like:
+        // ```sql
+        // INSERT INTO "venues" ("name", "published", "latitude") VALUES ($1, $2, $3), ($4, $5, $6), ($7, $8, $9) RETURNING *
+        // ```
+        //
+        // TODO: We need a different way to create TransactionScript for multiple rows. The current
+        // approach is correct, but not conducive to using prepared statements, since the number of
+        // parameters varies depending on columns and rows.
+        // Specifically, we need to create a new `insert` for each row, get the id from each
+        // inserted row, and then use those ids in the predicate while forming the final `select`
+        // (`select ... from <table> where <table>.id in (<collected ids>)`)
+        let root_insert = SQLOperation::Insert(table.insert(
+            self_column_names,
+            self_column_values_seq,
             vec![Column::Star(None).into()],
         ));
 
-        // TODO: We need a different way to create TransactionScript for multiple rows
-        // Specifically, we need to create a new `insert` for each row, get the id from each inserted row,
-        // and then use those id in the predicate while forming the final `select` (`select ... from <table> where <table>.id in (<collected ids>)`)
-        let nested_elems = {
-            let non_empty_nested_count = nested_elems
+        let nested_rows = {
+            let non_empty_nested_count = nested_rows
                 .iter()
                 .filter(|nested| !nested.is_empty())
                 .count();
 
             if non_empty_nested_count == 1 {
-                nested_elems.remove(0)
+                nested_rows.remove(0)
             } else if non_empty_nested_count == 0 {
                 vec![]
             } else {
+                // Currently, we don't support multiple top-level insertions with multiple nested insertions such as:
+                // ```
+                // mutation {
+                //     createVenues(data: [
+                //       {
+                //         name: "v1",
+                //         published: true,
+                //         latitude: 1.2,
+                //         concerts: [
+                //           {title: "c1", published: true, price: 1.2},
+                //           {title: "c2", published: false, price: 2.4}
+                //         ]
+                //       },
+                //       {
+                //         name: "v2",
+                //         published: false,
+                //         latitude: 2.4,
+                //         concerts: [
+                //           {title: "c4", published: true, price: 10.2},
+                //           {title: "c4", published: false, price: 20.4}
+                //         ]
+                //       },
+                //     ]) {
+                //       id
+                //     }
+                //   }
+                // ```
+                // When we want to support this, probably we will have to process each nested insertion
+                // separately, and put it in a transaction with the root insertion. We will also need
+                // to collect the ids of the inserted rows from the root insertion, and use those ids
+                // to form the final `select` statement (see how we do it in update_transformer.rs)
                 panic!("Multiple top-level insertions with nested insertions not supported")
             }
         };
 
+        let select = self.to_select(selection);
+
         let mut transaction_script = TransactionScript::default();
 
-        if !nested_elems.is_empty() {
-            let nested_ctes = nested_elems.into_iter().map(
+        if !nested_rows.is_empty() {
+            // Insert statements for the nested tables such as:
+            // ```sql
+            // WITH
+            //     "venues" AS (
+            //       INSERT INTO "venues" ("name", "published", "latitude") VALUES ($1, $2, $3) RETURNING *
+            //     ),
+            //     "concerts" AS (
+            //       INSERT INTO "concerts" ("price", "published", "title", "venue_id") VALUES
+            //         ($4, $5, $6, (SELECT "venues"."id" FROM "venues")),
+            //         ($7, $8, $9, (SELECT "venues"."id" FROM "venues")) RETURNING *
+            //     )
+            // SELECT json_build_object('id', "venues"."id")::text FROM "venues"
+            // ```
+            let nested_ctes = nested_rows.into_iter().map(
                 |NestedInsertion {
                      relation,
                      parent_table,
@@ -88,6 +162,7 @@ impl InsertTransformer for Postgres {
                     let (mut column_names, mut column_values_seq) = align(self_insertion_elems);
                     column_names.push(relation.column);
 
+                    // To form the `(SELECT "venues"."id" FROM "venues")` part
                     let parent_pk_physical_column = table
                         .get_pk_physical_column()
                         .expect("Could not find primary key");
@@ -106,6 +181,8 @@ impl InsertTransformer for Postgres {
 
                         value.push(parent_reference.into())
                     });
+
+                    // Nested insert CTE. In the example above the `"concerts" AS ( ... )` part
                     CteExpression {
                         name: relation.table.name.clone(),
                         operation: SQLOperation::Insert(relation.table.insert(
@@ -117,9 +194,10 @@ impl InsertTransformer for Postgres {
                 },
             );
 
+            // Root insert CTE. In the above example, the ` "venues" AS ( ... )` part
             let mut ctes = vec![CteExpression {
                 name: table.name.clone(),
-                operation: root_update,
+                operation: root_insert,
             }];
             ctes.extend(nested_ctes);
 
@@ -130,11 +208,19 @@ impl InsertTransformer for Postgres {
                 }),
             )));
         } else {
+            // A WITH query that uses the `root_insert` as a CTE and then selects from it.
+            // `WITH "venues" AS <the root insert above> <the select above>`. For example:
+            //
+            // ```sql
+            // WITH "venues" AS (
+            //   INSERT INTO "venues" ("latitude", "name", "published") VALUES ($1, $2, $3), ($4, $5, $6) RETURNING *
+            // ) SELECT COALESCE(json_agg(json_build_object('id', "venues"."id")), '[]'::json)::text FROM "venues"
+            // ```
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::WithQuery(WithQuery {
                     expressions: vec![CteExpression {
                         name: table.name.clone(),
-                        operation: root_update,
+                        operation: root_insert,
                     }],
                     select,
                 }),
@@ -145,7 +231,7 @@ impl InsertTransformer for Postgres {
     }
 }
 
-/// Align multiple SingleInsertion's to account for misaligned and missing columns
+/// Align multiple SingleInsertion's to account for misaligned and missing columns.
 /// For example, if the input is {data: [{a: 1, b: 2}, {a: 3, c: 4}]}, we will have the 'a' key in both
 /// but only 'b' or 'c' keys in others. So we need align columns that can be supplied to an insert statement
 /// (a, b, c), [(1, 2, null), (3, null, 4)]
