@@ -88,6 +88,7 @@ impl<'a> ExpressionBuilder for Column<'a> {
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
     Concrete(MaybeOwned<'a, Column<'a>>),
+    // A template version of a column that will be replaced with a concrete column at runtime
     Template {
         col_index: usize,
         step_id: TransactionStepId,

@@ -1,3 +1,22 @@
+//! Transform an abstract update into a transaction script.
+//!
+//! This allows us to execute GraphQL mutations like this:
+//!
+//! ```graphql
+//! mutation {
+//!   updateConcert(id: 4, data: {
+//!     title: "new-title",
+//!     concertArtists: {
+//!       create: [{artist: {id: 30}, rank: 2, role: "main"}],
+//!       update: [{id: 100, artist: {id: 10}, rank: 2}, {id: 101, artist: {id: 10}, role: "accompanying"}],
+//!       delete: [{id: 110}]
+//!     }
+//!   }) {
+//!     id
+//!   }
+//! }
+//! ```
+//!
 use maybe_owned::MaybeOwned;
 use tracing::instrument;
 
@@ -24,6 +43,14 @@ use crate::{
 use super::Postgres;
 
 impl UpdateTransformer for Postgres {
+    /// Transform an abstract update into a transaction script.
+    /// Created transaction script looks like (for the example above):
+    /// ```sql
+    /// UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING "concerts"."id"
+    /// UPDATE "concert_artists" SET "artist_id" = $1, "rank" = $2, "concert_id" = $3 WHERE "concert_artists"."id" = $4
+    /// DELETE FROM "concert_artists" WHERE "concert_artists"."id" = $1
+    /// SELECT json_build_object('id', "concerts"."id")::text FROM "concerts" WHERE "concerts"."id" = $1
+    /// ```
     #[instrument(
         name = "UpdateTransformer::to_transaction_script for Postgres"
         skip(self)
@@ -77,6 +104,7 @@ impl UpdateTransformer for Postgres {
                 .nested_updates
                 .iter()
                 .for_each(|nested_update| {
+                    // Create a template update operation and bind it to the root step
                     let update_op = TemplateTransactionStep {
                         operation: update_op(nested_update, root_step_id, self),
                         prev_step_id: root_step_id,
@@ -113,6 +141,14 @@ impl UpdateTransformer for Postgres {
                 ConcreteTransactionStep::new(SQLOperation::Select(select)),
             ));
         } else {
+            // Simpler case where we do not have any nested insert/update/delete. We can just return a simple
+            // CTE like:
+            // ```sql
+            // WITH "concerts" AS (
+            //    UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING *
+            // )
+            // SELECT json_build_object('id', "concerts"."id")::text FROM "concerts" WHERE "concerts"."id" = $3
+            // ```
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::WithQuery(WithQuery {
                     expressions: vec![CteExpression {
@@ -142,6 +178,9 @@ fn update_op<'a>(
     column_values.push((
         nested_update.relation.column,
         ProxyColumn::Template {
+            // The column index is always 0 because we want to get the only column in the row
+            // such as `UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING
+            // "concerts"."id"`
             col_index: 0,
             step_id: parent_step_id,
         },
@@ -178,6 +217,9 @@ fn insert_op<'a>(
                 .map(ProxyColumn::Concrete)
                 .collect();
             column_values.push(ProxyColumn::Template {
+                // The column index is always 0 because we want to get the only column in the row
+                // such as `UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING
+                // "concerts"."id"`
                 col_index: 0,
                 step_id: parent_step_id,
             });

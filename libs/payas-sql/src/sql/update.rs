@@ -67,6 +67,8 @@ pub struct TemplateUpdate<'a> {
 }
 
 impl<'a> TemplateUpdate<'a> {
+    // Create a concrete update from the template version. Will examine the previous step's result
+    // to create as many concrete operations as there are rows in the previous step.
     pub fn resolve(
         &'a self,
         prev_step_id: TransactionStepId,
@@ -74,16 +76,11 @@ impl<'a> TemplateUpdate<'a> {
     ) -> Vec<Update<'a>> {
         let rows = transaction_context.row_count(prev_step_id);
 
-        let TemplateUpdate {
-            table,
-            predicate,
-            column_values,
-            returning,
-        } = self;
-
+        // Go over all the rows in the previous step and create a concrete update for each row.
         (0..rows)
             .map(|row_index| {
-                let resolved_column_values = column_values
+                let resolved_column_values = self
+                    .column_values
                     .iter()
                     .map(|(physical_col, col)| {
                         let resolved_col = match col {
@@ -99,10 +96,14 @@ impl<'a> TemplateUpdate<'a> {
                     })
                     .collect();
                 Update {
-                    table,
-                    predicate: predicate.into(),
+                    table: self.table,
+                    predicate: (&self.predicate).into(),
                     column_values: resolved_column_values,
-                    returning: returning.iter().map(|col| col.as_ref().into()).collect(),
+                    returning: self
+                        .returning
+                        .iter()
+                        .map(|col| col.as_ref().into())
+                        .collect(),
                 }
             })
             .collect()

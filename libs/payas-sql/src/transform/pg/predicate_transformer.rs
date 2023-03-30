@@ -108,7 +108,6 @@ fn to_subselect_predicate<'a>(
     transformer: &Postgres,
     predicate: &AbstractPredicate<'a>,
 ) -> ConcretePredicate<'a> {
-    println!("to_subselect_predicate: {:?}", predicate);
     fn binary_operator<'p>(
         left: &ColumnPath<'p>,
         right: &ColumnPath<'p>,

@@ -8,6 +8,7 @@ use super::{
     ExpressionBuilder, SQLValue,
 };
 
+/// Rows obtained from a SQL operation
 pub type TransactionStepResult = Vec<Row>;
 
 /// Sequence of SQL operations that are executed in a transaction
@@ -16,6 +17,7 @@ pub struct TransactionScript<'a> {
     steps: Vec<TransactionStep<'a>>,
 }
 
+/// Collection of results from steps in a transaction
 pub struct TransactionContext {
     results: Vec<TransactionStepResult>,
 }
@@ -24,16 +26,12 @@ pub struct TransactionContext {
 pub struct TransactionStepId(pub usize);
 
 impl TransactionContext {
+    /// Returns the value of a column in a row from the given step id
     pub fn resolve_value(&self, step_id: TransactionStepId, row: usize, col: usize) -> SQLValue {
-        self.results
-            .get(step_id.0)
-            .unwrap()
-            .get(row)
-            .unwrap()
-            .try_get::<usize, SQLValue>(col)
-            .unwrap()
+        self.results[step_id.0][row].get::<usize, SQLValue>(col)
     }
 
+    /// Returns the number of rows in the result of the given step id
     pub fn row_count(&self, step_id: TransactionStepId) -> usize {
         self.results[step_id.0].len()
     }
@@ -51,11 +49,13 @@ impl<'a> TransactionScript<'a> {
     ) -> Result<TransactionStepResult, DatabaseError> {
         let mut transaction_context = TransactionContext { results: vec![] };
 
+        // Execute each step in the transaction and store the result in the transaction_context
         for step in self.steps.iter() {
             let result = step.execute(tx, &transaction_context).await?;
             transaction_context.results.push(result)
         }
 
+        // Return the result of the last step (usually the "select")
         transaction_context
             .results
             .into_iter()
@@ -63,6 +63,7 @@ impl<'a> TransactionScript<'a> {
             .ok_or_else(|| DatabaseError::Transaction("".into()))
     }
 
+    /// Adds a step to the transaction script and return the step id (which is just the index of the step in the script)
     pub fn add_step(&mut self, step: TransactionStep<'a>) -> TransactionStepId {
         let id = self.steps.len();
         self.steps.push(step);
@@ -94,9 +95,11 @@ impl<'a> TransactionStep<'a> {
 
                 match concrete.as_slice() {
                     [init @ .., last] => {
+                        // Execute all but the last step
                         for substep in init {
                             substep.execute(client).await?;
                         }
+                        // Execute the last step and return the result
                         last.execute(client).await
                     }
                     _ => Ok(vec![]),
