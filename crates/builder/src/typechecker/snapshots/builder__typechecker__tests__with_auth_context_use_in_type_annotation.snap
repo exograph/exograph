@@ -1,5 +1,6 @@
 ---
 source: crates/builder/src/typechecker/mod.rs
+assertion_line: 530
 expression: build(src).unwrap()
 ---
 types:
@@ -138,17 +139,17 @@ types:
     Boolean:
       index: 0
       generation: ~
-    Exograph:
-      index: 12
-      generation: ~
-    ExographPriv:
-      index: 13
-      generation: ~
     Decimal:
       index: 3
       generation: ~
     Doc:
       index: 16
+      generation: ~
+    Exograph:
+      index: 12
+      generation: ~
+    ExographPriv:
+      index: 13
       generation: ~
     Float:
       index: 2
