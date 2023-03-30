@@ -47,7 +47,7 @@ steps:
     commands:
         # TODO: figure out how to build cdylibs during tests implicitly
         # see https://github.com/rust-lang/cargo/issues/8311
-      - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CLAY_TEST_POSTGRES_URL=postgresql://postgres@database:5432 cargo test --workspace
+      - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse EXO_TEST_POSTGRES_URL=postgresql://postgres@database:5432 cargo test --workspace
 
   - name: test-integration
     image: payas-ci-image
@@ -59,7 +59,7 @@ steps:
       path: /sccache
     commands:
       - export PATH=./target/debug:$PATH
-      - CLAY_TEST_POSTGRES_URL=postgresql://postgres@database:5432 clay test --run-introspection-tests integration-tests
+      - EXO_TEST_POSTGRES_URL=postgresql://postgres@database:5432 exo test --run-introspection-tests integration-tests
 
   - name: discord-end
     image: appleboy/drone-discord

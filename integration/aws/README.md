@@ -1,4 +1,4 @@
-This is an example app to show how to deploy Claytip as an AWS lambda. This folder contains a CloudFormation template, as well as a build script to build the lambdas needed by the template. The following steps show how to deploy `example.clay` to `us-west-1`.
+This is an example app to show how to deploy Exograph as an AWS lambda. This folder contains a CloudFormation template, as well as a build script to build the lambdas needed by the template. The following steps show how to deploy `example.exo` to `us-west-1`.
 
 1. Provision a VPC using the VPC wizard in the [VPC Dashboard](https://us-west-1.console.aws.amazon.com/vpc/home). Use the following settings:
 
@@ -20,10 +20,10 @@ This is an example app to show how to deploy Claytip as an AWS lambda. This fold
 3. In this directory, build the necessary functions:
 
    ```sh
-   ./build.sh -c example.clay
+   ./build.sh -c example.exo
    ```
 
-   This commands will build the folders `aws-app` (containing the actual lambda that will serve your Claytip API), and `aws-cf-func` (a lambda that will run once at deployment to initialize the database schema) in this directory.
+   This commands will build the folders `aws-app` (containing the actual lambda that will serve your Exograph API), and `aws-cf-func` (a lambda that will run once at deployment to initialize the database schema) in this directory.
 
 4. Make sure AWS credentials are configured on your local system:
 
@@ -42,21 +42,21 @@ This is an example app to show how to deploy Claytip as an AWS lambda. This fold
    ```
        Setting default arguments for 'sam deploy'
        =========================================
-       Stack Name [sam-app]: clay-lambda
+       Stack Name [sam-app]: exo-lambda
        AWS Region [us-west-1]:
-       Parameter ClaytipPostgresUsername [clay]:
-       Parameter ClaytipPostgresPassword [claytipdbpassword]:
-       Parameter ClaytipPostgresName [claytipdb]:
-       Parameter ClaytipSubnetAZ1 []: subnet-xxxxxxxxxxxxxxxxx
-       Parameter ClaytipSubnetAZ2 []: subnet-xxxxxxxxxxxxxxxxx
-       Parameter ClaytipSecurityGroup []: sg-xxxxxxxxxxxxxxxxxx
+       Parameter ExographPostgresUsername [exo]:
+       Parameter ExographPostgresPassword [exographdbpassword]:
+       Parameter ExographPostgresName [exographdb]:
+       Parameter ExographSubnetAZ1 []: subnet-xxxxxxxxxxxxxxxxx
+       Parameter ExographSubnetAZ2 []: subnet-xxxxxxxxxxxxxxxxx
+       Parameter ExographSecurityGroup []: sg-xxxxxxxxxxxxxxxxxx
 
        ...
 
-       ClaytipFunction may not have authorization defined, Is this okay? [y/N]: y
+       ExographFunction may not have authorization defined, Is this okay? [y/N]: y
    ```
 
-   Wait for the stack to deploy. Once finished, SAM will print the endpoint URL (you can also get it by looking at ClaytipFunction's triggers in the [Lambda dashboard](https://us-west-1.console.aws.amazon.com/lambda/home)):
+   Wait for the stack to deploy. Once finished, SAM will print the endpoint URL (you can also get it by looking at ExographFunction's triggers in the [Lambda dashboard](https://us-west-1.console.aws.amazon.com/lambda/home)):
 
    ```
    CloudFormation outputs from deployed stack
@@ -65,8 +65,8 @@ This is an example app to show how to deploy Claytip as an AWS lambda. This fold
    ------------------------------------------
    ...
 
-   Key                 ClaytipApi
-   Description         API Gateway endpoint URL for Prod stage for Claytip function
+   Key                 ExographApi
+   Description         API Gateway endpoint URL for Prod stage for Exograph function
    Value               https://xxxxxxxxxx.execute-api.us-west-1.amazonaws.com/Prod/
    ...
    ```

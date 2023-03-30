@@ -74,7 +74,7 @@ pub struct AstService<T: NodeTypedness> {
     pub types: Vec<AstModel<T>>,
     pub methods: Vec<AstMethod<T>>,
     pub interceptors: Vec<AstInterceptor<T>>,
-    pub base_clayfile: PathBuf,
+    pub base_exofile: PathBuf,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]

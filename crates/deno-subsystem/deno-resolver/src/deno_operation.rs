@@ -3,9 +3,9 @@ use async_graphql_value::ConstValue;
 
 use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver,
-    claytip_execute_query,
+    exograph_execute_query,
     request_context::RequestContext,
-    system_resolver::{ClaytipExecuteQueryFn, SystemResolver},
+    system_resolver::{ExographExecuteQueryFn, SystemResolver},
     validation::field::ValidatedField,
     QueryResponse, QueryResponseBody,
 };
@@ -21,7 +21,7 @@ use payas_deno::Arg;
 use serde_json::Value;
 
 use crate::{
-    clay_execution::ClayCallbackProcessor, deno_execution_error::DenoExecutionError,
+    deno_execution_error::DenoExecutionError, exo_execution::ExoCallbackProcessor,
     plugin::DenoSubsystemResolver, service_access_predicate::ServiceAccessPredicate,
 };
 
@@ -75,14 +75,14 @@ impl<'a> DenoOperation<'a> {
         let subsystem = &self.subsystem();
         let script = &subsystem.scripts[self.method.script];
 
-        let claytip_execute_query: &ClaytipExecuteQueryFn =
-            claytip_execute_query!(self.system_resolver, self.request_context);
+        let exograph_execute_query: &ExographExecuteQueryFn =
+            exograph_execute_query!(self.system_resolver, self.request_context);
 
         let arg_sequence: Vec<Arg> = self.construct_arg_sequence().await?;
 
-        let callback_processor = ClayCallbackProcessor {
-            claytip_execute_query,
-            claytip_proceed: None,
+        let callback_processor = ExoCallbackProcessor {
+            exograph_execute_query,
+            exograph_proceed: None,
         };
 
         let (result, response) = self

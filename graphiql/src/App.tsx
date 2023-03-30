@@ -4,13 +4,13 @@ import { createGraphiQLFetcher } from "@graphiql/toolkit";
 import "graphiql/graphiql.min.css";
 
 const Logo = () => (
-  <a href="https://claytip.com" target="_blank" rel="noreferrer">
-    <img src="logo.svg" className="logo" alt="Claytip" />
+  <a href="https://exograph.com" target="_blank" rel="noreferrer">
+    <img src="logo.svg" className="logo" alt="Exograph" />
   </a>
 );
 
 const fetcher = createGraphiQLFetcher({
-  url: (window as any).clayGraphQLEndpoint,
+  url: (window as any).exoGraphQLEndpoint,
 });
 
 const App = () => (

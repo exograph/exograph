@@ -1,0 +1,75 @@
+stages:
+    # create Blobs
+    - deno: |
+        import { v4 } from "https://deno.land/std@0.140.0/uuid/mod.ts";
+      operation: |
+        mutation ($sample_blob: String!) {
+            createImages(data: [
+                { name: "foo", data: $sample_blob },
+                { name: "bar", data: $sample_blob },
+                { name: "baz", data: $sample_blob },
+            ]) {
+                id @bind(name: "image_uuids")
+                name
+            }
+        }
+      variable: |
+        {
+            // blank GIF
+            "sample_blob": "R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
+        }
+      response: |
+        {
+            "data": {
+                "createImages": (actual) => {
+                    for (const element of actual) {
+                        if (!v4.validate(element.id)) {
+                            throw new ExographError(id + " is not a valid UUID")
+                        }
+                    }
+                    return true; 
+                }
+            }
+        }
+    
+    # retrieve using UUIDs
+    - operation: |
+        query($foo_id: Int!, $bar_id: Int!, $baz_id: Int!) {
+            foo: images(where: { id: { eq: $foo_id } }) {
+                name
+            }
+
+            bar: images(where: { id: { eq: $bar_id } }) {
+                name
+            }
+
+            baz: images(where: { id: { eq: $baz_id } }) {
+                name
+            }
+        }
+      variable: |
+        {
+            "foo_id": $.image_uuids[0],
+            "bar_id": $.image_uuids[1],
+            "baz_id": $.image_uuids[2]
+        }
+      response: |
+        {
+          "data": {
+            "foo": [
+              {
+                "name": "foo"
+              }
+            ],
+            "bar": [
+              {
+                "name": "bar"
+              }
+            ],
+            "baz": [
+              {
+                "name": "baz"
+              }
+            ]
+          }
+        }

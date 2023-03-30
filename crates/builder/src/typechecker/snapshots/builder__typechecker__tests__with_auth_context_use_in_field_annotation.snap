@@ -29,9 +29,9 @@ types:
     - - ~
       - Primitive: Uuid
     - - ~
-      - Primitive: Claytip
+      - Primitive: Exograph
     - - ~
-      - Primitive: ClaytipPriv
+      - Primitive: ExographPriv
     - - ~
       - Primitive:
           Interception: Operation
@@ -138,10 +138,10 @@ types:
     Boolean:
       index: 0
       generation: ~
-    Claytip:
+    Exograph:
       index: 12
       generation: ~
-    ClaytipPriv:
+    ExographPriv:
       index: 13
       generation: ~
     Decimal:
@@ -249,7 +249,7 @@ services:
               annotations: {}
         methods: []
         interceptors: []
-        base_clayfile: input.clay
+        base_exofile: input.exo
     - ~
     - ~
     - ~

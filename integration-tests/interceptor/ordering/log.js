@@ -1,65 +1,65 @@
-export async function enterConcertMutation(operation, claytip) {
-    await logEntry(`enterConcertMutation: ${operation.name()}`, claytip)
+export async function enterConcertMutation(operation, exograph) {
+    await logEntry(`enterConcertMutation: ${operation.name()}`, exograph)
     return true
 }
 
-export async function enterVenueMutation(operation, claytip) {
+export async function enterVenueMutation(operation, exograph) {
     console.log(`exitConcertMutation: ${operation.name()}`);
-    await logEntry(`enterVenueMutation: ${operation.name()}`, claytip)
+    await logEntry(`enterVenueMutation: ${operation.name()}`, exograph)
     return true
 }
 
-export async function exitConcertMutation(operation, claytip) {
-    await logEntry(`exitConcertMutation ${operation.name()}`, claytip);
+export async function exitConcertMutation(operation, exograph) {
+    await logEntry(`exitConcertMutation ${operation.name()}`, exograph);
 }
 
-export async function exitVenueMutation(operation, claytip) {
+export async function exitVenueMutation(operation, exograph) {
     console.log(`exitVenueMutation: ${operation.name()}`);
-    await logEntry(`exitVenueMutation: ${operation.name()}`, claytip)
+    await logEntry(`exitVenueMutation: ${operation.name()}`, exograph)
     return true
 }
 
-export async function enterQuery(operation, claytip) {
-    await logEntry(`enterQuery: ${operation.name()}`, claytip)
+export async function enterQuery(operation, exograph) {
+    await logEntry(`enterQuery: ${operation.name()}`, exograph)
     return true
 }
 
-export async function exitQuery(operation, claytip) {
-    await logEntry(`exitQuery: ${operation.name()}`, claytip)
+export async function exitQuery(operation, exograph) {
+    await logEntry(`exitQuery: ${operation.name()}`, exograph)
     return true
 }
 
-export async function enterMutation(operation, claytip) {
-    await logEntry(`enterMutation: ${operation.name()}`, claytip)
+export async function enterMutation(operation, exograph) {
+    await logEntry(`enterMutation: ${operation.name()}`, exograph)
     return true
 }
 
-export async function rateLimitingQuery(operation, claytip) {
-    await logEntry(`start rateLimitingQuery: ${operation.name()}`, claytip)
+export async function rateLimitingQuery(operation, exograph) {
+    await logEntry(`start rateLimitingQuery: ${operation.name()}`, exograph)
     const res = await operation.proceed();
-    await logEntry(`end rateLimitingQuery: ${operation.name()}`, claytip)
+    await logEntry(`end rateLimitingQuery: ${operation.name()}`, exograph)
 
     return res;
 }
 
-export async function timingQuery(operation, claytip) {
-    await logEntry(`start timingQuery: ${operation.name()}`, claytip)
+export async function timingQuery(operation, exograph) {
+    await logEntry(`start timingQuery: ${operation.name()}`, exograph)
     const startTime = performance.now();
     const res = await operation.proceed();
     const endTime = performance.now();
-    await logEntry(`end timingQuery: ${operation.name()}`, claytip)
+    await logEntry(`end timingQuery: ${operation.name()}`, exograph)
 
-    console.log(`The query ${operation.name()} took ${endTime-startTime} milliseconds`)
+    console.log(`The query ${operation.name()} took ${endTime - startTime} milliseconds`)
     return res
 }
 
-async function logEntry(message, claytip) {
+async function logEntry(message, exograph) {
     console.log(`${message}`)
     let variable = {
         "message": message
     };
 
-    await claytip.executeQuery(
+    await exograph.executeQuery(
         `mutation($message: String!) {
             createLog(data: {message: $message}) {
             id

@@ -1,0 +1,11 @@
+import "users"  // Example of not specifying the index.exo file in a directory
+
+@postgres
+service MailingListService {
+    @access(true)
+    type MailingList {
+        @pk id: Int = autoIncrement()
+        email_address: String
+        @column("subscribed_mailing_list")  subscriptions: Set<UserSubscription>? 
+    }
+}

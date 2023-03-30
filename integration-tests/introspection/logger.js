@@ -1,8 +1,8 @@
 
-  export function logger(claytip, input) {
+export function logger(exograph, input) {
 
-  }
-  
-  export function debug(claytip, input) {
+}
 
-  }
+export function debug(exograph, input) {
+
+}

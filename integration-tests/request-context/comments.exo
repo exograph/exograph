@@ -1,0 +1,63 @@
+context AuthContext {
+    @jwt("role") role: String 
+    @header("X-Secret-Header") secretHeader: String 
+    @env("__DEV_MODE") devMode: String 
+    @cookie("session_id") sessionId: String 
+    @clientIp clientIp: String 
+}
+
+context TrackingContext {
+    @header("X-User-ID") uid: String 
+
+    // this should be determined by the query `shouldTrack` (as specified through the @query source) 
+    // e.g.
+    // query {
+    //      shouldTrack
+    // }
+    @query("shouldTrack") shouldTrack: Boolean 
+}
+
+@postgres
+service JournalService {
+    // A journal model, providing a journal that is queryable by everyone, but can only be
+    // mutated if certain conditions are satisfied.
+    @access(
+        query=true,
+        mutation=AuthContext.role == "ADMIN" ||
+                 AuthContext.secretHeader == "pancake" ||
+                 AuthContext.devMode == "1" ||
+                 AuthContext.sessionId == "abcde" 
+    )
+    type JournalEntry {
+        @pk id: Int = autoIncrement()
+        text: String
+    }
+}
+
+@deno("cookie.ts")
+service CookieService {
+    // Sets a session cookie on the client
+    @access(true) export query getCookie(@inject exograph: Exograph): Boolean
+}
+
+// Our example service providing 'tracking' logic. Doesn't actually do very much.
+@deno("tracking.ts")
+service TrackingService {
+    // this query will return `true` for all requests EXCEPT when X-Secret-Header is set to "pancake"
+    @access(true) query shouldTrack(@inject context: AuthContext): Boolean
+}
+
+// Test queries for direct use in integration tests.
+@deno("context_getter.ts")
+service ContextGetter {
+    @access(true) export query getRole(@inject context: AuthContext): String
+    @access(true) export query getSecretHeader(@inject context: AuthContext): String
+    @access(true) export query getDevModeEnabled(@inject context: AuthContext): Boolean
+    @access(true) export query getIp(@inject context: AuthContext): String
+
+    // this method simply takes TrackingContext and returns TrackingContext.shouldTrack
+    @access(true) export query isTrackingEnabled(@inject tracking: TrackingContext): Boolean
+
+    // query with two different injected contexts
+    @access(true) export query getRoleAndUid(@inject auth: AuthContext, @inject tracking: TrackingContext): String
+}

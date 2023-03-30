@@ -665,7 +665,7 @@ mod tests {
     }
 
     fn create_test_schema() -> Schema {
-        let test_clay = r#"
+        let test_exo = r#"
             @postgres
             service LogService {
                 type Concert {
@@ -682,8 +682,7 @@ mod tests {
                 }
             }
         "#;
-        let postgres_subsystem =
-            create_postgres_system_from_str(test_clay, "test.clay".to_string());
+        let postgres_subsystem = create_postgres_system_from_str(test_exo, "test.exo".to_string());
 
         Schema::new(
             postgres_subsystem.schema_types(),
@@ -696,7 +695,7 @@ mod tests {
         parse_query(query_str).unwrap()
     }
 
-    /// Creates a postgres subsystem from a clay file for test purposes. This creates a soft
+    /// Creates a postgres subsystem from a exo file for test purposes. This creates a soft
     /// dependency on the postgres subsystem (its shared library must be build before executing the
     /// tests).
     ///
@@ -728,12 +727,12 @@ mod tests {
             .unwrap()
             .serialized_subsystem;
 
-        // Set the CLAY_POSTGRES_URL to avoid failure of `loader::init` later. Since we are not actually
+        // Set the EXO_POSTGRES_URL to avoid failure of `loader::init` later. Since we are not actually
         // connecting to a database, this is fine (we are only interested get queries, mutations, and types
         // to build the schema)
         env::set_var(
-            "CLAY_POSTGRES_URL",
-            "postgres://postgres:postgres@localhost:5432/clay_test",
+            "EXO_POSTGRES_URL",
+            "postgres://postgres:postgres@localhost:5432/exo_test",
         );
 
         loader.init(subsystem).unwrap()

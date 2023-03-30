@@ -1,8 +1,8 @@
 import * as bcrypt from 'https://deno.land/x/crypt@v0.1.0/bcrypt.ts';
 import { createJwt, queryUserInfo, secret } from "./login-utils.ts";
 
-export async function loginNormal(email: string, password: string, claytip: any): Promise<string> {
-    const res = await claytip.executeQuery(`
+export async function loginNormal(email: string, password: string, exograph: any): Promise<string> {
+    const res = await exograph.executeQuery(`
         query ($email: String!) {
             users(where: { email: { eq: $email }}) {
                 password
@@ -15,7 +15,7 @@ export async function loginNormal(email: string, password: string, claytip: any)
     const user = res.users[0];
 
     if (bcrypt.compareSync(password, user.password)) {
-        const userInfo = await queryUserInfo(email, claytip);
+        const userInfo = await queryUserInfo(email, exograph);
         return await createJwt(userInfo, secret);
     } else {
         throw new Error(`Incorrect password`);
@@ -26,11 +26,11 @@ export async function signupNormal(
     email: string,
     password: string,
     name: string,
-    claytip: any
+    exograph: any
 ): Promise<string> {
     const hashed = bcrypt.hashSync(password);
 
-    let res = await claytip.executeQuery(
+    let res = await exograph.executeQuery(
         `mutation(
           $email: String!, 
           $password: String!,

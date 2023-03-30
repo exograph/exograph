@@ -114,7 +114,7 @@ pub enum FloatBits {
 
 impl PhysicalColumnType {
     /// Create a new physical column type given the SQL type string. This is used to reverse-engineer
-    /// a database schema to a Claytip model.
+    /// a database schema to a Exograph model.
     pub fn from_string(s: &str) -> Result<PhysicalColumnType, DatabaseError> {
         let s = s.to_uppercase();
 

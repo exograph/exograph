@@ -1,15 +1,15 @@
-mod claytest;
+mod exotest;
 
 use anyhow::{bail, Context, Result};
-use claytest::integration_tests::{build_claypot_file, run_testfile};
-use claytest::loader::{load_testfiles_from_dir, ParsedTestfile};
+use exotest::integration_tests::{build_exo_ir_file, run_testfile};
+use exotest::loader::{load_testfiles_from_dir, ParsedTestfile};
 use rayon::ThreadPoolBuilder;
 use std::cmp::min;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
-use crate::claytest::introspection_tests::run_introspection_test;
+use crate::exotest::introspection_tests::run_introspection_test;
 
 /// Loads test files from the supplied directory and runs them using a thread pool.
 pub fn run(
@@ -36,13 +36,13 @@ pub fn run(
     let cpus = num_cpus::get();
 
     let postgres_url =
-        std::env::var("CLAY_TEST_POSTGRES_URL").expect("CLAY_TEST_POSTGRES_URL must be specified");
+        std::env::var("EXO_TEST_POSTGRES_URL").expect("EXO_TEST_POSTGRES_URL must be specified");
 
     let testfiles = load_testfiles_from_dir(root_directory, pattern)
         .with_context(|| format!("While loading testfiles from directory {root_directory_str}"))?;
     let number_of_integration_tests = testfiles.len();
 
-    // Work out which tests share a common clay file so we only build it once for all the
+    // Work out which tests share a common exo file so we only build it once for all the
     // dependent tests, avoiding accidental corruption from overwriting.
     let mut model_file_deps: HashMap<PathBuf, Vec<ParsedTestfile>> = HashMap::new();
 
@@ -92,7 +92,7 @@ pub fn run(
         let tx = tx.clone();
         let url = postgres_url.clone();
 
-        pool.spawn(move || match build_claypot_file(&model_path) {
+        pool.spawn(move || match build_exo_ir_file(&model_path) {
             Ok(()) => {
                 for file in testfiles.iter() {
                     let result = run_testfile(file, url.clone());
@@ -102,7 +102,7 @@ pub fn run(
             Err(e) => tx
                 .send(Err(e).with_context(|| {
                     format!(
-                        "While trying to build claypot file for {}",
+                        "While trying to build exo_ir file for {}",
                         model_path.display()
                     )
                 }))

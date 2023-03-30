@@ -1,0 +1,26 @@
+exofile: "comments.exo"
+
+# post a comment
+operation: |
+    mutation($comment: String!) {
+        comment: createComment(data: {
+            text: $comment
+        }) {
+            id
+            text
+        }
+    }
+variable: |
+    {
+        "comment": "Hello, world!"
+    }
+headers: |
+    {}
+response: |
+    {
+      "errors": [
+        {
+          "message": "Not authorized"
+        }
+      ]
+    }

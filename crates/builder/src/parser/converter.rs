@@ -94,22 +94,22 @@ pub fn convert_root(
 
                         // Resolve the import path
                         // 1. If the path exists and it is a file, return the path
-                        // 2. If the path exists and it is a directory, check for <path>/index.clay
-                        // 3. If the path doesn't exist, check for <path>.clay
+                        // 2. If the path exists and it is a directory, check for <path>/index.exo
+                        // 3. If the path doesn't exist, check for <path>.exo
                         match import_path.canonicalize() {
                             Ok(path) if path.is_file() => Ok(Some(path)),
                             Ok(path) if path.is_dir() => {
-                                // If the path is a directory, try to find <directory>/index.clay
-                                let with_index_clay = path.join("index.clay");
-                                check_existence(with_index_clay)
+                                // If the path is a directory, try to find <directory>/index.exo
+                                let with_index_exo = path.join("index.exo");
+                                check_existence(with_index_exo)
                             }
                             _ => {
-                                // If no extension is given, try if a file with the same name but with ".clay" extension exists.
-                                if import_path.extension() == Some(OsStr::new("clay")) {
-                                    // Already has the .clay extension, so further checks are not necessary (it is a failure since the file does not exist).
+                                // If no extension is given, try if a file with the same name but with ".exo" extension exists.
+                                if import_path.extension() == Some(OsStr::new("exo")) {
+                                    // Already has the .exo extension, so further checks are not necessary (it is a failure since the file does not exist).
                                     Err(compute_diagnosis(import_path, source_span, first_child))
                                 } else {
-                                    let with_extension = import_path.with_extension("clay");
+                                    let with_extension = import_path.with_extension("exo");
                                     check_existence(with_extension)
                                 }
                             }
@@ -222,7 +222,7 @@ fn convert_service(
             .map(|n| convert_interceptor(n, source, source_span))
             .collect(),
         annotations,
-        base_clayfile: filepath.into(),
+        base_exofile: filepath.into(),
         span: span_from_node(source_span, node),
     }
 }
@@ -634,14 +634,14 @@ mod tests {
         ($src:literal) => {
             let mut codemap = CodeMap::new();
             let file_span = codemap
-                .add_file("input.clay".to_string(), $src.to_string())
+                .add_file("input.exo".to_string(), $src.to_string())
                 .span;
             let parsed = parse($src).unwrap();
             insta::assert_yaml_snapshot!(convert_root(
                 parsed.root_node(),
                 $src.as_bytes(),
                 file_span,
-                Path::new("input.clay")
+                Path::new("input.exo")
             )
             .unwrap());
         };

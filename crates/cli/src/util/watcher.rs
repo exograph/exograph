@@ -46,17 +46,17 @@ where
         .watcher()
         .watch(parent_dir, RecursiveMode::Recursive)?;
 
-    // precompute clay-server path and claypot file name
+    // precompute exo-server path and exo_ir file name
     let mut server_binary = std::env::current_exe()?;
-    server_binary.set_file_name("clay-server");
-    let claypot_file_name = format!("{}pot", model_path.to_str().unwrap());
+    server_binary.set_file_name("exo-server");
+    let exo_ir_file_name = format!("{}_ir", model_path.to_str().unwrap());
 
     // Given a path, determine if the model should be rebuilt and the server restarted.
     fn should_restart(path: &Path) -> bool {
-        !matches!(path.extension().and_then(|e| e.to_str()), Some("claypot"))
+        !matches!(path.extension().and_then(|e| e.to_str()), Some("exo_ir"))
     }
 
-    // Attempts to builds a claypot from the model and spawn a clay-server from it
+    // Attempts to builds a exo_ir from the model and spawn a exo-server from it
     // - if the attempt succeeds, we will return a handle to the process in an Ok(Some(...))
     // - if the return value is an Err, this means that we have encountered an unrecoverable error, and so the
     //   watcher should exit.
@@ -77,16 +77,16 @@ where
 
                 let mut command = tokio::process::Command::new(&server_binary);
 
-                command.args([&claypot_file_name]);
+                command.args([&exo_ir_file_name]);
                 command.kill_on_drop(true);
 
                 if let Some(port) = server_port {
-                    command.env("CLAY_SERVER_PORT", port.to_string());
+                    command.env("EXO_SERVER_PORT", port.to_string());
                 }
 
                 let child = command
                     .spawn()
-                    .context("Failed to start clay-server")
+                    .context("Failed to start exo-server")
                     .map_err(|e| BuildError::UnrecoverableError(anyhow!(e)))?;
 
                 Ok(Some(child))

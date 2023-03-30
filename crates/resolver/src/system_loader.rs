@@ -115,11 +115,11 @@ impl SystemLoader {
 }
 
 pub fn allow_introspection() -> Result<bool, SystemLoadingError> {
-    match std::env::var("CLAY_INTROSPECTION").ok() {
+    match std::env::var("EXO_INTROSPECTION").ok() {
         Some(e) => match e.parse::<bool>() {
             Ok(v) => Ok(v),
             Err(_) => Err(SystemLoadingError::Config(
-                "CLAY_INTROSPECTION env var must be set to either true or false".into(),
+                "EXO_INTROSPECTION env var must be set to either true or false".into(),
             )),
         },
         None => Ok(false),
@@ -133,11 +133,11 @@ pub fn query_depth_limits() -> Result<(usize, usize), SystemLoadingError> {
     const DEFAULT_QUERY_DEPTH: usize = 5;
     const DEFAULT_INTROSPECTION_QUERY_DEPTH: usize = 15;
 
-    let query_depth = match std::env::var("CLAY_MAX_SELECTION_DEPTH").ok() {
+    let query_depth = match std::env::var("EXO_MAX_SELECTION_DEPTH").ok() {
         Some(e) => match e.parse::<usize>() {
             Ok(v) => Ok(v),
             Err(_) => Err(SystemLoadingError::Config(
-                "CLAY_MAX_SELECTION_DEPTH env var must be set to a positive integer".into(),
+                "EXO_MAX_SELECTION_DEPTH env var must be set to a positive integer".into(),
             )),
         },
         None => Ok(DEFAULT_QUERY_DEPTH),

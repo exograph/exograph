@@ -12,7 +12,7 @@ macro_rules! export_subsystem_builder {
         __export_build_info!();
 
         #[no_mangle]
-        pub extern "C" fn __claytip_subsystem_builder() -> *mut dyn SubsystemBuilder {
+        pub extern "C" fn __exograph_subsystem_builder() -> *mut dyn SubsystemBuilder {
             let builder: Box<dyn SubsystemBuilder> = Box::new($builder);
             unsafe { Box::leak(builder) }
         }
@@ -35,7 +35,7 @@ macro_rules! export_subsystem_loader {
         __export_build_info!();
 
         #[no_mangle]
-        pub extern "C" fn __claytip_subsystem_loader() -> *mut dyn SubsystemLoader {
+        pub extern "C" fn __exograph_subsystem_loader() -> *mut dyn SubsystemLoader {
             let loader = Box::new($loader);
             unsafe { Box::leak(loader) }
         }

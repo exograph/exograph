@@ -3,6 +3,6 @@ fn main() {
     // to code using the current crate
     //
     // we use `built` primarily in crate::build_info::interface_version, where the information
-    // is used to ensure compatibility between clay-server and a dynamic library
+    // is used to ensure compatibility between exo-server and a dynamic library
     built::write_built_file().expect("Failed to acquire build-time information");
 }

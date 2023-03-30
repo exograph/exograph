@@ -28,7 +28,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             methods: typed(&untyped.methods),
             interceptors: typed(&untyped.interceptors),
             annotations: annotation_map,
-            base_clayfile: untyped.base_clayfile.clone(),
+            base_exofile: untyped.base_exofile.clone(),
             span: untyped.span,
         }
     }

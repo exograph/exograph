@@ -13,7 +13,7 @@ use payas_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
 use crate::commands::command::Command;
 use crate::util::open_file_for_output;
 
-/// Create a claytip model file based on a database schema
+/// Create a exograph model file based on a database schema
 pub struct ImportCommand {
     pub output: Option<PathBuf>,
 }
@@ -42,7 +42,7 @@ impl Command for ImportCommand {
         }
 
         if let Some(output) = &self.output {
-            eprintln!("\nClaytip model written to `{}`", output.display());
+            eprintln!("\nExograph model written to `{}`", output.display());
         }
 
         Ok(())
@@ -60,13 +60,13 @@ pub trait ToModel {
     fn to_model(&self) -> WithIssues<String>;
 }
 
-/// Converts the name of a SQL table to a claytip model name (for example, concert_artist -> ConcertArtist).
+/// Converts the name of a SQL table to a exograph model name (for example, concert_artist -> ConcertArtist).
 fn to_model_name(name: &str) -> String {
     name.to_upper_camel_case()
 }
 
 impl ToModel for SchemaSpec {
-    /// Converts the schema specification to a claytip file.
+    /// Converts the schema specification to a exograph file.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
         let stmt = self
@@ -87,7 +87,7 @@ impl ToModel for SchemaSpec {
 }
 
 impl ToModel for PhysicalTable {
-    /// Converts the table specification to a claytip model.
+    /// Converts the table specification to a exograph model.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
 
@@ -123,7 +123,7 @@ impl ToModel for PhysicalTable {
 }
 
 impl ToModel for PhysicalColumn {
-    /// Converts the column specification to a claytip model.
+    /// Converts the column specification to a exograph model.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
 

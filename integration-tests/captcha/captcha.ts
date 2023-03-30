@@ -1,11 +1,11 @@
-import "./claytip.d.ts"
+import "./exograph.d.ts"
 
 interface CaptchaChallenge {
     uuid: string,
     challenge: string,
 }
 
-export async function getChallenge(claytip: Claytip): Promise<CaptchaChallenge> {
+export async function getChallenge(exograph: Exograph): Promise<CaptchaChallenge> {
     // generate a random, 5-letter string
     const challenge: string = (Math.random() + 1).toString(36).substring(7);
 
@@ -13,7 +13,7 @@ export async function getChallenge(claytip: Claytip): Promise<CaptchaChallenge> 
     const properResponse: string = challenge.split("").reverse().join("");
 
     // store the record into the database
-    const result = await claytip.executeQuery(`
+    const result = await exograph.executeQuery(`
         mutation ($properResponse: String!) {
             record: createCaptchaChallengeRecord(data: {
                 properResponse: $properResponse
@@ -37,9 +37,9 @@ interface ICaptchaValidatorContext {
     response: string
 }
 
-export async function verifyCaptcha(claytip: Claytip, context: ICaptchaValidatorContext): Promise<boolean> {
+export async function verifyCaptcha(exograph: Exograph, context: ICaptchaValidatorContext): Promise<boolean> {
     // get & delete CAPTCHA record -- we don't want to let users reuse challenge answers.
-    const recordQuery = await claytip.executeQuery(`
+    const recordQuery = await exograph.executeQuery(`
         mutation ($uuid: String!) {
             record: deleteCaptchaChallengeRecord(uuid: $uuid) {
                 properResponse

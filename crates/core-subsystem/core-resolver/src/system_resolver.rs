@@ -22,7 +22,7 @@ use crate::{
     FieldResolver, InterceptedOperation, OperationsPayload, QueryResponse,
 };
 
-pub type ClaytipExecuteQueryFn<'a> = dyn Fn(
+pub type ExographExecuteQueryFn<'a> = dyn Fn(
         String,
         Option<serde_json::Map<String, Value>>,
         Value,
@@ -204,7 +204,7 @@ impl SystemResolver {
 }
 
 #[macro_export]
-macro_rules! claytip_execute_query {
+macro_rules! exograph_execute_query {
     ($system_resolver:expr, $request_context:expr) => {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,

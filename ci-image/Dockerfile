@@ -3,7 +3,7 @@
 FROM       rust:buster
 MAINTAINER PayaLabs <payalabs>
 
-LABEL Description="Base CI Image for Claytip" Version="0.0.1"
+LABEL Description="Base CI Image for Exograph" Version="0.0.1"
 
 # Install NodeJS
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
