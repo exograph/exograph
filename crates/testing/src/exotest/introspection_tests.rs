@@ -16,6 +16,12 @@ const GRAPHQL_NODE_MODULE: Dir<'static> =
     include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/node_modules/graphql");
 
 pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
+    println!(
+        "resolver/build.rs cwd = {:?} {:?}",
+        std::env::current_dir().unwrap(),
+        std::env::var("CARGO_MANIFEST_DIR").unwrap()
+    );
+
     let log_prefix =
         ansi_term::Color::Purple.paint(format!("(introspection: {})\n :: ", model_path.display()));
     println!("{log_prefix} Running introspection tests...");
