@@ -55,11 +55,7 @@ fn check_introspection(endpoint: &str) -> Result<Result<()>> {
     println!(
         "resolver/build.rs cwd = {:?} {:?}",
         std::env::current_dir().unwrap(),
-        GRAPHQL_NODE_MODULE
-            .get_file("type/validate.mjs")
-            .unwrap()
-            .contents_utf8()
-            .unwrap()
+        GRAPHQL_NODE_MODULE.entries()
     );
 
     let script = INTROSPECTION_ASSERT_JS;
