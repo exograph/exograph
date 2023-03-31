@@ -364,6 +364,6 @@ mod tests {
     }
 
     fn create_system(src: &str) -> PostgresSubsystem {
-        crate::test_utils::create_postgres_system_from_str(src, "test.clay".to_string()).unwrap()
+        crate::test_utils::create_postgres_system_from_str(src, "test.exo".to_string()).unwrap()
     }
 }

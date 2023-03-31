@@ -1,7 +1,7 @@
 {
-  "name": "claytip",
-  "displayName": "Claytip",
-  "description": "Syntax highlighting support for Claytip projects",
+  "name": "exograph",
+  "displayName": "Exograph",
+  "description": "Syntax highlighting support for Exograph projects",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.57.0"
@@ -12,37 +12,37 @@
   "contributes": {
     "languages": [
       {
-        "id": "claytip",
+        "id": "exograph",
         "aliases": [
-          "Claytip",
-          "claytip"
+          "Exograph",
+          "exograph"
         ],
         "extensions": [
-          ".clay"
+          ".exo"
         ],
         "configuration": "./language-configuration.json"
       },
       {
         "id": "graphql",
         "extensions": [
-          ".claytest"
+          ".exotest"
         ]
       }
     ],
     "grammars": [
       {
-        "language": "claytip",
-        "scopeName": "source.clay",
-        "path": "./syntaxes/claytip.tmLanguage.json"
+        "language": "exograph",
+        "scopeName": "source.exo",
+        "path": "./syntaxes/exograph.tmLanguage.json"
       },
       {
         "injectTo": [
           "text.html.markdown"
         ],
-        "scopeName": "markdown.clay.codeblock",
-        "path": "./syntaxes/clay.markdown.codeblock.json",
+        "scopeName": "markdown.exo.codeblock",
+        "path": "./syntaxes/exo.markdown.codeblock.json",
         "embeddedLanguages": {
-          "meta.embedded.block.clay": "clay"
+          "meta.embedded.block.exo": "exo"
         }
       }
     ]

@@ -3,7 +3,7 @@
 //! Queries and mutations stem from the types defined inside each Postgres service (such as `type Todo { ... }`).
 //!
 //! Consider a postgres service with the following types:
-//! ```clay
+//! ```exo
 //! @postgres
 //! service TodoService {
 //!    type Todo {

@@ -7,7 +7,7 @@ use crate::{commands::command::Command, util::open_file_for_output};
 
 use super::{migration_helper::migration_statements, util};
 
-/// Create a database schema from a claytip model
+/// Create a database schema from a exograph model
 pub struct CreateCommand {
     pub model: PathBuf,
     pub output: Option<PathBuf>,

@@ -18,7 +18,7 @@ use crate::commands::{build::BuildCommand, schema};
 mod commands;
 pub(crate) mod util;
 
-const DEFAULT_MODEL_FILE: &str = "index.clay";
+const DEFAULT_MODEL_FILE: &str = "index.exo";
 
 lazy_static::lazy_static! {
     pub static ref SIGINT: (Sender<()>, Mutex<Receiver<()>>) = {
@@ -31,7 +31,7 @@ pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 
 fn model_file_arg() -> Arg {
     Arg::new("model")
-        .help("The path to the Claytip model file.")
+        .help("The path to the Exograph model file.")
         .hide_default_value(false)
         .required(false)
         .value_parser(clap::value_parser!(PathBuf))
@@ -41,7 +41,7 @@ fn model_file_arg() -> Arg {
 
 fn database_arg() -> Arg {
     Arg::new("database")
-        .help("The PostgreSQL database connection string to use. If not specified, the program will attempt to read it from the environment (`CLAY_POSTGRES_URL`).")
+        .help("The PostgreSQL database connection string to use. If not specified, the program will attempt to read it from the environment (`EXO_POSTGRES_URL`).")
         .long("database")
         .required(false)
 }
@@ -85,14 +85,14 @@ fn main() -> Result<()> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let matches = Command::new("Claytip")
+    let matches = Command::new("Exograph")
         .version(env!("CARGO_PKG_VERSION"))
         .disable_help_subcommand(true)
         .subcommand_required(true)
         .arg_required_else_help(true)
         .subcommand(
             Command::new("build")
-                .about("Build claytip server binary")
+                .about("Build exograph server binary")
                 .arg(model_file_arg()),
         )
         .subcommand(
@@ -102,19 +102,19 @@ fn main() -> Result<()> {
                 .arg_required_else_help(true)
                 .subcommand(
                     Command::new("create")
-                        .about("Create a database schema from a Claytip model")
+                        .about("Create a database schema from a Exograph model")
                         .arg(model_file_arg())
                         .arg(output_arg())
                 )
                 .subcommand(
                     Command::new("verify")
-                        .about("Verify that the database schema is compatible with a Claytip model")
+                        .about("Verify that the database schema is compatible with a Exograph model")
                         .arg(model_file_arg())
                         .arg(database_arg())
                 )
                 .subcommand(
                     Command::new("migrate")
-                        .about("Produces a SQL migration script for a Claytip model and the specified database")
+                        .about("Produces a SQL migration script for a Exograph model and the specified database")
                         .arg(model_file_arg())
                         .arg(database_arg())
                         .arg(output_arg())
@@ -129,14 +129,14 @@ fn main() -> Result<()> {
                 )
                 .subcommand(
                     Command::new("import")
-                        .about("Create claytip model file based on a database schema")
+                        .about("Create exograph model file based on a database schema")
                         .arg(database_arg())
                         .arg(output_arg()),
                 ),
         )
         .subcommand(
             Command::new("dev")
-                .about("Run claytip server in development mode")
+                .about("Run exograph server in development mode")
                 .arg(model_file_arg())
                 .arg(port_arg()),
         )
@@ -165,7 +165,7 @@ fn main() -> Result<()> {
         )
         .subcommand(
             Command::new("yolo")
-                .about("Run local claytip server with a temporary database")
+                .about("Run local exograph server with a temporary database")
                 .arg(model_file_arg())
                 .arg(port_arg()),
         )

@@ -20,7 +20,7 @@ use core_model_builder::{
 };
 use regex::Regex;
 
-/// Build a model system from a clay file
+/// Build a model system from a exo file
 pub fn build_system(model_file: impl AsRef<Path>) -> Result<Vec<u8>, ParserError> {
     let file_content = fs::read_to_string(model_file.as_ref())?;
     let mut codemap = CodeMap::new();

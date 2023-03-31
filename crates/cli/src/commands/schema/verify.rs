@@ -13,7 +13,7 @@ use crate::{commands::command::Command, util::open_database};
 
 use super::util;
 
-/// Verify that a schema is compatible with a claytip model
+/// Verify that a schema is compatible with a exograph model
 pub struct VerifyCommand {
     pub model: PathBuf,
     pub database: Option<String>,

@@ -170,8 +170,8 @@ lazy_static! {
             Some(vec!["eq", "neq"])
         );
 
-        supported_operators.insert("Claytip", None);
-        supported_operators.insert("ClaytipPriv", None);
+        supported_operators.insert("Exograph", None);
+        supported_operators.insert("ExographPriv", None);
         supported_operators.insert("Operation", None); // TODO: Re-examine if this is the best way (for both injected and interception)
 
         supported_operators

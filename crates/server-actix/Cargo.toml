@@ -23,5 +23,5 @@ static-deno-resolver = ["server-common/static-deno-resolver"]
 default = ["static-postgres-resolver", "static-deno-resolver"]
 
 [[bin]]
-name = "clay-server"
+name = "exo-server"
 path = "src/main.rs"

@@ -1,4 +1,4 @@
-import "./claytip.d.ts";
+import "./exograph.d.ts";
 
 interface AuthContext {
     role: string,

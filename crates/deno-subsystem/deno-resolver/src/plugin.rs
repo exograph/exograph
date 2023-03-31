@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use core_plugin_interface::{
     core_model::mapped_arena::SerializableSlabIndex,
     core_resolver::{
-        claytip_execute_query,
+        exograph_execute_query,
         plugin::{SubsystemResolutionError, SubsystemResolver},
         request_context::RequestContext,
         system_resolver::SystemResolver,
@@ -20,16 +20,16 @@ use deno_model::{service::ServiceMethod, subsystem::DenoSubsystem};
 use payas_deno::DenoExecutorPool;
 
 use super::{
-    clay_execution::{clay_config, ClaytipMethodResponse, RequestFromDenoMessage},
-    claytip_ops::InterceptedOperationInfo,
     deno_execution_error::DenoExecutionError,
     deno_operation::DenoOperation,
+    exo_execution::{exo_config, ExographMethodResponse, RequestFromDenoMessage},
+    exograph_ops::InterceptedOperationInfo,
 };
 
-pub type ClayDenoExecutorPool = DenoExecutorPool<
+pub type ExoDenoExecutorPool = DenoExecutorPool<
     Option<InterceptedOperationInfo>,
     RequestFromDenoMessage,
-    ClaytipMethodResponse,
+    ExographMethodResponse,
 >;
 
 pub struct DenoSubsystemLoader {}
@@ -45,7 +45,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
         let subsystem = DenoSubsystem::deserialize(serialized_subsystem)?;
 
-        let executor = DenoExecutorPool::new_from_config(clay_config());
+        let executor = DenoExecutorPool::new_from_config(exo_config());
 
         Ok(Box::new(DenoSubsystemResolver {
             id: self.id(),
@@ -58,7 +58,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
 pub struct DenoSubsystemResolver {
     pub id: &'static str,
     pub subsystem: DenoSubsystem,
-    pub executor: ClayDenoExecutorPool,
+    pub executor: ExoDenoExecutorPool,
 }
 
 #[async_trait]
@@ -125,12 +125,12 @@ impl SubsystemResolver for DenoSubsystemResolver {
         let interceptor =
             &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
 
-        let claytip_execute_query = claytip_execute_query!(system_resolver, request_context);
+        let exograph_execute_query = exograph_execute_query!(system_resolver, request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
             interceptor,
             self,
             request_context,
-            &claytip_execute_query,
+            &exograph_execute_query,
             intercepted_operation,
         )
         .await?;

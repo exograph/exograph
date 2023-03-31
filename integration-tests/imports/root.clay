@@ -1,2 +1,0 @@
-import "mailing_list.clay"
-import "users/users" // An example of imported file in a directory and importing without providing the "clay" extension.

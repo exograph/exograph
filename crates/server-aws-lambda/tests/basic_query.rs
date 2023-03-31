@@ -6,7 +6,7 @@ mod common;
 async fn test_basic_query() {
     common::test_query(
         serde_json::from_str(include_str!("basic_query_input.json")).unwrap(),
-        include_str!("model.clay"),
+        include_str!("model.exo"),
         json!({
             "isBase64Encoded": false,
             "statusCode": 200,

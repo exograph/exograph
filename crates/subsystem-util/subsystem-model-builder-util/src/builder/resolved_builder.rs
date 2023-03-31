@@ -253,14 +253,14 @@ fn resolve_service(
     }
     .clone();
 
-    let mut module_fs_path = service.base_clayfile.clone();
+    let mut module_fs_path = service.base_exofile.clone();
     module_fs_path.pop();
     module_fs_path.push(module_path);
 
     let bundled_script = process_script(service, base_system, &module_fs_path)?;
 
     let module_anonymized_path = module_fs_path
-        .strip_prefix(service.base_clayfile.parent().unwrap())
+        .strip_prefix(service.base_exofile.parent().unwrap())
         .unwrap();
 
     fn extract_intercept_annot<'a>(
@@ -600,7 +600,7 @@ mod tests {
     fn create_resolved_system(src: &str) -> Result<ResolvedServiceSystem, ModelBuildingError> {
         let mut codemap = CodeMap::new();
         let subsystem_builders = load_subsystem_builders().unwrap();
-        let parsed = parser::parse_str(src, &mut codemap, "input.clay")
+        let parsed = parser::parse_str(src, &mut codemap, "input.exo")
             .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
         let types = typechecker::build(&subsystem_builders, parsed)
             .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;

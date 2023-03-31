@@ -1,4 +1,4 @@
-# Services in Claytip
+# Services in Exograph
 
 To allow integrating non-database functionality, we need to support services.
 Services come in two flavors:
@@ -27,7 +27,7 @@ notifications, we need a way to send emails. The `EmailService` acts as a proxy
 for an email provider such as Mailgun. This service isn't meant to be exposed
 through the APIs.
 
-```clay
+```exo
 @external("email.ts") // or .ts or .js or .so
 service EmailService {
   @construct fn construct(@inject env: Env) // the function name is insignificant; you may have at most one @construct function per service
@@ -43,7 +43,7 @@ existing js code. Here we assume that parameters and result types are
 de/serializable to JSON.
 
 The inclusion of `construct` implies that the service has a non-default
-constructor. Claytip will call it at the system startup time (we may later
+constructor. Exograph will call it at the system startup time (we may later
 introduce @lazy annotation to delay it to just before the first invocation) and
 store away that service instance. Question: do we need a destructor spec as
 well; we won't be able to guarantee to run it except for a well-executed
@@ -83,9 +83,9 @@ and a `SubscriptionGroup`'s id. Here is a mutation that will do the job.
 mutation sendNotification(concertNotificationId: Int, subscriptionGroupId: Int): Result<bool, String>
 ```
 
-Assume the following Clay model:
+Assume the following Exo model:
 
-```clay
+```exo
 model ConcertNotification {
   @pk id: Int = autoIncrement()
   concert: Concert? // Allow null for sending general notification without a concert
@@ -170,14 +170,14 @@ query {
 
 The proposal allows writing the following service:
 
-```clay
+```exo
 @external("concert-notification.wasm") // or .js or .ts or .so
 service ConcertNotificationService {
   @auth(AuthContext.role == "ROLE_ADMIN")
   export mutation sendNotification(
     concertNotificationId: Int, # From GraphQL input
     subscriptionGroupId: Int) # From GraphQL input
-    (@injected clay: Clay,
+    (@injected exo: Exo,
     @injected emailService: EmailService): Result<bool, String>
 }
 ```
@@ -185,15 +185,15 @@ service ConcertNotificationService {
 Note that `EmailService` is defined in the earlier section.
 
 The `export` keyword implies that the query or mutation should be directly
-exposed through Claytip's GraphQL API. The @injected annotation specifies
+exposed through Exograph's GraphQL API. The @injected annotation specifies
 dependencies to be injected (and not supplied by the user through the GraphQL
 API). To clearly separate user-supplied argument from those injected by the
 system, we require that each kind be grouped together in a curried parameter
 style.
 
-The system (Claytip) supplies the `@injected` parameters based on the type. For
+The system (Exograph) supplies the `@injected` parameters based on the type. For
 example, the system will pass a singleton object for the parameters of type
-`Clay` and `EmailService`, whereas it will pass the current `AuthContext` based
+`Exo` and `EmailService`, whereas it will pass the current `AuthContext` based
 on the information in the request's header.
 
 Note that a service may forgo the `EmailService` dependency and manage the email
@@ -228,18 +228,18 @@ The `concert-notification.ts` file may look like the following:
 async function sendNotification(
   concertNotificationId: number,
   subscriptionGroupId: number,
-  clay: Clay,
+  exo: Exo,
   emailService: EmailService
 ): Result<boolean, string> {
-  let concertNotification = await clay.execute(
+  let concertNotification = await exo.execute(
     "...concertNotification(id: $id) {...",
     { id: concertNotificationId }
   );
-  let nextConcert = await clay.execute(
+  let nextConcert = await exo.execute(
     "...concerts(where: {startDate: {gte: <the concerts-end-time...>}}",
     { startDate: concertNotification.endTime | currentTime }
   );
-  let emails = await clay.execute("subscriptions(where...", {
+  let emails = await exo.execute("subscriptions(where...", {
     groupId: subscriptionGroupId,
   });
 
@@ -257,14 +257,14 @@ async function sendNotification(
 Currently, we don't support authentication and let apps rely on external
 authentication services such as Auth0/Supertoken or self-hosting of an
 application based on code such as [next-auth](https://next-auth.js.org/). In
-either case, the service returns a JWT token. Claytip has built-in support
+either case, the service returns a JWT token. Exograph has built-in support
 validating JWT tokens (but "should it" is a separate discussion).
 
-So this is how we can support flexible authentication in Claytip (in place of
-next-auth; Auth0/Supertoken cases live outside of Claytip and will continue that
+So this is how we can support flexible authentication in Exograph (in place of
+next-auth; Auth0/Supertoken cases live outside of Exograph and will continue that
 way).
 
-```clay
+```exo
 @external("authentication.wasm") // or ".so" or ".js" or ".ts"
 service Authentication {
   model LoginInput {
@@ -287,18 +287,18 @@ service Authentication {
     info: String
   }
 
-  export async mutation authenticate(loginInfo: LoginInput, @inject claytip: Claytip): Result<String, LoginError>;
+  export async mutation authenticate(loginInfo: LoginInput, @inject exograph: Exograph): Result<String, LoginError>;
 }
 ```
 
 The corresponding Rust code (which will be compiled to WASM) looks as follows:
 
 ```rust
-fn authenticate(loginInfo: LoginInput, claytip: Claytip): Result<String, LoginError> {
+fn authenticate(loginInfo: LoginInput, exograph: Exograph): Result<String, LoginError> {
     if (loginInfo.provider == "google") {
       match GoogleApi.verify(loginInfo.code, "secret-key") {
         Ok((id, name, email, profilePicture, refreshToken)) => {
-          let userId = await claytip.execute(
+          let userId = await exograph.execute(
             "mutation updateRefreshTokens($email: String, provider: $String) {
               updateRefreshTokens(where: and: [{email: {eq: $email}}, {provider: {eq: $provider}}], data: $data}) {
                 id # doesn't matter
@@ -333,7 +333,7 @@ mutation socialLogin(provider: String, code: String) {
 Sometimes all you need is to connect to an external (REST) service. In that
 case, we can simplify to obviate the need to write any code.
 
-```clay
+```exo
 @rest(url="https://<payment-provider>.com/api/v1", headers=[CLIENT_CREDENTIALS: ${ENV{"CRED"}}])
 service PaymentProcessor {
   model Payment {

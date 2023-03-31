@@ -39,10 +39,10 @@ impl TestContext {
 /// needed for the test, like PostgreSQL databases. Takes a name for
 /// the current test (should be unique!)
 pub fn create_context(_test_name: &str) -> Result<TestContext> {
-    let test_db_url = std::env::var("CLAY_TEST_POSTGRES_URL")?;
-    let test_user = std::env::var("CLAY_TEST_POSTGRES_USER").ok();
-    let test_password = std::env::var("CLAY_TEST_POSTGRES_PASSWORD").ok();
-    let test_db_name = format!("clay_integration_test_{}", test_name);
+    let test_db_url = std::env::var("EXO_TEST_POSTGRES_URL")?;
+    let test_user = std::env::var("EXO_TEST_POSTGRES_USER").ok();
+    let test_password = std::env::var("EXO_TEST_POSTGRES_PASSWORD").ok();
+    let test_db_name = format!("exo_integration_test_{}", test_name);
 
     let setup_db = Database::from_env_helper(
         1,

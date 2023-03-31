@@ -19,7 +19,7 @@ pub struct JwtAuthenticator {
     secret: String, // Shared secret for HS algorithms, public key for RSA/ES
 }
 
-const JWT_SECRET_PARAM: &str = "CLAY_JWT_SECRET";
+const JWT_SECRET_PARAM: &str = "EXO_JWT_SECRET";
 
 impl JwtAuthenticator {
     pub fn new_from_env() -> Option<Self> {

@@ -1,4 +1,4 @@
-/// This code has no concept of Claytip.
+/// This code has no concept of Exograph.
 ///
 /// Module to encapsulate the logic creating a Deno module that supports
 /// embedding.

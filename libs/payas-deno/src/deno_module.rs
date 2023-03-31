@@ -50,7 +50,7 @@ pub struct DenoModule {
 
 /// A Deno-based runner for JavaScript.
 ///
-/// DenoModule has no concept of Claytip; it exists solely to configure the JavaScript execution environment
+/// DenoModule has no concept of Exograph; it exists solely to configure the JavaScript execution environment
 /// and to load & execute methods in the Deno runtime from sources.
 ///
 /// # Arguments

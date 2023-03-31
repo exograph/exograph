@@ -1,0 +1,19 @@
+@postgres
+service PersonService {
+  @access(true)
+  type Person {
+    @pk id: Int = autoIncrement()
+    name: String
+  }
+}
+
+@deno("logger.js")
+service Logger {
+  type LogMessage {
+    level: String
+    message: String
+  }
+
+  export query logger(@inject exograph: Exograph, input: LogMessage): Boolean
+  mutation debug(@inject exograph: Exograph, input: LogMessage): Boolean
+}

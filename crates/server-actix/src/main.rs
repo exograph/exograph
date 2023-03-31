@@ -12,18 +12,18 @@ use std::path::Path;
 use std::time;
 use std::{env, process::exit};
 
-/// Run the server in production mode with a compiled claypot file
+/// Run the server in production mode with a compiled exo_ir file
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let start_time = time::SystemTime::now();
 
     let system_resolver = web::Data::new(server_common::init());
 
-    let server_port = env::var("CLAY_SERVER_PORT")
+    let server_port = env::var("EXO_SERVER_PORT")
         .map(|port_str| {
             port_str
                 .parse::<u32>()
-                .expect("Failed to parse CLAY_SERVER_PORT")
+                .expect("Failed to parse EXO_SERVER_PORT")
         })
         .unwrap_or(9876);
     let server_url = format!("0.0.0.0:{server_port}");
@@ -124,7 +124,7 @@ async fn playground(req: HttpRequest, resolver: web::Data<SystemResolver>) -> im
 }
 
 fn cors_from_env() -> Cors {
-    match env::var("CLAY_CORS_DOMAINS").ok() {
+    match env::var("EXO_CORS_DOMAINS").ok() {
         Some(domains) => {
             let domains_list = domains.split(',');
 

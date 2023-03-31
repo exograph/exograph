@@ -11,7 +11,7 @@ We want to enforce a rate limit to prevent abuse of our API. We expect the rate-
 
 Developers can express this concern by writing an interceptor as follows:
 
-```clay
+```exo
 @external("rate-limiting.wasm") // or .js etc.
 interceptor RateLimiter {
   @around("query * || mutation *")
@@ -19,7 +19,7 @@ interceptor RateLimiter {
 }
 ```
 
-Note, unlike user-specified queries and mutations, we don't need parameters to be marked @injected (they are implied to be @injected). Since Claytip invokes the interceptors, it supplied every parameter and we don't need the distinction between user-supplied and system-injected parameters.
+Note, unlike user-specified queries and mutations, we don't need parameters to be marked @injected (they are implied to be @injected). Since Exograph invokes the interceptors, it supplied every parameter and we don't need the distinction between user-supplied and system-injected parameters.
 
 The `around` interceptor surrounds the specified operations (in this case, all queries and mutations) and invokes the corresponding method, which may execute any logic and may or may not proceed with the original operation.
 
@@ -72,7 +72,7 @@ Question: Could we model this using a `before` intercept that returns a do-not-p
 
 We want to log which user has caused a mutation.
 
-```clay
+```exo
 @external("mutation-tracing.wasm")
 interceptor Logging {
   @before("mutation *")
@@ -87,7 +87,7 @@ fn logMutations(authContext: AuthContext, operation: Operation): : BeforeInterce
 }
 ```
 
-```rust (in Claytip code) (could be just Rust's Result<()>)
+```rust (in Exograph code) (could be just Rust's Result<()>)
 enum BeforeInterceptResult {
   Ok
   Failure(Error)
@@ -100,7 +100,7 @@ Note that the interface for `Operation` is such that there is no way to get the 
 
 ### Variation: log who attempted account-related mutations (ideas: patterns to select operations)
 
-```clay
+```exo
 @external("mutation-tracing.wasm")
 interceptor LogMutations {
   @before("mutation Account::*")
@@ -112,20 +112,20 @@ Here `mutation Account::*` selects all mutation on the `Account` model: `updateA
 
 ## Use case: Update member expiry upon posting a payment (ideas: after intercept, access to the return value)
 
-```clay
+```exo
 @external("payment.wasm")
 intercetor PaymentProcessing {
   @after("mutation Payment::*") // could also be refined as "Payment::update*" etc
-  intercept updateExpiry(clay: Clay, operation: Operation, returnValue: OperationResult)
+  intercept updateExpiry(exo: Exo, operation: Operation, returnValue: OperationResult)
 }
 ```
 
 An alternative equivalent way could be:
 
-```clay
+```exo
 @external("payment.wasm")
 interceptor PaymentProcessing {
-  intercept updateExpiry(clay: Clay, operation: Operation, returnValue: OperationResult)
+  intercept updateExpiry(exo: Exo, operation: Operation, returnValue: OperationResult)
 }
 
 @on(mutation="*", intercept="PaymentProcessing.updateExpiry")
@@ -135,13 +135,13 @@ model Payment {
 ```
 
 ```rust
-fn updateExpiry(clay: Clay, operation: Operation, returnValue: OperationResult) {
+fn updateExpiry(exo: Exo, operation: Operation, returnValue: OperationResult) {
   if /*returnValue doesn't have info needed for expiry update */ { // really an optimization to avoid an extra query
     let paymentId = returnValue.data.id; // Question: what is `id` isn't specified in the payload? Stick in "id" as a special field like Apollo?
-    clay.execute(...query to get details for the payment id...)
+    exo.execute(...query to get details for the payment id...)
   }
 
-  clay.execute(...mutation to update...)
+  exo.execute(...mutation to update...)
 }
 ```
 

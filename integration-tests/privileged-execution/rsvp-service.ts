@@ -40,11 +40,11 @@ interface RsvpConfirmation {
 }
 
 // Perform an upsert operation. In real world app, this would also send a confirmation email etc.
-export async function processRsvp(email: string, count: number, claytip: ClaytipPriv): Promise<RsvpConfirmation> {
-  // Just to test that we can make non-privileged calls through a ClaytipPriv instance
-  let nonPrivQuery = await claytip.executeQuery('query { __type(name: "Rsvp") { name } }');
+export async function processRsvp(email: string, count: number, exograph: ExographPriv): Promise<RsvpConfirmation> {
+  // Just to test that we can make non-privileged calls through a ExographPriv instance
+  let nonPrivQuery = await exograph.executeQuery('query { __type(name: "Rsvp") { name } }');
 
-  const existing = await claytip.executeQueryPriv(existingRsvpQuery, {
+  const existing = await exograph.executeQueryPriv(existingRsvpQuery, {
     email,
   }, adminContext);
 
@@ -52,7 +52,7 @@ export async function processRsvp(email: string, count: number, claytip: Claytip
     const existingRsvp = existing.rsvps[0];
 
     if (existingRsvp.count !== count) {
-      return (await claytip.executeQueryPriv(updateRsvpMutation, {
+      return (await exograph.executeQueryPriv(updateRsvpMutation, {
         id: existingRsvp.id,
         rsvp: {
           email,
@@ -65,7 +65,7 @@ export async function processRsvp(email: string, count: number, claytip: Claytip
   };
   console.log(`No existing RSVP for ${email}`);
 
-  return (await claytip.executeQueryPriv(createRsvpMutation, {
+  return (await exograph.executeQueryPriv(createRsvpMutation, {
     email,
     count
   }, adminContext)).createRsvp;

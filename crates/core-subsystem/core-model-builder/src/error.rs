@@ -4,7 +4,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ModelBuildingError {
-    #[error("Could not process input clay files")]
+    #[error("Could not process input exo files")]
     Diagnosis(Vec<Diagnostic>),
 
     #[error("{0}")]

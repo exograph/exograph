@@ -1,0 +1,52 @@
+// CAPTCHA example
+//
+// This type and its associated integration tests provide a simplistic implementation of a CAPTCHA. 
+// In order to keep this implementation testable, the correct CAPTCHA response is very simple: reverse the challenge string.
+
+
+// An internal context provided to verifyCaptcha.
+// Used to grab CAPTCHA ID and response from headers.
+context ICaptchaValidatorContext {
+    @header("X-Captcha-Id") uuid: Uuid 
+    @header("X-Captcha-Response")  response: String 
+}
+
+// CAPTCHA service implementation.
+@deno("captcha.ts")
+service CaptchaService {
+    // The CAPTCHA challenge issued to client.
+    @access(true)
+    type CaptchaChallenge {
+        uuid: Uuid
+        challenge: String
+    }
+
+    // Generates a challenge for the client and stores it in the database for
+    // later verification.
+    @access(true) export query getChallenge(
+        @inject exograph: Exograph
+    ): CaptchaChallenge
+
+    // Verifies a challenge, and returns a Boolean representing the result.
+    // NOTE: For internal use by CaptchaContext through @query.
+    @access(true) query verifyCaptcha(
+        @inject exograph: Exograph,
+        @inject context: ICaptchaValidatorContext
+    ): Boolean
+}
+
+@postgres
+service CaptchaPersistenceService {
+    // Postgres record of a CAPTCHA challenge issued to a client.
+    // Can be referred to by UUID. 
+    @access(true)
+    type CaptchaChallengeRecord {
+        @pk uuid: Uuid = generate_uuid()
+        properResponse: String
+    }
+}
+
+// The final context for use by an external @access rule or service.
+context CaptchaContext {
+    @query("verifyCaptcha") isValid: Boolean 
+}

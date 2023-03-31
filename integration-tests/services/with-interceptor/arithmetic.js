@@ -3,7 +3,7 @@ export function divide(x, y) {
     let remainder = x % y;
 
     if (y == 0) {
-        throw new ClaytipError("Division by zero is not allowed")
+        throw new ExographError("Division by zero is not allowed")
     }
 
     return {

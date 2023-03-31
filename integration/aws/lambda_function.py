@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Source of ClaytipPostgresInitFn, the lambda that is invoked at 
+# Source of ExographPostgresInitFn, the lambda that is invoked at 
 # stack creation time to initialize the database.
 
 import os
@@ -21,11 +21,11 @@ def handler(event, context):
 def create(event, context):
     logger.info("Connecting to db...")
 
-    user=os.getenv("CLAY_POSTGRES_USER")
-    password=os.getenv("CLAY_POSTGRES_PASSWORD")
-    host=os.getenv("CLAY_POSTGRES_HOST")
-    port=os.getenv("CLAY_POSTGRES_HOST_PORT")
-    dbname=os.getenv("CLAY_POSTGRES_NAME")
+    user=os.getenv("EXO_POSTGRES_USER")
+    password=os.getenv("EXO_POSTGRES_PASSWORD")
+    host=os.getenv("EXO_POSTGRES_HOST")
+    port=os.getenv("EXO_POSTGRES_HOST_PORT")
+    dbname=os.getenv("EXO_POSTGRES_NAME")
 
     logger.info(f"user={user}, host={host}, port={port}, dbname={dbname}")
 

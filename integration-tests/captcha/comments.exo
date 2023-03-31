@@ -1,0 +1,13 @@
+import "captcha.exo"
+
+@postgres
+service CommentsPersistence {
+    @access(
+        query=true,
+        mutation=CaptchaContext.isValid
+    )
+    type Comment {
+        @pk id: Int = autoIncrement()
+        text: String
+    }
+}

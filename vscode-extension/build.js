@@ -1,4 +1,4 @@
-// Process the claytip.tmLanguage.json to replace all the {{values}} with their replacement from replacements.props
+// Process the exograph.tmLanguage.json to replace all the {{values}} with their replacement from replacements.props
 
 const fs = require('fs');
 
@@ -25,7 +25,7 @@ function loadReplacements() {
 }
 
 function processTemplate() {
-  let content = fs.readFileSync(`${src}/syntaxes/claytip.tmLanguage.template.json`, 'utf8');
+  let content = fs.readFileSync(`${src}/syntaxes/exograph.tmLanguage.template.json`, 'utf8');
 
   const replacements = loadReplacements();
   let keys = Object.keys(replacements);
@@ -34,7 +34,7 @@ function processTemplate() {
     content = content.replaceAll(`{{${key}}}`, replacements[key]);
   }
 
-  fs.writeFileSync(`${out}/syntaxes/claytip.tmLanguage.json`, content);
+  fs.writeFileSync(`${out}/syntaxes/exograph.tmLanguage.json`, content);
 }
 
 if (!fs.existsSync(out)) {
@@ -47,6 +47,6 @@ if (!fs.existsSync(`${out}/syntaxes`)) {
 
 fs.copyFileSync(`${src}/package.json`, `${out}/package.json`);
 fs.copyFileSync(`${src}/language-configuration.json`, `${out}/language-configuration.json`);
-fs.copyFileSync(`${src}/syntaxes/clay.markdown.codeblock.json`, `${out}/syntaxes/clay.markdown.codeblock.json`);
+fs.copyFileSync(`${src}/syntaxes/exo.markdown.codeblock.json`, `${out}/syntaxes/exo.markdown.codeblock.json`);
 
 processTemplate()

@@ -14,7 +14,7 @@ use crate::{
 
 use super::command::Command;
 
-/// Run local claytip server
+/// Run local exograph server
 pub struct DevCommand {
     pub model: PathBuf,
     pub port: Option<u32>,
@@ -29,8 +29,8 @@ impl Command for DevCommand {
                 .paint("Starting server in development mode...")
         );
         // In the serve mode, which is meant for development, always enable introspection and use relaxed CORS
-        std::env::set_var("CLAY_INTROSPECTION", "true");
-        std::env::set_var("CLAY_CORS_DOMAINS", "*");
+        std::env::set_var("EXO_INTROSPECTION", "true");
+        std::env::set_var("EXO_CORS_DOMAINS", "*");
 
         let rt = Runtime::new()?;
 

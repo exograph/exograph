@@ -1,22 +1,22 @@
-export async function callThrowClaytipError(claytip: Claytip): Promise<number> {
-	const result = await claytip.executeQuery(
+export async function callThrowExographError(exograph: Exograph): Promise<number> {
+	const result = await exograph.executeQuery(
 		`query {
-			throwClaytipError
+			throwExographError
 		}`
 	);
-	return result.data.throwClaytipError;
+	return result.data.throwExographError;
 }
 
-export async function callThrowClaytipErrorPriv(claytip: ClaytipPriv): Promise<number> {
-	const result = await claytip.executeQueryPriv(
+export async function callThrowExographErrorPriv(exograph: ExographPriv): Promise<number> {
+	const result = await exograph.executeQueryPriv(
 		`query {
-			throwClaytipError
+			throwExographError
 		}`
 	);
-	return result.data.throwClaytipError;
+	return result.data.throwExographError;
 }
 
-export async function throwClaytipError(): Promise<number> {
-	throw new ClaytipError('user message');
+export async function throwExographError(): Promise<number> {
+	throw new ExographError('user message');
 }
 

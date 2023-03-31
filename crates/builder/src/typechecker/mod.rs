@@ -72,8 +72,8 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
     env.add("Blob", Type::Primitive(PrimitiveType::Blob));
     env.add("Uuid", Type::Primitive(PrimitiveType::Uuid));
 
-    env.add("Claytip", Type::Primitive(PrimitiveType::Claytip));
-    env.add("ClaytipPriv", Type::Primitive(PrimitiveType::ClaytipPriv));
+    env.add("Exograph", Type::Primitive(PrimitiveType::Exograph));
+    env.add("ExographPriv", Type::Primitive(PrimitiveType::ExographPriv));
 
     env.add(
         "Operation",
@@ -420,7 +420,7 @@ pub mod test_support {
 
     pub fn build(src: &str) -> Result<TypecheckedSystem, ParserError> {
         let mut codemap = CodeMap::new();
-        let parsed = parse_str(src, &mut codemap, "input.clay")?;
+        let parsed = parse_str(src, &mut codemap, "input.exo")?;
         let subsystem_builders = load_subsystem_builders().unwrap();
         super::build(&subsystem_builders, parsed)
     }
