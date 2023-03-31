@@ -6,10 +6,10 @@ import { useTheme } from "@graphiql/react";
 import "graphiql/graphiql.min.css";
 
 export const useBrowserTheme = () => {
-  const mql = useRef(window.matchMedia("(prefers-color-scheme: dark)"));
+  const mql = useRef(window.matchMedia("(prefers-color-scheme: dark)")).current;
 
   const currentTheme = useCallback(() => {
-    return mql.current.matches ? "dark" : "light";
+    return mql.matches ? "dark" : "light";
   }, [mql]);
 
   const [theme, setTheme] = useState(currentTheme());
@@ -18,8 +18,8 @@ export const useBrowserTheme = () => {
     const setCurrentTheme = () => {
       setTheme(currentTheme());
     };
-    mql.current.addEventListener("change", setCurrentTheme);
-    return () => mql.current.removeEventListener("change", setCurrentTheme);
+    mql.addEventListener("change", setCurrentTheme);
+    return () => mql.removeEventListener("change", setCurrentTheme);
   }, [currentTheme, mql]);
 
   return theme
