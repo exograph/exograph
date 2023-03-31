@@ -10,7 +10,7 @@ use core_plugin_interface::core_resolver::{
     QueryResponse,
 };
 
-use payas_deno::{
+use exo_deno::{
     deno_executor::CallbackProcessor,
     deno_executor_pool::DenoExecutorConfig,
     deno_module::{DenoModule, DenoModuleSharedState},

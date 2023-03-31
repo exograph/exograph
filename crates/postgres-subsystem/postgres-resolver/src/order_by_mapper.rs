@@ -4,7 +4,7 @@ use crate::{
     column_path_util::to_column_path, postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLMapper,
 };
-use payas_sql::{AbstractOrderBy, Ordering};
+use exo_sql::{AbstractOrderBy, Ordering};
 use postgres_model::{
     column_path::ColumnIdPath,
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},

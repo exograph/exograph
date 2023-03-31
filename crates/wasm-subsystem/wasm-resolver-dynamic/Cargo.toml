@@ -14,7 +14,7 @@ thiserror.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 
-payas-wasm = { path = "../../../libs/payas-wasm" }
+exo-wasm = { path = "../../../libs/exo-wasm" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 wasm-model = { path = "../wasm-model" }
 

@@ -10,7 +10,7 @@ bincode.workspace = true
 async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
 
-payas-sql = { path = "../../../libs/payas-sql" }
+exo-sql = { path = "../../../libs/exo-sql" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 
 [dev-dependencies]

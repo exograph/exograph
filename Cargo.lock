@@ -927,11 +927,11 @@ dependencies = [
  "core-model-builder",
  "core-plugin-shared",
  "ctrlc",
+ "exo-sql",
  "futures",
  "heck",
  "lazy_static",
  "notify-debouncer-mini",
- "payas-sql",
  "postgres-model",
  "rand",
  "serde",
@@ -1115,10 +1115,10 @@ dependencies = [
  "core-model",
  "core-plugin-interface",
  "core-plugin-shared",
+ "exo-sql",
  "futures",
  "insta",
  "jsonwebtoken",
- "payas-sql",
  "serde",
  "serde_json",
  "thiserror",
@@ -1578,9 +1578,9 @@ dependencies = [
  "core-plugin-interface",
  "deno-model",
  "deno_core",
+ "exo-deno",
  "futures",
  "maybe-owned",
- "payas-deno",
  "serde_json",
  "thiserror",
  "tokio",
@@ -2376,6 +2376,64 @@ name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
+
+[[package]]
+name = "exo-deno"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "deno_ast",
+ "deno_core",
+ "deno_runtime",
+ "futures",
+ "http_req",
+ "include_dir",
+ "lazy_static",
+ "serde",
+ "serde_json",
+ "serde_v8",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "exo-sql"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "chrono",
+ "deadpool-postgres",
+ "lazy_static",
+ "maybe-owned",
+ "once_cell",
+ "openssl",
+ "postgres-openssl",
+ "postgres_array",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "exo-wasm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+ "wasi-common",
+ "wasmtime",
+ "wasmtime-wasi",
+]
 
 [[package]]
 name = "fallible-iterator"
@@ -4307,64 +4365,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
-name = "payas-deno"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "deno_ast",
- "deno_core",
- "deno_runtime",
- "futures",
- "http_req",
- "include_dir",
- "lazy_static",
- "serde",
- "serde_json",
- "serde_v8",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "payas-sql"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "chrono",
- "deadpool-postgres",
- "lazy_static",
- "maybe-owned",
- "once_cell",
- "openssl",
- "postgres-openssl",
- "postgres_array",
- "regex",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-postgres",
- "tracing",
- "url",
-]
-
-[[package]]
-name = "payas-wasm"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
- "wasi-common",
- "wasmtime",
- "wasmtime-wasi",
-]
-
-[[package]]
 name = "pem"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4594,7 +4594,7 @@ dependencies = [
  "async-graphql-value",
  "bincode",
  "core-plugin-interface",
- "payas-sql",
+ "exo-sql",
  "serde",
  "typed-generational-arena",
 ]
@@ -4608,10 +4608,10 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
+ "exo-sql",
  "heck",
  "insta",
  "lazy_static",
- "payas-sql",
  "postgres-model",
  "serde",
  "typed-generational-arena",
@@ -4661,9 +4661,9 @@ dependencies = [
  "chrono",
  "core-plugin-interface",
  "core-resolver",
+ "exo-sql",
  "futures",
  "maybe-owned",
- "payas-sql",
  "pg_bigdecimal",
  "postgres-model",
  "postgres-types",
@@ -6246,13 +6246,13 @@ dependencies = [
  "anyhow",
  "async-graphql-parser",
  "async-graphql-value",
+ "exo-deno",
  "include_dir",
  "insta",
  "isahc",
  "jsonwebtoken",
  "md5",
  "num_cpus",
- "payas-deno",
  "postgres",
  "rand",
  "rayon",
@@ -7347,8 +7347,8 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "core-plugin-interface",
+ "exo-wasm",
  "futures",
- "payas-wasm",
  "serde_json",
  "thiserror",
  "wasm-model",

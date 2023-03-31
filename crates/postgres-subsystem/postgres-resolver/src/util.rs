@@ -6,7 +6,7 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver, request_context::RequestContext,
 };
-use payas_sql::{AbstractPredicate, PhysicalTable};
+use exo_sql::{AbstractPredicate, PhysicalTable};
 use postgres_model::{
     column_path::{ColumnIdPath, ColumnIdPathLink},
     query::{CollectionQuery, PkQuery},

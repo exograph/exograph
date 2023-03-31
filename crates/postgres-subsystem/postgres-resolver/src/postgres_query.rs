@@ -13,11 +13,11 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField,
 };
-use futures::StreamExt;
-use payas_sql::{
+use exo_sql::{
     AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, ColumnPathLink,
     Limit, Offset, SelectionCardinality, SelectionElement,
 };
+use futures::StreamExt;
 use postgres_model::{
     aggregate::AggregateField,
     order::OrderByParameter,
@@ -120,7 +120,7 @@ async fn compute_select<'content>(
     };
     Ok(AbstractSelect {
         table: root_physical_table,
-        selection: payas_sql::Selection::Json(content_object, selection_cardinality),
+        selection: exo_sql::Selection::Json(content_object, selection_cardinality),
         predicate,
         order_by,
         offset,

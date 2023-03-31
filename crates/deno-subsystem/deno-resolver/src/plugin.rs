@@ -17,7 +17,7 @@ use core_plugin_interface::{
 };
 
 use deno_model::{service::ServiceMethod, subsystem::DenoSubsystem};
-use payas_deno::DenoExecutorPool;
+use exo_deno::DenoExecutorPool;
 
 use super::{
     deno_execution_error::DenoExecutionError,

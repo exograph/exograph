@@ -14,7 +14,7 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named},
 };
-use payas_sql::PhysicalTable;
+use exo_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]

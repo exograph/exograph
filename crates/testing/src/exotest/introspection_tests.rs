@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
+use exo_deno::{deno_error::DenoError, Arg, DenoModule, DenoModuleSharedState, UserCode};
 use include_dir::{include_dir, Dir};
-use payas_deno::{deno_error::DenoError, Arg, DenoModule, DenoModuleSharedState, UserCode};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
 

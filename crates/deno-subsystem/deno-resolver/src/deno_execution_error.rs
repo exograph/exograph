@@ -3,7 +3,7 @@ use core_plugin_interface::core_resolver::{
 };
 use thiserror::Error;
 
-use payas_deno::deno_error::DenoError;
+use exo_deno::deno_error::DenoError;
 
 #[derive(Error, Debug)]
 pub enum DenoExecutionError {

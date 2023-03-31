@@ -1,4 +1,4 @@
-use payas_sql::schema::{op::SchemaOp, spec::SchemaSpec};
+use exo_sql::schema::{op::SchemaOp, spec::SchemaSpec};
 
 pub(crate) fn migration_statements(
     old_schema_spec: &SchemaSpec,
@@ -51,7 +51,7 @@ mod tests {
     use crate::commands::schema::util;
 
     use super::*;
-    use payas_sql::schema::spec::SchemaSpec;
+    use exo_sql::schema::spec::SchemaSpec;
     use stripmargin::StripMargin;
 
     #[test]

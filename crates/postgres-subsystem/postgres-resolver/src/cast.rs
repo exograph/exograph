@@ -3,8 +3,8 @@ use async_graphql_value::Number;
 use base64::DecodeError;
 use chrono::prelude::*;
 use chrono::DateTime;
-use payas_sql::database_error::DatabaseError;
-use payas_sql::{
+use exo_sql::database_error::DatabaseError;
+use exo_sql::{
     array_util::{self, ArrayEntry},
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParamContainer,
 };
@@ -37,7 +37,7 @@ pub enum CastError {
     BigDecimal(String),
 
     #[error("{0}")]
-    Postgres(#[from] payas_sql::database_error::DatabaseError),
+    Postgres(#[from] exo_sql::database_error::DatabaseError),
 }
 
 pub(crate) fn literal_column<'a>(

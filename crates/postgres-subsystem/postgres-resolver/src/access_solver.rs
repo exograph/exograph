@@ -16,7 +16,7 @@ use core_plugin_interface::{
         context_extractor::ContextExtractor, request_context::RequestContext,
     },
 };
-use payas_sql::{AbstractPredicate, ColumnPath, SQLParamContainer};
+use exo_sql::{AbstractPredicate, ColumnPath, SQLParamContainer};
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression, column_path::ColumnIdPath,
     subsystem::PostgresSubsystem,

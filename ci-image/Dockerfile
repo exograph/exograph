@@ -1,4 +1,4 @@
-# Payas CI
+# Exo CI
 
 FROM       rust:buster
 MAINTAINER PayaLabs <payalabs>
