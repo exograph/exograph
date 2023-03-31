@@ -1,7 +1,7 @@
-import "./claytip.d.ts"
+import "./exograph.d.ts"
 
-export function getCookie(claytip: Claytip): boolean {
-	claytip.setCookie({
+export function getCookie(exograph: Exograph): boolean {
+	exograph.setCookie({
 		name: "session_id",
 		value: "abcde"
 	});

@@ -41,7 +41,7 @@ struct DenoCall<C, R> {
 /// - The thread:
 ///     - Creates a DenoModule instance
 ///     - Puts the sender of the channel to communicate callback into `DenoModule`'s `op_state` so
-///       that shims can access it to send callback messages (see claytip_ops.rs).
+///       that shims can access it to send callback messages (see exograph_ops.rs).
 ///     - Waits for a request to execute call (sent by the `execute` method; see below) and forwards
 ///       it to the `DenoModule` instance.
 ///     - Sends the result to the sender of the request.

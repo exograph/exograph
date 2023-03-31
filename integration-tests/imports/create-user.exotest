@@ -1,0 +1,17 @@
+exofile: "root.exo"
+operation: |
+    mutation () {
+        createUser(data: {
+            username: "alice"
+        }) {
+            username
+        }
+    }
+response: |
+    {
+      "data": {
+        "createUser": {
+          "username": "alice"
+        }
+      }
+    }

@@ -3,7 +3,7 @@ ARG BASE_IMAGE
 
 FROM ${BUILD_IMAGE} as builder
 
-# Compile the binaries (clay and clay-server)
+# Compile the binaries (exo and exo-server)
 
 ARG BUILD_DIR
 ARG BUILD_FLAG
@@ -44,26 +44,26 @@ RUN cargo build --all ${BUILD_FLAG}
 
 # Create an image to include the compiled binaries
 ARG BASE_IMAGE
-FROM $BASE_IMAGE as clay-builder
+FROM $BASE_IMAGE as exo-builder
 
 ARG BUILD_DIR
 ARG APP=/usr/src/app
 
 RUN mkdir -p ${APP}
 
-COPY --from=builder /usr/src/target/${BUILD_DIR}/clay-server ${APP}/clay-server
-COPY --from=builder /usr/src/target/${BUILD_DIR}/clay ${APP}/clay
+COPY --from=builder /usr/src/target/${BUILD_DIR}/exo-server ${APP}/exo-server
+COPY --from=builder /usr/src/target/${BUILD_DIR}/exo ${APP}/exo
 COPY --from=builder /usr/src/target/${BUILD_DIR}/bootstrap ${APP}/bootstrap
 COPY --from=builder /usr/src/target/${BUILD_DIR}/*.so ${APP}/
 
-# Create an image that can be used for development--the `clay serve` style
-FROM clay-builder as clay-dev
+# Create an image that can be used for development--the `exo serve` style
+FROM exo-builder as exo-dev
 
 ARG BUILD_DIR
 ARG APP=/usr/src/app
 
 ENV TZ=Etc/UTC
-ENV APP_USER=clay
+ENV APP_USER=exo
 
 %%RUNTIME_SETUP%%
 

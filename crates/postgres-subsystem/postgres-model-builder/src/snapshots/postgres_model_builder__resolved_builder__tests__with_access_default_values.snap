@@ -28,9 +28,9 @@ values:
   - - ~
     - Primitive: Uuid
   - - ~
-    - Primitive: Claytip
+    - Primitive: Exograph
   - - ~
-    - Primitive: ClaytipPriv
+    - Primitive: ExographPriv
   - - ~
     - Primitive:
         Interception: Operation
@@ -205,17 +205,17 @@ map:
   Boolean:
     index: 0
     generation: ~
-  Claytip:
-    index: 12
-    generation: ~
-  ClaytipPriv:
-    index: 13
-    generation: ~
   Concert:
     index: 15
     generation: ~
   Decimal:
     index: 3
+    generation: ~
+  Exograph:
+    index: 12
+    generation: ~
+  ExographPriv:
+    index: 13
     generation: ~
   Float:
     index: 2

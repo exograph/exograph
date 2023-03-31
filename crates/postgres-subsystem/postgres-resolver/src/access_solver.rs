@@ -284,7 +284,7 @@ mod tests {
                     }
                 }
             "#,
-            "test.clay".to_string(),
+            "test.exo".to_string(),
         )
         .unwrap();
         let (table_id, table) = postgres_subsystem

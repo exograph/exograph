@@ -9,7 +9,7 @@ export function divide(x, y) {
     let remainder = x % y;
 
     if (y == 0) {
-        throw new ClaytipError("Division by zero is not allowed")
+        throw new ExographError("Division by zero is not allowed")
     }
 
     return {
@@ -26,8 +26,8 @@ export function currentUnixEpoch() {
     return Math.floor(Date.now() / 1000)
 }
 
-export async function shimQuery(claytip) {
-    const result = await claytip.executeQuery(
+export async function shimQuery(exograph) {
+    const result = await exograph.executeQuery(
         `query {
             foos(where: {baz: {eq: 4}}) {
                 id
@@ -44,7 +44,7 @@ export async function shimQuery(claytip) {
     return str;
 }
 
-export function testMutation(claytip) {
+export function testMutation(exograph) {
     return 3.14
 }
 

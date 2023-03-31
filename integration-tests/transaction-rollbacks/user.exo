@@ -1,0 +1,20 @@
+@postgres
+service UserPersistence {
+    @table("user")
+    @access(true)
+    type User {
+        @pk id: Int = autoIncrement()
+        username: String
+        email: String?
+    }
+}
+
+@deno("user.ts")
+service RegistrationService {
+    @access(true)
+    export mutation registerUser(
+        @inject exograph: Exograph,
+        username: String,
+        email: String
+    ): Boolean
+}

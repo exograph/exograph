@@ -1,7 +1,7 @@
 /// Tracing configuration setup.
 ///
 /// Calling the `init` function will initialize a global tracing subscriber based on the values of
-/// the `CLAY_TELEMETRY` and `RUST_LOG` environment variables. Possible `CLAY_TELEMETRY` values are
+/// the `EXO_TELEMETRY` and `RUST_LOG` environment variables. Possible `EXO_TELEMETRY` values are
 /// `bunyan` and `jaeger`. If the env variable isn't set, no subscriber will be created.
 ///
 /// These are currently only suitable for local debugging but any implementation of Rust's tracing
@@ -24,14 +24,14 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::{fmt::MakeWriter, layer::SubscriberExt, EnvFilter, Registry};
 
 pub(super) fn init() {
-    let name = "Claytip";
+    let name = "Exograph";
 
-    if let Ok(variable) = env::var("CLAY_TELEMETRY") {
+    if let Ok(variable) = env::var("EXO_TELEMETRY") {
         match variable.as_str() {
             "bunyan" => init_subscriber(create_bunyan_subscriber(name, stdout)),
             "jaeger" => init_subscriber(create_opentelemetry_jaeger_subscriber(name)),
             _ => {
-                eprintln!("Unknown value for CLAY_TELEMETRY: '{variable}'");
+                eprintln!("Unknown value for EXO_TELEMETRY: '{variable}'");
                 exit(1);
             }
         }
@@ -40,12 +40,12 @@ pub(super) fn init() {
         let mut builder = pretty_env_logger::formatted_builder();
         let mut builder = builder
             .filter_level(LevelFilter::Warn)
-            // produces a number of traces that are not too relevant to claytip
+            // produces a number of traces that are not too relevant to exograph
             // suppress INFO traces
             .filter_module("tracing_actix_web", LevelFilter::Warn)
             .filter_module("actix_server::worker", LevelFilter::Warn);
 
-        if let Ok(rust_log) = std::env::var("CLAY_CONSOLE_LOG") {
+        if let Ok(rust_log) = std::env::var("EXO_CONSOLE_LOG") {
             builder = builder.parse_filters(&rust_log);
         }
 

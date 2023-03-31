@@ -105,7 +105,7 @@ impl SchemaSpec {
         })
     }
 
-    /// Creates a new schema specification from the tables of a claytip model file.
+    /// Creates a new schema specification from the tables of a exograph model file.
     pub fn from_model(tables: Vec<PhysicalTable>) -> Self {
         let mut required_extensions = HashSet::new();
         for table_spec in tables.iter() {

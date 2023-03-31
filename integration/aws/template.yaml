@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  clay-aws 
+  exo-aws 
 
-  Sample SAM Template for Claytip.
+  Sample SAM Template for Exograph.
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -11,78 +11,78 @@ Globals:
     Timeout: 3
     VpcConfig:
       SubnetIds:
-        - !Ref ClaytipSubnetAZ1
-        - !Ref ClaytipSubnetAZ2
+        - !Ref ExographSubnetAZ1
+        - !Ref ExographSubnetAZ2
       SecurityGroupIds:
-        - !Ref ClaytipSecurityGroup
+        - !Ref ExographSecurityGroup
 
 Parameters:
-  ClaytipPostgresUsername:
+  ExographPostgresUsername:
     Type: String
-    Default: clay
-    Description: The master username of the Claytip RDS DBInstance.
-  ClaytipPostgresPassword:
+    Default: exo
+    Description: The master username of the Exograph RDS DBInstance.
+  ExographPostgresPassword:
     Type: String
-    Default: claytipdbpassword
-    Description: The master password of the Claytip RDS DBInstance.
-  ClaytipPostgresName:
+    Default: exographdbpassword
+    Description: The master password of the Exograph RDS DBInstance.
+  ExographPostgresName:
     Type: String
-    Default: claytipdb
-    Description: The database name of the Claytip RDS DBInstance.
-  ClaytipIntrospection:
+    Default: exographdb
+    Description: The database name of the Exograph RDS DBInstance.
+  ExographIntrospection:
     Type: String
     Default: "true"
     Description: Enable introspection.
-  ClaytipSubnetAZ1:
+  ExographSubnetAZ1:
     Type: AWS::EC2::Subnet::Id
     Description: >
-      A subnet allocation for Claytip in one AZ. This subnet should have egress access to the internet.
-  ClaytipSubnetAZ2:
+      A subnet allocation for Exograph in one AZ. This subnet should have egress access to the internet.
+  ExographSubnetAZ2:
     Type: AWS::EC2::Subnet::Id
     Description: >
-      A second subnet allocation for Claytip in another AZ. This should be in a different AZ from the first subnet.
-  ClaytipSecurityGroup:
+      A second subnet allocation for Exograph in another AZ. This should be in a different AZ from the first subnet.
+  ExographSecurityGroup:
     Type: AWS::EC2::SecurityGroup::Id
     Description: >
       The security group to use with these subnets.
 
 Resources:
-  # Amazon RDS instance for Claytip
-  ClaytipPostgres:
+  # Amazon RDS instance for Exograph
+  ExographPostgres:
     Type: AWS::RDS::DBInstance
     Properties:
       AllocatedStorage: "5"
       DBInstanceClass: db.t3.micro
       Engine: postgres
-      MasterUsername: !Ref ClaytipPostgresUsername
-      MasterUserPassword: !Ref ClaytipPostgresPassword
-      DBSubnetGroupName: !Ref ClaytipPostgresSubnetGroup
+      MasterUsername: !Ref ExographPostgresUsername
+      MasterUserPassword: !Ref ExographPostgresPassword
+      DBSubnetGroupName: !Ref ExographPostgresSubnetGroup
       StorageType: gp2
   # Amazon RDS requires a DB instance to have subnets in two different AZs
-  ClaytipPostgresSubnetGroup:
+  ExographPostgresSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       SubnetIds:
-        - !Ref ClaytipSubnetAZ1
-        - !Ref ClaytipSubnetAZ2
-      DBSubnetGroupDescription: "Claytip RDS private subnet group"
+        - !Ref ExographSubnetAZ1
+        - !Ref ExographSubnetAZ2
+      DBSubnetGroupDescription: "Exograph RDS private subnet group"
 
-  # Claytip schema initialization.
+  # Exograph schema initialization.
   #
-  # When deploying a fresh CloudFormation stack, Claytip must first initialize the PostgreSQL
-  # database. This is accomplished through the ClaytipPostgresInit custom resource. On creation
-  # of the stack, ClaytipPostgresInitFn will be invoked to initialize the database from the SQL file
+  # When deploying a fresh CloudFormation stack, Exograph must first initialize the PostgreSQL
+  # database. This is accomplished through the ExographPostgresInit custom resource. On creation
+  # of the stack, ExographPostgresInitFn will be invoked to initialize the database from the SQL file
   # `aws-cf-func/index.sql` (which is populated by build.sh in this directory).
   #
   # In production, we recommend initializing the database manually instead with an EC2 instance attached to
   # your VPC. The two blocks below can be removed without problem.
-  ClaytipPostgresInit:
-    DependsOn: ClaytipPostgres
-    Type: "Custom::ClaytipPostgresInit"
+  ExographPostgresInit:
+    DependsOn: ExographPostgres
+    Type: "Custom::ExographPostgresInit"
     Properties:
-      # invoke ClaytipPostgresInitFn for stack events
-      ServiceToken: !GetAtt ClaytipPostgresInitFn.Arn
-  ClaytipPostgresInitFn:
+      # invoke ExographPostgresInitFn for stack events
+      ServiceToken: !GetAtt ExographPostgresInitFn.Arn
+  ExographPostgresInitFn:
     Type: AWS::Serverless::Function
     Properties:
       Handler: lambda_function.handler
@@ -91,16 +91,16 @@ Resources:
       CodeUri: aws-cf-func/.
       Environment:
         Variables:
-          CLAY_POSTGRES_HOST: !GetAtt [ClaytipPostgres, Endpoint.Address]
-          CLAY_POSTGRES_HOST_PORT: !GetAtt [ClaytipPostgres, Endpoint.Port]
-          CLAY_POSTGRES_USER: !Ref ClaytipPostgresUsername
-          CLAY_POSTGRES_PASSWORD: !Ref ClaytipPostgresPassword
-          CLAY_POSTGRES_NAME: !Ref ClaytipPostgresName
-          CLAY_INTROSPECTION: !Ref ClaytipIntrospection
+          EXO_POSTGRES_HOST: !GetAtt [ExographPostgres, Endpoint.Address]
+          EXO_POSTGRES_HOST_PORT: !GetAtt [ExographPostgres, Endpoint.Port]
+          EXO_POSTGRES_USER: !Ref ExographPostgresUsername
+          EXO_POSTGRES_PASSWORD: !Ref ExographPostgresPassword
+          EXO_POSTGRES_NAME: !Ref ExographPostgresName
+          EXO_INTROSPECTION: !Ref ExographIntrospection
 
-  # The real Claytip Lambda function.
-  # This is the lambda that actually serves Claytip API requests.
-  ClaytipFunction:
+  # The real Exograph Lambda function.
+  # This is the lambda that actually serves Exograph API requests.
+  ExographFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: aws-app/
@@ -109,37 +109,37 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        Claytip:
+        Exograph:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /
             Method: post
       Environment:
         Variables:
-          CLAY_JWT_SECRET: "abcd"
-          CLAY_CORS_DOMAINS: "*"
-          CLAY_CONNECTION_POOL_SIZE: 1
-          CLAY_CHECK_CONNECTION_ON_STARTUP: false
-          CLAY_POSTGRES_USER: !Ref ClaytipPostgresUsername
-          CLAY_POSTGRES_URL: !Sub
+          EXO_JWT_SECRET: "abcd"
+          EXO_CORS_DOMAINS: "*"
+          EXO_CONNECTION_POOL_SIZE: 1
+          EXO_CHECK_CONNECTION_ON_STARTUP: false
+          EXO_POSTGRES_USER: !Ref ExographPostgresUsername
+          EXO_POSTGRES_URL: !Sub
             - "postgresql://${Username}:${Password}@${IP}:${Port}/${Postgres}"
-            - IP: !GetAtt [ClaytipPostgres, Endpoint.Address]
-              Port: !GetAtt [ClaytipPostgres, Endpoint.Port]
-              Username: !Ref ClaytipPostgresUsername
-              Password: !Ref ClaytipPostgresPassword
-              Postgres: !Ref ClaytipPostgresName
-          CLAY_INTROSPECTION: !Ref ClaytipIntrospection
+            - IP: !GetAtt [ExographPostgres, Endpoint.Address]
+              Port: !GetAtt [ExographPostgres, Endpoint.Port]
+              Username: !Ref ExographPostgresUsername
+              Password: !Ref ExographPostgresPassword
+              Postgres: !Ref ExographPostgresName
+          EXO_INTROSPECTION: !Ref ExographIntrospection
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  ClaytipApi:
-    Description: "API Gateway endpoint URL for Prod stage for Claytip function"
+  ExographApi:
+    Description: "API Gateway endpoint URL for Prod stage for Exograph function"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/"
-  ClaytipFunction:
-    Description: "Claytip Lambda Function ARN"
-    Value: !GetAtt ClaytipFunction.Arn
-  ClaytipFunctionIamRole:
-    Description: "Implicit IAM Role created for Claytip function"
-    Value: !GetAtt ClaytipFunctionRole.Arn
+  ExographFunction:
+    Description: "Exograph Lambda Function ARN"
+    Value: !GetAtt ExographFunction.Arn
+  ExographFunctionIamRole:
+    Description: "Implicit IAM Role created for Exograph function"
+    Value: !GetAtt ExographFunctionRole.Arn

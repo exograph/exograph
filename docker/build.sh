@@ -11,8 +11,8 @@ buildType="$2" # "release" or "debug"
 # TODO: Resolve the openssl issues and then "BASE_IMAGE=debian:buster-slim"
 
 ## DEFAULTS ##
-BUILD_IMAGE=rust:1.65.0-buster # image to build Claytip with
-BASE_IMAGE=rust:1.65.0-slim-buster # image to use when actually running Claytip
+BUILD_IMAGE=rust:1.65.0-buster # image to build Exograph with
+BASE_IMAGE=rust:1.65.0-slim-buster # image to use when actually running Exograph
 DEPENDENCY_STYLE=deb # how to install or setup dependencies
 TAG_SUFFIX="" # docker tag suffix
 
@@ -178,5 +178,5 @@ docker_build() {
             $ROOT_DIRECTORY 
 }
 
-docker_build "clay-builder$TAG_SUFFIX" "clay-builder"
-docker_build "clay$TAG_SUFFIX" 
+docker_build "exo-builder$TAG_SUFFIX" "exo-builder"
+docker_build "exo$TAG_SUFFIX" 

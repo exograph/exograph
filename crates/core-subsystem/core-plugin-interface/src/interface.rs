@@ -30,7 +30,7 @@ pub trait SubsystemBuilder {
     ///
     /// For example, in order to typecheck:
     ///
-    /// ```clay
+    /// ```exo
     /// @deno("example.ts")
     /// service ExampleService {
     ///     ...
@@ -58,7 +58,7 @@ pub trait SubsystemBuilder {
     /// - `typechecked_system`: A partially typechecked system. This contains the set of all types
     ///                         that were successfully parsed from the user's model, ranging from `service` types
     ///                         to composite `type`.
-    /// - `base_system`: The base model system for Claytip. These are a set of common types that are
+    /// - `base_system`: The base model system for Exograph. These are a set of common types that are
     ///                  used by all plugins, like `context`s and primitive types (`Int`, `String`, etc.)
     ///
     /// Return variants:
@@ -155,7 +155,7 @@ fn load_subsystem_library<T: ?Sized>(
 pub fn load_subsystem_builder(
     library_path: &Path,
 ) -> Result<Box<dyn SubsystemBuilder>, LibraryLoadingError> {
-    load_subsystem_library(library_path, "__claytip_subsystem_builder")
+    load_subsystem_library(library_path, "__exograph_subsystem_builder")
 }
 
 /// Loads a subsystem loader from a dynamic library.
@@ -172,5 +172,5 @@ pub fn load_subsystem_loader(
         return Err(LibraryLoadingError::LibraryNotFound(library_path));
     }
 
-    load_subsystem_library(&library_path, "__claytip_subsystem_loader")
+    load_subsystem_library(&library_path, "__exograph_subsystem_loader")
 }

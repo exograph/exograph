@@ -977,7 +977,7 @@ mod tests {
 
         @deno("bar.js")
         service Foo {
-            export query qux(@inject claytip: Claytip, x: Int, y: String): Int
+            export query qux(@inject exograph: Exograph, x: Int, y: String): Int
             mutation quuz(): String
         }
         "#;
@@ -1081,7 +1081,7 @@ mod tests {
         @deno("logger.js")
         service Logger {
             @access(AuthContext.role == "ROLE_ADMIN")
-            export query log(@inject claytip: Claytip): Boolean
+            export query log(@inject exograph: Exograph): Boolean
         }
         "#;
 
@@ -1250,7 +1250,7 @@ mod tests {
     fn create_resolved_system(src: &str) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
         let mut codemap = CodeMap::new();
         let subsystem_builders = load_subsystem_builders().unwrap();
-        let parsed = parser::parse_str(src, &mut codemap, "input.clay")
+        let parsed = parser::parse_str(src, &mut codemap, "input.exo")
             .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
         let typechecked_system = typechecker::build(&subsystem_builders, parsed)
             .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;

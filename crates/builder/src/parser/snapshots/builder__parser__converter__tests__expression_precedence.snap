@@ -1,7 +1,7 @@
 ---
 source: crates/builder/src/parser/converter.rs
 assertion_line: 652
-expression: "convert_root(parsed.root_node(),\n        r#\"\n            @postgres\n            service TestService{            \n                type Foo {\n                    bar: Baz @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n                }\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.clay\")).unwrap()"
+expression: "convert_root(parsed.root_node(),\n        r#\"\n            @postgres\n            service TestService{            \n                type Foo {\n                    bar: Baz @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n                }\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.exo\")).unwrap()"
 ---
 types: []
 services:
@@ -62,6 +62,6 @@ services:
         annotations: []
     methods: []
     interceptors: []
-    base_clayfile: input.clay
+    base_exofile: input.exo
 imports: []
 

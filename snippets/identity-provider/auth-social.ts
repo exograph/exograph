@@ -12,24 +12,24 @@ export interface LoginResult {
 // Unlike "normal" login (whose signup requires an email verification step), with social login,
 // the user is created immediately (thus we can issue the JWT token on signup immediately).
 // So the real difference between login and signup is that the latter adds the new user to the database.
-export async function loginSocial(code: string, provider: string, claytip: any): Promise<string> {
-  return await helper(code, provider, claytip, undefined);
+export async function loginSocial(code: string, provider: string, exograph: any): Promise<string> {
+  return await helper(code, provider, exograph, undefined);
 }
 
-export async function signupSocial(code: string, provider: string, claytip: any): Promise<string> {
-  return await helper(code, provider, claytip, signup);
+export async function signupSocial(code: string, provider: string, exograph: any): Promise<string> {
+  return await helper(code, provider, exograph, signup);
 }
 
-type OnSignupFunction = (email: string, name: string, claytip: any) => Promise<string> | undefined;
+type OnSignupFunction = (email: string, name: string, exograph: any) => Promise<string> | undefined;
 
-async function helper(code: string, provider: string, claytip: any, onSignup: OnSignupFunction): Promise<string> {
+async function helper(code: string, provider: string, exograph: any, onSignup: OnSignupFunction): Promise<string> {
   if (provider === 'google') {
     const googleUser: LoginResult = await verifyGoogle(code);
 
     if (onSignup) {
-      await onSignup(googleUser.email, `${googleUser.givenName} ${googleUser.familyName}`, claytip);
+      await onSignup(googleUser.email, `${googleUser.givenName} ${googleUser.familyName}`, exograph);
     }
-    const payload = await queryUserInfo(googleUser.email, claytip);
+    const payload = await queryUserInfo(googleUser.email, exograph);
     const token = await createJwt(payload, secret)
 
     return token
@@ -41,9 +41,9 @@ async function helper(code: string, provider: string, claytip: any, onSignup: On
 async function signup(
   email: string,
   name: string,
-  claytip: any
+  exograph: any
 ) {
-  let res = await claytip.executeQuery(
+  let res = await exograph.executeQuery(
     `mutation(
         $email: String!, 
         $role: String!,

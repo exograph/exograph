@@ -50,7 +50,7 @@ function queryUser () {
 
 appname=$(queryUser "Enter the name of the new function app")
 location=$(queryUser "Enter location to create app in" "westus")
-resourceGroup=$(queryUser "Enter new resource group name" "$appname-claytip-rg")
+resourceGroup=$(queryUser "Enter new resource group name" "$appname-exograph-rg")
 storageAccount=$(queryUser "Enter new storage account name" "$appname")
 
 functionsVersion="4"
@@ -61,7 +61,7 @@ set -x
 az group create \
     --name "$resourceGroup" \
     --location "$location" \
-    --tags "claytip"
+    --tags "exograph"
 
 set -o errtrace
 trap "set +x; echo -e \"\${RED}Error encountered, deleting resource group...\${NC}\"; set -x; az group delete --name $resourceGroup" ERR
@@ -85,11 +85,11 @@ az functionapp config appsettings set \
     --resource-group "$resourceGroup" \
     --name "$appname" \
     --settings \
-    CLAY_INTROSPECTION=true \
-    CLAY_JWT_SECRET=abcd \
-    CLAY_CORS_DOMAINS=* \
-    CLAY_ENDPOINT_HTTP_PATH=/api/claytipapi \
-    CLAY_PLAYGROUND_HTTP_PATH=/api/claytipapi \
+    EXO_INTROSPECTION=true \
+    EXO_JWT_SECRET=abcd \
+    EXO_CORS_DOMAINS=* \
+    EXO_ENDPOINT_HTTP_PATH=/api/exographapi \
+    EXO_PLAYGROUND_HTTP_PATH=/api/exographapi \
     FUNCTIONS_WORKER_RUNTIME=custom
 
 set +x
@@ -98,15 +98,15 @@ echo "Creation of Azure function app \`$appname\` successful."
 echo "- Delete all resources after finishing to avoid incurring additional charges:"
 echo "  \$ az group delete --name $resourceGroup"
 
-echo "- Please create and initialize a database, then set CLAY_POSTGRES_URL in this app's Application Settings."
+echo "- Please create and initialize a database, then set EXO_POSTGRES_URL in this app's Application Settings."
 if [ $(queryUser "Do this automatically?" "y") != "y" ]; then
     echo "Exiting..."
     exit 0
 fi
 
 postgresServer=$(queryUser "Enter new PostgreSQL server name" "$appname-psql")
-postgresUsername=$(queryUser "Enter new database username" "claytip")
-postgresPassword=$(queryUser "Enter new database password" "ClayDev1234")
+postgresUsername=$(queryUser "Enter new database username" "exograph")
+postgresPassword=$(queryUser "Enter new database password" "ExoDev1234")
 skuPostgres="GP_Gen5_2" # https://docs.microsoft.com/en-us/azure/postgresql/single-server/concepts-pricing-tiers
 
 set -x
@@ -126,12 +126,12 @@ az functionapp config appsettings set \
     --resource-group "$resourceGroup" \
     --name "$appname" \
     --settings \
-    CLAY_POSTGRES_URL=$postgresConnectionString 
+    EXO_POSTGRES_URL=$postgresConnectionString 
 
 az postgres server firewall-rule create \
     --resource-group $resourceGroup \
     --server "$postgresServer" \
-    --name AllowClaytip \
+    --name AllowExograph \
     --start-ip-address "0.0.0.0" \
     --end-ip-address "0.0.0.0"
 
@@ -147,5 +147,5 @@ set +x
 
 echo ""
 echo "- A new Azure database instance was successfully set up, along with \`$appname\`. Please initialize it with your schema:"
-echo "  \$ clay schema create model.clay | psql \"$postgresConnectionString\""
+echo "  \$ exo schema create model.exo | psql \"$postgresConnectionString\""
 echo "- A new firewall rule was created for the instance, allowing \`$currentOutgoingIp\` to connect (your current outgoing IP)"

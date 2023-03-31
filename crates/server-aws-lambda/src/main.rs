@@ -6,7 +6,7 @@ use server_aws_lambda::resolve;
 
 use std::sync::Arc;
 
-/// Run the server in production mode with a compiled claypot file
+/// Run the server in production mode with a compiled exo_ir file
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let system_resolver = Arc::new(server_common::init());

@@ -9,7 +9,7 @@ use super::{migration_helper::migration_statements, util};
 use anyhow::Result;
 use payas_sql::schema::spec::SchemaSpec;
 
-/// Perform a database migration for a claytip model
+/// Perform a database migration for a exograph model
 pub struct MigrateCommand {
     pub model: PathBuf,
     pub database: Option<String>,

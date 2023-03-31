@@ -129,27 +129,27 @@ pub async fn resolve<'a, E: 'static>(
 }
 
 pub fn get_playground_http_path() -> String {
-    std::env::var("CLAY_PLAYGROUND_HTTP_PATH").unwrap_or_else(|_| "/playground".to_string())
+    std::env::var("EXO_PLAYGROUND_HTTP_PATH").unwrap_or_else(|_| "/playground".to_string())
 }
 
 pub fn get_endpoint_http_path() -> String {
-    std::env::var("CLAY_ENDPOINT_HTTP_PATH").unwrap_or_else(|_| "/graphql".to_string())
+    std::env::var("EXO_ENDPOINT_HTTP_PATH").unwrap_or_else(|_| "/graphql".to_string())
 }
 
 fn create_system_resolver(
-    claypot_file: &str,
+    exo_ir_file: &str,
     static_loaders: Vec<Box<dyn SubsystemLoader>>,
 ) -> Result<SystemResolver, SystemLoadingError> {
-    if !Path::new(&claypot_file).exists() {
-        return Err(SystemLoadingError::FileNotFound(claypot_file.to_string()));
+    if !Path::new(&exo_ir_file).exists() {
+        return Err(SystemLoadingError::FileNotFound(exo_ir_file.to_string()));
     }
-    match File::open(claypot_file) {
+    match File::open(exo_ir_file) {
         Ok(file) => {
-            let claypot_file_buffer = BufReader::new(file);
+            let exo_ir_file_buffer = BufReader::new(file);
 
-            SystemLoader::load(claypot_file_buffer, static_loaders)
+            SystemLoader::load(exo_ir_file_buffer, static_loaders)
         }
-        Err(e) => Err(SystemLoadingError::FileOpen(claypot_file.into(), e)),
+        Err(e) => Err(SystemLoadingError::FileOpen(exo_ir_file.into(), e)),
     }
 }
 
@@ -161,10 +161,10 @@ pub fn create_system_resolver_from_serialized_bytes(
 }
 
 pub fn create_system_resolver_or_exit(
-    claypot_file: &str,
+    exo_ir_file: &str,
     static_loaders: Vec<Box<dyn SubsystemLoader>>,
 ) -> SystemResolver {
-    match create_system_resolver(claypot_file, static_loaders) {
+    match create_system_resolver(exo_ir_file, static_loaders) {
         Ok(system_resolver) => system_resolver,
         Err(error) => {
             println!("{error}");

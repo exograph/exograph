@@ -1,5 +1,6 @@
 ---
 source: crates/builder/src/typechecker/mod.rs
+assertion_line: 510
 expression: build(src).unwrap()
 ---
 types:
@@ -29,9 +30,9 @@ types:
     - - ~
       - Primitive: Uuid
     - - ~
-      - Primitive: Claytip
+      - Primitive: Exograph
     - - ~
-      - Primitive: ClaytipPriv
+      - Primitive: ExographPriv
     - - ~
       - Primitive:
           Interception: Operation
@@ -119,17 +120,17 @@ types:
     Boolean:
       index: 0
       generation: ~
-    Claytip:
-      index: 12
-      generation: ~
-    ClaytipPriv:
-      index: 13
-      generation: ~
     Decimal:
       index: 3
       generation: ~
     Doc:
       index: 16
+      generation: ~
+    Exograph:
+      index: 12
+      generation: ~
+    ExographPriv:
+      index: 13
       generation: ~
     Float:
       index: 2
@@ -208,7 +209,7 @@ services:
               annotations: {}
         methods: []
         interceptors: []
-        base_clayfile: input.clay
+        base_exofile: input.exo
     - ~
     - ~
     - ~

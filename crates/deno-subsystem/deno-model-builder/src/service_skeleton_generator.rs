@@ -9,15 +9,15 @@ use core_plugin_interface::core_model_builder::{
     typechecker::Typed,
 };
 
-// Temporary. Eventually, we will have a published artifact (at https://deno.land/x/claytip@<version>) that contains this code.
+// Temporary. Eventually, we will have a published artifact (at https://deno.land/x/exograph@<version>) that contains this code.
 // Then, we will have this imported in each generated service code (currently, it suffices to just have it in the same directory as the service code).
-static CLAYTIP_D_TEMPLATE_TS: &str = include_str!("claytip.d.template.ts");
+static EXOTIP_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 
-/// Generates a service skeleton based on service definitions in the clay file so that users can have a good starting point.
+/// Generates a service skeleton based on service definitions in the exo file so that users can have a good starting point.
 ///
 /// # Example:
-/// For a service definition in a clay file as follows:
-/// ```clay
+/// For a service definition in a exo file as follows:
+/// ```exo
 /// @deno("todo.ts")
 /// service TodoService {
 ///     type Todo {
@@ -55,7 +55,7 @@ static CLAYTIP_D_TEMPLATE_TS: &str = include_str!("claytip.d.template.ts");
 ///     throw new Error('not implemented');
 /// }
 /// ```
-/// We also generate a claytip.d.ts file that contains the Claytip interface.
+/// We also generate a exograph.d.ts file that contains the Exograph interface.
 ///
 pub fn generate_service_skeleton(
     service: &AstService<Typed>,
@@ -72,10 +72,10 @@ pub fn generate_service_skeleton(
 
     // Generated a typescript definition file even for Javascript, so that user can know
     // the expected interface and IDEs can assist with code completion (if they use jsdoc, for).
-    let claytip_d_path = out_file.parent().unwrap().join("claytip.d.ts");
-    if !claytip_d_path.exists() {
-        let mut claytip_d_file = File::create(&claytip_d_path)?;
-        claytip_d_file.write_all(CLAYTIP_D_TEMPLATE_TS.as_bytes())?;
+    let exograph_d_path = out_file.parent().unwrap().join("exograph.d.ts");
+    if !exograph_d_path.exists() {
+        let mut exograph_d_file = File::create(&exograph_d_path)?;
+        exograph_d_file.write_all(EXOTIP_D_TEMPLATE_TS.as_bytes())?;
     }
 
     // We don't want to overwrite any user files
@@ -248,15 +248,15 @@ impl TypeScriptType for ContextFieldType {
     }
 }
 
-fn typescript_base_type(clay_type_name: &str) -> String {
-    match clay_type_name {
+fn typescript_base_type(exo_type_name: &str) -> String {
+    match exo_type_name {
         "String" => "string".to_string(),
         "Int" => "number".to_string(),
         "Float" => "number".to_string(),
         "Boolean" => "boolean".to_string(),
         "DateTime" => "Date".to_string(),
-        "Claytip" => "Claytip".to_string(),
-        "ClaytipPriv" => "ClaytipPriv".to_string(),
+        "Exograph" => "Exograph".to_string(),
+        "ExographPriv" => "ExographPriv".to_string(),
         t => t.to_string(),
     }
 }

@@ -1,0 +1,90 @@
+@postgres
+service ConcertVenues {
+  @table("concerts")
+  @access(query=AuthContext.role == "ROLE_ADMIN" || self.published || price <= 10, 
+          mutation=AuthContext.role == "ROLE_ADMIN")
+  type Concert {
+    @pk id: Int = autoIncrement() // comment after annotation
+    title: String // comment after type
+    @column("venueid") venue: Venue 
+    published: Boolean
+    @precision(20) @scale(2) price: Decimal 
+  }
+
+  @table("venues")
+  type Venue {
+    @pk id: Int = autoIncrement() // highlighting of functions in default field
+    name: String = "abc" // highlighting of strings in default field
+    @column("venueid") concerts: Set<Concert> 
+    published: Boolean
+    occupancy: Int = 200 // highlighting of numbers in default field
+    latitude: Float @size(4)
+  }
+}
+
+@plugin
+service Service {
+  @auth(self._starts_with_underscore == "foo" || _AuthContext.role == "ROLE_ADMIN")
+  type _ModelStartWithAnUnderscore_AndHas_Underscores {
+    id_with_underscores: Int = autoIncrement() @pk
+    _starts_with_underscore: String
+  }
+}
+
+service _ServiceStartWithAnUnderscore_AndHas_Underscores {
+}
+
+context AuthContext {
+  @jwt("sub") id: Int 
+  @jwt("role") role: String 
+}
+
+service MyService {
+  export mutation foo(i: Int, zz: String): number
+
+  query get_this(in: Concert_Info): Concert
+  query get_this_too(in: Concert_Info): Concert_Output
+
+  mutation foo(input: FooInput): xx // To test that methods separated by a single line break hightlight correctly
+  mutation bar(input: FooInput): xx 
+  mutation baz(input: FooInput): xx // xx
+}
+
+@deno("concert-notification.ts")
+service ConcertNotificationService {
+  export mutation sendNotification(
+    concertNotificationId: Int, subscriptionGroupId: Int,
+    @injected exo: Exo, @injected emailService: EmailService
+  ): Result<bool, bool>
+}
+
+@deno("rate_limiter.ts")
+service RateLimiter {
+  @around("query * || mutation *")
+  interceptor checkLimit(ipContext: IPContext, operation: Operation): OperationResult
+}
+
+@deno("authentication.wasm") // or ".so" or ".js" or ".ts"
+service Authentication {
+  type LoginInput {
+    provider: String // "google", "facebook", "username-password"
+    code: String?
+    username: String?
+    password: String?
+  }
+
+  type LoginResult {
+    id: String // From Google, Facebook, etc (not from our database)
+    name: String
+    email: String
+    profilePicture: String
+    refreshToken: String
+  }
+
+  type LoginError {
+    kind: String // "network", "invalid-credentials", "unsupported-kind"
+    info: String
+  }
+
+  export mutation authenticate(loginInfo: LoginInput, @inject exograph: Exograph): Result<String, LoginError>
+}

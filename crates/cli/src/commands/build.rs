@@ -11,7 +11,7 @@ use std::{path::PathBuf, time::SystemTime};
 
 use super::command::Command;
 
-/// Build claytip server binary
+/// Build exograph server binary
 pub struct BuildCommand {
     pub model: PathBuf,
 }
@@ -39,13 +39,13 @@ impl Display for BuildError {
     }
 }
 
-/// Build claypot file
+/// Build exo_ir file
 ///
 /// # Arguments
-/// * `model` - claytip model path
+/// * `model` - exograph model path
 /// * `system_start_time` - system start time. If specified, it will print a message indicated the time it took to build the model
 /// * `print_message` - if true, it will print a message indicating the time it took to build the model. We need this
-///                        to avoid printing the message when building the model through `clay serve`, where we don't want to print the message
+///                        to avoid printing the message when building the model through `exo serve`, where we don't want to print the message
 ///                        upon detecting changes
 pub(crate) fn build(
     model: &Path,
@@ -54,20 +54,20 @@ pub(crate) fn build(
 ) -> Result<(), BuildError> {
     let serialized_system = builder::build_system(model).map_err(BuildError::ParserError)?;
 
-    let claypot_file_name = {
-        if let Some("clay") = model.extension().and_then(OsStr::to_str) {
+    let exo_ir_file_name = {
+        if let Some("exo") = model.extension().and_then(OsStr::to_str) {
             let mut filename = model.to_path_buf();
-            filename.set_extension("claypot");
+            filename.set_extension("exo_ir");
             filename
         } else {
             return Err(BuildError::UnrecoverableError(anyhow!(
-                "{} is not a clay file",
+                "{} is not a exo file",
                 model.display()
             )));
         }
     };
 
-    let mut out_file = BufWriter::new(File::create(&claypot_file_name).unwrap());
+    let mut out_file = BufWriter::new(File::create(&exo_ir_file_name).unwrap());
     out_file.write_all(&serialized_system).unwrap();
 
     if print_message {
@@ -78,19 +78,19 @@ pub(crate) fn build(
                     .map_err(|e| BuildError::UnrecoverableError(anyhow!(e)))?
                     .as_millis();
                 println!(
-                    "Claypot file '{}' created in {} milliseconds",
-                    claypot_file_name.display(),
+                    "Exograph IR file '{}' created in {} milliseconds",
+                    exo_ir_file_name.display(),
                     elapsed
                 );
             }
             None => {
-                println!("Claypot file {} created", claypot_file_name.display());
+                println!("Exograph IR file {} created", exo_ir_file_name.display());
             }
         }
 
         println!(
-            "You can start the server with using the 'clay-server {}' command",
-            claypot_file_name.display()
+            "You can start the server with using the 'exo-server {}' command",
+            exo_ir_file_name.display()
         );
     }
 

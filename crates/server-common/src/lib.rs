@@ -16,11 +16,11 @@ mod logging_tracing;
 /// flags also control if the corresponding libraries are statically linked it.
 ///
 /// # Exit codes
-/// - 1 - If the claypot file doesn't exist or can't be loaded.
+/// - 1 - If the exo_ir file doesn't exist or can't be loaded.
 pub fn init() -> SystemResolver {
     logging_tracing::init();
 
-    let claypot_file = get_claypot_file_name();
+    let exo_ir_file = get_exo_ir_file_name();
 
     let static_loaders: Vec<Box<dyn SubsystemLoader>> = vec![
         #[cfg(feature = "static-postgres-resolver")]
@@ -29,32 +29,32 @@ pub fn init() -> SystemResolver {
         Box::new(deno_resolver::DenoSubsystemLoader {}),
     ];
 
-    create_system_resolver_or_exit(&claypot_file, static_loaders)
+    create_system_resolver_or_exit(&exo_ir_file, static_loaders)
 }
 
-fn get_claypot_file_name() -> String {
+fn get_exo_ir_file_name() -> String {
     let mut args = env::args().skip(1);
 
     if args.len() > 1 {
-        // $ clay-server <model-file-name> extra-arguments...
-        println!("Usage: clay-server <claypot-file>");
+        // $ exo-server <model-file-name> extra-arguments...
+        println!("Usage: exo-server <exo_ir-file>");
         exit(1)
     }
 
     if args.len() == 0 {
-        // $ clay-server
-        "index.claypot".to_string()
+        // $ exo-server
+        "index.exo_ir".to_string()
     } else {
         let file_name = args.next().unwrap();
 
-        if file_name.ends_with(".claypot") {
-            // $ clay-server concerts.claypot
+        if file_name.ends_with(".exo_ir") {
+            // $ exo-server concerts.exo_ir
             file_name
-        } else if file_name.ends_with(".clay") {
-            // $ clay-server concerts.clay
-            format!("{file_name}pot")
+        } else if file_name.ends_with(".exo") {
+            // $ exo-server concerts.exo
+            format!("{file_name}_ir")
         } else {
-            println!("The input file {file_name} doesn't appear to be a claypot. You need build one with the 'clay build <model-file-name>' command.");
+            println!("The input file {file_name} doesn't appear to be a exo_ir. You need build one with the 'exo build <model-file-name>' command.");
             exit(1);
         }
     }

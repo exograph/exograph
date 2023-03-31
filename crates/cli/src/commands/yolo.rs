@@ -25,7 +25,7 @@ fn generate_random_string() -> String {
         .collect()
 }
 
-/// Run local claytip server with a temporary database
+/// Run local exograph server with a temporary database
 pub struct YoloCommand {
     pub model: PathBuf,
     pub port: Option<u32>,
@@ -63,12 +63,12 @@ impl Command for YoloCommand {
         let prestart_callback = || {
             async {
             // set envs for server
-            std::env::set_var("CLAY_POSTGRES_URL", &db.url());
-            std::env::remove_var("CLAY_POSTGRES_USER");
-            std::env::remove_var("CLAY_POSTGRES_PASSWORD");
-            std::env::set_var("CLAY_INTROSPECTION", "true");
-            std::env::set_var("CLAY_JWT_SECRET", &jwt_secret);
-            std::env::set_var("CLAY_CORS_DOMAINS", "*");
+            std::env::set_var("EXO_POSTGRES_URL", &db.url());
+            std::env::remove_var("EXO_POSTGRES_USER");
+            std::env::remove_var("EXO_POSTGRES_PASSWORD");
+            std::env::set_var("EXO_INTROSPECTION", "true");
+            std::env::set_var("EXO_JWT_SECRET", &jwt_secret);
+            std::env::set_var("EXO_CORS_DOMAINS", "*");
 
             println!("JWT secret is {}", &jwt_secret);
             println!("Postgres URL is {}", &db.url());
@@ -167,7 +167,7 @@ pub struct LocalPostgreSQL {
 impl PostgreSQLInstance for LocalPostgreSQL {
     fn url(&self) -> String {
         format!(
-            "postgres://clay@{}",
+            "postgres://exo@{}",
             urlencoding::encode(self.data_dir.path().to_str().unwrap())
         )
     }
@@ -198,7 +198,7 @@ impl LocalPostgreSQL {
                 "-A",
                 "trust",
                 "--username",
-                "clay",
+                "exo",
             ])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -230,7 +230,7 @@ impl LocalPostgreSQL {
         let mut tries = 0;
         loop {
             let result = std::process::Command::new("pg_isready")
-                .args(["-h", data_dir.path().to_str().unwrap(), "-U", "clay"])
+                .args(["-h", data_dir.path().to_str().unwrap(), "-U", "exo"])
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn()
@@ -251,13 +251,7 @@ impl LocalPostgreSQL {
         }
 
         std::process::Command::new("createdb")
-            .args([
-                "-h",
-                data_dir.path().to_str().unwrap(),
-                "-U",
-                "clay",
-                "clay",
-            ])
+            .args(["-h", data_dir.path().to_str().unwrap(), "-U", "exo", "exo"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
@@ -295,7 +289,7 @@ impl DockerPostgreSQL {
         };
 
         // generate container name
-        let container_name = format!("claytip-yolo-{}", generate_random_string());
+        let container_name = format!("exograph-yolo-{}", generate_random_string());
 
         // start postgres docker in background
         let mut db_background = std::process::Command::new("docker");
@@ -306,9 +300,9 @@ impl DockerPostgreSQL {
                 "--name",
                 &container_name,
                 "-e",
-                "POSTGRES_USER=clay",
+                "POSTGRES_USER=exo",
                 "-e",
-                "POSTGRES_PASSWORD=clay",
+                "POSTGRES_PASSWORD=exo",
                 "-p",
                 &format!("{port}:5432"),
                 "postgres",
@@ -333,7 +327,7 @@ impl DockerPostgreSQL {
 
         Ok(DockerPostgreSQL {
             container_name,
-            connection_url: format!("postgresql://clay:clay@127.0.0.1:{port}/postgres"),
+            connection_url: format!("postgresql://exo:exo@127.0.0.1:{port}/postgres"),
         })
     }
 }

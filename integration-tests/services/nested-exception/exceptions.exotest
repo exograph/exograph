@@ -1,0 +1,12 @@
+operation: |
+    query Foo {
+      callThrowExographError
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "user message"
+        }
+      ]
+    } 

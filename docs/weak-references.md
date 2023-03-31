@@ -7,7 +7,7 @@ hosts music concerts each featuring a few artists.
 
 Users will first start with the following domain model.
 
-```claytip
+```exograph
 export model Concert {
   @pk id: Int = autoIncrement()
   title: String
@@ -112,7 +112,7 @@ To model the requirement that deleting a `Concert` should delete
 associated with a `Concert`). This can be accomplished by replacing the type of
 `artistConcerts` in `Artist` to `WeakSet`:
 
-```claytip
+```exograph
 export model Artist {
   @pk id: Int = autoIncrement()
   name: String
@@ -134,7 +134,7 @@ to designate a few appearances as "featured" (and show them prominently on the
 home page). We model this requirement by introducing the `FeaturedPerformance`
 model.
 
-```claytip
+```exograph
 model ConcertArtist {
   ... same as earlier
   featured: FeaturedPerformance?
@@ -159,7 +159,7 @@ that will mean that the `concertArtist` will be set to NULL.
 Instead, we want the system to hold `FeaturedPerformance` weakly. We do so by
 using the `@weak` annotation as follows:
 
-```claytip
+```exograph
 @weak export model FeaturedPerformance {
   ... same as earlier
 }
@@ -170,7 +170,7 @@ using the `@weak` annotation as follows:
 Following a concert, the organization publishes a summary of the performance and
 lets authenticated users post comments.
 
-```claytip
+```exograph
 export model Post {
   ...
   comments: Set[Comment]
@@ -196,7 +196,7 @@ comments to be snatched away from the associated `Post` (and from the `User`).
 So we make `comments` in both entities as `WeakSet`. Now deleting a comment
 removes it from the `Post` and the `User`.
 
-```claytip
+```exograph
 export model Post {
   ...
   comments: WeakSet[Comment]
@@ -213,7 +213,7 @@ made a comment cannot be deleted. We have two options:
 
 1. Delete comments made by the user. This requires the following change:
 
-```claytip
+```exograph
 // Same model as in Scenario 1
 
 @weak export model Comment {
@@ -228,7 +228,7 @@ This change allows comments to be snatched away from the root object.
 2. Set the comment's user to NULL (i.e. mark the comment as posted by an
    anonymous user). This requires the following change:
 
-```claytip
+```exograph
 // Same model as in Scenario 1
 
 export model Comment {
@@ -253,7 +253,7 @@ residue dynamically with the query (similar to how we do it for access control).
    [ON DELETE](https://www.postgresql.org/docs/9.5/ddl-constraints.html) value.
    So given this:
 
-```claytip
+```exograph
 export model Artist {
   @pk id: Int = autoIncrement()
   name: String
@@ -283,7 +283,7 @@ A. A `Weak[T]` reference is always emitted as `ON DELETE SET NULL`. B. For
 non-weak exported models, each strong reference is emitted as
 `ON DELETE RESTRICT`.
 
-```claytip
+```exograph
 export model Comment {
   ...
   post: Post
@@ -304,7 +304,7 @@ With this arrangement, deleting a comment will set the `user_id` to NULL.
 C. For `@weak` and not exported models, emit each strong reference as
 `ON DELETE CASCADE`.
 
-```claytip
+```exograph
 @weak export model FeaturedPerformance {
   @pk id: Int = autoIncrement()
   promoTitle: String
@@ -336,7 +336,7 @@ to the models involved).
 
 A2. But let comments stay (with a null post)?
 
-```claytip
+```exograph
 @access(mutation: AuthContext.user.id == self.user.id)
 model Comment {
   post: Weak[Post]
@@ -349,7 +349,7 @@ doesn't count as a mutation)
 
 A3. Delete comments along with the post
 
-```claytip
+```exograph
 @access(mutation: AuthContext.user.id == self.user.id, transitiveDelete: true)
 model Comment {
   post: Post

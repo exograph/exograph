@@ -1,0 +1,48 @@
+@postgres
+service FooDatabase {
+    @table("foo")
+    @access(true)
+    type Foo {
+        @pk id: Int = autoIncrement()
+        bar: Int
+        baz: Int
+        qux: Int
+    }
+}
+
+@deno("arithmetic.js")
+service MathService {
+    @access(true)
+    type DivisionResult {
+        quotient: Int
+        remainder: Int
+    }
+
+    @access(true)
+    type LogMessage {
+        level: String
+        message: String
+    }
+
+    @access(true) export query add(x: Int, y: Int): Int
+    @access(true) export query divide(x: Int, y: Int): DivisionResult
+    @access(true) export query asyncDivide(x: Int, y: Int): DivisionResult
+    @access(true) export query currentUnixEpoch(): Int
+
+    @access(true) export query shimQuery(@inject exograph: Exograph): Int 
+    @access(true) export mutation testMutation(@inject exograph: Exograph): Float 
+    @access(true) export mutation illegalFunction(): String
+}
+
+@deno("todo.ts")
+service TodoService {
+    @access(true)
+    type Todo {
+        id: Int
+        userId: Int
+        title: String
+        completed: Boolean
+    }
+
+    @access(true) export query todo(id: Int): Todo
+}

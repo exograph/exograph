@@ -23,10 +23,10 @@ pub enum PrimitiveType {
     // TODO: These should not be a primitive types... perhaps another enum `InjectedType`?
     /// Available as an injected dependency to Deno queries and mutations so that the implementation
     /// can execute queries and mutations.
-    Claytip,
-    /// Similar to Claytip, but also allows queries and mutations with a privilege of another
+    Exograph,
+    /// Similar to Exograph, but also allows queries and mutations with a privilege of another
     /// context.
-    ClaytipPriv,
+    ExographPriv,
     /// Available to interceptors so that they can get the operation that is being intercepted.
     Interception(String),
 }
@@ -46,8 +46,8 @@ impl PrimitiveType {
             PrimitiveType::Json => "Json".to_owned(),
             PrimitiveType::Blob => "Blob".to_owned(),
             PrimitiveType::Uuid => "Uuid".to_owned(),
-            PrimitiveType::Claytip => "Claytip".to_owned(),
-            PrimitiveType::ClaytipPriv => "ClaytipPriv".to_owned(),
+            PrimitiveType::Exograph => "Exograph".to_owned(),
+            PrimitiveType::ExographPriv => "ExographPriv".to_owned(),
             PrimitiveType::Interception(name) => name.to_owned(),
             PrimitiveType::Array(pt) => format!("[{}]", pt.name()),
         }

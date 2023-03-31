@@ -11,7 +11,7 @@ pub trait ContextExtractor {
     ///
     /// If the context type is defined as:
     ///
-    /// ```clay
+    /// ```exo
     /// context AuthContext {
     ///   id: Int
     ///   name: String

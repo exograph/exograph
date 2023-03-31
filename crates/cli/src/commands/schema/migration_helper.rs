@@ -707,7 +707,7 @@ mod tests {
 
     fn compute_spec(model: &str) -> SchemaSpec {
         let postgres_subsystem =
-            util::create_postgres_system_from_str(model, "test.clay".to_string()).unwrap();
+            util::create_postgres_system_from_str(model, "test.exo".to_string()).unwrap();
 
         SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect())
     }

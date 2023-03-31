@@ -1,6 +1,6 @@
 import { create, getNumericDate } from "https://deno.land/x/djwt@v2.4/mod.ts";
 
-export const secret = Deno.env.get("CLAY_JWT_SECRET");
+export const secret = Deno.env.get("EXO_JWT_SECRET");
 
 export interface JWTPayload {
   sub: string;
@@ -23,8 +23,8 @@ export async function createJwt(payload: JWTPayload, secret: string): Promise<st
   return await create({ alg: "HS256", typ: "JWT" }, { exp: getNumericDate(60 * 60), ...payload }, key)
 }
 
-export async function queryUserInfo(email: string, claytip: any): Promise<JWTPayload> {
-  const res = await claytip.executeQuery(`
+export async function queryUserInfo(email: string, exograph: any): Promise<JWTPayload> {
+  const res = await exograph.executeQuery(`
         query ($email: String!) {
             users(where: { email: { eq: $email }}) {
                 id
