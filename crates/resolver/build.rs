@@ -1,4 +1,9 @@
 fn main() {
+    println!(
+        "resolver/build.rs cwd = {:?} {:?}",
+        std::env::current_dir().unwrap(),
+        std::env::var("CARGO_MANIFEST_DIR").unwrap()
+    );
     let graphiql_folder_path = std::env::current_dir().unwrap().join("../../graphiql");
     let graphiql_folder = graphiql_folder_path.to_str().unwrap();
 
