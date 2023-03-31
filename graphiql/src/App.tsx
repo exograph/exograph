@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import GraphiQL from "graphiql";
 import { createGraphiQLFetcher } from "@graphiql/toolkit";
 import { useTheme } from "@graphiql/react";
@@ -6,11 +6,11 @@ import { useTheme } from "@graphiql/react";
 import "graphiql/graphiql.min.css";
 
 export const useBrowserTheme = () => {
-  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+  const mql = useRef(window.matchMedia("(prefers-color-scheme: dark)"));
 
-  const currentTheme = () => {
-    return mql.matches ? "dark" : "light";
-  }
+  const currentTheme = useCallback(() => {
+    return mql.current.matches ? "dark" : "light";
+  }, [mql]);
 
   const [theme, setTheme] = useState(currentTheme());
 
@@ -18,8 +18,8 @@ export const useBrowserTheme = () => {
     const setCurrentTheme = () => {
       setTheme(currentTheme());
     };
-    mql.addEventListener("change", setCurrentTheme);
-    return () => mql.removeEventListener("change", setCurrentTheme);
+    mql.current.addEventListener("change", setCurrentTheme);
+    return () => mql.current.removeEventListener("change", setCurrentTheme);
   }, [currentTheme, mql]);
 
   return theme
