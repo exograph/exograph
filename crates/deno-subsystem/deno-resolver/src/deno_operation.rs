@@ -16,8 +16,8 @@ use deno_model::{
     types::{ServiceCompositeType, ServiceTypeKind},
 };
 
+use exo_deno::Arg;
 use futures::StreamExt;
-use payas_deno::Arg;
 use serde_json::Value;
 
 use crate::{

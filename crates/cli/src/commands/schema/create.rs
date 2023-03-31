@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::{io::Write, path::PathBuf, time::SystemTime};
 
-use payas_sql::schema::spec::SchemaSpec;
+use exo_sql::schema::spec::SchemaSpec;
 
 use crate::{commands::command::Command, util::open_file_for_output};
 

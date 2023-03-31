@@ -11,8 +11,8 @@ use crate::util::watcher;
 
 use super::{command::Command, schema::migration_helper::migration_statements};
 use anyhow::{anyhow, Context, Result};
+use exo_sql::{schema::spec::SchemaSpec, Database};
 use futures::FutureExt;
-use payas_sql::{schema::spec::SchemaSpec, Database};
 use rand::Rng;
 use tempfile::TempDir;
 

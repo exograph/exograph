@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
-use payas_deno::{Arg, DenoModule, DenoModuleSharedState, UserCode};
+use exo_deno::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
 const ASSERT_JS: &str = include_str!("./assert.js");
 
 // Assert that a stringified 'JSON' payload is equal to a JSON object.
 //
 // `expected` is a string and not a proper JSON value because it is meant to be evaluated
-// in a JavaScript environment (in this case, using payas-deno). This means that we can specify
+// in a JavaScript environment (in this case, using exo-deno). This means that we can specify
 // dynamic assertions in .exotest files in the form of JavaScript code, as well as bind values from
 // exotest init-*.gql files into our expected payload dynamically.
 //

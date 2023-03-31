@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use core_plugin_interface::core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField,
 };
-use payas_sql::{AbstractOperation, AbstractSelect};
+use exo_sql::{AbstractOperation, AbstractSelect};
 use postgres_model::subsystem::PostgresSubsystem;
 
 use crate::postgres_execution_error::PostgresExecutionError;

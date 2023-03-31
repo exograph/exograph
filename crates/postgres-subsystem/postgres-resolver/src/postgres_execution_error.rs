@@ -11,7 +11,7 @@ pub enum PostgresExecutionError {
     Validation(String, String),
 
     #[error("{0}")]
-    Postgres(#[from] payas_sql::database_error::DatabaseError),
+    Postgres(#[from] exo_sql::database_error::DatabaseError),
 
     #[error("{0}")]
     EmptyRow(#[from] tokio_postgres::Error),

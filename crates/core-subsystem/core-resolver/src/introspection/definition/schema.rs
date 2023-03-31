@@ -83,7 +83,7 @@ impl Schema {
         // https://spec.graphql.org/June2018/#sec-Root-Operation-Types
         // "The query root operation type must be provided and must be an Object type."
         // So we always add a `Query` type to the schema. This means introspection will fail
-        // if there are no queries. See https://github.com/payalabs/payas/issues/480
+        // if there are no queries. See https://github.com/exograph/exograph/issues/480
         //
         // Even though we resolve __type and __schema fields for the Query
         // type, GraphQL spec doesn't allow them to be exposed as an

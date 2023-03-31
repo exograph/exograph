@@ -9,12 +9,12 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField,
 };
-use futures::StreamExt;
-use maybe_owned::MaybeOwned;
-use payas_sql::{
+use exo_sql::{
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, SelectionCardinality,
     SelectionElement,
 };
+use futures::StreamExt;
+use maybe_owned::MaybeOwned;
 use postgres_model::{
     query::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
     types::EntityType,
@@ -56,7 +56,7 @@ impl OperationSelectionResolver for AggregateQuery {
 
         Ok(AbstractSelect {
             table: root_physical_table,
-            selection: payas_sql::Selection::Json(content_object, SelectionCardinality::One),
+            selection: exo_sql::Selection::Json(content_object, SelectionCardinality::One),
             predicate,
             order_by: None,
             offset: None,

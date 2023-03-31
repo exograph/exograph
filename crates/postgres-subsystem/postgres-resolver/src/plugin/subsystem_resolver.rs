@@ -14,7 +14,7 @@ use core_plugin_interface::{
     },
     interception::InterceptorIndex,
 };
-use payas_sql::DatabaseExecutor;
+use exo_sql::DatabaseExecutor;
 use postgres_model::subsystem::PostgresSubsystem;
 
 pub struct PostgresSubsystemResolver {

@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use payas_deno::deno_core::{error::AnyError, op, OpState};
+use exo_deno::deno_core::{error::AnyError, op, OpState};
 
 use core_plugin_interface::core_resolver::system_resolver::SystemResolutionError;
 use serde_json::Value;

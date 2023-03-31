@@ -1,6 +1,6 @@
 use crate::subsystem::PostgresSubsystem;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
-use payas_sql::{PhysicalColumn, PhysicalTable};
+use exo_sql::{PhysicalColumn, PhysicalTable};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]

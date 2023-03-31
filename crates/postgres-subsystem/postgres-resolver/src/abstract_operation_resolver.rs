@@ -1,4 +1,4 @@
-use payas_sql::AbstractOperation;
+use exo_sql::AbstractOperation;
 
 use core_plugin_interface::core_resolver::{
     request_context::RequestContext, QueryResponse, QueryResponseBody,

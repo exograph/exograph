@@ -1,6 +1,6 @@
 /*
 use anyhow::Result;
-use payas_sql::{
+use exo_sql::{
     spec::TableSpec,
     sql::{database::Database, PhysicalTable},
 };

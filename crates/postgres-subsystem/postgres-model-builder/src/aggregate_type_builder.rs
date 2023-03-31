@@ -146,7 +146,7 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
     }
 }
 
-// TODO: Support aggregates for more types (https://github.com/payalabs/payas/issues/604)
+// TODO: Support aggregates for more types (https://github.com/exograph/exograph/issues/604)
 lazy_static! {
     // An immutable map defining the aggregates allowed for each scalar type
     // We don't specify the "count" aggregate here because it is always supported (see above)

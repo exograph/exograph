@@ -291,7 +291,7 @@ pub fn build(
         }
 
         // Temporary workaround to avoid reporting errors twice (once here, and once in the service pass)
-        // TODO: Remove this after fixing https://github.com/payalabs/payas/issues/596
+        // TODO: Remove this after fixing https://github.com/exograph/exograph/issues/596
         let mut ignore_errors = Vec::new();
 
         for ast_type in ast_types_iter.clone() {

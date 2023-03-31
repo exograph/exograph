@@ -1,6 +1,6 @@
 use async_graphql_value::ConstValue;
 
-use payas_sql::{AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, Predicate};
+use exo_sql::{AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, Predicate};
 use postgres_model::{
     column_path::ColumnIdPath,
     predicate::{PredicateParameter, PredicateParameterTypeKind},

@@ -20,7 +20,7 @@ use core_plugin_interface::{
     error::ModelSerializationError,
     system_serializer::SystemSerializer,
 };
-use payas_sql::PhysicalTable;
+use exo_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]

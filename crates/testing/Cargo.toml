@@ -25,7 +25,7 @@ md5 = "0.7"
 wildmatch.workspace = true
 include_dir.workspace = true
 
-payas-deno = { path = "../../libs/payas-deno" }
+exo-deno = { path = "../../libs/exo-deno" }
 
 [dev-dependencies]
 insta = { workspace = true, features = [ "yaml" ] }

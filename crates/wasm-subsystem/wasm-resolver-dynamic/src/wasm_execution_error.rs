@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use payas_wasm::WasmError;
+use exo_wasm::WasmError;
 
 #[derive(Error, Debug)]
 pub enum WasmExecutionError {

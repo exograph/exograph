@@ -3,7 +3,7 @@ use core_plugin_interface::core_resolver::{
     request_context::RequestContext, system_resolver::ExographExecuteQueryFn, InterceptedOperation,
 };
 use deno_model::interceptor::Interceptor;
-use payas_deno::Arg;
+use exo_deno::Arg;
 use serde_json::Value;
 
 use crate::{deno_operation::construct_arg_sequence, plugin::DenoSubsystemResolver};
