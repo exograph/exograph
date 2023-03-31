@@ -1,6 +1,6 @@
 use async_graphql_value::ConstValue;
 use core_plugin_interface::core_model::types::OperationReturnType;
-use payas_sql::{
+use exo_sql::{
     AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
     NestedElementRelation, NestedInsertion,
 };
@@ -179,7 +179,7 @@ fn map_foreign<'a>(
         .iter()
         .find(|self_field| match self_field.relation.self_column() {
             Some(column_id) => match &column_id.get_column(subsystem).typ {
-                payas_sql::PhysicalColumnType::ColumnReference {
+                exo_sql::PhysicalColumnType::ColumnReference {
                     ref_table_name,
                     ref_column_name,
                     ..

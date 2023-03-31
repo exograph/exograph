@@ -14,9 +14,9 @@ members = [
     "crates/wasm-subsystem/*",
     "crates/subsystem-util/*",
     "crates/introspection-subsystem/*",
-    "libs/payas-deno",
-    "libs/payas-sql",
-    "libs/payas-wasm"
+    "libs/exo-deno",
+    "libs/exo-sql",
+    "libs/exo-wasm"
 ]
 
 # The default workspace member to run `cargo` commands on (we exclude server-aws-lambda here, since we don't need to build it during normal development)
@@ -34,9 +34,9 @@ default-members = [
     "crates/subsystem-util/*",
     "crates/introspection-subsystem/*",
     "crates/server-common",
-    "libs/payas-deno",
-    "libs/payas-sql",
-    "libs/payas-wasm"
+    "libs/exo-deno",
+    "libs/exo-sql",
+    "libs/exo-wasm"
 ]
 
 resolver = "2"

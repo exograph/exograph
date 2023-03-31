@@ -223,7 +223,7 @@ pub trait DataParamBuilder<D> {
                     // A typical way clients use update mutation is to get the data along with the id,
                     // modify the data and send it back to the server. So we should accept the id
                     // as an optional field in the update mutation.
-                    // See also https://github.com/payalabs/payas/issues/601
+                    // See also https://github.com/exograph/exograph/issues/601
                     Some(PostgresField {
                         name: field.name.clone(),
                         typ: to_mutation_type(&field.typ).optional(),

@@ -15,7 +15,7 @@ use core_plugin_interface::{
     core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed},
 };
 
-use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
+use exo_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
 use postgres_model::{
     access::Access,

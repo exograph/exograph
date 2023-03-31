@@ -209,7 +209,7 @@ mod tests {
         let module_script = include_bytes!("test_js/direct.js");
 
         let executor_pool = DenoExecutorPool::<(), (), ()>::new(
-            "PayasDenoTest",
+            "ExoDenoTest",
             vec![],
             vec![],
             None,
@@ -238,7 +238,7 @@ mod tests {
         let module_script = include_bytes!("test_js/direct.js");
 
         let executor_pool = DenoExecutorPool::new(
-            "PayasDenoTest",
+            "ExoDenoTest",
             vec![],
             vec![],
             None,

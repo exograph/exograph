@@ -15,7 +15,7 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField,
 };
-use payas_sql::{
+use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractSelect, AbstractUpdate, Predicate,
 };
 use postgres_model::{

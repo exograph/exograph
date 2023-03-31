@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use payas_sql::{database_error::DatabaseError, Database};
+use exo_sql::{database_error::DatabaseError, Database};
 use std::{
     fs::File,
     io::{self, stdin, stdout, Read, Write},

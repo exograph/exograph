@@ -4,7 +4,7 @@ use core_plugin_interface::{
     interface::{SubsystemLoader, SubsystemLoadingError},
     system_serializer::SystemSerializer,
 };
-use payas_sql::{Database, DatabaseExecutor};
+use exo_sql::{Database, DatabaseExecutor};
 use postgres_model::subsystem::PostgresSubsystem;
 
 pub struct PostgresSubsystemLoader {}

@@ -22,7 +22,7 @@ tokio.workspace = true
 
 tracing.workspace = true
 
-payas-sql = { path = "../../../libs/payas-sql" }
+exo-sql = { path = "../../../libs/exo-sql" }
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
 

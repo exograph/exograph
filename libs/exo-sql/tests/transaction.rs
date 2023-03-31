@@ -3,15 +3,15 @@ mod common;
 use std::{cell::RefCell, rc::Rc};
 
 use anyhow::{bail, Result};
-use payas_sql::sql::column::PhysicalColumn;
-use payas_sql::sql::column::ProxyColumn;
-use payas_sql::sql::database::Database;
-use payas_sql::sql::predicate::Predicate;
-use payas_sql::sql::transaction::*;
-use payas_sql::sql::PhysicalTable;
-use payas_sql::sql::TemplateInsert;
-use payas_sql::sql::TemplateSQLOperation;
-use payas_sql::sql::{column::Column, SQLOperation};
+use exo_sql::sql::column::PhysicalColumn;
+use exo_sql::sql::column::ProxyColumn;
+use exo_sql::sql::database::Database;
+use exo_sql::sql::predicate::Predicate;
+use exo_sql::sql::transaction::*;
+use exo_sql::sql::PhysicalTable;
+use exo_sql::sql::TemplateInsert;
+use exo_sql::sql::TemplateSQLOperation;
+use exo_sql::sql::{column::Column, SQLOperation};
 use tokio_postgres::{types::FromSqlOwned, Row};
 
 pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {

@@ -23,7 +23,7 @@ tempfile.workspace = true
 urlencoding = "2.1.2"
 which = "4.4.0"
 
-payas-sql = { path = "../../libs/payas-sql" }
+exo-sql = { path = "../../libs/exo-sql" }
 builder = { path = "../builder" }
 testing = { path = "../testing" }
 core-model = { path = "../core-subsystem/core-model" }

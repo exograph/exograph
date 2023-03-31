@@ -1,6 +1,6 @@
 use async_graphql_value::ConstValue;
 
-use payas_sql::{Limit, Offset};
+use exo_sql::{Limit, Offset};
 use postgres_model::{
     limit_offset::{LimitParameter, OffsetParameter},
     subsystem::PostgresSubsystem,

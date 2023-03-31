@@ -16,7 +16,7 @@ use postgres_model::{
     types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 
-use payas_sql::PhysicalTable;
+use exo_sql::PhysicalTable;
 
 use crate::aggregate_type_builder;
 
@@ -137,7 +137,7 @@ impl SystemContextBuilding {
 #[cfg(test)]
 mod tests {
     use core_plugin_interface::core_model::mapped_arena::SerializableSlab;
-    use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
+    use exo_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
     use super::*;
 

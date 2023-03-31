@@ -1,4 +1,4 @@
-use payas_sql::{ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
+use exo_sql::{ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
 use postgres_model::{
     column_id::ColumnId,
     column_path::{ColumnIdPath, ColumnIdPathLink},

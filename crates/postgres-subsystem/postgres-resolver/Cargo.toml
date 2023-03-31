@@ -21,7 +21,7 @@ chrono.workspace = true
 pg_bigdecimal = "0.1.4"
 uuid = "1.1.2"
 
-payas-sql = { path = "../../../libs/payas-sql" }
+exo-sql = { path = "../../../libs/exo-sql" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-model = { path = "../postgres-model" }
 

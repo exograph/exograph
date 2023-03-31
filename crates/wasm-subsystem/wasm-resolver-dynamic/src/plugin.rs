@@ -14,7 +14,7 @@ use core_plugin_interface::{
     interface::{SubsystemLoader, SubsystemLoadingError},
     system_serializer::SystemSerializer,
 };
-use payas_wasm::WasmExecutorPool;
+use exo_wasm::WasmExecutorPool;
 use wasm_model::{service::ServiceMethod, subsystem::WasmSubsystem};
 
 pub struct WasmSubsystemLoader {}

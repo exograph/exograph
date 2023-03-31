@@ -2,7 +2,7 @@
 
 use anyhow::{anyhow, Result};
 use builder::error::ParserError;
-use payas_sql::{database_error::DatabaseError, schema::spec::SchemaSpec};
+use exo_sql::{database_error::DatabaseError, schema::spec::SchemaSpec};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},

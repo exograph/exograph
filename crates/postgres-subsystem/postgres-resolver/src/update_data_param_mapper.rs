@@ -1,7 +1,7 @@
 use async_graphql_value::ConstValue;
 
 use core_plugin_interface::core_model::types::OperationReturnType;
-use payas_sql::{
+use exo_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
     ColumnPathLink, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
     NestedElementRelation, PhysicalColumn, PhysicalColumnType, Selection,
@@ -235,7 +235,7 @@ fn compute_nested_update_object_arg<'a>(
 
     // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let
     // mutation be specified. Currently (while performing abstract-sql refactoring), keeping the old behavior, but
-    // will revisit it https://github.com/payalabs/payas/issues/376
+    // will revisit it https://github.com/exograph/exograph/issues/376
     let predicate = pk_columns
         .into_iter()
         .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
@@ -256,7 +256,7 @@ fn compute_nested_update_object_arg<'a>(
         });
 
     NestedAbstractUpdate {
-        relation: payas_sql::NestedElementRelation {
+        relation: exo_sql::NestedElementRelation {
             column: nested_reference_col,
             table,
         },
@@ -306,7 +306,7 @@ fn compute_nested_inserts<'a>(
                 column: nested_reference_col,
                 table,
             },
-            insert: payas_sql::AbstractInsert {
+            insert: exo_sql::AbstractInsert {
                 table,
                 rows,
                 selection: AbstractSelect {
@@ -405,7 +405,7 @@ fn compute_nested_delete_object_arg<'a>(
 
     // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let
     // mutation be specified. Currently (while performing abstract-sql refactoring), keeping the old behavior, but
-    // will revisit it https://github.com/payalabs/payas/issues/376
+    // will revisit it https://github.com/exograph/exograph/issues/376
     let predicate = pk_columns
         .into_iter()
         .fold(AbstractPredicate::True, |acc, (pk_col, value)| {

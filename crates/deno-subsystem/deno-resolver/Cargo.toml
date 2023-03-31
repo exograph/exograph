@@ -9,8 +9,8 @@ async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
 async-recursion.workspace = true
 async-trait.workspace = true
-# Make sure deno_core version matches the one in the payas_deno's Cargo.toml
-# If we re-export the deno_core crate from the payas_deno crate (instead of declaring a dependency here), 
+# Make sure deno_core version matches the one in the exo_deno's Cargo.toml
+# If we re-export the deno_core crate from the exo_deno crate (instead of declaring a dependency here), 
 # the #[op] macro panics (it looks for the deno_core crate in crate's local dependencies)
 deno_core.workspace = true
 futures.workspace = true
@@ -19,7 +19,7 @@ maybe-owned.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 
-payas-deno = { path = "../../../libs/payas-deno" }
+exo-deno = { path = "../../../libs/exo-deno" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 deno-model = { path = "../deno-model" }
 

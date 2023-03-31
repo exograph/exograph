@@ -1,14 +1,14 @@
 //! Subcommands under the `model` subcommand
 
 use anyhow::Result;
-use payas_sql::schema::issue::WithIssues;
-use payas_sql::{schema::spec::SchemaSpec, Database};
+use exo_sql::schema::issue::WithIssues;
+use exo_sql::{schema::spec::SchemaSpec, Database};
 use std::{io::Write, path::PathBuf, time::SystemTime};
 
 use heck::ToUpperCamelCase;
 
-use payas_sql::schema::issue::Issue;
-use payas_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
+use exo_sql::schema::issue::Issue;
+use exo_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
 use crate::commands::command::Command;
 use crate::util::open_file_for_output;
