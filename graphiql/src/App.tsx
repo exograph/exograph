@@ -1,13 +1,44 @@
+import { useState, useEffect } from 'react'
 import GraphiQL from "graphiql";
 import { createGraphiQLFetcher } from "@graphiql/toolkit";
+import { useTheme } from "@graphiql/react";
 
 import "graphiql/graphiql.min.css";
 
-const Logo = () => (
-  <a href="https://exograph.dev" target="_blank" rel="noreferrer">
-    <img src="logo.svg" className="logo" alt="Exograph" />
-  </a>
-);
+export const useBrowserTheme = () => {
+  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+  const currentTheme = () => {
+    return mql.matches ? "dark" : "light";
+  }
+
+  const [theme, setTheme] = useState(currentTheme());
+
+  useEffect(() => {
+    const setCurrentTheme = () => {
+      setTheme(currentTheme());
+    };
+    mql.addEventListener("change", setCurrentTheme);
+    return () => mql.removeEventListener("change", setCurrentTheme);
+  }, [currentTheme, mql]);
+
+  return theme
+}
+
+function Logo() {
+  const graphiqlTheme = useTheme().theme;
+  const browserTheme = useBrowserTheme();
+
+  // Currently, switching mode in GraphiQL doesn't update the logo, but this will get fixed
+  // when https://github.com/graphql/graphiql/pull/2971 is merged.
+  const logo = graphiqlTheme === "dark" || browserTheme === "dark" ? "logo-dark.svg" : "logo-light.svg";
+
+  return (
+    <a href="https://exograph.dev" target="_blank" rel="noreferrer">
+      <img src={logo} className="logo" alt="Exograph" />
+    </a>
+  );
+};
 
 const fetcher = createGraphiQLFetcher({
   url: (window as any).exoGraphQLEndpoint,
