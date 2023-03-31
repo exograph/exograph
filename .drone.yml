@@ -35,7 +35,7 @@ steps:
       path: /sccache
     commands:
       - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build 
-      - cat ./graphiql/node_modules/graphql/type/validate.js
+      - cat ./graphiql/node_modules/graphql/type/validate.mjs
 
   - name: test
     image: payas-ci-image
