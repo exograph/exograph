@@ -58,6 +58,7 @@ steps:
     - name: sccache
       path: /sccache
     commands:
+      - (cd graphiql && npm ci)
       - export PATH=./target/debug:$PATH
       - EXO_TEST_POSTGRES_URL=postgresql://postgres@database:5432 exo test --run-introspection-tests integration-tests
 
