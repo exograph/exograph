@@ -34,6 +34,7 @@ steps:
     - name: sccache
       path: /sccache
     commands:
+      - (cd graphiql && npm ci)
       - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build 
 
   - name: test
@@ -58,7 +59,6 @@ steps:
     - name: sccache
       path: /sccache
     commands:
-      - (cd graphiql && npm ci)
       - export PATH=./target/debug:$PATH
       - EXO_TEST_POSTGRES_URL=postgresql://postgres@database:5432 exo test --run-introspection-tests integration-tests
 
