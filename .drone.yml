@@ -34,6 +34,8 @@ steps:
     - name: sccache
       path: /sccache
     commands:
+      # Without the next line, integration-tests become flaky (assertion for introspection queries can't find <something>.mjs)
+      - (cd graphiql && npm ci)
       - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build 
 
   - name: test
