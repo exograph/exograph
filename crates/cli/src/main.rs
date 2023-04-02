@@ -13,7 +13,7 @@ use tokio::sync::{
     Mutex,
 };
 
-use crate::commands::{build::BuildCommand, schema};
+use crate::commands::{build::BuildCommand, new::NewCommand, schema};
 
 mod commands;
 pub(crate) mod util;
@@ -36,6 +36,15 @@ fn model_file_arg() -> Arg {
         .required(false)
         .value_parser(clap::value_parser!(PathBuf))
         .default_value(DEFAULT_MODEL_FILE)
+        .index(1)
+}
+
+fn new_project_arg() -> Arg {
+    Arg::new("path")
+        .help("Create a new project")
+        .long_help("Create a new project in the given path.")
+        .required(true)
+        .value_parser(clap::value_parser!(PathBuf))
         .index(1)
 }
 
@@ -94,7 +103,10 @@ fn main() -> Result<()> {
             Command::new("build")
                 .about("Build exograph server binary")
                 .arg(model_file_arg()),
-        )
+        ).subcommand(
+            Command::new("new")
+                .about("Create a new Exograph project")
+                .arg(new_project_arg()))
         .subcommand(
             Command::new("schema")
                 .about("Create, migrate, import, and verify database schema")
@@ -189,6 +201,9 @@ fn main() -> Result<()> {
     let command: Box<dyn crate::commands::command::Command> = match matches.subcommand() {
         Some(("build", matches)) => Box::new(BuildCommand {
             model: get_required(matches, "model")?,
+        }),
+        Some(("new", matches)) => Box::new(NewCommand {
+            path: get_required(matches, "path")?,
         }),
         Some(("schema", matches)) => match matches.subcommand() {
             Some(("create", matches)) => Box::new(schema::create::CreateCommand {
