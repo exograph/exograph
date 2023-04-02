@@ -1,0 +1,9 @@
+@postgres
+service TodoDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+  }
+}
