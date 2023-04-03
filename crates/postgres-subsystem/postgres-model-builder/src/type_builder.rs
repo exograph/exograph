@@ -5,6 +5,7 @@ use crate::{
 
 use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::ResolvedFieldType};
 
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_plugin_interface::{
     core_model::{
         context_type::ContextType,
@@ -55,6 +56,29 @@ pub(crate) fn build_expanded(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
+    // Ensure that all types have a primary key
+    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(c) = &resolved_type {
+            if c.pk_field().is_none() {
+                let diagnostic = Diagnostic {
+                    level: Level::Error,
+                    message: format!(
+                        "Type '{}' has no primary key. Consider annotating a field with @pk",
+                        c.name
+                    ),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: c.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                };
+
+                Err(ModelBuildingError::Diagnosis(vec![diagnostic]))?;
+            }
+        }
+    }
+
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
             expand_type_no_fields(c, resolved_env, building);

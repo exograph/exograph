@@ -4,6 +4,7 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
+use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 
 use core_plugin_interface::{
@@ -14,8 +15,8 @@ use core_plugin_interface::{
     },
     core_model_builder::{
         ast::ast_types::{
-            AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind,
-            AstFieldType, AstModel, AstModelKind,
+            default_span, AstAnnotationParams, AstExpr, AstField, AstFieldDefault,
+            AstFieldDefaultKind, AstFieldType, AstModel, AstModelKind,
         },
         builder::resolved_builder::AnnotationMapHelper,
         error::ModelBuildingError,
@@ -78,6 +79,10 @@ pub struct ResolvedCompositeType {
     pub fields: Vec<ResolvedField>,
     pub table_name: String,
     pub access: ResolvedAccess,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -123,6 +128,10 @@ pub struct ResolvedField {
     pub type_hint: Option<ResolvedTypeHint>,
     pub unique_constraints: Vec<String>,
     pub default_value: Option<ResolvedFieldDefault>,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
 }
 
 // TODO: dedup?
@@ -291,6 +300,7 @@ fn resolve(
                                             ),
                                             unique_constraints,
                                             default_value,
+                                            span: field.span,
                                         })
                                     }
                                     Err(e) => {
@@ -309,6 +319,7 @@ fn resolve(
                                 fields: resolved_fields,
                                 table_name,
                                 access: access.clone(),
+                                span: ct.span,
                             }),
                         );
                     }

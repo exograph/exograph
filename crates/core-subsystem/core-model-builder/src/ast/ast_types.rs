@@ -387,7 +387,7 @@ pub struct Identifier(
     pub Span,
 );
 
-fn default_span() -> Span {
+pub fn default_span() -> Span {
     let mut tmp_codemap = CodeMap::new();
     tmp_codemap
         .add_file("".to_string(), "".to_string())
