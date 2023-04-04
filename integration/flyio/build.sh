@@ -20,7 +20,7 @@ fi
 SCRIPT_FILE=run-exo-fly.sh
 
 echo -en "#!/bin/sh\n\n" > $SCRIPT_FILE
-echo -en "export EXO_POSTGRES_URL=\${POSTGRES_URL}\n\n" >> $SCRIPT_FILE
+echo -en "export EXO_POSTGRES_URL=\${DATABASE_URL}\n\n" >> $SCRIPT_FILE
 if [ -n "$envfile" ]; then
     cat "$envfile" >> $SCRIPT_FILE
 fi

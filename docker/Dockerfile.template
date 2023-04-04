@@ -29,7 +29,7 @@ COPY ./graphiql/package.json ./graphiql/package.json
 COPY ./graphiql/package-lock.json ./graphiql/package-lock.json
 
 ### Compile the depdencies and remove artifacts related to the non-dependency parts (so that when we use real code, they get rebuilt)
-RUN cargo build --all ${BUILD_FLAG} 
+RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse  cargo build --all ${BUILD_FLAG}
 
 %%RM_DEPS%% 
 ## Build the actual image
@@ -40,7 +40,7 @@ ADD graphiql graphiql/
 
 
 ### Build the binaries (first the graphiql app and then the rest)
-RUN cargo build --all ${BUILD_FLAG}
+RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build --all ${BUILD_FLAG}
 
 # Create an image to include the compiled binaries
 ARG BASE_IMAGE
@@ -56,7 +56,7 @@ COPY --from=builder /usr/src/target/${BUILD_DIR}/exo ${APP}/exo
 COPY --from=builder /usr/src/target/${BUILD_DIR}/bootstrap ${APP}/bootstrap
 COPY --from=builder /usr/src/target/${BUILD_DIR}/*.so ${APP}/
 
-# Create an image that can be used for development--the `exo serve` style
+# Create an image that can be used for development--the `exo dev` style
 FROM exo-builder as exo-dev
 
 ARG BUILD_DIR
