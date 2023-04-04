@@ -1,21 +1,21 @@
 @postgres
 service ConcertsService {
-  @table("concerts")
+  @access(true)
   type Concert {
     @pk id: Int = autoIncrement()
     title: String
-    venue: Venue @column("venueid")
+    venue: Venue
     published: Boolean
-    price: Decimal @precision(20) @scale(2)
+    @precision(20) @scale(2) price: Decimal
   }
 
-  @table("venues")
+  @access(true)
   type Venue {
     @pk id: Int = autoIncrement()
     name: String
-    concerts: Set<Concert>? @column("venueid")
+    concerts: Set<Concert>?
     published: Boolean
-    latitude: Float @size(4)
+    @size(4) latitude: Float
   }
 }
 
