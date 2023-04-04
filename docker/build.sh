@@ -11,8 +11,8 @@ buildType="$2" # "release" or "debug"
 # TODO: Resolve the openssl issues and then "BASE_IMAGE=debian:buster-slim"
 
 ## DEFAULTS ##
-BUILD_IMAGE=rust:1.65.0-buster # image to build Exograph with
-BASE_IMAGE=rust:1.65.0-slim-buster # image to use when actually running Exograph
+BUILD_IMAGE=rust:1.68.2-buster # image to build Exograph with
+BASE_IMAGE=rust:1.68.2-slim-buster # image to use when actually running Exograph
 DEPENDENCY_STYLE=deb # how to install or setup dependencies
 TAG_SUFFIX="" # docker tag suffix
 
@@ -54,6 +54,7 @@ declare -a SUBCRATES=(
     "cli bin crates"
     "server-actix bin crates"
     "server-aws-lambda bin crates"
+    "server-common lib crates"
     "builder lib crates"
     "resolver lib crates"
     "testing lib crates"
@@ -73,7 +74,7 @@ declare -a SUBCRATES=(
     "deno-resolver lib crates\/deno-subsystem"
     "wasm-model lib crates\/wasm-subsystem"
     "wasm-model-builder lib crates\/wasm-subsystem"
-    "wasm-resolver lib crates\/wasm-subsystem"
+    "wasm-resolver-dynamic lib crates\/wasm-subsystem"
     "introspection-resolver lib crates\/introspection-subsystem"
     "subsystem-model-builder-util lib crates\/subsystem-util"
     "subsystem-model-util lib crates\/subsystem-util"

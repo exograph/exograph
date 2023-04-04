@@ -9,7 +9,7 @@ RUN ./exo build ${EXO_FILE}
 
 #2: Run exo with plain buster-slim as the base
 #FROM debian:buster-slim
-FROM rust:1.65.0-buster
+FROM rust:1.68.2-buster
 
 ARG EXO_FILE
 ENV EXO_IR_FILE=${EXO_FILE}_ir
