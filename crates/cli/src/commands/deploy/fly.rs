@@ -38,7 +38,10 @@ impl Command for DeployFlyCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         build(&self.model, None, false)?;
 
-        let model_dir = self.model.parent().unwrap();
+        // Canonicalize the model path so that when presented with just "filename.exo", we can still
+        // get the directory that it's in.
+        let model_path = self.model.canonicalize()?;
+        let model_dir = model_path.parent().unwrap();
         let fly_dir = model_dir.join("fly");
 
         create_dir_all(&fly_dir)?;
