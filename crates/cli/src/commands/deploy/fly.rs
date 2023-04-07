@@ -107,7 +107,7 @@ impl Command for DeployFlyCommand {
             println!(
                 "{}",
                 Color::Blue.paint(format!(
-                    "\tfly postgres attach --app {} {}-db`.",
+                    "\tfly postgres attach --app {} {}-db",
                     self.app_name, self.app_name
                 ))
             );
