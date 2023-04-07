@@ -6,14 +6,16 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use commands::{dev::DevCommand, test::TestCommand, yolo::YoloCommand};
 use tokio::sync::{
     broadcast::{Receiver, Sender},
     Mutex,
 };
 
-use crate::commands::{build::BuildCommand, new::NewCommand, schema};
+use crate::commands::{
+    build::BuildCommand, deploy::fly::DeployFlyCommand, new::NewCommand, schema,
+};
 
 mod commands;
 pub(crate) mod util;
@@ -77,6 +79,97 @@ fn port_arg() -> Arg {
         .num_args(1)
 }
 
+fn schema_command() -> Command {
+    Command::new("schema")
+    .about("Create, migrate, import, and verify database schema")
+    .subcommand_required(true)
+    .arg_required_else_help(true)
+    .subcommand(
+        Command::new("create")
+            .about("Create a database schema from a Exograph model")
+            .arg(model_file_arg())
+            .arg(output_arg())
+    )
+    .subcommand(
+        Command::new("verify")
+            .about("Verify that the database schema is compatible with a Exograph model")
+            .arg(model_file_arg())
+            .arg(database_arg())
+    )
+    .subcommand(
+        Command::new("migrate")
+            .about("Produces a SQL migration script for a Exograph model and the specified database")
+            .arg(model_file_arg())
+            .arg(database_arg())
+            .arg(output_arg())
+            .arg(
+                Arg::new("allow-destructive-changes")
+                    .help("By default, destructive changes in the model file are commented out. If specified, this option will uncomment such changes.")
+                    .long("allow-destructive-changes")
+                    .required(false)
+                    .num_args(0),
+            )
+
+    )
+    .subcommand(
+        Command::new("import")
+            .about("Create exograph model file based on a database schema")
+            .arg(database_arg())
+            .arg(output_arg()),
+    )
+}
+
+fn deploy_command() -> Command {
+    Command::new("deploy")
+        .about("Deploy to production server")    
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .subcommand(
+            Command::new("fly")
+                .about("Deploy to Fly.io")
+                .arg(model_file_arg())
+                .arg(
+                    Arg::new("app-name")
+                        .help("The name of the Fly.io application to deploy to")
+                        .short('a')
+                        .long("app")
+                        .required(true)
+                        .num_args(1),
+                )
+                .arg(
+                    Arg::new("version")
+                        .help("The version of application (Dockerfile will use this as tag)")
+                        .short('v')
+                        .long("version")
+                        .required(false)
+                        .default_value("latest")
+                        .num_args(1),
+                )
+                .arg(
+                    Arg::new("env")
+                        .help("Environment variables to pass to the application (e.g. -e KEY=VALUE). May be specified multiple times.")
+                        .action(ArgAction::Append) // To allow multiple --env flags ("-e k1=v1 -e k2=v2")
+                        .short('e')
+                        .long("env")
+                        .num_args(1),
+                )
+                .arg(
+                    Arg::new("env-file").help("Path to a file containing environment variables to pass to the application")
+                        .long("env-file")
+                        .required(false)
+                        .value_parser(clap::value_parser!(PathBuf))
+                        .num_args(1),
+                )
+                .arg(
+                    Arg::new("use-fly-db")
+                        .help("Use database provided by Fly.io")
+                        .required(false)
+                        .long("use-fly-db")
+                        .num_args(0),
+                ),
+        )
+}
+
 fn main() -> Result<()> {
     let system_start_time = SystemTime::now();
 
@@ -108,49 +201,16 @@ fn main() -> Result<()> {
                 .about("Create a new Exograph project")
                 .arg(new_project_arg()))
         .subcommand(
-            Command::new("schema")
-                .about("Create, migrate, import, and verify database schema")
-                .subcommand_required(true)
-                .arg_required_else_help(true)
-                .subcommand(
-                    Command::new("create")
-                        .about("Create a database schema from a Exograph model")
-                        .arg(model_file_arg())
-                        .arg(output_arg())
-                )
-                .subcommand(
-                    Command::new("verify")
-                        .about("Verify that the database schema is compatible with a Exograph model")
-                        .arg(model_file_arg())
-                        .arg(database_arg())
-                )
-                .subcommand(
-                    Command::new("migrate")
-                        .about("Produces a SQL migration script for a Exograph model and the specified database")
-                        .arg(model_file_arg())
-                        .arg(database_arg())
-                        .arg(output_arg())
-                        .arg(
-                            Arg::new("allow-destructive-changes")
-                                .help("By default, destructive changes in the model file are commented out. If specified, this option will uncomment such changes.")
-                                .long("allow-destructive-changes")
-                                .required(false)
-                                .num_args(0),
-                        )
-
-                )
-                .subcommand(
-                    Command::new("import")
-                        .about("Create exograph model file based on a database schema")
-                        .arg(database_arg())
-                        .arg(output_arg()),
-                ),
+            schema_command()
         )
         .subcommand(
             Command::new("dev")
                 .about("Run exograph server in development mode")
                 .arg(model_file_arg())
                 .arg(port_arg()),
+        )
+        .subcommand(
+            deploy_command()
         )
         .subcommand(
             Command::new("test")
@@ -229,6 +289,17 @@ fn main() -> Result<()> {
             model: get_required(matches, "model")?,
             port: get(matches, "port"),
         }),
+        Some(("deploy", matches)) => match matches.subcommand() {
+            Some(("fly", matches)) => Box::new(DeployFlyCommand {
+                model: get_required(matches, "model")?,
+                app_name: get_required(matches, "app-name")?,
+                version: get_required(matches, "version")?,
+                envs: matches.get_many("env").map(|env| env.cloned().collect()),
+                env_file: get(matches, "env-file"),
+                use_fly_db: matches.get_flag("use-fly-db"),
+            }),
+            _ => panic!("Unsupported provider"),
+        },
         Some(("test", matches)) => Box::new(TestCommand {
             dir: get_required(matches, "dir")?,
             pattern: get(matches, "pattern"),
