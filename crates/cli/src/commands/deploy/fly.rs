@@ -131,7 +131,7 @@ impl Command for DeployFlyCommand {
         );
         println!(
             "{}",
-            Color::Green.paint(format!("\tcd {}`", fly_dir.display()))
+            Color::Green.paint(format!("\tcd {}", fly_dir.display()))
         );
         println!("{}", Color::Green.paint("\tfly deploy --local-only"));
 
