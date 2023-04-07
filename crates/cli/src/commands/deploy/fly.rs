@@ -7,6 +7,7 @@ use std::{
 
 use ansi_term::Color;
 use anyhow::{anyhow, Result};
+use heck::ToSnakeCase;
 
 use crate::commands::{build::build, command::Command};
 
@@ -111,6 +112,20 @@ impl Command for DeployFlyCommand {
                     self.app_name, self.app_name
                 ))
             );
+            println!(
+                "\tIn a separate terminal: {}",
+                Color::Blue.paint(format!("fly proxy 54321:5432 -a {}-db", self.app_name))
+            );
+            let db_name = &self.app_name.to_snake_case();
+            println!(
+                "{}{}{}",
+                Color::Blue.paint(format!(
+                    "\texo schema create ../{} | psql postgres://{db_name}:",
+                    self.model.to_str().unwrap()
+                )),
+                Color::Blue.paint(format!("@localhost:54321/{db_name}")),
+                Color::Yellow.paint("<APP_DATABASE_PASSWORD>"),
+            );
         } else {
             println!(
                 "{}{}",
@@ -120,7 +135,16 @@ impl Command for DeployFlyCommand {
                 )),
                 Color::Yellow.paint("<your-postgres-url>")
             );
+            println!(
+                "{}{}",
+                Color::Blue.paint(format!(
+                    "\texo schema create ../{} | psql ",
+                    self.model.to_str().unwrap()
+                )),
+                Color::Yellow.paint("<your-postgres-url>")
+            );
         }
+
         println!("{}", Color::Blue.paint("\tfly deploy --local-only"));
 
         println!(
@@ -213,6 +237,6 @@ fn accumulate_env(envs: &mut String, env: &str) -> Result<()> {
     }
     let key = parts[0].to_string();
     let value = parts[1].to_string();
-    envs.push_str(&format!("{}=\"{}\"\n  ", key, value));
+    envs.push_str(&format!("{}=\"{}\"\n", key, value));
     Ok(())
 }
