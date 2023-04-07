@@ -7,6 +7,7 @@ use std::{
 
 use ansi_term::Color;
 use anyhow::{anyhow, Result};
+use heck::ToSnakeCase;
 
 use crate::commands::{build::build, command::Command};
 
@@ -38,7 +39,10 @@ impl Command for DeployFlyCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         build(&self.model, None, false)?;
 
-        let model_dir = self.model.parent().unwrap();
+        // Canonicalize the model path so that when presented with just "filename.exo", we can still
+        // get the directory that it's in.
+        let model_path = self.model.canonicalize()?;
+        let model_dir = model_path.parent().unwrap();
         let fly_dir = model_dir.join("fly");
 
         create_dir_all(&fly_dir)?;
@@ -104,9 +108,23 @@ impl Command for DeployFlyCommand {
             println!(
                 "{}",
                 Color::Blue.paint(format!(
-                    "\tfly postgres attach --app {} {}-db`.",
+                    "\tfly postgres attach --app {} {}-db",
                     self.app_name, self.app_name
                 ))
+            );
+            println!(
+                "\tIn a separate terminal: {}",
+                Color::Blue.paint(format!("fly proxy 54321:5432 -a {}-db", self.app_name))
+            );
+            let db_name = &self.app_name.to_snake_case();
+            println!(
+                "{}{}{}",
+                Color::Blue.paint(format!(
+                    "\texo schema create ../{} | psql postgres://{db_name}:",
+                    self.model.to_str().unwrap()
+                )),
+                Color::Blue.paint(format!("@localhost:54321/{db_name}")),
+                Color::Yellow.paint("<APP_DATABASE_PASSWORD>"),
             );
         } else {
             println!(
@@ -117,7 +135,16 @@ impl Command for DeployFlyCommand {
                 )),
                 Color::Yellow.paint("<your-postgres-url>")
             );
+            println!(
+                "{}{}",
+                Color::Blue.paint(format!(
+                    "\texo schema create ../{} | psql ",
+                    self.model.to_str().unwrap()
+                )),
+                Color::Yellow.paint("<your-postgres-url>")
+            );
         }
+
         println!("{}", Color::Blue.paint("\tfly deploy --local-only"));
 
         println!(
@@ -128,7 +155,7 @@ impl Command for DeployFlyCommand {
         );
         println!(
             "{}",
-            Color::Green.paint(format!("\tcd {}`", fly_dir.display()))
+            Color::Green.paint(format!("\tcd {}", fly_dir.display()))
         );
         println!("{}", Color::Green.paint("\tfly deploy --local-only"));
 
@@ -210,6 +237,6 @@ fn accumulate_env(envs: &mut String, env: &str) -> Result<()> {
     }
     let key = parts[0].to_string();
     let value = parts[1].to_string();
-    envs.push_str(&format!("{}=\"{}\"\n  ", key, value));
+    envs.push_str(&format!("{}=\"{}\"\n", key, value));
     Ok(())
 }
