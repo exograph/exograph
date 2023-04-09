@@ -1,5 +1,5 @@
 @postgres
-service BookService {
+module BookModule {
   @table("books")
   @access(true)
   type Book {

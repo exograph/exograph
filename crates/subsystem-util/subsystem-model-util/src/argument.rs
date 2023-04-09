@@ -11,7 +11,7 @@ use core_model::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::types::ServiceType;
+use super::types::ModuleType;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArgumentParameter {
@@ -22,7 +22,7 @@ pub struct ArgumentParameter {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArgumentParameterType {
     pub name: String,
-    pub type_id: Option<SerializableSlabIndex<ServiceType>>,
+    pub type_id: Option<SerializableSlabIndex<ModuleType>>,
     pub is_primitive: bool,
 }
 
@@ -42,12 +42,12 @@ impl Parameter for ArgumentParameter {
     }
 }
 
-impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ArgumentParameterType {
-    fn type_definition(&self, service_types: &SerializableSlab<ServiceType>) -> TypeDefinition {
-        let type_def = service_types
+impl TypeDefinitionProvider<SerializableSlab<ModuleType>> for ArgumentParameterType {
+    fn type_definition(&self, module_types: &SerializableSlab<ModuleType>) -> TypeDefinition {
+        let type_def = module_types
             .get(self.type_id.unwrap())
             .unwrap()
-            .type_definition(service_types);
+            .type_definition(module_types);
 
         let kind = match type_def.fields() {
             Some(fields) => TypeKind::InputObject(InputObjectType {
@@ -82,8 +82,8 @@ impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ArgumentParameter
     }
 }
 
-impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ArgumentParameter {
-    fn type_definition(&self, _system: &SerializableSlab<ServiceType>) -> TypeDefinition {
+impl TypeDefinitionProvider<SerializableSlab<ModuleType>> for ArgumentParameter {
+    fn type_definition(&self, _system: &SerializableSlab<ModuleType>) -> TypeDefinition {
         TypeDefinition {
             extend: false,
             description: None,

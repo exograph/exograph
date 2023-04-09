@@ -1,5 +1,5 @@
 @postgres
-service PersonService {
+module PersonModule {
   @access(true)
   type Person {
     @pk id: Int = autoIncrement()
@@ -8,7 +8,7 @@ service PersonService {
 }
 
 @deno("logger.js")
-service Logger {
+module Logger {
   type LogMessage {
     level: String
     message: String

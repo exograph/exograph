@@ -69,7 +69,7 @@ fn _parse_file(
 
             // merge import into system
             system.types.append(&mut imported_system.types);
-            system.services.append(&mut imported_system.services);
+            system.modules.append(&mut imported_system.modules);
         }
     }
 

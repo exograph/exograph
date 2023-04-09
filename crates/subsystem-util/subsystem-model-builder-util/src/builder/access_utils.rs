@@ -11,7 +11,7 @@ use core_model_builder::{
     error::ModelBuildingError,
     typechecker::Typed,
 };
-use subsystem_model_util::access::ServiceAccessPrimitiveExpression;
+use subsystem_model_util::access::ModuleAccessPrimitiveExpression;
 
 use super::type_builder::ResolvedTypeEnv;
 
@@ -22,7 +22,7 @@ enum PathSelection<'a> {
 pub fn compute_predicate_expression(
     expr: &AstExpr<Typed>,
     resolved_env: &ResolvedTypeEnv,
-) -> Result<AccessPredicateExpression<ServiceAccessPrimitiveExpression>, ModelBuildingError> {
+) -> Result<AccessPredicateExpression<ModuleAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
         AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
             PathSelection::Context(context_selection, field_type) => {
@@ -31,10 +31,10 @@ pub fn compute_predicate_expression(
                     // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
                     Ok(AccessPredicateExpression::RelationalOp(
                         AccessRelationalOp::Eq(
-                            Box::new(ServiceAccessPrimitiveExpression::ContextSelection(
+                            Box::new(ModuleAccessPrimitiveExpression::ContextSelection(
                                 context_selection,
                             )),
-                            Box::new(ServiceAccessPrimitiveExpression::BooleanLiteral(true)),
+                            Box::new(ModuleAccessPrimitiveExpression::BooleanLiteral(true)),
                         ),
                     ))
                 } else {
@@ -94,19 +94,19 @@ pub fn compute_predicate_expression(
 fn compute_primitive_expr(
     expr: &AstExpr<Typed>,
     resolved_env: &ResolvedTypeEnv,
-) -> ServiceAccessPrimitiveExpression {
+) -> ModuleAccessPrimitiveExpression {
     match expr {
         AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
-            PathSelection::Context(c, _) => ServiceAccessPrimitiveExpression::ContextSelection(c),
+            PathSelection::Context(c, _) => ModuleAccessPrimitiveExpression::ContextSelection(c),
         },
         AstExpr::StringLiteral(value, _) => {
-            ServiceAccessPrimitiveExpression::StringLiteral(value.clone())
+            ModuleAccessPrimitiveExpression::StringLiteral(value.clone())
         }
         AstExpr::BooleanLiteral(value, _) => {
-            ServiceAccessPrimitiveExpression::BooleanLiteral(*value)
+            ModuleAccessPrimitiveExpression::BooleanLiteral(*value)
         }
-        AstExpr::NumberLiteral(value, _) => ServiceAccessPrimitiveExpression::NumberLiteral(*value),
-        AstExpr::StringList(_, _) => panic!("Service access expressions do not support lists yet"),
+        AstExpr::NumberLiteral(value, _) => ModuleAccessPrimitiveExpression::NumberLiteral(*value),
+        AstExpr::StringList(_, _) => panic!("Module access expressions do not support lists yet"),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
     }

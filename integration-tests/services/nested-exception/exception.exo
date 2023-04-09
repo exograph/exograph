@@ -1,5 +1,5 @@
 @deno("expection.ts")
-service ExceptionService {
+module ExceptionModule {
     @access(true)
     export query callThrowExographError(@inject exograph: Exograph): Int
 

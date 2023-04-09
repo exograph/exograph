@@ -16,56 +16,56 @@ use serde::{Deserialize, Serialize};
 use crate::access::Access;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServiceType {
+pub struct ModuleType {
     pub name: String,
-    pub kind: ServiceTypeKind,
+    pub kind: ModuleTypeKind,
     pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
-pub enum ServiceTypeKind {
+pub enum ModuleTypeKind {
     Primitive,
-    Composite(ServiceCompositeType),
+    Composite(ModuleCompositeType),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServiceCompositeType {
-    pub fields: Vec<ServiceField>,
+pub struct ModuleCompositeType {
+    pub fields: Vec<ModuleField>,
     pub is_input: bool,
     pub access: Access,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServiceField {
+pub struct ModuleField {
     pub name: String,
-    pub typ: FieldType<ServiceFieldType>,
+    pub typ: FieldType<ModuleFieldType>,
     pub has_default_value: bool, // does this field have a default value?
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServiceFieldType {
-    pub type_id: SerializableSlabIndex<ServiceType>,
+pub struct ModuleFieldType {
+    pub type_id: SerializableSlabIndex<ModuleType>,
     pub type_name: String,
 }
 
-impl Named for ServiceFieldType {
+impl Named for ModuleFieldType {
     fn name(&self) -> &str {
         &self.type_name
     }
 }
 
-impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ServiceType {
-    fn type_definition(&self, service_types: &SerializableSlab<ServiceType>) -> TypeDefinition {
+impl TypeDefinitionProvider<SerializableSlab<ModuleType>> for ModuleType {
+    fn type_definition(&self, module_types: &SerializableSlab<ModuleType>) -> TypeDefinition {
         match &self.kind {
-            ServiceTypeKind::Primitive => TypeDefinition {
+            ModuleTypeKind::Primitive => TypeDefinition {
                 extend: false,
                 description: None,
                 name: default_positioned_name(&self.name),
                 directives: vec![],
                 kind: TypeKind::Scalar,
             },
-            ServiceTypeKind::Composite(ServiceCompositeType {
+            ModuleTypeKind::Composite(ModuleCompositeType {
                 fields: model_fields,
                 ..
             }) => {
@@ -79,7 +79,7 @@ impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ServiceType {
                     let fields: Vec<_> = model_fields
                         .iter()
                         .map(|model_field| {
-                            default_positioned(model_field.field_definition(service_types))
+                            default_positioned(model_field.field_definition(module_types))
                         })
                         .collect();
 
@@ -100,8 +100,8 @@ impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ServiceType {
     }
 }
 
-impl FieldDefinitionProvider<SerializableSlab<ServiceType>> for ServiceField {
-    fn field_definition(&self, _service_types: &SerializableSlab<ServiceType>) -> FieldDefinition {
+impl FieldDefinitionProvider<SerializableSlab<ModuleType>> for ModuleField {
+    fn field_definition(&self, _module_types: &SerializableSlab<ModuleType>) -> FieldDefinition {
         let field_type = default_positioned((&self.typ).into());
 
         FieldDefinition {
@@ -114,7 +114,7 @@ impl FieldDefinitionProvider<SerializableSlab<ServiceType>> for ServiceField {
     }
 }
 
-impl Parameter for ServiceField {
+impl Parameter for ModuleField {
     fn name(&self) -> &str {
         &self.name
     }

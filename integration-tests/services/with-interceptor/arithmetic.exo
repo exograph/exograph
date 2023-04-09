@@ -1,5 +1,5 @@
 @deno("arithmetic.js")
-service MathService {
+module MathModule {
     @access(true)
     type DivisionResult {
         quotient: Int
@@ -14,14 +14,14 @@ service MathService {
 }
 
 @deno("time.ts")
-service TimeService {
+module TimeModule {
     @around("query *")
     interceptor time(operation: Operation)
 }
 
 // Apply the interceptor twice to ensure that exception still propagates.
 @deno("time.ts")
-service Time2Service {
+module Time2Module {
     @around("query *")
     interceptor time(operation: Operation)
 }

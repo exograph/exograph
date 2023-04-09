@@ -1,24 +1,24 @@
 @deno("core.ts")
-service Core {
+module Core {
   query getInt(): Int  
 }
 
-// The same interceptor is named same as in all services.
-// This allow testing that we apply the correct interceptor (considering both the service and the interceptor name).
+// The same interceptor is named same as in all modules.
+// This allow testing that we apply the correct interceptor (considering both the module and the interceptor name).
 @deno("intercept2.ts")
-service Intercept2 {
+module Intercept2 {
   @around("query notExistingMethod")
   interceptor bypass()
 }
 
 @deno("intercept1.ts")
-service Intercept1 {
+module Intercept1 {
   @around("query getInt")
   interceptor bypass()
 }
 
 @deno("intercept3.ts")
-service Intercept3 {
+module Intercept3 {
   @around("query notExistingMethod")
   interceptor bypass()
 }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Deref};
 
 use super::Typed;
-use crate::ast::ast_types::{AstModel, AstService};
+use crate::ast::ast_types::{AstModel, AstModule};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
@@ -19,7 +19,7 @@ pub enum Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Service(pub AstService<Typed>);
+pub struct Module(pub AstModule<Typed>);
 
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -106,5 +106,5 @@ impl Type {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypecheckedSystem {
     pub types: MappedArena<Type>,
-    pub services: MappedArena<Service>,
+    pub modules: MappedArena<Module>,
 }

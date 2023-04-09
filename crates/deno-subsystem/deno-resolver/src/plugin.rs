@@ -16,7 +16,7 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 
-use deno_model::{service::ServiceMethod, subsystem::DenoSubsystem};
+use deno_model::{module::ModuleMethod, subsystem::DenoSubsystem};
 use exo_deno::DenoExecutorPool;
 
 use super::{
@@ -161,7 +161,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
 
 pub(crate) fn create_deno_operation<'a>(
     system: &'a DenoSubsystem,
-    method_id: &Option<SerializableSlabIndex<ServiceMethod>>,
+    method_id: &Option<SerializableSlabIndex<ModuleMethod>>,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
     subsystem_resolver: &'a DenoSubsystemResolver,

@@ -1,9 +1,9 @@
-use super::service::Script;
+use super::module::Script;
 use crate::{
     interceptor::Interceptor,
+    module::ModuleMethod,
     operation::{WasmMutation, WasmQuery},
-    service::ServiceMethod,
-    types::ServiceType,
+    types::ModuleType,
 };
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 use core_plugin_interface::{
@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WasmSubsystem {
     pub contexts: MappedArena<ContextType>,
-    pub service_types: SerializableSlab<ServiceType>,
+    pub module_types: SerializableSlab<ModuleType>,
 
     // query related
     pub queries: MappedArena<WasmQuery>,
@@ -28,8 +28,8 @@ pub struct WasmSubsystem {
     // mutation related
     pub mutations: MappedArena<WasmMutation>,
 
-    // service related
-    pub methods: SerializableSlab<ServiceMethod>,
+    // module related
+    pub methods: SerializableSlab<ModuleMethod>,
     pub scripts: SerializableSlab<Script>,
     pub interceptors: SerializableSlab<Interceptor>,
 }
@@ -50,9 +50,9 @@ impl WasmSubsystem {
     }
 
     pub fn schema_types(&self) -> Vec<TypeDefinition> {
-        self.service_types
+        self.module_types
             .iter()
-            .map(|typ| typ.1.type_definition(&self.service_types))
+            .map(|typ| typ.1.type_definition(&self.module_types))
             .collect()
     }
 }

@@ -1,5 +1,5 @@
 @postgres
-service TodoService {
+module TodoModule {
   @access(true)
   type Todo {
     @pk id: Int = autoIncrement()
@@ -7,8 +7,8 @@ service TodoService {
   }
 }
 
-@deno("test-service.ts")
-service TestService {
+@deno("test-module.ts")
+module TestModule {
   type Info {
     id: Int
     title: String
@@ -18,7 +18,7 @@ service TestService {
 }
 
 @deno("interception.ts")
-service Interception {
+module Interception {
   @around("query todo")
   interceptor todoReturnFreshValue(operation: Operation)
 

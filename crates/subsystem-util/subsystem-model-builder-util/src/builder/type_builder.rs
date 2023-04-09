@@ -2,7 +2,7 @@ use core_model::{context_type::ContextType, mapped_arena::MappedArena, types::Fi
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed};
 use subsystem_model_util::{
     access::Access,
-    types::{ServiceCompositeType, ServiceField, ServiceFieldType, ServiceType, ServiceTypeKind},
+    types::{ModuleCompositeType, ModuleField, ModuleFieldType, ModuleType, ModuleTypeKind},
 };
 
 use crate::builder::resolved_builder::ResolvedFieldType;
@@ -11,7 +11,7 @@ use super::{
     access_builder::ResolvedAccess,
     access_utils,
     resolved_builder::{
-        ResolvedCompositeType, ResolvedField, ResolvedMethod, ResolvedService, ResolvedType,
+        ResolvedCompositeType, ResolvedField, ResolvedMethod, ResolvedModule, ResolvedType,
     },
     system_builder::SystemContextBuilding,
 };
@@ -20,23 +20,23 @@ use super::{
 pub struct ResolvedTypeEnv<'a> {
     pub contexts: &'a MappedArena<ContextType>,
     pub resolved_types: MappedArena<ResolvedType>,
-    pub resolved_services: MappedArena<ResolvedService>,
+    pub resolved_modules: MappedArena<ResolvedModule>,
 }
 
-pub(super) fn build_service_expanded(
+pub(super) fn build_module_expanded(
     resolved_methods: &[&ResolvedMethod],
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_service_type_no_fields(c, building);
+            expand_module_type_no_fields(c, building);
         }
     }
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_service_type_fields(c, building);
+            expand_module_type_fields(c, building);
         }
     }
 
@@ -63,20 +63,20 @@ pub(super) fn build_shallow(
     }
 
     // For contexts, building shallow types is enough
-    // (we need to have them in the SystemContextBuilding.types, so that when passed as an argument to a service method, we can resolve the type)
+    // (we need to have them in the SystemContextBuilding.types, so that when passed as an argument to a module method, we can resolve the type)
     for (_, context) in contexts.iter() {
         create_shallow_context(context, building);
     }
 }
 
-fn expand_service_type_no_fields(
+fn expand_module_type_no_fields(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
 ) {
     let existing_type_id = building.get_id(&resolved_type.name);
 
     building.types.get_by_id_mut(existing_type_id.unwrap()).kind =
-        ServiceTypeKind::Composite(ServiceCompositeType {
+        ModuleTypeKind::Composite(ModuleCompositeType {
             fields: vec![],
             access: Access::restrictive(),
             is_input: false,
@@ -87,19 +87,19 @@ fn expand_service_type_no_fields(
         .is_input = resolved_type.is_input;
 }
 
-fn expand_service_type_fields(
+fn expand_module_type_fields(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
 ) {
     let existing_type_id = building.get_id(&resolved_type.name).unwrap();
 
-    let model_fields: Vec<ServiceField> = resolved_type
+    let model_fields: Vec<ModuleField> = resolved_type
         .fields
         .iter()
-        .map(|field| create_service_field(field, building))
+        .map(|field| create_module_field(field, building))
         .collect();
 
-    let kind = ServiceTypeKind::Composite(ServiceCompositeType {
+    let kind = ModuleTypeKind::Composite(ModuleCompositeType {
         fields: model_fields,
         is_input: resolved_type.is_input,
         access: Access::restrictive(),
@@ -120,16 +120,16 @@ fn expand_method_access(
     Ok(())
 }
 
-fn create_service_field(field: &ResolvedField, building: &SystemContextBuilding) -> ServiceField {
+fn create_module_field(field: &ResolvedField, building: &SystemContextBuilding) -> ModuleField {
     fn create_field_type(
         field_type: &FieldType<ResolvedFieldType>,
         building: &SystemContextBuilding,
-    ) -> FieldType<ServiceFieldType> {
+    ) -> FieldType<ModuleFieldType> {
         match field_type {
             FieldType::Plain(ResolvedFieldType { type_name }) => {
                 let type_id = building.types.get_id(type_name).unwrap();
 
-                FieldType::Plain(ServiceFieldType {
+                FieldType::Plain(ModuleFieldType {
                     type_name: type_name.clone(),
                     type_id,
                 })
@@ -143,7 +143,7 @@ fn create_service_field(field: &ResolvedField, building: &SystemContextBuilding)
         }
     }
 
-    ServiceField {
+    ModuleField {
         name: field.name.to_owned(),
         typ: create_field_type(&field.typ, building),
         has_default_value: field.default_value.is_some(),
@@ -172,10 +172,10 @@ fn expand_type_access(
 
     let existing_type = &building.types[existing_type_id];
 
-    if let ServiceTypeKind::Composite(self_type_info) = &existing_type.kind {
+    if let ModuleTypeKind::Composite(self_type_info) = &existing_type.kind {
         let expr = compute_access_composite_types(&resolved_type.access, resolved_env)?;
 
-        let kind = ServiceTypeKind::Composite(ServiceCompositeType {
+        let kind = ModuleTypeKind::Composite(ModuleCompositeType {
             fields: self_type_info.fields.clone(),
             is_input: self_type_info.is_input,
             access: expr,
@@ -192,9 +192,9 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
 
     // Mark every type as Primitive, since other types that may be referred haven't been processed yet
     // and we haven't build query and mutation types either
-    let typ = ServiceType {
+    let typ = ModuleType {
         name: type_name.to_string(),
-        kind: ServiceTypeKind::Primitive,
+        kind: ModuleTypeKind::Primitive,
         is_input: false,
     };
 
@@ -206,9 +206,9 @@ fn create_shallow_context(context: &ContextType, building: &mut SystemContextBui
 
     // Mark every type as Primitive, since other types that may be referred haven't been processed yet
     // and we haven't build query and mutation types either
-    let typ = ServiceType {
+    let typ = ModuleType {
         name: type_name.to_string(),
-        kind: ServiceTypeKind::Primitive,
+        kind: ModuleTypeKind::Primitive,
         is_input: false,
     };
 

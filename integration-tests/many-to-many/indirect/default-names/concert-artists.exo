@@ -1,5 +1,5 @@
 @postgres 
-service ConcertsService {
+module ConcertsModule {
   @access(true)
   type Concert {
     @pk id: Int = autoIncrement()

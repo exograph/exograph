@@ -4,7 +4,7 @@ context AuthContext {
 }
 
 @postgres
-service DocumentService {
+module DocumentModule {
   // A user may own multiple documents
   @access(true) // Setting access to true to focus on the access rules for the documents
   type User {

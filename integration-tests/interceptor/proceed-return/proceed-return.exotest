@@ -16,7 +16,7 @@ operation: |
       id
       title
     }
-    # Same as above, but for Deno-implemented services
+    # Same as above, but for Deno-implemented modules
     info_id: getInfo {
       id
     }

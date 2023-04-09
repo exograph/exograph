@@ -6,5 +6,5 @@ mod deno_operation;
 mod exo_execution;
 mod exograph_ops;
 mod interceptor_execution;
+mod module_access_predicate;
 mod plugin;
-mod service_access_predicate;

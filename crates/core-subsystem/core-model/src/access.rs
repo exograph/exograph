@@ -12,7 +12,7 @@
 //!
 //! Since these primitives differ between subsystems, the access control expressions are generic
 //! over a `PrimExpr` type. For example, in the Deno subsystem, `PrimExpr` is
-//! `ServiceAccessPrimitiveExpression` and in the Postgres subsystem, `PrimExpr` is
+//! `ModuleAccessPrimitiveExpression` and in the Postgres subsystem, `PrimExpr` is
 //! `DatabaseAccessPrimitiveExpression`. This allows each subsystem to define primitive expressions
 //! specific to their capability (for example, `DatabaseAccessPrimitiveExpression` contains a
 //! `Column` variant).
@@ -30,7 +30,7 @@ pub struct AccessContextSelection {
 }
 
 /// An expression that can be evaluated to a subsystem-specific predicate such as Deno's
-/// `ServiceAccessPredicate` and Postgres' `AbstractPredicate`.
+/// `ModuleAccessPredicate` and Postgres' `AbstractPredicate`.
 ///
 /// Typically, a system-specific access solver will map this expression to a predicate that can be a
 /// boolean value or a residual expression that can be passed down to the the underlying system (for

@@ -45,7 +45,7 @@ impl NodeTypedness for Untyped {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstSystem<T: NodeTypedness> {
     pub types: Vec<AstModel<T>>,
-    pub services: Vec<AstService<T>>,
+    pub modules: Vec<AstModule<T>>,
     pub imports: Vec<PathBuf>,
 }
 
@@ -68,7 +68,7 @@ impl<T: NodeTypedness> Display for AstModel<T> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct AstService<T: NodeTypedness> {
+pub struct AstModule<T: NodeTypedness> {
     pub name: String,
     pub annotations: T::Annotations,
     pub types: Vec<AstModel<T>>,
@@ -125,7 +125,7 @@ pub struct AstInterceptor<T: NodeTypedness> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum AstModelKind {
-    Type,    // a type in a service (with semantics assigned by each service plugin)
+    Type,    // a type in a module (with semantics assigned by each module plugin)
     Context, // defines contextual type some information extracted from the request
 }
 

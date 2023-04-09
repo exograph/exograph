@@ -1,5 +1,5 @@
 @postgres 
-service UserService {
+module UserModule {
     type User {
         @pk id: Int = autoIncrement()
 
@@ -13,7 +13,7 @@ service UserService {
 }
 
 @deno("auth-social.ts")
-service LoginSocial {
+module LoginSocial {
     // Takes a code from client-side authentication and issues a JWT token on success
     export query loginSocial(code: String, provider: String, @inject exograph: Exograph): String
 
@@ -26,7 +26,7 @@ service LoginSocial {
 }
 
 @deno("auth-normal.ts")
-service LoginNormal {
+module LoginNormal {
     // Takes a login and a password from the client authentication and issues a JWT token on success
     export query loginNormal(email: String, password: String, @inject exograph: Exograph): String
 

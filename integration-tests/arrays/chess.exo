@@ -1,5 +1,5 @@
 @postgres
-service ChessService {
+module ChessModule {
   @table("chess_piece")
   @access(true)
   type ChessPiece {

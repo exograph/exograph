@@ -1,5 +1,5 @@
 @postgres
-service RsvpService {
+module RsvpModule {
   @access(true)
   type Rsvp {
     @pk id: Int = autoIncrement()

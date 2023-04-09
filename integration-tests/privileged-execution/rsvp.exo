@@ -3,8 +3,8 @@ context AuthContext {
 }
 
 @postgres
-service RsvpPersistence {
-  // Non-admins cannot use the rsvp APIs (a service with priviledged Exograph will be able to escalate the role and thus use the APIs)
+module RsvpPersistence {
+  // Non-admins cannot use the rsvp APIs (a module with priviledged Exograph will be able to escalate the role and thus use the APIs)
   // Later, we will allow to not even export this APIs
   @access(AuthContext.role == "admin")
   type Rsvp {
@@ -14,8 +14,8 @@ service RsvpPersistence {
   }
 }
 
-@deno("rsvp-service.ts")
-service RsvpService {
+@deno("rsvp-module.ts")
+module RsvpModule {
   @access(true)
   type RsvpConfirmation {
     email: String

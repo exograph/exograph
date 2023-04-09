@@ -11,9 +11,9 @@ context ICaptchaValidatorContext {
     @header("X-Captcha-Response")  response: String 
 }
 
-// CAPTCHA service implementation.
+// CAPTCHA module implementation.
 @deno("captcha.ts")
-service CaptchaService {
+module CaptchaModule {
     // The CAPTCHA challenge issued to client.
     @access(true)
     type CaptchaChallenge {
@@ -36,7 +36,7 @@ service CaptchaService {
 }
 
 @postgres
-service CaptchaPersistenceService {
+module CaptchaPersistenceModule {
     // Postgres record of a CAPTCHA challenge issued to a client.
     // Can be referred to by UUID. 
     @access(true)
@@ -46,7 +46,7 @@ service CaptchaPersistenceService {
     }
 }
 
-// The final context for use by an external @access rule or service.
+// The final context for use by an external @access rule or module.
 context CaptchaContext {
     @query("verifyCaptcha") isValid: Boolean 
 }

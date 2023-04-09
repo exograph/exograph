@@ -9,11 +9,11 @@ use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::ast::ast_types::AstFieldType;
 use core_model_builder::builder::resolved_builder::AnnotationMapHelper;
 use core_model_builder::builder::system_builder::BaseModelSystem;
-use core_model_builder::typechecker::typ::{Service, TypecheckedSystem};
+use core_model_builder::typechecker::typ::{Module, TypecheckedSystem};
 use core_model_builder::typechecker::AnnotationMap;
 use core_model_builder::{
     ast::ast_types::{
-        AstAnnotationParams, AstArgument, AstExpr, AstMethodType, AstModelKind, AstService,
+        AstAnnotationParams, AstArgument, AstExpr, AstMethodType, AstModelKind, AstModule,
     },
     error::ModelBuildingError,
     typechecker::{typ::Type, Typed},
@@ -71,13 +71,13 @@ impl Named for ResolvedFieldType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ResolvedService {
+pub struct ResolvedModule {
     pub name: String,
     pub script: Vec<u8>,
     pub script_path: String,
     pub methods: Vec<ResolvedMethod>,
     pub interceptors: Vec<ResolvedInterceptor>,
-    pub types_defined: HashSet<String>, // Typed defined in the service
+    pub types_defined: HashSet<String>, // Typed defined in the module
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -105,7 +105,7 @@ pub struct ResolvedArgument {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResolvedInterceptor {
-    pub service_name: String,
+    pub module_name: String,
     pub method_name: String,
     pub arguments: Vec<ResolvedArgument>,
     pub interceptor_kind: ResolvedInterceptorKind,
@@ -129,28 +129,28 @@ impl ResolvedInterceptorKind {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ResolvedServiceSystem {
-    pub service_types: MappedArena<ResolvedType>,
-    pub services: MappedArena<ResolvedService>,
+pub struct ResolvedModuleSystem {
+    pub module_types: MappedArena<ResolvedType>,
+    pub modules: MappedArena<ResolvedModule>,
 }
 
 pub fn build(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
-    service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
+    module_selection_closure: impl Fn(&AstModule<Typed>) -> Option<String>,
     process_script: impl Fn(
-        &AstService<Typed>,
+        &AstModule<Typed>,
         &BaseModelSystem,
         &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
-) -> Result<ResolvedServiceSystem, ModelBuildingError> {
+) -> Result<ResolvedModuleSystem, ModelBuildingError> {
     let mut errors = Vec::new();
 
     let resolved_system = resolve(
         typechecked_system,
         base_system,
         &mut errors,
-        service_selection_closure,
+        module_selection_closure,
         process_script,
     )?;
 
@@ -165,32 +165,32 @@ fn resolve(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     errors: &mut Vec<Diagnostic>,
-    service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
+    module_selection_closure: impl Fn(&AstModule<Typed>) -> Option<String>,
     process_script: impl Fn(
-        &AstService<Typed>,
+        &AstModule<Typed>,
         &BaseModelSystem,
         &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
-) -> Result<ResolvedServiceSystem, ModelBuildingError> {
-    let resolved_services = resolve_services(
+) -> Result<ResolvedModuleSystem, ModelBuildingError> {
+    let resolved_modules = resolve_modules(
         typechecked_system,
         base_system,
         errors,
-        service_selection_closure,
+        module_selection_closure,
         &process_script,
     )?;
 
-    Ok(ResolvedServiceSystem {
-        service_types: resolve_service_types(errors, typechecked_system, |typ| {
-            // The type is relevant only if it is a type defined in a relevant service
-            // TODO: Improve this by passing only the relevant services and processing types in the services
+    Ok(ResolvedModuleSystem {
+        module_types: resolve_module_types(errors, typechecked_system, |typ| {
+            // The type is relevant only if it is a type defined in a relevant module
+            // TODO: Improve this by passing only the relevant modules and processing types in the modules
             let type_name = match typ {
                 Type::Composite(c) => Some(&c.name),
                 _ => None,
             };
             match type_name {
-                Some(type_name) => resolved_services.iter().any(|(_, resolved_service)| {
-                    resolved_service
+                Some(type_name) => resolved_modules.iter().any(|(_, resolved_module)| {
+                    resolved_module
                         .types_defined
                         .iter()
                         .any(|typ| typ == type_name)
@@ -198,69 +198,69 @@ fn resolve(
                 None => false,
             }
         })?,
-        services: resolved_services,
+        modules: resolved_modules,
     })
 }
 
-fn resolve_services(
+fn resolve_modules(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     errors: &mut Vec<Diagnostic>,
-    service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
+    module_selection_closure: impl Fn(&AstModule<Typed>) -> Option<String>,
     process_script: impl Fn(
-        &AstService<Typed>,
+        &AstModule<Typed>,
         &BaseModelSystem,
         &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
-) -> Result<MappedArena<ResolvedService>, ModelBuildingError> {
-    let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
+) -> Result<MappedArena<ResolvedModule>, ModelBuildingError> {
+    let mut resolved_modules: MappedArena<ResolvedModule> = MappedArena::default();
 
-    for (_, service) in typechecked_system.services.iter() {
-        let Service(service) = service;
+    for (_, module) in typechecked_system.modules.iter() {
+        let Module(module) = module;
 
-        if let Some(annotation_name) = service_selection_closure(service) {
-            resolve_service(
-                service,
+        if let Some(annotation_name) = module_selection_closure(module) {
+            resolve_module(
+                module,
                 base_system,
                 annotation_name,
                 &typechecked_system.types,
                 errors,
-                &mut resolved_services,
+                &mut resolved_modules,
                 &process_script,
             )?;
         }
     }
 
-    Ok(resolved_services)
+    Ok(resolved_modules)
 }
 
-fn resolve_service(
-    service: &AstService<Typed>,
+fn resolve_module(
+    module: &AstModule<Typed>,
     base_system: &BaseModelSystem,
     annotation_name: String,
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-    resolved_services: &mut MappedArena<ResolvedService>,
+    resolved_modules: &mut MappedArena<ResolvedModule>,
     process_script: &impl Fn(
-        &AstService<Typed>,
+        &AstModule<Typed>,
         &BaseModelSystem,
         &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
-    let module_path = match service.annotations.get(&annotation_name).unwrap() {
+    let module_path = match module.annotations.get(&annotation_name).unwrap() {
         AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
         _ => panic!(),
     }
     .clone();
 
-    let mut module_fs_path = service.base_exofile.clone();
+    let mut module_fs_path = module.base_exofile.clone();
     module_fs_path.pop();
     module_fs_path.push(module_path);
 
-    let bundled_script = process_script(service, base_system, &module_fs_path)?;
+    let bundled_script = process_script(module, base_system, &module_fs_path)?;
 
     let module_anonymized_path = module_fs_path
-        .strip_prefix(service.base_exofile.parent().unwrap())
+        .strip_prefix(module.base_exofile.parent().unwrap())
         .unwrap();
 
     fn extract_intercept_annot<'a>(
@@ -270,13 +270,13 @@ fn resolve_service(
         annotations.get(key).map(|a| a.as_single())
     }
 
-    resolved_services.add(
-        &service.name,
-        ResolvedService {
-            name: service.name.clone(),
+    resolved_modules.add(
+        &module.name,
+        ResolvedModule {
+            name: module.name.clone(),
             script: bundled_script,
             script_path: module_anonymized_path.to_str().expect("Script path was not UTF-8").to_string(),
-            methods: service
+            methods: module
                 .methods
                 .iter()
                 .map(|m| {
@@ -298,7 +298,7 @@ fn resolve_service(
                     }
                 })
                 .collect(),
-            interceptors: service
+            interceptors: module
                 .interceptors
                 .iter()
                 .flat_map(|i| {
@@ -339,7 +339,7 @@ fn resolve_service(
                     }?;
 
                     Result::<ResolvedInterceptor, ModelBuildingError>::Ok(ResolvedInterceptor {
-                        service_name: service.name.clone(),
+                        module_name: module.name.clone(),
                         method_name: i.name.clone(),
                         arguments: i
                             .arguments
@@ -350,7 +350,7 @@ fn resolve_service(
                     })
                 })
                 .collect(),
-                types_defined: service.types.iter().map(|m| m.name.clone()).collect(),
+                types_defined: module.types.iter().map(|m| m.name.clone()).collect(),
         },
     );
 
@@ -365,17 +365,17 @@ fn resolve_argument(arg: &AstArgument<Typed>, types: &MappedArena<Type>) -> Reso
     }
 }
 
-fn resolve_service_input_types(
+fn resolve_module_input_types(
     errors: &mut Vec<Diagnostic>,
-    resolved_service_types: &MappedArena<ResolvedType>,
+    resolved_module_types: &MappedArena<ResolvedType>,
     typechecked_system: &TypecheckedSystem,
 ) -> Result<Vec<String>, ModelBuildingError> {
     // 1. collect types used as arguments (input) and return types (output)
     type IsInput = bool;
     let mut types_used: Vec<(AstFieldType<Typed>, IsInput)> = vec![];
 
-    for (_, Service(service)) in typechecked_system.services.iter() {
-        for method in service.methods.iter() {
+    for (_, Module(module)) in typechecked_system.modules.iter() {
+        for method in module.methods.iter() {
             for argument in method.arguments.iter() {
                 types_used.push((argument.typ.clone(), true))
             }
@@ -383,7 +383,7 @@ fn resolve_service_input_types(
             types_used.push((method.return_type.clone(), false))
         }
 
-        for interceptor in service.interceptors.iter() {
+        for interceptor in module.interceptors.iter() {
             for argument in interceptor.arguments.iter() {
                 types_used.push((argument.typ.clone(), true))
             }
@@ -392,7 +392,7 @@ fn resolve_service_input_types(
 
     // 2. filter out primitives
     let types_used = types_used.iter().filter(|(arg, _)| {
-        if let Some(typ) = resolved_service_types.get_by_key(&arg.name()) {
+        if let Some(typ) = resolved_module_types.get_by_key(&arg.name()) {
             !typ.is_primitive()
         } else {
             true
@@ -449,28 +449,28 @@ fn resolve_service_input_types(
     Ok(input_type_names)
 }
 
-fn resolve_service_types(
+fn resolve_module_types(
     errors: &mut Vec<Diagnostic>,
     typechecked_system: &TypecheckedSystem,
     is_relevant: impl Fn(&Type) -> bool,
 ) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
-    let mut resolved_service_types: MappedArena<ResolvedType> = MappedArena::default();
+    let mut resolved_module_types: MappedArena<ResolvedType> = MappedArena::default();
 
     for (_, typ) in typechecked_system.types.iter() {
         if let Type::Primitive(pt) = typ {
-            // Adopt the primitive types as a ServiceType
-            resolved_service_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
+            // Adopt the primitive types as a ModuleType
+            resolved_module_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
         }
     }
 
     let input_types =
-        resolve_service_input_types(errors, &resolved_service_types, typechecked_system)?;
+        resolve_module_input_types(errors, &resolved_module_types, typechecked_system)?;
 
     for (_, typ) in typechecked_system.types.iter() {
         match typ {
-            // Adopt the primitive types as a ServiceType
+            // Adopt the primitive types as a ModuleType
             Type::Primitive(pt) => {
-                resolved_service_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
+                resolved_module_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
             Type::Composite(ct) if is_relevant(typ) => {
                 if ct.kind == AstModelKind::Type {
@@ -488,7 +488,7 @@ fn resolve_service_types(
                         })
                         .collect();
 
-                    resolved_service_types.add(
+                    resolved_module_types.add(
                         &ct.name,
                         ResolvedType::Composite(ResolvedCompositeType {
                             name: ct.name.clone(),
@@ -503,7 +503,7 @@ fn resolve_service_types(
         }
     }
 
-    Ok(resolved_service_types)
+    Ok(resolved_module_types)
 }
 
 fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> FieldType<ResolvedFieldType> {
@@ -533,17 +533,17 @@ mod tests {
     };
     use codemap::CodeMap;
     use core_model_builder::{
-        ast::ast_types::AstService, builder::system_builder::BaseModelSystem,
+        ast::ast_types::AstModule, builder::system_builder::BaseModelSystem,
         error::ModelBuildingError, typechecker::Typed,
     };
 
-    use super::{build, ResolvedServiceSystem};
+    use super::{build, ResolvedModuleSystem};
 
     #[test]
     fn type_disambiguation() {
         let model = r#"
             @deno("x.ts")
-            service TestService {
+            module TestModule {
                 type Bar {
                     a: String
                     b: Boolean
@@ -567,7 +567,7 @@ mod tests {
     fn input_type_used_as_output_type() {
         let model = r#"
             @deno("x.ts")
-            service TestService {
+            module TestModule {
                 type FooInput {
                     a: String
                     b: Boolean
@@ -590,14 +590,14 @@ mod tests {
     }
 
     fn process_script(
-        _service: &AstService<Typed>,
+        _module: &AstModule<Typed>,
         _base_system: &BaseModelSystem,
         _path: &Path,
     ) -> Result<Vec<u8>, ModelBuildingError> {
         Ok(vec![])
     }
 
-    fn create_resolved_system(src: &str) -> Result<ResolvedServiceSystem, ModelBuildingError> {
+    fn create_resolved_system(src: &str) -> Result<ResolvedModuleSystem, ModelBuildingError> {
         let mut codemap = CodeMap::new();
         let subsystem_builders = load_subsystem_builders().unwrap();
         let parsed = parser::parse_str(src, &mut codemap, "input.exo")
@@ -609,7 +609,7 @@ mod tests {
         build(
             &types,
             &base_system,
-            |service| service.annotations.get("deno").map(|_| "deno".to_string()),
+            |module| module.annotations.get("deno").map(|_| "deno".to_string()),
             process_script,
         )
     }

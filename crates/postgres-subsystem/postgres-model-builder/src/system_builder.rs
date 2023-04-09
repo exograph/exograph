@@ -102,7 +102,7 @@ fn build_expanded(
     predicate_builder::build_expanded(building);
     aggregate_type_builder::build_expanded(resolved_env, building)?;
 
-    // Finally expand queries, mutations, and service methods
+    // Finally expand queries, mutations, and module methods
     query_builder::build_expanded(building);
     mutation_builder::build_expanded(resolved_env, building);
 
@@ -145,7 +145,7 @@ mod tests {
     fn optional_fields() {
         let src = r#"
             @postgres
-            service ConcertService {
+            module ConcertModule {
                 @table("concerts")
                 type Concert {
                     @pk id: Int = autoIncrement()
@@ -199,7 +199,7 @@ mod tests {
     fn one_to_one() {
         let src = r#"
         @postgres
-        service UserService {
+        module UserModule {
             type User {
                 @pk id: Int = autoIncrement()
                 membership: Membership?
@@ -232,7 +232,7 @@ mod tests {
     fn type_hint_annotations() {
         let src = r#"
             @postgres
-            service LogService {
+            module LogModule {
                 @table("logs")
                 type Log {
                   @dbtype("bigint") @pk id: Int = autoIncrement() 
