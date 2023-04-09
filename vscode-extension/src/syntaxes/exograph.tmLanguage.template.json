@@ -3,7 +3,7 @@
   "name": "exograph",
   "patterns": [
     {
-      "include": "#service-definition"
+      "include": "#module-definition"
     },
     {
       "include": "#context-definition"
@@ -142,14 +142,14 @@
         }
       ]
     },
-    "service-definition": {
+    "module-definition": {
       "patterns": [
         {
-          "name": "meta.service.exograph",
-          "begin": "(service){{ws}}({{identifier}}){{opt_ws}}{?",
+          "name": "meta.module.exograph",
+          "begin": "(module){{ws}}({{identifier}}){{opt_ws}}{?",
           "beginCaptures": {
             "1": {
-              "name": "keyword.service.exograph"
+              "name": "keyword.module.exograph"
             },
             "2": {
               "name": "entity.name.class.exograph"
