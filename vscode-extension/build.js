@@ -1,4 +1,4 @@
-// Process the exograph.tmLanguage.json to replace all the {{values}} with their replacement from replacements.props
+// Process the syntaxes/exograph.tmLanguage.template.json to replace all the {{values}} with their replacement from replacements.props
 
 const fs = require('fs');
 
