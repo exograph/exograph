@@ -1,5 +1,5 @@
 @postgres
-service MembershipService {
+module MembershipModule {
   // A user may have an optional membership, but a membership must have an associated user
   @access(true)
   type User {

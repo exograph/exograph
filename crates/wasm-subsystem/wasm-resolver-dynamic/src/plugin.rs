@@ -15,7 +15,7 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 use exo_wasm::WasmExecutorPool;
-use wasm_model::{service::ServiceMethod, subsystem::WasmSubsystem};
+use wasm_model::{module::ModuleMethod, subsystem::WasmSubsystem};
 
 pub struct WasmSubsystemLoader {}
 core_plugin_interface::export_subsystem_loader!(WasmSubsystemLoader {});
@@ -126,7 +126,7 @@ impl SubsystemResolver for WasmSubsystemResolver {
 
 pub(crate) fn create_wasm_operation<'a>(
     system: &'a WasmSubsystem,
-    method_id: &Option<SerializableSlabIndex<ServiceMethod>>,
+    method_id: &Option<SerializableSlabIndex<ModuleMethod>>,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
     subsystem_resolver: &'a WasmSubsystemResolver,

@@ -1,5 +1,5 @@
 @postgres
-service ConcertVenues {
+module ConcertVenues {
   @table("concerts")
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published || price <= 10, 
           mutation=AuthContext.role == "ROLE_ADMIN")
@@ -23,7 +23,7 @@ service ConcertVenues {
 }
 
 @plugin
-service Service {
+module Module {
   @auth(self._starts_with_underscore == "foo" || _AuthContext.role == "ROLE_ADMIN")
   type _ModelStartWithAnUnderscore_AndHas_Underscores {
     id_with_underscores: Int = autoIncrement() @pk
@@ -31,7 +31,7 @@ service Service {
   }
 }
 
-service _ServiceStartWithAnUnderscore_AndHas_Underscores {
+module _ModuleStartWithAnUnderscore_AndHas_Underscores {
 }
 
 context AuthContext {
@@ -39,7 +39,7 @@ context AuthContext {
   @jwt("role") role: String 
 }
 
-service MyService {
+module MyModule {
   export mutation foo(i: Int, zz: String): number
 
   query get_this(in: Concert_Info): Concert
@@ -51,21 +51,21 @@ service MyService {
 }
 
 @deno("concert-notification.ts")
-service ConcertNotificationService {
+module ConcertNotificationModule {
   export mutation sendNotification(
     concertNotificationId: Int, subscriptionGroupId: Int,
-    @injected exo: Exo, @injected emailService: EmailService
+    @injected exo: Exo, @injected emailModule: EmailModule
   ): Result<bool, bool>
 }
 
 @deno("rate_limiter.ts")
-service RateLimiter {
+module RateLimiter {
   @around("query * || mutation *")
   interceptor checkLimit(ipContext: IPContext, operation: Operation): OperationResult
 }
 
 @deno("authentication.wasm") // or ".so" or ".js" or ".ts"
-service Authentication {
+module Authentication {
   type LoginInput {
     provider: String // "google", "facebook", "username-password"
     code: String?

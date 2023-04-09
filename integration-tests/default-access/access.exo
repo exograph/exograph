@@ -1,5 +1,5 @@
 @postgres
-service ConcertService {
+module ConcertModule {
   // No @access specified, so all queries and mutations should result in "Not authorized"
   type Concert {
     @pk id: Int = autoIncrement()
@@ -8,7 +8,7 @@ service ConcertService {
 }
 
 @deno("arithmetics.ts")
-service ComputeService {
+module ComputeModule {
   // No @access specified for the type, so all queries and mutations should result in "Not authorized" regardless
   // of those queries specification
   type DivisionResultNoAccess {

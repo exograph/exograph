@@ -7,9 +7,9 @@ use subsystem_model_util::{
     access::Access,
     argument::{ArgumentParameter, ArgumentParameterType},
     interceptor::Interceptor,
-    operation::{ServiceMutation, ServiceQuery},
-    service::{Argument, Script, ServiceMethod, ServiceMethodType},
-    types::ServiceType,
+    module::{Argument, ModuleMethod, ModuleMethodType, Script},
+    operation::{ModuleMutation, ModuleQuery},
+    types::ModuleType,
 };
 
 use crate::builder::resolved_builder::ResolvedFieldType;
@@ -17,23 +17,23 @@ use crate::builder::resolved_builder::ResolvedFieldType;
 use super::{
     resolved_builder::{
         ResolvedInterceptor, ResolvedInterceptorKind, ResolvedMethod, ResolvedMethodType,
-        ResolvedService, ResolvedType,
+        ResolvedModule, ResolvedType,
     },
     system_builder::SystemContextBuilding,
 };
 
 pub fn build_shallow(
     _types: &MappedArena<ResolvedType>,
-    services: &MappedArena<ResolvedService>,
+    modules: &MappedArena<ResolvedModule>,
     building: &mut SystemContextBuilding,
 ) {
-    // create shallow service
-    for (_, service) in services.iter() {
-        for method in service.methods.iter() {
-            create_shallow_service(service, method, building);
+    // create shallow module
+    for (_, module) in modules.iter() {
+        for method in module.methods.iter() {
+            create_shallow_module(module, method, building);
         }
-        for interceptor in service.interceptors.iter() {
-            create_shallow_interceptor(service, interceptor, building);
+        for interceptor in module.interceptors.iter() {
+            create_shallow_interceptor(module, interceptor, building);
         }
     }
 }
@@ -41,12 +41,12 @@ pub fn build_shallow(
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (id, method) in building.methods.iter() {
         match method.operation_kind {
-            ServiceMethodType::Mutation(mutation_id) => {
+            ModuleMethodType::Mutation(mutation_id) => {
                 let mutation = &mut building.mutations[mutation_id];
                 mutation.method_id = Some(id)
             }
 
-            ServiceMethodType::Query(query_id) => {
+            ModuleMethodType::Query(query_id) => {
                 let query = &mut building.queries[query_id];
                 query.method_id = Some(id)
             }
@@ -71,34 +71,34 @@ fn get_or_populate_script(
     }
 }
 
-fn create_shallow_service(
-    resolved_service: &ResolvedService,
+fn create_shallow_module(
+    resolved_module: &ResolvedModule,
     resolved_method: &ResolvedMethod,
     building: &mut SystemContextBuilding,
 ) {
     let script = get_or_populate_script(
-        &resolved_service.script_path,
-        &resolved_service.script,
+        &resolved_module.script_path,
+        &resolved_module.script,
         building,
     );
 
     building.methods.add(
         &resolved_method.name,
-        ServiceMethod {
+        ModuleMethod {
             name: resolved_method.name.clone(),
             script,
             access: Access::restrictive(),
             operation_kind: match resolved_method.operation_kind {
                 ResolvedMethodType::Query => {
-                    let query = shallow_service_query(resolved_method, &building.types, building);
+                    let query = shallow_module_query(resolved_method, &building.types, building);
                     let query_id = building.queries.add(&resolved_method.name, query);
-                    ServiceMethodType::Query(query_id)
+                    ModuleMethodType::Query(query_id)
                 }
                 ResolvedMethodType::Mutation => {
                     let mutation =
-                        shallow_service_mutation(resolved_method, &building.types, building);
+                        shallow_module_mutation(resolved_method, &building.types, building);
                     let mutation_id = building.mutations.add(&resolved_method.name, mutation);
-                    ServiceMethodType::Mutation(mutation_id)
+                    ModuleMethodType::Mutation(mutation_id)
                 }
             },
             is_exported: resolved_method.is_exported,
@@ -125,21 +125,21 @@ fn create_shallow_service(
     );
 }
 
-fn shallow_service_query(
+fn shallow_module_query(
     method: &ResolvedMethod,
-    service_types: &MappedArena<ServiceType>,
+    module_types: &MappedArena<ModuleType>,
     building: &SystemContextBuilding,
-) -> ServiceQuery {
+) -> ModuleQuery {
     let resolved_return_type = &method.return_type;
     let return_type_name = resolved_return_type.name();
 
-    ServiceQuery {
+    ModuleQuery {
         name: method.name.clone(),
         method_id: None,
         argument_param: argument_param(method, building),
         return_type: {
             let plain_return_type = BaseOperationReturnType {
-                associated_type_id: service_types.get_id(return_type_name).unwrap(),
+                associated_type_id: module_types.get_id(return_type_name).unwrap(),
                 type_name: return_type_name.to_string(),
             };
             resolved_return_type.wrap(plain_return_type)
@@ -147,21 +147,21 @@ fn shallow_service_query(
     }
 }
 
-fn shallow_service_mutation(
+fn shallow_module_mutation(
     method: &ResolvedMethod,
-    service_types: &MappedArena<ServiceType>,
+    module_types: &MappedArena<ModuleType>,
     building: &SystemContextBuilding,
-) -> ServiceMutation {
+) -> ModuleMutation {
     let resolved_return_type = &method.return_type;
     let return_type_name = resolved_return_type.name();
 
-    ServiceMutation {
+    ModuleMutation {
         name: method.name.clone(),
         method_id: None,
         argument_param: argument_param(method, building),
         return_type: {
             let plain_return_type = BaseOperationReturnType {
-                associated_type_id: service_types.get_id(return_type_name).unwrap(),
+                associated_type_id: module_types.get_id(return_type_name).unwrap(),
                 type_name: return_type_name.to_string(),
             };
             resolved_return_type.wrap(plain_return_type)
@@ -176,7 +176,7 @@ fn argument_param(
 ) -> Vec<ArgumentParameter> {
     fn to_field_type(
         typename: &str,
-        type_id: Option<SerializableSlabIndex<ServiceType>>,
+        type_id: Option<SerializableSlabIndex<ModuleType>>,
         arg_typ: &FieldType<ResolvedFieldType>,
     ) -> FieldType<ArgumentParameterType> {
         let base_field_type = ArgumentParameterType {
@@ -205,18 +205,18 @@ fn argument_param(
 }
 
 pub fn create_shallow_interceptor(
-    resolved_service: &ResolvedService,
+    resolved_module: &ResolvedModule,
     resolved_interceptor: &ResolvedInterceptor,
     building: &mut SystemContextBuilding,
 ) {
     let script = get_or_populate_script(
-        &resolved_service.script_path,
-        &resolved_service.script,
+        &resolved_module.script_path,
+        &resolved_module.script,
         building,
     );
 
     building.interceptors.insert(Interceptor {
-        service_name: resolved_service.name.clone(),
+        module_name: resolved_module.name.clone(),
         method_name: resolved_interceptor.method_name.clone(),
         script,
         interceptor_kind: match resolved_interceptor.interceptor_kind {

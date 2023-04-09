@@ -60,7 +60,7 @@ mod tests {
             "",
             r#"
             @postgres
-            service ConcertService {
+            module ConcertModule {
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String
@@ -102,7 +102,7 @@ mod tests {
         assert_changes(
             r#"
             @postgres
-            service ConcertService {
+            module ConcertModule {
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String
@@ -111,7 +111,7 @@ mod tests {
             "#,
             r#"
             @postgres
-            service ConcertService {
+            module ConcertModule {
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String
@@ -157,7 +157,7 @@ mod tests {
         assert_changes(
             r#"
             @postgres
-            service ConcertService {
+            module ConcertModule {
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String
@@ -166,7 +166,7 @@ mod tests {
             "#,
             r#"
             @postgres
-            service ConcertService {
+            module ConcertModule {
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String
@@ -244,7 +244,7 @@ mod tests {
         assert_changes(
             r#"
             @postgres
-            service ConcertService {
+            module ConcertModule {
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String
@@ -257,7 +257,7 @@ mod tests {
             "#,
             r#"
             @postgres
-            service ConcertService {
+            module ConcertModule {
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String
@@ -332,7 +332,7 @@ mod tests {
         assert_changes(
             r#"
                 @postgres
-                service MembershipService {
+                module MembershipModule {
                     type Membership {
                         @pk id: Int = autoIncrement()
                     }
@@ -344,7 +344,7 @@ mod tests {
             "#,
             r#"
                 @postgres
-                service MembershipService {
+                module MembershipModule {
                     type Membership {
                         @pk id: Int = autoIncrement()
                         user: User
@@ -428,7 +428,7 @@ mod tests {
         assert_changes(
             r#"
                 @postgres
-                service RsvpService {
+                module RsvpModule {
                     type Rsvp {
                         @pk id: Int = autoIncrement()
                         email: String
@@ -438,7 +438,7 @@ mod tests {
             "#,
             r#"
                 @postgres
-                service RsvpService {
+                module RsvpModule {
                     type Rsvp {
                         @pk id: Int = autoIncrement()
                         @unique("email_event_id") email: String 
@@ -490,7 +490,7 @@ mod tests {
         assert_changes(
             r#"
                 @postgres
-                service RsvpService {
+                module RsvpModule {
                     type Rsvp {
                         @pk id: Int = autoIncrement()
                         @unique("email_event_id") email: String 
@@ -500,7 +500,7 @@ mod tests {
             "#,
             r#"
                 @postgres
-                service RsvpService {
+                module RsvpModule {
                     type Rsvp {
                         @pk id: Int = autoIncrement()
                         @unique("email_event_id") email: String 
@@ -568,7 +568,7 @@ mod tests {
         assert_changes(
             r#"
                 @postgres
-                service UserService {
+                module UserModule {
                     type User {
                         @pk id: Int = autoIncrement()
                         role: String
@@ -579,7 +579,7 @@ mod tests {
             "#,
             r#"
                 @postgres
-                service UserService {
+                module UserModule {
                     type User {
                         @pk id: Int = autoIncrement()
                         role: String = "USER" // Set default value
@@ -652,7 +652,7 @@ mod tests {
         assert_changes(
             r#"
                 @postgres
-                service LogService {
+                module LogModule {
                     type Log {
                         @pk id: Int
                         level: String?
@@ -662,7 +662,7 @@ mod tests {
             "#,
             r#"
                 @postgres
-                service LogService {
+                module LogModule {
                     type Log {
                         @pk id: Int
                         level: String

@@ -1,11 +1,10 @@
 ---
 source: crates/builder/src/parser/converter.rs
-assertion_line: 652
-expression: "convert_root(parsed.root_node(),\n        r#\"\n            @postgres\n            service TestService{            \n                type Foo {\n                    bar: Baz @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n                }\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.exo\")).unwrap()"
+expression: "convert_root(parsed.root_node(),\n        r#\"\n            @postgres\n            module TestModule{            \n                type Foo {\n                    @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n                    bar: Baz\n                }\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.exo\")).unwrap()"
 ---
 types: []
-services:
-  - name: TestService
+modules:
+  - name: TestModule
     annotations:
       - name: postgres
         params: None

@@ -11,31 +11,31 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     interceptor::Interceptor,
-    operation::{ServiceMutation, ServiceQuery},
-    service::ServiceMethod,
-    types::ServiceType,
+    module::ModuleMethod,
+    operation::{ModuleMutation, ModuleQuery},
+    types::ModuleType,
 };
 
-use super::service::Script;
+use super::module::Script;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ServiceSubsystem {
+pub struct ModuleSubsystem {
     pub contexts: MappedArena<ContextType>,
-    pub service_types: SerializableSlab<ServiceType>,
+    pub module_types: SerializableSlab<ModuleType>,
 
     // query related
-    pub queries: MappedArena<ServiceQuery>,
+    pub queries: MappedArena<ModuleQuery>,
 
     // mutation related
-    pub mutations: MappedArena<ServiceMutation>,
+    pub mutations: MappedArena<ModuleMutation>,
 
-    // service related
-    pub methods: SerializableSlab<ServiceMethod>,
+    // module related
+    pub methods: SerializableSlab<ModuleMethod>,
     pub scripts: SerializableSlab<Script>,
     pub interceptors: SerializableSlab<Interceptor>,
 }
 
-impl ServiceSubsystem {
+impl ModuleSubsystem {
     pub fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
         self.queries
             .iter()
@@ -51,9 +51,9 @@ impl ServiceSubsystem {
     }
 
     pub fn schema_types(&self) -> Vec<TypeDefinition> {
-        self.service_types
+        self.module_types
             .iter()
-            .map(|typ| typ.1.type_definition(&self.service_types))
+            .map(|typ| typ.1.type_definition(&self.module_types))
             .collect()
     }
 }

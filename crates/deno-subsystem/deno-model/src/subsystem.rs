@@ -12,18 +12,18 @@ use core_plugin_interface::{
 
 use serde::{Deserialize, Serialize};
 
-use super::service::Script;
+use super::module::Script;
 use crate::{
     interceptor::Interceptor,
+    module::ModuleMethod,
     operation::{DenoMutation, DenoQuery},
-    service::ServiceMethod,
-    types::ServiceType,
+    types::ModuleType,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DenoSubsystem {
     pub contexts: MappedArena<ContextType>,
-    pub service_types: SerializableSlab<ServiceType>,
+    pub module_types: SerializableSlab<ModuleType>,
 
     // query related
     pub queries: MappedArena<DenoQuery>,
@@ -31,8 +31,8 @@ pub struct DenoSubsystem {
     // mutation related
     pub mutations: MappedArena<DenoMutation>,
 
-    // service related
-    pub methods: SerializableSlab<ServiceMethod>,
+    // module related
+    pub methods: SerializableSlab<ModuleMethod>,
     pub scripts: SerializableSlab<Script>,
     pub interceptors: SerializableSlab<Interceptor>,
 }
@@ -53,9 +53,9 @@ impl DenoSubsystem {
     }
 
     pub fn schema_types(&self) -> Vec<TypeDefinition> {
-        self.service_types
+        self.module_types
             .iter()
-            .map(|typ| typ.1.type_definition(&self.service_types))
+            .map(|typ| typ.1.type_definition(&self.module_types))
             .collect()
     }
 }

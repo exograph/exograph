@@ -11,7 +11,7 @@ use super::{sitter_ffi, span_from_node};
 use crate::ast::ast_types::{
     AstAnnotation, AstAnnotationParams, AstArgument, AstExpr, AstField, AstFieldDefault,
     AstFieldDefaultKind, AstFieldType, AstInterceptor, AstMethod, AstModel, AstModelKind,
-    AstService, AstSystem, FieldSelection, Identifier, LogicalOp, RelationalOp, Untyped,
+    AstModule, AstSystem, FieldSelection, Identifier, LogicalOp, RelationalOp, Untyped,
 };
 use crate::error::ParserError;
 
@@ -36,10 +36,10 @@ pub fn convert_root(
             .filter(|n| n.kind() == "declaration")
             .filter_map(|c| convert_declaration_to_context(c, source, source_span))
             .collect::<Vec<_>>(),
-        services: node
+        modules: node
             .children(&mut cursor)
             .filter(|n| n.kind() == "declaration")
-            .filter_map(|c| convert_declaration_to_service(c, source, source_span, filepath))
+            .filter_map(|c| convert_declaration_to_module(c, source, source_span, filepath))
             .collect::<Vec<_>>(),
         imports: {
             let imports = node
@@ -144,18 +144,18 @@ fn convert_declaration_to_context(
     }
 }
 
-fn convert_declaration_to_service(
+fn convert_declaration_to_module(
     node: Node,
     source: &[u8],
     source_span: Span,
     filepath: &Path,
-) -> Option<AstService<Untyped>> {
+) -> Option<AstModule<Untyped>> {
     assert_eq!(node.kind(), "declaration");
     let first_child = node.child(0).unwrap();
 
-    if first_child.kind() == "service" {
-        let service = convert_service(first_child, source, source_span, filepath);
-        Some(service)
+    if first_child.kind() == "module" {
+        let module = convert_module(first_child, source, source_span, filepath);
+        Some(module)
     } else {
         None
     }
@@ -187,12 +187,12 @@ fn convert_model(
     }
 }
 
-fn convert_service(
+fn convert_module(
     node: Node,
     source: &[u8],
     source_span: Span,
     filepath: &Path,
-) -> AstService<Untyped> {
+) -> AstModule<Untyped> {
     fn matching_nodes<'a, 'b>(
         node: Node<'a>,
         cursor: &'b mut TreeCursor<'a>,
@@ -210,13 +210,13 @@ fn convert_service(
         .map(|c| convert_annotation(c, source, source_span))
         .collect::<Vec<_>>();
 
-    AstService {
+    AstModule {
         name: text_child(node, source, "name"),
         types: matching_nodes(node, &mut node.walk(), "type")
             .map(|n| convert_model(n, source, source_span, AstModelKind::Type))
             .collect(),
-        methods: matching_nodes(node, &mut node.walk(), "service_method")
-            .map(|n| convert_service_method(n, source, source_span))
+        methods: matching_nodes(node, &mut node.walk(), "module_method")
+            .map(|n| convert_module_method(n, source, source_span))
             .collect(),
         interceptors: matching_nodes(node, &mut node.walk(), "interceptor")
             .map(|n| convert_interceptor(n, source, source_span))
@@ -227,7 +227,7 @@ fn convert_service(
     }
 }
 
-fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
+fn convert_module_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
     let mut cursor = node.walk();
 
     AstMethod {
@@ -652,7 +652,7 @@ mod tests {
         parsing_test!(
             r#"
             @postgres
-            service TestService{            
+            module TestModule{            
                 type Foo {
                     @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
                     bar: Baz
@@ -667,7 +667,7 @@ mod tests {
         parsing_test!(
             r#"
             @postgres
-            service TestService{
+            module TestModule{
                 // a short comment
                 @table("concerts")
                 type Concert {

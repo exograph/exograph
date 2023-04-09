@@ -1,5 +1,5 @@
 @postgres
-service ConcertService {
+module ConcertModule {
   @table("concerts")
   @access(true)
   type Concert {

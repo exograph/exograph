@@ -14,30 +14,30 @@ module.exports = grammar({
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
       $.context,
-      $.service,
+      $.module,
       $.import
     ),
     import: $ => seq(
       "import",
       field("path", $.literal_str)
     ),
-    service: $ => seq(
+    module: $ => seq(
       repeat(field("annotation", $.annotation)),
-      "service",
+      "module",
       field("name", $.term),
-      field("body", $.service_body)
+      field("body", $.module_body)
     ),
-    service_body: $ => seq(
-      "{", 
-      repeat(field("field", $.service_field)), 
+    module_body: $ => seq(
+      "{",
+      repeat(field("field", $.module_field)),
       "}"
     ),
-    service_field: $ => choice(
+    module_field: $ => choice(
       $.type,
-      $.service_method,
+      $.module_method,
       $.interceptor
     ),
-    service_method: $ => seq(
+    module_method: $ => seq(
       repeat(field("annotation", $.annotation)),
       optional(field("is_exported", "export")),
       field("method_type", choice("query", "mutation")),
@@ -97,15 +97,15 @@ module.exports = grammar({
       field("field_type", $.field_type),
       optional(seq(
         "=",
-        field("default_value", $.field_default_value) 
+        field("default_value", $.field_default_value)
       )),
       optional(";")
     ),
     field_default_value: $ => choice(
       field("default_value_concrete", $.expression),
       seq(
-        field("default_value_fn", $.term), 
-        "(", 
+        field("default_value_fn", $.term),
+        "(",
         optional(commaSep(field("default_value_fn_args", $.expression))),
         ")"
       )

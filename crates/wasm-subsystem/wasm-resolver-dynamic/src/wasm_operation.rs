@@ -5,11 +5,11 @@ use core_plugin_interface::core_resolver::{
     validation::field::ValidatedField, QueryResponse, QueryResponseBody,
 };
 use std::collections::HashMap;
-use wasm_model::service::ServiceMethod;
+use wasm_model::module::ModuleMethod;
 use wasmtime::Val;
 
 pub struct WasmOperation<'a> {
-    pub method: &'a ServiceMethod,
+    pub method: &'a ModuleMethod,
     pub field: &'a ValidatedField,
     pub request_context: &'a RequestContext<'a>,
     pub subsystem_resolver: &'a WasmSubsystemResolver,

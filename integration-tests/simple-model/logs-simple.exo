@@ -1,5 +1,5 @@
 @postgres
-service LogPersistence {
+module LogPersistence {
   @table("logs")
   @access(true)
   type Log {

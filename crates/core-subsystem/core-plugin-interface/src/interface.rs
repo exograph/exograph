@@ -25,14 +25,14 @@ pub trait SubsystemBuilder {
     /// parameters and targets it supports ([AnnotationSpec]).
     ///
     /// One particular annotation that all plugins should declare (if nothing else)
-    /// is the plugin annotation. Plugin annotations are used to mark what subsystem a service
+    /// is the plugin annotation. Plugin annotations are used to mark what subsystem a module
     /// should be handled by.
     ///
     /// For example, in order to typecheck:
     ///
     /// ```exo
     /// @deno("example.ts")
-    /// service ExampleService {
+    /// module ExampleModule {
     ///     ...
     /// ```
     ///
@@ -42,7 +42,7 @@ pub trait SubsystemBuilder {
     /// fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
     ///     vec![
     ///         ("deno", AnnotationSpec {
-    ///             targets: &[AnnotationTarget::Service],
+    ///             targets: &[AnnotationTarget::Module],
     ///             no_params: false,
     ///             single_params: true,
     ///             mapped_params: None,
@@ -56,7 +56,7 @@ pub trait SubsystemBuilder {
     /// Build a subsystem's model, producing an [`Option<SubsystemBuild>`].
     ///
     /// - `typechecked_system`: A partially typechecked system. This contains the set of all types
-    ///                         that were successfully parsed from the user's model, ranging from `service` types
+    ///                         that were successfully parsed from the user's model, ranging from `module` types
     ///                         to composite `type`.
     /// - `base_system`: The base model system for Exograph. These are a set of common types that are
     ///                  used by all plugins, like `context`s and primitive types (`Int`, `String`, etc.)
@@ -64,7 +64,7 @@ pub trait SubsystemBuilder {
     /// Return variants:
     ///
     /// - `Ok(Some(SubsystemBuild { .. }))`: The subsystem was built successfully.
-    /// - `Ok(None)`: There were no user-declared services (no build is required).
+    /// - `Ok(None)`: There were no user-declared modules (no build is required).
     /// - `Err(ModelBuildingError { .. })`: The subsystem was not built successfully.
     fn build(
         &self,

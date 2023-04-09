@@ -4,7 +4,7 @@ context AuthContext {
 }
 
 @postgres
-service ConcertService {
+module ConcertModule {
   @table("concerts")
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
   type Concert {

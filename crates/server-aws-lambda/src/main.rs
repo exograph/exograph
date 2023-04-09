@@ -11,11 +11,11 @@ use std::sync::Arc;
 async fn main() -> Result<(), Error> {
     let system_resolver = Arc::new(server_common::init());
 
-    let service = lambda_runtime::service_fn(|event: LambdaEvent<Value>| async {
+    let module = lambda_runtime::service_fn(|event: LambdaEvent<Value>| async {
         resolve(event, system_resolver.clone()).await
     });
 
-    lambda_runtime::run(service).await?;
+    lambda_runtime::run(module).await?;
 
     Ok(())
 }

@@ -1,7 +1,7 @@
 import "../mailing_list" // An example of not specifying the .exo extension
 
 @postgres 
-service UserService {
+module UserModule {
     @access(true)
     type User {
         @pk id: Int = autoIncrement()

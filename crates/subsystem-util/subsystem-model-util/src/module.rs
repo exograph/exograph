@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use crate::access::Access;
 
 use super::{
-    operation::{ServiceMutation, ServiceQuery},
-    types::ServiceType,
+    operation::{ModuleMutation, ModuleQuery},
+    types::ModuleType,
 };
 use core_model::{
     mapped_arena::SerializableSlabIndex,
@@ -12,14 +12,14 @@ use core_model::{
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServiceMethod {
+pub struct ModuleMethod {
     pub name: String,
     pub script: SerializableSlabIndex<Script>,
-    pub operation_kind: ServiceMethodType,
+    pub operation_kind: ModuleMethodType,
     pub is_exported: bool,
     pub arguments: Vec<Argument>,
     pub access: Access,
-    pub return_type: OperationReturnType<ServiceType>,
+    pub return_type: OperationReturnType<ModuleType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -31,12 +31,12 @@ pub struct Script {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Argument {
     pub name: String,
-    pub type_id: FieldType<SerializableSlabIndex<ServiceType>>,
+    pub type_id: FieldType<SerializableSlabIndex<ModuleType>>,
     pub is_injected: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ServiceMethodType {
-    Query(SerializableSlabIndex<ServiceQuery>),
-    Mutation(SerializableSlabIndex<ServiceMutation>),
+pub enum ModuleMethodType {
+    Query(SerializableSlabIndex<ModuleQuery>),
+    Mutation(SerializableSlabIndex<ModuleMutation>),
 }

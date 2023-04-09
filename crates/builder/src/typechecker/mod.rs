@@ -4,10 +4,10 @@ use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::{
-    ast::ast_types::{AstModel, AstModelKind, AstService, AstSystem, Untyped},
+    ast::ast_types::{AstModel, AstModelKind, AstModule, AstSystem, Untyped},
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
-        typ::{Service, Type, TypecheckedSystem},
+        typ::{Module, Type, TypecheckedSystem},
         Scope,
     },
 };
@@ -24,9 +24,9 @@ mod field_default_value;
 mod field_type;
 mod logical_op;
 mod model;
+mod module;
 mod relational_op;
 mod selection;
-mod service;
 
 pub trait TypecheckInto<T> {
     fn shallow(&self) -> T;
@@ -236,22 +236,22 @@ pub fn build(
     ast_system: AstSystem<Untyped>,
 ) -> Result<TypecheckedSystem, ParserError> {
     let mut types_arena: MappedArena<Type> = MappedArena::default();
-    let mut services_arena: MappedArena<Service> = MappedArena::default();
+    let mut modules_arena: MappedArena<Module> = MappedArena::default();
     let mut annotation_env = HashMap::new();
     populate_type_env(&mut types_arena);
     populate_annotation_env(subsystem_builders, &mut annotation_env);
 
-    validate_no_duplicates(&ast_system.services, |s| &s.name, |s| s.span, "service")?;
+    validate_no_duplicates(&ast_system.modules, |s| &s.name, |s| s.span, "module")?;
 
-    let mut ast_service_types: Vec<AstModel<Untyped>> = vec![];
-    for service in ast_system.services.iter() {
-        ast_service_types.extend(service.types.clone());
-        services_arena.add(&service.name, Service(AstService::shallow(service)));
+    let mut ast_module_types: Vec<AstModel<Untyped>> = vec![];
+    for module in ast_system.modules.iter() {
+        ast_module_types.extend(module.types.clone());
+        modules_arena.add(&module.name, Module(AstModule::shallow(module)));
 
-        validate_service(service)?;
+        validate_module(module)?;
     }
 
-    let ast_types_iter = ast_system.types.iter().chain(ast_service_types.iter());
+    let ast_types_iter = ast_system.types.iter().chain(ast_module_types.iter());
     let ast_root_types = &ast_system.types;
 
     for ast_type in ast_types_iter.clone() {
@@ -278,7 +278,7 @@ pub fn build(
                 if c.kind != AstModelKind::Context {
                     errors.push(Diagnostic {
                         level: Level::Error,
-                        message: "Models and types are not permitted outside a service".to_string(),
+                        message: "Models and types are not permitted outside a module".to_string(),
                         code: Some("C000".to_string()),
                         spans: vec![SpanLabel {
                             span: ast_root_type.span,
@@ -290,7 +290,7 @@ pub fn build(
             }
         }
 
-        // Temporary workaround to avoid reporting errors twice (once here, and once in the service pass)
+        // Temporary workaround to avoid reporting errors twice (once here, and once in the module pass)
         // TODO: Remove this after fixing https://github.com/exograph/exograph/issues/596
         let mut ignore_errors = Vec::new();
 
@@ -320,18 +320,18 @@ pub fn build(
             }
         }
 
-        for ast_service in ast_system.services.iter() {
-            let mut service = services_arena
-                .get_by_key(ast_service.name.as_str())
+        for ast_module in ast_system.modules.iter() {
+            let mut module = modules_arena
+                .get_by_key(ast_module.name.as_str())
                 .unwrap()
                 .clone();
-            let Service(s) = &mut service;
+            let Module(s) = &mut module;
 
             let pass_res = s.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
             if pass_res {
-                *services_arena
-                    .get_by_key_mut(ast_service.name.as_str())
-                    .unwrap() = service;
+                *modules_arena
+                    .get_by_key_mut(ast_module.name.as_str())
+                    .unwrap() = module;
                 did_change = true;
             }
         }
@@ -342,23 +342,23 @@ pub fn build(
             } else {
                 return Ok(TypecheckedSystem {
                     types: types_arena,
-                    services: services_arena,
+                    modules: modules_arena,
                 });
             }
         }
     }
 }
 
-fn validate_service(service: &AstService<Untyped>) -> Result<(), ParserError> {
+fn validate_module(module: &AstModule<Untyped>) -> Result<(), ParserError> {
     validate_no_duplicates(
-        &service.methods,
+        &module.methods,
         |method| &method.name,
         |method| method.span,
         "operation",
     )?;
 
     validate_no_duplicates(
-        &service.types,
+        &module.types,
         |model| &model.name,
         |model| model.span,
         "model/type",
@@ -457,7 +457,7 @@ mod tests {
     fn simple() {
         let src = r#"
         @postgres
-        service UserService {
+        module UserModule {
             type User {
               @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
               doc: Doc;
@@ -481,7 +481,7 @@ mod tests {
         }
 
         @postgres
-        service DocumentService {
+        module DocumentModule {
             type Doc {
               is_public: Boolean
               @access(AuthContext.role == "ROLE_ADMIN" || self.is_public) content: String 
@@ -500,7 +500,7 @@ mod tests {
         }
 
         @postgres
-        service DocumentService {
+        module DocumentModule {
             type Doc {
               @access("ROLE_ADMIN" in AuthContext.roles) content: String 
             }
@@ -518,7 +518,7 @@ mod tests {
         }
         
         @postgres
-        service DocumentService {
+        module DocumentModule {
             @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
             type Doc {
               is_public: Boolean
@@ -534,7 +534,7 @@ mod tests {
     fn insignificant_whitespace() {
         let typical = r#"
         @postgres
-        service DocumentService {
+        module DocumentModule {
             @table("venues")
             type Venue {
                 @column("idx") @pk id: Int 
@@ -545,7 +545,7 @@ mod tests {
 
         let with_whitespace = r#"
         @postgres
-        service      DocumentService{
+        module      DocumentModule{
         @table ( "venues" )
         type    Venue
         {
@@ -567,7 +567,7 @@ mod tests {
     fn unknown_annotation() {
         let src = r#"
         @postgres
-        service UserService {
+        module UserModule {
             @asdf
             type User {
             }
@@ -581,7 +581,7 @@ mod tests {
     fn duplicate_annotation() {
         let src = r#"
         @postgres
-        service UserService {
+        module UserModule {
             @table("users")
             @table("users")
             type User {
@@ -597,7 +597,7 @@ mod tests {
         let src = r#"
         @postgres
         @postgres
-        service UserService {
+        module UserModule {
             @table("users")
             type User {
             }
@@ -610,7 +610,7 @@ mod tests {
     #[test]
     fn no_plugin_annotation() {
         let src = r#"
-        service UserService {
+        moduleerModule {
             type User {
             }
         }
@@ -630,10 +630,10 @@ mod tests {
     }
 
     #[test]
-    fn context_in_a_service() {
+    fn context_in_a_module() {
         let src_model = r#"
         @postgres
-        service UserService {
+        module UserModule {
             context AuthContext {
                 @jwt role: String
             }
@@ -647,7 +647,7 @@ mod tests {
     fn invalid_annotation_parameter_type() {
         let expected_none = r#"
         @postgres
-        service UserService {
+        module UserModule {
             type User {
                 @pk("asdf") id: Int 
             }
@@ -656,7 +656,7 @@ mod tests {
 
         let expected_single = r#"
         @postgres
-        service UserService {
+        module UserModule {
             @table
             type User {
             }
@@ -665,7 +665,7 @@ mod tests {
 
         let expected_map = r#"
         @postgres
-        service UserService {
+        module UserModule {
             type User {
                 @range(5) id: Int
             }
@@ -681,7 +681,7 @@ mod tests {
     fn duplicate_annotation_mapped_param() {
         let src = r#"
         @postgres
-        service UserService {
+        module UserModule {
             type User {
                 @range(min=5, max=10, min=3) id: Int
             }
@@ -695,7 +695,7 @@ mod tests {
     fn unknown_annotation_mapped_param() {
         let src = r#"
         @postgres
-        service UserService {
+        module UserModule {
             type User {
                 @range(min=5, maxx=10) id: Int
             }
@@ -709,7 +709,7 @@ mod tests {
     fn invalid_annotation_target() {
         let model = r#"
         @postgres
-        service UserService {
+        module UserModule {
             @pk
             type User {
             }
@@ -718,7 +718,7 @@ mod tests {
 
         let field = r#"
         @postgres
-        service UserService {
+        module UserModule {
             type User {
                 @table("asdf") id: Int
             }
@@ -733,7 +733,7 @@ mod tests {
     fn multiple_types() {
         let model = r#"
         @deno("test.ts")
-        service User {
+        module User {
             type User {
                 id: Int
             }
@@ -750,15 +750,15 @@ mod tests {
     }
 
     #[test]
-    fn multiple_same_named_services() {
+    fn multiple_same_named_modules() {
         let model = r#"
         @deno("foo.js")
-        service Foo {
+        module Foo {
             query userName(id: Int): String
         }
 
         @deno("foo.js")
-        service Foo {
+        module Foo {
             query userName(id: Int): String
         }
         "#;
@@ -770,7 +770,7 @@ mod tests {
     fn multiple_same_named_operations() {
         let model = r#"
         @deno("foo.js")
-        service Foo {
+        module Foo {
             query userName(id1: Int): String
             query userName(id2: Int): String
             query userName(id3: Int): String
@@ -784,7 +784,7 @@ mod tests {
     fn multiple_same_named_typess() {
         let model = r#"
         @deno("foo.js")
-        service Foo {
+        module Foo {
             type User {
                 id: Int
                 name: String
@@ -803,7 +803,7 @@ mod tests {
     fn multiple_same_named_types() {
         let model = r#"
         @postgres
-        service Foo {
+        module Foo {
             type User {
                 id: Int
                 name: String
@@ -822,7 +822,7 @@ mod tests {
     fn multiple_same_named_model_and_types() {
         let model = r#"
         @deno("foo.js")
-        service Foo {
+        module Foo {
             type User {
                 id: Int
                 name: String

@@ -1,6 +1,5 @@
 ---
 source: crates/builder/src/typechecker/mod.rs
-assertion_line: 530
 expression: build(src).unwrap()
 ---
 types:
@@ -181,10 +180,10 @@ types:
     Uuid:
       index: 11
       generation: ~
-services:
+modules:
   values:
     - - ~
-      - name: DocumentService
+      - name: DocumentModule
         annotations:
           annotations:
             postgres:
@@ -255,7 +254,7 @@ services:
     - ~
     - ~
   map:
-    DocumentService:
+    DocumentModule:
       index: 0
       generation: ~
 

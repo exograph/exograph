@@ -1,5 +1,5 @@
 @postgres
-service EventService {
+module EventModule {
     @table("events")
     @access(true)
     type Event {

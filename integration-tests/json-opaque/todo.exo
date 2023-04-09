@@ -1,5 +1,5 @@
 @postgres
-service TodoService {
+module TodoModule {
   @table("todos")
   @access(true)
   type Todo {
