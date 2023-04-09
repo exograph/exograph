@@ -8,7 +8,7 @@ use resolver::create_system_resolver_or_exit;
 mod logging_tracing;
 
 /// Initialize the server by:
-/// - Initializing logging and tracing
+/// - Initializing tracing
 /// - Creating the system resolver (and return it)
 ///
 /// The `[SystemResolver]` uses static resolvers for Postgres and Deno if the corresponding features
