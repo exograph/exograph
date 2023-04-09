@@ -4,7 +4,7 @@ context AuthContext {
 }
 
 @postgres
-service DocumentService {
+module DocumentModule {
   @access(query="ADMIN" in AuthContext.roles || self.public, mutation="ADMIN" in AuthContext.roles)
   type Doc {
     @pk id: Int = autoIncrement()

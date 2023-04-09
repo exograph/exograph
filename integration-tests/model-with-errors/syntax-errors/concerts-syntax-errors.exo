@@ -6,7 +6,7 @@ type Concert {
 }
 
 @postgres
-service VenueService {
+module VenueModule {
   @table("venues"
   type Venue {
     @access(Foo) @pk id: Int = autoIncrement() 

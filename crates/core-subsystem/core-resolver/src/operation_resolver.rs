@@ -35,7 +35,7 @@ impl FieldResolver<QueryResponse, SystemResolutionError, SystemResolver> for Val
         let QueryResponse { body, headers } =
             intercepted_operation.resolve(request_context).await?;
 
-        // A proceed call in an around interceptor or a service call may have returned more fields
+        // A proceed call in an around interceptor or a module call may have returned more fields
         // that necessary, so we need to filter out the fields that are not needed.
         // TODO: Validate that all requested fields are present in the response.
         let field_selected_response_body = match body {

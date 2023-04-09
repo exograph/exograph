@@ -11,9 +11,9 @@ use core_plugin_interface::core_resolver::{
 };
 
 use deno_model::{
-    service::{Argument, ServiceMethod},
+    module::{Argument, ModuleMethod},
     subsystem::DenoSubsystem,
-    types::{ServiceCompositeType, ServiceTypeKind},
+    types::{ModuleCompositeType, ModuleTypeKind},
 };
 
 use exo_deno::Arg;
@@ -22,13 +22,13 @@ use serde_json::Value;
 
 use crate::{
     deno_execution_error::DenoExecutionError, exo_execution::ExoCallbackProcessor,
-    plugin::DenoSubsystemResolver, service_access_predicate::ServiceAccessPredicate,
+    module_access_predicate::ModuleAccessPredicate, plugin::DenoSubsystemResolver,
 };
 
 use std::collections::HashMap;
 
 pub struct DenoOperation<'a> {
-    pub method: &'a ServiceMethod,
+    pub method: &'a ModuleMethod,
     pub field: &'a ValidatedField,
     pub request_context: &'a RequestContext<'a>,
     pub subsystem_resolver: &'a DenoSubsystemResolver,
@@ -37,7 +37,7 @@ pub struct DenoOperation<'a> {
 
 impl<'a> DenoOperation<'a> {
     pub async fn execute(&self) -> Result<QueryResponse, DenoExecutionError> {
-        let access_predicate = self.compute_service_access_predicate().await;
+        let access_predicate = self.compute_module_access_predicate().await;
 
         if !access_predicate {
             return Err(DenoExecutionError::Authorization);
@@ -46,13 +46,13 @@ impl<'a> DenoOperation<'a> {
         self.resolve_deno().await
     }
 
-    async fn compute_service_access_predicate(&self) -> bool {
+    async fn compute_module_access_predicate(&self) -> bool {
         let subsystem = &self.subsystem();
-        let return_type = self.method.return_type.typ(&subsystem.service_types);
+        let return_type = self.method.return_type.typ(&subsystem.module_types);
 
         let type_level_access = match &return_type.kind {
-            ServiceTypeKind::Primitive => true,
-            ServiceTypeKind::Composite(ServiceCompositeType { access, .. }) => subsystem
+            ModuleTypeKind::Primitive => true,
+            ModuleTypeKind::Composite(ModuleCompositeType { access, .. }) => subsystem
                 .solve(self.request_context, &access.value)
                 .await
                 .0
@@ -68,7 +68,7 @@ impl<'a> DenoOperation<'a> {
 
         // deny if either access check fails
         !(matches!(type_level_access, false)
-            || matches!(method_level_access, ServiceAccessPredicate::False))
+            || matches!(method_level_access, ModuleAccessPredicate::False))
     }
 
     async fn resolve_deno(&self) -> Result<QueryResponse, DenoExecutionError> {
@@ -128,10 +128,10 @@ pub async fn construct_arg_sequence<'a>(
 ) -> Result<Vec<Arg>, DenoExecutionError> {
     let mapped_args = field_args
         .iter()
-        .map(|(service_name, service_value)| {
+        .map(|(module_name, module_value)| {
             (
-                service_name.as_str().to_owned(),
-                service_value.clone().into_json().unwrap(),
+                module_name.as_str().to_owned(),
+                module_value.clone().into_json().unwrap(),
             )
         })
         .collect::<HashMap<_, _>>();
@@ -141,7 +141,7 @@ pub async fn construct_arg_sequence<'a>(
             if arg.is_injected {
                 // handle injected arguments
 
-                let arg_type = &system.service_types[*arg.type_id.innermost()];
+                let arg_type = &system.module_types[*arg.type_id.innermost()];
 
                 // what kind of injected argument is it?
                 // first check if it's a context

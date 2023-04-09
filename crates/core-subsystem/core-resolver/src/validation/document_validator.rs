@@ -667,7 +667,7 @@ mod tests {
     fn create_test_schema() -> Schema {
         let test_exo = r#"
             @postgres
-            service LogService {
+            module LogModule {
                 type Concert {
                     @pk id: Int = autoIncrement()
                     title: String

@@ -4,22 +4,22 @@ use std::{fs::File, path::Path};
 use core_plugin_interface::core_model::context_type::{ContextFieldType, ContextType};
 use core_plugin_interface::core_model_builder::builder::system_builder::BaseModelSystem;
 use core_plugin_interface::core_model_builder::{
-    ast::ast_types::{AstArgument, AstFieldType, AstModel, AstService},
+    ast::ast_types::{AstArgument, AstFieldType, AstModel, AstModule},
     error::ModelBuildingError,
     typechecker::Typed,
 };
 
 // Temporary. Eventually, we will have a published artifact (at https://deno.land/x/exograph@<version>) that contains this code.
-// Then, we will have this imported in each generated service code (currently, it suffices to just have it in the same directory as the service code).
+// Then, we will have this imported in each generated module code (currently, it suffices to just have it in the same directory as the module code).
 static EXOTIP_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 
-/// Generates a service skeleton based on service definitions in the exo file so that users can have a good starting point.
+/// Generates a module skeleton based on module definitions in the exo file so that users can have a good starting point.
 ///
 /// # Example:
-/// For a service definition in a exo file as follows:
+/// For a module definition in a exo file as follows:
 /// ```exo
 /// @deno("todo.ts")
-/// service TodoService {
+/// module TodoModule {
 ///     type Todo {
 ///       userId: Int
 ///       id: Int
@@ -57,8 +57,8 @@ static EXOTIP_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 /// ```
 /// We also generate a exograph.d.ts file that contains the Exograph interface.
 ///
-pub fn generate_service_skeleton(
-    service: &AstService<Typed>,
+pub fn generate_module_skeleton(
+    module: &AstModule<Typed>,
     base_system: &BaseModelSystem,
     out_file: impl AsRef<Path>,
 ) -> Result<(), ModelBuildingError> {
@@ -92,18 +92,18 @@ pub fn generate_service_skeleton(
 
     let mut file = std::fs::File::create(out_file)?;
 
-    // Types (defined in `service`) matter only if the target is a typescript file.
+    // Types (defined in `module`) matter only if the target is a typescript file.
     if is_typescript {
         for (_, context) in base_system.contexts.iter() {
             generate_type_skeleton(context, &mut file)?;
         }
 
-        for service_type in service.types.iter() {
-            generate_type_skeleton(service_type, &mut file)?;
+        for module_type in module.types.iter() {
+            generate_type_skeleton(module_type, &mut file)?;
         }
     }
 
-    for method in service.methods.iter() {
+    for method in module.methods.iter() {
         generate_method_skeleton(
             &method.name,
             &method.arguments,
@@ -113,7 +113,7 @@ pub fn generate_service_skeleton(
         )?;
     }
 
-    for interceptor in service.interceptors.iter() {
+    for interceptor in module.interceptors.iter() {
         generate_method_skeleton(
             &interceptor.name,
             &interceptor.arguments,

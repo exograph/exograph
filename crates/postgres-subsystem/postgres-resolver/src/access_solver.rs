@@ -274,7 +274,7 @@ mod tests {
                 }
 
                 @postgres
-                service ArticleService {
+                module ArticleModule {
                     type Article {
                         @pk id: Int = autoIncrement()
                         published: Boolean

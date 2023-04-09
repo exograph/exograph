@@ -1,5 +1,5 @@
 @postgres
-service FooDatabase {
+module FooDatabase {
     @table("foo")
     @access(true)
     type Foo {
@@ -11,7 +11,7 @@ service FooDatabase {
 }
 
 @deno("arithmetic.js")
-service MathService {
+module MathModule {
     @access(true)
     type DivisionResult {
         quotient: Int
@@ -35,7 +35,7 @@ service MathService {
 }
 
 @deno("todo.ts")
-service TodoService {
+module TodoModule {
     @access(true)
     type Todo {
         id: Int

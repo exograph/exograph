@@ -25,7 +25,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
             (
                 "postgres",
                 AnnotationSpec {
-                    targets: &[AnnotationTarget::Service],
+                    targets: &[AnnotationTarget::Module],
                     no_params: true,
                     single_params: false,
                     mapped_params: None,

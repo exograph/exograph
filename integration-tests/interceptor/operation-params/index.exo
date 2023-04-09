@@ -1,5 +1,5 @@
 @postgres
-service TodoPersistence {
+module TodoPersistence {
   @access(true)
   type Todo {
     @pk id: Int = autoIncrement()
@@ -8,7 +8,7 @@ service TodoPersistence {
 }
 
 @deno("interception.ts")
-service Interception {
+module Interception {
   @around("query *")
   interceptor captureParams(operation: Operation)
 

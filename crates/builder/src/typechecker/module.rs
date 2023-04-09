@@ -9,7 +9,7 @@ use core_model_builder::typechecker::{
 };
 
 use crate::ast::ast_types::{
-    AstArgument, AstFieldType, AstInterceptor, AstMethod, AstService, Untyped,
+    AstArgument, AstFieldType, AstInterceptor, AstMethod, AstModule, Untyped,
 };
 
 use super::{annotation_map::AnnotationMapImpl, Scope, Type, TypecheckFrom};
@@ -18,11 +18,11 @@ fn typed<U, T: TypecheckFrom<U>>(untyped: &[U]) -> Vec<T> {
     untyped.iter().map(|u| T::shallow(u)).collect()
 }
 
-impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
-    fn shallow(untyped: &AstService<Untyped>) -> AstService<Typed> {
+impl TypecheckFrom<AstModule<Untyped>> for AstModule<Typed> {
+    fn shallow(untyped: &AstModule<Untyped>) -> AstModule<Typed> {
         let annotation_map = AnnotationMap::new(&untyped.annotations);
 
-        AstService {
+        AstModule {
             name: untyped.name.clone(),
             types: typed(&untyped.types),
             methods: typed(&untyped.methods),
@@ -71,7 +71,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             > 0;
 
         let annot_changed = self.annotations.pass(
-            AnnotationTarget::Service,
+            AnnotationTarget::Module,
             type_env,
             annotation_env,
             scope,
@@ -82,7 +82,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             errors.push(Diagnostic {
                 level: Level::Error,
                 message: format!(
-                    "Service `{}` is not tagged with a subsystem annotation (which plugin should handle this?)",
+                    "Module `{}` is not tagged with a subsystem annotation (which plugin should handle this?)",
                     self.name
                 ),
                 code: Some("A000".to_string()),
@@ -94,7 +94,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             errors.push(Diagnostic {
                 level: Level::Error,
                 message: format!(
-                    "Service `{}` is tagged with multiple subsystem annotations",
+                    "Module `{}` is tagged with multiple subsystem annotations",
                     self.name
                 ),
                 code: Some("A000".to_string()),

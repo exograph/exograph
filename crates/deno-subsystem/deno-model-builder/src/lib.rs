@@ -1,5 +1,5 @@
 pub use plugin::DenoSubsystemBuilder;
 
+mod module_skeleton_generator;
 mod plugin;
-mod service_skeleton_generator;
 mod system_builder;

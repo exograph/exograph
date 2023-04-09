@@ -6,26 +6,26 @@ use core_model::type_normalization::{Operation, Parameter};
 use core_model::types::OperationReturnType;
 use serde::{Deserialize, Serialize};
 
-use super::types::ServiceType;
-use super::{argument::ArgumentParameter, service::ServiceMethod};
+use super::types::ModuleType;
+use super::{argument::ArgumentParameter, module::ModuleMethod};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServiceQuery {
+pub struct ModuleQuery {
     pub name: String,
-    pub method_id: Option<SerializableSlabIndex<ServiceMethod>>,
+    pub method_id: Option<SerializableSlabIndex<ModuleMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
-    pub return_type: OperationReturnType<ServiceType>,
+    pub return_type: OperationReturnType<ModuleType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServiceMutation {
+pub struct ModuleMutation {
     pub name: String,
-    pub method_id: Option<SerializableSlabIndex<ServiceMethod>>,
+    pub method_id: Option<SerializableSlabIndex<ModuleMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
-    pub return_type: OperationReturnType<ServiceType>,
+    pub return_type: OperationReturnType<ModuleType>,
 }
 
-impl Operation for ServiceQuery {
+impl Operation for ModuleQuery {
     fn name(&self) -> &String {
         &self.name
     }
@@ -45,7 +45,7 @@ impl Operation for ServiceQuery {
     }
 }
 
-impl Operation for ServiceMutation {
+impl Operation for ModuleMutation {
     fn name(&self) -> &String {
         &self.name
     }

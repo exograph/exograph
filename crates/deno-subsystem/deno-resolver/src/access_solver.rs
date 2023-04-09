@@ -11,48 +11,48 @@ use core_plugin_interface::{
     },
 };
 
-use deno_model::{access::ServiceAccessPrimitiveExpression, subsystem::DenoSubsystem};
+use deno_model::{access::ModuleAccessPrimitiveExpression, subsystem::DenoSubsystem};
 
 use serde_json::Value;
 
-use crate::service_access_predicate::ServiceAccessPredicate;
+use crate::module_access_predicate::ModuleAccessPredicate;
 
 // Only to get around the orphan rule while implementing AccessSolver
-pub struct ServiceAccessPredicateWrapper(pub ServiceAccessPredicate);
+pub struct ModuleAccessPredicateWrapper(pub ModuleAccessPredicate);
 
-impl std::ops::Not for ServiceAccessPredicateWrapper {
+impl std::ops::Not for ModuleAccessPredicateWrapper {
     type Output = Self;
 
     fn not(self) -> Self::Output {
-        ServiceAccessPredicateWrapper(self.0.not())
+        ModuleAccessPredicateWrapper(self.0.not())
     }
 }
 
-impl From<bool> for ServiceAccessPredicateWrapper {
+impl From<bool> for ModuleAccessPredicateWrapper {
     fn from(value: bool) -> Self {
-        ServiceAccessPredicateWrapper(ServiceAccessPredicate::from(value))
+        ModuleAccessPredicateWrapper(ModuleAccessPredicate::from(value))
     }
 }
 
-impl<'a> AccessPredicate<'a> for ServiceAccessPredicateWrapper {
+impl<'a> AccessPredicate<'a> for ModuleAccessPredicateWrapper {
     fn and(self, other: Self) -> Self {
-        ServiceAccessPredicateWrapper((self.0.into() && other.0.into()).into())
+        ModuleAccessPredicateWrapper((self.0.into() && other.0.into()).into())
     }
 
     fn or(self, other: Self) -> Self {
-        ServiceAccessPredicateWrapper((self.0.into() || other.0.into()).into())
+        ModuleAccessPredicateWrapper((self.0.into() || other.0.into()).into())
     }
 }
 
 #[async_trait]
-impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredicateWrapper>
+impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicateWrapper>
     for DenoSubsystem
 {
     async fn solve_relational_op(
         &'a self,
         request_context: &'a RequestContext<'a>,
-        op: &'a AccessRelationalOp<ServiceAccessPrimitiveExpression>,
-    ) -> ServiceAccessPredicateWrapper {
+        op: &'a AccessRelationalOp<ModuleAccessPrimitiveExpression>,
+    ) -> ModuleAccessPredicateWrapper {
         /// A primitive expression that has been reduced to a JSON value or an unresolved context
         #[derive(Debug)]
         enum SolvedPrimitiveExpression<'a> {
@@ -65,21 +65,21 @@ impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredica
         async fn reduce_primitive_expression<'a>(
             solver: &DenoSubsystem,
             request_context: &'a RequestContext<'a>,
-            expr: &'a ServiceAccessPrimitiveExpression,
+            expr: &'a ModuleAccessPrimitiveExpression,
         ) -> SolvedPrimitiveExpression<'a> {
             match expr {
-                ServiceAccessPrimitiveExpression::ContextSelection(selection) => solver
+                ModuleAccessPrimitiveExpression::ContextSelection(selection) => solver
                     .extract_context_selection(request_context, selection)
                     .await
                     .map(SolvedPrimitiveExpression::Value)
                     .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
-                ServiceAccessPrimitiveExpression::StringLiteral(value) => {
+                ModuleAccessPrimitiveExpression::StringLiteral(value) => {
                     SolvedPrimitiveExpression::Value(Value::String(value.clone()))
                 }
-                ServiceAccessPrimitiveExpression::BooleanLiteral(value) => {
+                ModuleAccessPrimitiveExpression::BooleanLiteral(value) => {
                     SolvedPrimitiveExpression::Value(Value::Bool(*value))
                 }
-                ServiceAccessPrimitiveExpression::NumberLiteral(value) => {
+                ModuleAccessPrimitiveExpression::NumberLiteral(value) => {
                     SolvedPrimitiveExpression::Value(Value::Number((*value).into()))
                 }
             }
@@ -90,12 +90,12 @@ impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredica
         let right = reduce_primitive_expression(self, request_context, right).await;
 
         /// Compare two JSON values
-        type ValuePredicateFn<'a> = fn(Value, Value) -> ServiceAccessPredicate;
+        type ValuePredicateFn<'a> = fn(Value, Value) -> ModuleAccessPredicate;
 
         // A helper to reduce code duplication in the match below
-        let helper = |unresolved_context_predicate: ServiceAccessPredicate,
+        let helper = |unresolved_context_predicate: ModuleAccessPredicate,
                       value_predicate: ValuePredicateFn<'a>|
-         -> ServiceAccessPredicate {
+         -> ModuleAccessPredicate {
             match (left, right) {
                 (SolvedPrimitiveExpression::UnresolvedContext(_), _)
                 | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => {
@@ -109,16 +109,16 @@ impl<'a> AccessSolver<'a, ServiceAccessPrimitiveExpression, ServiceAccessPredica
         };
 
         // Currently, we don't support expressions such as <, >, <=, >=, but we can easily add them later
-        ServiceAccessPredicateWrapper(match op {
-            AccessRelationalOp::Eq(..) => helper(ServiceAccessPredicate::False, |val1, val2| {
+        ModuleAccessPredicateWrapper(match op {
+            AccessRelationalOp::Eq(..) => helper(ModuleAccessPredicate::False, |val1, val2| {
                 (val1 == val2).into()
             }),
             AccessRelationalOp::Neq(_, _) => helper(
-                ServiceAccessPredicate::True, // If a context is undefined, declare the expression as a match. For example, `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
+                ModuleAccessPredicate::True, // If a context is undefined, declare the expression as a match. For example, `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
                 |val1, val2| (val1 != val2).into(),
             ),
             AccessRelationalOp::In(..) => helper(
-                ServiceAccessPredicate::False,
+                ModuleAccessPredicate::False,
                 |left_value, right_value| match right_value {
                     Value::Array(values) => values.contains(&left_value).into(),
                     _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match

@@ -1,7 +1,7 @@
 import "captcha.exo"
 
 @postgres
-service CommentsPersistence {
+module CommentsPersistence {
     @access(
         query=true,
         mutation=CaptchaContext.isValid

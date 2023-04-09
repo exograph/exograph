@@ -1,5 +1,5 @@
 @postgres
-service ConcertVenues {
+module ConcertVenues {
   @access(true)
   type Concert {
     @pk id: Int = autoIncrement()
@@ -20,7 +20,7 @@ service ConcertVenues {
 }
 
 @postgres
-service LogService {
+module LogModule {
   @access(true)
   type Log {
     @pk id: Int = autoIncrement()
@@ -29,7 +29,7 @@ service LogService {
 }
 
 @deno("log.js")
-service Logging {
+module Logging {
   @before("mutation *Concert*")
   interceptor enterConcertMutation(operation: Operation, exograph: Exograph)
 

@@ -1,5 +1,5 @@
 @postgres
-service VideoService {
+module VideoModule {
   @table("videos")
   @access(true)
   type Video {

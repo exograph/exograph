@@ -16,7 +16,7 @@ pub enum AnnotationTarget {
     Type,
     Field,
     Argument,
-    Service,
+    Module,
     Method,
     Interceptor,
 }

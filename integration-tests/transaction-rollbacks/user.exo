@@ -1,5 +1,5 @@
 @postgres
-service UserPersistence {
+module UserPersistence {
     @table("user")
     @access(true)
     type User {
@@ -10,7 +10,7 @@ service UserPersistence {
 }
 
 @deno("user.ts")
-service RegistrationService {
+module RegistrationModule {
     @access(true)
     export mutation registerUser(
         @inject exograph: Exograph,

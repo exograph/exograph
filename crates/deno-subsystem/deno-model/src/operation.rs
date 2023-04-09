@@ -1,13 +1,13 @@
 use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
-use subsystem_model_util::operation::{ServiceMutation, ServiceQuery};
+use subsystem_model_util::operation::{ModuleMutation, ModuleQuery};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DenoQuery(pub ServiceQuery);
+pub struct DenoQuery(pub ModuleQuery);
 
 impl Deref for DenoQuery {
-    type Target = ServiceQuery;
+    type Target = ModuleQuery;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -15,10 +15,10 @@ impl Deref for DenoQuery {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DenoMutation(pub ServiceMutation);
+pub struct DenoMutation(pub ModuleMutation);
 
 impl Deref for DenoMutation {
-    type Target = ServiceMutation;
+    type Target = ModuleMutation;
 
     fn deref(&self) -> &Self::Target {
         &self.0

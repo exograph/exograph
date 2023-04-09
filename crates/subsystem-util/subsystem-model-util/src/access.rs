@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 /// Access specification for a model
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Access {
-    pub value: AccessPredicateExpression<ServiceAccessPrimitiveExpression>,
+    pub value: AccessPredicateExpression<ModuleAccessPrimitiveExpression>,
 }
 
 impl Access {
@@ -19,7 +19,7 @@ impl Access {
 /// Used as sides of `AccessRelationalExpression` to form more complex expressions
 /// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ServiceAccessPrimitiveExpression {
+pub enum ModuleAccessPrimitiveExpression {
     ContextSelection(AccessContextSelection), // for example, AuthContext.role
     StringLiteral(String),                    // for example, "ROLE_ADMIN"
     BooleanLiteral(bool),                     // for example, true

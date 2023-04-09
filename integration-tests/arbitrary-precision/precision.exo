@@ -1,5 +1,5 @@
 @postgres
-service FooService {
+module FooModule {
   @table("foo")
   @access(true)
   type Foo {

@@ -21,7 +21,7 @@ use core_plugin_interface::{
         builder::resolved_builder::AnnotationMapHelper,
         error::ModelBuildingError,
         typechecker::{
-            typ::{Service, Type, TypecheckedSystem},
+            typ::{Module, Type, TypecheckedSystem},
             Typed,
         },
     },
@@ -244,10 +244,10 @@ fn resolve(
         }
     }
 
-    for (_, Service(service)) in typechecked_system.services.iter() {
+    for (_, Module(module)) in typechecked_system.modules.iter() {
         // Process each persistent type to create a PostgresType
-        if service.annotations.get("postgres").is_some() {
-            for typ in service.types.iter() {
+        if module.annotations.get("postgres").is_some() {
+            for typ in module.types.iter() {
                 if let Some(Type::Composite(ct)) = typechecked_system.types.get_by_key(&typ.name) {
                     if ct.kind == AstModelKind::Type {
                         let plural_annotation_value = ct
@@ -964,7 +964,7 @@ mod tests {
     fn with_annotations() {
         let src = r#"
         @postgres
-        service ConcertService {
+        module ConcertModule {
             @table("custom_concerts")
             type Concert {
               @pk @dbtype("bigint") @column("custom_id") id: Int = autoIncrement() 
@@ -987,7 +987,7 @@ mod tests {
         }
 
         @deno("bar.js")
-        service Foo {
+        module Foo {
             export query qux(@inject exograph: Exograph, x: Int, y: String): Int
             mutation quuz(): String
         }
@@ -1007,7 +1007,7 @@ mod tests {
         // Note the swapped order between @pk and @dbtype to assert that our parsing logic permits any order
         let src = r#"
         @postgres
-        service ConcertService {
+        module ConcertModule {
             type Concert {
                 @dbtype("BIGINT") @pk  id: Int = autoIncrement() 
               title: String 
@@ -1035,7 +1035,7 @@ mod tests {
     fn with_optional_fields() {
         let src = r#"
         @postgres
-        service ConcertService {
+        module ConcertModule {
             type Concert {
               @pk id: Int = autoIncrement() 
               title: String 
@@ -1067,7 +1067,7 @@ mod tests {
         }
         
         @postgres
-        service ConcertService {
+        module ConcertModule {
             @access(AuthContext.role == "ROLE_ADMIN" || self.public)
             type Concert {
               @pk id: Int = autoIncrement() 
@@ -1090,7 +1090,7 @@ mod tests {
         }
 
         @deno("logger.js")
-        service Logger {
+        module Logger {
             @access(AuthContext.role == "ROLE_ADMIN")
             export query log(@inject exograph: Exograph): Boolean
         }
@@ -1113,7 +1113,7 @@ mod tests {
         }
         
         @postgres
-        service ConcertService {
+        module ConcertModule {
             @access(AuthContext.role == "ROLE_ADMIN" || self.public)
             type Concert {
               @pk id: Int = autoIncrement() 
@@ -1134,7 +1134,7 @@ mod tests {
     fn field_name_variations() {
         let src = r#"
         @postgres
-        service EntityService {
+        module EntityModule {
             type Entity {
               @pk _id: Int = autoIncrement()
               title_main: String
@@ -1156,7 +1156,7 @@ mod tests {
     fn column_names_for_non_standard_relational_field_names() {
         let src = r#"
         @postgres
-        service ConcertService {
+        module ConcertModule {
             type Concert {
               @pk id: Int = autoIncrement()
               title: String
@@ -1184,7 +1184,7 @@ mod tests {
     fn with_multiple_matching_field_no_column_annotation() {
         let src = r#"
         @postgres
-        service ConcertService {
+        module ConcertModule {
             type Concert {
                 @pk id: Int = autoIncrement() 
                 title: String 
@@ -1214,7 +1214,7 @@ mod tests {
     fn with_multiple_matching_field_with_column_annotation() {
         let src = r#"
         @postgres
-        service ConcertService {
+        module ConcertModule {
             type Concert {
                 @pk id: Int = autoIncrement() 
                 title: String  
@@ -1242,7 +1242,7 @@ mod tests {
     fn with_camel_case_model_and_fields() {
         let src = r#"
         @postgres
-        service ConcertService {
+        module ConcertModule {
             type ConcertInfo {
                 @pk concertId: Int = autoIncrement() 
                 mainTitle: String 

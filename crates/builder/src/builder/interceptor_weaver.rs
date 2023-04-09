@@ -102,10 +102,10 @@ fn matches_str(expr: &str, operation_name: &str, operation_kind: OperationKind) 
 /// - an around interceptor defined earlier has a higher priority.
 /// - all before/after interceptors defined earlier than an around interceptor execute by the time the around interceptor is executed.
 ///
-/// Note that even for intra-service interceptors, this ides still holds true. All we need a preprocessing step to flatten the interceptors
-/// to put the higher priority service's interceptors first.
+/// Note that even for intra-module interceptors, this ides still holds true. All we need a preprocessing step to flatten the interceptors
+/// to put the higher priority module's interceptors first.
 ///
-/// Example: A service is set up with multiple interceptors in the following order (and identical
+/// Example: A module is set up with multiple interceptors in the following order (and identical
 /// interceptor expressions):
 ///
 /// ```ignore
