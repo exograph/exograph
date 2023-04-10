@@ -1,26 +1,27 @@
 use std::{
     env,
-    path::PathBuf,
     sync::atomic::{AtomicBool, Ordering},
-    time::SystemTime,
 };
 
-use anyhow::{anyhow, Result};
-use clap::{Arg, ArgAction, Command};
-use commands::{dev::DevCommand, test::TestCommand, yolo::YoloCommand};
+use anyhow::Result;
 use tokio::sync::{
     broadcast::{Receiver, Sender},
     Mutex,
 };
 
-use crate::commands::{
-    build::BuildCommand, deploy::fly::DeployFlyCommand, new::NewCommand, schema,
+use commands::{
+    build::BuildCommandDefinition,
+    command::{CommandDefinition, SubcommandDefinition},
+    deploy,
+    dev::DevCommandDefinition,
+    new::NewCommandDefinition,
+    schema,
+    test::TestCommandDefinition,
+    yolo::YoloCommandDefinition,
 };
 
 mod commands;
-pub(crate) mod util;
-
-const DEFAULT_MODEL_FILE: &str = "index.exo";
+mod util;
 
 lazy_static::lazy_static! {
     pub static ref SIGINT: (Sender<()>, Mutex<Receiver<()>>) = {
@@ -31,148 +32,7 @@ lazy_static::lazy_static! {
 
 pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 
-fn model_file_arg() -> Arg {
-    Arg::new("model")
-        .help("The path to the Exograph model file.")
-        .hide_default_value(false)
-        .required(false)
-        .value_parser(clap::value_parser!(PathBuf))
-        .default_value(DEFAULT_MODEL_FILE)
-        .index(1)
-}
-
-fn new_project_arg() -> Arg {
-    Arg::new("path")
-        .help("Create a new project")
-        .long_help("Create a new project in the given path.")
-        .required(true)
-        .value_parser(clap::value_parser!(PathBuf))
-        .index(1)
-}
-
-fn database_arg() -> Arg {
-    Arg::new("database")
-        .help("The PostgreSQL database connection string to use. If not specified, the program will attempt to read it from the environment (`EXO_POSTGRES_URL`).")
-        .long("database")
-        .required(false)
-}
-
-fn output_arg() -> Arg {
-    Arg::new("output")
-        .help("Output file path")
-        .help("If specified, the output will be written to this file path instead of stdout.")
-        .short('o')
-        .long("output")
-        .required(false)
-        .value_parser(clap::value_parser!(PathBuf))
-        .num_args(1)
-}
-
-fn port_arg() -> Arg {
-    Arg::new("port")
-        .help("Listen port")
-        .long_help("The port the server should listen for HTTP requests on.")
-        .short('p')
-        .long("port")
-        .required(false)
-        .value_parser(clap::value_parser!(u32))
-        .num_args(1)
-}
-
-fn schema_command() -> Command {
-    Command::new("schema")
-    .about("Create, migrate, import, and verify database schema")
-    .subcommand_required(true)
-    .arg_required_else_help(true)
-    .subcommand(
-        Command::new("create")
-            .about("Create a database schema from a Exograph model")
-            .arg(model_file_arg())
-            .arg(output_arg())
-    )
-    .subcommand(
-        Command::new("verify")
-            .about("Verify that the database schema is compatible with a Exograph model")
-            .arg(model_file_arg())
-            .arg(database_arg())
-    )
-    .subcommand(
-        Command::new("migrate")
-            .about("Produces a SQL migration script for a Exograph model and the specified database")
-            .arg(model_file_arg())
-            .arg(database_arg())
-            .arg(output_arg())
-            .arg(
-                Arg::new("allow-destructive-changes")
-                    .help("By default, destructive changes in the model file are commented out. If specified, this option will uncomment such changes.")
-                    .long("allow-destructive-changes")
-                    .required(false)
-                    .num_args(0),
-            )
-
-    )
-    .subcommand(
-        Command::new("import")
-            .about("Create exograph model file based on a database schema")
-            .arg(database_arg())
-            .arg(output_arg()),
-    )
-}
-
-fn deploy_command() -> Command {
-    Command::new("deploy")
-        .about("Deploy to production server")    
-        .subcommand_required(true)
-        .arg_required_else_help(true)
-        .subcommand(
-            Command::new("fly")
-                .about("Deploy to Fly.io")
-                .arg(model_file_arg())
-                .arg(
-                    Arg::new("app-name")
-                        .help("The name of the Fly.io application to deploy to")
-                        .short('a')
-                        .long("app")
-                        .required(true)
-                        .num_args(1),
-                )
-                .arg(
-                    Arg::new("version")
-                        .help("The version of application (Dockerfile will use this as tag)")
-                        .short('v')
-                        .long("version")
-                        .required(false)
-                        .default_value("latest")
-                        .num_args(1),
-                )
-                .arg(
-                    Arg::new("env")
-                        .help("Environment variables to pass to the application (e.g. -e KEY=VALUE). May be specified multiple times.")
-                        .action(ArgAction::Append) // To allow multiple --env flags ("-e k1=v1 -e k2=v2")
-                        .short('e')
-                        .long("env")
-                        .num_args(1),
-                )
-                .arg(
-                    Arg::new("env-file").help("Path to a file containing environment variables to pass to the application")
-                        .long("env-file")
-                        .required(false)
-                        .value_parser(clap::value_parser!(PathBuf))
-                        .num_args(1),
-                )
-                .arg(
-                    Arg::new("use-fly-db")
-                        .help("Use database provided by Fly.io")
-                        .required(false)
-                        .long("use-fly-db")
-                        .num_args(0),
-                ),
-        )
-}
-
 fn main() -> Result<()> {
-    let system_start_time = SystemTime::now();
-
     // register a sigint handler
     ctrlc::set_handler(move || {
         // set SIGINT event when receiving signal
@@ -187,130 +47,25 @@ fn main() -> Result<()> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let matches = Command::new("Exograph")
-        .version(env!("CARGO_PKG_VERSION"))
-        .disable_help_subcommand(true)
-        .subcommand_required(true)
-        .arg_required_else_help(true)
-        .subcommand(
-            Command::new("build")
-                .about("Build exograph server binary")
-                .arg(model_file_arg()),
-        ).subcommand(
-            Command::new("new")
-                .about("Create a new Exograph project")
-                .arg(new_project_arg()))
-        .subcommand(
-            schema_command()
-        )
-        .subcommand(
-            Command::new("dev")
-                .about("Run exograph server in development mode")
-                .arg(model_file_arg())
-                .arg(port_arg()),
-        )
-        .subcommand(
-            deploy_command()
-        )
-        .subcommand(
-            Command::new("test")
-                .about("Perform integration tests")
-                .arg(
-                    Arg::new("dir")
-                        .help("The directory containing integration tests.")
-                        .value_parser(clap::value_parser!(PathBuf))
-                        .required(true)
-                        .index(1),
-                )
-                .arg(
-                    Arg::new("pattern")
-                        .help("Glob pattern to choose which tests to run.")
-                        .required(false)
-                        .index(2),
-                )
-                .arg(
-                    Arg::new("run-introspection-tests")
-                        .help("When specified, run standard introspection tests on the tests' model files")
-                        .required(false)
-                        .long("run-introspection-tests").num_args(0)
-                )
-        )
-        .subcommand(
-            Command::new("yolo")
-                .about("Run local exograph server with a temporary database")
-                .arg(model_file_arg())
-                .arg(port_arg()),
-        )
-        .get_matches();
+    let subcommand_definition = SubcommandDefinition::new(
+        "Exograph",
+        "Command line interface for Exograph",
+        vec![
+            Box::new(NewCommandDefinition {}),
+            Box::new(YoloCommandDefinition {}),
+            Box::new(DevCommandDefinition {}),
+            Box::new(BuildCommandDefinition {}),
+            Box::new(deploy::command_definition()),
+            Box::new(schema::command_definition()),
+            Box::new(TestCommandDefinition {}),
+        ],
+    );
 
-    fn get<T: Clone + Send + Sync + 'static>(
-        matches: &clap::ArgMatches,
-        arg_id: &str,
-    ) -> Option<T> {
-        matches.get_one::<T>(arg_id).cloned()
-    }
+    let command = subcommand_definition
+        .command()
+        .version(env!("CARGO_PKG_VERSION"));
 
-    fn get_required<T: Clone + Send + Sync + 'static>(
-        matches: &clap::ArgMatches,
-        arg_id: &str,
-    ) -> Result<T> {
-        get(matches, arg_id).ok_or_else(|| anyhow!("Required argument `{}` is not present", arg_id))
-    }
+    let matches = command.get_matches();
 
-    // Map subcommands with args
-    let command: Box<dyn crate::commands::command::Command> = match matches.subcommand() {
-        Some(("build", matches)) => Box::new(BuildCommand {
-            model: get_required(matches, "model")?,
-        }),
-        Some(("new", matches)) => Box::new(NewCommand {
-            path: get_required(matches, "path")?,
-        }),
-        Some(("schema", matches)) => match matches.subcommand() {
-            Some(("create", matches)) => Box::new(schema::create::CreateCommand {
-                model: get_required(matches, "model")?,
-                output: get(matches, "output"),
-            }),
-            Some(("verify", matches)) => Box::new(schema::verify::VerifyCommand {
-                model: get_required(matches, "model")?,
-                database: get(matches, "database"),
-            }),
-            Some(("import", matches)) => Box::new(schema::import::ImportCommand {
-                output: get(matches, "output"),
-            }),
-            Some(("migrate", matches)) => Box::new(schema::migrate::MigrateCommand {
-                model: get_required(matches, "model")?,
-                database: get(matches, "database"),
-                output: get(matches, "output"),
-                allow_destructive_changes: matches.get_flag("allow-destructive-changes"),
-            }),
-            _ => panic!("Unhandled command name"),
-        },
-        Some(("dev", matches)) => Box::new(DevCommand {
-            model: get_required(matches, "model")?,
-            port: get(matches, "port"),
-        }),
-        Some(("deploy", matches)) => match matches.subcommand() {
-            Some(("fly", matches)) => Box::new(DeployFlyCommand {
-                model: get_required(matches, "model")?,
-                app_name: get_required(matches, "app-name")?,
-                version: get_required(matches, "version")?,
-                envs: matches.get_many("env").map(|env| env.cloned().collect()),
-                env_file: get(matches, "env-file"),
-                use_fly_db: matches.get_flag("use-fly-db"),
-            }),
-            _ => panic!("Unsupported provider"),
-        },
-        Some(("test", matches)) => Box::new(TestCommand {
-            dir: get_required(matches, "dir")?,
-            pattern: get(matches, "pattern"),
-            run_introspection_tests: matches.contains_id("run-introspection-tests"),
-        }),
-        Some(("yolo", matches)) => Box::new(YoloCommand {
-            model: get_required(matches, "model")?,
-            port: get(matches, "port"),
-        }),
-        _ => panic!("Unhandled command name"),
-    };
-
-    command.run(Some(system_start_time))
+    subcommand_definition.execute(&matches)
 }

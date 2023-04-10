@@ -1,27 +1,33 @@
 use anyhow::{anyhow, Result};
+use clap::{ArgMatches, Command};
 use futures::FutureExt;
 use std::{
     io::{stdin, stdout, Write},
     path::PathBuf,
-    time::SystemTime,
 };
 use tokio::runtime::Runtime;
 
+use super::command::{get, get_required, model_file_arg, port_arg, CommandDefinition};
 use crate::{
     commands::schema::verify::{verify, VerificationErrors},
     util::watcher,
 };
 
-use super::command::Command;
+pub struct DevCommandDefinition {}
 
-/// Run local exograph server
-pub struct DevCommand {
-    pub model: PathBuf,
-    pub port: Option<u32>,
-}
+impl CommandDefinition for DevCommandDefinition {
+    fn command(&self) -> clap::Command {
+        Command::new("dev")
+            .about("Run exograph server in development mode")
+            .arg(model_file_arg())
+            .arg(port_arg())
+    }
 
-impl Command for DevCommand {
-    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
+    /// Run local exograph server
+    fn execute(&self, matches: &ArgMatches) -> Result<()> {
+        let model: PathBuf = get_required(matches, "model")?;
+        let port: Option<u32> = get(matches, "port");
+
         println!(
             "{}",
             ansi_term::Color::Purple
@@ -34,11 +40,11 @@ impl Command for DevCommand {
 
         let rt = Runtime::new()?;
 
-        rt.block_on(watcher::start_watcher(&self.model, self.port, || async {
+        rt.block_on(watcher::start_watcher(&model, port, || async {
             println!("{}", ansi_term::Color::Blue.bold().paint("\nVerifying new model..."));
 
             loop {
-                let verification_result = verify(&self.model, None).await;
+                let verification_result = verify(&model, None).await;
 
                 match verification_result {
                     Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
