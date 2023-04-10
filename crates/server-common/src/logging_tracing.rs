@@ -1,35 +1,40 @@
-/// # Tracing/Telemetry configuration setup.
-///
-/// The server code is instrumented with Rust's `tracing` frawework.
-///
-/// Calling the `init` function will initialize a global tracing subscriber based on the values of
-/// the `EXO_LOG` environment variable which follows the same conventions as `RUST_LOG`. This will
-/// provide console logging.
-///
-/// ## OpenTelemetry
-///
-/// The system can also export tracing data to an OpenTelemetry compatible system using
-/// [standard environment variables](https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/)
-///
-/// These include:
-///
-/// - `OTEL_SERVICE_NAME` to set the name of your service (defaults to "Exograph").
-/// - `OTEL_EXPORTER_OTLP_ENDPOINT` to set the endpoint to export trace data to.
-/// - `OTEL_EXPORTER_OTLP_PROTOCOL` the OTLP version used. Can be `grpc` (the default) or `http/protobuf`.
-/// - `OTEL_EXPORTER_OTLP_HEADERS` allows you to set custom headers such as authentication tokens.
-///
-/// At least one `OTEL_` prefixed variable must be set to enable OpenTelemetry.
-///
-/// To use Jaeger, a local server can be started using docker:
-///
-/// ```shell
-/// $ docker run -d --name jaeger -e COLLECTOR_OTLP_ENABLED=true -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:latest
-/// ```
-///
+//! # Tracing/Telemetry configuration setup.
+//!
+//! The server code is instrumented with Rust's `tracing` frawework.
+//!
+//! Calling the `init` function will initialize a global tracing subscriber based on the values of
+//! the `EXO_LOG` environment variable which follows the same conventions as `RUST_LOG`. This will
+//! provide console logging.
+//!
+//! ## OpenTelemetry
+//!
+//! The system can also export tracing data to an OpenTelemetry compatible system using
+//! [standard environment variables](https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/)
+//!
+//! These include:
+//!
+//! - `OTEL_SERVICE_NAME` to set the name of your service.
+//! - `OTEL_EXPORTER_OTLP_ENDPOINT` to set the endpoint to export trace data to.
+//! - `OTEL_EXPORTER_OTLP_PROTOCOL` the OTLP version used. Can be `grpc` (the default) or `http/protobuf`.
+//! - `OTEL_EXPORTER_OTLP_HEADERS` allows you to set custom headers such as authentication tokens.
+//!
+//! At least one `OTEL_` prefixed variable must be set to enable OpenTelemetry.
+//!
+//! To use Jaeger, a local server can be started using docker:
+//!
+//! ```shell
+//! $ docker run -d --name jaeger -e COLLECTOR_OTLP_ENABLED=true -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:latest
+//! ```
+//!
 use opentelemetry_otlp::WithExportConfig;
 use std::str::FromStr;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
 
+/// Initialize the tracing subscriber.
+///
+/// Creates a `tracing_subscriber::fmt` layer by default and adds a `tracing_opentelemetry`
+/// layer if OpenTelemetry, exporting traces with `opentelemetry_otlp` if any OpenTelemetry
+/// environment variables are set.
 pub(super) fn init() {
     let fmt_layer = tracing_subscriber::fmt::layer().compact();
     let telemetry_layer =
@@ -109,7 +114,8 @@ fn parse_otlp_headers_from_env() -> Vec<(String, String)> {
     let mut headers = Vec::new();
 
     if let Ok(hdrs) = std::env::var("OTEL_EXPORTER_OTLP_HEADERS") {
-        hdrs.split(',')
+        hdrs.split_terminator(',')
+            .filter(|h| !h.is_empty())
             .map(|header| {
                 header
                     .split_once('=')
