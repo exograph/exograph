@@ -1,32 +1,41 @@
-//! Subcommands under the `schema` subcommand
-
 use anyhow::{anyhow, Result};
 use builder::error::ParserError;
+use clap::Command;
 use exo_sql::{database_error::DatabaseError, schema::spec::SchemaSpec};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
-    time::SystemTime,
 };
 
-use crate::{commands::command::Command, util::open_database};
+use crate::{
+    commands::command::{database_arg, get, get_required, model_file_arg, CommandDefinition},
+    util::open_database,
+};
 
 use super::util;
 
-/// Verify that a schema is compatible with a exograph model
-pub struct VerifyCommand {
-    pub model: PathBuf,
-    pub database: Option<String>,
-}
+pub(super) struct VerifyCommandDefinition {}
 
-impl Command for VerifyCommand {
-    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
+impl CommandDefinition for VerifyCommandDefinition {
+    fn command(&self) -> clap::Command {
+        Command::new("verify")
+            .about("Verify that the database schema is compatible with a Exograph model")
+            .arg(model_file_arg())
+            .arg(database_arg())
+    }
+
+    /// Verify that a schema is compatible with a exograph model
+
+    fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+        let model: PathBuf = get_required(matches, "model")?;
+        let database: Option<String> = get(matches, "database");
+
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_io()
             .build()
             .unwrap();
 
-        let verification_result = rt.block_on(verify(&self.model, self.database.as_deref()));
+        let verification_result = rt.block_on(verify(&model, database.as_deref()));
 
         match &verification_result {
             Ok(()) => eprintln!("This model is compatible with the database schema!"),

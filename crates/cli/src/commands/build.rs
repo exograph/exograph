@@ -1,24 +1,32 @@
 use anyhow::{anyhow, Result};
 use builder::error::ParserError;
+use clap::{ArgMatches, Command};
 
 use std::error::Error;
 use std::ffi::OsStr;
 use std::fmt::Display;
 use std::io::Write;
 use std::path::Path;
+use std::path::PathBuf;
 use std::{fs::File, io::BufWriter};
-use std::{path::PathBuf, time::SystemTime};
 
-use super::command::Command;
+use super::command::{get_required, model_file_arg, CommandDefinition};
 
-/// Build exograph server binary
-pub struct BuildCommand {
-    pub model: PathBuf,
-}
+pub struct BuildCommandDefinition {}
 
-impl Command for BuildCommand {
-    fn run(&self, system_start_time: Option<SystemTime>) -> Result<()> {
-        Ok(build(&self.model, system_start_time, true)?)
+impl CommandDefinition for BuildCommandDefinition {
+    fn command(&self) -> clap::Command {
+        Command::new("build")
+            .about("Build exograph server binary")
+            .arg(model_file_arg())
+    }
+
+    /// Build exograph server binary
+    fn execute(&self, matches: &ArgMatches) -> Result<()> {
+        let model: PathBuf = get_required(matches, "model")?;
+        build(&model, true)?;
+
+        Ok(())
     }
 }
 
@@ -47,11 +55,7 @@ impl Display for BuildError {
 /// * `print_message` - if true, it will print a message indicating the time it took to build the model. We need this
 ///                        to avoid printing the message when building the model through `exo serve`, where we don't want to print the message
 ///                        upon detecting changes
-pub(crate) fn build(
-    model: &Path,
-    system_start_time: Option<SystemTime>,
-    print_message: bool,
-) -> Result<(), BuildError> {
+pub(crate) fn build(model: &Path, print_message: bool) -> Result<(), BuildError> {
     let serialized_system = builder::build_system(model).map_err(BuildError::ParserError)?;
 
     let exo_ir_file_name = {
@@ -71,23 +75,7 @@ pub(crate) fn build(
     out_file.write_all(&serialized_system).unwrap();
 
     if print_message {
-        match system_start_time {
-            Some(system_start_time) => {
-                let elapsed = system_start_time
-                    .elapsed()
-                    .map_err(|e| BuildError::UnrecoverableError(anyhow!(e)))?
-                    .as_millis();
-                println!(
-                    "Exograph IR file '{}' created in {} milliseconds",
-                    exo_ir_file_name.display(),
-                    elapsed
-                );
-            }
-            None => {
-                println!("Exograph IR file {} created", exo_ir_file_name.display());
-            }
-        }
-
+        println!("Exograph IR file {} created", exo_ir_file_name.display());
         println!(
             "You can start the server with using the 'exo-server {}' command",
             exo_ir_file_name.display()

@@ -1,25 +1,30 @@
-//! Subcommands under the `model` subcommand
-
 use anyhow::Result;
+use clap::Command;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::{schema::spec::SchemaSpec, Database};
-use std::{io::Write, path::PathBuf, time::SystemTime};
+use std::{io::Write, path::PathBuf};
 
 use heck::ToUpperCamelCase;
 
 use exo_sql::schema::issue::Issue;
 use exo_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
-use crate::commands::command::Command;
+use crate::commands::command::{database_arg, get, output_arg, CommandDefinition};
 use crate::util::open_file_for_output;
 
-/// Create a exograph model file based on a database schema
-pub struct ImportCommand {
-    pub output: Option<PathBuf>,
-}
+pub(super) struct ImportCommandDefinition {}
 
-impl Command for ImportCommand {
-    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
+impl CommandDefinition for ImportCommandDefinition {
+    fn command(&self) -> clap::Command {
+        Command::new("import")
+            .about("Create exograph model file based on a database schema")
+            .arg(database_arg())
+            .arg(output_arg())
+    }
+
+    /// Create a exograph model file based on a database schema
+    fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+        let output: Option<PathBuf> = get(matches, "output");
         // Create runtime and make the rest of this an async block
         // (then block on it)
         let rt = tokio::runtime::Builder::new_current_thread()
@@ -34,14 +39,14 @@ impl Command for ImportCommand {
         issues.append(&mut schema.issues);
         issues.append(&mut model.issues);
 
-        let mut buffer: Box<dyn Write> = open_file_for_output(self.output.as_deref())?;
+        let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
         buffer.write_all(schema.value.to_model().value.as_bytes())?;
 
         for issue in &issues {
             eprintln!("{issue}");
         }
 
-        if let Some(output) = &self.output {
+        if let Some(output) = &output {
             eprintln!("\nExograph model written to `{}`", output.display());
         }
 

@@ -1,67 +1,69 @@
+use anyhow::{anyhow, Context, Result};
+use clap::{ArgMatches, Command};
 use std::{
     fs::OpenOptions,
     io::{BufRead, BufReader, Write},
     path::PathBuf,
     process::{Child, Stdio},
     sync::atomic::Ordering,
-    time::SystemTime,
 };
 
 use crate::util::watcher;
 
-use super::{command::Command, schema::migration_helper::migration_statements};
-use anyhow::{anyhow, Context, Result};
+use super::{
+    command::{get, get_required, model_file_arg, port_arg, CommandDefinition},
+    schema::migration_helper::migration_statements,
+};
 use exo_sql::{schema::spec::SchemaSpec, Database};
 use futures::FutureExt;
 use rand::Rng;
 use tempfile::TempDir;
 
-fn generate_random_string() -> String {
-    rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(15)
-        .map(char::from)
-        .map(|c| c.to_ascii_lowercase())
-        .collect()
+pub struct YoloCommandDefinition {}
+
+impl CommandDefinition for YoloCommandDefinition {
+    fn command(&self) -> clap::Command {
+        Command::new("yolo")
+            .about("Run local exograph server with a temporary database")
+            .arg(model_file_arg())
+            .arg(port_arg())
+    }
+
+    /// Run local exograph server with a temporary database
+    fn execute(&self, matches: &ArgMatches) -> Result<()> {
+        let model: PathBuf = get_required(matches, "model")?;
+        let port: Option<u32> = get(matches, "port");
+
+        run(&model, port)
+    }
 }
 
-/// Run local exograph server with a temporary database
-pub struct YoloCommand {
-    pub model: PathBuf,
-    pub port: Option<u32>,
-}
+fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .build()
+        .unwrap();
 
-impl Command for YoloCommand {
-    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_io()
-            .build()
-            .unwrap();
+    // make sure we do not exit on SIGINT
+    // we spawn containers that need to be cleaned up through drop(),
+    // which does not run on a normal SIGINT exit
+    crate::EXIT_ON_SIGINT.store(false, Ordering::SeqCst);
 
-        // make sure we do not exit on SIGINT
-        // we spawn containers that need to be cleaned up through drop(),
-        // which does not run on a normal SIGINT exit
-        crate::EXIT_ON_SIGINT.store(false, Ordering::SeqCst);
+    // create postgresql
+    let db: Box<dyn PostgreSQLInstance + Send + Sync> = if LocalPostgreSQL::check_availability()
+        .is_ok()
+    {
+        println!("Launching PostgreSQL locally...");
+        Box::new(LocalPostgreSQL::new().context("While trying to instantiate local PostgreSQL")?)
+    } else {
+        println!("Launching PostgreSQL in Docker...");
+        Box::new(DockerPostgreSQL::new().context("While trying to instantiate PostgreSQL docker")?)
+    };
 
-        // create postgresql
-        let db: Box<dyn PostgreSQLInstance + Send + Sync> = if LocalPostgreSQL::check_availability()
-            .is_ok()
-        {
-            println!("Launching PostgreSQL locally...");
-            Box::new(
-                LocalPostgreSQL::new().context("While trying to instantiate local PostgreSQL")?,
-            )
-        } else {
-            println!("Launching PostgreSQL in Docker...");
-            Box::new(
-                DockerPostgreSQL::new().context("While trying to instantiate PostgreSQL docker")?,
-            )
-        };
+    let jwt_secret = generate_random_string();
 
-        let jwt_secret = generate_random_string();
-
-        let prestart_callback = || {
-            async {
+    let prestart_callback = || {
+        async {
             // set envs for server
             std::env::set_var("EXO_POSTGRES_URL", &db.url());
             std::env::remove_var("EXO_POSTGRES_USER");
@@ -86,7 +88,7 @@ impl Command for YoloCommand {
                 println!("{issue}");
             }
 
-            let new_postgres_subsystem = crate::schema::util::create_postgres_system(&self.model)?;
+            let new_postgres_subsystem = super::schema::util::create_postgres_system(model)?;
             let new_schema =
                 SchemaSpec::from_model(new_postgres_subsystem.tables.into_iter().collect());
 
@@ -115,7 +117,7 @@ impl Command for YoloCommand {
                 match result {
                     // rebuild docker
                     Ok("r") => {
-                        self.run(_system_start_time)?;
+                        run(model, port)?;
                     }
 
                     // pause for manual repair
@@ -145,14 +147,18 @@ impl Command for YoloCommand {
 
             Ok(())
         }.boxed()
-        };
+    };
 
-        rt.block_on(watcher::start_watcher(
-            &self.model,
-            self.port,
-            prestart_callback,
-        ))
-    }
+    rt.block_on(watcher::start_watcher(model, port, prestart_callback))
+}
+
+fn generate_random_string() -> String {
+    rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(15)
+        .map(char::from)
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
 }
 
 pub trait PostgreSQLInstance {
