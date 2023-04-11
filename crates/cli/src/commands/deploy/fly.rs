@@ -68,16 +68,16 @@ impl CommandDefinition for FlyCommandDefinition {
     /// To avoid clobbering existing files, this command will create a `fly` directory in the same
     /// directory as the model file, and put the `fly.toml` and `Dockerfile` in there.
     fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        let model = get_required(matches, "model")?;
-        let app_name = get_required(matches, "app-name")?;
-        let version = get_required::<Option<_>>(matches, "version")?;
-        let envs = matches.get_many("env").map(|env| env.cloned().collect());
-        let env_file = get(matches, "env-file");
-        let use_fly_db = matches.get_flag("use-fly-db");
+        let model: PathBuf = get_required(matches, "model")?;
+        let app_name: String = get_required(matches, "app-name")?;
+        let version: String = get_required(matches, "version")?;
+        let envs: Option<Vec<String>> = matches.get_many("env").map(|env| env.cloned().collect());
+        let env_file: Option<PathBuf> = get(matches, "env-file");
+        let use_fly_db: bool = matches.get_flag("use-fly-db");
 
-        let image_tag = format!("{}:{}", app_name, version.unwrap_or("latest"));
+        let image_tag = format!("{}:{}", app_name, version);
 
-        build(model, false)?;
+        build(&model, false)?;
 
         // Canonicalize the model path so that when presented with just "filename.exo", we can still
         // get the directory that it's in.
@@ -87,9 +87,9 @@ impl CommandDefinition for FlyCommandDefinition {
 
         create_dir_all(&fly_dir)?;
 
-        create_fly_toml(&fly_dir, app_name, &image_tag, &env_file, &envs)?;
+        create_fly_toml(&fly_dir, &app_name, &image_tag, &env_file, &envs)?;
 
-        create_dockerfile(&fly_dir, &model_path, app_name, use_fly_db)?;
+        create_dockerfile(&fly_dir, &model_path, &app_name, use_fly_db)?;
 
         let docker_build_output = std::process::Command::new("docker")
             .args(["build", "-t", &image_tag, "-f", "fly/Dockerfile", "."])
@@ -232,7 +232,7 @@ fn create_fly_toml(
     app_name: &str,
     image_tag: &str,
     env_file: &Option<PathBuf>,
-    envs: &Option<Vec<&str>>,
+    envs: &Option<Vec<String>>,
 ) -> Result<()> {
     let fly_toml_content = FLY_TOML.replace("<<<APP_NAME>>>", app_name);
     let fly_toml_content = fly_toml_content.replace("<<<IMAGE_NAME>>>", image_tag);
