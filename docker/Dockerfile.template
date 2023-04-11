@@ -27,9 +27,13 @@ COPY ./Cargo.lock ./Cargo.lock
 
 COPY ./graphiql/package.json ./graphiql/package.json
 COPY ./graphiql/package-lock.json ./graphiql/package-lock.json
+COPY ./crates/testing/package.json ./crates/testing/package.json
+COPY ./crates/testing/package-lock.json ./crates/testing/package-lock.json
 
 ### Compile the depdencies and remove artifacts related to the non-dependency parts (so that when we use real code, they get rebuilt)
-RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse  cargo build --all ${BUILD_FLAG}
+RUN cd graphiql && npm ci
+RUN cd crates/testing && npm ci
+RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build --all ${BUILD_FLAG}
 
 %%RM_DEPS%% 
 ## Build the actual image
@@ -38,8 +42,7 @@ ADD crates crates/
 ADD libs libs/
 ADD graphiql graphiql/
 
-
-### Build the binaries (first the graphiql app and then the rest)
+### Build the binaries
 RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build --all ${BUILD_FLAG}
 
 # Create an image to include the compiled binaries

@@ -12,8 +12,7 @@ use crate::exotest::{
 use super::common::TestResult;
 
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
-const GRAPHQL_NODE_MODULE: Dir<'static> =
-    include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/node_modules/graphql");
+const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");
 
 pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     let log_prefix =
