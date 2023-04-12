@@ -5,14 +5,13 @@ set -e
 SCRIPT_DIRECTORY="$(dirname $BASH_SOURCE)"
 ROOT_DIRECTORY=$SCRIPT_DIRECTORY/..
 
-buildKind="$1" # "debian" or "aws"
-buildType="$2" # "release" or "debug"
+buildType="$1" # "release" or "debug"
 
-# TODO: Resolve the openssl issues and then "BASE_IMAGE=debian:buster-slim"
+# TODO: Resolve the openssl issues and then "RUNTIME_IMAGE=debian:buster-slim"
 
 ## DEFAULTS ##
 BUILD_IMAGE=rust:1.68.2-buster # image to build Exograph with
-BASE_IMAGE=rust:1.68.2-slim-buster # image to use when actually running Exograph
+RUNTIME_IMAGE=rust:1.68.2-slim-buster # image to use when actually running Exograph
 DEPENDENCY_STYLE=deb # how to install or setup dependencies
 TAG_SUFFIX="" # docker tag suffix
 
@@ -33,21 +32,7 @@ else
     exit 1
 fi
 
-## set options from buildKind
-if [ "$buildKind" == "debian" ]
-then
-    echo "Building regularly with Debian"
-elif [ "$buildKind" == "aws" ]
-then
-    echo "Building with Amazon Linux 2"
-    BUILD_IMAGE=amazonlinux:2
-    BASE_IMAGE=amazonlinux:2
-    DEPENDENCY_STYLE=aws
-    TAG_SUFFIX="$TAG_SUFFIX-aws"
-else
-    echo "Unknown build kind: '$buildKind'. Must be 'debian' or 'aws'."
-    exit 1
-fi
+
 
 # Tuples of (name kind path)
 declare -a SUBCRATES=(
@@ -139,8 +124,25 @@ compute_rm_deps() {
 # Generates Dockerfile.generated and builds a docker image from it to the specified target.
 # Final image is tagged with the specified tag.
 docker_build() {
-    TAG=$1 
-    TARGET=$2 
+    buildKind="$1" # "debian" or "aws"
+    TAG=$2
+    TARGET=$3
+
+    ## set options from buildKind
+    if [ "$buildKind" == "debian" ]
+    then
+        echo "Building regularly with Debian"
+    elif [ "$buildKind" == "aws" ]
+    then
+        echo "Building with Amazon Linux 2"
+        BUILD_IMAGE=amazonlinux:2023
+        RUNTIME_IMAGE=amazonlinux:2023
+        DEPENDENCY_STYLE=aws
+        TAG_SUFFIX="$TAG_SUFFIX-aws"
+    else
+        echo "Unknown build kind: '$buildKind'. Must be 'debian' or 'aws'."
+        exit 1
+    fi
 
     DOCKERFILE_TEMPLATE=$SCRIPT_DIRECTORY/Dockerfile.template
 
@@ -174,10 +176,11 @@ docker_build() {
             --build-arg BUILD_DIR="$BUILD_DIR" \
             --build-arg BUILD_FLAG="$BUILD_FLAG" \
             --build-arg BUILD_IMAGE="$BUILD_IMAGE" \
-            --build-arg BASE_IMAGE="$BASE_IMAGE" \
+            --build-arg RUNTIME_IMAGE="$RUNTIME_IMAGE" \
             "${optional_target[@]}" \
             $ROOT_DIRECTORY 
 }
 
-docker_build "exo-builder$TAG_SUFFIX" "exo-builder"
-docker_build "exo$TAG_SUFFIX" 
+# docker_build "debian" "exo$TAG_SUFFIX" "exo" # Currenty, we don't need Dockerfile with "exo dev/build" commands
+docker_build "debian" "exo-server$TAG_SUFFIX" "exo-server"
+docker_build "aws" "exo-server-aws-lambda$TAG_SUFFIX" "exo-server-aws-lambda"
