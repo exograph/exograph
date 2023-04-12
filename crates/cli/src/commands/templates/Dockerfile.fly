@@ -1,4 +1,4 @@
-FROM exo:latest
+FROM exo-server:latest
 
 COPY ./<<<MODEL_FILE_NAME>>>.exo_ir ./<<<APP_NAME>>>.exo_ir
 

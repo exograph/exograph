@@ -1,5 +1,5 @@
 ARG BUILD_IMAGE
-ARG BASE_IMAGE
+ARG RUNTIME_IMAGE
 
 FROM ${BUILD_IMAGE} as builder
 
@@ -21,6 +21,7 @@ WORKDIR /usr/src
 ### the dependencies and cache this layer when only source files change
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
+COPY ./rust-toolchain.toml ./rust-toolchain.toml
 
 %%COPY_CARGO_TOMLS%%
 
@@ -45,9 +46,10 @@ ADD graphiql graphiql/
 ### Build the binaries
 RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build --all ${BUILD_FLAG}
 
-# Create an image to include the compiled binaries
-ARG BASE_IMAGE
-FROM $BASE_IMAGE as exo-builder
+# Create an image that can be used for development--the `exo dev` style
+# This includes all binaries and shared libraries (needed for the build phase)
+ARG RUNTIME_IMAGE
+FROM $RUNTIME_IMAGE as exo
 
 ARG BUILD_DIR
 ARG APP=/usr/src/app
@@ -59,11 +61,28 @@ COPY --from=builder /usr/src/target/${BUILD_DIR}/exo ${APP}/exo
 COPY --from=builder /usr/src/target/${BUILD_DIR}/bootstrap ${APP}/bootstrap
 COPY --from=builder /usr/src/target/${BUILD_DIR}/*.so ${APP}/
 
-# Create an image that can be used for development--the `exo dev` style
-FROM exo-builder as exo-dev
+# Create an image to include the compiled binary (just the exo-server)
+FROM $RUNTIME_IMAGE as exo-server
 
 ARG BUILD_DIR
 ARG APP=/usr/src/app
+
+COPY --from=builder /usr/src/target/${BUILD_DIR}/exo-server ${APP}/exo-server
+
+ENV TZ=Etc/UTC
+ENV APP_USER=exo
+
+%%RUNTIME_SETUP%%
+
+WORKDIR ${APP}
+
+# Create an image to include the AWS Lamdda compiled binary (just the "bootstrap" binary)
+FROM $RUNTIME_IMAGE as exo-server-aws-lambda
+
+ARG BUILD_DIR
+ARG APP=/usr/src/app
+
+COPY --from=builder /usr/src/target/${BUILD_DIR}/bootstrap ${APP}/bootstrap
 
 ENV TZ=Etc/UTC
 ENV APP_USER=exo
