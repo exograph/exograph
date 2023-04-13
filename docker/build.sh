@@ -134,9 +134,9 @@ docker_build() {
         echo "Building regularly with Debian"
     elif [ "$buildKind" == "aws" ]
     then
-        echo "Building with Amazon Linux 2"
-        BUILD_IMAGE=amazonlinux:2023
-        RUNTIME_IMAGE=amazonlinux:2023
+        echo "Building with Amazon Linux 2" # Can't use amazonlinux:2023 yet because it isn't available at a lambda runtime
+        BUILD_IMAGE=amazonlinux:2
+        RUNTIME_IMAGE=amazonlinux:2
         DEPENDENCY_STYLE=aws
         TAG_SUFFIX="$TAG_SUFFIX-aws"
     else
@@ -182,5 +182,5 @@ docker_build() {
 }
 
 # docker_build "debian" "exo$TAG_SUFFIX" "exo" # Currenty, we don't need Dockerfile with "exo dev/build" commands
-docker_build "debian" "exo-server$TAG_SUFFIX" "exo-server"
+# docker_build "debian" "exo-server$TAG_SUFFIX" "exo-server"
 docker_build "aws" "exo-server-aws-lambda$TAG_SUFFIX" "exo-server-aws-lambda"

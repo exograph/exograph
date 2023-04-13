@@ -1,6 +1,7 @@
 # Build setup for Amazon Linux 2023 
 
 # Install NodeJS (needed by tree-sitter and to build the GraphiQL app)
+RUN curl -sL https://rpm.nodesource.com/setup_16.x | bash -
 RUN yum install -y file gcc make nodejs openssl-devel zlib-devel 
 
 # Need to install Rust manually (not through yum, which is a bit older version 
