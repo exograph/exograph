@@ -72,6 +72,12 @@ pub(crate) fn run_testfile(
 
         // Should have no effect so make it random
         let check_on_startup = if rand::random() { "true" } else { "false" };
+        let telemetry_on = std::env::vars().any(|(name, _)| name.starts_with("OTEL_"));
+        let mut extra_envs = testfile.extra_envs.clone();
+
+        if telemetry_on {
+            extra_envs.insert("OTEL_SERVICE_NAME".to_string(), testfile.name());
+        }
 
         let server = spawn_exo_server(
             &testfile.model_path,
@@ -85,13 +91,7 @@ pub(crate) fn run_testfile(
                 ("EXO_INTROSPECTION", "true"),
             ]
             .into_iter()
-            .chain(
-                // add extra envs specified in testfile
-                testfile
-                    .extra_envs
-                    .iter()
-                    .map(|(x, y)| (x.as_str(), y.as_str())),
-            ),
+            .chain(extra_envs.iter().map(|(x, y)| (x.as_str(), y.as_str()))),
         )?;
 
         // spawn an HttpClient for requests to exo

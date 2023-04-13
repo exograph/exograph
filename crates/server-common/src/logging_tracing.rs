@@ -1,92 +1,127 @@
-/// Tracing configuration setup.
-///
-/// Calling the `init` function will initialize a global tracing subscriber based on the values of
-/// the `EXO_TELEMETRY` and `RUST_LOG` environment variables. Possible `EXO_TELEMETRY` values are
-/// `bunyan` and `jaeger`. If the env variable isn't set, no subscriber will be created.
-///
-/// These are currently only suitable for local debugging but any implementation of Rust's tracing
-/// subscriber can be used with the tracing spans built into the system.
-///
-/// The Bunyan logger prints to stdout and can be piped to the Rust bunyan command line tool (`cargo
-/// install bunyan`).
-///
-/// To use Jaeger, a local server can be started using docker:
-///
-/// ```shell
-/// $ docker run -d -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
-/// ```
-///
-/// Events and spans will be filtered according to the setting of `RUST_LOG`. See the documentation
-/// for `EnvFilter` for more information.
-use std::{env, io::stdout, process::exit};
-use tracing::{log::LevelFilter, subscriber::set_global_default, Subscriber};
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::{fmt::MakeWriter, layer::SubscriberExt, EnvFilter, Registry};
+//! # Tracing/Telemetry configuration setup.
+//!
+//! The server code is instrumented with Rust's `tracing` frawework.
+//!
+//! Calling the `init` function will initialize a global tracing subscriber based on the values of
+//! the `EXO_LOG` environment variable which follows the same conventions as `RUST_LOG`. This will
+//! provide console logging.
+//!
+//! ## OpenTelemetry
+//!
+//! The system can also export tracing data to an OpenTelemetry compatible system using
+//! [standard environment variables](https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/)
+//!
+//! These include:
+//!
+//! - `OTEL_SERVICE_NAME` to set the name of your service.
+//! - `OTEL_EXPORTER_OTLP_ENDPOINT` to set the endpoint to export trace data to.
+//! - `OTEL_EXPORTER_OTLP_PROTOCOL` the OTLP version used. Can be `grpc` (the default) or `http/protobuf`.
+//! - `OTEL_EXPORTER_OTLP_HEADERS` allows you to set custom headers such as authentication tokens.
+//!
+//! At least one `OTEL_` prefixed variable must be set to enable OpenTelemetry.
+//!
+//! To use Jaeger, a local server can be started using docker:
+//!
+//! ```shell
+//! $ docker run -d --name jaeger -e COLLECTOR_OTLP_ENABLED=true -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:latest
+//! ```
+//!
+use opentelemetry_otlp::WithExportConfig;
+use std::str::FromStr;
+use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
 
+/// Initialize the tracing subscriber.
+///
+/// Creates a `tracing_subscriber::fmt` layer by default and adds a `tracing_opentelemetry`
+/// layer if OpenTelemetry, exporting traces with `opentelemetry_otlp` if any OpenTelemetry
+/// environment variables are set.
 pub(super) fn init() {
-    let name = "Exograph";
+    let fmt_layer = tracing_subscriber::fmt::layer().compact();
+    let telemetry_layer =
+        create_otlp_tracer().map(|t| tracing_opentelemetry::layer().with_tracer(t));
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .with_env_var("EXO_LOG")
+        .from_env_lossy()
+        .add_directive(
+            "h2=warn"
+                .parse()
+                .expect("Hard coded directive shouldn't fail"),
+        );
 
-    if let Ok(variable) = env::var("EXO_TELEMETRY") {
-        match variable.as_str() {
-            "bunyan" => init_subscriber(create_bunyan_subscriber(name, stdout)),
-            "jaeger" => init_subscriber(create_opentelemetry_jaeger_subscriber(name)),
-            _ => {
-                eprintln!("Unknown value for EXO_TELEMETRY: '{variable}'");
-                exit(1);
-            }
-        }
-    } else {
-        // log to console
-        let mut builder = pretty_env_logger::formatted_builder();
-        let mut builder = builder
-            .filter_level(LevelFilter::Warn)
-            // produces a number of traces that are not too relevant to exograph
-            // suppress INFO traces
-            .filter_module("tracing_actix_web", LevelFilter::Warn)
-            .filter_module("actix_server::worker", LevelFilter::Warn);
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt_layer)
+        .with(telemetry_layer)
+        .init();
+}
 
-        if let Ok(rust_log) = std::env::var("EXO_CONSOLE_LOG") {
-            builder = builder.parse_filters(&rust_log);
-        }
-
-        builder.init();
+fn create_otlp_tracer() -> Option<opentelemetry::sdk::trace::Tracer> {
+    if !std::env::vars().any(|(name, _)| name.starts_with("OTEL_")) {
+        return None;
     }
+    let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
+
+    let mut tracer = opentelemetry_otlp::new_pipeline().tracing();
+    let headers = parse_otlp_headers_from_env();
+
+    match protocol.as_str() {
+        "grpc" => {
+            let mut exporter = opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_metadata(metadata_from_headers(headers))
+                .with_env();
+
+            // Check if we need TLS
+            if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
+                if endpoint.starts_with("https") {
+                    exporter = exporter.with_tls_config(Default::default());
+                }
+            }
+            tracer = tracer.with_exporter(exporter)
+        }
+        "http/protobuf" => {
+            let exporter = opentelemetry_otlp::new_exporter()
+                .http()
+                .with_headers(headers.into_iter().collect())
+                .with_env();
+            tracer = tracer.with_exporter(exporter)
+        }
+        p => panic!("Unsupported protocol {}", p),
+    };
+
+    // Use the simple exporter if running the integration tests and using
+    // opentelemetry. Otherwise the test server will be killed before the batched
+    // spans are exported.
+    // Some(tracer.install_simple().unwrap())
+    Some(tracer.install_batch(opentelemetry::runtime::Tokio).unwrap())
 }
 
-fn create_bunyan_subscriber<S>(name: &str, make_writer: S) -> impl Subscriber + Send + Sync
-where
-    S: for<'a> MakeWriter<'a> + Send + Sync + 'static,
-{
-    let formatting_layer = BunyanFormattingLayer::new(name.to_string(), make_writer);
-    Registry::default()
-        .with(env_filter())
-        .with(JsonStorageLayer)
-        .with(formatting_layer)
+fn metadata_from_headers(headers: Vec<(String, String)>) -> tonic::metadata::MetadataMap {
+    use tonic::metadata;
+
+    let mut metadata = metadata::MetadataMap::new();
+    headers.into_iter().for_each(|(name, value)| {
+        let value = value
+            .parse::<metadata::MetadataValue<metadata::Ascii>>()
+            .expect("Header value invalid");
+        metadata.insert(metadata::MetadataKey::from_str(&name).unwrap(), value);
+    });
+    metadata
 }
 
-fn create_opentelemetry_jaeger_subscriber(name: &str) -> impl Subscriber + Send + Sync {
-    // Install a new OpenTelemetry trace pipeline
-    let tracer = opentelemetry_jaeger::new_pipeline()
-        .with_service_name(name)
-        .install_simple()
-        .expect("Failed to install jaeger pipeline");
+fn parse_otlp_headers_from_env() -> Vec<(String, String)> {
+    let mut headers = Vec::new();
 
-    // Create a tracing layer with the configured tracer
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    // Use the tracing subscriber `Registry`, or any other subscriber
-    // that impls `LookupSpan`
-    Registry::default().with(env_filter()).with(telemetry)
-}
-
-// Create a filter for spans and events based on the setting of `RUST_LOG`
-// or default to `info`.
-fn env_filter() -> EnvFilter {
-    EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
-}
-
-fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
-    // Converts log calls to tracing events
-    tracing_log::LogTracer::init().expect("init logger failed");
-    set_global_default(subscriber).expect("Failed to set global subscriber");
+    if let Ok(hdrs) = std::env::var("OTEL_EXPORTER_OTLP_HEADERS") {
+        hdrs.split_terminator(',')
+            .filter(|h| !h.is_empty())
+            .map(|header| {
+                header
+                    .split_once('=')
+                    .expect("Header should contain '=' character")
+            })
+            .for_each(|(name, value)| headers.push((name.to_owned(), value.to_owned())));
+    }
+    headers
 }
