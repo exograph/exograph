@@ -2,9 +2,10 @@
 name = "core-plugin-interface"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [build-dependencies]
-built = "0.5"
+built = "0.6"
 
 [dependencies]
 libloading = "0.7.3"
