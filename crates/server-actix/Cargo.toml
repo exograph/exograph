@@ -2,10 +2,14 @@
 name = "server-actix"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 async-trait.workspace = true
-actix-web = { version = "4.1.0", default-features = false, features = ["macros", "cookies"] }
+actix-web = { version = "4.1.0", default-features = false, features = [
+  "macros",
+  "cookies",
+] }
 actix-cors = "0.6.2"
 actix-files = "0.6.2"
 

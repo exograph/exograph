@@ -2,6 +2,7 @@
 name = "subsystem-model-util"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 typed-generational-arena.workspace = true
@@ -13,7 +14,6 @@ core-model = { path = "../../core-subsystem/core-model" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 
 [dev-dependencies]
-
 
 
 [lib]
