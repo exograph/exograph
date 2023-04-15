@@ -86,7 +86,7 @@ EXO_JWT_SECRET="abcd" EXO_CORS_DOMAINS="*" EXO_POSTGRES_URL=postgresql://localho
 When introspection is on, an interactive page is served at `/playground` by default; this is adjustable through the environment variable `EXO_PLAYGROUND_HTTP_PATH`. The GraphQL endpoint accepts requests at `/graphql` by default; this is also adjustable through the environment variable `EXO_ENDPOINT_HTTP_PATH`.
 
 **Note**
-If you change the treesitter grammar source file, `cargo watch` doesn't seem to pick up the change, so you need to run the non-watch version.
+If you change the tree-sitter grammar source file, `cargo watch` doesn't seem to pick up the change, so you need to run the non-watch version.
 
 5. Run unit and integration tests
 
@@ -94,10 +94,10 @@ If you change the treesitter grammar source file, `cargo watch` doesn't seem to 
 EXO_TEST_POSTGRES_URL=postgresql://localhost:5432 EXO_TEST_POSTGRES_USER=$USER cargo test
 ```
 
-6. Run blackbox integration tests
+6. Run integration tests
 
 ```
-cargo build && EXO_TEST_POSTGRES_URL=postgresql://$USER@localhost:5432 target/debug/exo test integration-tests
+cargo build && target/debug/exo test integration-tests
 ```
 
 ## Logging, telemetry and tracing
@@ -123,4 +123,3 @@ You can use [Jaeger](https://www.jaegertracing.io/docs/latest/deployment/#all-in
 ```shell
 $ docker run -d --name jaeger -e COLLECTOR_OTLP_ENABLED=true -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:latest
 ```
-

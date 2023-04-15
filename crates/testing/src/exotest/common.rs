@@ -1,4 +1,6 @@
 use anyhow::{bail, Context, Error, Result};
+
+use exo_sql::testing::db::EphemeralDatabase;
 use isahc::HttpClient;
 use std::{
     collections::HashMap,
@@ -10,13 +12,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use super::dbutils::CreatedPostgresDb;
-
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
 pub(crate) struct TestfileContext {
     pub server: ServerInstance,
-    pub db: CreatedPostgresDb,
+    pub db: Box<dyn EphemeralDatabase + Send + Sync>,
     pub jwtsecret: String,
     pub client: HttpClient,
     pub testvariables: HashMap<String, serde_json::Value>,
@@ -165,7 +165,8 @@ pub(crate) fn cmd(binary_name: &str) -> Command {
     // without updating the PATH env.
     // Thus, for the former invocation if the `binary_name` is `exo-server` the command will become
     // `<full-path-to>/target/debug/exo-server`
-    let mut executable = std::env::current_exe().expect("Could not retrive the current executable");
+    let mut executable =
+        std::env::current_exe().expect("Could not retrieve the current executable");
     executable.set_file_name(binary_name);
     Command::new(
         executable

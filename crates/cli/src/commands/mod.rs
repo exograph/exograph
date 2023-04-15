@@ -2,7 +2,6 @@
 
 pub(crate) mod build;
 pub(crate) mod command;
-pub(super) mod db;
 pub(crate) mod deploy;
 pub(crate) mod dev;
 pub(crate) mod new;

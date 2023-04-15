@@ -8,7 +8,7 @@ use super::{
     command::{get, get_required, model_file_arg, port_arg, CommandDefinition},
     schema::migration_helper::migration_statements,
 };
-use exo_sql::{schema::spec::SchemaSpec, Database};
+use exo_sql::{schema::spec::SchemaSpec, testing::db::EphemeralDatabaseLauncher, Database};
 use futures::FutureExt;
 
 pub struct YoloCommandDefinition {}
@@ -41,7 +41,8 @@ fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
     // which does not run on a normal SIGINT exit
     crate::EXIT_ON_SIGINT.store(false, Ordering::SeqCst);
 
-    let db = super::db::create_db()?;
+    let db_server = EphemeralDatabaseLauncher::create_server()?;
+    let db = db_server.create_database("yolo")?;
 
     let jwt_secret = super::util::generate_random_string();
 

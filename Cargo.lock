@@ -1036,8 +1036,6 @@ dependencies = [
  "tempfile",
  "testing",
  "tokio",
- "urlencoding",
- "which",
 ]
 
 [[package]]
@@ -2511,14 +2509,18 @@ dependencies = [
  "openssl",
  "postgres-openssl",
  "postgres_array",
+ "rand",
  "regex",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "tokio",
  "tokio-postgres",
  "tracing",
  "url",
+ "urlencoding",
+ "which",
 ]
 
 [[package]]
@@ -6612,6 +6614,7 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "exo-deno",
+ "exo-sql",
  "include_dir",
  "insta",
  "isahc",
