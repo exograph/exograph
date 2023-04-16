@@ -91,6 +91,7 @@ impl EphemeralDatabaseServer for DockerPostgresDatabaseServer {
         launch_process(
             "docker",
             &["exec", &self.container_name, "createdb", "-U", "exo", name],
+            true,
         )?;
 
         Ok(Box::new(DockerPostgresDatabase {
@@ -104,7 +105,7 @@ impl EphemeralDatabaseServer for DockerPostgresDatabaseServer {
 impl Drop for DockerPostgresDatabaseServer {
     fn drop(&mut self) {
         // kill docker, will get removed automatically on exit due to --rm provided when starting
-        launch_process("docker", &["kill", &self.container_name]).unwrap();
+        launch_process("docker", &["kill", &self.container_name], false).unwrap();
     }
 }
 
@@ -126,6 +127,7 @@ impl Drop for DockerPostgresDatabase {
                 "exo",
                 &self.name,
             ],
+            false,
         )
         .unwrap();
     }
