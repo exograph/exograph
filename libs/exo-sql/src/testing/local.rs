@@ -1,11 +1,12 @@
 //! Ephemeral database server based on a local postgres installation
 
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
 use std::{
     fs::OpenOptions,
     io::Write,
     process::{Child, Stdio},
 };
-
 use tempfile::TempDir;
 
 use super::{
@@ -50,6 +51,7 @@ impl LocalPostgresDatabaseServer {
                 "--username",
                 "exo",
             ],
+            true,
         )?;
 
         let config_file = data_dir.path().join("postgresql.conf");
@@ -87,6 +89,7 @@ impl LocalPostgresDatabaseServer {
             let result = launch_process(
                 "pg_isready",
                 &["-h", data_dir.path().to_str().unwrap(), "-U", "exo"],
+                true,
             );
 
             if result.is_ok() {
@@ -124,6 +127,7 @@ impl EphemeralDatabaseServer for LocalPostgresDatabaseServer {
                 "exo",
                 name,
             ],
+            true,
         )?;
 
         Ok(Box::new(LocalPostgresDatabase {
@@ -135,8 +139,22 @@ impl EphemeralDatabaseServer for LocalPostgresDatabaseServer {
 
 impl Drop for LocalPostgresDatabaseServer {
     fn drop(&mut self) {
+        // Killing ungracefully will not release shared memory and semaphores. This will eventually
+        // lead to a "FATAL:  could not create shared memory segment: No space left on device"
+        // error. At that point, the only way seems to be restarting the system (increasing shared
+        // memory limits doesn't help immediately). So we send a SIGINT per
+        // https://www.postgresql.org/docs/current/server-shutdown.html to let the process clean up
+        // properly.
+
+        signal::kill(
+            Pid::from_raw(self.process.id().try_into().unwrap()),
+            Signal::SIGINT,
+        )
+        .unwrap();
+
+        self.process.wait().unwrap();
+
         std::fs::remove_dir_all(self.data_dir.path()).unwrap();
-        let _ = self.process.kill();
     }
 }
 
@@ -155,7 +173,8 @@ impl Drop for LocalPostgresDatabase {
         launch_process(
             "dropdb",
             &["-h", &self.data_dir, "--force", "-U", "exo", &self.name],
+            false,
         )
-        .unwrap()
+        .unwrap_or(()); // Ignore errors
     }
 }

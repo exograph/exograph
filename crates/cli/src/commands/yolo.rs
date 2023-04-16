@@ -37,7 +37,7 @@ fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
         .unwrap();
 
     // make sure we do not exit on SIGINT
-    // we spawn containers that need to be cleaned up through drop(),
+    // we spawn processes/containers that need to be cleaned up through drop(),
     // which does not run on a normal SIGINT exit
     crate::EXIT_ON_SIGINT.store(false, Ordering::SeqCst);
 
@@ -99,7 +99,7 @@ fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
                 let result = std::io::stdin().read_line(&mut input).map(|_| input.trim());
 
                 match result {
-                    // rebuild docker
+                    // rebuild 
                     Ok("r") => {
                         run(model, port)?;
                     }

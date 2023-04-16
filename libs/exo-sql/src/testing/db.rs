@@ -1,3 +1,5 @@
+use std::io::BufRead;
+
 use super::{
     docker::DockerPostgresDatabaseServer, error::EphemeralDatabaseSetupError,
     local::LocalPostgresDatabaseServer,
@@ -43,12 +45,16 @@ pub trait EphemeralDatabase {
 }
 
 /// A utility function to launch a process and wait for it to exit
-pub(super) fn launch_process(name: &str, args: &[&str]) -> Result<(), EphemeralDatabaseSetupError> {
+pub(super) fn launch_process(
+    name: &str,
+    args: &[&str],
+    report_errors: bool,
+) -> Result<(), EphemeralDatabaseSetupError> {
     let mut command = std::process::Command::new(name);
     let command = command.args(args);
     let command = command
         .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
 
     let mut command = command.spawn().map_err(|e| {
@@ -60,6 +66,14 @@ pub(super) fn launch_process(name: &str, args: &[&str]) -> Result<(), EphemeralD
     })?;
 
     if !status.success() {
+        if report_errors {
+            if let Some(stderr) = command.stderr.take() {
+                let stderr = std::io::BufReader::new(stderr);
+                stderr.lines().for_each(|line| {
+                    eprintln!("{}: {}", name, line.unwrap());
+                });
+            }
+        }
         return Err(EphemeralDatabaseSetupError::Generic(format!(
             "Process {} exited with non-zero status code {}",
             name, status,
