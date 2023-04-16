@@ -30,6 +30,8 @@ mod sql;
 mod asql;
 mod transform;
 
+pub mod testing;
+
 pub mod database_error;
 
 /// Public types at the root level of this crate

@@ -21,8 +21,6 @@ futures.workspace = true
 rand.workspace = true
 ctrlc = "3.2"
 tempfile.workspace = true
-urlencoding = "2.1.2"
-which = "4.4.0"
 
 exo-sql = { path = "../../libs/exo-sql" }
 builder = { path = "../builder" }

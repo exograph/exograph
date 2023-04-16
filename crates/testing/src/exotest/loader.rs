@@ -73,10 +73,6 @@ impl ParsedTestfile {
             .expect("Failed to convert file name into Unicode")
             .to_string()
     }
-
-    pub fn dbname(&self) -> String {
-        to_postgres(&self.name())
-    }
 }
 
 // serde file formats
@@ -358,9 +354,4 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
 // Parse JSON from a string
 fn from_json(json: String) -> Result<serde_json::Value> {
     serde_json::from_str(&json).context("Failed to parse JSON")
-}
-
-// Generate a unique, PostgreSQL-friendly name from a `str`.
-fn to_postgres(name: &str) -> String {
-    format!("exotest_{:x}", md5::compute(name))
 }
