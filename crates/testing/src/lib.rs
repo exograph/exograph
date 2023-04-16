@@ -1,13 +1,14 @@
 mod exotest;
 
 use anyhow::{bail, Context, Result};
+use exo_sql::testing::db::{EphemeralDatabaseLauncher, EphemeralDatabaseServer};
 use exotest::integration_tests::{build_exo_ir_file, run_testfile};
 use exotest::loader::{load_testfiles_from_dir, ParsedTestfile};
 use rayon::ThreadPoolBuilder;
 use std::cmp::min;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 
 use crate::exotest::introspection_tests::run_introspection_test;
 
@@ -34,9 +35,6 @@ pub fn run(
 
     let start_time = std::time::Instant::now();
     let cpus = num_cpus::get();
-
-    let postgres_url =
-        std::env::var("EXO_TEST_POSTGRES_URL").expect("EXO_TEST_POSTGRES_URL must be specified");
 
     let testfiles = load_testfiles_from_dir(root_directory, pattern)
         .with_context(|| format!("While loading testfiles from directory {root_directory_str}"))?;
@@ -86,16 +84,21 @@ pub fn run(
 
     let (tx, rx) = mpsc::channel();
 
+    let ephemeral_server = Arc::new(EphemeralDatabaseLauncher::create_server()?);
+
     // Then build all the model files, spawning the production mode tests once the build completes
     for (model_path, testfiles) in model_file_deps {
         let model_path = model_path.clone();
         let tx = tx.clone();
-        let url = postgres_url.clone();
+        let ephemeral_server = ephemeral_server.clone();
 
         pool.spawn(move || match build_exo_ir_file(&model_path) {
             Ok(()) => {
                 for file in testfiles.iter() {
-                    let result = run_testfile(file, url.clone());
+                    let result = run_testfile(
+                        file,
+                        ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
+                    );
                     tx.send(result).unwrap();
                 }
             }
