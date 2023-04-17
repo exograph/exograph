@@ -88,16 +88,16 @@ When introspection is on, an interactive page is served at `/playground` by defa
 **Note**
 If you change the tree-sitter grammar source file, `cargo watch` doesn't seem to pick up the change, so you need to run the non-watch version.
 
-5. Run unit and integration tests
+5. Run unit tests
 
 ```
-EXO_TEST_POSTGRES_URL=postgresql://localhost:5432 EXO_TEST_POSTGRES_USER=$USER cargo test
+cargo test
 ```
 
 6. Run integration tests
 
 ```
-cargo build && target/debug/exo test integration-tests
+cargo build && EXO_RUN_INTROSPECTION_TESTS=true target/debug/exo test integration-tests
 ```
 
 ## Logging, telemetry and tracing
