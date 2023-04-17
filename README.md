@@ -88,7 +88,7 @@ When introspection is on, an interactive page is served at `/playground` by defa
 **Note**
 If you change the tree-sitter grammar source file, `cargo watch` doesn't seem to pick up the change, so you need to run the non-watch version.
 
-5. Run unit and integration tests
+5. Run unit tests
 
 ```
 cargo test
