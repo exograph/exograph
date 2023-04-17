@@ -91,13 +91,13 @@ If you change the tree-sitter grammar source file, `cargo watch` doesn't seem to
 5. Run unit and integration tests
 
 ```
-EXO_RUN_INTROSPECTION_TESTS=true EXO_TEST_POSTGRES_USER=$USER cargo test
+cargo test
 ```
 
 6. Run integration tests
 
 ```
-cargo build && target/debug/exo test integration-tests
+cargo build && EXO_RUN_INTROSPECTION_TESTS=true target/debug/exo test integration-tests
 ```
 
 ## Logging, telemetry and tracing
