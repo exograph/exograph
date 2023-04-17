@@ -91,7 +91,7 @@ If you change the tree-sitter grammar source file, `cargo watch` doesn't seem to
 5. Run unit and integration tests
 
 ```
-EXO_TEST_POSTGRES_URL=postgresql://localhost:5432 EXO_TEST_POSTGRES_USER=$USER cargo test
+EXO_RUN_INTROSPECTION_TESTS=true EXO_TEST_POSTGRES_USER=$USER cargo test
 ```
 
 6. Run integration tests
