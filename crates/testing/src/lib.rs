@@ -28,7 +28,7 @@ pub fn run(
         root_directory_str,
         pattern
             .as_ref()
-            .map(|p| format!("'with pattern {p}'"))
+            .map(|p| format!("with pattern '{p}'"))
             .unwrap_or_else(|| "".to_string()),
         ansi_term::Color::Blue.bold().paint("..."),
     );
