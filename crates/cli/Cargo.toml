@@ -10,6 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 ansi_term.workspace = true
+colored.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
 heck.workspace = true
@@ -21,6 +22,8 @@ futures.workspace = true
 rand.workspace = true
 ctrlc = "3.2"
 tempfile.workspace = true
+zip = "0.6.4"
+home = "0.5.4"
 
 exo-sql = { path = "../../libs/exo-sql" }
 builder = { path = "../builder" }

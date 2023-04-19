@@ -43,6 +43,7 @@ resolver = "2"
 
 [workspace.dependencies]
 ansi_term = "0.12"
+colored = "2.0"
 anyhow = "1.0"
 async-graphql-parser = "5.0.6"
 async-graphql-value = "5.0.6"
