@@ -32,15 +32,6 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 },
             ),
             (
-                "bits",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
                 "column",
                 AnnotationSpec {
                     targets: &[AnnotationTarget::Field],
@@ -59,7 +50,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 },
             ),
             (
-                "length",
+                "maxLength",
                 AnnotationSpec {
                     targets: &[AnnotationTarget::Field],
                     no_params: false,
@@ -122,11 +113,47 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 },
             ),
             (
-                "size",
+                "bits16",
                 AnnotationSpec {
                     targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "bits32",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "bits64",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "singlePrecision",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "doublePrecision",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
                     mapped_params: None,
                 },
             ),

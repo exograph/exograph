@@ -161,7 +161,7 @@ pub enum ResolvedTypeHint {
         scale: Option<usize>,
     },
     String {
-        length: usize,
+        max_length: usize,
     },
     DateTime {
         precision: usize,
@@ -427,20 +427,6 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
     // Part 1: parse out and validate hints for each primitive
     ////
 
-    let size_annotation = field
-        .annotations
-        .get("size")
-        .map(|params| params.as_single().as_number() as usize);
-
-    let bits_annotation = field
-        .annotations
-        .get("bits")
-        .map(|params| params.as_single().as_number() as usize);
-
-    if size_annotation.is_some() && bits_annotation.is_some() {
-        panic!("Cannot have both @size and @bits for {}", field.name)
-    }
-
     let int_hint = {
         // TODO: not great that we're 'type checking' here
         // but we need to know the type of the field before constructing the
@@ -456,27 +442,16 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
                 )
             });
 
-            let bits_hint = if let Some(size) = size_annotation {
-                Some(
-                    // normalize size into bits
-                    if size <= 2 {
-                        16
-                    } else if size <= 4 {
-                        32
-                    } else if size <= 8 {
-                        64
-                    } else {
-                        panic!("@size of {} cannot be larger than 8 bytes", field.name)
-                    },
-                )
-            } else if let Some(bits) = bits_annotation {
-                if !(bits == 16 || bits == 32 || bits == 64) {
-                    panic!("@bits of {} is not 16, 32, or 64", field.name)
-                }
+            let is_bits16 = field.annotations.contains("bits16");
+            let is_bits32 = field.annotations.contains("bits32");
+            let is_bits64 = field.annotations.contains("bits64");
 
-                Some(bits)
-            } else {
-                None
+            let bits_hint = match (is_bits16, is_bits32, is_bits64) {
+                (true, false, false) => Some(16),
+                (false, true, false) => Some(32),
+                (false, false, true) => Some(64),
+                (false, false, false) => None,
+                _ => panic!("Cannot have more than one of @bits16, @bits32, @bits64"),
             };
 
             if bits_hint.is_some() || range_hint.is_some() {
@@ -496,19 +471,14 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
         if field.typ.get_underlying_typename(types).unwrap() != "Float" {
             None
         } else {
-            let bits_hint = if let Some(size) = size_annotation {
-                Some(
-                    // normalize size into bits
-                    if size <= 4 {
-                        24
-                    } else if size <= 8 {
-                        53
-                    } else {
-                        panic!("@size of {} cannot be larger than 8 bytes", field.name)
-                    },
-                )
-            } else {
-                bits_annotation
+            let is_single_precision = field.annotations.contains("singlePrecision");
+            let is_double_precision = field.annotations.contains("doublePrecision");
+
+            let bits_hint = match (is_single_precision, is_double_precision) {
+                (true, false) => Some(24),
+                (false, true) => Some(53),
+                (false, false) => None,
+                _ => panic!("Cannot have both @singlePrecision and @doublePrecision"),
             };
 
             bits_hint.map(|bits| ResolvedTypeHint::Float { bits })
@@ -542,13 +512,13 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
     };
 
     let string_hint = {
-        let length_annotation = field
+        let max_length_annotation = field
             .annotations
-            .get("length")
+            .get("maxLength")
             .map(|p| p.as_single().as_number() as usize);
 
-        // None if there is no length annotation
-        length_annotation.map(|length| ResolvedTypeHint::String { length })
+        // None if there is no maxLength annotation
+        max_length_annotation.map(|max_length| ResolvedTypeHint::String { max_length })
     };
 
     let datetime_hint = {
@@ -968,7 +938,7 @@ mod tests {
             @table("custom_concerts")
             type Concert {
               @pk @dbtype("bigint") @column("custom_id") id: Int = autoIncrement() 
-              @column("custom_title") @length(12) title: String 
+              @column("custom_title") @maxLength(12) title: String
               @column("custom_venue_id") venue: Venue 
               @range(min=0, max=300) reserved: Int 
               @precision(4) time: Instant 
@@ -981,8 +951,8 @@ mod tests {
               @pk @column("custom_id") id: Int = autoIncrement() 
               @column("custom_name") name: String 
               @column("custom_venue_id") concerts: Set<Concert> 
-              @bits(16) capacity: Int 
-              @size(4) latitude: Float 
+              @bits16 capacity: Int
+              @singlePrecision latitude: Float
             }       
         }
 

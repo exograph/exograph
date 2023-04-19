@@ -297,7 +297,7 @@ mod tests {
         let name_col = PhysicalColumn {
             table_name: "people".to_string(),
             name: "name".to_string(),
-            typ: PhysicalColumnType::String { length: None },
+            typ: PhysicalColumnType::String { max_length: None },
             ..Default::default()
         };
         let name_col = Column::Physical(&name_col);
@@ -330,7 +330,7 @@ mod tests {
         let title_physical_col = PhysicalColumn {
             table_name: "videos".to_string(),
             name: "title".to_string(),
-            typ: PhysicalColumnType::String { length: None },
+            typ: PhysicalColumnType::String { max_length: None },
             ..Default::default()
         };
 

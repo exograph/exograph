@@ -236,14 +236,14 @@ mod tests {
                 @table("logs")
                 type Log {
                   @dbtype("bigint") @pk id: Int = autoIncrement() 
-                  @bits(16) nonce: Int 
-                  @size(8) hash: Int 
-                  @size(4) float: Float 
-                  @bits(40) double: Float 
+                  @bits16 nonce: Int
+                  @bits64 hash: Int
+                  @singlePrecision float: Float
+                  @doublePrecision double: Float
                   @precision(4) latitude: Decimal 
                   @precision(5) @scale(2) longitude: Decimal 
                   @range(min=0, max=32770) weird: Int 
-                  @length(15) prefix: String 
+                  @maxLength(15) prefix: String
                   log: String
                   @precision(6) granular: Instant 
                 }
@@ -272,28 +272,28 @@ mod tests {
             panic!()
         }
 
-        // Int @bits(16)
+        // Int @bits16
         if let PhysicalColumnType::Int { bits } = &logs_nonce.typ {
             assert!(*bits == IntBits::_16)
         } else {
             panic!()
         }
 
-        // Int @size(8)
+        // Int @bits64
         if let PhysicalColumnType::Int { bits } = &logs_hash.typ {
             assert!(*bits == IntBits::_64)
         } else {
             panic!()
         }
 
-        // Float @size(4)
+        // Float @singlePrecision
         if let PhysicalColumnType::Float { bits } = &logs_float.typ {
             assert!(*bits == FloatBits::_24)
         } else {
             panic!()
         }
 
-        // Double @bits(40)
+        // Double @doublePrecision
         if let PhysicalColumnType::Float { bits } = &logs_double.typ {
             assert!(*bits == FloatBits::_53)
         } else {
@@ -320,9 +320,9 @@ mod tests {
             panic!()
         }
 
-        // @length(15)
-        if let PhysicalColumnType::String { length } = &logs_prefix.typ {
-            assert!((*length).unwrap() == 15)
+        // @maxLength(15)
+        if let PhysicalColumnType::String { max_length } = &logs_prefix.typ {
+            assert!((*max_length).unwrap() == 15)
         } else {
             panic!()
         }

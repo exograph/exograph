@@ -62,7 +62,7 @@ values:
             is_pk: false
             type_hint:
               String:
-                length: 12
+                max_length: 12
             unique_constraints: []
             default_value: ~
           - name: venue
