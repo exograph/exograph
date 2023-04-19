@@ -278,9 +278,9 @@ mod tests {
                     type Article {
                         @pk id: Int = autoIncrement()
                         published: Boolean
-                        @bits(64) owner_id: Int 
-                        @bits(64) dept1_id: Int 
-                        @bits(64) dept2_id: Int 
+                        @bits64 owner_id: Int 
+                        @bits64 dept1_id: Int 
+                        @bits64 dept2_id: Int 
                     }
                 }
             "#,
