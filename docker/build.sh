@@ -134,7 +134,7 @@ docker_build() {
         echo "Building regularly with Debian"
     elif [ "$buildKind" == "aws" ]
     then
-        echo "Building with Amazon Linux 2" # Can't use amazonlinux:2023 yet because it isn't available at a lambda runtime
+        echo "Building with Amazon Linux 2" # Can't use amazonlinux:2023 yet because it isn't available as a lambda runtime
         BUILD_IMAGE=amazonlinux:2
         RUNTIME_IMAGE=amazonlinux:2
         DEPENDENCY_STYLE=aws
