@@ -2,6 +2,7 @@
 name = "testing"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [lib]
 
@@ -25,7 +26,8 @@ md5 = "0.7"
 wildmatch.workspace = true
 include_dir.workspace = true
 
+exo-sql = { path = "../../libs/exo-sql" }
 exo-deno = { path = "../../libs/exo-deno" }
 
 [dev-dependencies]
-insta = { workspace = true, features = [ "yaml" ] }
+insta = { workspace = true, features = ["yaml"] }

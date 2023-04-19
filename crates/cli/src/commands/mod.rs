@@ -7,4 +7,5 @@ pub(crate) mod dev;
 pub(crate) mod new;
 pub(crate) mod schema;
 pub(crate) mod test;
+pub(super) mod util;
 pub(crate) mod yolo;

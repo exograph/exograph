@@ -2,6 +2,7 @@
 name = "cli"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [[bin]]
 name = "exo"
@@ -21,8 +22,6 @@ futures.workspace = true
 rand.workspace = true
 ctrlc = "3.2"
 tempfile.workspace = true
-urlencoding = "2.1.2"
-which = "4.4.0"
 zip = "0.6.4"
 home = "0.5.4"
 

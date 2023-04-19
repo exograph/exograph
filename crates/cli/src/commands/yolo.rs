@@ -1,12 +1,6 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use clap::{ArgMatches, Command};
-use std::{
-    fs::OpenOptions,
-    io::{BufRead, BufReader, Write},
-    path::PathBuf,
-    process::{Child, Stdio},
-    sync::atomic::Ordering,
-};
+use std::{io::Write, path::PathBuf, sync::atomic::Ordering};
 
 use crate::util::watcher;
 
@@ -14,10 +8,8 @@ use super::{
     command::{get, get_required, model_file_arg, port_arg, CommandDefinition},
     schema::migration_helper::migration_statements,
 };
-use exo_sql::{schema::spec::SchemaSpec, Database};
+use exo_sql::{schema::spec::SchemaSpec, testing::db::EphemeralDatabaseLauncher, Database};
 use futures::FutureExt;
-use rand::Rng;
-use tempfile::TempDir;
 
 pub struct YoloCommandDefinition {}
 
@@ -45,22 +37,14 @@ fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
         .unwrap();
 
     // make sure we do not exit on SIGINT
-    // we spawn containers that need to be cleaned up through drop(),
+    // we spawn processes/containers that need to be cleaned up through drop(),
     // which does not run on a normal SIGINT exit
     crate::EXIT_ON_SIGINT.store(false, Ordering::SeqCst);
 
-    // create postgresql
-    let db: Box<dyn PostgreSQLInstance + Send + Sync> = if LocalPostgreSQL::check_availability()
-        .is_ok()
-    {
-        println!("Launching PostgreSQL locally...");
-        Box::new(LocalPostgreSQL::new().context("While trying to instantiate local PostgreSQL")?)
-    } else {
-        println!("Launching PostgreSQL in Docker...");
-        Box::new(DockerPostgreSQL::new().context("While trying to instantiate PostgreSQL docker")?)
-    };
+    let db_server = EphemeralDatabaseLauncher::create_server()?;
+    let db = db_server.create_database("yolo")?;
 
-    let jwt_secret = generate_random_string();
+    let jwt_secret = super::util::generate_random_string();
 
     let prestart_callback = || {
         async {
@@ -115,7 +99,7 @@ fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
                 let result = std::io::stdin().read_line(&mut input).map(|_| input.trim());
 
                 match result {
-                    // rebuild docker
+                    // rebuild 
                     Ok("r") => {
                         run(model, port)?;
                     }
@@ -150,205 +134,4 @@ fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
     };
 
     rt.block_on(watcher::start_watcher(model, port, prestart_callback))
-}
-
-fn generate_random_string() -> String {
-    rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(15)
-        .map(char::from)
-        .map(|c| c.to_ascii_lowercase())
-        .collect()
-}
-
-pub trait PostgreSQLInstance {
-    fn url(&self) -> String;
-}
-
-pub struct LocalPostgreSQL {
-    process: Child,
-    data_dir: TempDir,
-}
-
-impl PostgreSQLInstance for LocalPostgreSQL {
-    fn url(&self) -> String {
-        format!(
-            "postgres://exo@{}",
-            urlencoding::encode(self.data_dir.path().to_str().unwrap())
-        )
-    }
-}
-
-impl Drop for LocalPostgreSQL {
-    fn drop(&mut self) {
-        let _ = self.process.kill();
-    }
-}
-
-impl LocalPostgreSQL {
-    fn check_availability() -> Result<()> {
-        which::which("initdb")?;
-        which::which("postgres")?;
-        which::which("pg_isready")?;
-        which::which("createdb")?;
-        Ok(())
-    }
-
-    fn new() -> Result<LocalPostgreSQL> {
-        let data_dir = tempfile::tempdir()?;
-
-        std::process::Command::new("initdb")
-            .args([
-                "-D",
-                data_dir.path().to_str().unwrap(),
-                "-A",
-                "trust",
-                "--username",
-                "exo",
-            ])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .context("While trying to spawn initdb")?
-            .wait()
-            .context("While waiting for initdb to finish")?;
-
-        let config_file = data_dir.path().join("postgresql.conf");
-        let mut file = OpenOptions::new()
-            .append(true)
-            .open(&config_file)
-            .context("While trying to open postgresql.conf")?;
-        file.write_all(b"\nlisten_addresses = ''\n")?;
-        drop(file);
-
-        let postgres = std::process::Command::new("postgres")
-            .args([
-                "-D",
-                data_dir.path().to_str().unwrap(),
-                "-k",
-                data_dir.path().to_str().unwrap(),
-            ])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .context("While trying to spawn postgres")?;
-
-        let mut tries = 0;
-        loop {
-            let result = std::process::Command::new("pg_isready")
-                .args(["-h", data_dir.path().to_str().unwrap(), "-U", "exo"])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn()
-                .context("While trying to spawn postgres")?
-                .wait()
-                .context("While waiting for postgres to finish")?;
-
-            if result.success() {
-                break;
-            }
-
-            tries += 1;
-            if tries > 100 {
-                return Err(anyhow!("Postgres failed to start"));
-            }
-
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-
-        std::process::Command::new("createdb")
-            .args(["-h", data_dir.path().to_str().unwrap(), "-U", "exo", "exo"])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .context("While trying to spawn postgres")?
-            .wait()
-            .context("While waiting for postgres to finish")?;
-
-        Ok(LocalPostgreSQL {
-            process: postgres,
-            data_dir,
-        })
-    }
-}
-
-pub struct DockerPostgreSQL {
-    container_name: String,
-    connection_url: String,
-}
-
-impl PostgreSQLInstance for DockerPostgreSQL {
-    fn url(&self) -> String {
-        self.connection_url.clone()
-    }
-}
-
-impl DockerPostgreSQL {
-    pub fn new() -> Result<DockerPostgreSQL> {
-        println!("Starting PostgreSQL docker...");
-
-        // acquire an empty port
-        let port = {
-            let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
-            let addr = listener.local_addr()?;
-            addr.port()
-        };
-
-        // generate container name
-        let container_name = format!("exograph-yolo-{}", generate_random_string());
-
-        // start postgres docker in background
-        let mut db_background = std::process::Command::new("docker");
-        let db_background = db_background
-            .args([
-                "run",
-                "--rm",
-                "--name",
-                &container_name,
-                "-e",
-                "POSTGRES_USER=exo",
-                "-e",
-                "POSTGRES_PASSWORD=exo",
-                "-p",
-                &format!("{port}:5432"),
-                "postgres",
-            ])
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        let mut db_background = db_background
-            .spawn()
-            .context("While trying to start Docker (it may not be installed)")?;
-
-        // let things stabilize
-
-        let stderr = db_background.stderr.take().unwrap();
-        let reader = BufReader::new(stderr);
-        for line in reader.lines() {
-            let line = line?;
-            if line.contains("database system is ready to accept connections") {
-                break;
-            }
-        }
-
-        Ok(DockerPostgreSQL {
-            container_name,
-            connection_url: format!("postgresql://exo:exo@127.0.0.1:{port}/postgres"),
-        })
-    }
-}
-
-impl Drop for DockerPostgreSQL {
-    fn drop(&mut self) {
-        println!("Cleaning up container...");
-
-        // kill docker, will get removed automatically on exit due to --rm
-        std::process::Command::new("docker")
-            .args(["kill", &self.container_name])
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .unwrap();
-    }
 }

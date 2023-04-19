@@ -74,7 +74,7 @@ and then paste the output of the `exo schema create` command.
 4. Start the server
 
 ```
-EXO_JWT_SECRET="abcd" EXO_CORS_DOMAINS="*" EXO_POSTGRES_URL=postgresql://localhost:5432/concerts-db EXO_POSTGRES_USER=$USER cargo run --bin exo serve integration-tests/basic-model-no-auth/concerts.exo
+EXO_JWT_SECRET="abcd" EXO_CORS_DOMAINS="*" EXO_POSTGRES_URL=postgresql://localhost:5432/concerts-db EXO_POSTGRES_USER=$USER cargo run --bin exo dev integration-tests/basic-model-no-auth/concerts.exo
 ```
 
 During development, it is nicer to use `cargo watch` and let compilation and restart happen automatically with any source changes. You may also set `EXO_INTROSPECTION=true` to allow GraphQL introspection queries.
@@ -86,28 +86,40 @@ EXO_JWT_SECRET="abcd" EXO_CORS_DOMAINS="*" EXO_POSTGRES_URL=postgresql://localho
 When introspection is on, an interactive page is served at `/playground` by default; this is adjustable through the environment variable `EXO_PLAYGROUND_HTTP_PATH`. The GraphQL endpoint accepts requests at `/graphql` by default; this is also adjustable through the environment variable `EXO_ENDPOINT_HTTP_PATH`.
 
 **Note**
-If you change the treesitter grammar source file, `cargo watch` doesn't seem to pick up the change, so you need to run the non-watch version.
+If you change the tree-sitter grammar source file, `cargo watch` doesn't seem to pick up the change, so you need to run the non-watch version.
 
-5. Run unit and integration tests
-
-```
-EXO_TEST_POSTGRES_URL=postgresql://localhost:5432 EXO_TEST_POSTGRES_USER=$USER cargo test
-```
-
-6. Run blackbox integration tests
+5. Run unit tests
 
 ```
-cargo build && EXO_TEST_POSTGRES_URL=postgresql://$USER@localhost:5432 target/debug/exo test integration-tests
+cargo test
+```
+
+6. Run integration tests
+
+```
+cargo build && EXO_RUN_INTROSPECTION_TESTS=true target/debug/exo test integration-tests
 ```
 
 ## Logging, telemetry and tracing
 
-The code is instrumented using the [tracing](https://crates.io/crates/tracing) library and wwill output spans and events to any configured tracing subscriber. There are also two out of the box options available with `exo-server` which can be enabled by setting the `EXO_TELEMETRY` environment variable. Current options are `bunyan` and `jaeger`. The `bunyan` option will output [bunyan](https://crates.io/crates/tracing-bunyan-formatter) formatted data to stdout. The `jaeger` option will send data to a local Jaeger server. See the [opentelemetry-jaeger](https://crates.io/crates/opentelemetry-jaeger) docs for how to run one using docker.
+The code is instrumented using the [tracing](https://crates.io/crates/tracing) framework and will output log events to the console by default. The log level can be configured by setting the `EXO_LOG` variable which behaves identically to `RUST_LOG`. It defaults to `info` but can be set to other standard log levels such as `debug` (which will also show logging from libraries such as `tokio-postgres`). More [sophisticated settings](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/struct.EnvFilter.html) can also be used to tune the output for specific crates and modules.
 
-The `RUST_LOG` environment variable can be used to configure the level(s) of spans and events which are recorded. It defaults to `info` but can be set to other standard log levels such as `debug` (which will also show logging from libraries such as `tokio-postgres`). More [sophisticated settings](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/struct.EnvFilter.html) can also be used to tune the output for specific crates and modules.
+### OpenTelemetry
 
-As an example, if we wanted to run the integration tests at debug level with the Jaeger integration, we would prefix the command above with `RUST_LOG=debug EXO_TELEMETRY=jaeger`.
+The system can also export tracing data to an OpenTelemetry compatible system using
+[standard environment variables](https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/)
 
-By default, if `EXO_TELEMETRY` is not set, Exograph will log warnings and errors to the console. Log levels for console logging can be set through the `EXO_CONSOLE_LOG` variable. Log levels may be set per-module; by default, `tracing_actix_web` and `actix_server::worker` are both set to `warn` (even if `EXO_CONSOLE_LOG` is set to be more verbose than `warn`). This may be overriden through the following directive:
+These include:
 
-`EXO_CONSOLE_LOG="tracing_actix_web=info,actix_server::worker=info"`
+- `OTEL_SERVICE_NAME` to set the name of your service (defaults to "Exograph").
+- `OTEL_EXPORTER_OTLP_ENDPOINT` to set the endpoint to export trace data to.
+- `OTEL_EXPORTER_OTLP_PROTOCOL` the OTLP version used. Can be `grpc` (the default) or `http/protobuf`.
+- `OTEL_EXPORTER_OTLP_HEADERS` allows you to set custom headers such as authentication tokens.
+
+At least one `OTEL_` prefixed variable must be set to enable OpenTelemetry.
+
+You can use [Jaeger](https://www.jaegertracing.io/docs/latest/deployment/#all-in-one), to run an local server which can be started using docker:
+
+```shell
+$ docker run -d --name jaeger -e COLLECTOR_OTLP_ENABLED=true -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:latest
+```

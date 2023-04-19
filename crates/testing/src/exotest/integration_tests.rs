@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
+use exo_sql::testing::db::EphemeralDatabaseServer;
 use isahc::{HttpClient, ReadResponseExt, Request};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
@@ -11,11 +12,10 @@ use std::{
 };
 
 use crate::exotest::common::{TestResult, TestResultKind, TestfileContext};
-use crate::exotest::dbutils::dropdb_psql;
 use crate::exotest::loader::{ParsedTestfile, TestfileOperation};
 use crate::exotest::{
     common::{cmd, spawn_exo_server},
-    dbutils::{createdb_psql, run_psql},
+    dbutils::run_psql,
 };
 
 use super::{
@@ -31,14 +31,12 @@ struct ExoPost {
 
 pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
-    bootstrap_dburl: String,
+    ephemeral_database: &dyn EphemeralDatabaseServer,
 ) -> Result<TestResult> {
     let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name()));
 
     // iterate through our tests
     let mut ctx = {
-        let dbname = testfile.dbname();
-
         // generate a JWT secret
         let jwtsecret: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
@@ -46,14 +44,16 @@ pub(crate) fn run_testfile(
             .map(char::from)
             .collect();
 
-        // drop any previously-existing databases
-        dropdb_psql(&dbname, &bootstrap_dburl).ok();
+        let db_instance_name = format!("exotest_{:x}", md5::compute(testfile.name()));
 
         // create a database
-        let db = createdb_psql(&dbname, &bootstrap_dburl)?;
+        let db_instance = ephemeral_database.create_database(&db_instance_name)?;
 
         // create the schema
-        println!("{log_prefix} Initializing schema in {dbname} ...");
+        println!(
+            "{log_prefix} Initializing schema for {} ...",
+            testfile.name()
+        );
 
         let cli_child = cmd("exo")
             .args(["schema", "create", &testfile.model_path_string()])
@@ -65,19 +65,28 @@ pub(crate) fn run_testfile(
         }
 
         let query = std::str::from_utf8(&cli_child.stdout)?;
-        run_psql(query, &db)?;
+        run_psql(query, db_instance.as_ref())?;
 
         // spawn a exo instance
         println!("{log_prefix} Initializing exo-server ...");
 
         // Should have no effect so make it random
         let check_on_startup = if rand::random() { "true" } else { "false" };
+        let telemetry_on = std::env::vars().any(|(name, _)| name.starts_with("OTEL_"));
+        let mut extra_envs = testfile.extra_envs.clone();
+
+        if telemetry_on {
+            extra_envs.insert("OTEL_SERVICE_NAME".to_string(), testfile.name());
+        }
 
         let server = spawn_exo_server(
             &testfile.model_path,
             [
-                ("EXO_POSTGRES_URL", db.connection_string.as_str()),
-                ("EXO_POSTGRES_USER", &db.db_username),
+                (
+                    "EXO_POSTGRES_URL",
+                    // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
+                    format!("{}?options=-c%20TimeZone%3DUTC%2B00", db_instance.url()).as_str(),
+                ),
                 ("EXO_JWT_SECRET", &jwtsecret),
                 ("EXO_CONNECTION_POOL_SIZE", "1"), // Otherwise we get a "too many connections" error
                 ("EXO_CHECK_CONNECTION_ON_STARTUP", check_on_startup),
@@ -85,13 +94,7 @@ pub(crate) fn run_testfile(
                 ("EXO_INTROSPECTION", "true"),
             ]
             .into_iter()
-            .chain(
-                // add extra envs specified in testfile
-                testfile
-                    .extra_envs
-                    .iter()
-                    .map(|(x, y)| (x.as_str(), y.as_str())),
-            ),
+            .chain(extra_envs.iter().map(|(x, y)| (x.as_str(), y.as_str()))),
         )?;
 
         // spawn an HttpClient for requests to exo
@@ -101,7 +104,7 @@ pub(crate) fn run_testfile(
             .context("While initializing HttpClient")?;
 
         TestfileContext {
-            db,
+            db: db_instance,
             server,
             jwtsecret,
             client,
@@ -300,7 +303,7 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
         }
 
         TestfileOperation::Sql(query) => {
-            run_psql(query, &ctx.db)?;
+            run_psql(query, ctx.db.as_ref())?;
             Ok(OperationResult::Finished)
         }
     }
