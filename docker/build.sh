@@ -178,7 +178,7 @@ docker_build() {
             --build-arg BUILD_IMAGE="$BUILD_IMAGE" \
             --build-arg RUNTIME_IMAGE="$RUNTIME_IMAGE" \
             "${optional_target[@]}" \
-            $ROOT_DIRECTORY 
+             $ROOT_DIRECTORY 
 }
 
 # docker_build "debian" "exo$TAG_SUFFIX" "exo" # Currenty, we don't need Dockerfile with "exo dev/build" commands

@@ -108,7 +108,7 @@ impl CommandDefinition for FlyCommandDefinition {
 
         println!(
             "{}",
-            Color::Purple.paint("If not already done so, run `fly auth login` to login.")
+            Color::Purple.paint("If you haven't already done so, run `fly auth login` to login.")
         );
 
         println!(
