@@ -1,7 +1,9 @@
 use anyhow::{bail, Context, Error, Result};
 
+use colored::Colorize;
 use exo_sql::testing::db::EphemeralDatabase;
 use isahc::HttpClient;
+
 use std::{
     collections::HashMap,
     ffi::OsStr,
@@ -107,37 +109,23 @@ impl fmt::Display for TestResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.result {
             TestResultKind::Success => {
-                writeln!(
-                    f,
-                    "{} {}",
-                    self.log_prefix,
-                    ansi_term::Color::Green.paint("PASS")
-                )
+                writeln!(f, "{} {}", self.log_prefix, "PASS".green())
             }
-            TestResultKind::Fail(e) => writeln!(
-                f,
-                "{} {}\n{:?}",
-                self.log_prefix,
-                ansi_term::Color::Yellow.paint("FAIL"),
-                e
-            ),
+            TestResultKind::Fail(e) => {
+                writeln!(f, "{} {}\n{:?}", self.log_prefix, "FAIL".yellow(), e)
+            }
             TestResultKind::SetupFail(e) => writeln!(
                 f,
                 "{} {}\n{:?}",
                 self.log_prefix,
-                ansi_term::Color::Red.paint("TEST SETUP FAILED"),
+                "TEST SETUP FAILED".red(),
                 e
             ),
         }
         .unwrap();
 
         if !matches!(&self.result, TestResultKind::Success) {
-            write!(
-                f,
-                "{}\n{}\n",
-                ansi_term::Color::Purple.paint(":: Output:"),
-                ansi_term::Color::Fixed(240).paint(&self.output)
-            )
+            write!(f, "{}\n{}\n", ":: Output:".purple(), &self.output)
         } else {
             Ok(())
         }

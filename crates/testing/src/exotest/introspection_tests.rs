@@ -1,4 +1,6 @@
 use anyhow::{anyhow, Result};
+use colored::Colorize;
+
 use exo_deno::{deno_error::DenoError, Arg, DenoModule, DenoModuleSharedState, UserCode};
 use include_dir::{include_dir, Dir};
 use serde_json::Value;
@@ -15,8 +17,7 @@ const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
 const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");
 
 pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
-    let log_prefix =
-        ansi_term::Color::Purple.paint(format!("(introspection: {})\n :: ", model_path.display()));
+    let log_prefix = format!("(introspection: {})\n :: ", model_path.display()).purple();
     println!("{log_prefix} Running introspection tests...");
 
     build_exo_ir_file(model_path)?;

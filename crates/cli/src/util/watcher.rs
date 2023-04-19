@@ -2,6 +2,7 @@ use std::{path::Path, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use builder::error::ParserError;
+use colored::Colorize;
 use core_model_builder::error::ModelBuildingError;
 use futures::{future::BoxFuture, FutureExt};
 use notify_debouncer_mini::notify::RecursiveMode;
@@ -31,10 +32,8 @@ where
     // start watcher
     println!(
         "{} {}",
-        ansi_term::Color::Blue.bold().paint("Watching:"),
-        ansi_term::Color::Cyan
-            .bold()
-            .paint(&parent_dir.display().to_string())
+        "Watching:".blue().bold(),
+        &parent_dir.display().to_string().cyan().bold()
     );
 
     let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::channel(1);
@@ -68,11 +67,7 @@ where
         match build_result {
             Ok(()) => {
                 if let Err(e) = prestart_callback().await {
-                    println!(
-                        "{} {}",
-                        ansi_term::Color::Red.bold().paint("Error:"),
-                        ansi_term::Color::Red.bold().paint(e.to_string())
-                    );
+                    println!("{} {}", "Error:".red().bold(), e.to_string().red().bold());
                 }
 
                 let mut command = tokio::process::Command::new(&server_binary);
