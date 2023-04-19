@@ -15,7 +15,7 @@ module ConcertVenues {
     name: String
     @column("venueid") concerts: Set<Concert>? 
     published: Boolean
-    @size(4) latitude: Float 
+    @singlePrecision latitude: Float
   }
 }
 

@@ -557,12 +557,12 @@ fn determine_column_type<'a>(
                 }
             }
 
-            ResolvedTypeHint::String { length } => {
+            ResolvedTypeHint::String { max_length } => {
                 assert!(matches!(pt, PrimitiveType::String));
 
                 // length hint provided, use it
                 PhysicalColumnType::String {
-                    length: Some(*length),
+                    max_length: Some(*max_length),
                 }
             }
 
@@ -592,7 +592,7 @@ fn determine_column_type<'a>(
                 precision: None,
                 scale: None,
             },
-            PrimitiveType::String => PhysicalColumnType::String { length: None },
+            PrimitiveType::String => PhysicalColumnType::String { max_length: None },
             PrimitiveType::Boolean => PhysicalColumnType::Boolean,
             PrimitiveType::LocalTime => PhysicalColumnType::Time { precision: None },
             PrimitiveType::LocalDateTime => PhysicalColumnType::Timestamp {
