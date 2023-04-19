@@ -5,9 +5,9 @@ module VideoModule {
   type Video {
     @dbtype("BIGINT") @pk id: Int = autoIncrement() 
     name: String  
-    @length(30)  slug: String 
-    @bits(16) nonce: Int 
+    @maxLength(30)  slug: String
+    @bits16 nonce: Int
     @range(min=0, max=9999999999) views: Int 
-    @size(6) filesize: Int 
+    @bits64 filesize: Int
   }
 }

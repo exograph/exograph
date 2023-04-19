@@ -251,9 +251,9 @@ impl PhysicalColumnType {
                 post_statements: vec![],
             },
 
-            PhysicalColumnType::String { length } => SchemaStatement {
-                statement: if let Some(length) = length {
-                    format!("VARCHAR({length})")
+            PhysicalColumnType::String { max_length } => SchemaStatement {
+                statement: if let Some(max_length) = max_length {
+                    format!("VARCHAR({max_length})")
                 } else {
                     "TEXT".to_owned()
                 },

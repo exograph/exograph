@@ -48,7 +48,7 @@ impl TestSetup<'_> {
                 PhysicalColumn {
                     table_name: "concerts".to_string(),
                     name: "name".to_string(),
-                    typ: PhysicalColumnType::String { length: None },
+                    typ: PhysicalColumnType::String { max_length: None },
                     is_pk: false,
                     is_auto_increment: false,
                     is_nullable: true,
@@ -88,7 +88,7 @@ impl TestSetup<'_> {
                 PhysicalColumn {
                     table_name: "venues".to_string(),
                     name: "name".to_string(),
-                    typ: PhysicalColumnType::String { length: None },
+                    typ: PhysicalColumnType::String { max_length: None },
                     is_pk: false,
                     is_auto_increment: false,
                     is_nullable: true,
@@ -161,7 +161,7 @@ impl TestSetup<'_> {
                 PhysicalColumn {
                     table_name: "artists".to_string(),
                     name: "name".to_string(),
-                    typ: PhysicalColumnType::String { length: None },
+                    typ: PhysicalColumnType::String { max_length: None },
                     is_pk: false,
                     is_auto_increment: false,
                     is_nullable: true,
@@ -201,7 +201,7 @@ impl TestSetup<'_> {
                 PhysicalColumn {
                     table_name: "addresses".to_string(),
                     name: "city".to_string(),
-                    typ: PhysicalColumnType::String { length: None },
+                    typ: PhysicalColumnType::String { max_length: None },
                     is_pk: false,
                     is_auto_increment: false,
                     is_nullable: true,

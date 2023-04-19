@@ -18,7 +18,7 @@ module ConcertVenues {
     @column("venueid") concerts: Set<Concert> 
     published: Boolean
     occupancy: Int = 200 // highlighting of numbers in default field
-    latitude: Float @size(4)
+    @singlePrecision latitude: Floatq
   }
 }
 

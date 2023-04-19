@@ -67,7 +67,7 @@ pub enum PhysicalColumnType {
         bits: IntBits,
     },
     String {
-        length: Option<usize>,
+        max_length: Option<usize>,
     },
     Boolean,
     Timestamp {
@@ -169,7 +169,7 @@ impl PhysicalColumnType {
                 },
 
                 "UUID" => PhysicalColumnType::Uuid,
-                "TEXT" => PhysicalColumnType::String { length: None },
+                "TEXT" => PhysicalColumnType::String { max_length: None },
                 "BOOLEAN" => PhysicalColumnType::Boolean,
                 "JSONB" => PhysicalColumnType::Json,
                 s => {
@@ -188,7 +188,9 @@ impl PhysicalColumnType {
                         || s.starts_with("VARCHAR")
                         || s.starts_with("CHAR")
                     {
-                        PhysicalColumnType::String { length: get_num(s) }
+                        PhysicalColumnType::String {
+                            max_length: get_num(s),
+                        }
                     } else if s.starts_with("TIMESTAMP") {
                         PhysicalColumnType::Timestamp {
                             precision: get_num(s),
@@ -227,9 +229,9 @@ impl PhysicalColumnType {
             PhysicalColumnType::Int { bits } => (
                 "Int".to_string(),
                 match bits {
-                    IntBits::_16 => " @bits(16)",
+                    IntBits::_16 => " @bits16",
                     IntBits::_32 => "",
-                    IntBits::_64 => " @bits(64)",
+                    IntBits::_64 => " @bits64",
                 }
                 .to_string(),
             ),
@@ -237,8 +239,8 @@ impl PhysicalColumnType {
             PhysicalColumnType::Float { bits } => (
                 "Float".to_string(),
                 match bits {
-                    FloatBits::_24 => " @bits(24)",
-                    FloatBits::_53 => " @bits(53)",
+                    FloatBits::_24 => " @singlePrecision",
+                    FloatBits::_53 => " @doublePrecision",
                 }
                 .to_owned(),
             ),
@@ -253,10 +255,10 @@ impl PhysicalColumnType {
                 format!(" {precision_part} {scale_part}")
             }),
 
-            PhysicalColumnType::String { length } => (
+            PhysicalColumnType::String { max_length } => (
                 "String".to_string(),
-                match length {
-                    Some(length) => format!(" @length({length})"),
+                match max_length {
+                    Some(max_length) => format!(" @maxLength({max_length})"),
                     None => "".to_string(),
                 },
             ),
