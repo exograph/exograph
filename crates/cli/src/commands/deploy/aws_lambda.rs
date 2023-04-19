@@ -15,6 +15,12 @@ use crate::commands::{
 
 /// The `deploy aws-lambda` command.
 /// Creates a distributable zip file for AWS Lambda and provides instructions for deploying it.
+///
+/// Currently expects "aws-lambda-bootstrap" to be in the same directory as the exo executable.
+/// To make this possible, run:
+/// 1. docker/build.sh release
+/// 2. docker cp $(docker create --name temp_container exo-server-aws-lambda:latest):/usr/src/app/bootstrap ./target/release/aws-lambda-bootstrap && docker rm temp_container
+/// TODO: Revisit once we have a proper release process.
 pub(super) struct AwsLambdaCommandDefinition {}
 
 impl CommandDefinition for AwsLambdaCommandDefinition {
@@ -106,7 +112,6 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
 }
 
 /// Create a zip with the bootstrap executable and the compiled model.
-/// Currently expects "aws-lambda-bootstrap" to be in the same directory as the exo executable.
 fn create_function_zip(model_path: &Path) -> Result<()> {
     let zip_path = std::path::Path::new("aws-lambda/function.zip");
     let zip_file = std::fs::File::create(zip_path)?;

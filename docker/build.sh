@@ -182,5 +182,5 @@ docker_build() {
 }
 
 # docker_build "debian" "exo$TAG_SUFFIX" "exo" # Currenty, we don't need Dockerfile with "exo dev/build" commands
-# docker_build "debian" "exo-server$TAG_SUFFIX" "exo-server"
+docker_build "debian" "exo-server$TAG_SUFFIX" "exo-server"
 docker_build "aws" "exo-server-aws-lambda$TAG_SUFFIX" "exo-server-aws-lambda"
