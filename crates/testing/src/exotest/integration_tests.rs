@@ -1,4 +1,6 @@
 use anyhow::{anyhow, bail, Context, Result};
+use colored::Colorize;
+
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use isahc::{HttpClient, ReadResponseExt, Request};
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -33,7 +35,7 @@ pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
     ephemeral_database: &dyn EphemeralDatabaseServer,
 ) -> Result<TestResult> {
-    let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name()));
+    let log_prefix = format!("({})\n :: ", testfile.name()).purple();
 
     // iterate through our tests
     let mut ctx = {

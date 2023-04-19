@@ -4,9 +4,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ansi_term::Color;
 use anyhow::{anyhow, Result};
 use clap::{Arg, ArgAction, Command};
+use colored::Colorize;
 use heck::ToSnakeCase;
 
 use crate::commands::{
@@ -108,89 +108,69 @@ impl CommandDefinition for FlyCommandDefinition {
 
         println!(
             "{}",
-            Color::Purple.paint("If you haven't already done so, run `fly auth login` to login.")
+            "If you haven't already done so, run `fly auth login` to login.".purple()
         );
 
         println!(
             "{}",
-            Color::Blue
+            "\nTo deploy the app for the first time, run:"
+                .blue()
                 .italic()
-                .paint("\nTo deploy the app for the first time, run:")
         );
-        println!(
-            "{}",
-            Color::Blue.paint(format!("\tcd {}", fly_dir.display()))
-        );
-        println!(
-            "{}",
-            Color::Blue.paint(format!("\tfly apps create {}", app_name))
-        );
+        println!("{}", format!("\tcd {}", fly_dir.display()).blue());
+        println!("{}", format!("\tfly apps create {}", app_name).blue());
         println!(
             "{}{}",
-            Color::Blue.paint(format!(
-                "\tfly secrets set --app {} EXO_JWT_SECRET=",
-                app_name,
-            )),
-            Color::Yellow.paint("<your-jwt-secret>")
+            format!("\tfly secrets set --app {} EXO_JWT_SECRET=", app_name,).blue(),
+            "<your-jwt-secret>".yellow()
         );
         if use_fly_db {
             println!(
                 "{}",
-                Color::Blue.paint(format!("\tfly postgres create --name {}-db", app_name))
+                format!("\tfly postgres create --name {}-db", app_name).blue()
             );
             println!(
                 "{}",
-                Color::Blue.paint(format!(
-                    "\tfly postgres attach --app {} {}-db",
-                    app_name, app_name
-                ))
+                format!("\tfly postgres attach --app {} {}-db", app_name, app_name).blue()
             );
             println!(
                 "\tIn a separate terminal: {}",
-                Color::Blue.paint(format!("fly proxy 54321:5432 -a {}-db", app_name))
+                format!("fly proxy 54321:5432 -a {}-db", app_name).blue()
             );
             let db_name = &app_name.to_snake_case(); // this is how fly.io names the db
             println!(
                 "{}{}{}",
-                Color::Blue.paint(format!(
+                format!(
                     "\texo schema create ../{} | psql postgres://{db_name}:",
                     model.to_str().unwrap()
-                )),
-                Color::Blue.paint(format!("@localhost:54321/{db_name}")),
-                Color::Yellow.paint("<APP_DATABASE_PASSWORD>"),
+                )
+                .blue(),
+                "<APP_DATABASE_PASSWORD>".yellow(),
+                format!("@localhost:54321/{db_name}").blue(),
             );
         } else {
             println!(
                 "{}{}",
-                Color::Blue.paint(format!(
-                    "\tfly secrets set --app {} EXO_POSTGRES_URL=",
-                    app_name
-                )),
-                Color::Yellow.paint("<your-postgres-url>")
+                format!("\tfly secrets set --app {} EXO_POSTGRES_URL=", app_name).blue(),
+                "<your-postgres-url>".yellow()
             );
             println!(
                 "{}{}",
-                Color::Blue.paint(format!(
-                    "\texo schema create ../{} | psql ",
-                    model.to_str().unwrap()
-                )),
-                Color::Yellow.paint("<your-postgres-url>")
+                format!("\texo schema create ../{} | psql ", model.to_str().unwrap()).blue(),
+                "<your-postgres-url>".yellow()
             );
         }
 
-        println!("{}", Color::Blue.paint("\tfly deploy --local-only"));
+        println!("{}", "\tfly deploy --local-only".blue());
 
         println!(
             "{}",
-            Color::Green
+            "\nTo deploy a new version of an existing app, run:"
+                .green()
                 .italic()
-                .paint("\nTo deploy a new version of an existing app, run:")
         );
-        println!(
-            "{}",
-            Color::Green.paint(format!("\tcd {}", fly_dir.display()))
-        );
-        println!("{}", Color::Green.paint("\tfly deploy --local-only"));
+        println!("{}", format!("\tcd {}", fly_dir.display()).green());
+        println!("{}", "\tfly deploy --local-only".green());
 
         Ok(())
     }

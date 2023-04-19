@@ -1058,7 +1058,6 @@ checksum = "8a2dd5a6fe8c6e3502f568a6353e5273bbb15193ad9a89e457b9970798efbea1"
 name = "cli"
 version = "0.1.0"
 dependencies = [
- "ansi_term",
  "anyhow",
  "builder",
  "clap 4.2.4",
@@ -6715,10 +6714,10 @@ dependencies = [
 name = "testing"
 version = "0.1.0"
 dependencies = [
- "ansi_term",
  "anyhow",
  "async-graphql-parser",
  "async-graphql-value",
+ "colored",
  "exo-deno",
  "exo-sql",
  "include_dir",

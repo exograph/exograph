@@ -9,7 +9,6 @@ name = "exo"
 path = "src/main.rs"
 
 [dependencies]
-ansi_term.workspace = true
 colored.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
