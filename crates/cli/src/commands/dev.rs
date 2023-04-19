@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use clap::{ArgMatches, Command};
+use colored::Colorize;
 use futures::FutureExt;
 use std::{
     io::{stdin, stdout, Write},
@@ -30,9 +31,7 @@ impl CommandDefinition for DevCommandDefinition {
 
         println!(
             "{}",
-            ansi_term::Color::Purple
-                .bold()
-                .paint("Starting server in development mode...")
+            "Starting server in development mode...".purple().bold()
         );
         // In the serve mode, which is meant for development, always enable introspection and use relaxed CORS
         std::env::set_var("EXO_INTROSPECTION", "true");
@@ -41,17 +40,17 @@ impl CommandDefinition for DevCommandDefinition {
         let rt = Runtime::new()?;
 
         rt.block_on(watcher::start_watcher(&model, port, || async {
-            println!("{}", ansi_term::Color::Blue.bold().paint("\nVerifying new model..."));
+            println!("{}", "\nVerifying new model...".blue().bold());
 
             loop {
                 let verification_result = verify(&model, None).await;
 
                 match verification_result {
                     Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
-                        println!("{}", ansi_term::Color::Red.bold().paint("The schema of the current database is not compatible with the current model for the following reasons:"));
-                        println!("{}", ansi_term::Color::Red.bold().paint(e.to_string()));
-                        println!("{}", ansi_term::Color::Blue.bold().paint("Select an option:"));
-                        print!("{}", ansi_term::Color::Blue.bold().paint("[c]ontinue without fixing, (p)ause and fix manually: "));
+                        println!("{}", "The schema of the current database is not compatible with the current model for the following reasons:".red().bold());
+                        println!("{}", e.to_string().red().bold());
+                        println!("{}", "Select an option:".blue().bold());
+                        print!("{}", "[c]ontinue without fixing, (p)ause and fix manually: ".blue().bold());
                         stdout().flush()?;
 
                         let mut input: String = String::new();
@@ -61,13 +60,13 @@ impl CommandDefinition for DevCommandDefinition {
 
                         match result {
                             "p" => {
-                                println!("{}", ansi_term::Color::Blue.bold().paint("Paused. Press enter to re-verify."));
+                                println!("{}", "Paused. Press enter to re-verify.".blue().bold());
 
                                 let mut line = String::new();
                                 stdin().read_line(&mut line)?;
                             }
                             _ => {
-                                println!("{}", ansi_term::Color::Green.bold().paint("Continuing..."));
+                                println!("{}", "Continuing...".green().bold());
                                 break Ok(());
                             }
                         }

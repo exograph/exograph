@@ -1,6 +1,8 @@
 mod exotest;
 
 use anyhow::{bail, Context, Result};
+use colored::Colorize;
+
 use exo_sql::testing::db::{EphemeralDatabaseLauncher, EphemeralDatabaseServer};
 use exotest::integration_tests::{build_exo_ir_file, run_testfile};
 use exotest::loader::{load_testfiles_from_dir, ParsedTestfile};
@@ -22,15 +24,13 @@ pub fn run(
 
     println!(
         "{} {} {} {}",
-        ansi_term::Color::Blue
-            .bold()
-            .paint("* Running tests in directory"),
+        "* Running tests in directory".blue().bold(),
         root_directory_str,
         pattern
             .as_ref()
             .map(|p| format!("with pattern '{p}'"))
             .unwrap_or_else(|| "".to_string()),
-        ansi_term::Color::Blue.bold().paint("..."),
+        "...".blue().bold(),
     );
 
     let start_time = std::time::Instant::now();
@@ -58,9 +58,7 @@ pub fn run(
     if run_introspection_tests {
         println!(
             "{}",
-            ansi_term::Color::Blue
-                .bold()
-                .paint("** Introspection tests enabled, running")
+            "** Introspection tests enabled, running".blue().bold()
         );
 
         for model_path in model_file_deps.keys() {
@@ -68,12 +66,7 @@ pub fn run(
         }
     };
 
-    println!(
-        "{}",
-        ansi_term::Color::Blue
-            .bold()
-            .paint("** Running integration tests")
-    );
+    println!("{}", "** Running integration tests".blue().bold());
 
     // Estimate an optimal pool size
     let pool_size = min(number_of_integration_tests, cpus * 2);
@@ -149,11 +142,8 @@ pub fn run(
             }
 
             Err(e) => {
-                println!(
-                    "{}",
-                    ansi_term::Color::Red.paint("A testfile errored while running.")
-                );
-                println!("{}\n", ansi_term::Color::Fixed(240).paint(format!("{e:?}")));
+                println!("{}", "A testfile errored while running.".red());
+                println!("{e:?}\n");
             }
         }
     }
@@ -161,18 +151,16 @@ pub fn run(
     let number_of_tests = test_results.len();
     let success = number_of_succeeded_tests == number_of_tests;
     let status = if success {
-        ansi_term::Color::Green.paint("PASS.")
+        "PASS.".green()
     } else {
-        ansi_term::Color::Red.paint("FAIL.")
+        "FAIL.".red()
     };
 
     println!(
         "{} {} {} out of {} total in {} seconds ({} cpus)",
-        ansi_term::Color::Blue.bold().paint("* Test results:"),
+        "* Test results:".blue().bold(),
         status,
-        ansi_term::Style::new()
-            .bold()
-            .paint(format!("{number_of_succeeded_tests} passed")),
+        format!("{number_of_succeeded_tests} passed").bold(),
         number_of_tests,
         start_time.elapsed().as_secs(),
         cpus,

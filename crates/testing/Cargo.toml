@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
-ansi_term.workspace = true
+colored.workspace = true
 isahc = { version = "1.7", features = ["json", "cookies"] }
 num_cpus = "1.13.1"
 serde.workspace = true
