@@ -49,14 +49,9 @@ pub(super) fn init() {
     let telemetry_layer =
         create_otlp_tracer().map(|t| tracing_opentelemetry::layer().with_tracer(t));
     let filter = EnvFilter::builder()
-        .with_default_directive(LevelFilter::INFO.into())
+        .with_default_directive(LevelFilter::WARN.into())
         .with_env_var("EXO_LOG")
-        .from_env_lossy()
-        .add_directive(
-            "h2=warn"
-                .parse()
-                .expect("Hard coded directive shouldn't fail"),
-        );
+        .from_env_lossy();
 
     tracing_subscriber::registry()
         .with(filter)
