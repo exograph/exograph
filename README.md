@@ -5,8 +5,9 @@
 Must have:
 
 - Rust (see the version specified in [rust-toolchain.toml](rust-toolchain.toml)). Also install the wasm32-wasm target (`rustup target add wasm32-wasi`).
+- Protobuf-compiler version 3.x
 - Postgres 12
-- Node (any reasonable version, used by Tree Sitter)
+- Node (any reasonable version, used by Tree Sitter and building the GraphiQL app)
 - [Deno](https://deno.land/)
 
 Nice to have:
