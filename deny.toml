@@ -13,17 +13,18 @@ notice = "warn"
 [licenses]
 unlicensed = "deny"
 allow = [
-    "MIT",
     "Apache-2.0",
-    "OpenSSL",
     "Apache-2.0 WITH LLVM-exception",
-    "Zlib",
+    "Artistic-2.0",
     "BSD-2-Clause",
     "BSD-3-Clause",
-    "Unicode-DFS-2016",
-    "ISC",
-    "Artistic-2.0",
     "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "OpenSSL",
+    "Unicode-DFS-2016",
+    "Zlib",
 ]
 deny = [
 ]
