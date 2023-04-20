@@ -49,29 +49,9 @@ pub(super) fn init() {
     let telemetry_layer =
         create_otlp_tracer().map(|t| tracing_opentelemetry::layer().with_tracer(t));
     let filter = EnvFilter::builder()
-        .with_default_directive(LevelFilter::INFO.into())
+        .with_default_directive(LevelFilter::WARN.into())
         .with_env_var("EXO_LOG")
-        .from_env_lossy()
-        .add_directive(
-            "h2=warn"
-                .parse()
-                .expect("Hard coded directive shouldn't fail"),
-        )
-        // By default, actix_server logs every request at the INFO level. This ends up printing
-        // a lot of information to the console at the start and end such as:
-        // 2023-04-20T16:25:35.691768Z  INFO actix_server::builder: starting 12 workers
-        // 2023-04-20T16:25:35.693156Z  INFO actix_server::server: Actix runtime found; starting in Actix runtime
-        // ^C2023-04-20T16:25:39.741331Z  INFO actix_server::server: SIGINT received; starting forced shutdown
-        // 2023-04-20T16:25:39.741799Z  INFO actix_server::worker: shutting down idle worker
-        // 2023-04-20T16:25:39.741800Z  INFO actix_server::worker: shutting down idle worker
-        // 2023-04-20T16:25:39.741804Z  INFO actix_server::worker: shutting down idle worker
-        // 2023-04-20T16:25:39.741805Z  INFO actix_server::worker: shutting down idle worker
-        // So set the default to WARN.
-        .add_directive(
-            "actix_server=warn"
-                .parse()
-                .expect("Hard coded directive shouldn't fail"),
-        );
+        .from_env_lossy();
 
     tracing_subscriber::registry()
         .with(filter)
