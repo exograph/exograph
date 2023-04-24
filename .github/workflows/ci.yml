@@ -1,0 +1,83 @@
+name: Exograph CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run cargo fmt
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
+
+    - name: Run cargo clippy
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --all-targets -- -D warnings
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run cargo check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --all-targets
+        
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:12-buster
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+  
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+      - name: Run cargo test
+        run: EXO_TEST_POSTGRES_URL=postgresql://postgres@postgres:5432 cargo test --workspace
+        
+  test-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:12-buster
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+  
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+      - name: Run exo test
+        run: EXO_TEST_POSTGRES_URL=postgresql://postgres@postgres:5432 cargo run -p crates/cli -- test --run-introspection-tests integration-tests
