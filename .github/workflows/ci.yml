@@ -54,6 +54,8 @@ jobs:
   
     steps:
       - uses: actions/checkout@v3
+      - name: Install protobuf-compiler
+        run: sudo apt-get install -y protobuf-compiler
       - name: Run cargo test
         run: EXO_TEST_POSTGRES_URL=postgresql://postgres@postgres:5432 cargo test --workspace
         
@@ -75,5 +77,7 @@ jobs:
   
     steps:
       - uses: actions/checkout@v3
+      - name: Install protobuf-compiler
+        run: sudo apt-get install -y protobuf-compiler
       - name: Run exo test
         run: EXO_TEST_POSTGRES_URL=postgresql://postgres@postgres:5432 cargo run -p cli -- test --run-introspection-tests integration-tests
