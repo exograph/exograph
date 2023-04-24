@@ -63,7 +63,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                                     message: format!("Cannot negate non-boolean type {}", &other),
                                     code: Some("C000".to_string()),
                                     spans: vec![SpanLabel {
-                                        span: *v.span(),
+                                        span: v.span(),
                                         style: SpanStyle::Primary,
                                         label: Some(format!("expected Boolean, got {other}")),
                                     }],
@@ -78,58 +78,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                 };
                 in_updated || out_updated
             }
-            LogicalOp::And(left, right, _, o_typ) => {
-                let in_updated = left.pass(type_env, annotation_env, scope, errors)
-                    || right.pass(type_env, annotation_env, scope, errors);
-                let out_updated = if o_typ.is_incomplete() {
-                    let left_typ = left.typ().deref(type_env);
-                    let right_typ = right.typ().deref(type_env);
-                    if left_typ == Type::Primitive(PrimitiveType::Boolean)
-                        && right_typ == Type::Primitive(PrimitiveType::Boolean)
-                    {
-                        *o_typ = Type::Primitive(PrimitiveType::Boolean);
-                        true
-                    } else {
-                        *o_typ = Type::Error;
-
-                        if left_typ.is_complete() || right_typ.is_complete() {
-                            let mut spans = vec![];
-                            if left_typ != Type::Primitive(PrimitiveType::Boolean)
-                                && left_typ.is_complete()
-                            {
-                                spans.push(SpanLabel {
-                                    span: *left.span(),
-                                    style: SpanStyle::Primary,
-                                    label: Some(format!("expected Boolean, got {left_typ}")),
-                                })
-                            }
-
-                            if right_typ != Type::Primitive(PrimitiveType::Boolean)
-                                && left_typ.is_complete()
-                            {
-                                spans.push(SpanLabel {
-                                    span: *right.span(),
-                                    style: SpanStyle::Primary,
-                                    label: Some(format!("expected Boolean, got {right_typ}")),
-                                })
-                            }
-
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: "Both inputs to && must be booleans".to_string(),
-                                code: Some("C000".to_string()),
-                                spans,
-                            });
-                        }
-
-                        false
-                    }
-                } else {
-                    false
-                };
-                in_updated || out_updated
-            }
-            LogicalOp::Or(left, right, _, o_typ) => {
+            LogicalOp::Or(left, right, _, o_typ) | LogicalOp::And(left, right, _, o_typ) => {
                 let in_updated = left.pass(type_env, annotation_env, scope, errors)
                     || right.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if o_typ.is_incomplete() {
@@ -150,7 +99,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                                 && left_typ.is_complete()
                             {
                                 spans.push(SpanLabel {
-                                    span: *left.span(),
+                                    span: left.span(),
                                     style: SpanStyle::Primary,
                                     label: Some(format!("expected Boolean, got {left_typ}")),
                                 })
@@ -160,7 +109,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                                 && right_typ.is_complete()
                             {
                                 spans.push(SpanLabel {
-                                    span: *right.span(),
+                                    span: right.span(),
                                     style: SpanStyle::Primary,
                                     label: Some(format!("expected Boolean, got {right_typ}")),
                                 })
@@ -168,7 +117,8 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
 
                             errors.push(Diagnostic {
                                 level: Level::Error,
-                                message: "Both inputs to || must be booleans".to_string(),
+                                message: "Both inputs to a logical operation must be booleans"
+                                    .to_string(),
                                 code: Some("C000".to_string()),
                                 spans,
                             });

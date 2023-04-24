@@ -285,16 +285,25 @@ pub enum AstExpr<T: NodeTypedness> {
 }
 
 impl<T: NodeTypedness> AstExpr<T> {
-    pub fn span(&self) -> &Span {
+    pub fn span(&self) -> Span {
         match &self {
-            AstExpr::FieldSelection(s) => s.span(),
-            AstExpr::StringLiteral(_, s) => s,
+            AstExpr::FieldSelection(s) => *s.span(),
+            AstExpr::StringLiteral(_, s) => *s,
             AstExpr::LogicalOp(l) => match l {
-                LogicalOp::Not(e, _, _) => e.span(),
-                LogicalOp::And(_, _, s, _) => s,
-                LogicalOp::Or(_, _, s, _) => s,
+                LogicalOp::Not(_, s, _) => *s,
+                LogicalOp::And(_, _, s, _) => *s,
+                LogicalOp::Or(_, _, s, _) => *s,
             },
-            _ => panic!(),
+            AstExpr::RelationalOp(r) => r.span(),
+            AstExpr::BooleanLiteral(_, s) => *s,
+            AstExpr::NumberLiteral(_, s) => *s,
+            AstExpr::StringList(_, s) => {
+                let mut span = s[0].to_owned();
+                for s in s.iter().skip(1) {
+                    span = span.merge(*s);
+                }
+                span
+            }
         }
     }
 }
@@ -384,6 +393,11 @@ impl<T: NodeTypedness> RelationalOp<T> {
             RelationalOp::Gte(l, r, typ) => (l, r, typ),
             RelationalOp::In(l, r, typ) => (l, r, typ),
         }
+    }
+
+    fn span(&self) -> Span {
+        let (l, r) = self.sides();
+        l.span().merge(r.span())
     }
 }
 

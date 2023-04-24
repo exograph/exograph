@@ -32,5 +32,14 @@ module DocumentModule {
     @pk id: Int = autoIncrement()
     name: String
     membership: Membership?
+    notes: Set<AdminNote>?
+  }
+
+  // Only admins can see their own notes (or all notes if they are super admin)
+  @access("SUPER_ADMIN" in AuthContext.roles || ("ADMIN" in AuthContext.roles && self.user.id == AuthContext.id))
+  type AdminNote {
+    @pk id: Int = autoIncrement()
+    content: String
+    user: User
   }
 }

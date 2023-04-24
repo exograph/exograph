@@ -1,0 +1,116 @@
+stages:
+  # Admin gets their notes (admin user 3)
+  - operation: |
+      query {
+        adminNotes {
+          id
+          content
+        }
+      }
+    auth: |
+        {
+            "sub": 3,
+            "roles": ["ADMIN"]
+        }   
+    response: |
+        {
+          "data": {
+            "adminNotes": [
+              {
+                "id": 1,
+                "content": "n1_user3"
+              }
+            ]
+          }
+        }
+  # Admin gets their notes (admin user 4)        
+  - operation: |
+      query {
+        adminNotes {
+          id
+          content
+        }
+      }
+    auth: |
+        {
+            "sub": 4,
+            "roles": ["ADMIN"]
+        }   
+    response: |
+        {
+          "data": {
+            "adminNotes": [
+              {
+                "id": 2,
+                "content": "n2_user4"
+              }
+            ]
+          }
+        }
+  # Admin gets their notes (user 1 has no notes)
+  - operation: |
+      query {
+        adminNotes {
+          id
+          content
+        }
+      }
+    auth: |
+        {
+            "sub": 1,
+            "roles": ["ADMIN"]
+        }   
+    response: |
+        {
+          "data": {
+            "adminNotes": [
+            ]
+          }
+        }
+  # Super admin gets all notes
+  - operation: |
+      query {
+        adminNotes {
+          id
+          content
+        }
+      }
+    auth: |
+        {
+            "roles": ["SUPER_ADMIN"]
+        }   
+    response: |
+        {
+          "data": {
+            "adminNotes": [
+              {
+                "id": 1,
+                "content": "n1_user3"
+              },
+              {
+                "id": 2,
+                "content": "n2_user4"
+              }
+            ]
+          }
+        }
+  # Normal user gets an authorization error
+  - operation: |
+      query {
+        adminNotes {
+          id
+          content
+        }
+      }
+    auth: |
+        {
+            "roles": ["USER"]
+        }   
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Not authorized"
+            }
+          ]
+        }

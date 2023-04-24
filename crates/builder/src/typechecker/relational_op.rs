@@ -66,13 +66,13 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
                     if left_typ.is_complete() && right_typ.is_complete() {
                         let mut spans = vec![];
                         spans.push(SpanLabel {
-                            span: *left.span(),
+                            span: left.span(),
                             style: SpanStyle::Primary,
                             label: Some(format!("got {left_typ}")),
                         });
 
                         spans.push(SpanLabel {
-                            span: *right.span(),
+                            span: right.span(),
                             style: SpanStyle::Primary,
                             label: Some(format!("got {right_typ}")),
                         });

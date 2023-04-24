@@ -503,17 +503,17 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<U
         ),
         "literal_boolean" => {
             let value = first_child.child(0).unwrap().utf8_text(source).unwrap();
-            if value == "true" {
-                AstExpr::BooleanLiteral(true, source_span)
-            } else {
-                AstExpr::BooleanLiteral(false, source_span)
-            }
+            AstExpr::BooleanLiteral(value == "true", source_span)
         }
         "logical_op" => AstExpr::LogicalOp(convert_logical_op(first_child, source, source_span)),
         "relational_op" => {
             AstExpr::RelationalOp(convert_relational_op(first_child, source, source_span))
         }
         "selection" => AstExpr::FieldSelection(convert_selection(first_child, source, source_span)),
+        "parenthetical" => {
+            let expression = first_child.child_by_field_name("expression").unwrap();
+            convert_expression(expression, source, source_span)
+        }
         o => panic!("unsupported expression kind: {o}"),
     }
 }
