@@ -47,7 +47,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install deps
         run: sudo apt-get install -y protobuf-compiler
-      - name: Run cargo test
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+      - name: Run tests
         run: cargo test --workspace
         
   test-integration:
@@ -57,5 +61,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install deps
         run: sudo apt-get install -y protobuf-compiler
-      - name: Run exo test
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+      - name: Run integration tests
         run: EXO_RUN_INTROSPECTION_TESTS=true cargo run --bin exo -- test integration-tests
