@@ -54,10 +54,6 @@ jobs:
   
     steps:
       - uses: actions/checkout@v3
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
       - name: Run cargo test
         run: EXO_TEST_POSTGRES_URL=postgresql://postgres@postgres:5432 cargo test --workspace
         
@@ -79,9 +75,5 @@ jobs:
   
     steps:
       - uses: actions/checkout@v3
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
       - name: Run exo test
         run: EXO_TEST_POSTGRES_URL=postgresql://postgres@postgres:5432 cargo run -p crates/cli -- test --run-introspection-tests integration-tests
