@@ -20,7 +20,7 @@ use core_plugin_interface::core_model_builder::{
 
 // Temporary. Eventually, we will have a published artifact (at https://deno.land/x/exograph@<version>) that contains this code.
 // Then, we will have this imported in each generated module code (currently, it suffices to just have it in the same directory as the module code).
-static EXOTIP_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
+static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 
 /// Generates a module skeleton based on module definitions in the exo file so that users can have a good starting point.
 ///
@@ -78,13 +78,22 @@ pub fn generate_module_skeleton(
         .unwrap_or(false);
 
     let out_file = Path::new(out_file.as_ref());
+    let out_file_dir = out_file
+        .parent()
+        .ok_or(ModelBuildingError::Generic(format!(
+            "Cannot get parent directory of {}",
+            out_file.display()
+        )))?;
+
+    // Make sure the directory exists in case the path provides is "new_dir/new_file.ts" and the "new_dir" doesn't exist.
+    std::fs::create_dir_all(out_file_dir)?;
 
     // Generated a typescript definition file even for Javascript, so that user can know
     // the expected interface and IDEs can assist with code completion (if they use jsdoc, for).
-    let exograph_d_path = out_file.parent().unwrap().join("exograph.d.ts");
+    let exograph_d_path = out_file_dir.join("exograph.d.ts");
     if !exograph_d_path.exists() {
         let mut exograph_d_file = File::create(&exograph_d_path)?;
-        exograph_d_file.write_all(EXOTIP_D_TEMPLATE_TS.as_bytes())?;
+        exograph_d_file.write_all(EXOGRAPH_D_TEMPLATE_TS.as_bytes())?;
     }
 
     // We don't want to overwrite any user files
