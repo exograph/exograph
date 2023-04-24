@@ -58,4 +58,4 @@ jobs:
       - name: Install deps
         run: sudo apt-get install -y protobuf-compiler
       - name: Run exo test
-        run: EXO_RUN_INTROSPECTION_TESTS=true cargo run -p cli -- test integration-tests
+        run: EXO_RUN_INTROSPECTION_TESTS=true cargo run --bin exo -- test integration-tests
