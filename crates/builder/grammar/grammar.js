@@ -133,7 +133,7 @@ module.exports = grammar({
       $.literal_str,
       $.literal_boolean
     ),
-    parenthetical: $ => seq("(", $.expression, ")"),
+    parenthetical: $ => seq("(", field("expression", $.expression), ")"),
     selection: $ => choice(
       $.selection_select,
       $.term

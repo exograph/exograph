@@ -24,15 +24,17 @@ operation: |
         adminDoc4: createAdminDoc(data: {content: "adminDoc4"}) {
             id
         }
-        users: createUsers(data: [{name: "u1"}, {name: "u2"}]) {
+        users: createUsers(data: [{name: "u1"}, {name: "u2"}, {name: "a1"}, {name: "a2"}]) {
             id
         }
         memberships: createMemberships(data: [{kind: "k1", user: {id: 1}}, {kind: "k1", user: {id: 2}}]) {
+            id
+        }
+        adminNotes: createAdminNotes(data: [{content: "n1_user3", user: {id: 3}}, {content: "n2_user4", user: {id: 4}}]) {
             id
         }                       
     }  
 auth: |
     {
-        "sub": 1,
-        "roles": ["ADMIN"]
+        "roles": ["ADMIN", "SUPER_ADMIN"]
     }

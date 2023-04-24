@@ -75,7 +75,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 .to_string(),
                         code: Some("C000".to_string()),
                         spans: vec![SpanLabel {
-                            span: *expr.span(),
+                            span: expr.span(),
                             style: SpanStyle::Primary,
                             label: Some(format!("should be of type {types_allowed}")),
                         }],
@@ -94,7 +94,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                         message: "Non-literal specified in default value field.".to_string(),
                         code: Some("C000".to_string()),
                         spans: vec![SpanLabel {
-                            span: *expr.span(),
+                            span: expr.span(),
                             style: SpanStyle::Primary,
                             label: Some("should be string, boolean, or a number".to_string()),
                         }],
