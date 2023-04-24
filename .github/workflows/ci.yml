@@ -76,4 +76,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run exo test
-        run: EXO_TEST_POSTGRES_URL=postgresql://postgres@postgres:5432 cargo run -p crates/cli -- test --run-introspection-tests integration-tests
+        run: EXO_TEST_POSTGRES_URL=postgresql://postgres@postgres:5432 cargo run -p cli -- test --run-introspection-tests integration-tests
