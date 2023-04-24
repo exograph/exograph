@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install deps
-      run: sudo apt-get install -y protobuf-compiler postgresql-13
+      run: sudo apt-get install -y protobuf-compiler
     - name: Run cargo fmt
       uses: actions-rs/cargo@v1
       with:
@@ -33,7 +33,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install deps
-      run: sudo apt-get install -y protobuf-compiler postgresql-13
+      run: sudo apt-get install -y protobuf-compiler
     - name: Run cargo check
       uses: actions-rs/cargo@v1
       with:
@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install deps
-        run: sudo apt-get install -y protobuf-compiler postgresql-13
+        run: sudo apt-get install -y protobuf-compiler
       - name: Run cargo test
         run: cargo test --workspace
         
@@ -56,6 +56,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install deps
-        run: sudo apt-get install -y protobuf-compiler postgresql-13
+        run: sudo apt-get install -y protobuf-compiler
       - name: Run exo test
         run: EXO_RUN_INTROSPECTION_TESTS=true cargo run -p cli -- test integration-tests
