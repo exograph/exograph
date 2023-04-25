@@ -15,10 +15,12 @@ use core_plugin_shared::{
 };
 use postgres_model::subsystem::PostgresSubsystem;
 
+use crate::commands::build::build_system_with_static_builders;
+
 pub(crate) fn create_postgres_system(
     model_file: impl AsRef<Path>,
 ) -> Result<PostgresSubsystem, ParserError> {
-    let serialized_system = builder::build_system(&model_file)?;
+    let serialized_system = build_system_with_static_builders(model_file.as_ref())?;
     let system = SerializableSystem::deserialize(serialized_system)?;
 
     deserialize_postgres_subsystem(system)

@@ -25,7 +25,6 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 pub struct WasmSubsystemBuilder {}
-core_plugin_interface::export_subsystem_builder!(WasmSubsystemBuilder {});
 
 impl SubsystemBuilder for WasmSubsystemBuilder {
     fn id(&self) -> &'static str {

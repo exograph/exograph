@@ -1064,8 +1064,10 @@ dependencies = [
  "colored",
  "core-model",
  "core-model-builder",
+ "core-plugin-interface",
  "core-plugin-shared",
  "ctrlc",
+ "deno-model-builder",
  "exo-sql",
  "futures",
  "heck",
@@ -1073,12 +1075,14 @@ dependencies = [
  "lazy_static",
  "notify-debouncer-mini",
  "postgres-model",
+ "postgres-model-builder",
  "rand",
  "serde",
  "stripmargin",
  "tempfile",
  "testing",
  "tokio",
+ "wasm-model-builder",
  "zip",
 ]
 
@@ -1736,6 +1740,14 @@ dependencies = [
  "core-plugin-interface",
  "deno-model",
  "subsystem-model-builder-util",
+]
+
+[[package]]
+name = "deno-model-builder-dynamic"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "deno-model-builder",
 ]
 
 [[package]]
@@ -5014,6 +5026,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-model-builder-dynamic"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "postgres-model-builder",
+]
+
+[[package]]
 name = "postgres-openssl"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7855,6 +7875,14 @@ dependencies = [
  "core-plugin-interface",
  "subsystem-model-builder-util",
  "wasm-model",
+]
+
+[[package]]
+name = "wasm-model-builder-dynamic"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "wasm-model-builder",
 ]
 
 [[package]]
