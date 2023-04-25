@@ -47,6 +47,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install deps
         run: sudo apt-get install -y protobuf-compiler
+      - uses: Swatinem/rust-cache@v2
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -65,6 +66,7 @@ jobs:
   #       uses: denoland/setup-deno@v1
   #       with:
   #         deno-version: vx.x.x
+  #     - uses: Swatinem/rust-cache@v2
   #     - name: Build
   #       uses: actions-rs/cargo@v1
   #       with:
