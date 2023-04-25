@@ -25,7 +25,6 @@ use core_plugin_interface::{
 use crate::system_builder::ModelDenoSystemWithInterceptors;
 
 pub struct DenoSubsystemBuilder {}
-core_plugin_interface::export_subsystem_builder!(DenoSubsystemBuilder {});
 
 impl SubsystemBuilder for DenoSubsystemBuilder {
     fn id(&self) -> &'static str {

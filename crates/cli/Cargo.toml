@@ -31,7 +31,10 @@ core-model = { path = "../core-subsystem/core-model" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 core-model-builder = { path = "../core-subsystem/core-model-builder" }
 postgres-model = { path = "../postgres-subsystem/postgres-model" }
-
+core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
+postgres-model-builder = { path = "../postgres-subsystem/postgres-model-builder" }
+deno-model-builder = { path = "../deno-subsystem/deno-model-builder" }
+wasm-model-builder = { path = "../wasm-subsystem/wasm-model-builder" }
 
 [dev-dependencies]
 stripmargin = "0.1.1"

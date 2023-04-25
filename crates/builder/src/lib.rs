@@ -30,7 +30,10 @@ use core_model_builder::{
 use regex::Regex;
 
 /// Build a model system from a exo file
-pub fn build_system(model_file: impl AsRef<Path>) -> Result<Vec<u8>, ParserError> {
+pub fn build_system(
+    model_file: impl AsRef<Path>,
+    static_builders: Vec<Box<dyn SubsystemBuilder>>,
+) -> Result<Vec<u8>, ParserError> {
     let file_content = fs::read_to_string(model_file.as_ref())?;
     let mut codemap = CodeMap::new();
     codemap.add_file(
@@ -38,7 +41,11 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<Vec<u8>, ParserError
         file_content,
     );
 
-    build_from_ast_system(parser::parse_file(&model_file, &mut codemap), codemap)
+    build_from_ast_system(
+        parser::parse_file(&model_file, &mut codemap),
+        codemap,
+        static_builders,
+    )
 }
 
 // Can we expose this only for testing purposes?
@@ -50,28 +57,42 @@ pub fn build_system_from_str(model_str: &str, file_name: String) -> Result<Vec<u
     build_from_ast_system(
         parser::parse_str(model_str, &mut codemap, &file_name),
         codemap,
+        vec![],
     )
 }
 
-pub fn load_subsystem_builders() -> Result<Vec<Box<dyn SubsystemBuilder>>, LibraryLoadingError> {
+pub fn load_subsystem_builders(
+    static_builders: Vec<Box<dyn SubsystemBuilder>>,
+) -> Result<Vec<Box<dyn SubsystemBuilder>>, LibraryLoadingError> {
     let mut dir = current_exe()?;
     dir.pop();
 
     let pattern = format!(
-        "{}(.+)_model_builder\\{}",
+        "{}(.+)_model_builder_dynamic\\{}",
         std::env::consts::DLL_PREFIX,
         std::env::consts::DLL_SUFFIX
     );
     let pattern = Regex::new(&pattern).unwrap();
 
-    let mut subsystem_builders = vec![];
+    let mut subsystem_builders = static_builders;
 
     for entry in dir.read_dir()?.flatten() {
         if let Some(file_name) = entry.file_name().to_str() {
-            if pattern.is_match(file_name) {
-                subsystem_builders.push(core_plugin_interface::interface::load_subsystem_builder(
-                    &entry.path(),
-                )?);
+            let captures = pattern.captures(file_name);
+            if let Some(captures) = captures {
+                let subsystem_id = captures.get(1).unwrap().as_str();
+
+                // First see if we have already loaded a static builder
+                let builder = subsystem_builders
+                    .iter()
+                    .find(|builder| builder.id() == subsystem_id);
+
+                if builder.is_none() {
+                    // Then try to load a dynamic builder
+                    subsystem_builders.push(
+                        core_plugin_interface::interface::load_subsystem_builder(&entry.path())?,
+                    );
+                };
             }
         }
     }
@@ -82,9 +103,10 @@ pub fn load_subsystem_builders() -> Result<Vec<Box<dyn SubsystemBuilder>>, Libra
 fn build_from_ast_system(
     ast_system: Result<AstSystem<Untyped>, ParserError>,
     codemap: CodeMap,
+    static_builders: Vec<Box<dyn SubsystemBuilder>>,
 ) -> Result<Vec<u8>, ParserError> {
-    let subsystem_builders =
-        load_subsystem_builders().map_err(|e| ParserError::Generic(format!("{e}")))?;
+    let subsystem_builders = load_subsystem_builders(static_builders)
+        .map_err(|e| ParserError::Generic(format!("{e}")))?;
 
     ast_system
         .and_then(|ast_system| typechecker::build(&subsystem_builders, ast_system))

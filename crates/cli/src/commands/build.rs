@@ -19,6 +19,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::{fs::File, io::BufWriter};
 
+use core_plugin_interface::interface::SubsystemBuilder;
+
 use super::command::{get_required, model_file_arg, CommandDefinition};
 
 pub struct BuildCommandDefinition {}
@@ -56,6 +58,17 @@ impl Display for BuildError {
     }
 }
 
+/// Use statically linked builder to avoid dynamic loading for the CLI
+pub(crate) fn build_system_with_static_builders(model: &Path) -> Result<Vec<u8>, ParserError> {
+    let static_builders: Vec<Box<dyn SubsystemBuilder>> = vec![
+        Box::new(postgres_model_builder::PostgresSubsystemBuilder {}),
+        Box::new(deno_model_builder::DenoSubsystemBuilder {}),
+        Box::new(wasm_model_builder::WasmSubsystemBuilder {}),
+    ];
+
+    builder::build_system(model, static_builders)
+}
+
 /// Build exo_ir file
 ///
 /// # Arguments
@@ -65,7 +78,8 @@ impl Display for BuildError {
 ///                        to avoid printing the message when building the model through `exo serve`, where we don't want to print the message
 ///                        upon detecting changes
 pub(crate) fn build(model: &Path, print_message: bool) -> Result<(), BuildError> {
-    let serialized_system = builder::build_system(model).map_err(BuildError::ParserError)?;
+    let serialized_system =
+        build_system_with_static_builders(model).map_err(BuildError::ParserError)?;
 
     let exo_ir_file_name = {
         if let Some("exo") = model.extension().and_then(OsStr::to_str) {

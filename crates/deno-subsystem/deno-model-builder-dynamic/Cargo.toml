@@ -1,16 +1,14 @@
 [package]
-name = "wasm-model-builder"
+name = "deno-model-builder-dynamic"
 version = "0.1.0"
 edition = "2021"
 publish = false
 
 [dependencies]
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-wasm-model = { path = "../wasm-model" }
-subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-builder-util" }
+deno-model-builder = { path = "../deno-model-builder" }
 
 [dev-dependencies]
 
-
 [lib]
-crate-type = ["lib"]
+crate-type = ["cdylib"]

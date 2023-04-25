@@ -430,7 +430,7 @@ pub mod test_support {
     pub fn build(src: &str) -> Result<TypecheckedSystem, ParserError> {
         let mut codemap = CodeMap::new();
         let parsed = parse_str(src, &mut codemap, "input.exo")?;
-        let subsystem_builders = load_subsystem_builders().unwrap();
+        let subsystem_builders = load_subsystem_builders(vec![]).unwrap();
         super::build(&subsystem_builders, parsed)
     }
 

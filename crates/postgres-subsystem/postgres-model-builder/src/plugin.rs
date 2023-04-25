@@ -22,7 +22,6 @@ use core_plugin_interface::{
 };
 
 pub struct PostgresSubsystemBuilder {}
-core_plugin_interface::export_subsystem_builder!(PostgresSubsystemBuilder {});
 
 impl SubsystemBuilder for PostgresSubsystemBuilder {
     fn id(&self) -> &'static str {

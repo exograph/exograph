@@ -14,4 +14,4 @@ deno-model = { path = "../deno-model" }
 [dev-dependencies]
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib"]
