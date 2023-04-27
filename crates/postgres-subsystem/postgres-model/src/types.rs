@@ -15,6 +15,7 @@ use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
+use core_plugin_interface::core_model::context_type::ContextSelection;
 use core_plugin_interface::core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
@@ -128,6 +129,7 @@ pub struct PostgresField<CT> {
     pub typ: FieldType<PostgresFieldType<CT>>,
     pub relation: PostgresRelation,
     pub has_default_value: bool, // does this field have a default value?
+    pub dynamic_default_value: Option<ContextSelection>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

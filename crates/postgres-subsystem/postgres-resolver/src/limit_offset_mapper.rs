@@ -9,6 +9,8 @@
 
 use async_graphql_value::ConstValue;
 
+use async_trait::async_trait;
+use core_plugin_interface::core_resolver::request_context::RequestContext;
 use exo_sql::{Limit, Offset};
 use postgres_model::{
     limit_offset::{LimitParameter, OffsetParameter},
@@ -26,11 +28,13 @@ fn cast_to_i64(argument: &ConstValue) -> Result<i64, PostgresExecutionError> {
     }
 }
 
+#[async_trait]
 impl<'a> SQLMapper<'a, Limit> for &LimitParameter {
-    fn to_sql(
+    async fn to_sql(
         self,
         argument: &'a ConstValue,
         _subsystem: &'a PostgresSubsystem,
+        _request_context: &RequestContext<'a>,
     ) -> Result<Limit, PostgresExecutionError> {
         cast_to_i64(argument).map(Limit)
     }
@@ -40,11 +44,13 @@ impl<'a> SQLMapper<'a, Limit> for &LimitParameter {
     }
 }
 
+#[async_trait]
 impl<'a> SQLMapper<'a, Offset> for &OffsetParameter {
-    fn to_sql(
+    async fn to_sql(
         self,
         argument: &'a ConstValue,
         _subsystem: &'a PostgresSubsystem,
+        _request_context: &RequestContext<'a>,
     ) -> Result<Offset, PostgresExecutionError> {
         cast_to_i64(argument).map(Offset)
     }

@@ -87,6 +87,11 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                 AstExpr::StringLiteral(_, _) => assert_type(&["String"]),
                 AstExpr::BooleanLiteral(_, _) => assert_type(&["Boolean"]),
                 AstExpr::NumberLiteral(_, _) => assert_type(&["Int", "Float"]),
+                AstExpr::FieldSelection(_) => {
+                    // no type-checking here, since we don't have enough information.
+                    // For example `user: User = AuthContext.id` should check that `AuthContext.id`
+                    // is of the same type as `User`'s primary key type, but we don't know that here.
+                }
 
                 _ => {
                     errors.push(Diagnostic {

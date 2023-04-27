@@ -1,0 +1,21 @@
+context AuthContext {
+  @jwt("sub") id: Int
+  @jwt role: String
+}
+
+@postgres
+module TodoPersistence {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    content: String
+    user: User = AuthContext.id
+  }
+
+  @access(true)
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    todos: Set<Todo>?
+  }
+}

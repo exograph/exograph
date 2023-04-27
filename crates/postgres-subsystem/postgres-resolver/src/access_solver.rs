@@ -19,7 +19,8 @@
 use crate::column_path_util;
 use async_trait::async_trait;
 use core_plugin_interface::{
-    core_model::access::{AccessContextSelection, AccessRelationalOp},
+    core_model::access::AccessRelationalOp,
+    core_model::context_type::ContextSelection,
     core_resolver::{
         access_solver::AccessPredicate, access_solver::AccessSolver,
         context_extractor::ContextExtractor, request_context::RequestContext,
@@ -63,7 +64,7 @@ impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper<'a> {
 pub enum SolvedPrimitiveExpression<'a> {
     Value(Value),
     Column(ColumnIdPath),
-    UnresolvedContext(&'a AccessContextSelection), // For example, AuthContext.role for an anonymous user
+    UnresolvedContext(&'a ContextSelection), // For example, AuthContext.role for an anonymous user
 }
 
 #[async_trait]

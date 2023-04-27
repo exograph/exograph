@@ -9,12 +9,15 @@
 
 use async_graphql_value::ConstValue;
 
+use async_trait::async_trait;
 use core_plugin_interface::core_model::types::OperationReturnType;
+use core_plugin_interface::core_resolver::request_context::RequestContext;
 use exo_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
     ColumnPathLink, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
     NestedElementRelation, PhysicalColumn, PhysicalColumnType, Selection,
 };
+use futures::future::join_all;
 use postgres_model::{
     mutation::DataParameter,
     relation::PostgresRelation,
@@ -36,11 +39,13 @@ pub struct UpdateOperation<'a> {
     pub select: AbstractSelect<'a>,
 }
 
+#[async_trait]
 impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
-    fn to_sql(
+    async fn to_sql(
         self,
         argument: &'a ConstValue,
         subsystem: &'a PostgresSubsystem,
+        request_context: &RequestContext<'a>,
     ) -> Result<AbstractUpdate<'a>, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
 
@@ -49,8 +54,14 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
 
         let container_entity_type = self.return_type.typ(&subsystem.entity_types);
 
-        let (nested_updates, nested_inserts, nested_deletes) =
-            compute_nested_ops(data_type, argument, container_entity_type, subsystem);
+        let (nested_updates, nested_inserts, nested_deletes) = compute_nested_ops(
+            data_type,
+            argument,
+            container_entity_type,
+            subsystem,
+            request_context,
+        )
+        .await;
 
         let abs_update = AbstractUpdate {
             table,
@@ -110,11 +121,12 @@ fn compute_update_columns<'a>(
 // an additional advantage that the predicate can be more general ("where" in addition to the currently supported "id") so multiple objects
 // can be updated at the same time.
 // TODO: Do this once we rethink how we set up the parameters.
-fn compute_nested_ops<'a>(
+async fn compute_nested_ops<'a>(
     arg_type: &'a MutationType,
     arg: &'a ConstValue,
     container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
+    request_context: &RequestContext<'a>,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
     Vec<NestedAbstractInsert<'a>>,
@@ -124,7 +136,7 @@ fn compute_nested_ops<'a>(
     let mut nested_inserts = vec![];
     let mut nested_deletes = vec![];
 
-    arg_type.fields.iter().for_each(|field| {
+    for field in arg_type.fields.iter() {
         if let PostgresRelation::OneToMany { .. } = &field.relation {
             let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
@@ -141,12 +153,16 @@ fn compute_nested_ops<'a>(
                     subsystem,
                 ));
 
-                nested_inserts.extend(compute_nested_inserts(
-                    arg_type,
-                    argument,
-                    container_entity_type,
-                    subsystem,
-                ));
+                nested_inserts.extend(
+                    compute_nested_inserts(
+                        arg_type,
+                        argument,
+                        container_entity_type,
+                        subsystem,
+                        request_context,
+                    )
+                    .await,
+                );
 
                 nested_deletes.extend(compute_nested_delete(
                     arg_type,
@@ -156,7 +172,7 @@ fn compute_nested_ops<'a>(
                 ));
             }
         }
-    });
+    }
 
     (nested_updates, nested_inserts, nested_deletes)
 }
@@ -289,17 +305,19 @@ fn compute_nested_update_object_arg<'a>(
 }
 
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
-fn compute_nested_inserts<'a>(
+async fn compute_nested_inserts<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a ConstValue,
     container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
+    request_context: &RequestContext<'a>,
 ) -> Vec<NestedAbstractInsert<'a>> {
-    fn create_nested<'a>(
+    async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a ConstValue,
         container_entity_type: &'a EntityType,
         subsystem: &'a PostgresSubsystem,
+        request_context: &RequestContext<'a>,
     ) -> Result<NestedAbstractInsert<'a>, PostgresExecutionError> {
         let nested_reference_col =
             compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
@@ -307,8 +325,13 @@ fn compute_nested_inserts<'a>(
 
         let table = field_entity_type.table(subsystem);
 
-        let rows =
-            super::create_data_param_mapper::map_argument(field_entity_type, argument, subsystem)?;
+        let rows = super::create_data_param_mapper::map_argument(
+            field_entity_type,
+            argument,
+            subsystem,
+            request_context,
+        )
+        .await?;
 
         Ok(NestedAbstractInsert {
             relation: NestedElementRelation {
@@ -340,14 +363,24 @@ fn compute_nested_inserts<'a>(
                 create_arg,
                 container_entity_type,
                 subsystem,
+                request_context,
             )
+            .await
             .unwrap()],
-            ConstValue::List(create_arg) => create_arg
-                .iter()
-                .map(|arg| {
-                    create_nested(field_entity_type, arg, container_entity_type, subsystem).unwrap()
-                })
-                .collect(),
+            ConstValue::List(create_arg) => {
+                join_all(create_arg.iter().map(|arg| async {
+                    create_nested(
+                        field_entity_type,
+                        arg,
+                        container_entity_type,
+                        subsystem,
+                        request_context,
+                    )
+                    .await
+                    .unwrap()
+                }))
+                .await
+            }
             _ => panic!("Object or list expected"),
         },
         None => vec![],

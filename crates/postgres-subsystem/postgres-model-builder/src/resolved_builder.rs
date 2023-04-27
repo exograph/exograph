@@ -45,7 +45,7 @@ use super::{
 use heck::ToSnakeCase;
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_FN_AUTOINCREMENT: &str = "autoIncrement";
+const DEFAULT_FN_AUTO_INCREMENT: &str = "autoIncrement";
 const DEFAULT_FN_CURRENT_TIME: &str = "now";
 const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
 
@@ -148,7 +148,7 @@ impl ResolvedField {
     pub fn get_is_auto_increment(&self) -> bool {
         matches!(
             &self.default_value,
-            Some(ResolvedFieldDefault::Autoincrement)
+            Some(ResolvedFieldDefault::AutoIncrement)
         )
     }
 }
@@ -187,7 +187,7 @@ impl ResolvedCompositeType {
 pub enum ResolvedFieldDefault {
     Value(Box<AstExpr<Typed>>),
     PostgresFunction(String),
-    Autoincrement,
+    AutoIncrement,
 }
 
 impl ResolvedType {
@@ -350,14 +350,14 @@ fn resolve_field_default_type(
     match &default_value.kind {
         AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
-            DEFAULT_FN_AUTOINCREMENT => {
+            DEFAULT_FN_AUTO_INCREMENT => {
                 match field_underlying_type {
                     "Int" => {}
                     _ => {
                         errors.push(Diagnostic {
                             level: Level::Error,
                             message: format!(
-                                "{DEFAULT_FN_AUTOINCREMENT}() can only be used on Ints"
+                                "{DEFAULT_FN_AUTO_INCREMENT}() can only be used on Ints"
                             ),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
@@ -369,7 +369,7 @@ fn resolve_field_default_type(
                     }
                 }
 
-                ResolvedFieldDefault::Autoincrement
+                ResolvedFieldDefault::AutoIncrement
             }
             DEFAULT_FN_CURRENT_TIME => {
                 match field_underlying_type {
