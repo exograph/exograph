@@ -1291,6 +1291,7 @@ dependencies = [
  "core-model",
  "core-plugin-interface",
  "core-plugin-shared",
+ "elsa",
  "exo-sql",
  "futures",
  "insta",
@@ -2468,6 +2469,15 @@ dependencies = [
  "sec1",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "elsa"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5e0aca8dce8856e420195bd13b6a64de3334235ccc9214e824b86b12bf26283"
+dependencies = [
+ "stable_deref_trait",
 ]
 
 [[package]]

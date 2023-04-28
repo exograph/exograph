@@ -14,6 +14,7 @@ mod ip;
 mod jwt;
 mod query;
 
+use elsa::sync::FrozenMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -70,6 +71,8 @@ pub struct UserRequestContext<'a> {
     parsed_context_map: HashMap<String, BoxedParsedContext<'a>>,
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
     request: &'a (dyn Request + Send + Sync),
+    // cache of context values so that we compute them only once per request
+    context_cache: FrozenMap<(String, String), Arc<Option<Value>>>,
 }
 
 impl<'a> UserRequestContext<'a> {
@@ -99,7 +102,76 @@ impl<'a> UserRequestContext<'a> {
                 .collect(),
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
             request,
+            context_cache: FrozenMap::new(),
         })
+    }
+
+    async fn extract_context_field(
+        &'a self,
+        context: &ContextType,
+        field: &ContextField,
+        request_context: &RequestContext<'a>,
+    ) -> Result<Option<Arc<Value>>, ContextParsingError> {
+        // if the field is cached, return it
+        let cached_value: Option<Arc<Option<Value>>> = {
+            // Must not hold the lock when calling `extract_context_field_from_source`, since
+            // that in turn may call `extract_context_field` to resolve other context values,
+            // which will require this lock.
+            self.context_cache
+                .map_get(&(context.name.to_owned(), field.name.clone()), Clone::clone)
+        };
+
+        let value = match cached_value {
+            Some(value) => value,
+            None => {
+                // if the field is not cached, compute it, cache it, and return it
+                let field_value = self
+                    .extract_context_field_from_source(
+                        &self.parsed_context_map,
+                        self.request,
+                        &field.source.annotation_name,
+                        &field.name,
+                        field.source.value.as_deref(),
+                        request_context,
+                    )
+                    .await?;
+
+                self.context_cache.insert(
+                    (context.name.to_owned(), field.name.clone()),
+                    Arc::new(field_value),
+                );
+
+                // unwrap is safe because we just inserted the value
+                self.context_cache
+                    .map_get(&(context.name.to_owned(), field.name.clone()), Clone::clone)
+                    .unwrap()
+            }
+        };
+
+        match *value {
+            Some(ref value) => Ok(Some(Arc::new(value.clone()))),
+            None => Ok(None),
+        }
+    }
+
+    // Given an annotation name and its value,
+    // extract a context field from the request context
+    async fn extract_context_field_from_source(
+        &'a self,
+        parsed_context_map: &HashMap<String, BoxedParsedContext<'a>>,
+        request: &'a (dyn Request + Send + Sync),
+        annotation_name: &str,
+        field_name: &str,
+        annotation_param: Option<&str>,
+        request_context: &'a RequestContext<'a>,
+    ) -> Result<Option<Value>, ContextParsingError> {
+        let parsed_context = parsed_context_map
+            .get(annotation_name)
+            .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
+
+        Ok(parsed_context
+            .extract_context_field(annotation_param, field_name, request_context, request)
+            .await)
     }
 }
 
@@ -141,12 +213,16 @@ impl<'a> RequestContext<'a> {
         }
     }
 
-    pub async fn extract_context<'s>(
+    pub async fn extract_context(
         &'a self,
         context: &ContextType,
     ) -> Result<Map<String, Value>, ContextParsingError> {
         Ok(futures::stream::iter(context.fields.iter())
-            .then(|field| async { self.extract_context_field(context, field).await })
+            .then(|field| async {
+                self.extract_context_field(context, field)
+                    .await
+                    .map(|value| value.map(|value| (field.name.clone(), value.as_ref().clone())))
+            })
             .collect::<Vec<Result<_, _>>>()
             .await
             .into_iter()
@@ -156,47 +232,17 @@ impl<'a> RequestContext<'a> {
             .collect())
     }
 
-    // Given an annotation name and its value,
-    // extract a context field from the request context
-    async fn extract_context_field_from_source<'s>(
-        &'a self,
-        parsed_context_map: &HashMap<String, BoxedParsedContext<'a>>,
-        request: &'a (dyn Request + Send + Sync),
-        annotation_name: &str,
-        field_name: &str,
-        value: Option<&str>,
-    ) -> Result<Option<Value>, ContextParsingError> {
-        let parsed_context = parsed_context_map
-            .get(annotation_name)
-            .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
-
-        Ok(parsed_context
-            .extract_context_field(value, field_name, self, request)
-            .await)
-    }
-
     #[async_recursion]
-    async fn extract_context_field<'s>(
+    async fn extract_context_field(
         &'a self,
         context: &ContextType,
         field: &ContextField,
-    ) -> Result<Option<(String, Value)>, ContextParsingError> {
+    ) -> Result<Option<Arc<Value>>, ContextParsingError> {
         match self {
-            RequestContext::User(UserRequestContext {
-                parsed_context_map,
-                request,
-                ..
-            }) => {
-                let field_value = self
-                    .extract_context_field_from_source(
-                        parsed_context_map,
-                        *request,
-                        &field.source.annotation_name,
-                        &field.name,
-                        field.source.value.as_deref(),
-                    )
-                    .await?;
-                Ok(field_value.map(|value| (field.name.clone(), value)))
+            RequestContext::User(user_request_context) => {
+                user_request_context
+                    .extract_context_field(context, field, self)
+                    .await
             }
             RequestContext::Overridden {
                 base_context,
@@ -207,7 +253,7 @@ impl<'a> RequestContext<'a> {
                     .and_then(|value| value.as_object().and_then(|value| value.get(&field.name)));
 
                 match overridden {
-                    Some(value) => Ok(Some((field.name.clone(), value.clone()))),
+                    Some(value) => Ok(Some(Arc::new(value.clone()))),
                     None => base_context.extract_context_field(context, field).await,
                 }
             }
