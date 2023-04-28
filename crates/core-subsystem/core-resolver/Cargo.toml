@@ -20,6 +20,7 @@ serde.workspace = true
 thiserror.workspace = true
 cookie = "0.16"
 tokio.workspace = true
+elsa = "1.8.1"
 
 tracing.workspace = true
 
