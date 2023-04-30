@@ -72,7 +72,7 @@ pub struct UserRequestContext<'a> {
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
     request: &'a (dyn Request + Send + Sync),
     // cache of context values so that we compute them only once per request
-    context_cache: FrozenMap<(String, String), Arc<Option<Value>>>,
+    context_cache: FrozenMap<(String, String), Box<Option<Value>>>,
 }
 
 impl<'a> UserRequestContext<'a> {
@@ -111,24 +111,22 @@ impl<'a> UserRequestContext<'a> {
         context: &ContextType,
         field: &ContextField,
         request_context: &RequestContext<'a>,
-    ) -> Result<Option<Arc<Value>>, ContextParsingError> {
-        // if the field is cached, return it
-        let cached_value: Option<Arc<Option<Value>>> = {
-            // Must not hold the lock when calling `extract_context_field_from_source`, since
-            // that in turn may call `extract_context_field` to resolve other context values,
-            // which will require this lock.
-            self.context_cache
-                .map_get(&(context.name.to_owned(), field.name.clone()), Clone::clone)
-        };
+    ) -> Result<Option<&'a Value>, ContextParsingError> {
+        // Check to see if there is a cached value for this field
+        // If there is, return it. Otherwise, compute it, cache it, and return it.
+
+        // (Type name, field name), for example ("AuthContext", "role")
+        let cache_key = (context.name.to_owned(), field.name.clone());
+
+        // We use a double `Option` here because a value can be `None` and
+        // in that case we still want to cache it.
+        let cached_value: Option<&Option<Value>> = self.context_cache.get(&cache_key);
 
         let value = match cached_value {
             Some(value) => value,
             None => {
-                // if the field is not cached, compute it, cache it, and return it
                 let field_value = self
                     .extract_context_field_from_source(
-                        &self.parsed_context_map,
-                        self.request,
                         &field.source.annotation_name,
                         &field.name,
                         field.source.value.as_deref(),
@@ -136,46 +134,35 @@ impl<'a> UserRequestContext<'a> {
                     )
                     .await?;
 
-                self.context_cache.insert(
-                    (context.name.to_owned(), field.name.clone()),
-                    Arc::new(field_value),
-                );
-
-                // unwrap is safe because we just inserted the value
-                self.context_cache
-                    .map_get(&(context.name.to_owned(), field.name.clone()), Clone::clone)
-                    .unwrap()
+                self.context_cache.insert(cache_key, Box::new(field_value))
             }
         };
 
-        match *value {
-            Some(ref value) => Ok(Some(Arc::new(value.clone()))),
-            None => Ok(None),
-        }
+        Ok(value.as_ref())
     }
 
     // Given an annotation name and its value,
     // extract a context field from the request context
     async fn extract_context_field_from_source(
         &'a self,
-        parsed_context_map: &HashMap<String, BoxedParsedContext<'a>>,
-        request: &'a (dyn Request + Send + Sync),
         annotation_name: &str,
         field_name: &str,
         annotation_param: Option<&str>,
         request_context: &'a RequestContext<'a>,
     ) -> Result<Option<Value>, ContextParsingError> {
-        let parsed_context = parsed_context_map
+        let parsed_context = self
+            .parsed_context_map
             .get(annotation_name)
             .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(annotation_param, field_name, request_context, request)
+            .extract_context_field(annotation_param, field_name, request_context, self.request)
             .await)
     }
 }
 
 pub enum RequestContext<'a> {
+    // The original request context (before any overrides)
     User(UserRequestContext<'a>),
 
     // The recursive nature allows stacking overrides
@@ -208,7 +195,6 @@ impl<'a> RequestContext<'a> {
     pub fn get_base_context(&self) -> &UserRequestContext {
         match &self {
             RequestContext::User(req) => req,
-
             RequestContext::Overridden { base_context, .. } => base_context.get_base_context(),
         }
     }
@@ -221,7 +207,7 @@ impl<'a> RequestContext<'a> {
             .then(|field| async {
                 self.extract_context_field(context, field)
                     .await
-                    .map(|value| value.map(|value| (field.name.clone(), value.as_ref().clone())))
+                    .map(|value| value.map(|value| (field.name.clone(), value.clone())))
             })
             .collect::<Vec<Result<_, _>>>()
             .await
@@ -237,7 +223,7 @@ impl<'a> RequestContext<'a> {
         &'a self,
         context: &ContextType,
         field: &ContextField,
-    ) -> Result<Option<Arc<Value>>, ContextParsingError> {
+    ) -> Result<Option<&'a Value>, ContextParsingError> {
         match self {
             RequestContext::User(user_request_context) => {
                 user_request_context
@@ -253,7 +239,7 @@ impl<'a> RequestContext<'a> {
                     .and_then(|value| value.as_object().and_then(|value| value.get(&field.name)));
 
                 match overridden {
-                    Some(value) => Ok(Some(Arc::new(value.clone()))),
+                    Some(value) => Ok(Some(value)),
                     None => base_context.extract_context_field(context, field).await,
                 }
             }
