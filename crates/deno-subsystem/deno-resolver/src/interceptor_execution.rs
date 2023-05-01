@@ -32,8 +32,6 @@ pub async fn execute_interceptor<'a>(
 ) -> Result<(Value, Option<ExographMethodResponse>), DenoExecutionError> {
     let script = &subsystem_resolver.subsystem.scripts[interceptor.script];
 
-    println!("interceptor");
-
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &IndexMap::new(),
         &interceptor.arguments,
@@ -41,8 +39,6 @@ pub async fn execute_interceptor<'a>(
         request_context,
     )
     .await?;
-
-    println!("arg_sequence: {:?}", arg_sequence);
 
     let intercepted_operation_resolver = || intercepted_operation.resolve(request_context);
 
