@@ -367,8 +367,8 @@ mod tests {
         }
     }
 
-    fn context_selection(context_name: &str, path_head: &str) -> AccessContextSelection {
-        AccessContextSelection {
+    fn context_selection(context_name: &str, path_head: &str) -> ContextSelection {
+        ContextSelection {
             context_name: context_name.to_string(),
             path: (path_head.to_string(), vec![]),
         }
@@ -382,7 +382,7 @@ mod tests {
 
     // AuthContext.is_admin => AuthContext.is_admin == true
     fn boolean_context_selection(
-        context_selection: AccessContextSelection,
+        context_selection: ContextSelection,
     ) -> AccessPredicateExpression<DatabaseAccessPrimitiveExpression> {
         AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             Box::new(DatabaseAccessPrimitiveExpression::ContextSelection(
@@ -875,7 +875,7 @@ mod tests {
 
             for (c1, expected) in scenarios.iter() {
                 let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(
-                    Box::new(boolean_context_selection(AccessContextSelection {
+                    Box::new(boolean_context_selection(ContextSelection {
                         context_name: "AccessContext".to_string(),
                         path: (c1.to_string(), vec![]),
                     })),

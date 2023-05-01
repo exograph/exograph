@@ -28,8 +28,6 @@
 
 use serde::{Deserialize, Serialize};
 
-
-
 /// An expression that can be evaluated to a subsystem-specific predicate such as Deno's
 /// `ModuleAccessPredicate` and Postgres' `AbstractPredicate`.
 ///

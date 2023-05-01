@@ -47,7 +47,7 @@ where
     let argument_value = find_arg(arguments, param.param_name());
 
     match argument_value {
-        None => Ok(None).into(),
+        None => Ok(None),
         Some(argument_value) => Some(
             param
                 .to_sql(argument_value, subsystem, request_context)

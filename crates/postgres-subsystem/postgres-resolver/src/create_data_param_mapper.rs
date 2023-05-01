@@ -102,7 +102,8 @@ async fn map_single<'a>(
             Some(field_arg) => Some(field_arg),
             None => {
                 if let Some(selection) = &field.dynamic_default_value {
-                    let default_value = subsystem
+                    // TODO: Revisit once we unified argument types
+                    let _default_value = subsystem
                         .extract_context_selection(request_context, selection)
                         .await;
                     None
@@ -123,7 +124,7 @@ async fn map_single<'a>(
     });
 
     let row = join_all(mapped).await;
-    let row = row.into_iter().flat_map(|elem| elem).collect::<Vec<_>>();
+    let row = row.into_iter().flatten().collect::<Vec<_>>();
     let row = try_join_all(row).await?;
 
     Ok(InsertionRow { elems: row })
