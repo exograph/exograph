@@ -8,10 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use crate::{plugin::WasmSubsystemResolver, wasm_execution_error::WasmExecutionError};
-use async_graphql_value::ConstValue;
+use core_plugin_interface::core_resolver::value::val::Val as ExoVal;
 use core_plugin_interface::core_resolver::{
-    request_context::RequestContext, system_resolver::SystemResolver,
-    validation::field::ValidatedField, QueryResponse, QueryResponseBody,
+    context::RequestContext, system_resolver::SystemResolver, validation::field::ValidatedField,
+    QueryResponse, QueryResponseBody,
 };
 use std::collections::HashMap;
 use wasm_model::module::ModuleMethod;
@@ -37,14 +37,14 @@ impl<'a> WasmOperation<'a> {
                 (
                     gql_name.as_str().to_owned(),
                     match gql_value {
-                        ConstValue::Null => todo!(),
-                        ConstValue::Number(num) => (num.as_i64().unwrap() as i32).into(),
-                        ConstValue::String(_) => todo!(),
-                        ConstValue::Boolean(_) => todo!(),
-                        ConstValue::Binary(_) => todo!(),
-                        ConstValue::Enum(_) => todo!(),
-                        ConstValue::List(_) => todo!(),
-                        ConstValue::Object(_) => todo!(),
+                        ExoVal::Null => todo!(),
+                        ExoVal::Number(num) => (num.as_i64().unwrap() as i32).into(),
+                        ExoVal::String(_) => todo!(),
+                        ExoVal::Bool(_) => todo!(),
+                        ExoVal::Binary(_) => todo!(),
+                        ExoVal::Enum(_) => todo!(),
+                        ExoVal::List(_) => todo!(),
+                        ExoVal::Object(_) => todo!(),
                     },
                 )
             })

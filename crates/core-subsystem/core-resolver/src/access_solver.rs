@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use core_model::access::{AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp};
 
-use crate::request_context::RequestContext;
+use crate::context::RequestContext;
 
 /// Access predicate that can be logically combined with other predicates.
 pub trait AccessPredicate<'a>:

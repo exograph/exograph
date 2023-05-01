@@ -7,18 +7,17 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::request_context::{ParsedContext, RequestContext};
 use async_trait::async_trait;
 use serde_json::Value;
 
-use super::Request;
+use crate::context::{parsed_context::ParsedContext, request::Request, RequestContext};
 
-pub struct HeaderExtractor;
+pub struct EnvironmentContextExtractor;
 
 #[async_trait]
-impl ParsedContext for HeaderExtractor {
+impl ParsedContext for EnvironmentContextExtractor {
     fn annotation_name(&self) -> &str {
-        "header"
+        "env"
     }
 
     async fn extract_context_field<'r>(
@@ -26,10 +25,10 @@ impl ParsedContext for HeaderExtractor {
         key: Option<&str>,
         field_name: &str,
         _request_context: &'r RequestContext<'r>,
-        request: &'r (dyn Request + Send + Sync),
+        _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
-        request
-            .get_header(&key.unwrap_or(field_name).to_ascii_lowercase())
-            .map(|str| str.as_str().into())
+        std::env::var(key.unwrap_or(field_name))
+            .ok()
+            .map(|v| v.into())
     }
 }

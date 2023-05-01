@@ -22,7 +22,7 @@ use crate::{
 use async_trait::async_trait;
 use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
-    request_context::RequestContext, validation::field::ValidatedField,
+    context::RequestContext, validation::field::ValidatedField,
 };
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractSelect, AbstractUpdate, Predicate,

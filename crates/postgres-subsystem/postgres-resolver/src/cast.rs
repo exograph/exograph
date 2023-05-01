@@ -7,11 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::ConstValue;
-use async_graphql_value::Number;
 use base64::DecodeError;
 use chrono::prelude::*;
 use chrono::DateTime;
+use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::database_error::DatabaseError;
 use exo_sql::{
     array_util::{self, ArrayEntry},
@@ -50,7 +49,7 @@ pub enum CastError {
 }
 
 pub(crate) fn literal_column<'a>(
-    value: &ConstValue,
+    value: &Val,
     associated_column: &PhysicalColumn,
 ) -> Result<Column<'a>, PostgresExecutionError> {
     cast_value(value, &associated_column.typ)
@@ -59,44 +58,42 @@ pub(crate) fn literal_column<'a>(
 }
 
 pub(crate) fn cast_value(
-    value: &ConstValue,
+    value: &Val,
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<SQLParamContainer>, CastError> {
     match value {
-        ConstValue::Number(number) => cast_number(number, destination_type).map(Some),
-        ConstValue::String(v) => cast_string(v, destination_type).map(Some),
-        ConstValue::Boolean(v) => Ok(Some(SQLParamContainer::new(*v))),
-        ConstValue::Null => Ok(None),
-        ConstValue::Enum(v) => Ok(Some(SQLParamContainer::new(v.to_string()))), // We might need guidance from the database to do a correct translation
-        ConstValue::List(elems) => cast_list(elems, destination_type),
-        ConstValue::Object(_) => Ok(Some(cast_object(value, destination_type))),
-        ConstValue::Binary(bytes) => Ok(Some(SQLParamContainer::new(SQLBytes(bytes.clone())))),
+        Val::Number(number) => cast_number(number, destination_type).map(Some),
+        Val::String(v) => cast_string(v, destination_type).map(Some),
+        Val::Bool(v) => Ok(Some(SQLParamContainer::new(*v))),
+        Val::Null => Ok(None),
+        Val::Enum(v) => Ok(Some(SQLParamContainer::new(v.to_string()))), // We might need guidance from the database to do a correct translation
+        Val::List(elems) => cast_list(elems, destination_type),
+        Val::Object(_) => Ok(Some(cast_object(value, destination_type))),
+        Val::Binary(bytes) => Ok(Some(SQLParamContainer::new(SQLBytes(bytes.clone())))),
     }
 }
 
 fn cast_list(
-    elems: &[ConstValue],
+    elems: &[Val],
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<SQLParamContainer>, CastError> {
-    fn array_entry(elem: &ConstValue) -> ArrayEntry<ConstValue> {
+    fn array_entry(elem: &Val) -> ArrayEntry<Val> {
         match elem {
-            ConstValue::List(elems) => ArrayEntry::List(elems),
+            Val::List(elems) => ArrayEntry::List(elems),
             _ => ArrayEntry::Single(elem),
         }
     }
 
-    let cast_value_with_error =
-        |value: &ConstValue| -> Result<Option<SQLParamContainer>, DatabaseError> {
-            cast_value(value, destination_type)
-                .map_err(|error| DatabaseError::BoxedError(error.into()))
-        };
+    let cast_value_with_error = |value: &Val| -> Result<Option<SQLParamContainer>, DatabaseError> {
+        cast_value(value, destination_type).map_err(|error| DatabaseError::BoxedError(error.into()))
+    };
 
     array_util::to_sql_param(elems, array_entry, &cast_value_with_error)
         .map_err(CastError::Postgres)
 }
 
 fn cast_number(
-    number: &Number,
+    number: &serde_json::Number,
     destination_type: &PhysicalColumnType,
 ) -> Result<SQLParamContainer, CastError> {
     let result: SQLParamContainer = match destination_type {
@@ -269,7 +266,7 @@ fn cast_string(
     Ok(value)
 }
 
-fn cast_object(val: &ConstValue, destination_type: &PhysicalColumnType) -> SQLParamContainer {
+fn cast_object(val: &Val, destination_type: &PhysicalColumnType) -> SQLParamContainer {
     match destination_type {
         PhysicalColumnType::Json => {
             let json_object = val.clone().into_json().unwrap();

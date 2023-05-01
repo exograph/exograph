@@ -7900,7 +7900,6 @@ name = "wasm-resolver-dynamic"
 version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
- "async-graphql-value",
  "async-recursion",
  "async-trait",
  "core-plugin-interface",

@@ -8,13 +8,14 @@
 // by the Apache License, Version 2.0.
 
 pub mod access_solver;
+pub mod context;
 pub mod context_extractor;
 pub mod introspection;
 pub mod operation_resolver;
 pub mod plugin;
-pub mod request_context;
 pub mod system_resolver;
 pub mod validation;
+pub mod value;
 
 mod field_resolver;
 mod interception;

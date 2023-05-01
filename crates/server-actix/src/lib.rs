@@ -12,7 +12,7 @@ mod request;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
-use core_resolver::request_context::{ContextParsingError, RequestContext};
+use core_resolver::context::{ContextParsingError, RequestContext};
 use core_resolver::system_resolver::SystemResolver;
 use core_resolver::OperationsPayload;
 use request::ActixRequest;
@@ -30,7 +30,7 @@ pub async fn resolve(
     system_resolver: web::Data<SystemResolver>,
 ) -> impl Responder {
     let request = ActixRequest::from_request(req);
-    let request_context = RequestContext::parse_context(&request, vec![], system_resolver.as_ref());
+    let request_context = RequestContext::new(&request, vec![], system_resolver.as_ref());
 
     match request_context {
         Ok(request_context) => {

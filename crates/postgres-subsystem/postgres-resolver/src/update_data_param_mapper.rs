@@ -7,11 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::ConstValue;
-
 use async_trait::async_trait;
 use core_plugin_interface::core_model::types::OperationReturnType;
-use core_plugin_interface::core_resolver::request_context::RequestContext;
+use core_plugin_interface::core_resolver::context::RequestContext;
+use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
     ColumnPathLink, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
@@ -43,7 +42,7 @@ pub struct UpdateOperation<'a> {
 impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
     async fn to_sql(
         self,
-        argument: &'a ConstValue,
+        argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
         request_context: &RequestContext<'a>,
     ) -> Result<AbstractUpdate<'a>, PostgresExecutionError> {
@@ -83,7 +82,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
 
 fn compute_update_columns<'a>(
     data_type: &'a MutationType,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
 ) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
     data_type
@@ -123,7 +122,7 @@ fn compute_update_columns<'a>(
 // TODO: Do this once we rethink how we set up the parameters.
 async fn compute_nested_ops<'a>(
     arg_type: &'a MutationType,
-    arg: &'a ConstValue,
+    arg: &'a Val,
     container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
     request_context: &RequestContext<'a>,
@@ -206,7 +205,7 @@ fn compute_nested_reference_column<'a>(
 // Look for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
     field_entity_type: &'a MutationType,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
 ) -> Vec<NestedAbstractUpdate<'a>> {
@@ -219,7 +218,7 @@ fn compute_nested_update<'a>(
 
     match update_arg {
         Some(update_arg) => match update_arg {
-            arg @ ConstValue::Object(..) => {
+            arg @ Val::Object(..) => {
                 vec![compute_nested_update_object_arg(
                     field_entity_type,
                     arg,
@@ -227,7 +226,7 @@ fn compute_nested_update<'a>(
                     subsystem,
                 )]
             }
-            ConstValue::List(update_arg) => update_arg
+            Val::List(update_arg) => update_arg
                 .iter()
                 .map(|arg| {
                     compute_nested_update_object_arg(
@@ -247,11 +246,11 @@ fn compute_nested_update<'a>(
 // Compute update step assuming that the argument is a single object (not an array)
 fn compute_nested_update_object_arg<'a>(
     field_entity_type: &'a MutationType,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     nested_reference_col: &'a PhysicalColumn,
     subsystem: &'a PostgresSubsystem,
 ) -> NestedAbstractUpdate<'a> {
-    assert!(matches!(argument, ConstValue::Object(..)));
+    assert!(matches!(argument, Val::Object(..)));
 
     let table = field_entity_type.table(subsystem);
 
@@ -307,14 +306,14 @@ fn compute_nested_update_object_arg<'a>(
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
 async fn compute_nested_inserts<'a>(
     field_entity_type: &'a MutationType,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
     request_context: &RequestContext<'a>,
 ) -> Vec<NestedAbstractInsert<'a>> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
-        argument: &'a ConstValue,
+        argument: &'a Val,
         container_entity_type: &'a EntityType,
         subsystem: &'a PostgresSubsystem,
         request_context: &RequestContext<'a>,
@@ -358,7 +357,7 @@ async fn compute_nested_inserts<'a>(
 
     match create_arg {
         Some(create_arg) => match create_arg {
-            _arg @ ConstValue::Object(..) => vec![create_nested(
+            _arg @ Val::Object(..) => vec![create_nested(
                 field_entity_type,
                 create_arg,
                 container_entity_type,
@@ -367,7 +366,7 @@ async fn compute_nested_inserts<'a>(
             )
             .await
             .unwrap()],
-            ConstValue::List(create_arg) => {
+            Val::List(create_arg) => {
                 join_all(create_arg.iter().map(|arg| async {
                     create_nested(
                         field_entity_type,
@@ -389,7 +388,7 @@ async fn compute_nested_inserts<'a>(
 
 fn compute_nested_delete<'a>(
     field_entity_type: &'a MutationType,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
     container_entity_type: &'a EntityType,
 ) -> Vec<NestedAbstractDelete<'a>> {
@@ -405,7 +404,7 @@ fn compute_nested_delete<'a>(
 
     match delete_arg {
         Some(update_arg) => match update_arg {
-            arg @ ConstValue::Object(..) => {
+            arg @ Val::Object(..) => {
                 vec![compute_nested_delete_object_arg(
                     field_entity_type,
                     arg,
@@ -413,7 +412,7 @@ fn compute_nested_delete<'a>(
                     subsystem,
                 )]
             }
-            ConstValue::List(update_arg) => update_arg
+            Val::List(update_arg) => update_arg
                 .iter()
                 .map(|arg| {
                     compute_nested_delete_object_arg(
@@ -433,11 +432,11 @@ fn compute_nested_delete<'a>(
 // Compute delete step assuming that the argument is a single object (not an array)
 fn compute_nested_delete_object_arg<'a>(
     field_entity_type: &'a MutationType,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     nested_reference_col: &'a PhysicalColumn,
     subsystem: &'a PostgresSubsystem,
 ) -> NestedAbstractDelete<'a> {
-    assert!(matches!(argument, ConstValue::Object(..)));
+    assert!(matches!(argument, Val::Object(..)));
 
     let table = field_entity_type.table(subsystem);
 
@@ -488,11 +487,11 @@ fn compute_nested_delete_object_arg<'a>(
 }
 
 fn extract_argument<'a>(
-    argument: &'a ConstValue,
+    argument: &'a Val,
     arg_type: &'a MutationType,
     arg_name: &str,
     subsystem: &'a PostgresSubsystem,
-) -> (Option<&'a ConstValue>, &'a MutationType) {
+) -> (Option<&'a Val>, &'a MutationType) {
     let arg = get_argument_field(argument, arg_name);
 
     let arg_type = match base_type(

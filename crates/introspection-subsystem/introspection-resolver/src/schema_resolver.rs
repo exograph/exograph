@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_resolver::validation::field::ValidatedField;
-use core_resolver::{plugin::SubsystemResolutionError, request_context::RequestContext};
+use core_resolver::{context::RequestContext, plugin::SubsystemResolutionError};
 
 use async_trait::async_trait;
 use core_resolver::introspection::definition::schema::{

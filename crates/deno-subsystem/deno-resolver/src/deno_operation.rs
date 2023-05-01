@@ -8,14 +8,15 @@
 // by the Apache License, Version 2.0.
 
 use async_graphql_value::indexmap::IndexMap;
-use async_graphql_value::ConstValue;
 
 use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver,
+    context::RequestContext,
+    context_extractor::ContextExtractor,
     exograph_execute_query,
-    request_context::RequestContext,
     system_resolver::{ExographExecuteQueryFn, SystemResolver},
     validation::field::ValidatedField,
+    value::Val,
     QueryResponse, QueryResponseBody,
 };
 
@@ -27,7 +28,6 @@ use deno_model::{
 
 use exo_deno::Arg;
 use futures::StreamExt;
-use serde_json::Value;
 
 use crate::{
     deno_execution_error::DenoExecutionError, exo_execution::ExoCallbackProcessor,
@@ -130,7 +130,7 @@ impl<'a> DenoOperation<'a> {
 }
 
 pub async fn construct_arg_sequence<'a>(
-    field_args: &IndexMap<String, ConstValue>,
+    field_args: &IndexMap<String, Val>,
     args: &[Argument],
     system: &'a DenoSubsystem,
     request_context: &'a RequestContext<'a>,
@@ -161,16 +161,16 @@ pub async fn construct_arg_sequence<'a>(
                     .find(|context| context.name == arg_type.name)
                 {
                     // this argument is a context, get the value of the context and give it as an argument
-                    let context_value = request_context
-                        .extract_context(context)
+                    let context_value = system
+                        .extract_context(request_context, &arg_type.name)
                         .await
-                        .unwrap_or_else(|_| {
+                        .unwrap_or_else(|| {
                             panic!(
                                 "Could not get context `{}` from request context",
                                 &context.name
                             )
                         });
-                    Ok(Arg::Serde(Value::Object(context_value)))
+                    Ok(Arg::Serde(context_value.into_json().unwrap()))
                 } else {
                     // not a context, assume it is a provided shim by the Deno executor
                     Ok(Arg::Shim(arg_type.name.clone()))

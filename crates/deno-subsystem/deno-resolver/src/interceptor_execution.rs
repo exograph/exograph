@@ -9,7 +9,7 @@
 
 use async_graphql_value::indexmap::IndexMap;
 use core_plugin_interface::core_resolver::{
-    request_context::RequestContext, system_resolver::ExographExecuteQueryFn, InterceptedOperation,
+    context::RequestContext, system_resolver::ExographExecuteQueryFn, InterceptedOperation,
 };
 use deno_model::interceptor::Interceptor;
 use exo_deno::Arg;
@@ -32,6 +32,8 @@ pub async fn execute_interceptor<'a>(
 ) -> Result<(Value, Option<ExographMethodResponse>), DenoExecutionError> {
     let script = &subsystem_resolver.subsystem.scripts[interceptor.script];
 
+    println!("interceptor");
+
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &IndexMap::new(),
         &interceptor.arguments,
@@ -39,6 +41,8 @@ pub async fn execute_interceptor<'a>(
         request_context,
     )
     .await?;
+
+    println!("arg_sequence: {:?}", arg_sequence);
 
     let intercepted_operation_resolver = || intercepted_operation.resolve(request_context);
 

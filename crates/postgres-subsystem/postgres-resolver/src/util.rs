@@ -7,13 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::{indexmap::IndexMap, ConstValue};
+use async_graphql_value::indexmap::IndexMap;
 use postgres_model::types::EntityType;
 
 use crate::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLOperationKind};
 use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
-    access_solver::AccessSolver, request_context::RequestContext,
+    access_solver::AccessSolver, context::RequestContext, value::Val,
 };
 use exo_sql::{AbstractPredicate, PhysicalTable};
 use postgres_model::{
@@ -22,7 +22,7 @@ use postgres_model::{
     subsystem::PostgresSubsystem,
 };
 
-pub type Arguments = IndexMap<String, ConstValue>;
+pub type Arguments = IndexMap<String, Val>;
 
 // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
 // See issue #69
@@ -52,7 +52,7 @@ pub(crate) async fn check_access<'a>(
     }
 }
 
-pub fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a ConstValue> {
+pub fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Val> {
     arguments.iter().find_map(|argument| {
         let (argument_name, argument_value) = argument;
         if arg_name == argument_name {
@@ -81,12 +81,9 @@ pub(crate) fn to_column_id_path(
     }
 }
 
-pub(crate) fn get_argument_field<'a>(
-    argument_value: &'a ConstValue,
-    field_name: &str,
-) -> Option<&'a ConstValue> {
+pub(crate) fn get_argument_field<'a>(argument_value: &'a Val, field_name: &str) -> Option<&'a Val> {
     match argument_value {
-        ConstValue::Object(value) => value.get(field_name),
+        Val::Object(value) => value.get(field_name),
         _ => None,
     }
 }

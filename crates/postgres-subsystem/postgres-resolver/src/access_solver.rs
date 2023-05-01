@@ -22,8 +22,8 @@ use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
     core_model::context_type::ContextSelection,
     core_resolver::{
-        access_solver::AccessPredicate, access_solver::AccessSolver,
-        context_extractor::ContextExtractor, request_context::RequestContext,
+        access_solver::AccessPredicate, access_solver::AccessSolver, context::RequestContext,
+        context_extractor::ContextExtractor, value::Val,
     },
 };
 use exo_sql::{AbstractPredicate, ColumnPath, SQLParamContainer};
@@ -31,7 +31,6 @@ use postgres_model::{
     access::DatabaseAccessPrimitiveExpression, column_path::ColumnIdPath,
     subsystem::PostgresSubsystem,
 };
-use serde_json::Value;
 
 // Only to get around the orphan rule while implementing AccessSolver
 pub struct AbstractPredicateWrapper<'a>(pub AbstractPredicate<'a>);
@@ -62,7 +61,7 @@ impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper<'a> {
 
 #[derive(Debug)]
 pub enum SolvedPrimitiveExpression<'a> {
-    Value(Value),
+    Value(Val),
     Column(ColumnIdPath),
     UnresolvedContext(&'a ContextSelection), // For example, AuthContext.role for an anonymous user
 }
@@ -91,13 +90,13 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     SolvedPrimitiveExpression::Column(column_path.clone())
                 }
                 DatabaseAccessPrimitiveExpression::StringLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Value::String(value.clone()))
+                    SolvedPrimitiveExpression::Value(Val::String(value.clone()))
                 }
                 DatabaseAccessPrimitiveExpression::BooleanLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Value::Bool(*value))
+                    SolvedPrimitiveExpression::Value(Val::Bool(*value))
                 }
                 DatabaseAccessPrimitiveExpression::NumberLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Value::Number((*value).into()))
+                    SolvedPrimitiveExpression::Value(Val::Number((*value).into()))
                 }
             }
         }
@@ -107,7 +106,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         let right = reduce_primitive_expression(self, request_context, right).await;
 
         type ColumnPredicateFn<'a> = fn(ColumnPath<'a>, ColumnPath<'a>) -> AbstractPredicate<'a>;
-        type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
+        type ValuePredicateFn<'a> = fn(Val, Val) -> AbstractPredicate<'a>;
 
         let helper = |unresolved_context_predicate: AbstractPredicate<'a>,
                       column_predicate: ColumnPredicateFn<'a>,
@@ -186,7 +185,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 AbstractPredicate::False,
                 AbstractPredicate::In,
                 |left_value, right_value| match right_value {
-                    Value::Array(values) => values.contains(&left_value).into(),
+                    Val::List(values) => values.contains(&left_value).into(),
                     _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
                 },
             ),
@@ -199,14 +198,19 @@ fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a PostgresSubsystem) -
 }
 
 /// Converts a value to a literal column path
-fn literal_column(value: Value) -> ColumnPath<'static> {
+fn literal_column(value: Val) -> ColumnPath<'static> {
     match value {
-        Value::Null => ColumnPath::Null,
-        Value::Bool(v) => ColumnPath::Param(SQLParamContainer::new(v)),
-        Value::Number(v) => ColumnPath::Param(SQLParamContainer::new(v.as_i64().unwrap() as i32)), // TODO: Deal with the exact number type
-        Value::String(v) => ColumnPath::Param(SQLParamContainer::new(v)),
-        Value::Array(values) => ColumnPath::Param(SQLParamContainer::new(values)),
-        Value::Object(_) => todo!(),
+        Val::Null => ColumnPath::Null,
+        Val::Bool(v) => ColumnPath::Param(SQLParamContainer::new(v)),
+        Val::Number(v) => ColumnPath::Param(SQLParamContainer::new(v.as_i64().unwrap() as i32)), // TODO: Deal with the exact number type
+        Val::String(v) => ColumnPath::Param(SQLParamContainer::new(v)),
+        Val::List(values) => ColumnPath::Param(SQLParamContainer::new(
+            values
+                .into_iter()
+                .map(|v| v.into_json().unwrap())
+                .collect::<Vec<_>>(),
+        )),
+        Val::Object(_) | Val::Binary(_) | Val::Enum(_) => todo!(),
     }
 }
 
@@ -219,11 +223,11 @@ mod tests {
         interception::InterceptionMap,
     };
 
+    use core_resolver::context::Request;
     use core_resolver::introspection::definition::schema::Schema;
-    use core_resolver::request_context::Request;
     use core_resolver::system_resolver::SystemResolver;
     use postgres_model::{column_id::ColumnId, column_path::ColumnIdPathLink};
-    use serde_json::json;
+    use serde_json::{json, Value};
 
     use super::*;
 
@@ -1166,11 +1170,11 @@ mod tests {
         test_values: Value,
         system_resolver: &SystemResolver,
     ) -> RequestContext {
-        RequestContext::parse_context(
+        RequestContext::new(
             &REQUEST,
-            vec![Box::new(
-                core_resolver::request_context::TestRequestContext { test_values },
-            )],
+            vec![Box::new(core_resolver::context::TestRequestContext {
+                test_values,
+            })],
             system_resolver,
         )
         .unwrap()

@@ -21,9 +21,9 @@ use tokio::runtime::Handle;
 use tracing::{error, instrument};
 
 use crate::{
+    context::RequestContext,
     introspection::definition::schema::Schema,
     plugin::{subsystem_resolver::SubsystemResolver, SubsystemResolutionError},
-    request_context::RequestContext,
     validation::{
         document_validator::DocumentValidator, field::ValidatedField,
         operation::ValidatedOperation, validation_error::ValidationError,

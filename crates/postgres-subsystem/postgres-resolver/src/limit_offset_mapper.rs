@@ -7,10 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::ConstValue;
-
 use async_trait::async_trait;
-use core_plugin_interface::core_resolver::request_context::RequestContext;
+use core_plugin_interface::core_resolver::context::RequestContext;
+use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{Limit, Offset};
 use postgres_model::{
     limit_offset::{LimitParameter, OffsetParameter},
@@ -19,9 +18,9 @@ use postgres_model::{
 
 use super::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper};
 
-fn cast_to_i64(argument: &ConstValue) -> Result<i64, PostgresExecutionError> {
+fn cast_to_i64(argument: &Val) -> Result<i64, PostgresExecutionError> {
     match argument {
-        ConstValue::Number(n) => n
+        Val::Number(n) => n
             .as_i64()
             .ok_or_else(|| PostgresExecutionError::Generic(format!("Could not cast {n} to i64"))),
         _ => Err(PostgresExecutionError::Generic("Not a number".into())),
@@ -32,7 +31,7 @@ fn cast_to_i64(argument: &ConstValue) -> Result<i64, PostgresExecutionError> {
 impl<'a> SQLMapper<'a, Limit> for &LimitParameter {
     async fn to_sql(
         self,
-        argument: &'a ConstValue,
+        argument: &'a Val,
         _subsystem: &'a PostgresSubsystem,
         _request_context: &RequestContext<'a>,
     ) -> Result<Limit, PostgresExecutionError> {
@@ -48,7 +47,7 @@ impl<'a> SQLMapper<'a, Limit> for &LimitParameter {
 impl<'a> SQLMapper<'a, Offset> for &OffsetParameter {
     async fn to_sql(
         self,
-        argument: &'a ConstValue,
+        argument: &'a Val,
         _subsystem: &'a PostgresSubsystem,
         _request_context: &RequestContext<'a>,
     ) -> Result<Offset, PostgresExecutionError> {

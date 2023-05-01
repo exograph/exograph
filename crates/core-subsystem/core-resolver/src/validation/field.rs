@@ -7,8 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::{indexmap::IndexMap, ConstValue, Name};
+use async_graphql_value::{indexmap::IndexMap, Name};
 use serde::Serialize;
+
+use crate::value::val::Val;
 
 #[derive(Debug, Serialize)]
 pub struct ValidatedField {
@@ -16,7 +18,7 @@ pub struct ValidatedField {
     /// The name of the field.
     pub name: Name,
     /// The arguments to the field, empty if no arguments are provided.
-    pub arguments: IndexMap<String, ConstValue>,
+    pub arguments: IndexMap<String, Val>,
 
     /// The subfields being selected in this field, if it is an object. Empty if no fields are
     /// being selected.

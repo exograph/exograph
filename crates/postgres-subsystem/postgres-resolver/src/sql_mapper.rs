@@ -7,10 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::ConstValue;
-
 use async_trait::async_trait;
-use core_plugin_interface::core_resolver::request_context::RequestContext;
+use core_plugin_interface::core_resolver::context::RequestContext;
+use core_plugin_interface::core_resolver::value::Val;
 use postgres_model::subsystem::PostgresSubsystem;
 
 use crate::util::{find_arg, Arguments};
@@ -27,7 +26,7 @@ pub(crate) enum SQLOperationKind {
 pub(crate) trait SQLMapper<'a, R> {
     async fn to_sql(
         self,
-        argument: &'a ConstValue,
+        argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
         request_context: &RequestContext<'a>,
     ) -> Result<R, PostgresExecutionError>;

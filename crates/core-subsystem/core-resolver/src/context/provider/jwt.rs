@@ -9,14 +9,16 @@
 
 use std::env;
 
-use crate::request_context::{BoxedParsedContext, ParsedContext, RequestContext};
 use async_trait::async_trait;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
 use serde_json::Value;
 use tracing::warn;
 
-use super::{ContextParsingError, Request};
+use crate::context::error::ContextParsingError;
+use crate::context::parsed_context::{BoxedParsedContext, ParsedContext};
+use crate::context::request::Request;
+use crate::context::RequestContext;
 
 pub enum JwtAuthenticationError {
     ExpiredToken,

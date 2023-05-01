@@ -7,15 +7,19 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_trait::async_trait;
-use core_model::context_type::{ContextContainer, ContextSelection};
-use serde_json::{Map, Value};
+use std::collections::HashMap;
 
-use crate::request_context::RequestContext;
+use async_trait::async_trait;
+use core_model::context_type::{ContextContainer, ContextSelection, ContextType};
+use futures::StreamExt;
+
+use crate::{context::RequestContext, value::Val};
 
 /// Extract context objects from the request context.
 #[async_trait]
 pub trait ContextExtractor {
+    fn context_type(&self, context_type_name: &str) -> &ContextType;
+
     /// Extract the context object.
     ///
     /// If the context type is defined as:
@@ -41,8 +45,27 @@ pub trait ContextExtractor {
     async fn extract_context(
         &self,
         request_context: &RequestContext,
-        context_name: &str,
-    ) -> Option<Map<String, Value>>;
+        context_type_name: &str,
+    ) -> Option<Val> {
+        let context_type = self.context_type(context_type_name);
+        let field_values: HashMap<_, _> = futures::stream::iter(context_type.fields.iter())
+            .then(|field| async {
+                request_context
+                    .extract_context_field(context_type_name, field)
+                    .await
+                    .map(|value| value.map(|value| (field.name.clone(), value.clone())))
+            })
+            .collect::<Vec<Result<_, _>>>()
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+            .into_iter()
+            .flatten()
+            .collect();
+
+        Some(Val::Object(field_values))
+    }
 
     /// Extract the context object selection.
     ///
@@ -56,33 +79,25 @@ pub trait ContextExtractor {
         &self,
         request_context: &RequestContext,
         context_selection: &ContextSelection,
-    ) -> Option<Value> {
-        fn extract_path<'a>(value: &'a Value, path: &[String]) -> Option<&'a Value> {
-            match path.split_first() {
-                Some((key, tail)) => value.get(key).and_then(|value| extract_path(value, tail)),
-                None => Some(value),
-            }
-        }
+    ) -> Option<Val> {
+        let context_type = self.context_type(&context_selection.context_name);
+        let context_field = context_type
+            .fields
+            .iter()
+            .find(|f| f.name == context_selection.path.0)?;
 
-        let context = self
-            .extract_context(request_context, &context_selection.context_name)
-            .await?;
-        context
-            .get(&context_selection.path.0)
-            .and_then(|head_selection| extract_path(head_selection, &context_selection.path.1))
+        request_context
+            .extract_context_field(&context_selection.context_name, context_field)
+            .await
+            .unwrap()
             .cloned()
     }
 }
 
 #[async_trait]
 impl<T: ContextContainer + std::marker::Sync> ContextExtractor for T {
-    async fn extract_context(
-        &self,
-        request_context: &RequestContext,
-        context_name: &str,
-    ) -> Option<Map<String, Value>> {
+    fn context_type(&self, context_type_name: &str) -> &ContextType {
         let contexts = self.contexts();
-        let context_type = contexts.get_by_key(context_name).unwrap();
-        request_context.extract_context(context_type).await.ok()
+        contexts.get_by_key(context_type_name).unwrap()
     }
 }

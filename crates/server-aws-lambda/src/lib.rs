@@ -10,7 +10,7 @@
 mod request;
 
 use core_resolver::{
-    request_context::{ContextParsingError, RequestContext},
+    context::{ContextParsingError, RequestContext},
     system_resolver::SystemResolver,
     OperationsPayload,
 };
@@ -35,7 +35,7 @@ pub async fn resolve(
     system_resolver: Arc<SystemResolver>,
 ) -> Result<Value, Error> {
     let request = LambdaRequest::new(&event);
-    let request_context = RequestContext::parse_context(&request, vec![], system_resolver.as_ref());
+    let request_context = RequestContext::new(&request, vec![], system_resolver.as_ref());
 
     let body = event.payload["body"].clone();
 
