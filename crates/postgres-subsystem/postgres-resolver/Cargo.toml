@@ -6,10 +6,10 @@ publish = false
 
 [dependencies]
 async-graphql-parser.workspace = true
-async-graphql-value.workspace = true
 async-recursion.workspace = true
 async-trait.workspace = true
 futures.workspace = true
+indexmap.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 maybe-owned.workspace = true
 serde.workspace = true

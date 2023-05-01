@@ -10,6 +10,7 @@ test-context = []
 [dependencies]
 async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
+indexmap.workspace = true
 async-recursion.workspace = true
 async-trait.workspace = true
 bytes.workspace = true

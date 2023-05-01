@@ -1294,6 +1294,7 @@ dependencies = [
  "elsa",
  "exo-sql",
  "futures",
+ "indexmap",
  "insta",
  "jsonwebtoken",
  "serde",
@@ -1757,7 +1758,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-graphql-parser",
- "async-graphql-value",
  "async-recursion",
  "async-trait",
  "builder",
@@ -1766,6 +1766,7 @@ dependencies = [
  "deno_core",
  "exo-deno",
  "futures",
+ "indexmap",
  "maybe-owned",
  "serde_json",
  "thiserror",
@@ -5079,7 +5080,6 @@ name = "postgres-resolver"
 version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
- "async-graphql-value",
  "async-recursion",
  "async-trait",
  "base64 0.13.1",
@@ -5089,6 +5089,7 @@ dependencies = [
  "core-resolver",
  "exo-sql",
  "futures",
+ "indexmap",
  "maybe-owned",
  "pg_bigdecimal",
  "postgres-model",
@@ -6305,7 +6306,6 @@ name = "subsystem-model-util"
 version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
- "async-graphql-value",
  "core-model",
  "core-plugin-shared",
  "serde",
@@ -7871,7 +7871,6 @@ name = "wasm-model"
 version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
- "async-graphql-value",
  "bincode",
  "core-plugin-interface",
  "serde",

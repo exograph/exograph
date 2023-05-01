@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::indexmap::IndexMap;
+use indexmap::IndexMap;
 use postgres_model::types::EntityType;
 
 use crate::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLOperationKind};

@@ -15,6 +15,8 @@ mod request_context;
 mod user_request_context;
 
 pub use error::ContextParsingError;
-pub use parsed_context::TestRequestContext;
 pub use request::Request;
 pub use request_context::RequestContext;
+
+#[cfg(feature = "test-context")]
+pub use parsed_context::TestRequestContext;
