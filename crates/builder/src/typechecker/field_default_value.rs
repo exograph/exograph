@@ -48,12 +48,13 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
         let mut check_literal = |expr: &mut AstExpr<Typed>| match expr {
             AstExpr::BooleanLiteral(_, _)
             | AstExpr::StringLiteral(_, _)
-            | AstExpr::NumberLiteral(_, _) => expr.pass(type_env, annotation_env, scope, errors),
+            | AstExpr::NumberLiteral(_, _)
+            | AstExpr::FieldSelection(_) => expr.pass(type_env, annotation_env, scope, errors),
 
             _ => {
                 errors.push(Diagnostic {
                     level: Level::Error,
-                    message: "Must be a literal.".to_string(),
+                    message: "Must be a literal or a context field.".to_string(),
                     code: Some("C000".to_string()),
                     spans: vec![SpanLabel {
                         span: self.span,

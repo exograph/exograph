@@ -19,7 +19,8 @@
 use crate::column_path_util;
 use async_trait::async_trait;
 use core_plugin_interface::{
-    core_model::access::{AccessContextSelection, AccessRelationalOp},
+    core_model::access::AccessRelationalOp,
+    core_model::context_type::ContextSelection,
     core_resolver::{
         access_solver::AccessPredicate, access_solver::AccessSolver,
         context_extractor::ContextExtractor, request_context::RequestContext,
@@ -63,7 +64,7 @@ impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper<'a> {
 pub enum SolvedPrimitiveExpression<'a> {
     Value(Value),
     Column(ColumnIdPath),
-    UnresolvedContext(&'a AccessContextSelection), // For example, AuthContext.role for an anonymous user
+    UnresolvedContext(&'a ContextSelection), // For example, AuthContext.role for an anonymous user
 }
 
 #[async_trait]
@@ -366,8 +367,8 @@ mod tests {
         }
     }
 
-    fn context_selection(context_name: &str, path_head: &str) -> AccessContextSelection {
-        AccessContextSelection {
+    fn context_selection(context_name: &str, path_head: &str) -> ContextSelection {
+        ContextSelection {
             context_name: context_name.to_string(),
             path: (path_head.to_string(), vec![]),
         }
@@ -381,7 +382,7 @@ mod tests {
 
     // AuthContext.is_admin => AuthContext.is_admin == true
     fn boolean_context_selection(
-        context_selection: AccessContextSelection,
+        context_selection: ContextSelection,
     ) -> AccessPredicateExpression<DatabaseAccessPrimitiveExpression> {
         AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             Box::new(DatabaseAccessPrimitiveExpression::ContextSelection(
@@ -874,7 +875,7 @@ mod tests {
 
             for (c1, expected) in scenarios.iter() {
                 let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(
-                    Box::new(boolean_context_selection(AccessContextSelection {
+                    Box::new(boolean_context_selection(ContextSelection {
                         context_name: "AccessContext".to_string(),
                         path: (c1.to_string(), vec![]),
                     })),

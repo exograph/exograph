@@ -103,7 +103,7 @@ async fn create_operation<'content>(
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
     subsystem: &'content PostgresSubsystem,
-    request_context: &'content RequestContext<'content>,
+    request_context: &RequestContext<'content>,
 ) -> Result<AbstractInsert<'content>, PostgresExecutionError> {
     let access_predicate = check_access(
         return_type,
@@ -121,12 +121,15 @@ async fn create_operation<'content>(
     }
 
     match find_arg(&field.arguments, &data_param.name) {
-        Some(argument) => InsertOperation {
-            data_param,
-            select,
-            return_type,
+        Some(argument) => {
+            InsertOperation {
+                data_param,
+                select,
+                return_type,
+            }
+            .to_sql(argument, subsystem, request_context)
+            .await
         }
-        .to_sql(argument, subsystem),
         None => Err(PostgresExecutionError::MissingArgument(
             data_param.name.clone(),
         )),
@@ -151,7 +154,13 @@ async fn delete_operation<'content>(
     )
     .await?;
 
-    let predicate = compute_predicate(predicate_param, &field.arguments, subsystem)?;
+    let predicate = compute_predicate(
+        predicate_param,
+        &field.arguments,
+        subsystem,
+        request_context,
+    )
+    .await?;
     let predicate = Predicate::and(access_predicate, predicate);
 
     Ok(AbstractDelete {
@@ -178,17 +187,26 @@ async fn update_operation<'content>(
     )
     .await?;
 
-    let predicate = compute_predicate(predicate_param, &field.arguments, subsystem)?;
+    let predicate = compute_predicate(
+        predicate_param,
+        &field.arguments,
+        subsystem,
+        request_context,
+    )
+    .await?;
     let predicate = Predicate::and(access_predicate, predicate);
 
     match find_arg(&field.arguments, &data_param.name) {
-        Some(argument) => UpdateOperation {
-            data_param,
-            predicate,
-            select,
-            return_type,
+        Some(argument) => {
+            UpdateOperation {
+                data_param,
+                predicate,
+                select,
+                return_type,
+            }
+            .to_sql(argument, subsystem, request_context)
+            .await
         }
-        .to_sql(argument, subsystem),
         None => Err(PostgresExecutionError::MissingArgument(
             data_param.name.clone(),
         )),

@@ -72,3 +72,41 @@ pub trait ContextContainer {
     /// This allows us to have a shared implementation of `extract_context`
     fn contexts(&self) -> &MappedArena<ContextType>;
 }
+
+/// A path representing context selection such as `AuthContext.role`
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ContextSelection {
+    /// The name of the context such as `AuthContext`
+    pub context_name: String,
+    /// The path to the value within the context such as `role`. Since the path is always non-empty,
+    /// it is represented with a tuple of the first element and the rest of the elements.
+    pub path: (String, Vec<String>),
+}
+
+pub fn get_context<'a>(
+    path_elements: &[String],
+    contexts: &'a MappedArena<ContextType>,
+) -> (ContextSelection, &'a ContextFieldType) {
+    if path_elements.len() == 2 {
+        let context_type = contexts
+            .iter()
+            .find(|t| t.1.name == path_elements[0])
+            .unwrap()
+            .1;
+        let field = context_type
+            .fields
+            .iter()
+            .find(|field| field.name == path_elements[1])
+            .unwrap();
+
+        (
+            ContextSelection {
+                context_name: path_elements[0].clone(),
+                path: (path_elements[1].clone(), vec![]),
+            },
+            &field.typ,
+        )
+    } else {
+        todo!() // Nested selection such as AuthContext.user.id
+    }
+}

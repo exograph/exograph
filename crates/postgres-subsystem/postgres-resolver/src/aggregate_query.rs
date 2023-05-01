@@ -49,7 +49,9 @@ impl OperationSelectionResolver for AggregateQuery {
             &self.parameters.predicate_param,
             &field.arguments,
             subsystem,
-        )?;
+            request_context,
+        )
+        .await?;
         let predicate = AbstractPredicate::and(query_predicate, access_predicate);
         let return_postgres_type = &self.return_type.typ(&subsystem.entity_types);
 

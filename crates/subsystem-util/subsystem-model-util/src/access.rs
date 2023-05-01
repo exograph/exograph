@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_model::access::{AccessContextSelection, AccessPredicateExpression};
+use core_model::{access::AccessPredicateExpression, context_type::ContextSelection};
 use serde::{Deserialize, Serialize};
 
 /// Access specification for a model
@@ -29,8 +29,8 @@ impl Access {
 /// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ModuleAccessPrimitiveExpression {
-    ContextSelection(AccessContextSelection), // for example, AuthContext.role
-    StringLiteral(String),                    // for example, "ROLE_ADMIN"
-    BooleanLiteral(bool),                     // for example, true
-    NumberLiteral(i64),                       // for example, integer (-13, 0, 300, etc.)
+    ContextSelection(ContextSelection), // for example, AuthContext.role
+    StringLiteral(String),              // for example, "ROLE_ADMIN"
+    BooleanLiteral(bool),               // for example, true
+    NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
 }

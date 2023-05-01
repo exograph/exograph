@@ -17,7 +17,7 @@ use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::Reso
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_plugin_interface::{
     core_model::{
-        context_type::ContextType,
+        context_type::{get_context, ContextType},
         mapped_arena::{MappedArena, SerializableSlabIndex},
         primitive_type::PrimitiveType,
         types::{FieldType, Named},
@@ -97,6 +97,12 @@ pub(crate) fn build_expanded(
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
             expand_type_fields(c, building, resolved_env);
+        }
+    }
+
+    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(c) = &resolved_type {
+            expand_dynamic_default_values(c, building, resolved_env);
         }
     }
 
@@ -221,6 +227,103 @@ fn expand_type_fields(
     existing_type.agg_fields = agg_fields;
 }
 
+// Expand dynamic default values (pre-condition: all type fields have been populated)
+fn expand_dynamic_default_values(
+    resolved_type: &ResolvedCompositeType,
+    building: &mut SystemContextBuilding,
+    resolved_env: &ResolvedTypeEnv,
+) {
+    fn matches(
+        field_type: &FieldType<PostgresFieldType<EntityType>>,
+        context_type: &FieldType<PrimitiveType>,
+    ) -> bool {
+        match (field_type, context_type) {
+            (FieldType::Plain(field_type), FieldType::Plain(context_type)) => {
+                field_type.name() == context_type.name()
+            }
+            (FieldType::List(field_type), FieldType::List(context_type)) => {
+                matches(field_type.as_ref(), context_type.as_ref())
+            }
+            (FieldType::Optional(field_type), FieldType::Optional(context_type)) => {
+                matches(field_type.as_ref(), context_type.as_ref())
+            }
+            _ => false,
+        }
+    }
+
+    let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
+
+    let dynamic_default_values = {
+        let existing_type = &building.entity_types[existing_type_id];
+
+        resolved_type
+            .fields
+            .iter()
+            .flat_map(|resolved_field| {
+                let entity_field = existing_type
+                    .fields
+                    .iter()
+                    .find(|field| field.name == resolved_field.name)
+                    .unwrap();
+
+                let dynamic_default_value =
+                    resolved_field
+                        .default_value
+                        .as_ref()
+                        .and_then(|default_value| match default_value {
+                            ResolvedFieldDefault::Value(expr) => match expr.as_ref() {
+                                AstExpr::FieldSelection(selection) => {
+                                    let (context_selection, context_type) =
+                                        get_context(&selection.path(), resolved_env.contexts);
+
+                                    match entity_field.relation {
+                                        PostgresRelation::Scalar { .. } => {
+                                            let field_type = &entity_field.typ;
+                                            if !matches(field_type, context_type) {
+                                                // TODO: Convert this an other panics into errors
+                                                panic!(
+                                                "Type of default value does not match field type"
+                                            )
+                                            }
+
+                                            Some(context_selection)
+                                        }
+                                        PostgresRelation::ManyToOne { other_type_id, .. } => {
+                                            let other_type = &building.entity_types[other_type_id];
+                                            let other_type_pk = &other_type.pk_field().unwrap().typ;
+
+                                            if !matches(other_type_pk, context_type) {
+                                                panic!(
+                                                "Type of default value does not match field type"
+                                            )
+                                            }
+
+                                            Some(context_selection)
+                                        }
+                                        _ => panic!("Invalid relation type for default value"),
+                                    }
+                                }
+                                _ => None,
+                            },
+                            _ => None,
+                        });
+                dynamic_default_value.map(|value| (resolved_field.name.clone(), value))
+            })
+            .collect::<Vec<_>>()
+    };
+
+    dynamic_default_values
+        .into_iter()
+        .for_each(|(field_name, value)| {
+            let existing_type = &mut building.entity_types[existing_type_id];
+            let existing_field = existing_type
+                .fields
+                .iter_mut()
+                .find(|field| field.name == field_name)
+                .unwrap();
+            existing_field.dynamic_default_value = Some(value);
+        });
+}
 // Expand access expressions (pre-condition: all type fields have been populated)
 fn expand_type_access(
     resolved_type: &ResolvedCompositeType,
@@ -299,6 +402,7 @@ fn create_persistent_field(
         typ: field.typ.wrap(base_field_type),
         relation: create_relation(field, *table_id, building, env),
         has_default_value: field.default_value.is_some(),
+        dynamic_default_value: None,
     }
 }
 
@@ -357,20 +461,17 @@ fn create_column(
             .default_value
             .as_ref()
             .and_then(|default_value| match default_value {
-                ResolvedFieldDefault::Value(val) => Some(match &**val {
+                ResolvedFieldDefault::Value(val) => match &**val {
                     AstExpr::StringLiteral(string, _) => {
-                        format!("'{}'::text", string.replace('\'', "''"))
+                        Some(format!("'{}'::text", string.replace('\'', "''")))
                     }
-                    AstExpr::BooleanLiteral(boolean, _) => {
-                        format!("{boolean}")
-                    }
-                    AstExpr::NumberLiteral(val, _) => {
-                        format!("{val}")
-                    }
+                    AstExpr::BooleanLiteral(boolean, _) => Some(format!("{boolean}")),
+                    AstExpr::NumberLiteral(val, _) => Some(format!("{val}")),
+                    AstExpr::FieldSelection(_) => None,
                     _ => panic!("Invalid concrete value"),
-                }),
+                },
                 ResolvedFieldDefault::PostgresFunction(string) => Some(string.to_string()),
-                ResolvedFieldDefault::Autoincrement => None,
+                ResolvedFieldDefault::AutoIncrement => None,
             });
 
     match typ {

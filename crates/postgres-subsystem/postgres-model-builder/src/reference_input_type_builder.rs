@@ -63,6 +63,7 @@ fn expanded_reference_types(
                 typ: to_mutation_type(&field.typ),
                 relation: field.relation.clone(),
                 has_default_value: field.has_default_value,
+                dynamic_default_value: None,
             }),
             _ => None,
         })

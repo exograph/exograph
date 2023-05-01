@@ -8,11 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_model::{
-    access::{
-        AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
-        AccessRelationalOp,
-    },
-    context_type::ContextFieldType,
+    access::{AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp},
+    context_type::{get_context, ContextFieldType, ContextSelection},
     mapped_arena::MappedArena,
     primitive_type::PrimitiveType,
     types::FieldType,
@@ -35,7 +32,7 @@ use super::type_builder::ResolvedTypeEnv;
 
 enum PathSelection<'a> {
     Column(ColumnIdPath, &'a FieldType<PostgresFieldType<EntityType>>),
-    Context(AccessContextSelection, &'a ContextFieldType),
+    Context(ContextSelection, &'a ContextFieldType),
 }
 
 pub fn compute_predicate_expression(
@@ -209,16 +206,6 @@ fn compute_selection<'a>(
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &'a MappedArena<EntityType>,
 ) -> PathSelection<'a> {
-    fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
-        match selection {
-            FieldSelection::Single(identifier, _) => acc.push(identifier.0.clone()),
-            FieldSelection::Select(path, identifier, _, _) => {
-                flatten(path, acc);
-                acc.push(identifier.0.clone());
-            }
-        }
-    }
-
     fn get_column<'a>(
         field_name: &str,
         self_type_info: &'a EntityType,
@@ -240,37 +227,7 @@ fn compute_selection<'a>(
         (column_path_link, &field.typ)
     }
 
-    fn get_context<'a>(
-        path_elements: &[String],
-        resolved_env: &'a ResolvedTypeEnv<'a>,
-    ) -> (AccessContextSelection, &'a ContextFieldType) {
-        if path_elements.len() == 2 {
-            let context_type = resolved_env
-                .contexts
-                .iter()
-                .find(|t| t.1.name == path_elements[0])
-                .unwrap()
-                .1;
-            let field = context_type
-                .fields
-                .iter()
-                .find(|field| field.name == path_elements[1])
-                .unwrap();
-
-            (
-                AccessContextSelection {
-                    context_name: path_elements[0].clone(),
-                    path: (path_elements[1].clone(), vec![]),
-                },
-                &field.typ,
-            )
-        } else {
-            todo!() // Nested selection such as AuthContext.user.id
-        }
-    }
-
-    let mut path_elements = vec![];
-    flatten(selection, &mut path_elements);
+    let path_elements = selection.path();
 
     if path_elements[0] == "self" {
         let (_, column_path_elems, field_type) = path_elements[1..].iter().fold(
@@ -309,7 +266,8 @@ fn compute_selection<'a>(
             field_type.unwrap(),
         )
     } else {
-        let (context_selection, context_field_type) = get_context(&path_elements, resolved_env);
+        let (context_selection, context_field_type) =
+            get_context(&path_elements, resolved_env.contexts);
         PathSelection::Context(context_selection, context_field_type)
     }
 }

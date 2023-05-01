@@ -28,16 +28,6 @@
 
 use serde::{Deserialize, Serialize};
 
-/// A path representing context selection such as `AuthContext.role`
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AccessContextSelection {
-    /// The name of the context such as `AuthContext`
-    pub context_name: String,
-    /// The path to the value within the context such as `role`. Since the path is always non-empty,
-    /// it is represented with a tuple of the first element and the rest of the elements.
-    pub path: (String, Vec<String>),
-}
-
 /// An expression that can be evaluated to a subsystem-specific predicate such as Deno's
 /// `ModuleAccessPredicate` and Postgres' `AbstractPredicate`.
 ///

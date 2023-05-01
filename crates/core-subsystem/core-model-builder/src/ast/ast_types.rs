@@ -322,6 +322,24 @@ pub enum FieldSelection<T: NodeTypedness> {
     ),
 }
 
+impl FieldSelection<Typed> {
+    pub fn path(&self) -> Vec<String> {
+        fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
+            match selection {
+                FieldSelection::Single(identifier, _) => acc.push(identifier.0.clone()),
+                FieldSelection::Select(path, identifier, _, _) => {
+                    flatten(path, acc);
+                    acc.push(identifier.0.clone());
+                }
+            }
+        }
+
+        let mut acc = vec![];
+        flatten(self, &mut acc);
+        acc
+    }
+}
+
 impl<T: NodeTypedness> FieldSelection<T> {
     pub fn span(&self) -> &Span {
         match &self {

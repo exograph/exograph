@@ -51,7 +51,7 @@ values:
               Explicit:
                 dbtype: BIGINT
             unique_constraints: []
-            default_value: Autoincrement
+            default_value: AutoIncrement
           - name: title
             typ:
               Plain:
@@ -131,7 +131,7 @@ values:
               Explicit:
                 dbtype: BIGINT
             unique_constraints: []
-            default_value: Autoincrement
+            default_value: AutoIncrement
           - name: name
             typ:
               Plain:

@@ -8,9 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use crate::column_path::ColumnIdPath;
-use core_plugin_interface::core_model::access::{
-    AccessContextSelection, AccessPredicateExpression,
-};
+use core_plugin_interface::core_model::access::AccessPredicateExpression;
+use core_plugin_interface::core_model::context_type::ContextSelection;
 use serde::{Deserialize, Serialize};
 
 /// Access specification for a model
@@ -38,9 +37,9 @@ impl Access {
 /// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DatabaseAccessPrimitiveExpression {
-    ContextSelection(AccessContextSelection), // for example, AuthContext.role
-    Column(ColumnIdPath),                     // for example, self.id
-    StringLiteral(String),                    // for example, "ADMIN"
-    BooleanLiteral(bool),                     // for example, true
-    NumberLiteral(i64),                       // for example, integer (-13, 0, 300, etc.)
+    ContextSelection(ContextSelection), // for example, AuthContext.role
+    Column(ColumnIdPath),               // for example, self.id
+    StringLiteral(String),              // for example, "ADMIN"
+    BooleanLiteral(bool),               // for example, true
+    NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
 }

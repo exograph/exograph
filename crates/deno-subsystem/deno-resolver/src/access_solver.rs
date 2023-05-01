@@ -12,7 +12,8 @@
 use async_trait::async_trait;
 
 use core_plugin_interface::{
-    core_model::access::{AccessContextSelection, AccessRelationalOp},
+    core_model::access::AccessRelationalOp,
+    core_model::context_type::ContextSelection,
     core_resolver::{
         access_solver::{AccessPredicate, AccessSolver},
         context_extractor::ContextExtractor,
@@ -68,7 +69,7 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
             Value(Value),
             /// A context field that could not be resolved. For example, `AuthContext.role` for an anonymous user.
             /// We process unresolved context when performing relational operations.
-            UnresolvedContext(&'a AccessContextSelection),
+            UnresolvedContext(&'a ContextSelection),
         }
 
         async fn reduce_primitive_expression<'a>(

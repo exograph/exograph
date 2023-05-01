@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
-use core_model::{access::AccessContextSelection, context_type::ContextContainer};
+use core_model::context_type::{ContextContainer, ContextSelection};
 use serde_json::{Map, Value};
 
 use crate::request_context::RequestContext;
@@ -55,7 +55,7 @@ pub trait ContextExtractor {
     async fn extract_context_selection(
         &self,
         request_context: &RequestContext,
-        context_selection: &AccessContextSelection,
+        context_selection: &ContextSelection,
     ) -> Option<Value> {
         fn extract_path<'a>(value: &'a Value, path: &[String]) -> Option<&'a Value> {
             match path.split_first() {

@@ -8,11 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use core_model::{
-    access::{
-        AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
-        AccessRelationalOp,
-    },
-    context_type::ContextFieldType,
+    access::{AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp},
+    context_type::{get_context, ContextFieldType, ContextSelection},
     primitive_type::PrimitiveType,
 };
 use core_model_builder::{
@@ -25,7 +22,7 @@ use subsystem_model_util::access::ModuleAccessPrimitiveExpression;
 use super::type_builder::ResolvedTypeEnv;
 
 enum PathSelection<'a> {
-    Context(AccessContextSelection, &'a ContextFieldType),
+    Context(ContextSelection, &'a ContextFieldType),
 }
 
 pub fn compute_predicate_expression(
@@ -125,48 +122,8 @@ fn compute_selection<'a>(
     selection: &FieldSelection<Typed>,
     resolved_env: &'a ResolvedTypeEnv<'a>,
 ) -> PathSelection<'a> {
-    fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
-        match selection {
-            FieldSelection::Single(identifier, _) => acc.push(identifier.0.clone()),
-            FieldSelection::Select(path, identifier, _, _) => {
-                flatten(path, acc);
-                acc.push(identifier.0.clone());
-            }
-        }
-    }
+    let path_elements = selection.path();
 
-    fn get_context<'a>(
-        path_elements: &[String],
-        resolved_env: &'a ResolvedTypeEnv<'a>,
-    ) -> (AccessContextSelection, &'a ContextFieldType) {
-        if path_elements.len() == 2 {
-            let context_type = resolved_env
-                .contexts
-                .iter()
-                .find(|t| t.1.name == path_elements[0])
-                .unwrap()
-                .1;
-            let field = context_type
-                .fields
-                .iter()
-                .find(|field| field.name == path_elements[1])
-                .unwrap();
-
-            (
-                AccessContextSelection {
-                    context_name: path_elements[0].clone(),
-                    path: (path_elements[1].clone(), vec![]),
-                },
-                &field.typ,
-            )
-        } else {
-            todo!() // Nested selection such as AuthContext.user.id
-        }
-    }
-
-    let mut path_elements = vec![];
-    flatten(selection, &mut path_elements);
-
-    let (context_selection, column_type) = get_context(&path_elements, resolved_env);
+    let (context_selection, column_type) = get_context(&path_elements, resolved_env.contexts);
     PathSelection::Context(context_selection, column_type)
 }

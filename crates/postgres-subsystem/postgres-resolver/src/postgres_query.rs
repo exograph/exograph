@@ -76,9 +76,9 @@ impl OperationSelectionResolver for CollectionQuery {
 
         compute_select(
             predicate_param,
-            compute_order_by(order_by_param, &field.arguments, subsystem)?,
-            extract_and_map(limit_param, &field.arguments, subsystem)?,
-            extract_and_map(offset_param, &field.arguments, subsystem)?,
+            compute_order_by(order_by_param, &field.arguments, subsystem, request_context).await?,
+            extract_and_map(limit_param, &field.arguments, subsystem, request_context).await?,
+            extract_and_map(offset_param, &field.arguments, subsystem, request_context).await?,
             &self.return_type,
             field,
             subsystem,
@@ -107,8 +107,13 @@ async fn compute_select<'content>(
     )
     .await?;
 
-    let query_predicate =
-        super::predicate_mapper::compute_predicate(predicate_param, &field.arguments, subsystem)?;
+    let query_predicate = super::predicate_mapper::compute_predicate(
+        predicate_param,
+        &field.arguments,
+        subsystem,
+        request_context,
+    )
+    .await?;
     let predicate = AbstractPredicate::and(query_predicate, access_predicate);
 
     let return_postgres_type = return_type.typ(&subsystem.entity_types);
@@ -137,10 +142,11 @@ async fn compute_select<'content>(
     })
 }
 
-fn compute_order_by<'content>(
+async fn compute_order_by<'content>(
     param: &'content OrderByParameter,
     arguments: &'content Arguments,
     subsystem: &'content PostgresSubsystem,
+    request_context: &RequestContext<'content>,
 ) -> Result<Option<AbstractOrderBy<'content>>, PostgresExecutionError> {
     extract_and_map(
         OrderByParameterInput {
@@ -149,7 +155,9 @@ fn compute_order_by<'content>(
         },
         arguments,
         subsystem,
+        request_context,
     )
+    .await
 }
 
 #[async_recursion]

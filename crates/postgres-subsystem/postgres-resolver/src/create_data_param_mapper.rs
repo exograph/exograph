@@ -8,11 +8,16 @@
 // by the Apache License, Version 2.0.
 
 use async_graphql_value::ConstValue;
+use async_recursion::async_recursion;
+use async_trait::async_trait;
 use core_plugin_interface::core_model::types::OperationReturnType;
+use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
+use core_plugin_interface::core_resolver::request_context::RequestContext;
 use exo_sql::{
     AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
     NestedElementRelation, NestedInsertion,
 };
+use futures::future::{join_all, try_join_all};
 use postgres_model::{
     column_id::ColumnId,
     mutation::DataParameter,
@@ -34,16 +39,18 @@ pub struct InsertOperation<'a> {
     pub select: AbstractSelect<'a>,
 }
 
+#[async_trait]
 impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
-    fn to_sql(
+    async fn to_sql(
         self,
         argument: &'a ConstValue,
         subsystem: &'a PostgresSubsystem,
+        request_context: &RequestContext<'a>,
     ) -> Result<AbstractInsert<'a>, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
         let table = data_type.table(subsystem);
 
-        let rows = map_argument(data_type, argument, subsystem)?;
+        let rows = map_argument(data_type, argument, subsystem, request_context).await?;
 
         let abs_insert = AbstractInsert {
             table,
@@ -59,49 +66,71 @@ impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
     }
 }
 
-pub(crate) fn map_argument<'a>(
+pub(crate) async fn map_argument<'a>(
     data_type: &'a MutationType,
     argument: &'a ConstValue,
     subsystem: &'a PostgresSubsystem,
+    request_context: &RequestContext<'a>,
 ) -> Result<Vec<InsertionRow<'a>>, PostgresExecutionError> {
     match argument {
-        ConstValue::List(arguments) => arguments
-            .iter()
-            .map(|argument| map_single(data_type, argument, subsystem))
-            .collect(),
-        _ => vec![map_single(data_type, argument, subsystem)]
+        ConstValue::List(arguments) => {
+            let mapped = arguments
+                .iter()
+                .map(|argument| map_single(data_type, argument, subsystem, request_context));
+            try_join_all(mapped).await
+        }
+        _ => vec![map_single(data_type, argument, subsystem, request_context).await]
             .into_iter()
             .collect(),
     }
 }
 
 /// Map a single item from the data parameter
-fn map_single<'a>(
+#[async_recursion]
+async fn map_single<'a>(
     data_type: &'a MutationType,
     argument: &'a ConstValue,
     subsystem: &'a PostgresSubsystem,
+    request_context: &RequestContext<'a>,
 ) -> Result<InsertionRow<'a>, PostgresExecutionError> {
-    let row: Result<Vec<_>, _> = data_type
-        .fields
-        .iter()
-        .flat_map(|field| {
-            // Process fields that map to a column in the current table
-            let field_self_column = field.relation.self_column();
-            let field_arg = super::util::get_argument_field(argument, &field.name);
+    let mapped = data_type.fields.iter().map(|field| async move {
+        // Process fields that map to a column in the current table
+        let field_self_column = field.relation.self_column();
+        let field_arg = super::util::get_argument_field(argument, &field.name);
 
-            field_arg.map(|field_arg| match field_self_column {
-                Some(field_self_column) => {
-                    map_self_column(field_self_column, field, field_arg, subsystem)
+        let field_arg = match field_arg {
+            Some(field_arg) => Some(field_arg),
+            None => {
+                if let Some(selection) = &field.dynamic_default_value {
+                    // TODO: Revisit once we unified argument types
+                    let _default_value = subsystem
+                        .extract_context_selection(request_context, selection)
+                        .await;
+                    None
+                } else {
+                    None
                 }
-                None => map_foreign(field, field_arg, data_type, subsystem),
-            })
-        })
-        .collect();
+            }
+        };
 
-    Ok(InsertionRow { elems: row? })
+        field_arg.map(|field_arg| async move {
+            match field_self_column {
+                Some(field_self_column) => {
+                    map_self_column(field_self_column, field, field_arg, subsystem).await
+                }
+                None => map_foreign(field, field_arg, data_type, subsystem, request_context).await,
+            }
+        })
+    });
+
+    let row = join_all(mapped).await;
+    let row = row.into_iter().flatten().collect::<Vec<_>>();
+    let row = try_join_all(row).await?;
+
+    Ok(InsertionRow { elems: row })
 }
 
-fn map_self_column<'a>(
+async fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a PostgresField<MutationType>,
     argument: &'a ConstValue,
@@ -143,11 +172,12 @@ fn map_self_column<'a>(
 /// Map foreign elements of a data parameter
 /// For example, if the data parameter is `data: {name: "venue-name", concerts: [{<concert-info1>}, {<concert-info2>}]} }
 /// this needs to be called for the `concerts` part (which is mapped to a separate table)
-fn map_foreign<'a>(
+async fn map_foreign<'a>(
     field: &'a PostgresField<MutationType>,
     argument: &'a ConstValue,
     parent_data_type: &'a MutationType,
     subsystem: &'a PostgresSubsystem,
+    request_context: &RequestContext<'a>,
 ) -> Result<InsertionElement<'a>, PostgresExecutionError> {
     fn underlying_type<'a>(
         data_type: &'a MutationType,
@@ -206,7 +236,7 @@ fn map_foreign<'a>(
         .unwrap()
         .get_column(subsystem);
 
-    let insertion = map_argument(field_type, argument, subsystem)?;
+    let insertion = map_argument(field_type, argument, subsystem, request_context).await?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
         relation: NestedElementRelation {

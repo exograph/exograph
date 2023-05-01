@@ -238,6 +238,7 @@ pub trait DataParamBuilder<D> {
                         typ: to_mutation_type(&field.typ).optional(),
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
+                        dynamic_default_value: field.dynamic_default_value.clone(),
                     })
                 } else {
                     // TODO: Make this decision based on autoIncrement/uuid etc of the id
@@ -253,6 +254,7 @@ pub trait DataParamBuilder<D> {
                 },
                 relation: field.relation.clone(),
                 has_default_value: field.has_default_value,
+                dynamic_default_value: field.dynamic_default_value.clone(),
             }),
             PostgresRelation::OneToMany { .. } => {
                 self.compute_one_to_many_data_field(field, container_type, building)
@@ -283,6 +285,7 @@ pub trait DataParamBuilder<D> {
                         typ: field_type,
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
+                        dynamic_default_value: field.dynamic_default_value.clone(),
                     }),
                 }
             }
@@ -320,6 +323,7 @@ pub trait DataParamBuilder<D> {
                         },
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
+                        dynamic_default_value: field.dynamic_default_value.clone(),
                     }),
                 }
             })

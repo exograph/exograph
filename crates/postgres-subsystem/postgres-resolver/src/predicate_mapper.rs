@@ -9,7 +9,10 @@
 
 use async_graphql_value::ConstValue;
 
+use async_trait::async_trait;
+use core_plugin_interface::core_resolver::request_context::RequestContext;
 use exo_sql::{AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, Predicate};
+use futures::future::try_join_all;
 use postgres_model::{
     column_path::ColumnIdPath,
     predicate::{PredicateParameter, PredicateParameterTypeKind},
@@ -29,11 +32,13 @@ struct PredicateParamInput<'a> {
     pub parent_column_path: Option<ColumnIdPath>,
 }
 
+#[async_trait]
 impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
-    fn to_sql(
+    async fn to_sql(
         self,
         argument: &'a ConstValue,
         subsystem: &'a PostgresSubsystem,
+        request_context: &RequestContext<'a>,
     ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
         let parameter_type = &subsystem.predicate_types[self.param.typ.innermost().type_id];
 
@@ -127,22 +132,25 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
                                         _ => todo!(),
                                     };
 
-                                    arguments.iter().fold(
-                                        Ok(identity_predicate),
-                                        |acc, argument| {
-                                            acc.and_then(|acc| {
-                                                let arg_predicate = PredicateParamInput {
-                                                    param: self.param,
-                                                    parent_column_path: self
-                                                        .parent_column_path
-                                                        .clone(),
-                                                }
-                                                .to_sql(argument, subsystem)?;
+                                    let predicates = arguments.iter().map(|argument| {
+                                        PredicateParamInput {
+                                            param: self.param,
+                                            parent_column_path: self.parent_column_path.clone(),
+                                        }
+                                        .to_sql(
+                                            argument,
+                                            subsystem,
+                                            request_context,
+                                        )
+                                    });
 
-                                                Ok(predicate_connector(acc, arg_predicate))
-                                            })
-                                        },
-                                    )
+                                    let mapped: Result<Vec<_>, _> = try_join_all(predicates).await;
+
+                                    Ok(mapped?
+                                        .into_iter()
+                                        .fold(identity_predicate, |acc, predicate| {
+                                            predicate_connector(acc, predicate)
+                                        }))
                                 } else {
                                     Err(PostgresExecutionError::Validation(
                                         self.param.name.clone(),
@@ -157,7 +165,8 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
                                     param: self.param,
                                     parent_column_path: self.parent_column_path,
                                 }
-                                .to_sql(logical_op_argument_value, subsystem)?;
+                                .to_sql(logical_op_argument_value, subsystem, request_context)
+                                .await?;
 
                                 Ok(!arg_predicate)
                             }
@@ -169,29 +178,32 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
                     _ => {
                         // we are dealing with field predicate arguments
                         // map field argument values into their respective predicates
-                        field_params
-                            .iter()
-                            .fold(Ok(AbstractPredicate::True), |acc, parameter| {
-                                acc.and_then(|acc| {
-                                    let arg = get_argument_field(argument, &parameter.name);
 
-                                    let new_column_path = to_column_id_path(
-                                        &self.parent_column_path,
-                                        &self.param.column_path_link,
-                                    );
+                        let provided_field_params = field_params.iter().flat_map(|parameter| {
+                            let arg = get_argument_field(argument, &parameter.name);
+                            arg.map(|arg| (arg, parameter))
+                        });
 
-                                    let field_predicate = match arg {
-                                        Some(argument_value_component) => PredicateParamInput {
-                                            param: parameter,
-                                            parent_column_path: new_column_path,
-                                        }
-                                        .to_sql(argument_value_component, subsystem)?,
-                                        None => AbstractPredicate::True,
-                                    };
+                        let predicates = provided_field_params.map(|(arg, parameter)| {
+                            let new_column_path = to_column_id_path(
+                                &self.parent_column_path,
+                                &self.param.column_path_link,
+                            );
 
-                                    Ok(AbstractPredicate::and(acc, field_predicate))
-                                })
-                            })
+                            PredicateParamInput {
+                                param: parameter,
+                                parent_column_path: new_column_path,
+                            }
+                            .to_sql(arg, subsystem, request_context)
+                        });
+
+                        let mapped: Result<Vec<_>, _> = try_join_all(predicates).await;
+
+                        Ok(mapped?
+                            .into_iter()
+                            .fold(AbstractPredicate::True, |acc, predicate| {
+                                AbstractPredicate::and(acc, predicate)
+                            }))
                     }
                 }
             }
@@ -253,10 +265,11 @@ fn operands<'a>(
         .map_err(PostgresExecutionError::CastError)
 }
 
-pub fn compute_predicate<'a>(
+pub async fn compute_predicate<'a>(
     param: &'a PredicateParameter,
     arguments: &'a Arguments,
     subsystem: &'a PostgresSubsystem,
+    request_context: &RequestContext<'a>,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     extract_and_map(
         PredicateParamInput {
@@ -265,6 +278,8 @@ pub fn compute_predicate<'a>(
         },
         arguments,
         subsystem,
+        request_context,
     )
+    .await
     .map(|predicate| predicate.unwrap_or(AbstractPredicate::True))
 }

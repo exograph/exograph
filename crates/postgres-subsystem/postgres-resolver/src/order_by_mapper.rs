@@ -8,11 +8,14 @@
 // by the Apache License, Version 2.0.
 
 use async_graphql_value::ConstValue;
+use async_trait::async_trait;
+use futures::future::join_all;
 
 use crate::{
     column_path_util::to_column_path, postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLMapper,
 };
+use core_plugin_interface::core_resolver::request_context::RequestContext;
 use exo_sql::{AbstractOrderBy, Ordering};
 use postgres_model::{
     column_path::ColumnIdPath,
@@ -27,11 +30,13 @@ pub(crate) struct OrderByParameterInput<'a> {
     pub parent_column_path: Option<ColumnIdPath>,
 }
 
+#[async_trait]
 impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
-    fn to_sql(
+    async fn to_sql(
         self,
         argument: &'a ConstValue,
         subsystem: &'a PostgresSubsystem,
+        request_context: &RequestContext<'a>,
     ) -> Result<AbstractOrderBy<'a>, PostgresExecutionError> {
         let parameter_type = &subsystem.order_by_types[self.param.typ.innermost().type_id];
         fn flatten<E>(order_bys: Result<Vec<AbstractOrderBy>, E>) -> Result<AbstractOrderBy, E> {
@@ -41,33 +46,31 @@ impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
 
         match argument {
             ConstValue::Object(elems) => {
-                let mapped = elems
-                    .iter()
-                    .map(|elem| {
-                        order_by_pair(
-                            parameter_type,
-                            elem.0,
-                            elem.1,
-                            self.parent_column_path.clone(),
-                            subsystem,
-                        )
-                    })
-                    .collect();
+                let mapped = elems.iter().map(|elem| {
+                    order_by_pair(
+                        parameter_type,
+                        elem.0,
+                        elem.1,
+                        self.parent_column_path.clone(),
+                        subsystem,
+                        request_context,
+                    )
+                });
+
+                let mapped = join_all(mapped).await.into_iter().collect();
 
                 flatten(mapped)
             }
             ConstValue::List(elems) => {
-                let mapped = elems
-                    .iter()
-                    .map(|elem| {
-                        OrderByParameterInput {
-                            param: self.param,
-                            parent_column_path: self.parent_column_path.clone(),
-                        }
-                        .to_sql(elem, subsystem)
-                    })
-                    .collect();
+                let mapped = elems.iter().map(|elem| {
+                    OrderByParameterInput {
+                        param: self.param,
+                        parent_column_path: self.parent_column_path.clone(),
+                    }
+                    .to_sql(elem, subsystem, request_context)
+                });
 
+                let mapped = join_all(mapped).await.into_iter().collect();
                 flatten(mapped)
             }
 
@@ -80,12 +83,13 @@ impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
     }
 }
 
-fn order_by_pair<'a>(
+async fn order_by_pair<'a>(
     typ: &'a OrderByParameterType,
     parameter_name: &str,
     parameter_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
     subsystem: &'a PostgresSubsystem,
+    request_context: &RequestContext<'a>,
 ) -> Result<AbstractOrderBy<'a>, PostgresExecutionError> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
@@ -116,7 +120,8 @@ fn order_by_pair<'a>(
             param: parameter,
             parent_column_path: new_parent_column_path,
         }
-        .to_sql(parameter_value, subsystem)
+        .to_sql(parameter_value, subsystem, request_context)
+        .await
     }
 }
 
