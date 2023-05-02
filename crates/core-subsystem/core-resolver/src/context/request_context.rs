@@ -16,7 +16,6 @@ use super::{
     user_request_context::UserRequestContext,
 };
 
-use core_model::context_type::ContextField;
 use serde_json::Value;
 
 pub enum RequestContext<'a> {
@@ -61,12 +60,18 @@ impl<'a> RequestContext<'a> {
     pub async fn extract_context_field(
         &'a self,
         context_type_name: &str,
-        field: &ContextField,
+        source_annotation: &str,
+        source_annotation_key: &Option<&str>,
+        field_name: &str,
     ) -> Result<Option<&'a Val>, ContextParsingError> {
         match self {
             RequestContext::User(user_request_context) => {
                 user_request_context
-                    .extract_context_field(context_type_name, field, self)
+                    .extract_context_field(
+                        source_annotation,
+                        source_annotation_key.unwrap_or(field_name),
+                        self,
+                    )
                     .await
             }
             RequestContext::Overridden {
@@ -75,13 +80,18 @@ impl<'a> RequestContext<'a> {
             } => {
                 let overridden: Option<&'a Val> = context_override
                     .get(context_type_name)
-                    .and_then(|value| value.get(&field.name));
+                    .and_then(|value| value.get(field_name));
 
                 match overridden {
                     Some(_) => Ok(overridden),
                     None => {
                         base_context
-                            .extract_context_field(context_type_name, field)
+                            .extract_context_field(
+                                context_type_name,
+                                source_annotation,
+                                source_annotation_key,
+                                field_name,
+                            )
                             .await
                     }
                 }

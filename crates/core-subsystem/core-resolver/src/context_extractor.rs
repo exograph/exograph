@@ -51,7 +51,12 @@ pub trait ContextExtractor {
         let field_values: HashMap<_, _> = futures::stream::iter(context_type.fields.iter())
             .then(|field| async {
                 request_context
-                    .extract_context_field(context_type_name, field)
+                    .extract_context_field(
+                        context_type_name,
+                        &field.source.annotation_name,
+                        &field.source.value.as_deref(),
+                        &field.name,
+                    )
                     .await
                     .map(|value| value.map(|value| (field.name.clone(), value.clone())))
             })
@@ -87,7 +92,12 @@ pub trait ContextExtractor {
             .find(|f| f.name == context_selection.path.0)?;
 
         request_context
-            .extract_context_field(&context_selection.context_name, context_field)
+            .extract_context_field(
+                &context_selection.context_name,
+                &context_field.source.annotation_name,
+                &context_field.source.value.as_deref(),
+                &context_field.name,
+            )
             .await
             .unwrap()
     }
