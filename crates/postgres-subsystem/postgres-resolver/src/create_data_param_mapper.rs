@@ -99,17 +99,18 @@ async fn map_single<'a>(
         let field_arg = super::util::get_argument_field(argument, &field.name);
 
         let field_arg = match field_arg {
-            Some(_) => field_arg,
+            Some(_) => Ok(field_arg),
             None => {
                 if let Some(selection) = &field.dynamic_default_value {
                     subsystem
                         .extract_context_selection(request_context, selection)
                         .await
                 } else {
-                    None
+                    Ok(None)
                 }
             }
-        };
+        }
+        .ok()?;
 
         field_arg.map(|field_arg| async move {
             match field_self_column {
@@ -151,25 +152,9 @@ async fn map_self_column<'a>(
             match super::util::get_argument_field(argument, other_type_pk_field_name) {
                 Some(other_type_pk_arg) => other_type_pk_arg,
                 None => {
-                    let other_type_pk_field = other_type.pk_field().unwrap();
-                    match argument {
-                        Val::Number(_)
-                            if other_type_pk_field.typ.innermost().type_name == "Int " =>
-                        {
-                            argument
-                        }
-                        Val::String(_)
-                            if other_type_pk_field.typ.innermost().type_name == "Uuid " =>
-                        {
-                            argument
-                        }
-                        _ => {
-                            return Err(PostgresExecutionError::Generic(format!(
-                                "Expected a primary key argument for {}",
-                                field.name
-                            )))
-                        }
-                    }
+                    // This can happen if we used a context value for a foreign key
+                    // Instead of getting in the `{id: <value>}` format, we get the value directly
+                    argument
                 }
             }
         }

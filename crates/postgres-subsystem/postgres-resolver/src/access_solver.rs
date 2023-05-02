@@ -84,6 +84,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 DatabaseAccessPrimitiveExpression::ContextSelection(selection) => solver
                     .extract_context_selection(request_context, selection)
                     .await
+                    .unwrap()
                     .map(|v| SolvedPrimitiveExpression::Value(v.clone()))
                     .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
                 DatabaseAccessPrimitiveExpression::Column(column_path) => {

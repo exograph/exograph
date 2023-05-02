@@ -1,3 +1,7 @@
+context ClientContext {
+    @header("client_id") id: String
+}
+
 @postgres
 module EventModule {
     @table("events")
@@ -9,5 +13,6 @@ module EventModule {
         priority: Int = 0
         message: String
         is_system: Boolean = true
+        clientId: String = ClientContext.id
     }
 }

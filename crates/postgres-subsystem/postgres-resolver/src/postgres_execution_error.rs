@@ -7,7 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use core_plugin_interface::core_resolver::context::ContextParsingError;
 use thiserror::Error;
+use tracing::error;
 
 use super::cast::CastError;
 
@@ -39,6 +41,9 @@ pub enum PostgresExecutionError {
 
     #[error("Missing argument '{0}'")]
     MissingArgument(String),
+
+    #[error("{0}")]
+    ContextExtraction(#[from] ContextParsingError),
 }
 
 impl PostgresExecutionError {
@@ -51,7 +56,10 @@ impl PostgresExecutionError {
             PostgresExecutionError::Authorization => "Not authorized".to_string(),
             PostgresExecutionError::Validation(_, _) => self.to_string(),
             // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).
-            _ => "Postgres operation failed".to_string(),
+            _ => {
+                error!("Postgres operation failed: {:?}", self);
+                "Postgres operation failed".to_string()
+            }
         }
     }
 }

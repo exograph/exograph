@@ -7,6 +7,7 @@ operation: |
             priority
             message
             is_system
+            clientId
         }
     }
 variable: |
@@ -35,7 +36,8 @@ response: |
           "category": "INFO",
           "priority": 0,
           "message": "Corrected error, no actions required.",
-          "is_system": true
+          "is_system": true,
+          "clientId": "test-client1"
         }
       }
     }

@@ -69,6 +69,7 @@ impl<'a> UserRequestContext<'a> {
         &'a self,
         annotation: &str,
         key: &str,
+        coerce_value: &impl Fn(Val) -> Result<Val, ContextParsingError>,
         request_context: &RequestContext<'a>,
     ) -> Result<Option<&'a Val>, ContextParsingError> {
         // Check to see if there is a cached value for this field
@@ -84,11 +85,15 @@ impl<'a> UserRequestContext<'a> {
         let value: &'a Option<Val> = match cached_value {
             Some(value) => value,
             None => {
-                let field_value = self
+                let raw_field_value = self
                     .extract_context_field_from_source(annotation, key, request_context)
-                    .await?;
+                    .await;
 
-                self.context_cache.insert(cache_key, Box::new(field_value))
+                let coerced_value =
+                    raw_field_value.and_then(|value| value.map(coerce_value).transpose())?;
+
+                self.context_cache
+                    .insert(cache_key, Box::new(coerced_value))
             }
         };
 

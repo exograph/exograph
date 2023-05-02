@@ -163,7 +163,7 @@ pub async fn construct_arg_sequence<'a>(
                     // this argument is a context, get the value of the context and give it as an argument
                     let context_value = system
                         .extract_context(request_context, &arg_type.name)
-                        .await
+                        .await?
                         .unwrap_or_else(|| {
                             panic!(
                                 "Could not get context `{}` from request context",

@@ -12,8 +12,8 @@ use async_recursion::async_recursion;
 use crate::{system_resolver::SystemResolver, value::Val};
 
 use super::{
-    error::ContextParsingError, parsed_context::BoxedParsedContext, request::Request,
-    user_request_context::UserRequestContext,
+    error::ContextParsingError, overridden_context::OverriddenContext,
+    parsed_context::BoxedParsedContext, request::Request, user_request_context::UserRequestContext,
 };
 
 use serde_json::Value;
@@ -23,10 +23,7 @@ pub enum RequestContext<'a> {
     User(UserRequestContext<'a>),
 
     // The recursive nature allows stacking overrides
-    Overridden {
-        base_context: &'a RequestContext<'a>,
-        context_override: Val,
-    },
+    Overridden(OverriddenContext<'a>),
 }
 
 impl<'a> RequestContext<'a> {
@@ -43,16 +40,15 @@ impl<'a> RequestContext<'a> {
     }
 
     pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
-        RequestContext::Overridden {
-            base_context: self,
-            context_override: context_override.into(),
-        }
+        RequestContext::Overridden(OverriddenContext::new(self, context_override))
     }
 
     pub fn get_base_context(&self) -> &UserRequestContext {
         match &self {
             RequestContext::User(req) => req,
-            RequestContext::Overridden { base_context, .. } => base_context.get_base_context(),
+            RequestContext::Overridden(OverriddenContext { base_context, .. }) => {
+                base_context.get_base_context()
+            }
         }
     }
 
@@ -63,6 +59,7 @@ impl<'a> RequestContext<'a> {
         source_annotation: &str,
         source_annotation_key: &Option<&str>,
         field_name: &str,
+        coerce_value: &(impl Fn(Val) -> Result<Val, ContextParsingError> + std::marker::Sync),
     ) -> Result<Option<&'a Val>, ContextParsingError> {
         match self {
             RequestContext::User(user_request_context) => {
@@ -70,31 +67,21 @@ impl<'a> RequestContext<'a> {
                     .extract_context_field(
                         source_annotation,
                         source_annotation_key.unwrap_or(field_name),
+                        coerce_value,
                         self,
                     )
                     .await
             }
-            RequestContext::Overridden {
-                base_context,
-                context_override,
-            } => {
-                let overridden: Option<&'a Val> = context_override
-                    .get(context_type_name)
-                    .and_then(|value| value.get(field_name));
-
-                match overridden {
-                    Some(_) => Ok(overridden),
-                    None => {
-                        base_context
-                            .extract_context_field(
-                                context_type_name,
-                                source_annotation,
-                                source_annotation_key,
-                                field_name,
-                            )
-                            .await
-                    }
-                }
+            RequestContext::Overridden(overridden_context) => {
+                overridden_context
+                    .extract_context_field(
+                        context_type_name,
+                        source_annotation,
+                        source_annotation_key,
+                        field_name,
+                        coerce_value,
+                    )
+                    .await
             }
         }
     }
