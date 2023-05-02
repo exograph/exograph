@@ -10,10 +10,18 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use core_model::context_type::{ContextContainer, ContextSelection, ContextType};
+use core_model::{
+    context_type::{
+        ContextContainer, ContextField, ContextFieldType, ContextSelection, ContextType,
+    },
+    primitive_type::PrimitiveType,
+};
 use futures::StreamExt;
 
-use crate::{context::RequestContext, value::Val};
+use crate::{
+    context::{ContextParsingError, RequestContext},
+    value::Val,
+};
 
 /// Extract context objects from the request context.
 #[async_trait]
@@ -46,25 +54,23 @@ pub trait ContextExtractor {
         &self,
         request_context: &RequestContext,
         context_type_name: &str,
-    ) -> Option<Val> {
+    ) -> Result<Option<Val>, ContextParsingError> {
         let context_type = self.context_type(context_type_name);
         let field_values: HashMap<_, _> = futures::stream::iter(context_type.fields.iter())
-            .then(|field| async {
-                request_context
-                    .extract_context_field(context_type_name, field)
+            .then(|context_field| async {
+                extract_context_field(request_context, context_type, context_field)
                     .await
-                    .map(|value| value.map(|value| (field.name.clone(), value.clone())))
+                    .map(|value| value.map(|value| (context_field.name.clone(), value.clone())))
             })
             .collect::<Vec<Result<_, _>>>()
             .await
             .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap()
+            .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .flatten()
             .collect();
 
-        Some(Val::Object(field_values))
+        Ok(Some(Val::Object(field_values)))
     }
 
     /// Extract the context object selection.
@@ -75,22 +81,98 @@ pub trait ContextExtractor {
     /// `context_selection` set to
     /// `AccessContextSelection::Select(AccessContextSelection("AuthContext"), "role")` will return
     /// the value `"admin"`.
-    async fn extract_context_selection(
+    async fn extract_context_selection<'a>(
         &self,
-        request_context: &RequestContext,
+        request_context: &'a RequestContext<'a>,
         context_selection: &ContextSelection,
-    ) -> Option<Val> {
+    ) -> Result<Option<&'a Val>, ContextParsingError> {
         let context_type = self.context_type(&context_selection.context_name);
         let context_field = context_type
             .fields
             .iter()
-            .find(|f| f.name == context_selection.path.0)?;
+            .find(|f| f.name == context_selection.path.0)
+            .ok_or_else(|| {
+                ContextParsingError::FieldNotFound(context_selection.path.0.to_string())
+            })?;
 
-        request_context
-            .extract_context_field(&context_selection.context_name, context_field)
-            .await
-            .unwrap()
-            .cloned()
+        extract_context_field(request_context, context_type, context_field).await
+    }
+}
+
+async fn extract_context_field<'a>(
+    request_context: &'a RequestContext<'a>,
+    context_type: &ContextType,
+    context_field: &ContextField,
+) -> Result<Option<&'a Val>, ContextParsingError> {
+    let typ = &context_field.typ;
+
+    let coerce_fn = |value: Val| -> Result<Val, ContextParsingError> { coerce(value, typ) };
+
+    let raw_val = request_context
+        .extract_context_field(
+            &context_type.name,
+            &context_field.source.annotation_name,
+            &context_field.source.value.as_deref(),
+            &context_field.name,
+            &coerce_fn,
+        )
+        .await?;
+
+    Ok(raw_val)
+}
+
+fn coerce(value: Val, typ: &ContextFieldType) -> Result<Val, ContextParsingError> {
+    match (value, typ) {
+        (Val::List(elem), ContextFieldType::List(typ)) => {
+            let coerced = elem
+                .into_iter()
+                .map(|elem| coerce(elem, typ))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Val::List(coerced))
+        }
+        (value, typ) => coerce_primitive(value, typ.innermost()),
+    }
+}
+
+fn coerce_primitive(value: Val, typ: &PrimitiveType) -> Result<Val, ContextParsingError> {
+    match (value, typ) {
+        (value @ Val::String(_), PrimitiveType::String) => Ok(value),
+        (value @ Val::Number(_), PrimitiveType::Int) => Ok(value),
+        (value @ Val::Number(_), PrimitiveType::Float) => Ok(value),
+        (value @ Val::Bool(_), PrimitiveType::Boolean) => Ok(value),
+        (value @ Val::String(_), PrimitiveType::Uuid) => Ok(value),
+        (Val::String(str), pt) => match pt {
+            PrimitiveType::Int => str
+                .parse::<i64>()
+                .map(|i| Val::Number(i.into()))
+                .map_err(|_| ContextParsingError::TypeMismatch {
+                    expected: typ.name(),
+                    actual: str,
+                }),
+            PrimitiveType::Float => str
+                .parse::<f64>()
+                .map(|f| Val::Number(serde_json::Number::from_f64(f).unwrap()))
+                .map_err(|_| ContextParsingError::TypeMismatch {
+                    expected: typ.name(),
+                    actual: str,
+                }),
+            PrimitiveType::Boolean => {
+                str.parse::<bool>()
+                    .map(Val::Bool)
+                    .map_err(|_| ContextParsingError::TypeMismatch {
+                        expected: typ.name(),
+                        actual: str,
+                    })
+            }
+            _ => Err(ContextParsingError::TypeMismatch {
+                expected: typ.name(),
+                actual: str,
+            }),
+        },
+        (value, _) => Err(ContextParsingError::TypeMismatch {
+            expected: typ.name(),
+            actual: value.to_string(),
+        }),
     }
 }
 

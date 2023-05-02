@@ -80,7 +80,8 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
                 ModuleAccessPrimitiveExpression::ContextSelection(selection) => solver
                     .extract_context_selection(request_context, selection)
                     .await
-                    .map(SolvedPrimitiveExpression::Value)
+                    .unwrap()
+                    .map(|v| SolvedPrimitiveExpression::Value(v.clone()))
                     .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
                 ModuleAccessPrimitiveExpression::StringLiteral(value) => {
                     SolvedPrimitiveExpression::Value(Val::String(value.clone()))

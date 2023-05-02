@@ -1,0 +1,9 @@
+operation: |
+    mutation {
+        u1: createUser(data: { name: "u1" }) {
+            id @bind(name: "user1_id")
+        }
+        u2: createUser(data: { name: "u2" }) {
+            id @bind(name: "user2_id")
+        }
+    }

@@ -110,11 +110,10 @@ impl ParsedContext for ParsedJwtContext {
 
     async fn extract_context_field<'r>(
         &self,
-        key: Option<&str>,
-        field_name: &str,
+        key: &str,
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
-        self.jwt_claims.get(key.unwrap_or(field_name)).cloned()
+        self.jwt_claims.get(key).cloned()
     }
 }

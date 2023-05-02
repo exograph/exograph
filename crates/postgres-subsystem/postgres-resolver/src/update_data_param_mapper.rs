@@ -44,7 +44,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
         self,
         argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
-        request_context: &RequestContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractUpdate<'a>, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
 
@@ -125,7 +125,7 @@ async fn compute_nested_ops<'a>(
     arg: &'a Val,
     container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
-    request_context: &RequestContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
     Vec<NestedAbstractInsert<'a>>,
@@ -309,14 +309,14 @@ async fn compute_nested_inserts<'a>(
     argument: &'a Val,
     container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
-    request_context: &RequestContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Vec<NestedAbstractInsert<'a>> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
         container_entity_type: &'a EntityType,
         subsystem: &'a PostgresSubsystem,
-        request_context: &RequestContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<NestedAbstractInsert<'a>, PostgresExecutionError> {
         let nested_reference_col =
             compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)

@@ -10,7 +10,6 @@
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
-use core_model::context_type::ContextField;
 use elsa::sync::FrozenMap;
 use exo_sql::TransactionHolder;
 
@@ -68,33 +67,33 @@ impl<'a> UserRequestContext<'a> {
 
     pub async fn extract_context_field(
         &'a self,
-        context_type_name: &str,
-        field: &ContextField,
+        annotation: &str,
+        key: &str,
+        coerce_value: &impl Fn(Val) -> Result<Val, ContextParsingError>,
         request_context: &RequestContext<'a>,
     ) -> Result<Option<&'a Val>, ContextParsingError> {
         // Check to see if there is a cached value for this field
         // If there is, return it. Otherwise, compute it, cache it, and return it.
 
-        // (Type name, field name), for example ("AuthContext", "role")
-        let cache_key = (context_type_name.to_owned(), field.name.clone());
+        // (annotation, field name), for example ("jwt", "role")
+        let cache_key = (annotation.to_owned(), key.to_owned());
 
         // We use a double `Option` here because a value can be `None` and
         // in that case we still want to cache it.
         let cached_value: Option<&Option<Val>> = self.context_cache.get(&cache_key);
 
-        let value = match cached_value {
+        let value: &'a Option<Val> = match cached_value {
             Some(value) => value,
             None => {
-                let field_value = self
-                    .extract_context_field_from_source(
-                        &field.source.annotation_name,
-                        &field.name,
-                        field.source.value.as_deref(),
-                        request_context,
-                    )
-                    .await?;
+                let raw_field_value = self
+                    .extract_context_field_from_source(annotation, key, request_context)
+                    .await;
 
-                self.context_cache.insert(cache_key, Box::new(field_value))
+                let coerced_value =
+                    raw_field_value.and_then(|value| value.map(coerce_value).transpose())?;
+
+                self.context_cache
+                    .insert(cache_key, Box::new(coerced_value))
             }
         };
 
@@ -104,19 +103,18 @@ impl<'a> UserRequestContext<'a> {
     // Given an annotation name and its value,
     // extract a context field from the request context
     async fn extract_context_field_from_source(
-        &'a self,
-        annotation_name: &str,
-        field_name: &str,
-        annotation_param: Option<&str>,
+        &self,
+        annotation: &str,
+        key: &str,
         request_context: &'a RequestContext<'a>,
     ) -> Result<Option<Val>, ContextParsingError> {
         let parsed_context = self
             .parsed_context_map
-            .get(annotation_name)
-            .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
+            .get(annotation)
+            .ok_or_else(|| ContextParsingError::SourceNotFound(annotation.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(annotation_param, field_name, request_context, self.request)
+            .extract_context_field(key, request_context, self.request)
             .await
             .map(Val::from))
     }

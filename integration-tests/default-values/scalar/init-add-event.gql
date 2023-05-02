@@ -10,3 +10,7 @@ variable: |
     {
         "event1_text": "Corrected error, no actions required."
     }
+headers: |
+    {
+        "client_id": "test-client1",
+    }    

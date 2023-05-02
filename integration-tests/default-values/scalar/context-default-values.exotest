@@ -1,0 +1,42 @@
+stages:
+    - operation: |
+        mutation {
+            createEvent(data: {message: "m1", clientId: "explicit-client1"}) {
+                message
+                clientId
+            }
+        }
+      headers: |
+        {
+            "client_id": "test-client1"
+        }
+      response: |
+        {
+        "data": {
+            "createEvent": {
+                    "message": "m1",
+                    "clientId": "explicit-client1"
+                }
+            }
+        }
+
+    - operation: |
+        mutation {
+            createEvent(data: {message: "m2"}) {
+                message
+                clientId
+            }
+        }
+      headers: |
+        {
+            "client_id": "test-client1"
+        }
+      response: |
+        {
+            "data": {
+                "createEvent": {
+                    "message": "m2",
+                    "clientId": "test-client1"
+                }
+            }
+        }

@@ -123,6 +123,7 @@ pub struct InitFile {
     pub operation: String,
     pub variable: Option<String>,
     pub auth: Option<String>,
+    pub headers: Option<String>,
     pub deno: Option<String>,
 }
 
@@ -349,7 +350,7 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
                 testvariable_bindings: build_testvariable_bindings(&gql_document),
                 auth: deserialized_initfile.auth.map(from_json).transpose()?,
                 variables: deserialized_initfile.variable,
-                headers: Default::default(),
+                headers: deserialized_initfile.headers,
                 expected_payload: None,
                 deno_prelude: deserialized_initfile.deno,
             })

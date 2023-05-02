@@ -45,7 +45,7 @@ impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
         self,
         argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
-        request_context: &RequestContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractInsert<'a>, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
         let table = data_type.table(subsystem);
@@ -70,7 +70,7 @@ pub(crate) async fn map_argument<'a>(
     data_type: &'a MutationType,
     argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
-    request_context: &RequestContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<InsertionRow<'a>>, PostgresExecutionError> {
     match argument {
         Val::List(arguments) => {
@@ -91,7 +91,7 @@ async fn map_single<'a>(
     data_type: &'a MutationType,
     argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
-    request_context: &RequestContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionRow<'a>, PostgresExecutionError> {
     let mapped = data_type.fields.iter().map(|field| async move {
         // Process fields that map to a column in the current table
@@ -99,19 +99,18 @@ async fn map_single<'a>(
         let field_arg = super::util::get_argument_field(argument, &field.name);
 
         let field_arg = match field_arg {
-            Some(field_arg) => Some(field_arg),
+            Some(_) => Ok(field_arg),
             None => {
                 if let Some(selection) = &field.dynamic_default_value {
-                    // TODO: Revisit once we unified argument types
-                    let _default_value = subsystem
+                    subsystem
                         .extract_context_selection(request_context, selection)
-                        .await;
-                    None
+                        .await
                 } else {
-                    None
+                    Ok(None)
                 }
             }
-        };
+        }
+        .ok()?;
 
         field_arg.map(|field_arg| async move {
             match field_self_column {
@@ -152,7 +151,11 @@ async fn map_self_column<'a>(
                 })?;
             match super::util::get_argument_field(argument, other_type_pk_field_name) {
                 Some(other_type_pk_arg) => other_type_pk_arg,
-                None => todo!(),
+                None => {
+                    // This can happen if we used a context value for a foreign key
+                    // Instead of getting in the `{id: <value>}` format, we get the value directly
+                    argument
+                }
             }
         }
         _ => argument,
@@ -177,7 +180,7 @@ async fn map_foreign<'a>(
     argument: &'a Val,
     parent_data_type: &'a MutationType,
     subsystem: &'a PostgresSubsystem,
-    request_context: &RequestContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionElement<'a>, PostgresExecutionError> {
     fn underlying_type<'a>(
         data_type: &'a MutationType,

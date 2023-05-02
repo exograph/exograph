@@ -22,4 +22,10 @@ pub enum ContextParsingError {
 
     #[error("{0}")]
     Delegate(#[from] Box<dyn std::error::Error + Send + Sync>),
+
+    #[error("Type mismatch: Expected `{expected}`, found `{actual}`")]
+    TypeMismatch { expected: String, actual: String },
+
+    #[error("Field not found: `{0}`")]
+    FieldNotFound(String),
 }

@@ -37,7 +37,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
         self,
         argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
-        request_context: &RequestContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
         let parameter_type = &subsystem.predicate_types[self.param.typ.innermost().type_id];
 
@@ -268,7 +268,7 @@ pub async fn compute_predicate<'a>(
     param: &'a PredicateParameter,
     arguments: &'a Arguments,
     subsystem: &'a PostgresSubsystem,
-    request_context: &RequestContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     extract_and_map(
         PredicateParamInput {

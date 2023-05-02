@@ -65,6 +65,14 @@ response: |
                 "ofType": null,
                 "kind": "SCALAR"
               }
+            },
+            {
+              "name": "clientId",
+              "type": {
+                "name": "String",
+                "ofType": null,
+                "kind": "SCALAR"
+              }
             }
           ]
         }

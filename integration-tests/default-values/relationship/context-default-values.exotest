@@ -1,0 +1,54 @@
+stages:
+    - operation: |
+        mutation($userId: Int!) {
+            createTodo(data: {content: "c1", user: {id: $userId}}) {
+                content
+                user {
+                    id
+                }
+            }
+        }
+      variable: |
+        {
+            "userId": $.user1_id
+        }
+      auth: |
+        {
+            "sub": "2"
+        }
+      response: |
+        {
+            "data": {
+                "createTodo": {
+                    "content": "c1",
+                    "user": {
+                        "id": 1
+                    }
+                }
+            }
+        }
+
+    - operation: |
+        mutation {
+            createTodo(data: {content: "c2"}) {
+                content
+                user {
+                    id
+                }
+            }
+        }
+      auth: |
+        {
+            "sub": "2"
+        }
+      response: |
+        {
+            "data": {
+                "createTodo": {
+                    "content": "c2",
+                    "user": {
+                        "id": 2
+                    }
+                }
+            }
+        }

@@ -25,8 +25,7 @@ pub trait ParsedContext {
     // extract a context field from this struct
     async fn extract_context_field<'r>(
         &self,
-        key: Option<&str>,
-        field_name: &str,
+        key: &str,
         request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value>;
@@ -47,11 +46,10 @@ impl ParsedContext for TestRequestContext {
 
     async fn extract_context_field<'r>(
         &self,
-        key: Option<&str>,
-        _field_name: &str,
+        key: &str,
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
-        self.test_values.get(key?).cloned()
+        self.test_values.get(key).cloned()
     }
 }
