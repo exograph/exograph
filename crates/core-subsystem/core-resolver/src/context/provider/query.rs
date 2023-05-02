@@ -9,11 +9,11 @@
 
 use async_trait::async_trait;
 
+use crate::context::parsed_context::ParsedContext;
+use crate::context::request::Request;
+use crate::context::RequestContext;
 use crate::system_resolver::SystemResolver;
 use crate::OperationsPayload;
-
-use super::Request;
-use super::{ParsedContext, RequestContext};
 
 pub struct QueryExtractor<'a> {
     system_resolver: &'a SystemResolver,

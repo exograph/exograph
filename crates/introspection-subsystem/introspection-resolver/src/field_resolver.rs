@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 
 use core_resolver::{
-    introspection::definition::schema::Schema, request_context::RequestContext,
+    context::RequestContext, introspection::definition::schema::Schema,
     validation::field::ValidatedField,
 };
 

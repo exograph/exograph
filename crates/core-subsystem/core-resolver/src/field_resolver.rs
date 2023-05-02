@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use futures::StreamExt;
 
-use crate::{request_context::RequestContext, validation::field::ValidatedField};
+use crate::{context::RequestContext, validation::field::ValidatedField};
 
 #[async_trait]
 pub trait FieldResolver<R, E, C>

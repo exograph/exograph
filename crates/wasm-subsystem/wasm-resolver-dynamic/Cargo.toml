@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 async-graphql-parser.workspace = true
-async-graphql-value.workspace = true
 async-recursion.workspace = true
 async-trait.workspace = true
 futures.workspace = true

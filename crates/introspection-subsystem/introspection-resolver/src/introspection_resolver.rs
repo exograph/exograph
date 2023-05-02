@@ -10,9 +10,9 @@
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
+    context::RequestContext,
     introspection::definition::schema::Schema,
     plugin::{SubsystemResolutionError, SubsystemResolver},
-    request_context::RequestContext,
     system_resolver::SystemResolver,
     validation::field::ValidatedField,
     InterceptedOperation, QueryResponse, QueryResponseBody,

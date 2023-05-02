@@ -9,7 +9,7 @@
 
 use core_resolver::introspection::definition::schema::Schema;
 use core_resolver::validation::field::ValidatedField;
-use core_resolver::{plugin::SubsystemResolutionError, request_context::RequestContext};
+use core_resolver::{context::RequestContext, plugin::SubsystemResolutionError};
 
 use async_graphql_parser::types::{BaseType, Type, TypeDefinition};
 use async_trait::async_trait;

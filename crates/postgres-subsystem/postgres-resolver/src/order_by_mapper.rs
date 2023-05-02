@@ -7,7 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::ConstValue;
 use async_trait::async_trait;
 use futures::future::join_all;
 
@@ -15,7 +14,8 @@ use crate::{
     column_path_util::to_column_path, postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLMapper,
 };
-use core_plugin_interface::core_resolver::request_context::RequestContext;
+use core_plugin_interface::core_resolver::context::RequestContext;
+use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{AbstractOrderBy, Ordering};
 use postgres_model::{
     column_path::ColumnIdPath,
@@ -34,7 +34,7 @@ pub(crate) struct OrderByParameterInput<'a> {
 impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
     async fn to_sql(
         self,
-        argument: &'a ConstValue,
+        argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
         request_context: &RequestContext<'a>,
     ) -> Result<AbstractOrderBy<'a>, PostgresExecutionError> {
@@ -45,7 +45,7 @@ impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
         }
 
         match argument {
-            ConstValue::Object(elems) => {
+            Val::Object(elems) => {
                 let mapped = elems.iter().map(|elem| {
                     order_by_pair(
                         parameter_type,
@@ -61,7 +61,7 @@ impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
 
                 flatten(mapped)
             }
-            ConstValue::List(elems) => {
+            Val::List(elems) => {
                 let mapped = elems.iter().map(|elem| {
                     OrderByParameterInput {
                         param: self.param,
@@ -86,7 +86,7 @@ impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
 async fn order_by_pair<'a>(
     typ: &'a OrderByParameterType,
     parameter_name: &str,
-    parameter_value: &'a ConstValue,
+    parameter_value: &'a Val,
     parent_column_path: Option<ColumnIdPath>,
     subsystem: &'a PostgresSubsystem,
     request_context: &RequestContext<'a>,
@@ -125,7 +125,7 @@ async fn order_by_pair<'a>(
     }
 }
 
-fn ordering(argument: &ConstValue) -> Result<Ordering, PostgresExecutionError> {
+fn ordering(argument: &Val) -> Result<Ordering, PostgresExecutionError> {
     fn str_ordering(value: &str) -> Result<Ordering, PostgresExecutionError> {
         if value == "ASC" {
             Ok(Ordering::Asc)
@@ -139,8 +139,8 @@ fn ordering(argument: &ConstValue) -> Result<Ordering, PostgresExecutionError> {
     }
 
     match argument {
-        ConstValue::Enum(value) => str_ordering(value.as_str()),
-        ConstValue::String(value) => str_ordering(value.as_str()), // Needed when processing values from variables (that don't get mapped to the Enum type)
+        Val::Enum(value) => str_ordering(value.as_str()),
+        Val::String(value) => str_ordering(value.as_str()), // Needed when processing values from variables (that don't get mapped to the Enum type)
         arg => Err(PostgresExecutionError::Generic(format!(
             "Unable to process ordering argument {arg}",
         ))),

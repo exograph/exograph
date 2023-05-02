@@ -10,25 +10,23 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use super::{ParsedContext, Request, RequestContext};
+use crate::context::{parsed_context::ParsedContext, request::Request, RequestContext};
 
-pub struct EnvironmentContextExtractor;
+pub struct IpExtractor;
 
 #[async_trait]
-impl ParsedContext for EnvironmentContextExtractor {
+impl ParsedContext for IpExtractor {
     fn annotation_name(&self) -> &str {
-        "env"
+        "clientIp"
     }
 
     async fn extract_context_field<'r>(
         &self,
-        key: Option<&str>,
-        field_name: &str,
+        _key: Option<&str>,
+        _field_name: &str,
         _request_context: &'r RequestContext<'r>,
-        _request: &'r (dyn Request + Send + Sync),
+        request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
-        std::env::var(key.unwrap_or(field_name))
-            .ok()
-            .map(|v| v.into())
+        request.get_ip().map(|ip| ip.to_string().into())
     }
 }

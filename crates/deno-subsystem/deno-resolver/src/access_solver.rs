@@ -16,14 +16,13 @@ use core_plugin_interface::{
     core_model::context_type::ContextSelection,
     core_resolver::{
         access_solver::{AccessPredicate, AccessSolver},
+        context::RequestContext,
         context_extractor::ContextExtractor,
-        request_context::RequestContext,
+        value::Val,
     },
 };
 
 use deno_model::{access::ModuleAccessPrimitiveExpression, subsystem::DenoSubsystem};
-
-use serde_json::Value;
 
 use crate::module_access_predicate::ModuleAccessPredicate;
 
@@ -66,7 +65,7 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
         /// A primitive expression that has been reduced to a JSON value or an unresolved context
         #[derive(Debug)]
         enum SolvedPrimitiveExpression<'a> {
-            Value(Value),
+            Value(Val),
             /// A context field that could not be resolved. For example, `AuthContext.role` for an anonymous user.
             /// We process unresolved context when performing relational operations.
             UnresolvedContext(&'a ContextSelection),
@@ -84,13 +83,13 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
                     .map(SolvedPrimitiveExpression::Value)
                     .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
                 ModuleAccessPrimitiveExpression::StringLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Value::String(value.clone()))
+                    SolvedPrimitiveExpression::Value(Val::String(value.clone()))
                 }
                 ModuleAccessPrimitiveExpression::BooleanLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Value::Bool(*value))
+                    SolvedPrimitiveExpression::Value(Val::Bool(*value))
                 }
                 ModuleAccessPrimitiveExpression::NumberLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Value::Number((*value).into()))
+                    SolvedPrimitiveExpression::Value(Val::Number((*value).into()))
                 }
             }
         }
@@ -100,7 +99,7 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
         let right = reduce_primitive_expression(self, request_context, right).await;
 
         /// Compare two JSON values
-        type ValuePredicateFn<'a> = fn(Value, Value) -> ModuleAccessPredicate;
+        type ValuePredicateFn<'a> = fn(Val, Val) -> ModuleAccessPredicate;
 
         // A helper to reduce code duplication in the match below
         let helper = |unresolved_context_predicate: ModuleAccessPredicate,
@@ -130,7 +129,7 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
             AccessRelationalOp::In(..) => helper(
                 ModuleAccessPredicate::False,
                 |left_value, right_value| match right_value {
-                    Value::Array(values) => values.contains(&left_value).into(),
+                    Val::List(values) => values.contains(&left_value).into(),
                     _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
                 },
             ),

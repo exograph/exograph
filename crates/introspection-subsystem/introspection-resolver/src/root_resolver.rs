@@ -9,10 +9,11 @@
 
 use core_resolver::introspection::definition::schema::Schema;
 use core_resolver::validation::field::ValidatedField;
-use core_resolver::{plugin::SubsystemResolutionError, request_context::RequestContext};
+use core_resolver::value::val::Val;
+use core_resolver::{context::RequestContext, plugin::SubsystemResolutionError};
 
 use async_graphql_parser::types::{BaseType, OperationType, Type};
-use async_graphql_value::{ConstValue, Name};
+use async_graphql_value::Name;
 use async_trait::async_trait;
 use core_resolver::introspection::definition::schema::{
     MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
@@ -68,7 +69,7 @@ async fn resolve_type<'b>(
         .unwrap()
         .1;
 
-    if let ConstValue::String(name_specified) = &type_name {
+    if let Val::String(name_specified) = &type_name {
         let tpe: Type = Type {
             base: BaseType::Named(Name::new(name_specified)),
             nullable: true,

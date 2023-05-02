@@ -9,12 +9,16 @@
 
 use std::collections::HashMap;
 
-use crate::request_context::{ParsedContext, RequestContext};
 use async_trait::async_trait;
 use cookie::Cookie;
 use serde_json::Value;
 
-use super::{BoxedParsedContext, ContextParsingError, Request};
+use crate::context::{
+    error::ContextParsingError,
+    parsed_context::{BoxedParsedContext, ParsedContext},
+    request::Request,
+    RequestContext,
+};
 
 pub struct CookieExtractor;
 

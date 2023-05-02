@@ -23,7 +23,7 @@ use bytes::Bytes;
 use core_resolver::system_resolver::SystemResolutionError;
 use core_resolver::system_resolver::SystemResolver;
 pub use core_resolver::OperationsPayload;
-use core_resolver::{request_context::RequestContext, QueryResponseBody};
+use core_resolver::{context::RequestContext, QueryResponseBody};
 use futures::Stream;
 
 pub type Headers = Vec<(String, String)>;

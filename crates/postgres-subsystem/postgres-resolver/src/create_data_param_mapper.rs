@@ -7,12 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::ConstValue;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use core_plugin_interface::core_model::types::OperationReturnType;
+use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
-use core_plugin_interface::core_resolver::request_context::RequestContext;
+use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
     NestedElementRelation, NestedInsertion,
@@ -43,7 +43,7 @@ pub struct InsertOperation<'a> {
 impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
     async fn to_sql(
         self,
-        argument: &'a ConstValue,
+        argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
         request_context: &RequestContext<'a>,
     ) -> Result<AbstractInsert<'a>, PostgresExecutionError> {
@@ -68,12 +68,12 @@ impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
 
 pub(crate) async fn map_argument<'a>(
     data_type: &'a MutationType,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
     request_context: &RequestContext<'a>,
 ) -> Result<Vec<InsertionRow<'a>>, PostgresExecutionError> {
     match argument {
-        ConstValue::List(arguments) => {
+        Val::List(arguments) => {
             let mapped = arguments
                 .iter()
                 .map(|argument| map_single(data_type, argument, subsystem, request_context));
@@ -89,7 +89,7 @@ pub(crate) async fn map_argument<'a>(
 #[async_recursion]
 async fn map_single<'a>(
     data_type: &'a MutationType,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
     request_context: &RequestContext<'a>,
 ) -> Result<InsertionRow<'a>, PostgresExecutionError> {
@@ -133,7 +133,7 @@ async fn map_single<'a>(
 async fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a PostgresField<MutationType>,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
 ) -> Result<InsertionElement<'a>, PostgresExecutionError> {
     let key_column = key_column_id.get_column(subsystem);
@@ -174,7 +174,7 @@ async fn map_self_column<'a>(
 /// this needs to be called for the `concerts` part (which is mapped to a separate table)
 async fn map_foreign<'a>(
     field: &'a PostgresField<MutationType>,
-    argument: &'a ConstValue,
+    argument: &'a Val,
     parent_data_type: &'a MutationType,
     subsystem: &'a PostgresSubsystem,
     request_context: &RequestContext<'a>,

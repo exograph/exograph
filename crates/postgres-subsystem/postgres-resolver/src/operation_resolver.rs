@@ -9,7 +9,7 @@
 
 use async_trait::async_trait;
 use core_plugin_interface::core_resolver::{
-    request_context::RequestContext, validation::field::ValidatedField,
+    context::RequestContext, validation::field::ValidatedField,
 };
 use exo_sql::{AbstractOperation, AbstractSelect};
 use postgres_model::subsystem::PostgresSubsystem;

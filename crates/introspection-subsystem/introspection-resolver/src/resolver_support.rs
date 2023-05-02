@@ -9,9 +9,9 @@
 
 use async_graphql_parser::Positioned;
 use async_trait::async_trait;
+use core_resolver::context::RequestContext;
 use core_resolver::introspection::definition::schema::Schema;
 use core_resolver::plugin::SubsystemResolutionError;
-use core_resolver::request_context::RequestContext;
 use futures::StreamExt;
 use serde_json::Value;
 

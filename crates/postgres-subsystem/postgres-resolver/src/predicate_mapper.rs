@@ -7,10 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::ConstValue;
-
 use async_trait::async_trait;
-use core_plugin_interface::core_resolver::request_context::RequestContext;
+use core_plugin_interface::core_resolver::context::RequestContext;
+use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, Predicate};
 use futures::future::try_join_all;
 use postgres_model::{
@@ -36,7 +35,7 @@ struct PredicateParamInput<'a> {
 impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
     async fn to_sql(
         self,
-        argument: &'a ConstValue,
+        argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
         request_context: &RequestContext<'a>,
     ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
@@ -83,7 +82,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
                 logical_op_params,
             } => {
                 // first, match any logical op predicates the argument_value might contain
-                let logical_op_argument_value: (&str, Option<&ConstValue>) = logical_op_params
+                let logical_op_argument_value: (&str, Option<&Val>) = logical_op_params
                     .iter()
                     .map(|parameter| {
                         (
@@ -113,7 +112,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
 
                         match logical_op_name {
                             "and" | "or" => {
-                                if let ConstValue::List(arguments) = logical_op_argument_value {
+                                if let Val::List(arguments) = logical_op_argument_value {
                                     // first make sure we have arguments
                                     if arguments.is_empty() {
                                         return Err(PostgresExecutionError::Validation(self.param.name.clone(), "Logical operation predicate does not have any arguments".into()));
@@ -243,7 +242,7 @@ pub fn predicate_from_name<C: PartialEq + ParamEquality>(
 
 fn operands<'a>(
     param: &'a PredicateParameter,
-    op_value: &'a ConstValue,
+    op_value: &'a Val,
     parent_column_path: Option<ColumnIdPath>,
     subsystem: &'a PostgresSubsystem,
 ) -> Result<(ColumnPath<'a>, ColumnPath<'a>), PostgresExecutionError> {

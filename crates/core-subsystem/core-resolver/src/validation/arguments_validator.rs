@@ -17,7 +17,9 @@ use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
 use bytes::Bytes;
 
 use crate::{
-    introspection::definition::schema::Schema, validation::validation_error::ValidationError,
+    introspection::definition::schema::Schema,
+    validation::validation_error::ValidationError,
+    value::{UnresolvedVal, Val},
 };
 
 use super::underlying_type;
@@ -51,7 +53,7 @@ impl<'a> ArgumentValidator<'a> {
     pub(super) fn validate(
         &self,
         field_argument_definition: &[&InputValueDefinition],
-    ) -> Result<IndexMap<String, ConstValue>, ValidationError> {
+    ) -> Result<IndexMap<String, Val>, ValidationError> {
         self.validate_arguments(field_argument_definition, &self.field.node.arguments)
     }
 
@@ -59,7 +61,7 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         field_argument_definitions: &[&InputValueDefinition],
         field_arguments: &[(Positioned<Name>, Positioned<Value>)],
-    ) -> Result<IndexMap<String, ConstValue>, ValidationError> {
+    ) -> Result<IndexMap<String, Val>, ValidationError> {
         let field_name = self.field.node.name.node.as_str();
 
         // Stray arguments tracking: 1. Maintain a hashmap of all the arguments supplied in the query
@@ -123,7 +125,7 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         argument_definition: &InputValueDefinition,
         argument_value: Option<&Positioned<Value>>,
-    ) -> Option<Result<ConstValue, ValidationError>> {
+    ) -> Option<Result<Val, ValidationError>> {
         match argument_value {
             Some(value) => match &value.node {
                 Value::Variable(name) => {
@@ -155,7 +157,7 @@ impl<'a> ArgumentValidator<'a> {
                 Value::Binary(binary) => {
                     Some(self.validate_binary_argument(argument_definition, binary, value.pos))
                 }
-                Value::Enum(e) => Some(Ok(ConstValue::Enum(e.clone()))),
+                Value::Enum(e) => Some(Ok(Val::Enum(e.to_string()))),
                 Value::List(elems) => {
                     Some(self.validate_list_argument(argument_definition, elems, value.pos))
                 }
@@ -180,11 +182,11 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         argument_definition: &InputValueDefinition,
         pos: Pos,
-    ) -> Result<ConstValue, ValidationError> {
+    ) -> Result<Val, ValidationError> {
         let ty = &argument_definition.ty.node;
 
         if ty.nullable {
-            Ok(ConstValue::Null)
+            Ok(Val::Null)
         } else {
             Err(ValidationError::RequiredArgumentNotFound(
                 argument_definition.name.node.to_string(),
@@ -198,12 +200,12 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         number: &Number,
         pos: Pos,
-    ) -> Result<ConstValue, ValidationError> {
+    ) -> Result<Val, ValidationError> {
         // TODO: Use the types from PrimitiveType (but that is currently in the builder crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "Number",
             &["Int", "Float"],
-            || ConstValue::Number(number.clone()),
+            || Val::Number(number.clone()),
             argument_definition,
             pos,
         )
@@ -214,12 +216,12 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         boolean: &bool,
         pos: Pos,
-    ) -> Result<ConstValue, ValidationError> {
+    ) -> Result<Val, ValidationError> {
         // TODO: Use the types from PrimitiveType (but that is currently in the builder crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "Boolean",
             &["Boolean"],
-            || ConstValue::Boolean(*boolean),
+            || Val::Bool(*boolean),
             argument_definition,
             pos,
         )
@@ -230,7 +232,7 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         string: &str,
         pos: Pos,
-    ) -> Result<ConstValue, ValidationError> {
+    ) -> Result<Val, ValidationError> {
         // TODO: Use the types from PrimitiveType (but that is currently in the builder crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "String",
@@ -245,7 +247,7 @@ impl<'a> ArgumentValidator<'a> {
                 "Blob",
                 "Json",
             ],
-            || ConstValue::String(string.to_string()),
+            || Val::String(string.to_string()),
             argument_definition,
             pos,
         )
@@ -256,11 +258,11 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         bytes: &Bytes,
         pos: Pos,
-    ) -> Result<ConstValue, ValidationError> {
+    ) -> Result<Val, ValidationError> {
         self.validate_scalar_argument(
             "Binary",
             &["Binary"],
-            || ConstValue::Binary(bytes.clone()),
+            || Val::Binary(bytes.clone()),
             argument_definition,
             pos,
         )
@@ -272,15 +274,15 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         argument_typename: &str,
         acceptable_destination_types: &[&str; N],
-        to_const_value: impl FnOnce() -> ConstValue,
+        to_val: impl FnOnce() -> Val,
         argument_definition: &InputValueDefinition,
         pos: Pos,
-    ) -> Result<ConstValue, ValidationError> {
+    ) -> Result<Val, ValidationError> {
         let ty = &argument_definition.ty.node;
         let underlying = underlying_type(ty);
 
         if acceptable_destination_types.contains(&underlying.as_str()) {
-            Ok(to_const_value())
+            Ok(to_val())
         } else {
             Err(ValidationError::InvalidArgumentType {
                 argument_name: argument_definition.name.node.to_string(),
@@ -297,17 +299,22 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         entires: &IndexMap<Name, Value>,
         pos: Pos,
-    ) -> Result<ConstValue, ValidationError> {
+    ) -> Result<Val, ValidationError> {
         let ty = &argument_definition.ty.node;
         let underlying = underlying_type(ty);
 
         if underlying.as_str() == "Json" {
-            let const_value = Value::Object(entires.clone()).into_const_with(|name| {
-                self.variables.get(&name).cloned().ok_or_else(|| {
-                    ValidationError::VariableNotFound(name.to_string(), Pos::default())
-                })
+            let unresolved_value: UnresolvedVal = Value::Object(entires.clone()).into();
+            let resolved_value = unresolved_value.resolve(&|name: &str| {
+                self.variables
+                    .get(&Name::new(name))
+                    .cloned()
+                    .ok_or_else(|| {
+                        ValidationError::VariableNotFound(name.to_string(), Pos::default())
+                    })
             });
-            return const_value;
+
+            return resolved_value;
         }
 
         // We don't validate if the expected type is an object (and not a list), since the GraphQL spec
@@ -346,12 +353,12 @@ impl<'a> ArgumentValidator<'a> {
             &field_arguments,
         )?;
 
-        let index_map = validated_arguments
+        let map = validated_arguments
             .into_iter()
-            .map(|(k, v)| (Name::new(k), v))
-            .collect::<IndexMap<_, _>>();
+            .map(|(k, v)| (k, v))
+            .collect::<HashMap<_, _>>();
 
-        Ok(ConstValue::Object(index_map))
+        Ok(Val::Object(map))
     }
 
     fn validate_list_argument(
@@ -359,18 +366,21 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         elems: &[Value],
         pos: Pos,
-    ) -> Result<ConstValue, ValidationError> {
+    ) -> Result<Val, ValidationError> {
         let ty = &argument_definition.ty.node;
         let underlying = underlying_type(ty);
 
         // If the expected type is json, treat it as an opaque object
         if underlying.as_str() == "Json" {
-            let const_value = Value::List(elems.to_vec()).into_const_with(|name| {
-                self.variables.get(&name).cloned().ok_or_else(|| {
-                    ValidationError::VariableNotFound(name.to_string(), Pos::default())
-                })
+            let unresolved_value: UnresolvedVal = Value::List(elems.to_vec()).into();
+            return unresolved_value.resolve(&|name: &str| {
+                self.variables
+                    .get(&Name::new(name))
+                    .cloned()
+                    .ok_or_else(|| {
+                        ValidationError::VariableNotFound(name.to_string(), Pos::default())
+                    })
             });
-            return const_value;
         }
 
         match &ty.base {
@@ -398,7 +408,7 @@ impl<'a> ArgumentValidator<'a> {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
 
-                Ok(ConstValue::List(validated_elems))
+                Ok(Val::List(validated_elems))
             }
         }
     }

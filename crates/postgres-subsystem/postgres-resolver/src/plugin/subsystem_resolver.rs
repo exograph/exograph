@@ -15,8 +15,8 @@ use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition
 use async_trait::async_trait;
 use core_plugin_interface::{
     core_resolver::{
+        context::RequestContext,
         plugin::{SubsystemResolutionError, SubsystemResolver},
-        request_context::RequestContext,
         system_resolver::SystemResolver,
         validation::field::ValidatedField,
         InterceptedOperation, QueryResponse,

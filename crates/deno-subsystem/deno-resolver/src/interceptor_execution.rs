@@ -7,12 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_graphql_value::indexmap::IndexMap;
 use core_plugin_interface::core_resolver::{
-    request_context::RequestContext, system_resolver::ExographExecuteQueryFn, InterceptedOperation,
+    context::RequestContext, system_resolver::ExographExecuteQueryFn, InterceptedOperation,
 };
 use deno_model::interceptor::Interceptor;
 use exo_deno::Arg;
+use indexmap::IndexMap;
 use serde_json::Value;
 
 use crate::{deno_operation::construct_arg_sequence, plugin::DenoSubsystemResolver};

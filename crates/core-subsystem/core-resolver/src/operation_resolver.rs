@@ -15,7 +15,7 @@ use crate::interception::InterceptedOperation;
 use crate::system_resolver::{SystemResolutionError, SystemResolver};
 use crate::validation::field::ValidatedField;
 use crate::validation::operation::ValidatedOperation;
-use crate::{request_context::RequestContext, QueryResponse};
+use crate::{context::RequestContext, QueryResponse};
 use crate::{FieldResolver, QueryResponseBody};
 
 /// Resolver for the root operation.

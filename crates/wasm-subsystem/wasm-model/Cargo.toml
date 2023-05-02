@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 async-graphql-parser.workspace = true
-async-graphql-value.workspace = true
 serde.workspace = true
 bincode.workspace = true
 
