@@ -28,7 +28,7 @@ pub(crate) trait SQLMapper<'a, R> {
         self,
         argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
-        request_context: &RequestContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<R, PostgresExecutionError>;
 
     fn param_name(&self) -> &str;
@@ -38,7 +38,7 @@ pub(crate) async fn extract_and_map<'a, P, R>(
     param: P,
     arguments: &'a Arguments,
     subsystem: &'a PostgresSubsystem,
-    request_context: &RequestContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<Option<R>, PostgresExecutionError>
 where
     P: SQLMapper<'a, R>,

@@ -73,12 +73,12 @@ impl<'a> RequestContext<'a> {
                 base_context,
                 context_override,
             } => {
-                let overridden = context_override
+                let overridden: Option<&'a Val> = context_override
                     .get(context_type_name)
                     .and_then(|value| value.get(&field.name));
 
                 match overridden {
-                    Some(value) => Ok(Some(value)),
+                    Some(_) => Ok(overridden),
                     None => {
                         base_context
                             .extract_context_field(context_type_name, field)

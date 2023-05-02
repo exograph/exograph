@@ -146,7 +146,7 @@ async fn compute_order_by<'content>(
     param: &'content OrderByParameter,
     arguments: &'content Arguments,
     subsystem: &'content PostgresSubsystem,
-    request_context: &RequestContext<'content>,
+    request_context: &'content RequestContext<'content>,
 ) -> Result<Option<AbstractOrderBy<'content>>, PostgresExecutionError> {
     extract_and_map(
         OrderByParameterInput {

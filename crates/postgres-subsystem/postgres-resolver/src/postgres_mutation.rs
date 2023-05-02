@@ -103,7 +103,7 @@ async fn create_operation<'content>(
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
     subsystem: &'content PostgresSubsystem,
-    request_context: &RequestContext<'content>,
+    request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractInsert<'content>, PostgresExecutionError> {
     let access_predicate = check_access(
         return_type,

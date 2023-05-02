@@ -82,7 +82,7 @@ impl<'a> UserRequestContext<'a> {
         // in that case we still want to cache it.
         let cached_value: Option<&Option<Val>> = self.context_cache.get(&cache_key);
 
-        let value = match cached_value {
+        let value: &'a Option<Val> = match cached_value {
             Some(value) => value,
             None => {
                 let field_value = self
@@ -104,7 +104,7 @@ impl<'a> UserRequestContext<'a> {
     // Given an annotation name and its value,
     // extract a context field from the request context
     async fn extract_context_field_from_source(
-        &'a self,
+        &self,
         annotation_name: &str,
         field_name: &str,
         annotation_param: Option<&str>,
@@ -116,7 +116,11 @@ impl<'a> UserRequestContext<'a> {
             .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(annotation_param, field_name, request_context, self.request)
+            .extract_context_field(
+                annotation_param.unwrap_or(field_name),
+                request_context,
+                self.request,
+            )
             .await
             .map(Val::from))
     }

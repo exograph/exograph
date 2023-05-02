@@ -36,7 +36,7 @@ impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
         self,
         argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
-        request_context: &RequestContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractOrderBy<'a>, PostgresExecutionError> {
         let parameter_type = &subsystem.order_by_types[self.param.typ.innermost().type_id];
         fn flatten<E>(order_bys: Result<Vec<AbstractOrderBy>, E>) -> Result<AbstractOrderBy, E> {
@@ -89,7 +89,7 @@ async fn order_by_pair<'a>(
     parameter_value: &'a Val,
     parent_column_path: Option<ColumnIdPath>,
     subsystem: &'a PostgresSubsystem,
-    request_context: &RequestContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractOrderBy<'a>, PostgresExecutionError> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {

@@ -33,12 +33,10 @@ impl ParsedContext for QueryExtractor<'_> {
 
     async fn extract_context_field<'r>(
         &self,
-        key: Option<&str>,
-        field_name: &str,
+        key: &str,
         request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<serde_json::Value> {
-        let key = key.unwrap_or(field_name);
         let query = format!("query {{ {} }}", key.to_owned());
 
         let result = self

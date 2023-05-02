@@ -33,7 +33,7 @@ impl<'a> SQLMapper<'a, Limit> for &LimitParameter {
         self,
         argument: &'a Val,
         _subsystem: &'a PostgresSubsystem,
-        _request_context: &RequestContext<'a>,
+        _request_context: &'a RequestContext<'a>,
     ) -> Result<Limit, PostgresExecutionError> {
         cast_to_i64(argument).map(Limit)
     }
@@ -49,7 +49,7 @@ impl<'a> SQLMapper<'a, Offset> for &OffsetParameter {
         self,
         argument: &'a Val,
         _subsystem: &'a PostgresSubsystem,
-        _request_context: &RequestContext<'a>,
+        _request_context: &'a RequestContext<'a>,
     ) -> Result<Offset, PostgresExecutionError> {
         cast_to_i64(argument).map(Offset)
     }

@@ -75,11 +75,11 @@ pub trait ContextExtractor {
     /// `context_selection` set to
     /// `AccessContextSelection::Select(AccessContextSelection("AuthContext"), "role")` will return
     /// the value `"admin"`.
-    async fn extract_context_selection(
+    async fn extract_context_selection<'a>(
         &self,
-        request_context: &RequestContext,
+        request_context: &'a RequestContext<'a>,
         context_selection: &ContextSelection,
-    ) -> Option<Val> {
+    ) -> Option<&'a Val> {
         let context_type = self.context_type(&context_selection.context_name);
         let context_field = context_type
             .fields
@@ -90,7 +90,6 @@ pub trait ContextExtractor {
             .extract_context_field(&context_selection.context_name, context_field)
             .await
             .unwrap()
-            .cloned()
     }
 }
 

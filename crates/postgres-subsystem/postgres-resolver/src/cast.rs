@@ -49,7 +49,7 @@ pub enum CastError {
 }
 
 pub(crate) fn literal_column<'a>(
-    value: &Val,
+    value: &'a Val,
     associated_column: &PhysicalColumn,
 ) -> Result<Column<'a>, PostgresExecutionError> {
     cast_value(value, &associated_column.typ)
