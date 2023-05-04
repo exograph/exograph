@@ -36,20 +36,24 @@ static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 ///       completed: Boolean
 ///     }
 ///
-///     query todo(id: Int): Todo
+///     query todo(id: Int, exograph: Exograph, @inject authContext: AuthContext): Todo
 ///   }
 /// ```
 ///
 /// The generated code will look like this:
 /// ```typescript
-/// interface Todo {
+/// import { Exograph } from './exograph.d.ts'
+///
+/// import { AuthContext } from './contexts.d.ts'
+///
+/// export interface Todo {
 ///     userId: number
 ///     id: number
 ///     title: string
 ///     completed: boolean
 /// }
 ///
-/// export /*async*/ function todo(id: number): Todo {
+/// export async function todo(id: number): Todo {
 ///     // TODO
 ///     throw new Error('not implemented');
 /// }
@@ -59,7 +63,7 @@ static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 ///
 /// If the `@deno("todo.js") was specified, the generated code will look like this:
 /// ```javascript
-/// export /*async*/ function todo(id) {
+/// export async function todo(id) {
 ///     // TODO
 ///     throw new Error('not implemented');
 /// }
@@ -71,6 +75,8 @@ pub fn generate_module_skeleton(
     base_system: &BaseModelSystem,
     out_file: impl AsRef<Path>,
 ) -> Result<(), ModelBuildingError> {
+    let module_directory = module.base_exofile.parent().unwrap();
+
     let is_typescript = out_file
         .as_ref()
         .extension()
@@ -96,9 +102,14 @@ pub fn generate_module_skeleton(
         exograph_d_file.write_all(EXOGRAPH_D_TEMPLATE_TS.as_bytes())?;
     }
 
+    // Generate context definitions (even if the target is a Javascript file to help with code completion)
+    // Context definitions are generated in the same directory as the module code, since the types in it
+    // are independent of the module code.
+    generate_context_definitions(module_directory, base_system)?;
+
     // We don't want to overwrite any user files
     // TODO: Parse the existing file and warn if any definitions don't match the expected ones
-    // along with a helpful message so that users can copy/paster the expected definitions.
+    // along with a helpful message so that users can copy/paste the expected definitions.
     if out_file.exists() {
         return Ok(());
     }
@@ -108,13 +119,14 @@ pub fn generate_module_skeleton(
         out_file.display()
     );
 
+    let relative_depth = out_file_dir.components().count() - module_directory.components().count();
+
     let mut file = std::fs::File::create(out_file)?;
 
     // Types (defined in `module`) matter only if the target is a typescript file.
     if is_typescript {
-        for (_, context) in base_system.contexts.iter() {
-            generate_type_skeleton(context, &mut file)?;
-        }
+        generate_exograph_imports(module, &mut file)?;
+        generate_context_imports(module, base_system, relative_depth, &mut file)?;
 
         for module_type in module.types.iter() {
             generate_type_skeleton(module_type, &mut file)?;
@@ -144,8 +156,109 @@ pub fn generate_module_skeleton(
     Ok(())
 }
 
+fn generate_exograph_imports(
+    module: &AstModule<Typed>,
+    file: &mut File,
+) -> Result<(), ModelBuildingError> {
+    let imports = import_types(module, &is_exograph_type);
+
+    writeln!(
+        file,
+        "import type {{ {imports} }} from './exograph.d.ts';\n"
+    )?;
+
+    Ok(())
+}
+
+fn generate_context_imports(
+    module: &AstModule<Typed>,
+    base_system: &BaseModelSystem,
+    relative_depth: usize,
+    file: &mut File,
+) -> Result<(), ModelBuildingError> {
+    let imports = import_types(module, &|arg| is_context_type(arg, base_system));
+
+    // The contexts.d.ts is always generated in the same directory as the module code,
+    // so we need to go up to that directory.
+    let relative_path = if relative_depth == 0 {
+        "./".to_string()
+    } else {
+        "../".repeat(relative_depth)
+    };
+
+    writeln!(
+        file,
+        "import type {{ {imports} }} from '{relative_path}contexts.d.ts';\n"
+    )?;
+
+    Ok(())
+}
+
+/// Collect all types used in the module matching the given selection criteria.
+fn import_types(
+    module: &AstModule<Typed>,
+    selection: &impl Fn(&AstArgument<Typed>) -> bool,
+) -> String {
+    fn arguments(module: &AstModule<Typed>) -> impl Iterator<Item = &AstArgument<Typed>> {
+        let method_arguments = module
+            .methods
+            .iter()
+            .flat_map(|method| method.arguments.iter());
+
+        let interceptor_arguments = module
+            .interceptors
+            .iter()
+            .flat_map(|interceptor| interceptor.arguments.iter());
+
+        method_arguments.chain(interceptor_arguments)
+    }
+
+    let mut types_used = arguments(module)
+        .filter(|arg| selection(arg))
+        .map(|arg| arg.typ.name())
+        .collect::<Vec<_>>();
+    types_used.dedup();
+    types_used.sort(); // Sort to make the output deterministic
+
+    types_used.join(", ")
+}
+
+fn is_exograph_type(argument: &AstArgument<Typed>) -> bool {
+    let exograph_type_names = ["Exograph", "ExographPriv", "Operation", "ExographError"];
+    exograph_type_names.contains(&argument.typ.name().as_str())
+}
+
+fn is_context_type(argument: &AstArgument<Typed>, base_system: &BaseModelSystem) -> bool {
+    base_system
+        .contexts
+        .get_by_key(&argument.typ.name())
+        .is_some()
+}
+
+fn generate_context_definitions(
+    module_directory: &Path,
+    base_system: &BaseModelSystem,
+) -> Result<(), ModelBuildingError> {
+    let context_file = module_directory.join("contexts.d.ts");
+
+    if base_system.contexts.is_empty() {
+        // Remove the file if it exists to ensure that the non-existence of contexts is reflected in the file system.
+        if std::path::Path::exists(&context_file) {
+            std::fs::remove_file(context_file)?;
+        }
+        return Ok(());
+    }
+
+    let mut file = std::fs::File::create(context_file)?;
+    for (_, context) in base_system.contexts.iter() {
+        generate_type_skeleton(context, &mut file)?;
+    }
+
+    Ok(())
+}
+
 fn generate_type_skeleton(model: &dyn Type, out_file: &mut File) -> Result<(), ModelBuildingError> {
-    out_file.write_all(format!("interface {} {{\n", model.name()).as_bytes())?;
+    out_file.write_all(format!("export interface {} {{\n", model.name()).as_bytes())?;
 
     for (name, typ) in model.fields() {
         out_file.write_all(format!("\t{}\n", generate_field(name, typ, true)).as_bytes())?;
@@ -273,6 +386,7 @@ fn typescript_base_type(exo_type_name: &str) -> String {
         "Float" => "number".to_string(),
         "Boolean" => "boolean".to_string(),
         "DateTime" => "Date".to_string(),
+        "Uuid" => "string".to_string(),
         "Exograph" => "Exograph".to_string(),
         "ExographPriv" => "ExographPriv".to_string(),
         t => t.to_string(),

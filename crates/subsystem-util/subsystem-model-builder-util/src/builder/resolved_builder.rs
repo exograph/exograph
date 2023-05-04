@@ -256,7 +256,7 @@ fn resolve_module(
         &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
-    let module_path = match module.annotations.get(&annotation_name).unwrap() {
+    let module_relative_path = match module.annotations.get(&annotation_name).unwrap() {
         AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
         _ => panic!(),
     }
@@ -264,13 +264,9 @@ fn resolve_module(
 
     let mut module_fs_path = module.base_exofile.clone();
     module_fs_path.pop();
-    module_fs_path.push(module_path);
+    module_fs_path.push(&module_relative_path);
 
     let bundled_script = process_script(module, base_system, &module_fs_path)?;
-
-    let module_anonymized_path = module_fs_path
-        .strip_prefix(module.base_exofile.parent().unwrap())
-        .unwrap();
 
     fn extract_intercept_annot<'a>(
         annotations: &'a AnnotationMap,
@@ -284,7 +280,7 @@ fn resolve_module(
         ResolvedModule {
             name: module.name.clone(),
             script: bundled_script,
-            script_path: module_anonymized_path.to_str().expect("Script path was not UTF-8").to_string(),
+            script_path: module_relative_path.as_str().to_string(),
             methods: module
                 .methods
                 .iter()

@@ -7,9 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-interface Exograph {
+export interface Exograph {
   executeQuery(query: string, variable?: { [key: string]: any }): Promise<any>;
-  addResponseHeader(name: string, value: string ): Promise<void>;
+  addResponseHeader(name: string, value: string): Promise<void>;
   setCookie(cookie: {
     name: string,
     value: string,
@@ -23,26 +23,26 @@ interface Exograph {
   }): Promise<void>;
 }
 
-interface ExographPriv extends Exograph {
+export interface ExographPriv extends Exograph {
   executeQueryPriv(query: string, variable?: { [key: string]: any }, contextOverride?: { [key: string]: any }): Promise<any>;
 }
 
-type JsonObject = { [Key in string]?: JsonValue };
-type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+export type JsonObject = { [Key in string]?: JsonValue };
+export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 
-interface Field {
-    alias: string | null;
-    name: string;
-    arguments: JsonObject;
-    subfields: Field[];
+export interface Field {
+  alias: string | null;
+  name: string;
+  arguments: JsonObject;
+  subfields: Field[];
 }
 
-interface Operation {
-    name(): string;
-    proceed<T>(): Promise<T>;
-    query(): Field;
+export interface Operation {
+  name(): string;
+  proceed<T>(): Promise<T>;
+  query(): Field;
 }
 
-declare class ExographError extends Error {
-    constructor(message: string);
+export declare class ExographError extends Error {
+  constructor(message: string);
 }
