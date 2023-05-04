@@ -7,6 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::cell::RefCell;
+
+use core_resolver::context::JwtAuthenticator;
 use introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
 
@@ -20,6 +23,13 @@ use core_plugin_shared::{
 use core_resolver::plugin::SubsystemResolver;
 use core_resolver::{introspection::definition::schema::Schema, system_resolver::SystemResolver};
 use tracing::debug;
+
+// we spawn many resolvers concurrently in integration tests
+thread_local! {
+    pub static LOCAL_ALLOW_INTROSPECTION: RefCell<Option<bool>> = RefCell::new(None);
+    pub static LOCAL_ENVIRONMENT: RefCell<Option<std::collections::HashMap<String, String>>> = RefCell::new(None);
+}
+
 pub struct SystemLoader;
 
 impl SystemLoader {
@@ -103,6 +113,12 @@ impl SystemLoader {
             query_interception_map,
             mutation_interception_map,
             schema,
+            JwtAuthenticator::new_from_env(),
+            LOCAL_ENVIRONMENT.with(|f| {
+                f.borrow()
+                    .clone()
+                    .unwrap_or_else(|| std::env::vars().collect())
+            }),
             normal_query_depth_limit,
             introspection_query_depth_limit,
         ))
@@ -124,15 +140,19 @@ impl SystemLoader {
 }
 
 pub fn allow_introspection() -> Result<bool, SystemLoadingError> {
-    match std::env::var("EXO_INTROSPECTION").ok() {
-        Some(e) => match e.parse::<bool>() {
-            Ok(v) => Ok(v),
-            Err(_) => Err(SystemLoadingError::Config(
-                "EXO_INTROSPECTION env var must be set to either true or false".into(),
-            )),
-        },
-        None => Ok(false),
-    }
+    LOCAL_ALLOW_INTROSPECTION.with(|f| {
+        f.borrow()
+            .map(Ok)
+            .unwrap_or_else(|| match std::env::var("EXO_INTROSPECTION").ok() {
+                Some(e) => match e.parse::<bool>() {
+                    Ok(v) => Ok(v),
+                    Err(_) => Err(SystemLoadingError::Config(
+                        "EXO_INTROSPECTION env var must be set to either true or false".into(),
+                    )),
+                },
+                None => Ok(false),
+            })
+    })
 }
 
 /// Returns the maximum depth of a selection set for normal queries and introspection queries. We
@@ -142,7 +162,14 @@ pub fn query_depth_limits() -> Result<(usize, usize), SystemLoadingError> {
     const DEFAULT_QUERY_DEPTH: usize = 5;
     const DEFAULT_INTROSPECTION_QUERY_DEPTH: usize = 15;
 
-    let query_depth = match std::env::var("EXO_MAX_SELECTION_DEPTH").ok() {
+    let query_depth = match LOCAL_ENVIRONMENT
+        .with(|f| {
+            f.borrow()
+                .as_ref()
+                .and_then(|env| env.get("EXO_MAX_SELECTION_DEPTH").cloned())
+        })
+        .or_else(|| std::env::var("EXO_MAX_SELECTION_DEPTH").ok())
+    {
         Some(e) => match e.parse::<usize>() {
             Ok(v) => Ok(v),
             Err(_) => Err(SystemLoadingError::Config(

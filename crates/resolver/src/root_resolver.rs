@@ -14,6 +14,7 @@ use std::{fs::File, io::BufReader, path::Path};
 use crate::system_loader::SystemLoadingError;
 
 use core_plugin_interface::interface::SubsystemLoader;
+use core_resolver::QueryResponse;
 
 use super::system_loader::SystemLoader;
 use ::tracing::instrument;
@@ -25,6 +26,31 @@ use core_resolver::system_resolver::SystemResolver;
 pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
 use futures::Stream;
+
+#[instrument(
+    name = "resolver::resolve_in_memory"
+    skip(system_resolver, request_context)
+)]
+pub async fn resolve_in_memory<'a>(
+    operations_payload: OperationsPayload,
+    system_resolver: &SystemResolver,
+    request_context: RequestContext<'a>,
+) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
+    let response = system_resolver
+        .resolve_operations(operations_payload, &request_context)
+        .await;
+
+    let ctx = request_context.get_base_context();
+    let mut tx_holder = ctx.transaction_holder.try_lock().unwrap();
+
+    tx_holder
+        .finalize(response.is_ok())
+        .await
+        .map_err(|e| {
+            SystemResolutionError::Generic(format!("Error while finalizing transaction: {e}"))
+        })
+        .and(response)
+}
 
 pub type Headers = Vec<(String, String)>;
 pub type ResponseStream<E> = (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers);
@@ -38,15 +64,13 @@ pub type ResponseStream<E> = (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Hea
 #[instrument(
     name = "resolver::resolve"
     skip(system_resolver, request_context)
-    )]
+)]
 pub async fn resolve<'a, E: 'static>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
     request_context: RequestContext<'a>,
 ) -> ResponseStream<E> {
-    let response = system_resolver
-        .resolve_operations(operations_payload, &request_context)
-        .await;
+    let response = resolve_in_memory(operations_payload, system_resolver, request_context).await;
 
     let headers = if let Ok(ref response) = response {
         response
@@ -56,17 +80,6 @@ pub async fn resolve<'a, E: 'static>(
     } else {
         vec![]
     };
-
-    let ctx = request_context.get_base_context();
-    let mut tx_holder = ctx.transaction_holder.try_lock().unwrap();
-
-    let response = tx_holder
-        .finalize(response.is_ok())
-        .await
-        .map_err(|e| {
-            SystemResolutionError::Generic(format!("Error while finalizing transaction: {e}"))
-        })
-        .and(response);
 
     let stream = try_stream! {
         macro_rules! report_position {
@@ -145,7 +158,7 @@ pub fn get_endpoint_http_path() -> String {
     std::env::var("EXO_ENDPOINT_HTTP_PATH").unwrap_or_else(|_| "/graphql".to_string())
 }
 
-fn create_system_resolver(
+pub fn create_system_resolver(
     exo_ir_file: &str,
     static_loaders: Vec<Box<dyn SubsystemLoader>>,
 ) -> Result<SystemResolver, SystemLoadingError> {

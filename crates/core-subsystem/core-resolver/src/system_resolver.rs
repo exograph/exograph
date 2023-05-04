@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use async_graphql_parser::{
     types::{ExecutableDocument, OperationType},
     Pos,
@@ -21,6 +23,7 @@ use tokio::runtime::Handle;
 use tracing::{error, instrument};
 
 use crate::{
+    context::provider::jwt::JwtAuthenticator,
     context::RequestContext,
     introspection::definition::schema::Schema,
     plugin::{subsystem_resolver::SubsystemResolver, SubsystemResolutionError},
@@ -48,16 +51,21 @@ pub struct SystemResolver {
     query_interception_map: InterceptionMap,
     mutation_interception_map: InterceptionMap,
     schema: Schema,
+    pub jwt_authenticator: Option<JwtAuthenticator>,
+    pub env: HashMap<String, String>,
     normal_query_depth_limit: usize,
     introspection_query_depth_limit: usize,
 }
 
 impl SystemResolver {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
         schema: Schema,
+        jwt_authenticator: Option<JwtAuthenticator>,
+        env: HashMap<String, String>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
     ) -> Self {
@@ -66,6 +74,8 @@ impl SystemResolver {
             query_interception_map,
             mutation_interception_map,
             schema,
+            jwt_authenticator,
+            env,
             normal_query_depth_limit,
             introspection_query_depth_limit,
         }

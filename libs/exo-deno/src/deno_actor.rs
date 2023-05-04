@@ -104,7 +104,6 @@ where
         let (deno_call_sender, mut deno_call_receiver) = tokio::sync::mpsc::channel(1);
         let busy = Arc::new(AtomicBool::new(false));
 
-        let deno_call_sender_clone = deno_call_sender.clone();
         let busy_clone = busy.clone();
 
         // start the DenoModule thread
@@ -151,10 +150,7 @@ where
                         final_response_sender,
                     } = match deno_call_receiver.recv().await {
                         Some(call_info) => call_info,
-                        // check if the channel is closed (happens sometimes during shutdown). If so break, otherwise we end up
-                        // printing an error message after the shutdown message
-                        None if deno_call_sender_clone.is_closed() => break,
-                        None => panic!("Could not receive requests in DenoActor thread"),
+                        None => break,
                     };
 
                     busy_clone.store(true, Ordering::Relaxed); // mark DenoActor as busy

@@ -65,14 +65,7 @@ pub fn run(
 
     // test introspection for all model files
     if run_introspection_tests {
-        println!(
-            "{}",
-            "** Introspection tests enabled, running".blue().bold()
-        );
-
-        for model_path in model_file_deps.keys() {
-            test_results.push(run_introspection_test(model_path));
-        }
+        println!("{}", "** Introspection tests enabled".blue().bold());
     };
 
     println!("{}", "** Running integration tests".blue().bold());
@@ -96,6 +89,10 @@ pub fn run(
 
         pool.spawn(move || match build_exo_ir_file(&model_path) {
             Ok(()) => {
+                if run_introspection_tests {
+                    tx.send(run_introspection_test(&model_path)).unwrap();
+                };
+
                 for file in testfiles.iter() {
                     let result = run_testfile(
                         file,

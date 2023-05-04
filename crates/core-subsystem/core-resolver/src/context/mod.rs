@@ -10,10 +10,12 @@
 mod error;
 mod overridden_context;
 mod parsed_context;
-mod provider;
+pub mod provider;
 mod request;
 mod request_context;
 mod user_request_context;
+
+pub use provider::jwt::{JwtAuthenticator, LOCAL_JWT_SECRET};
 
 pub use error::ContextParsingError;
 pub use request::Request;

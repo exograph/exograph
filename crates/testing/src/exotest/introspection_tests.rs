@@ -10,17 +10,21 @@
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 
+use core_plugin_interface::interface::SubsystemLoader;
+use core_resolver::{context::RequestContext, system_resolver::SystemResolver, OperationsPayload};
 use exo_deno::{deno_error::DenoError, Arg, DenoModule, DenoModuleSharedState, UserCode};
+use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
 use include_dir::{include_dir, Dir};
+use resolver::{create_system_resolver, LOCAL_ALLOW_INTROSPECTION};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
 
-use crate::exotest::{
-    common::{spawn_exo_server, TestResultKind},
-    integration_tests::build_exo_ir_file,
-};
+use crate::exotest::common::TestResultKind;
 
-use super::common::TestResult;
+use super::{
+    common::TestResult,
+    integration_tests::{run_query, MemoryRequest},
+};
 
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
 const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");
@@ -29,38 +33,45 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     let log_prefix = format!("(introspection: {})\n :: ", model_path.display()).purple();
     println!("{log_prefix} Running introspection tests...");
 
-    build_exo_ir_file(model_path)?;
+    let server = {
+        let static_loaders: Vec<Box<dyn SubsystemLoader>> = vec![
+            Box::new(postgres_resolver::PostgresSubsystemLoader {}),
+            Box::new(deno_resolver::DenoSubsystemLoader {}),
+        ];
 
-    let server = spawn_exo_server(
-        model_path,
-        [
-            ("EXO_INTROSPECTION", "true"),
-            ("EXO_POSTGRES_URL", "postgres://a@dummy-value"),
-            ("EXO_CHECK_CONNECTION_ON_STARTUP", "false"),
-            ("EXO_SERVER_PORT", "0"), // ask exo-server to select a free port
-        ]
-        .into_iter(),
-    )?;
+        let base_name = model_path.to_str().unwrap();
+        LOCAL_URL.with(|url| {
+            url.borrow_mut()
+                .replace("postgres://a@dummy-value".to_string());
 
-    let result = check_introspection(&server.endpoint)?;
-    let output: String = server.output.lock().unwrap().clone();
+            LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
+                pool_size.borrow_mut().replace(1);
+
+                LOCAL_ALLOW_INTROSPECTION.with(|allow| {
+                    allow.borrow_mut().replace(true);
+
+                    create_system_resolver(&format!("{base_name}_ir"), static_loaders)
+                })
+            })
+        })?
+    };
+
+    let result = check_introspection(&server)?;
 
     match result {
         Ok(()) => Ok(TestResult {
             log_prefix: log_prefix.to_string(),
             result: TestResultKind::Success,
-            output,
         }),
 
         Err(e) => Ok(TestResult {
             log_prefix: log_prefix.to_string(),
             result: TestResultKind::Fail(e),
-            output,
         }),
     }
 }
 
-fn check_introspection(endpoint: &str) -> Result<Result<()>> {
+fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
     let script = INTROSPECTION_ASSERT_JS;
 
     let deno_module_future = DenoModule::new(
@@ -101,9 +112,31 @@ fn check_introspection(endpoint: &str) -> Result<Result<()>> {
     let runtime = tokio::runtime::Runtime::new()?;
     let mut deno_module = runtime.block_on(deno_module_future)?;
 
+    let query = runtime.block_on(deno_module.execute_function("introspectionQuery", vec![]))?;
+
+    let request = MemoryRequest::new(HashMap::new());
+    let request_context = RequestContext::new(&request, vec![], server)?;
+    let operations_payload = OperationsPayload {
+        operation_name: None,
+        query: if let Value::String(s) = query {
+            s
+        } else {
+            panic!("expected string")
+        },
+        variables: None,
+    };
+
+    let result = run_query(
+        &runtime,
+        operations_payload,
+        request_context,
+        server,
+        &mut HashMap::new(),
+    );
+
     let result = runtime.block_on(deno_module.execute_function(
         "assertSchema",
-        vec![Arg::Serde(Value::String(endpoint.to_string()))],
+        vec![Arg::Serde(Value::String(result.to_string()))],
     ));
 
     match result {

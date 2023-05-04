@@ -69,7 +69,7 @@ fn matches(expr: &AstExpr<Typed>, operation_name: &str, operation_kind: Operatio
         AstExpr::FieldSelection(_) => {
             panic!("FieldSelection not supported in interceptor expression")
         }
-        AstExpr::LogicalOp(logical_op) => match dbg!(logical_op) {
+        AstExpr::LogicalOp(logical_op) => match logical_op {
             LogicalOp::Not(expr, _, _) => !matches(expr, operation_name, operation_kind),
             LogicalOp::And(first, second, _, _) => {
                 matches(first, operation_name, operation_kind)

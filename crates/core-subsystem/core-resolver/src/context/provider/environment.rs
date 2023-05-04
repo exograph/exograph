@@ -7,15 +7,19 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::context::{parsed_context::ParsedContext, request::Request, RequestContext};
 
-pub struct EnvironmentContextExtractor;
+pub struct EnvironmentContextExtractor<'a> {
+    pub env: &'a HashMap<String, String>,
+}
 
 #[async_trait]
-impl ParsedContext for EnvironmentContextExtractor {
+impl<'a> ParsedContext for EnvironmentContextExtractor<'a> {
     fn annotation_name(&self) -> &str {
         "env"
     }
@@ -26,6 +30,6 @@ impl ParsedContext for EnvironmentContextExtractor {
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
-        std::env::var(key).ok().map(|v| v.into())
+        self.env.get(key).map(|v| v.as_str().into())
     }
 }

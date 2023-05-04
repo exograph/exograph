@@ -11,16 +11,12 @@ import { buildClientSchema } from "embedded://graphql/utilities/buildClientSchem
 import { getIntrospectionQuery } from "embedded://graphql/utilities/getIntrospectionQuery.mjs"
 import { assertValidSchema } from "embedded://graphql/type/validate.mjs"
 
-export async function assertSchema(endpoint) {
-    let response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({"query": getIntrospectionQuery()})
-    })
+export async function introspectionQuery() {
+    return getIntrospectionQuery();
+}
 
-    const schema = (await response.json())["data"]
+export async function assertSchema(response) {
+    const schema = JSON.parse(response)["data"]
     const clientSchema = buildClientSchema(schema)
 
     assertValidSchema(clientSchema)
