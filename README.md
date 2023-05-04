@@ -4,10 +4,10 @@
 
 Must have:
 
-- Rust (see the version specified in [rust-toolchain.toml](rust-toolchain.toml)). Also install the wasm32-wasm target (`rustup target add wasm32-wasi`).
-- Protobuf-compiler version 3.x
-- Postgres 12
-- Node (any reasonable version, used by Tree Sitter and building the GraphiQL app)
+- [Rustup](https://rustup.rs/).
+- [Protobuf-compiler version 3.x](https://grpc.io/docs/protoc-installation/)
+- [Postgres 12 or above](https://www.postgresql.org/)
+- [Node 16 or above](https://nodejs.org/en)
 - [Deno](https://deno.land/)
 
 Nice to have:
@@ -16,12 +16,7 @@ Nice to have:
 
 ## Installing the vscode extension
 
-From the project root directory,
-
-```
-(cd $PWD/vscode-extension; npm run build)
-ln -s $PWD/vscode-extension/out $HOME/.vscode/extensions/exo.vscode
-```
+Follow the instructions in [Exograph VSCode Extension repo](https://github.com/exograph/vscode-extension).
 
 ## Building
 
