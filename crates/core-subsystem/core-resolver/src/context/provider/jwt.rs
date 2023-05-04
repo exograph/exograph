@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::cell::RefCell;
 use std::env;
 
 use async_trait::async_trait;
@@ -32,9 +33,21 @@ pub struct JwtAuthenticator {
 
 const JWT_SECRET_PARAM: &str = "EXO_JWT_SECRET";
 
+// we spawn many resolvers concurrently in integration tests
+thread_local! {
+    pub static LOCAL_JWT_SECRET: RefCell<Option<String>> = RefCell::new(None);
+}
+
 impl JwtAuthenticator {
     pub fn new_from_env() -> Option<Self> {
-        Some(Self::new(env::var(JWT_SECRET_PARAM).ok()?))
+        LOCAL_JWT_SECRET
+            .with(|local_jwt_secret| {
+                local_jwt_secret
+                    .borrow()
+                    .clone()
+                    .or_else(|| env::var(JWT_SECRET_PARAM).ok())
+            })
+            .map(Self::new)
     }
 
     fn new(secret: String) -> Self {
@@ -79,8 +92,11 @@ impl JwtAuthenticator {
         }
     }
 
-    pub fn parse_context(request: &dyn Request) -> Result<BoxedParsedContext, ContextParsingError> {
-        let jwt_claims = if let Some(jwt_authenticator) = JwtAuthenticator::new_from_env() {
+    pub fn parse_context<'a>(
+        me: Option<&Self>,
+        request: &'a dyn Request,
+    ) -> Result<BoxedParsedContext<'a>, ContextParsingError> {
+        let jwt_claims = if let Some(jwt_authenticator) = me {
             jwt_authenticator
                 .extract_authentication(request)
                 .map_err(|e| match e {

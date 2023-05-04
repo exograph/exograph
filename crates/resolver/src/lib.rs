@@ -17,8 +17,8 @@ mod system_loader;
 
 pub mod graphiql;
 pub use root_resolver::create_system_resolver_from_serialized_bytes;
-pub use root_resolver::create_system_resolver_or_exit;
 pub use root_resolver::get_endpoint_http_path;
 pub use root_resolver::get_playground_http_path;
-pub use root_resolver::resolve;
-pub use system_loader::allow_introspection;
+pub use root_resolver::{create_system_resolver, create_system_resolver_or_exit};
+pub use root_resolver::{resolve, resolve_in_memory};
+pub use system_loader::{allow_introspection, LOCAL_ALLOW_INTROSPECTION, LOCAL_ENVIRONMENT};

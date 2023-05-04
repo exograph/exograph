@@ -10,24 +10,30 @@
 use anyhow::{anyhow, bail, Context, Result};
 use colored::Colorize;
 
+use core_plugin_interface::interface::SubsystemLoader;
+use core_resolver::context::{Request, RequestContext, LOCAL_JWT_SECRET};
+use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
+use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
-use isahc::{HttpClient, ReadResponseExt, Request};
+use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
+use resolver::{
+    create_system_resolver, resolve_in_memory, LOCAL_ALLOW_INTROSPECTION, LOCAL_ENVIRONMENT,
+};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
+use unescape::unescape;
 
+use std::net::{IpAddr, Ipv4Addr};
 use std::{
     collections::HashMap, ffi::OsStr, io::Write, path::Path, process::Command, time::SystemTime,
 };
 
 use crate::exotest::common::{TestResult, TestResultKind, TestfileContext};
 use crate::exotest::loader::{ParsedTestfile, TestfileOperation};
-use crate::exotest::{
-    common::{cmd, spawn_exo_server},
-    dbutils::run_psql,
-};
+use crate::exotest::{common::cmd, dbutils::run_psql};
 
 use super::{
     assertion::{self, evaluate_using_deno},
@@ -81,8 +87,6 @@ pub(crate) fn run_testfile(
         // spawn a exo instance
         println!("{log_prefix} Initializing exo-server ...");
 
-        // Should have no effect so make it random
-        let check_on_startup = if rand::random() { "true" } else { "false" };
         let telemetry_on = std::env::vars().any(|(name, _)| name.starts_with("OTEL_"));
         let mut extra_envs = testfile.extra_envs.clone();
 
@@ -90,35 +94,46 @@ pub(crate) fn run_testfile(
             extra_envs.insert("OTEL_SERVICE_NAME".to_string(), testfile.name());
         }
 
-        let server = spawn_exo_server(
-            &testfile.model_path,
-            [
-                (
-                    "EXO_POSTGRES_URL",
-                    // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
-                    format!("{}?options=-c%20TimeZone%3DUTC%2B00", db_instance.url()).as_str(),
-                ),
-                ("EXO_JWT_SECRET", &jwtsecret),
-                ("EXO_CONNECTION_POOL_SIZE", "1"), // Otherwise we get a "too many connections" error
-                ("EXO_CHECK_CONNECTION_ON_STARTUP", check_on_startup),
-                ("EXO_SERVER_PORT", "0"), // ask exo-server to select a free port
-                ("EXO_INTROSPECTION", "true"),
-            ]
-            .into_iter()
-            .chain(extra_envs.iter().map(|(x, y)| (x.as_str(), y.as_str()))),
-        )?;
+        let server = {
+            let static_loaders: Vec<Box<dyn SubsystemLoader>> = vec![
+                Box::new(postgres_resolver::PostgresSubsystemLoader {}),
+                Box::new(deno_resolver::DenoSubsystemLoader {}),
+            ];
 
-        // spawn an HttpClient for requests to exo
-        let client = HttpClient::builder()
-            .cookies()
-            .build()
-            .context("While initializing HttpClient")?;
+            let base_name = testfile.model_path.to_str().unwrap();
+            LOCAL_URL.with(|url| {
+                // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
+                url.borrow_mut().replace(format!(
+                    "{}?options=-c%20TimeZone%3DUTC%2B00",
+                    db_instance.url()
+                ));
+
+                LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
+                    // Otherwise we get a "too many connections" error
+                    pool_size.borrow_mut().replace(1);
+
+                    LOCAL_JWT_SECRET.with(|jwt| {
+                        jwt.borrow_mut().replace(jwtsecret.clone());
+
+                        LOCAL_ALLOW_INTROSPECTION.with(|allow| {
+                            allow.borrow_mut().replace(true);
+
+                            LOCAL_ENVIRONMENT.with(|env| {
+                                env.borrow_mut().replace(extra_envs.clone());
+
+                                create_system_resolver(&format!("{base_name}_ir"), static_loaders)
+                            })
+                        })
+                    })
+                })
+            })?
+        };
 
         TestfileContext {
             db: db_instance,
             server,
             jwtsecret,
-            client,
+            cookies: HashMap::new(),
             testvariables: HashMap::new(),
         }
     };
@@ -127,9 +142,6 @@ pub(crate) fn run_testfile(
     println!("{log_prefix} Initializing database...");
     for operation in testfile.init_operations.iter() {
         let result = run_operation(operation, &mut ctx).with_context(|| {
-            let output: String = ctx.server.output.lock().unwrap().clone();
-            println!("{output}");
-
             format!(
                 "While initializing database for testfile {}",
                 testfile.name()
@@ -169,12 +181,10 @@ pub(crate) fn run_testfile(
     }
 
     let success = fail.unwrap_or(TestResultKind::Success);
-    let output: String = ctx.server.output.lock().unwrap().clone();
 
     Ok(TestResult {
         log_prefix: log_prefix.to_string(),
         result: success,
-        output,
     })
     // implicit ctx drop
 }
@@ -183,6 +193,48 @@ enum OperationResult {
     Finished,
     AssertPassed,
     AssertFailed(anyhow::Error),
+}
+
+pub struct MemoryRequest {
+    headers: HashMap<String, Vec<String>>,
+    cookies: HashMap<String, String>,
+}
+
+impl MemoryRequest {
+    pub fn new(cookies: HashMap<String, String>) -> Self {
+        Self {
+            headers: HashMap::new(),
+            cookies,
+        }
+    }
+
+    fn add_header(&mut self, key: &str, value: &str) {
+        self.headers
+            .entry(key.to_string().to_ascii_lowercase())
+            .or_default()
+            .push(value.to_string());
+    }
+}
+
+impl Request for MemoryRequest {
+    fn get_headers(&self, key: &str) -> Vec<String> {
+        if key.to_ascii_lowercase() == "cookie" {
+            return self
+                .cookies
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect();
+        } else {
+            self.headers
+                .get(&key.to_ascii_lowercase())
+                .unwrap_or(&vec![])
+                .clone()
+        }
+    }
+
+    fn get_ip(&self) -> Option<std::net::IpAddr> {
+        Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
+    }
 }
 
 fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<OperationResult> {
@@ -196,8 +248,6 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
             headers,
             deno_prelude,
         } => {
-            let mut req = Request::post(&ctx.server.endpoint);
-
             let deno_prelude = deno_prelude.clone().unwrap_or_default();
 
             // process substitutions in query variables section
@@ -218,6 +268,8 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
                 .replace_all(document, "")
                 .to_string();
 
+            let mut request = MemoryRequest::new(ctx.cookies.clone());
+
             // add JWT token if specified in testfile
             if let Some(auth) = auth {
                 let mut auth = auth.clone();
@@ -234,8 +286,10 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
                     &EncodingKey::from_secret(ctx.jwtsecret.as_ref()),
                 )
                 .unwrap();
-                req = req.header("Authorization", format!("Bearer {token}"));
+                request.add_header("Authorization", &format!("Bearer {token}"));
             };
+
+            request.add_header("Content-Type", "application/json");
 
             // add extra headers from testfile
             let headers = headers
@@ -245,38 +299,29 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
 
             if let Some(Value::Object(map)) = headers {
                 for (header, value) in map.iter() {
-                    req = req.header(
+                    request.add_header(
                         header,
                         value.as_str().expect("expected string for header value"),
-                    )
+                    );
                 }
             }
 
+            let request_context = RequestContext::new(&request, vec![], &ctx.server)?;
+            let tokio_pool = tokio::runtime::Runtime::new().unwrap();
+            let operations_payload = OperationsPayload {
+                operation_name: None,
+                query,
+                variables: Some(variables_map),
+            };
+
             // run the operation
-            let req =
-                req.header("Content-Type", "application/json")
-                    .body(serde_json::to_string(&ExoPost {
-                        query,
-                        variables: variables_map,
-                    })?)?;
-
-            let mut resp = ctx
-                .client
-                .send(req)
-                .map_err(|e| anyhow!("Error sending POST request: {}", e))?;
-
-            if !resp.status().is_success() {
-                bail!(
-                    "Bad response: {}, {}",
-                    resp.status().canonical_reason().unwrap(),
-                    resp.text()?
-                );
-            }
-
-            let json = resp.json().with_context(|| {
-                format!("Error parsing response into JSON: {}", resp.text().unwrap())
-            })?;
-            let body: serde_json::Value = json;
+            let body = run_query(
+                &tokio_pool,
+                operations_payload,
+                request_context,
+                &ctx.server,
+                &mut ctx.cookies,
+            );
 
             // resolve testvariables from the result of our current operation
             // and extend our collection with them
@@ -316,6 +361,66 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
         TestfileOperation::Sql(query) => {
             run_psql(query, ctx.db.as_ref())?;
             Ok(OperationResult::Finished)
+        }
+    }
+}
+
+pub fn run_query(
+    tokio_pool: &tokio::runtime::Runtime,
+    operations_payload: OperationsPayload,
+    request_context: RequestContext,
+    server: &SystemResolver,
+    cookies: &mut HashMap<String, String>,
+) -> Value {
+    let res = tokio_pool.block_on(resolve_in_memory(
+        operations_payload,
+        server,
+        request_context,
+    ));
+
+    match res {
+        Ok(res) => {
+            res.iter().for_each(|(_, r)| {
+                r.headers.iter().for_each(|(k, v)| {
+                    if k.to_ascii_lowercase() == "set-cookie" {
+                        let cookie = v.split(';').next().unwrap();
+                        let mut cookie = cookie.split('=');
+                        let key = cookie.next().unwrap();
+                        let value = cookie.next().unwrap();
+                        cookies.insert(key.to_string(), value.to_string());
+                    }
+                });
+            });
+
+            serde_json::json!({
+                "data": res.iter().map(|(name, result)| {
+                    (name.clone(), result.body.to_json().unwrap())
+                }).collect::<HashMap<String, Value>>(),
+            })
+        }
+        Err(err) => {
+            let mut out = serde_json::json!({
+                "errors": [{
+                    "message": unescape(&err.user_error_message()).unwrap()
+                }]
+            });
+
+            if let SystemResolutionError::Validation(err) = err {
+                let locations = err
+                    .positions()
+                    .iter()
+                    .map(|e| {
+                        serde_json::json!({
+                            "line": e.line,
+                            "column": e.column,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                out["errors"][0]["locations"] = locations.into();
+            }
+
+            out
         }
     }
 }

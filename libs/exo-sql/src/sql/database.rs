@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::env;
+use std::{cell::RefCell, env};
 
 use deadpool_postgres::{Client, Manager, ManagerConfig, Pool, RecyclingMethod};
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
@@ -23,6 +23,12 @@ const CONNECTION_POOL_SIZE_PARAM: &str = "EXO_CONNECTION_POOL_SIZE";
 const CHECK_CONNECTION_ON_STARTUP: &str = "EXO_CHECK_CONNECTION_ON_STARTUP";
 const SSL_VERIFY_PARAM: &str = "EXO_SSL_VERIFY"; // boolean (default: true)
 
+// we spawn many resolvers concurrently in integration tests
+thread_local! {
+    pub static LOCAL_URL: RefCell<Option<String>> = RefCell::new(None);
+    pub static LOCAL_CONNECTION_POOL_SIZE: RefCell<Option<usize>> = RefCell::new(None);
+}
+
 pub struct Database {
     pool: Pool,
 }
@@ -36,14 +42,23 @@ struct SslConfig {
 impl<'a> Database {
     // pool_size_override useful when we want to explicitly control the pool size (for example, to 1, when importing database schema)
     pub fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
-        let url = env::var(URL_PARAM)
-            .map_err(|_| DatabaseError::Config(format!("Env {URL_PARAM} must be provided")))?;
+        let url = LOCAL_URL
+            .with(|f| f.borrow().clone())
+            .or_else(|| env::var(URL_PARAM).ok())
+            .ok_or(DatabaseError::Config(format!(
+                "Env {URL_PARAM} must be provided"
+            )))?;
+
         let user = env::var(USER_PARAM).ok();
         let password = env::var(PASSWORD_PARAM).ok();
         let pool_size = pool_size_override.unwrap_or_else(|| {
-            env::var(CONNECTION_POOL_SIZE_PARAM)
-                .ok()
-                .map(|pool_str| pool_str.parse::<usize>().unwrap())
+            LOCAL_CONNECTION_POOL_SIZE
+                .with(|f| *f.borrow())
+                .or_else(|| {
+                    env::var(CONNECTION_POOL_SIZE_PARAM)
+                        .ok()
+                        .map(|pool_str| pool_str.parse::<usize>().unwrap())
+                })
                 .unwrap_or(10)
         });
 

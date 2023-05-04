@@ -7,29 +7,21 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use anyhow::{bail, Context, Error, Result};
+use anyhow::Error;
 
 use colored::Colorize;
+use core_resolver::system_resolver::SystemResolver;
 use exo_sql::testing::db::EphemeralDatabase;
-use isahc::HttpClient;
 
-use std::{
-    collections::HashMap,
-    ffi::OsStr,
-    fmt,
-    io::{BufRead, BufReader},
-    path::Path,
-    process::{Child, Command, Stdio},
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, fmt, process::Command};
 
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
 pub(crate) struct TestfileContext {
-    pub server: ServerInstance,
+    pub server: SystemResolver,
     pub db: Box<dyn EphemeralDatabase + Send + Sync>,
     pub jwtsecret: String,
-    pub client: HttpClient,
+    pub cookies: HashMap<String, String>,
     pub testvariables: HashMap<String, serde_json::Value>,
 }
 
@@ -81,9 +73,6 @@ impl PartialOrd for TestResultKind {
 pub struct TestResult {
     pub log_prefix: String,
     pub result: TestResultKind,
-
-    /// The collected output (`stdout`, `stderr`) from a instance of `exo`.
-    pub output: String,
 }
 
 impl TestResult {
@@ -131,28 +120,6 @@ impl fmt::Display for TestResult {
                 e
             ),
         }
-        .unwrap();
-
-        if !matches!(&self.result, TestResultKind::Success) {
-            write!(f, "{}\n{}\n", ":: Output:".purple(), &self.output)
-        } else {
-            Ok(())
-        }
-    }
-}
-
-pub(crate) struct ServerInstance {
-    server: Child,
-    pub output: Arc<Mutex<String>>,
-    pub endpoint: String,
-}
-
-impl Drop for ServerInstance {
-    fn drop(&mut self) {
-        // kill the started server
-        if let e @ Err(_) = self.server.kill() {
-            println!("Error killing server instance: {e:?}")
-        }
     }
 }
 
@@ -170,75 +137,4 @@ pub(crate) fn cmd(binary_name: &str) -> Command {
             .to_str()
             .expect("Could not convert executable path to a string"),
     )
-}
-
-pub(crate) fn spawn_exo_server<I, K, V>(model_file: &Path, envs: I) -> Result<ServerInstance>
-where
-    I: IntoIterator<Item = (K, V)>,
-    K: AsRef<OsStr>,
-    V: AsRef<OsStr>,
-{
-    let _cli_child = cmd("exo")
-        .arg("build")
-        .arg(model_file.as_os_str())
-        .output()?;
-
-    let mut server = cmd("exo-server")
-        .arg(model_file.as_os_str())
-        .envs(envs) // add extra envs specified in testfile
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .context("exo-server failed to start")?;
-
-    // wait for it to start
-    const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
-
-    let mut server_stdout = BufReader::new(server.stdout.take().unwrap());
-    let mut server_stderr = BufReader::new(server.stderr.take().unwrap());
-
-    let mut line = String::new();
-    server_stdout.read_line(&mut line).context(format!(
-        r#"Failed to read output line for "{}" server"#,
-        model_file.display()
-    ))?;
-
-    if !line.starts_with(MAGIC_STRING) {
-        bail!(
-            r#"Unexpected output from exo-server "{}": {}"#,
-            model_file.display(),
-            line
-        )
-    }
-
-    // spawn threads to continually drain stdout and stderr
-    let output_mutex = Arc::new(Mutex::new(String::new()));
-
-    let stdout_output = output_mutex.clone();
-    let _stdout_drain = std::thread::spawn(move || loop {
-        let mut buf = String::new();
-        let _ = server_stdout.read_line(&mut buf);
-        stdout_output.lock().unwrap().push_str(&buf);
-    });
-
-    let stderr_output = output_mutex.clone();
-    let _stderr_drain = std::thread::spawn(move || loop {
-        let mut buf = String::new();
-        let _ = server_stderr.read_line(&mut buf);
-        stderr_output.lock().unwrap().push_str(&buf);
-    });
-
-    // take the digits part which represents the port (and ignore other information such as time to start the server)
-    let port: String = line
-        .trim_start_matches(MAGIC_STRING)
-        .chars()
-        .take_while(|c| c.is_ascii_digit())
-        .collect();
-    let endpoint = format!("http://127.0.0.1:{port}/graphql");
-
-    Ok(ServerInstance {
-        server,
-        output: output_mutex,
-        endpoint,
-    })
 }
