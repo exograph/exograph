@@ -73,7 +73,8 @@ pub(crate) fn run_testfile(
         );
 
         let cli_child = cmd("exo")
-            .args(["schema", "create", &testfile.model_path_string()])
+            .args(["schema", "create"])
+            .current_dir(&testfile.model_path_string())
             .output()?;
 
         if !cli_child.status.success() {
@@ -100,7 +101,10 @@ pub(crate) fn run_testfile(
                 Box::new(deno_resolver::DenoSubsystemLoader {}),
             ];
 
-            let base_name = testfile.model_path.to_str().unwrap();
+            let exo_ir_file = format!(
+                "{}/target/index.exo_ir",
+                testfile.model_path.to_str().unwrap()
+            );
             LOCAL_URL.with(|url| {
                 // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
                 url.borrow_mut().replace(format!(
@@ -121,7 +125,7 @@ pub(crate) fn run_testfile(
                             LOCAL_ENVIRONMENT.with(|env| {
                                 env.borrow_mut().replace(extra_envs.clone());
 
-                                create_system_resolver(&format!("{base_name}_ir"), static_loaders)
+                                create_system_resolver(&exo_ir_file, static_loaders)
                             })
                         })
                     })
@@ -456,13 +460,13 @@ fn build_prerequisites(directory: &Path) -> Result<()> {
 }
 
 pub(crate) fn build_exo_ir_file(path: &Path) -> Result<()> {
-    build_prerequisites(path.parent().unwrap())?;
+    build_prerequisites(path)?;
 
     // Use std::env::current_exe() so that we run the same "exo" that invoked us (specifically, avoid using another exo on $PATH)
     run_command(
         std::env::current_exe()?.as_os_str().to_str().unwrap(),
-        [OsStr::new("build"), path.as_os_str()],
-        None,
+        [OsStr::new("build")],
+        Some(path),
         "Could not build the exo_ir.",
     )
 }

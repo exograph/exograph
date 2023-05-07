@@ -18,14 +18,14 @@ use exotest::loader::{load_testfiles_from_dir, ParsedTestfile};
 use rayon::ThreadPoolBuilder;
 use std::cmp::min;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 
 use crate::exotest::introspection_tests::run_introspection_test;
 
 /// Loads test files from the supplied directory and runs them using a thread pool.
 pub fn run(
-    root_directory: &Path,
+    root_directory: &PathBuf,
     pattern: &Option<String>,
     run_introspection_tests: bool,
 ) -> Result<()> {

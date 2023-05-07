@@ -22,8 +22,9 @@ impl CommandDefinition for TestCommandDefinition {
             .arg(
                 Arg::new("dir")
                     .help("The directory containing integration tests.")
+                    .default_value(".")
                     .value_parser(clap::value_parser!(PathBuf))
-                    .required(true)
+                    .required(false)
                     .index(1),
             )
             .arg(
