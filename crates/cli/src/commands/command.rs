@@ -74,16 +74,10 @@ pub fn get<T: Clone + Send + Sync + 'static>(matches: &ArgMatches, arg_id: &str)
     matches.get_one::<T>(arg_id).cloned()
 }
 
-const DEFAULT_MODEL_FILE: &str = "index.exo";
+const DEFAULT_MODEL_FILE: &str = "src/index.exo";
 
-pub fn model_file_arg() -> Arg {
-    Arg::new("model")
-        .help("The path to the Exograph model file.")
-        .hide_default_value(false)
-        .required(false)
-        .value_parser(clap::value_parser!(PathBuf))
-        .default_value(DEFAULT_MODEL_FILE)
-        .index(1)
+pub(crate) fn default_model_file() -> PathBuf {
+    PathBuf::from(DEFAULT_MODEL_FILE)
 }
 
 pub fn new_project_arg() -> Arg {

@@ -20,7 +20,7 @@ use heck::ToSnakeCase;
 
 use crate::commands::{
     build::build,
-    command::{get, get_required, model_file_arg, CommandDefinition},
+    command::{get, get_required, CommandDefinition},
 };
 
 pub(super) struct FlyCommandDefinition {}
@@ -29,7 +29,6 @@ impl CommandDefinition for FlyCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("fly")
             .about("Deploy to Fly.io")
-            .arg(model_file_arg())
             .arg(
                 Arg::new("app-name")
                     .help("The name of the Fly.io application to deploy to")
@@ -77,7 +76,6 @@ impl CommandDefinition for FlyCommandDefinition {
     /// To avoid clobbering existing files, this command will create a `fly` directory in the same
     /// directory as the model file, and put the `fly.toml` and `Dockerfile` in there.
     fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        let model: PathBuf = get_required(matches, "model")?;
         let app_name: String = get_required(matches, "app-name")?;
         let version: String = get_required(matches, "version")?;
         let envs: Option<Vec<String>> = matches.get_many("env").map(|env| env.cloned().collect());
@@ -86,23 +84,26 @@ impl CommandDefinition for FlyCommandDefinition {
 
         let image_tag = format!("{}:{}", app_name, version);
 
-        build(&model, false)?;
+        build(false)?;
 
-        // Canonicalize the model path so that when presented with just "filename.exo", we can still
-        // get the directory that it's in.
-        let model_path = model.canonicalize()?;
-        let model_dir = model_path.parent().unwrap();
-        let fly_dir = model_dir.join("fly");
+        let fly_dir = PathBuf::from("target/fly");
 
         create_dir_all(&fly_dir)?;
 
         create_fly_toml(&fly_dir, &app_name, &image_tag, &env_file, &envs)?;
 
-        create_dockerfile(&fly_dir, &model_path, &app_name, use_fly_db)?;
+        create_dockerfile(&fly_dir, use_fly_db)?;
 
         let docker_build_output = std::process::Command::new("docker")
-            .args(["build", "-t", &image_tag, "-f", "fly/Dockerfile", "."])
-            .current_dir(model_dir)
+            .args([
+                "build",
+                "-t",
+                &image_tag,
+                "-f",
+                "target/fly/Dockerfile",
+                ".",
+            ])
+            .current_dir(".")
             .output()
             .map_err(|err| {
                 anyhow!("While trying to invoke `docker` in order to build the docker image: {err}")
@@ -149,11 +150,7 @@ impl CommandDefinition for FlyCommandDefinition {
             let db_name = &app_name.to_snake_case(); // this is how fly.io names the db
             println!(
                 "{}{}{}",
-                format!(
-                    "\texo schema create ../{} | psql postgres://{db_name}:",
-                    model.to_str().unwrap()
-                )
-                .blue(),
+                format!("\t(cd ../.. && exo schema create) | psql postgres://{db_name}:",).blue(),
                 "<APP_DATABASE_PASSWORD>".yellow(),
                 format!("@localhost:54321/{db_name}").blue(),
             );
@@ -165,7 +162,7 @@ impl CommandDefinition for FlyCommandDefinition {
             );
             println!(
                 "{}{}",
-                format!("\texo schema create ../{} | psql ", model.to_str().unwrap()).blue(),
+                "\t(cd ../.. && exo schema create) | psql ".blue(),
                 "<your-postgres-url>".yellow()
             );
         }
@@ -188,24 +185,13 @@ impl CommandDefinition for FlyCommandDefinition {
 static FLY_TOML: &str = include_str!("../templates/fly.toml");
 static DOCKERFILE: &str = include_str!("../templates/Dockerfile.fly");
 
-fn create_dockerfile(fly_dir: &Path, model: &Path, app_name: &str, use_fly_db: bool) -> Result<()> {
-    let dockerfile_content = DOCKERFILE.replace(
-        "<<<MODEL_FILE_NAME>>>",
-        model
-            .with_extension("")
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap(),
-    );
-    let dockerfile_content = dockerfile_content.replace("<<<APP_NAME>>>", app_name);
-
+fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
     let extra_env = if use_fly_db {
         "EXO_POSTGRES_URL=${DATABASE_URL}"
     } else {
         ""
     };
-    let dockerfile_content = dockerfile_content.replace("<<<EXTRA_ENV>>>", extra_env);
+    let dockerfile_content = DOCKERFILE.replace("<<<EXTRA_ENV>>>", extra_env);
 
     let mut dockerfile = File::create(fly_dir.join("Dockerfile"))?;
     dockerfile.write_all(dockerfile_content.as_bytes())?;

@@ -17,7 +17,7 @@ use std::{
 };
 
 use crate::{
-    commands::command::{database_arg, get, get_required, model_file_arg, CommandDefinition},
+    commands::command::{database_arg, default_model_file, get, CommandDefinition},
     util::open_database,
 };
 
@@ -29,14 +29,13 @@ impl CommandDefinition for VerifyCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("verify")
             .about("Verify that the database schema is compatible with a Exograph model")
-            .arg(model_file_arg())
             .arg(database_arg())
     }
 
     /// Verify that a schema is compatible with a exograph model
 
     fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        let model: PathBuf = get_required(matches, "model")?;
+        let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
 
         let rt = tokio::runtime::Builder::new_current_thread()

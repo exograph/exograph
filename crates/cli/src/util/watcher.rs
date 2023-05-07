@@ -57,7 +57,6 @@ where
     // precompute exo-server path and exo_ir file name
     let mut server_binary = std::env::current_exe()?;
     server_binary.set_file_name("exo-server");
-    let exo_ir_file_name = format!("{}_ir", model_path.to_str().unwrap());
 
     // Given a path, determine if the model should be rebuilt and the server restarted.
     fn should_restart(path: &Path) -> bool {
@@ -71,7 +70,7 @@ where
     // - if the return value is an Ok(None), this mean that we have encountered some error, but it is not necessarily
     //   unrecoverable (the watcher should not exit)
     let build_and_start_server = &|| async {
-        let build_result = build(&absolute_path, false);
+        let build_result = build(false);
 
         match build_result {
             Ok(()) => {
@@ -81,7 +80,6 @@ where
 
                 let mut command = tokio::process::Command::new(&server_binary);
 
-                command.args([&exo_ir_file_name]);
                 command.kill_on_drop(true);
 
                 if let Some(port) = server_port {

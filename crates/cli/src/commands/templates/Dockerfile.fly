@@ -1,7 +1,7 @@
 FROM exo-server:latest
 
-COPY ./<<<MODEL_FILE_NAME>>>.exo_ir ./<<<APP_NAME>>>.exo_ir
+COPY ./target/index.exo_ir ./target/index.exo_ir
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "EXO_SERVER_PORT=8080 <<<EXTRA_ENV>>> ./exo-server <<<APP_NAME>>>.exo_ir"]
+CMD ["sh", "-c", "EXO_SERVER_PORT=8080 <<<EXTRA_ENV>>> ./exo-server"]
