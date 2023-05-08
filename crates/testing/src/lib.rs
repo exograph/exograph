@@ -14,14 +14,14 @@ use colored::Colorize;
 
 use exo_sql::testing::db::{EphemeralDatabaseLauncher, EphemeralDatabaseServer};
 use exotest::integration_tests::{build_exo_ir_file, run_testfile};
-use exotest::loader::{load_testfiles_from_dir, ParsedTestfile};
+use exotest::loader::load_project_dir;
 use rayon::ThreadPoolBuilder;
 use std::cmp::min;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 
 use crate::exotest::introspection_tests::run_introspection_test;
+use crate::exotest::loader::ProjectTests;
 
 /// Loads test files from the supplied directory and runs them using a thread pool.
 pub fn run(
@@ -45,21 +45,21 @@ pub fn run(
     let start_time = std::time::Instant::now();
     let cpus = num_cpus::get();
 
-    let testfiles = load_testfiles_from_dir(root_directory, pattern)
+    let project_tests = load_project_dir(root_directory, pattern)
         .with_context(|| format!("While loading testfiles from directory {root_directory_str}"))?;
-    let number_of_integration_tests = testfiles.len();
+    let number_of_integration_tests = project_tests.len();
 
-    // Work out which tests share a common exo file so we only build it once for all the
-    // dependent tests, avoiding accidental corruption from overwriting.
-    let mut model_file_deps: HashMap<PathBuf, Vec<ParsedTestfile>> = HashMap::new();
+    // // Work out which tests share a common exo file so we only build it once for all the
+    // // dependent tests, avoiding accidental corruption from overwriting.
+    // let mut model_file_deps: HashMap<PathBuf, Vec<ParsedTestfile>> = HashMap::new();
 
-    for f in testfiles.into_iter() {
-        if let Some(files) = model_file_deps.get_mut(&f.model_path) {
-            files.push(f);
-        } else {
-            model_file_deps.insert(f.model_path.clone(), vec![f]);
-        }
-    }
+    // for f in testfiles.into_iter() {
+    //     if let Some(files) = model_file_deps.get_mut(model_path) {
+    //         files.push(f);
+    //     } else {
+    //         model_file_deps.insert(f.model_path.clone(), vec![f]);
+    //     }
+    // }
 
     let mut test_results = vec![];
 
@@ -82,7 +82,7 @@ pub fn run(
     let ephemeral_server = Arc::new(EphemeralDatabaseLauncher::create_server()?);
 
     // Then build all the model files, spawning the production mode tests once the build completes
-    for (model_path, testfiles) in model_file_deps {
+    for ProjectTests { model_path, tests } in project_tests {
         let model_path = model_path.clone();
         let tx = tx.clone();
         let ephemeral_server = ephemeral_server.clone();
@@ -93,9 +93,10 @@ pub fn run(
                     tx.send(run_introspection_test(&model_path)).unwrap();
                 };
 
-                for file in testfiles.iter() {
+                for file in tests.iter() {
                     let result = run_testfile(
                         file,
+                        &model_path,
                         ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
                     );
                     tx.send(result).unwrap();

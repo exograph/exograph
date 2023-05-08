@@ -27,6 +27,7 @@ use serde_json::{json, Map, Value};
 use unescape::unescape;
 
 use std::net::{IpAddr, Ipv4Addr};
+use std::path::PathBuf;
 use std::{
     collections::HashMap, ffi::OsStr, io::Write, path::Path, process::Command, time::SystemTime,
 };
@@ -48,6 +49,7 @@ struct ExoPost {
 
 pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
+    model_path: &PathBuf,
     ephemeral_database: &dyn EphemeralDatabaseServer,
 ) -> Result<TestResult> {
     let log_prefix = format!("({})\n :: ", testfile.name()).purple();
@@ -74,7 +76,7 @@ pub(crate) fn run_testfile(
 
         let cli_child = cmd("exo")
             .args(["schema", "create"])
-            .current_dir(&testfile.model_path_string())
+            .current_dir(model_path)
             .output()?;
 
         if !cli_child.status.success() {
@@ -101,10 +103,7 @@ pub(crate) fn run_testfile(
                 Box::new(deno_resolver::DenoSubsystemLoader {}),
             ];
 
-            let exo_ir_file = format!(
-                "{}/target/index.exo_ir",
-                testfile.model_path.to_str().unwrap()
-            );
+            let exo_ir_file = format!("{}/target/index.exo_ir", model_path.to_str().unwrap());
             LOCAL_URL.with(|url| {
                 // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
                 url.borrow_mut().replace(format!(

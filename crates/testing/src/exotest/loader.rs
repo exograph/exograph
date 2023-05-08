@@ -37,30 +37,20 @@ pub enum TestfileOperation {
     },
 }
 
+pub struct ProjectTests {
+    pub model_path: PathBuf,
+    pub tests: Vec<ParsedTestfile>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ParsedTestfile {
-    pub model_path: PathBuf,
     testfile_path: PathBuf,
-    pub extra_envs: HashMap<String, String>, // extra envvars to set for the entire testfile
     pub init_operations: Vec<TestfileOperation>,
+    pub extra_envs: HashMap<String, String>, // extra envvars to set for the entire testfile
     pub test_operation_stages: Vec<TestfileOperation>,
 }
 
 impl ParsedTestfile {
-    pub fn model_path_string(&self) -> String {
-        self.model_path
-            .canonicalize()
-            .unwrap_or_else(|_| {
-                panic!(
-                    "Failed to canonicalize model path {}",
-                    self.model_path.to_string_lossy()
-                )
-            })
-            .to_str()
-            .expect("Failed to convert file name into Unicode")
-            .to_string()
-    }
-
     pub fn name(&self) -> String {
         let relative_testfile_path = &self
             .testfile_path
@@ -120,10 +110,11 @@ pub struct InitFile {
 }
 
 /// Load and parse testfiles from a given directory.
-pub fn load_testfiles_from_dir(
+pub fn load_project_dir(
     root_directory: &PathBuf,
     pattern: &Option<String>,
-) -> Result<Vec<ParsedTestfile>> {
+) -> Result<Vec<ProjectTests>> {
+    // Exograph projects have a src/index.exo file
     fn is_exoproject(dir: &Path) -> bool {
         directory_contains(dir, "src", true) && {
             let src_dir = dir.join("src");
@@ -135,11 +126,17 @@ pub fn load_testfiles_from_dir(
         directory_contains(dir, "tests", true)
     }
 
+    // If the root directory is an exo project, and it has tests, then we load the tests from it
+    // This will be typical for user projects
     if is_exoproject(root_directory) && has_tests(root_directory) {
-        return load_testfiles_from_dir_(root_directory, &[], pattern);
+        let tests = load_tests_dir(&root_directory.join("tests"), &[], pattern)?;
+        return Ok(vec![ProjectTests {
+            model_path: root_directory.to_owned(),
+            tests,
+        }]);
     }
 
-    // exo projects that have tests
+    // This is typical for the exo repo itself (and a multi-project repo)
     let exo_projects = root_directory
         .read_dir()
         .context(format!(
@@ -155,23 +152,20 @@ pub fn load_testfiles_from_dir(
     exo_projects
         .map(|exo_project| {
             let exo_project_directory = exo_project.path();
-            load_testfiles_from_dir_(&exo_project_directory, &[], pattern)
+            let tests = load_tests_dir(&exo_project_directory, &[], pattern)?;
+            Ok(ProjectTests {
+                model_path: exo_project_directory,
+                tests,
+            })
         })
         .collect::<Result<Vec<_>>>()
-        .map(|tests| tests.into_iter().flatten().collect::<Vec<_>>())
 }
 
-fn load_testfiles_from_dir_(
-    exo_project_directory: &PathBuf, // directory that contains "src/index.exo"
+fn load_tests_dir(
+    test_directory: &Path, // directory that contains "src/index.exo"
     init_ops: &[TestfileOperation],
     pattern: &Option<String>,
 ) -> Result<Vec<ParsedTestfile>> {
-    let test_directory = exo_project_directory.join("tests");
-
-    if !Path::exists(&test_directory) {
-        return Ok(vec![]);
-    }
-
     // Begin directory traversal
     let mut exotest_files: Vec<PathBuf> = vec![];
     let mut init_files: Vec<PathBuf> = vec![];
@@ -216,15 +210,14 @@ fn load_testfiles_from_dir_(
     let mut testfiles = vec![];
 
     for testfile_path in exotest_files.iter() {
-        let testfile = parse_testfile(exo_project_directory, testfile_path, init_ops.clone())?;
-
+        let testfile = parse_testfile(testfile_path, init_ops.clone())?;
         testfiles.push(testfile);
     }
 
     // Recursively parse test files
-    for directory in sub_directories.iter() {
+    for sub_directory in sub_directories.iter() {
         let child_init_ops = init_ops.clone();
-        let child_testfiles = load_testfiles_from_dir_(directory, &child_init_ops, pattern)?;
+        let child_testfiles = load_tests_dir(sub_directory, &child_init_ops, pattern)?;
         testfiles.extend(child_testfiles)
     }
 
@@ -243,7 +236,6 @@ fn load_testfiles_from_dir_(
 }
 
 fn parse_testfile(
-    exo_project_directory: &PathBuf,
     testfile_path: &PathBuf,
     init_ops: Vec<TestfileOperation>,
 ) -> Result<ParsedTestfile> {
@@ -304,7 +296,6 @@ Error as a multistage test: {}
         .collect::<Result<Vec<_>>>()?;
 
     Ok(ParsedTestfile {
-        model_path: exo_project_directory.to_owned(),
         testfile_path: testfile_path.to_path_buf(),
         extra_envs: common.envs.unwrap_or_default(),
         init_operations: init_ops,
