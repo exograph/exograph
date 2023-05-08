@@ -85,7 +85,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
             "{}{}{}{}{}{}{}{}{}{}",
             "aws lambda create-function --function-name ".blue(),
             app_name.blue(),
-            " --zip-file fileb://aws-lambda/function.zip --role arn:aws:iam::".blue(),
+            " --zip-file fileb://target/aws-lambda/function.zip --role arn:aws:iam::".blue(),
             "<account-id>".yellow(),
             ":role/".blue(),
             "<role>".yellow(),
@@ -105,7 +105,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
             "{}{}{}",
             "aws lambda update-function-code --function-name ".green(),
             app_name.green(),
-            " --zip-file fileb://aws-lambda/function.zip".green(),
+            " --zip-file fileb://target/aws-lambda/function.zip".green(),
         );
 
         Ok(())
