@@ -17,7 +17,9 @@ use std::{
 };
 
 use crate::{
-    commands::command::{database_arg, default_model_file, get, CommandDefinition},
+    commands::command::{
+        database_arg, default_model_file, ensure_exo_project_dir, get, CommandDefinition,
+    },
     util::open_database,
 };
 
@@ -35,6 +37,8 @@ impl CommandDefinition for VerifyCommandDefinition {
     /// Verify that a schema is compatible with a exograph model
 
     fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+        ensure_exo_project_dir(&PathBuf::from("."))?;
+
         let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
 

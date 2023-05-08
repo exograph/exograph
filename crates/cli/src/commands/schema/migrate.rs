@@ -10,7 +10,10 @@
 use std::{io, path::PathBuf};
 
 use crate::{
-    commands::command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
+    commands::command::{
+        database_arg, default_model_file, ensure_exo_project_dir, get, output_arg,
+        CommandDefinition,
+    },
     util::{open_database, open_file_for_output},
 };
 
@@ -38,6 +41,8 @@ impl CommandDefinition for MigrateCommandDefinition {
 
     /// Perform a database migration for a exograph model
     fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+        ensure_exo_project_dir(&PathBuf::from("."))?;
+
         let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
         let output: Option<PathBuf> = get(matches, "output");

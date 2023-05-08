@@ -7,10 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use clap::{Arg, ArgMatches, Command};
+
+use super::build::BuildError;
 
 pub trait CommandDefinition {
     fn command(&self) -> Command;
@@ -78,6 +80,17 @@ const DEFAULT_MODEL_FILE: &str = "src/index.exo";
 
 pub(crate) fn default_model_file() -> PathBuf {
     PathBuf::from(DEFAULT_MODEL_FILE)
+}
+
+pub(crate) fn ensure_exo_project_dir(dir: &Path) -> Result<(), BuildError> {
+    if dir.join(default_model_file()).exists() {
+        Ok(())
+    } else {
+        Err(BuildError::UnrecoverableError(anyhow!(
+            "The path '{}' does not appear to be an Exograph project. The project directory must include 'src/index.exo'",
+            dir.display()
+        )))
+    }
 }
 
 pub fn new_project_arg() -> Arg {

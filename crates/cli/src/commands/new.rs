@@ -16,8 +16,10 @@ use clap::{ArgMatches, Command};
 
 use super::command::{get_required, new_project_arg, CommandDefinition};
 
-static POSTGRES_TEMPLATE: &[u8] = include_bytes!("templates/postgres.exo");
-static GITIGNORE_TEMPLATE: &[u8] = include_bytes!("templates/gitignore");
+static SRC_INDEX_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/src/index.exo");
+static TESTS_TEST_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/tests/basic-query.exotest");
+static TESTS_INIT_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/tests/init.gql");
+static GITIGNORE_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/gitignore");
 
 pub struct NewCommandDefinition {}
 
@@ -40,12 +42,20 @@ impl CommandDefinition for NewCommandDefinition {
 
         let src_path = path.join("src");
         create_dir_all(&src_path)?;
-
-        let mut model_file = File::create(src_path.join("index.exo"))?;
-        model_file.write_all(POSTGRES_TEMPLATE)?;
+        let tests_path = path.join("tests");
+        create_dir_all(&tests_path)?;
 
         let mut gitignore_file = File::create(path.join(".gitignore"))?;
         gitignore_file.write_all(GITIGNORE_TEMPLATE)?;
+
+        let mut model_file = File::create(src_path.join("index.exo"))?;
+        model_file.write_all(SRC_INDEX_TEMPLATE)?;
+
+        let mut test_file = File::create(tests_path.join("basic-query.exotest"))?;
+        test_file.write_all(TESTS_TEST_TEMPLATE)?;
+
+        let mut init_file = File::create(tests_path.join("init.gql"))?;
+        init_file.write_all(TESTS_INIT_TEMPLATE)?;
 
         Ok(())
     }
