@@ -38,9 +38,10 @@ impl CommandDefinition for NewCommandDefinition {
             ));
         }
 
-        create_dir_all(&path)?;
+        let src_path = path.join("src");
+        create_dir_all(&src_path)?;
 
-        let mut model_file = File::create(path.join("index.exo"))?;
+        let mut model_file = File::create(src_path.join("index.exo"))?;
         model_file.write_all(POSTGRES_TEMPLATE)?;
 
         let mut gitignore_file = File::create(path.join(".gitignore"))?;

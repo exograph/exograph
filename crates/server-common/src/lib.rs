@@ -42,29 +42,12 @@ pub fn init() -> SystemResolver {
 }
 
 fn get_exo_ir_file_name() -> String {
-    let mut args = env::args().skip(1);
-
-    if args.len() > 1 {
+    if env::args().len() > 1 {
         // $ exo-server <model-file-name> extra-arguments...
-        println!("Usage: exo-server <exo_ir-file>");
+        println!("Usage: exo-server");
         exit(1)
     }
 
-    if args.len() == 0 {
-        // $ exo-server
-        "index.exo_ir".to_string()
-    } else {
-        let file_name = args.next().unwrap();
-
-        if file_name.ends_with(".exo_ir") {
-            // $ exo-server concerts.exo_ir
-            file_name
-        } else if file_name.ends_with(".exo") {
-            // $ exo-server concerts.exo
-            format!("{file_name}_ir")
-        } else {
-            println!("The input file {file_name} doesn't appear to be a exo_ir. You need build one with the 'exo build <model-file-name>' command.");
-            exit(1);
-        }
-    }
+    // $ exo-server
+    "target/index.exo_ir".to_string()
 }

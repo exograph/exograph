@@ -10,9 +10,7 @@
 use std::{io, path::PathBuf};
 
 use crate::{
-    commands::command::{
-        database_arg, get, get_required, model_file_arg, output_arg, CommandDefinition,
-    },
+    commands::command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
     util::{open_database, open_file_for_output},
 };
 
@@ -27,7 +25,6 @@ impl CommandDefinition for MigrateCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("migrate")
         .about("Produces a SQL migration script for a Exograph model and the specified database")
-        .arg(model_file_arg())
         .arg(database_arg())
         .arg(output_arg())
         .arg(
@@ -41,7 +38,7 @@ impl CommandDefinition for MigrateCommandDefinition {
 
     /// Perform a database migration for a exograph model
     fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        let model: PathBuf = get_required(matches, "model")?;
+        let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
         let output: Option<PathBuf> = get(matches, "output");
         let allow_destructive_changes: bool = matches.get_flag("allow-destructive-changes");

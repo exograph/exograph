@@ -8,10 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use serde::Deserialize;
-use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::fs::DirEntry;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
@@ -40,40 +37,30 @@ pub enum TestfileOperation {
     },
 }
 
+pub struct ProjectTests {
+    pub project_dir: PathBuf,
+    pub tests: Vec<ParsedTestfile>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ParsedTestfile {
-    root_directory: PathBuf, // Root directory specified when invoking `exo test <root_directory>
-    pub model_path: PathBuf,
     testfile_path: PathBuf,
-    pub extra_envs: HashMap<String, String>, // extra envvars to set for the entire testfile
     pub init_operations: Vec<TestfileOperation>,
+    pub extra_envs: HashMap<String, String>, // extra envvars to set for the entire testfile
     pub test_operation_stages: Vec<TestfileOperation>,
 }
 
 impl ParsedTestfile {
-    pub fn model_path_string(&self) -> String {
-        self.model_path
-            .canonicalize()
-            .unwrap_or_else(|_| {
-                panic!(
-                    "Failed to canonicalize model path {}",
-                    self.model_path.to_string_lossy()
-                )
-            })
-            .to_str()
-            .expect("Failed to convert file name into Unicode")
-            .to_string()
-    }
-
     pub fn name(&self) -> String {
-        let relative_testfile_path = &self
-            .testfile_path
-            .strip_prefix(
-                self.root_directory
-                    .to_str()
-                    .expect("Could not get string for the root directory"),
-            )
-            .expect("Failed to obtain relative path to testfile");
+        let relative_testfile_path = {
+            let base_path = self.testfile_path.components().skip(1).collect::<PathBuf>();
+
+            if base_path.starts_with("tests") {
+                base_path.components().skip(1).collect::<PathBuf>()
+            } else {
+                base_path
+            }
+        };
 
         // Drop to extension (".exotest") to obtain the name
         relative_testfile_path
@@ -81,6 +68,10 @@ impl ParsedTestfile {
             .to_str()
             .expect("Failed to convert file name into Unicode")
             .to_string()
+    }
+
+    pub fn exo_ir_file_path(&self, project_dir: &Path) -> PathBuf {
+        project_dir.join("target").join("index.exo_ir")
     }
 }
 
@@ -127,28 +118,62 @@ pub struct InitFile {
     pub deno: Option<String>,
 }
 
-/// Load and parse testfiles from a given directory.
-pub fn load_testfiles_from_dir(
-    root_directory: &Path,
-    pattern: &Option<String>,
-) -> Result<Vec<ParsedTestfile>> {
-    load_testfiles_from_dir_(root_directory, root_directory, &[], pattern)
+fn collect_exo_projects(root_directory: &Path) -> Vec<PathBuf> {
+    fn helper(dir: &Path, acc: &mut Vec<PathBuf>) {
+        for subdir in dir.read_dir().unwrap().flatten() {
+            if subdir.path().is_dir() {
+                let subdir_path = subdir.path();
+                if is_exoproject_with_tests(&subdir_path) {
+                    acc.push(subdir_path);
+                } else {
+                    helper(&subdir_path, acc);
+                }
+            }
+        }
+    }
+
+    let mut exo_projects = vec![];
+    helper(root_directory, &mut exo_projects);
+    exo_projects
 }
 
-fn load_testfiles_from_dir_(
-    root_directory: &Path,
-    directory: &Path,
+/// Load and parse testfiles from a given directory.
+pub fn load_project_dir(
+    root_directory: &PathBuf,
+    pattern: &Option<String>,
+) -> Result<Vec<ProjectTests>> {
+    let exo_project_dirs = if is_exoproject_with_tests(root_directory) {
+        // If the root directory is an exo project, and it has tests, then we load the tests from it
+        // This will be typical for user projects
+        vec![root_directory.to_owned()]
+    } else {
+        // This is typical for the exo repo itself (and a multi-project repo)
+        collect_exo_projects(root_directory)
+    };
+
+    exo_project_dirs
+        .into_iter()
+        .map(|exo_project_dir| {
+            let tests = load_tests_dir(&exo_project_dir, &[], pattern)?;
+            Ok(ProjectTests {
+                project_dir: exo_project_dir,
+                tests,
+            })
+        })
+        .collect::<Result<Vec<_>>>()
+}
+
+fn load_tests_dir(
+    test_directory: &Path, // directory that contains "src/index.exo"
     init_ops: &[TestfileOperation],
     pattern: &Option<String>,
 ) -> Result<Vec<ParsedTestfile>> {
-    let directory = PathBuf::from(directory);
-
     // Begin directory traversal
     let mut exotest_files: Vec<PathBuf> = vec![];
     let mut init_files: Vec<PathBuf> = vec![];
-    let mut directories: Vec<PathBuf> = vec![];
+    let mut sub_directories: Vec<PathBuf> = vec![];
 
-    for dir_entry in (directory.read_dir()?).flatten() {
+    for dir_entry in (test_directory.read_dir()?).flatten() {
         if dir_entry.path().is_file() {
             if let Some(extension) = dir_entry.path().extension() {
                 // looking for .exotest files in our current directory
@@ -168,7 +193,7 @@ fn load_testfiles_from_dir_(
                 }
             }
         } else if dir_entry.path().is_dir() {
-            directories.push(dir_entry.path())
+            sub_directories.push(dir_entry.path())
         }
     }
 
@@ -187,16 +212,14 @@ fn load_testfiles_from_dir_(
     let mut testfiles = vec![];
 
     for testfile_path in exotest_files.iter() {
-        let testfile = parse_testfile(root_directory, testfile_path, init_ops.clone())?;
-
+        let testfile = parse_testfile(testfile_path, init_ops.clone())?;
         testfiles.push(testfile);
     }
 
     // Recursively parse test files
-    for directory in directories.iter() {
+    for sub_directory in sub_directories.iter() {
         let child_init_ops = init_ops.clone();
-        let child_testfiles =
-            load_testfiles_from_dir_(root_directory, directory, &child_init_ops, pattern)?;
+        let child_testfiles = load_tests_dir(sub_directory, &child_init_ops, pattern)?;
         testfiles.extend(child_testfiles)
     }
 
@@ -215,8 +238,7 @@ fn load_testfiles_from_dir_(
 }
 
 fn parse_testfile(
-    root_directory: &Path,
-    testfile_path: &Path,
+    testfile_path: &PathBuf,
     init_ops: Vec<TestfileOperation>,
 ) -> Result<ParsedTestfile> {
     let mut file = File::open(testfile_path).context("Could not open test file")?;
@@ -250,49 +272,6 @@ Error as a multistage test: {}
         );
     };
 
-    let testfile_folder = testfile_path.parent().expect("Testfile has no parent");
-    let model_path = if let Some(path) = common.exofile {
-        // test specifies a root exofile, use that
-        testfile_folder.to_owned().join(path)
-    } else {
-        // see if the testfile's directory has a single exo file we can use
-        fn read_exo_files(folder: &Path) -> Result<Vec<DirEntry>> {
-            let exo_files = std::fs::read_dir(folder)?
-                .collect::<Result<Vec<_>, std::io::Error>>()?
-                .into_iter()
-                .filter(|dir| matches!(dir.path().extension().and_then(OsStr::to_str), Some("exo")))
-                .collect::<Vec<_>>();
-            Ok(exo_files)
-        }
-        let mut exo_files = read_exo_files(testfile_folder)?;
-
-        // If not, check parent directories until we reach the test root
-        let mut current_folder = testfile_folder;
-        while exo_files.is_empty() && current_folder != root_directory {
-            current_folder = current_folder.parent().expect("Folder has not parent!");
-            exo_files = read_exo_files(current_folder)?;
-        }
-
-        match exo_files.len().cmp(&1) {
-            Ordering::Equal => exo_files[0].path(),
-
-            Ordering::Greater => {
-                bail!(
-                    "Multiple .exo files found for {}, please manually specify a root model file",
-                    testfile_path.to_string_lossy()
-                )
-            }
-
-            Ordering::Less => {
-                bail!(
-                    "No .exo file specified nor found in {} for testfile {}",
-                    testfile_folder.to_string_lossy(),
-                    testfile_path.to_string_lossy()
-                )
-            }
-        }
-    };
-
     // validate GraphQL
     let test_operation_sequence = stages
         .into_iter()
@@ -319,8 +298,6 @@ Error as a multistage test: {}
         .collect::<Result<Vec<_>>>()?;
 
     Ok(ParsedTestfile {
-        root_directory: root_directory.to_path_buf(),
-        model_path,
         testfile_path: testfile_path.to_path_buf(),
         extra_envs: common.envs.unwrap_or_default(),
         init_operations: init_ops,
@@ -364,4 +341,26 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
 // Parse JSON from a string
 fn from_json(json: String) -> Result<serde_json::Value> {
     serde_json::from_str(&json).context("Failed to parse JSON")
+}
+
+// Exograph projects have a src/index.exo file
+fn is_exoproject_with_tests(dir: &Path) -> bool {
+    directory_contains(dir, "src", true)
+        && {
+            let src_dir = dir.join("src");
+            directory_contains(&src_dir, "index.exo", false)
+        }
+        && directory_contains(dir, "tests", true)
+}
+
+fn directory_contains(dir: &Path, name: &str, is_dir: bool) -> bool {
+    if !dir.is_dir() {
+        return false;
+    }
+
+    let dir_entry = dir.read_dir().unwrap().flatten().find(|dir_entry| {
+        dir_entry.file_name() == name && dir_entry.file_type().unwrap().is_dir() == is_dir
+    });
+
+    dir_entry.is_some()
 }

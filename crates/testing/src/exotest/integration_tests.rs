@@ -27,6 +27,7 @@ use serde_json::{json, Map, Value};
 use unescape::unescape;
 
 use std::net::{IpAddr, Ipv4Addr};
+use std::path::PathBuf;
 use std::{
     collections::HashMap, ffi::OsStr, io::Write, path::Path, process::Command, time::SystemTime,
 };
@@ -48,6 +49,7 @@ struct ExoPost {
 
 pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
+    project_dir: &PathBuf,
     ephemeral_database: &dyn EphemeralDatabaseServer,
 ) -> Result<TestResult> {
     let log_prefix = format!("({})\n :: ", testfile.name()).purple();
@@ -73,7 +75,8 @@ pub(crate) fn run_testfile(
         );
 
         let cli_child = cmd("exo")
-            .args(["schema", "create", &testfile.model_path_string()])
+            .args(["schema", "create"])
+            .current_dir(project_dir)
             .output()?;
 
         if !cli_child.status.success() {
@@ -100,7 +103,7 @@ pub(crate) fn run_testfile(
                 Box::new(deno_resolver::DenoSubsystemLoader {}),
             ];
 
-            let base_name = testfile.model_path.to_str().unwrap();
+            let exo_ir_file = testfile.exo_ir_file_path(project_dir);
             LOCAL_URL.with(|url| {
                 // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
                 url.borrow_mut().replace(format!(
@@ -121,7 +124,10 @@ pub(crate) fn run_testfile(
                             LOCAL_ENVIRONMENT.with(|env| {
                                 env.borrow_mut().replace(extra_envs.clone());
 
-                                create_system_resolver(&format!("{base_name}_ir"), static_loaders)
+                                create_system_resolver(
+                                    &exo_ir_file.display().to_string(),
+                                    static_loaders,
+                                )
                             })
                         })
                     })
@@ -429,7 +435,7 @@ pub fn run_query(
 fn build_prerequisites(directory: &Path) -> Result<()> {
     let mut build_files = vec![];
 
-    for dir_entry in directory.read_dir()? {
+    for dir_entry in directory.join("tests").read_dir()? {
         let dir_entry = dir_entry?;
         let path = dir_entry.path();
 
@@ -456,13 +462,13 @@ fn build_prerequisites(directory: &Path) -> Result<()> {
 }
 
 pub(crate) fn build_exo_ir_file(path: &Path) -> Result<()> {
-    build_prerequisites(path.parent().unwrap())?;
+    build_prerequisites(path)?;
 
     // Use std::env::current_exe() so that we run the same "exo" that invoked us (specifically, avoid using another exo on $PATH)
     run_command(
         std::env::current_exe()?.as_os_str().to_str().unwrap(),
-        [OsStr::new("build"), path.as_os_str()],
-        None,
+        [OsStr::new("build")],
+        Some(path),
         "Could not build the exo_ir.",
     )
 }

@@ -12,8 +12,8 @@ use builder::error::ParserError;
 use clap::{ArgMatches, Command};
 
 use std::error::Error;
-use std::ffi::OsStr;
 use std::fmt::Display;
+use std::fs::create_dir_all;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
@@ -21,21 +21,20 @@ use std::{fs::File, io::BufWriter};
 
 use core_plugin_interface::interface::SubsystemBuilder;
 
-use super::command::{get_required, model_file_arg, CommandDefinition};
+use crate::commands::command::default_model_file;
+
+use super::command::CommandDefinition;
 
 pub struct BuildCommandDefinition {}
 
 impl CommandDefinition for BuildCommandDefinition {
     fn command(&self) -> clap::Command {
-        Command::new("build")
-            .about("Build exograph server binary")
-            .arg(model_file_arg())
+        Command::new("build").about("Build exograph server binary")
     }
 
     /// Build exograph server binary
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let model: PathBuf = get_required(matches, "model")?;
-        build(&model, true)?;
+    fn execute(&self, _matches: &ArgMatches) -> Result<()> {
+        build(true)?;
 
         Ok(())
     }
@@ -72,27 +71,20 @@ pub(crate) fn build_system_with_static_builders(model: &Path) -> Result<Vec<u8>,
 /// Build exo_ir file
 ///
 /// # Arguments
-/// * `model` - exograph model path
-/// * `system_start_time` - system start time. If specified, it will print a message indicated the time it took to build the model
+/// * `model` - exograph model file path
+/// * `output` - output file path
 /// * `print_message` - if true, it will print a message indicating the time it took to build the model. We need this
 ///                        to avoid printing the message when building the model through `exo serve`, where we don't want to print the message
 ///                        upon detecting changes
-pub(crate) fn build(model: &Path, print_message: bool) -> Result<(), BuildError> {
+pub(crate) fn build(print_message: bool) -> Result<(), BuildError> {
+    let model: PathBuf = default_model_file();
     let serialized_system =
-        build_system_with_static_builders(model).map_err(BuildError::ParserError)?;
+        build_system_with_static_builders(&model).map_err(BuildError::ParserError)?;
 
-    let exo_ir_file_name = {
-        if let Some("exo") = model.extension().and_then(OsStr::to_str) {
-            let mut filename = model.to_path_buf();
-            filename.set_extension("exo_ir");
-            filename
-        } else {
-            return Err(BuildError::UnrecoverableError(anyhow!(
-                "{} is not a exo file",
-                model.display()
-            )));
-        }
-    };
+    let exo_ir_file_name = PathBuf::from("target/index.exo_ir");
+    create_dir_all("target").map_err(|e| {
+        BuildError::UnrecoverableError(anyhow!("Could not create the target directory: {}", e))
+    })?;
 
     let mut out_file = BufWriter::new(File::create(&exo_ir_file_name).unwrap());
     out_file.write_all(&serialized_system).unwrap();

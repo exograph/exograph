@@ -10,7 +10,7 @@
 use std::{
     env::current_exe,
     fs::{create_dir_all, File},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use anyhow::{anyhow, Ok, Result};
@@ -19,7 +19,7 @@ use colored::Colorize;
 
 use crate::commands::{
     build::build,
-    command::{get_required, model_file_arg, CommandDefinition},
+    command::{get_required, CommandDefinition},
 };
 
 /// The `deploy aws-lambda` command.
@@ -36,7 +36,6 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("aws-lambda")
             .about("Deploy to AWS Lambda")
-            .arg(model_file_arg())
             .arg(
                 Arg::new("app-name")
                     .help("The name of the application")
@@ -48,16 +47,11 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
     }
 
     fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        let model: PathBuf = get_required(matches, "model")?;
         let app_name: String = get_required(matches, "app-name")?;
 
-        build(&model, false)?;
+        build(false)?;
 
-        // Canonicalize the model path so that when presented with just "filename.exo", we can still
-        // get the directory that it's in.
-        let model_path = model.canonicalize()?;
-        let model_dir = model_path.parent().unwrap();
-        let aws_lambda_dir = model_dir.join("aws-lambda");
+        let aws_lambda_dir = PathBuf::from("target/aws-lambda");
         create_dir_all(aws_lambda_dir)?;
 
         println!(
@@ -66,7 +60,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
                 .purple()
                 .italic()
         );
-        create_function_zip(&model_path)?;
+        create_function_zip()?;
 
         println!(
             "{}",
@@ -82,10 +76,8 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
         );
 
         println!(
-            "{}{}{}{}",
-            "exo schema create ".blue(),
-            model.to_str().unwrap().blue(),
-            " | psql ".blue(),
+            "{}{}",
+            "(cd ../.. && exo schema create) | psql ".blue(),
             "<your-postgres-url>".yellow(),
         );
 
@@ -121,8 +113,10 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
 }
 
 /// Create a zip with the bootstrap executable and the compiled model.
-fn create_function_zip(model_path: &Path) -> Result<()> {
-    let zip_path = std::path::Path::new("aws-lambda/function.zip");
+fn create_function_zip() -> Result<()> {
+    create_dir_all("target/aws-lambda")?;
+
+    let zip_path = std::path::Path::new("target/aws-lambda/function.zip");
     let zip_file = std::fs::File::create(zip_path)?;
 
     let mut zip_writer = zip::ZipWriter::new(zip_file);
@@ -143,11 +137,10 @@ fn create_function_zip(model_path: &Path) -> Result<()> {
         zip_options.unix_permissions(0x777),
     )?;
 
-    let exo_ir_location = &(*model_path).with_extension("exo_ir");
     append_file(
         &mut zip_writer,
-        "index.exo_ir",
-        exo_ir_location,
+        "target/index.exo_ir",
+        &PathBuf::from("target/index.exo_ir"),
         zip_options,
     )?;
 
@@ -157,7 +150,7 @@ fn create_function_zip(model_path: &Path) -> Result<()> {
 fn append_file(
     zip_writer: &mut zip::ZipWriter<File>,
     file_name: &str,
-    file_path: &Path,
+    file_path: &PathBuf,
     zip_options: zip::write::FileOptions,
 ) -> Result<()> {
     zip_writer.start_file(file_name, zip_options)?;

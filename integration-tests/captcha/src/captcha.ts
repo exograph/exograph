@@ -1,4 +1,6 @@
-import "./exograph.d.ts"
+import type { Exograph } from './exograph.d.ts';
+
+import type { ICaptchaValidatorContext } from './contexts.d.ts';
 
 interface CaptchaChallenge {
     uuid: string,
@@ -30,11 +32,6 @@ export async function getChallenge(exograph: Exograph): Promise<CaptchaChallenge
         uuid: result.record.uuid,
         challenge: challenge
     }
-}
-
-interface ICaptchaValidatorContext {
-    uuid: string,
-    response: string
 }
 
 export async function verifyCaptcha(exograph: Exograph, context: ICaptchaValidatorContext): Promise<boolean> {

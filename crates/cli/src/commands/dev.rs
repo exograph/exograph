@@ -17,9 +17,12 @@ use std::{
 };
 use tokio::runtime::Runtime;
 
-use super::command::{get, get_required, model_file_arg, port_arg, CommandDefinition};
+use super::command::{get, port_arg, CommandDefinition};
 use crate::{
-    commands::schema::verify::{verify, VerificationErrors},
+    commands::{
+        command::default_model_file,
+        schema::verify::{verify, VerificationErrors},
+    },
     util::watcher,
 };
 
@@ -29,13 +32,12 @@ impl CommandDefinition for DevCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("dev")
             .about("Run exograph server in development mode")
-            .arg(model_file_arg())
             .arg(port_arg())
     }
 
     /// Run local exograph server
     fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let model: PathBuf = get_required(matches, "model")?;
+        let model: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
 
         println!(

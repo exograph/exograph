@@ -14,7 +14,7 @@ use std::{io::Write, path::PathBuf, sync::atomic::Ordering};
 use crate::util::watcher;
 
 use super::{
-    command::{get, get_required, model_file_arg, port_arg, CommandDefinition},
+    command::{default_model_file, get, port_arg, CommandDefinition},
     schema::migration_helper::migration_statements,
 };
 use exo_sql::{schema::spec::SchemaSpec, testing::db::EphemeralDatabaseLauncher, Database};
@@ -26,13 +26,12 @@ impl CommandDefinition for YoloCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("yolo")
             .about("Run local exograph server with a temporary database")
-            .arg(model_file_arg())
             .arg(port_arg())
     }
 
     /// Run local exograph server with a temporary database
     fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let model: PathBuf = get_required(matches, "model")?;
+        let model: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
 
         run(&model, port)
