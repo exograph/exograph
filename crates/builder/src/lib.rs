@@ -36,10 +36,8 @@ pub fn build_system(
 ) -> Result<Vec<u8>, ParserError> {
     let file_content = fs::read_to_string(model_file.as_ref())?;
     let mut codemap = CodeMap::new();
-    codemap.add_file(
-        model_file.as_ref().to_str().unwrap().to_string(),
-        file_content,
-    );
+
+    codemap.add_file(model_file.as_ref().display().to_string(), file_content);
 
     build_from_ast_system(
         parser::parse_file(&model_file, &mut codemap),
