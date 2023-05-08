@@ -1,3 +1,5 @@
+import type { Operation } from "./exograph.d.ts"
+
 interface OperationParams {
 	name: string
 	query: string

@@ -39,7 +39,6 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
             Box::new(deno_resolver::DenoSubsystemLoader {}),
         ];
 
-        let base_name = model_path.to_str().unwrap();
         LOCAL_URL.with(|url| {
             url.borrow_mut()
                 .replace("postgres://a@dummy-value".to_string());
@@ -50,7 +49,9 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
                 LOCAL_ALLOW_INTROSPECTION.with(|allow| {
                     allow.borrow_mut().replace(true);
 
-                    create_system_resolver(&format!("{base_name}_ir"), static_loaders)
+                    let exo_ir_file = format!("{}/target/index.exo_ir", model_path.display());
+
+                    create_system_resolver(&exo_ir_file, static_loaders)
                 })
             })
         })?

@@ -1,1 +1,0 @@
-(cd "$( dirname -- "$0"; )/wasm-source" && cargo build --target wasm32-wasi)

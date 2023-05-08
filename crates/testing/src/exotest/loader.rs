@@ -38,7 +38,7 @@ pub enum TestfileOperation {
 }
 
 pub struct ProjectTests {
-    pub model_path: PathBuf,
+    pub project_dir: PathBuf,
     pub tests: Vec<ParsedTestfile>,
 }
 
@@ -52,10 +52,15 @@ pub struct ParsedTestfile {
 
 impl ParsedTestfile {
     pub fn name(&self) -> String {
-        let relative_testfile_path = &self
-            .testfile_path
-            .strip_prefix("./")
-            .expect("Failed to obtain relative path to testfile");
+        let relative_testfile_path = {
+            let base_path = self.testfile_path.components().skip(1).collect::<PathBuf>();
+
+            if base_path.starts_with("tests") {
+                base_path.components().skip(1).collect::<PathBuf>()
+            } else {
+                base_path
+            }
+        };
 
         // Drop to extension (".exotest") to obtain the name
         relative_testfile_path
@@ -63,6 +68,10 @@ impl ParsedTestfile {
             .to_str()
             .expect("Failed to convert file name into Unicode")
             .to_string()
+    }
+
+    pub fn exo_ir_file_path(&self, project_dir: &Path) -> PathBuf {
+        project_dir.join("target").join("index.exo_ir")
     }
 }
 
@@ -109,52 +118,45 @@ pub struct InitFile {
     pub deno: Option<String>,
 }
 
+fn collect_exo_projects(root_directory: &Path) -> Vec<PathBuf> {
+    fn helper(dir: &Path, acc: &mut Vec<PathBuf>) {
+        for subdir in dir.read_dir().unwrap().flatten() {
+            if subdir.path().is_dir() {
+                let subdir_path = subdir.path();
+                if is_exoproject_with_tests(&subdir_path) {
+                    acc.push(subdir_path);
+                } else {
+                    helper(&subdir_path, acc);
+                }
+            }
+        }
+    }
+
+    let mut exo_projects = vec![];
+    helper(root_directory, &mut exo_projects);
+    exo_projects
+}
+
 /// Load and parse testfiles from a given directory.
 pub fn load_project_dir(
     root_directory: &PathBuf,
     pattern: &Option<String>,
 ) -> Result<Vec<ProjectTests>> {
-    // Exograph projects have a src/index.exo file
-    fn is_exoproject(dir: &Path) -> bool {
-        directory_contains(dir, "src", true) && {
-            let src_dir = dir.join("src");
-            directory_contains(&src_dir, "index.exo", false)
-        }
-    }
+    let exo_project_dirs = if is_exoproject_with_tests(root_directory) {
+        // If the root directory is an exo project, and it has tests, then we load the tests from it
+        // This will be typical for user projects
+        vec![root_directory.to_owned()]
+    } else {
+        // This is typical for the exo repo itself (and a multi-project repo)
+        collect_exo_projects(root_directory)
+    };
 
-    fn has_tests(dir: &Path) -> bool {
-        directory_contains(dir, "tests", true)
-    }
-
-    // If the root directory is an exo project, and it has tests, then we load the tests from it
-    // This will be typical for user projects
-    if is_exoproject(root_directory) && has_tests(root_directory) {
-        let tests = load_tests_dir(&root_directory.join("tests"), &[], pattern)?;
-        return Ok(vec![ProjectTests {
-            model_path: root_directory.to_owned(),
-            tests,
-        }]);
-    }
-
-    // This is typical for the exo repo itself (and a multi-project repo)
-    let exo_projects = root_directory
-        .read_dir()
-        .context(format!(
-            "Could not read {} directory",
-            root_directory.display()
-        ))?
-        .flatten()
-        .filter(|dir_entry| {
-            let dir_path = dir_entry.path();
-            is_exoproject(&dir_path) && has_tests(&dir_path)
-        });
-
-    exo_projects
-        .map(|exo_project| {
-            let exo_project_directory = exo_project.path();
-            let tests = load_tests_dir(&exo_project_directory, &[], pattern)?;
+    exo_project_dirs
+        .into_iter()
+        .map(|exo_project_dir| {
+            let tests = load_tests_dir(&exo_project_dir, &[], pattern)?;
             Ok(ProjectTests {
-                model_path: exo_project_directory,
+                project_dir: exo_project_dir,
                 tests,
             })
         })
@@ -339,6 +341,16 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
 // Parse JSON from a string
 fn from_json(json: String) -> Result<serde_json::Value> {
     serde_json::from_str(&json).context("Failed to parse JSON")
+}
+
+// Exograph projects have a src/index.exo file
+fn is_exoproject_with_tests(dir: &Path) -> bool {
+    directory_contains(dir, "src", true)
+        && {
+            let src_dir = dir.join("src");
+            directory_contains(&src_dir, "index.exo", false)
+        }
+        && directory_contains(dir, "tests", true)
 }
 
 fn directory_contains(dir: &Path, name: &str, is_dir: bool) -> bool {

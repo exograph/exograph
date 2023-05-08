@@ -49,7 +49,7 @@ struct ExoPost {
 
 pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
-    model_path: &PathBuf,
+    project_dir: &PathBuf,
     ephemeral_database: &dyn EphemeralDatabaseServer,
 ) -> Result<TestResult> {
     let log_prefix = format!("({})\n :: ", testfile.name()).purple();
@@ -76,7 +76,7 @@ pub(crate) fn run_testfile(
 
         let cli_child = cmd("exo")
             .args(["schema", "create"])
-            .current_dir(model_path)
+            .current_dir(project_dir)
             .output()?;
 
         if !cli_child.status.success() {
@@ -103,7 +103,7 @@ pub(crate) fn run_testfile(
                 Box::new(deno_resolver::DenoSubsystemLoader {}),
             ];
 
-            let exo_ir_file = format!("{}/target/index.exo_ir", model_path.to_str().unwrap());
+            let exo_ir_file = testfile.exo_ir_file_path(project_dir);
             LOCAL_URL.with(|url| {
                 // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
                 url.borrow_mut().replace(format!(
@@ -124,7 +124,10 @@ pub(crate) fn run_testfile(
                             LOCAL_ENVIRONMENT.with(|env| {
                                 env.borrow_mut().replace(extra_envs.clone());
 
-                                create_system_resolver(&exo_ir_file, static_loaders)
+                                create_system_resolver(
+                                    &exo_ir_file.display().to_string(),
+                                    static_loaders,
+                                )
                             })
                         })
                     })
@@ -432,7 +435,7 @@ pub fn run_query(
 fn build_prerequisites(directory: &Path) -> Result<()> {
     let mut build_files = vec![];
 
-    for dir_entry in directory.read_dir()? {
+    for dir_entry in directory.join("tests").read_dir()? {
         let dir_entry = dir_entry?;
         let path = dir_entry.path();
 

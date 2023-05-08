@@ -49,18 +49,6 @@ pub fn run(
         .with_context(|| format!("While loading testfiles from directory {root_directory_str}"))?;
     let number_of_integration_tests = project_tests.len();
 
-    // // Work out which tests share a common exo file so we only build it once for all the
-    // // dependent tests, avoiding accidental corruption from overwriting.
-    // let mut model_file_deps: HashMap<PathBuf, Vec<ParsedTestfile>> = HashMap::new();
-
-    // for f in testfiles.into_iter() {
-    //     if let Some(files) = model_file_deps.get_mut(model_path) {
-    //         files.push(f);
-    //     } else {
-    //         model_file_deps.insert(f.model_path.clone(), vec![f]);
-    //     }
-    // }
-
     let mut test_results = vec![];
 
     // test introspection for all model files
@@ -82,7 +70,11 @@ pub fn run(
     let ephemeral_server = Arc::new(EphemeralDatabaseLauncher::create_server()?);
 
     // Then build all the model files, spawning the production mode tests once the build completes
-    for ProjectTests { model_path, tests } in project_tests {
+    for ProjectTests {
+        project_dir: model_path,
+        tests,
+    } in project_tests
+    {
         let model_path = model_path.clone();
         let tx = tx.clone();
         let ephemeral_server = ephemeral_server.clone();
@@ -93,9 +85,9 @@ pub fn run(
                     tx.send(run_introspection_test(&model_path)).unwrap();
                 };
 
-                for file in tests.iter() {
+                for test in tests.iter() {
                     let result = run_testfile(
-                        file,
+                        test,
                         &model_path,
                         ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
                     );
