@@ -14,7 +14,9 @@ use std::{io::Write, path::PathBuf};
 use exo_sql::schema::spec::SchemaSpec;
 
 use crate::{
-    commands::command::{default_model_file, get, output_arg, CommandDefinition},
+    commands::command::{
+        default_model_file, ensure_exo_project_dir, get, output_arg, CommandDefinition,
+    },
     util::open_file_for_output,
 };
 
@@ -31,6 +33,8 @@ impl CommandDefinition for CreateCommandDefinition {
 
     /// Create a database schema from a exograph model
     fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+        ensure_exo_project_dir(&PathBuf::from("."))?;
+
         let model: PathBuf = default_model_file();
         let output: Option<PathBuf> = get(matches, "output");
 

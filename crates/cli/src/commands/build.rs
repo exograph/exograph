@@ -23,6 +23,7 @@ use core_plugin_interface::interface::SubsystemBuilder;
 
 use crate::commands::command::default_model_file;
 
+use super::command::ensure_exo_project_dir;
 use super::command::CommandDefinition;
 
 pub struct BuildCommandDefinition {}
@@ -77,6 +78,8 @@ pub(crate) fn build_system_with_static_builders(model: &Path) -> Result<Vec<u8>,
 ///                        to avoid printing the message when building the model through `exo serve`, where we don't want to print the message
 ///                        upon detecting changes
 pub(crate) fn build(print_message: bool) -> Result<(), BuildError> {
+    ensure_exo_project_dir(&PathBuf::from("."))?;
+
     let model: PathBuf = default_model_file();
     let serialized_system =
         build_system_with_static_builders(&model).map_err(BuildError::ParserError)?;

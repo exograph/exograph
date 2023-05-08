@@ -14,7 +14,7 @@ use std::{io::Write, path::PathBuf, sync::atomic::Ordering};
 use crate::util::watcher;
 
 use super::{
-    command::{default_model_file, get, port_arg, CommandDefinition},
+    command::{default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition},
     schema::migration_helper::migration_statements,
 };
 use exo_sql::{schema::spec::SchemaSpec, testing::db::EphemeralDatabaseLauncher, Database};
@@ -31,6 +31,8 @@ impl CommandDefinition for YoloCommandDefinition {
 
     /// Run local exograph server with a temporary database
     fn execute(&self, matches: &ArgMatches) -> Result<()> {
+        ensure_exo_project_dir(&PathBuf::from("."))?;
+
         let model: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
 

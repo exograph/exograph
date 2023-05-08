@@ -20,7 +20,7 @@ use tokio::runtime::Runtime;
 use super::command::{get, port_arg, CommandDefinition};
 use crate::{
     commands::{
-        command::default_model_file,
+        command::{default_model_file, ensure_exo_project_dir},
         schema::verify::{verify, VerificationErrors},
     },
     util::watcher,
@@ -37,6 +37,8 @@ impl CommandDefinition for DevCommandDefinition {
 
     /// Run local exograph server
     fn execute(&self, matches: &ArgMatches) -> Result<()> {
+        ensure_exo_project_dir(&PathBuf::from("."))?;
+
         let model: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
 
