@@ -256,17 +256,20 @@ fn resolve_module(
         &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
+    // Extract the source path from the annotation
+    // `@deno("util/auth.ts")` -> `util/auth.ts`
     let module_relative_path = match module.annotations.get(&annotation_name).unwrap() {
         AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
         _ => panic!(),
     }
     .clone();
 
-    let mut module_fs_path = module.base_exofile.clone();
-    module_fs_path.pop();
-    module_fs_path.push(&module_relative_path);
+    // The source path is relative to the module's base exofile
+    let mut source_path = module.base_exofile.clone();
+    source_path.pop();
+    source_path.push(&module_relative_path);
 
-    let bundled_script = process_script(module, base_system, &module_fs_path)?;
+    let bundled_script = process_script(module, base_system, &source_path)?;
 
     fn extract_intercept_annot<'a>(
         annotations: &'a AnnotationMap,

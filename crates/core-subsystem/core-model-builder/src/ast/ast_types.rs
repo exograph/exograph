@@ -83,7 +83,7 @@ pub struct AstModule<T: NodeTypedness> {
     pub types: Vec<AstModel<T>>,
     pub methods: Vec<AstMethod<T>>,
     pub interceptors: Vec<AstInterceptor<T>>,
-    pub base_exofile: PathBuf,
+    pub base_exofile: PathBuf, // The exo file in which this module is defined. Used to resolve relative imports and js/ts/wasm sources
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
