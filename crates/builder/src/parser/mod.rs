@@ -63,13 +63,11 @@ fn _parse_file(
         ));
     }
 
-    let input_file_path = input_file_path.canonicalize()?;
-
     let source = fs::read_to_string(input_file.as_ref())?;
-    let mut system = parse_str(&source, codemap, &input_file_path)?;
+    let mut system = parse_str(&source, codemap, input_file_path)?;
 
     // add to already parsed list since we're parsing it currently
-    already_parsed.push(input_file_path);
+    already_parsed.push(input_file_path.to_path_buf());
 
     for import in system.imports.iter() {
         if !already_parsed.contains(import) {
@@ -92,7 +90,7 @@ pub fn parse_str(
 ) -> Result<AstSystem<Untyped>, ParserError> {
     let source_span = codemap
         .add_file(
-            input_file_name.as_ref().to_str().unwrap().to_string(),
+            input_file_name.as_ref().display().to_string(),
             source.to_string(),
         )
         .span;

@@ -94,10 +94,7 @@ pub(crate) fn build(print_message: bool) -> Result<(), BuildError> {
 
     if print_message {
         println!("Exograph IR file {} created", exo_ir_file_name.display());
-        println!(
-            "You can start the server with using the 'exo-server {}' command",
-            exo_ir_file_name.display()
-        );
+        println!("You can start the server with using the 'exo-server' command");
     }
 
     Ok(())
