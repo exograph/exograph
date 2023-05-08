@@ -28,10 +28,7 @@ pub async fn start_watcher<'a, F>(
 where
     F: Fn() -> BoxFuture<'a, Result<()>>,
 {
-    let absolute_path = model_path
-        .canonicalize()
-        .map_err(|e| anyhow!("Could not find {}: {}", model_path.to_string_lossy(), e))?;
-    let parent_dir = absolute_path.parent().ok_or_else(|| {
+    let parent_dir = model_path.parent().ok_or_else(|| {
         anyhow!(
             "Could not get parent directory of {}",
             model_path.to_string_lossy()
@@ -40,9 +37,8 @@ where
 
     // start watcher
     println!(
-        "{} {}",
-        "Watching:".blue().bold(),
-        &parent_dir.display().to_string().cyan().bold()
+        "Watching the {} directory for changes...",
+        &parent_dir.display().to_string().cyan().bold(),
     );
 
     let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::channel(1);

@@ -9,6 +9,7 @@
 
 use anyhow::{anyhow, Result};
 use clap::{ArgMatches, Command};
+use colored::Colorize;
 use std::{io::Write, path::PathBuf, sync::atomic::Ordering};
 
 use crate::util::watcher;
@@ -66,8 +67,8 @@ fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
             std::env::set_var("EXO_JWT_SECRET", &jwt_secret);
             std::env::set_var("EXO_CORS_DOMAINS", "*");
 
-            println!("JWT secret is {}", &jwt_secret);
-            println!("Postgres URL is {}", &db.url());
+            println!("JWT secret is {}", &jwt_secret.cyan());
+            println!("Postgres URL is {}", &db.url().cyan());
 
             // generate migrations for current database
             println!("Generating migrations...");
