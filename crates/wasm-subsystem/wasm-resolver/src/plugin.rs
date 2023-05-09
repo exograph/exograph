@@ -27,7 +27,6 @@ use exo_wasm::WasmExecutorPool;
 use wasm_model::{module::ModuleMethod, subsystem::WasmSubsystem};
 
 pub struct WasmSubsystemLoader {}
-core_plugin_interface::export_subsystem_loader!(WasmSubsystemLoader {});
 
 impl SubsystemLoader for WasmSubsystemLoader {
     fn id(&self) -> &'static str {

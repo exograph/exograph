@@ -18,9 +18,11 @@ core-resolver = { path = "../core-subsystem/core-resolver" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 postgres-resolver = { path = "../postgres-subsystem/postgres-resolver", optional = true }
 deno-resolver = { path = "../deno-subsystem/deno-resolver", optional = true }
+wasm-resolver = { path = "../wasm-subsystem/wasm-resolver", optional = true }
 
 [features]
 static-postgres-resolver = ["postgres-resolver"]
 static-deno-resolver = ["deno-resolver"]
+static-wasm-resolver = ["wasm-resolver"]
 
 [lib]

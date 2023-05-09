@@ -15,7 +15,7 @@ tokio = { workspace = true, features = ["full"] }
 
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
-server-common = { path = "../server-common", features = ["static-postgres-resolver", "static-deno-resolver"] }
+server-common = { path = "../server-common" }
 
 [dev-dependencies]
 builder = { path = "../builder" }
@@ -23,7 +23,8 @@ builder = { path = "../builder" }
 [features]
 static-postgres-resolver = ["server-common/static-postgres-resolver"]
 static-deno-resolver = ["server-common/static-deno-resolver"]
-default = ["static-postgres-resolver", "static-deno-resolver"]
+static-wasm-resolver = ["server-common/static-wasm-resolver"]
+default = ["static-postgres-resolver", "static-deno-resolver", "static-wasm-resolver"]
 
 [[bin]]
 name = "bootstrap"
