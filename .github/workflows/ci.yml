@@ -67,9 +67,5 @@ jobs:
         with:
           deno-version: vx.x.x
       - uses: Swatinem/rust-cache@v2
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
       - name: Run integration tests
         run: EXO_RUN_INTROSPECTION_TESTS=true cargo run --bin exo -- test integration-tests
