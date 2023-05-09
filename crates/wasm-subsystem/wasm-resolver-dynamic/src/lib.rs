@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-//! Dynamic loader for postgres-resolver.
+//! Dynamic loader for wasm-resolver.
 
 use core_plugin_interface::interface::SubsystemLoader;
 use wasm_resolver::WasmSubsystemLoader;
