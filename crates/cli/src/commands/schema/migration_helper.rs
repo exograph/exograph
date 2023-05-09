@@ -337,6 +337,92 @@ mod tests {
     }
 
     #[test]
+    fn update_relation_optionality() {
+        // venue: Venue <-> venue: Venue?
+        assert_changes(
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    title: String
+                    venue: Venue
+                }
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    title: String
+                    venue: Venue?
+                }
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("ALTER TABLE \"concerts\" ADD CONSTRAINT \"concerts_venue_id_fk\" FOREIGN KEY (\"venue_id\") REFERENCES \"venues\";", false),
+                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
+                ("CREATE INDEX ON \"concerts\" (\"venue_id\");", false),
+                ("CREATE INDEX ON \"venues\" (\"name\");", false),
+            ],
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
+                ("CREATE INDEX ON \"concerts\" (\"venue_id\");", false),
+                ("CREATE INDEX ON \"venues\" (\"name\");", false),
+            ],
+            vec![
+                ("ALTER TABLE \"concerts\" ALTER COLUMN \"venue_id\" DROP NOT NULL;", false),
+            ],
+            vec![("ALTER TABLE \"concerts\" ALTER COLUMN \"venue_id\" SET NOT NULL;", false)],
+        );
+    }
+
+    #[test]
     fn one_to_one_constraints() {
         assert_changes(
             r#"
