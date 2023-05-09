@@ -10,7 +10,6 @@
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 
-use core_plugin_interface::interface::SubsystemLoader;
 use core_resolver::{context::RequestContext, system_resolver::SystemResolver, OperationsPayload};
 use exo_deno::{deno_error::DenoError, Arg, DenoModule, DenoModuleSharedState, UserCode};
 use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
@@ -34,10 +33,7 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     println!("{log_prefix} Running introspection tests...");
 
     let server = {
-        let static_loaders: Vec<Box<dyn SubsystemLoader>> = vec![
-            Box::new(postgres_resolver::PostgresSubsystemLoader {}),
-            Box::new(deno_resolver::DenoSubsystemLoader {}),
-        ];
+        let static_loaders = server_common::create_static_loaders();
 
         LOCAL_URL.with(|url| {
             url.borrow_mut()

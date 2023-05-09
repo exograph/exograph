@@ -32,7 +32,7 @@ To create a production build:
 cargo build --release
 ```
 
-By default, cargo will build the `exo-server` binary with statically linked in Postgres and Deno plugins. If you want to build a binary that dynamically links these plugins, you can use the `--no-default-features` flag:
+By default, cargo will build the `exo-server` binary with statically linked plugins. If you want to build a binary that dynamically links these plugins, you can use the `--no-default-features` flag:
 
 ```
 cargo build --no-default-features
@@ -43,6 +43,7 @@ You can also selectively enable static linking for either Postgres or Deno:
 ```
 cargo build --no-default-features --features static-postgres-resolver
 cargo build --no-default-features --features static-deno-resolver
+cargo build --no-default-features --features static-wasm-resolver
 ```
 
 ## Testing the setup

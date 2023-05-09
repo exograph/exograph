@@ -10,7 +10,6 @@
 use anyhow::{anyhow, bail, Context, Result};
 use colored::Colorize;
 
-use core_plugin_interface::interface::SubsystemLoader;
 use core_resolver::context::{Request, RequestContext, LOCAL_JWT_SECRET};
 use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
@@ -98,10 +97,7 @@ pub(crate) fn run_testfile(
         }
 
         let server = {
-            let static_loaders: Vec<Box<dyn SubsystemLoader>> = vec![
-                Box::new(postgres_resolver::PostgresSubsystemLoader {}),
-                Box::new(deno_resolver::DenoSubsystemLoader {}),
-            ];
+            let static_loaders = server_common::create_static_loaders();
 
             let exo_ir_file = testfile.exo_ir_file_path(project_dir);
             LOCAL_URL.with(|url| {

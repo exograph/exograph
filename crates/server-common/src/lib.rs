@@ -20,9 +20,9 @@ mod logging_tracing;
 /// - Initializing tracing
 /// - Creating the system resolver (and return it)
 ///
-/// The `[SystemResolver]` uses static resolvers for Postgres and Deno if the corresponding features
-/// ("static-postgres-resolver" and "static-deno-resolver") are enabled. Note that these feature
-/// flags also control if the corresponding libraries are statically linked it.
+/// The `[SystemResolver]` uses static resolvers for subsystems if the corresponding features
+/// ("static-<subsystem>-resolver") are enabled. Note that these feature flags also control if the
+/// corresponding libraries are statically linked it.
 ///
 /// # Exit codes
 /// - 1 - If the exo_ir file doesn't exist or can't be loaded.
@@ -31,14 +31,18 @@ pub fn init() -> SystemResolver {
 
     let exo_ir_file = get_exo_ir_file_name();
 
-    let static_loaders: Vec<Box<dyn SubsystemLoader>> = vec![
+    create_system_resolver_or_exit(&exo_ir_file, create_static_loaders())
+}
+
+pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {
+    vec![
         #[cfg(feature = "static-postgres-resolver")]
         Box::new(postgres_resolver::PostgresSubsystemLoader {}),
         #[cfg(feature = "static-deno-resolver")]
         Box::new(deno_resolver::DenoSubsystemLoader {}),
-    ];
-
-    create_system_resolver_or_exit(&exo_ir_file, static_loaders)
+        #[cfg(feature = "static-wasm-resolver")]
+        Box::new(wasm_resolver::WasmSubsystemLoader {}),
+    ]
 }
 
 fn get_exo_ir_file_name() -> String {

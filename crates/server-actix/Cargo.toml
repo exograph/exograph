@@ -24,7 +24,8 @@ server-common = { path = "../server-common" }
 [features]
 static-postgres-resolver = ["server-common/static-postgres-resolver"]
 static-deno-resolver = ["server-common/static-deno-resolver"]
-default = ["static-postgres-resolver", "static-deno-resolver"]
+static-wasm-resolver = ["server-common/static-wasm-resolver"]
+default = ["static-postgres-resolver", "static-deno-resolver", "static-wasm-resolver"]
 
 [[bin]]
 name = "exo-server"

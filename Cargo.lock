@@ -5840,6 +5840,7 @@ dependencies = [
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
+ "wasm-resolver",
 ]
 
 [[package]]
@@ -6588,7 +6589,6 @@ dependencies = [
  "colored",
  "core-plugin-interface",
  "core-resolver",
- "deno-resolver",
  "exo-deno",
  "exo-sql",
  "include_dir",
@@ -6597,7 +6597,6 @@ dependencies = [
  "md5",
  "num_cpus",
  "postgres",
- "postgres-resolver",
  "rand",
  "rayon",
  "regex",
@@ -6605,6 +6604,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "server-common",
  "tokio",
  "unescape",
  "wildmatch",
@@ -7738,7 +7738,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-resolver-dynamic"
+name = "wasm-resolver"
 version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
@@ -7752,6 +7752,14 @@ dependencies = [
  "wasm-model",
  "wasmtime",
  "wasmtime-wasi",
+]
+
+[[package]]
+name = "wasm-resolver-dynamic"
+version = "0.1.0"
+dependencies = [
+ "core-plugin-interface",
+ "wasm-resolver",
 ]
 
 [[package]]
