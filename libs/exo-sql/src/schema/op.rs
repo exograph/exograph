@@ -171,13 +171,33 @@ impl SchemaOp<'_> {
     pub fn error_string(&self) -> Option<String> {
         match self {
             SchemaOp::CreateTable { table } => Some(format!("The table `{}` exists in the model, but does not exist in the database.", table.name)),
+            SchemaOp::DeleteTable { .. } => None, // An extra table in the database is not a problem
+
             SchemaOp::CreateColumn { column } => Some(format!("The column `{}` in the table `{}` exists in the model, but does not exist in the database table.", column.name, column.table_name)),
+            SchemaOp::DeleteColumn { column } => {
+                if column.is_nullable {
+                    // Extra nullable columns are not a problem
+                    None
+                } else {
+                    // Such column will cause failure when inserting new records
+                    Some(format!("The non-nullable column `{}` in the table `{}` exists in the database table, but does not exist in the model.", column.name, column.table_name))
+                }
+            }
+
             SchemaOp::SetColumnDefaultValue { column, default_value } => Some(format!("The default value for column `{}` in table `{}` does not match `{}`", column.name, column.table_name, default_value)),
             SchemaOp::UnsetColumnDefaultValue { column } => Some(format!("The column `{}` in table `{}` is not set in the model.", column.name, column.table_name)),
+
             SchemaOp::CreateExtension { extension } => Some(format!("The model requires the extension `{extension}`.")),
+            SchemaOp::RemoveExtension { .. } => None,
+
             SchemaOp::CreateUniqueConstraint { table, columns, constraint_name } => Some(format!("The model requires a unique constraint named `{}` for the following columns in table `{}`: {}", constraint_name, table.name, sorted_comma_list(columns, false))),
+            SchemaOp::RemoveUniqueConstraint { table, constraint } => {
+                // Extra unqiueness constraint may make inserts fail even if model allows it
+                Some(format!("Extra unique constaint `{}` in table `{}` found that is not require by the model.", constraint, table.name))
+            }
+
             SchemaOp::SetNotNull { column } => Some(format!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.name, column.table_name)),
-            _ => None,
+            SchemaOp::UnsetNotNull { column } => Some(format!("The model requires that the column `{}` in table `{}` is nullable.", column.name, column.table_name)),
         }
     }
 }
