@@ -13,17 +13,15 @@ use clap::{ArgMatches, Command};
 use colored::Colorize;
 use std::{path::PathBuf, sync::atomic::Ordering};
 
-use crate::util::watcher;
+use crate::{
+    commands::schema::migration::{self, Migration},
+    util::watcher,
+};
 
-use super::{
-    command::{default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition},
-    schema::migration_helper::migration_statements,
+use super::command::{
+    default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition,
 };
-use exo_sql::{
-    schema::spec::SchemaSpec,
-    testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher},
-    Database,
-};
+use exo_sql::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
 use futures::FutureExt;
 
 pub struct YoloCommandDefinition {}
@@ -74,7 +72,7 @@ async fn run_server(
     db: &(dyn EphemeralDatabase + Send + Sync),
 ) -> Result<()> {
     // set envs for server
-    std::env::set_var("EXO_POSTGRES_URL", &db.url());
+    std::env::set_var("EXO_POSTGRES_URL", db.url());
     std::env::remove_var("EXO_POSTGRES_USER");
     std::env::remove_var("EXO_POSTGRES_PASSWORD");
     std::env::set_var("EXO_INTROSPECTION", "true");
@@ -86,26 +84,12 @@ async fn run_server(
 
     // generate migrations for current database
     println!("Generating migrations...");
-    let database = Database::from_env(None)?;
-
-    let old_schema = {
-        let client = database.get_client().await?;
-        SchemaSpec::from_db(&client).await
-    }?;
-
-    for issue in &old_schema.issues {
-        println!("{issue}");
-    }
-
-    let new_postgres_subsystem = super::schema::util::create_postgres_system(model)?;
-    let new_schema = SchemaSpec::from_model(new_postgres_subsystem.tables.into_iter().collect());
-
-    let migrations = migration_statements(&old_schema.value, &new_schema);
+    let migrations = Migration::from_db_and_model(None, model).await?;
 
     // execute migration
     let result: Result<()> = {
         println!("Running migrations...");
-        migrations.apply(&database, true).await
+        migrations.apply(None, true).await
     };
 
     const CONTINUE: &str = "Continue with old schema";
@@ -123,16 +107,7 @@ async fn run_server(
                 println!("Continuing with old incompatible schema...");
             }
             REBUILD => {
-                let client = database.get_client().await?;
-                client
-                    .execute("DROP SCHEMA public CASCADE", &[])
-                    .await
-                    .expect("Failed to drop schema");
-                client
-                    .execute("CREATE SCHEMA public", &[])
-                    .await
-                    .expect("Failed to create schema");
-
+                migration::wipe_database(None).await?;
                 run_server(model, jwt_secret, db).await?;
             }
             PAUSE => {

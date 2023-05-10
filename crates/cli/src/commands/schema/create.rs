@@ -20,7 +20,7 @@ use crate::{
     util::open_file_for_output,
 };
 
-use super::{migration_helper::migration_statements, util};
+use super::{migration::Migration, util};
 
 pub(super) struct CreateCommandDefinition {}
 
@@ -43,11 +43,11 @@ impl CommandDefinition for CreateCommandDefinition {
         let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
 
         // Creating the schema from the model is the same as migrating from an empty database.
-        migration_statements(
+        let migrations = Migration::from_schemas(
             &SchemaSpec::default(),
             &SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect()),
-        )
-        .write(&mut buffer, true)?;
+        );
+        migrations.write(&mut buffer, true)?;
 
         Ok(())
     }

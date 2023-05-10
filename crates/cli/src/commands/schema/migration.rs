@@ -7,26 +7,125 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::path::PathBuf;
+
+use builder::error::ParserError;
 use exo_sql::{
-    schema::{op::SchemaOp, spec::SchemaSpec},
+    database_error::DatabaseError,
+    schema::{issue::WithIssues, op::SchemaOp, spec::SchemaSpec},
     Database,
 };
 
-pub(crate) struct Migrations {
+use super::{util, verify::VerificationErrors};
+
+#[derive(Debug)]
+pub(crate) struct Migration {
     pub statements: Vec<MigrationStatement>,
 }
 
+#[derive(Debug)]
 pub(crate) struct MigrationStatement {
     pub statement: String,
     pub is_destructive: bool,
 }
 
-impl Migrations {
+impl Migration {
+    pub fn from_schemas(old_schema_spec: &SchemaSpec, new_schema_spec: &SchemaSpec) -> Self {
+        let mut pre_statements = vec![];
+        let mut statements = vec![];
+        let mut post_statements = vec![];
+
+        let diffs = old_schema_spec.diff(new_schema_spec);
+
+        for diff in diffs.iter() {
+            let is_destructive = match diff {
+                SchemaOp::DeleteColumn { .. }
+                | SchemaOp::DeleteTable { .. }
+                | SchemaOp::RemoveExtension { .. } => true,
+
+                // Explicitly matching the other cases here to ensure that we have thought about each case
+                SchemaOp::CreateColumn { .. }
+                | SchemaOp::CreateTable { .. }
+                | SchemaOp::CreateExtension { .. }
+                | SchemaOp::CreateUniqueConstraint { .. }
+                | SchemaOp::RemoveUniqueConstraint { .. }
+                | SchemaOp::SetColumnDefaultValue { .. }
+                | SchemaOp::UnsetColumnDefaultValue { .. }
+                | SchemaOp::SetNotNull { .. }
+                | SchemaOp::UnsetNotNull { .. } => false,
+            };
+
+            let statement = diff.to_sql();
+
+            for constraint in statement.pre_statements.into_iter() {
+                pre_statements.push(MigrationStatement::new(constraint, is_destructive));
+            }
+
+            statements.push(MigrationStatement::new(statement.statement, is_destructive));
+
+            for constraint in statement.post_statements.into_iter() {
+                post_statements.push(MigrationStatement::new(constraint, is_destructive));
+            }
+        }
+
+        pre_statements.extend(statements);
+        pre_statements.extend(post_statements);
+
+        Migration {
+            statements: pre_statements,
+        }
+    }
+
+    pub async fn from_db_and_model(
+        db_url: Option<&str>,
+        model_path: &PathBuf,
+    ) -> Result<Self, anyhow::Error> {
+        let old_schema = extract_db_schema(db_url).await?;
+
+        for issue in &old_schema.issues {
+            eprintln!("{issue}");
+        }
+
+        let new_schema = extract_model_schema(model_path)?;
+
+        Ok(Migration::from_schemas(&old_schema.value, &new_schema))
+    }
+
+    pub fn has_destructive_changes(&self) -> bool {
+        self.statements
+            .iter()
+            .any(|statement| statement.is_destructive)
+    }
+
+    pub async fn verify(
+        db_url: Option<&str>,
+        model_path: &PathBuf,
+    ) -> Result<(), VerificationErrors> {
+        let old_schema = extract_db_schema(db_url).await?;
+
+        for issue in &old_schema.issues {
+            eprintln!("{issue}");
+        }
+
+        let new_schema = extract_model_schema(model_path)?;
+
+        let diff = old_schema.value.diff(&new_schema);
+
+        let errors: Vec<_> = diff.iter().flat_map(|op| op.error_string()).collect();
+
+        if !errors.is_empty() {
+            Err(VerificationErrors::ModelNotCompatible(errors))
+        } else {
+            Ok(())
+        }
+    }
+
     pub async fn apply(
         &self,
-        database: &Database,
+        db_url: Option<&str>,
         allow_destructive_changes: bool,
     ) -> Result<(), anyhow::Error> {
+        let database = open_database(db_url)?;
         let mut client = database.get_client().await?;
         let transaction = client.transaction().await?;
         for MigrationStatement {
@@ -74,51 +173,41 @@ impl MigrationStatement {
     }
 }
 
-pub(crate) fn migration_statements(
-    old_schema_spec: &SchemaSpec,
-    new_schema_spec: &SchemaSpec,
-) -> Migrations {
-    let mut pre_statements = vec![];
-    let mut statements = vec![];
-    let mut post_statements = vec![];
+async fn extract_db_schema(db_url: Option<&str>) -> Result<WithIssues<SchemaSpec>, DatabaseError> {
+    let database = open_database(db_url)?;
+    let client = database.get_client().await?;
 
-    let diffs = old_schema_spec.diff(new_schema_spec);
+    SchemaSpec::from_db(&client).await
+}
 
-    for diff in diffs.iter() {
-        let is_destructive = match diff {
-            SchemaOp::DeleteColumn { .. }
-            | SchemaOp::DeleteTable { .. }
-            | SchemaOp::RemoveExtension { .. } => true,
+fn extract_model_schema(model_path: &PathBuf) -> Result<SchemaSpec, ParserError> {
+    let postgres_subsystem = util::create_postgres_system(model_path)?;
 
-            // Explicitly matching the other cases here to ensure that we have thought about each case
-            SchemaOp::CreateColumn { .. }
-            | SchemaOp::CreateTable { .. }
-            | SchemaOp::CreateExtension { .. }
-            | SchemaOp::CreateUniqueConstraint { .. }
-            | SchemaOp::RemoveUniqueConstraint { .. }
-            | SchemaOp::SetColumnDefaultValue { .. }
-            | SchemaOp::UnsetColumnDefaultValue { .. }
-            | SchemaOp::SetNotNull { .. }
-            | SchemaOp::UnsetNotNull { .. } => false,
-        };
+    Ok(SchemaSpec::from_model(
+        postgres_subsystem.tables.into_iter().collect(),
+    ))
+}
 
-        let statement = diff.to_sql();
+pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
+    let database = open_database(db_url)?;
+    let client = database.get_client().await?;
+    client
+        .execute("DROP SCHEMA public CASCADE", &[])
+        .await
+        .expect("Failed to drop schema");
+    client
+        .execute("CREATE SCHEMA public", &[])
+        .await
+        .expect("Failed to create schema");
 
-        for constraint in statement.pre_statements.into_iter() {
-            pre_statements.push(MigrationStatement::new(constraint, is_destructive));
-        }
+    Ok(())
+}
 
-        statements.push(MigrationStatement::new(statement.statement, is_destructive));
-
-        for constraint in statement.post_statements.into_iter() {
-            post_statements.push(MigrationStatement::new(constraint, is_destructive));
-        }
-    }
-
-    pre_statements.extend(statements);
-    pre_statements.extend(post_statements);
-    Migrations {
-        statements: pre_statements,
+pub fn open_database(database: Option<&str>) -> Result<Database, DatabaseError> {
+    if let Some(database) = database {
+        Ok(Database::from_db_url(database)?)
+    } else {
+        Ok(Database::from_env(Some(1))?)
     }
 }
 
@@ -925,7 +1014,7 @@ mod tests {
         expected: Vec<(&str, bool)>,
         message: &str,
     ) {
-        fn clean_actual(actual: Migrations) -> Vec<(String, bool)> {
+        fn clean_actual(actual: Migration) -> Vec<(String, bool)> {
             actual
                 .statements
                 .into_iter()
@@ -944,7 +1033,7 @@ mod tests {
                 .collect()
         }
 
-        let actual = migration_statements(old_system, new_system);
+        let actual = Migration::from_schemas(old_system, new_system);
 
         let actual_changes = clean_actual(actual);
         let expected_changes = clean_expected(expected);

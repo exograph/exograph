@@ -11,17 +11,14 @@ use anyhow::{anyhow, Result};
 use clap::{ArgMatches, Command};
 use colored::Colorize;
 use futures::FutureExt;
-use std::{
-    io::{stdin, stdout, Write},
-    path::PathBuf,
-};
+use std::{io::stdin, path::PathBuf};
 use tokio::runtime::Runtime;
 
 use super::command::{get, port_arg, CommandDefinition};
 use crate::{
     commands::{
         command::{default_model_file, ensure_exo_project_dir},
-        schema::verify::{verify, VerificationErrors},
+        schema::{migration::Migration, verify::VerificationErrors},
     },
     util::watcher,
 };
@@ -52,36 +49,71 @@ impl CommandDefinition for DevCommandDefinition {
 
         let rt = Runtime::new()?;
 
+        const MIGRATE: &str = "Attempt migration";
+        const CONTINUE: &str = "Continue with old schema";
+        const PAUSE: &str = "Pause for manual repair";
+        const EXIT: &str = "Exit";
+
         rt.block_on(watcher::start_watcher(&model, port, || async {
             println!("{}", "\nVerifying new model...".blue().bold());
 
             loop {
-                let verification_result = verify(&model, None).await;
+                let verification_result = Migration::verify(None, &model).await;
 
                 match verification_result {
                     Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
                         println!("{}", "The schema of the current database is not compatible with the current model for the following reasons:".red().bold());
                         println!("{}", e.to_string().red().bold());
-                        println!("{}", "Select an option:".blue().bold());
-                        print!("{}", "[c]ontinue without fixing, (p)ause and fix manually: ".blue().bold());
-                        stdout().flush()?;
 
-                        let mut input: String = String::new();
-                        let result = std::io::stdin()
-                            .read_line(&mut input)
-                            .map(|_| input.trim())?;
+                        let options = vec![MIGRATE, CONTINUE, PAUSE, EXIT];
+                        let ans = inquire::Select::new("Choose an option:", options).prompt()?;
 
-                        match result {
-                            "p" => {
+                        match ans {
+                            MIGRATE => {
+                                println!("{}", "Attempting migration...".blue().bold());
+                                let migrations = Migration::from_db_and_model(None, &model).await?;
+
+                                if migrations.has_destructive_changes() {
+                                    let allow_destructive_changes =
+                                        inquire::Confirm::new("This migration contains destructive changes. Do you still want to proceed?")
+                                        .with_default(false)
+                                        .prompt()?;
+
+                                    if !allow_destructive_changes {
+                                        println!("{}", "Aborting migration...".red().bold());
+                                        continue;
+                                    }
+                                }
+                                let result = migrations.apply(None, true).await;
+                                match result {
+                                    Ok(_) => {
+                                        println!("{}", "Migration successful!".green().bold());
+                                        break Ok(());
+                                    }
+                                    Err(e) => {
+                                        println!("{}", "Migration failed!".red().bold());
+                                        println!("{}", e.to_string().red().bold());
+                                        println!("{}", "Please fix the model and try again.".red().bold());
+                                    }
+                                }
+                            }
+                            CONTINUE => {
+                                println!("{}", "Continuing...".green().bold());
+                                break Ok(());
+                            }
+                            PAUSE => {
                                 println!("{}", "Paused. Press enter to re-verify.".blue().bold());
 
                                 let mut line = String::new();
                                 stdin().read_line(&mut line)?;
                             }
-                            _ => {
-                                println!("{}", "Continuing...".green().bold());
+                            EXIT => {
+                                println!("Exiting...");
+                                let _ = crate::SIGINT.0.send(());
                                 break Ok(());
+
                             }
+                            _ => unreachable!(),
                         }
                     }
                     _ => {
