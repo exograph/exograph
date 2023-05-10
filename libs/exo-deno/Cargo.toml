@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 thiserror.workspace = true
 async-trait.workspace = true
-deno_runtime = "0.100.0"
+deno_runtime = { git = "https://github.com/exograph/deno.git", branch = "patched" }
 deno_core.workspace = true
 deno_ast = { version = "0.24.0", features = ["transpiling"], optional = true }
 tokio.workspace = true

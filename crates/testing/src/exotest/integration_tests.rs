@@ -23,6 +23,7 @@ use resolver::{
 };
 use serde::Serialize;
 use serde_json::{json, Map, Value};
+use tokio::runtime::Handle;
 use unescape::unescape;
 
 use std::net::{IpAddr, Ipv4Addr};
@@ -50,6 +51,7 @@ pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
     project_dir: &PathBuf,
     ephemeral_database: &dyn EphemeralDatabaseServer,
+    runtime: &Handle,
 ) -> Result<TestResult> {
     let log_prefix = format!("({})\n :: ", testfile.name()).purple();
 
@@ -143,7 +145,7 @@ pub(crate) fn run_testfile(
     // run the init section
     println!("{log_prefix} Initializing database...");
     for operation in testfile.init_operations.iter() {
-        let result = run_operation(operation, &mut ctx).with_context(|| {
+        let result = run_operation(operation, &mut ctx, runtime).with_context(|| {
             format!(
                 "While initializing database for testfile {}",
                 testfile.name()
@@ -163,7 +165,7 @@ pub(crate) fn run_testfile(
 
     let mut fail = None;
     for operation in testfile.test_operation_stages.iter() {
-        let result = run_operation(operation, &mut ctx)
+        let result = run_operation(operation, &mut ctx, runtime)
             .with_context(|| anyhow!("While running tests for {}", testfile.name()));
 
         match result {
@@ -239,7 +241,11 @@ impl Request for MemoryRequest {
     }
 }
 
-fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<OperationResult> {
+fn run_operation(
+    gql: &TestfileOperation,
+    ctx: &mut TestfileContext,
+    runtime: &Handle,
+) -> Result<OperationResult> {
     match gql {
         TestfileOperation::GqlDocument {
             document,
@@ -256,7 +262,7 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
             // and extend our collection with the results
             let variables_map: Map<String, Value> = variables
                 .as_ref()
-                .map(|vars| evaluate_using_deno(vars, &deno_prelude, &ctx.testvariables))
+                .map(|vars| evaluate_using_deno(vars, &deno_prelude, &ctx.testvariables, runtime))
                 .transpose()?
                 .unwrap_or_else(|| Value::Object(Map::new()))
                 .as_object()
@@ -296,7 +302,9 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
             // add extra headers from testfile
             let headers = headers
                 .as_ref()
-                .map(|headers| evaluate_using_deno(headers, &deno_prelude, &ctx.testvariables))
+                .map(|headers| {
+                    evaluate_using_deno(headers, &deno_prelude, &ctx.testvariables, runtime)
+                })
                 .transpose()?;
 
             if let Some(Value::Object(map)) = headers {
@@ -309,7 +317,6 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
             }
 
             let request_context = RequestContext::new(&request, vec![], &ctx.server)?;
-            let tokio_pool = tokio::runtime::Runtime::new().unwrap();
             let operations_payload = OperationsPayload {
                 operation_name: None,
                 query,
@@ -318,7 +325,7 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
 
             // run the operation
             let body = run_query(
-                &tokio_pool,
+                runtime,
                 operations_payload,
                 request_context,
                 &ctx.server,
@@ -346,6 +353,7 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
                         body,
                         &deno_prelude,
                         &ctx.testvariables,
+                        runtime,
                     ) {
                         Ok(()) => Ok(OperationResult::AssertPassed),
                         Err(e) => Ok(OperationResult::AssertFailed(e)),
@@ -368,13 +376,13 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
 }
 
 pub fn run_query(
-    tokio_pool: &tokio::runtime::Runtime,
+    runtime: &Handle,
     operations_payload: OperationsPayload,
     request_context: RequestContext,
     server: &SystemResolver,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
-    let res = tokio_pool.block_on(resolve_in_memory(
+    let res = runtime.block_on(resolve_in_memory(
         operations_payload,
         server,
         request_context,

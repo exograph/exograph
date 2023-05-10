@@ -69,6 +69,8 @@ pub fn run(
 
     let ephemeral_server = Arc::new(EphemeralDatabaseLauncher::create_server()?);
 
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+
     // Then build all the model files, spawning the production mode tests once the build completes
     for ProjectTests {
         project_dir: model_path,
@@ -79,10 +81,12 @@ pub fn run(
         let tx = tx.clone();
         let ephemeral_server = ephemeral_server.clone();
 
+        let handle = runtime.handle().clone();
         pool.spawn(move || match build_exo_ir_file(&model_path) {
             Ok(()) => {
                 if run_introspection_tests {
-                    tx.send(run_introspection_test(&model_path)).unwrap();
+                    tx.send(run_introspection_test(&model_path, &handle))
+                        .unwrap();
                 };
 
                 for test in tests.iter() {
@@ -90,6 +94,7 @@ pub fn run(
                         test,
                         &model_path,
                         ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
+                        &handle,
                     );
                     tx.send(result).unwrap();
                 }

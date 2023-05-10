@@ -17,6 +17,7 @@ use include_dir::{include_dir, Dir};
 use resolver::{create_system_resolver, LOCAL_ALLOW_INTROSPECTION};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
+use tokio::runtime::Handle;
 
 use crate::exotest::common::TestResultKind;
 
@@ -28,7 +29,7 @@ use super::{
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
 const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");
 
-pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
+pub(crate) fn run_introspection_test(model_path: &Path, runtime: &Handle) -> Result<TestResult> {
     let log_prefix = format!("(introspection: {})\n :: ", model_path.display()).purple();
     println!("{log_prefix} Running introspection tests...");
 
@@ -53,7 +54,7 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
         })?
     };
 
-    let result = check_introspection(&server)?;
+    let result = check_introspection(&server, runtime)?;
 
     match result {
         Ok(()) => Ok(TestResult {
@@ -68,7 +69,7 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     }
 }
 
-fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
+fn check_introspection(server: &SystemResolver, runtime: &Handle) -> Result<Result<()>> {
     let script = INTROSPECTION_ASSERT_JS;
 
     let deno_module_future = DenoModule::new(
@@ -106,7 +107,6 @@ fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         )]),
     );
 
-    let runtime = tokio::runtime::Runtime::new()?;
     let mut deno_module = runtime.block_on(deno_module_future)?;
 
     let query = runtime.block_on(deno_module.execute_function("introspectionQuery", vec![]))?;
@@ -124,7 +124,7 @@ fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
     };
 
     let result = run_query(
-        &runtime,
+        runtime,
         operations_payload,
         request_context,
         server,

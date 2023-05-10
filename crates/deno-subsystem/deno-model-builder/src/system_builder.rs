@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{io::Write, path::Path};
+use std::{path::Path, sync::Arc};
 
 use core_plugin_interface::{
     core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
@@ -19,11 +19,13 @@ use core_plugin_interface::{
     },
 };
 
+use deno::{CliOptions, Flags, ProcState};
 use deno_model::{
     interceptor::Interceptor,
     operation::{DenoMutation, DenoQuery},
     subsystem::DenoSubsystem,
 };
+use url::Url;
 
 use crate::module_skeleton_generator;
 
@@ -86,23 +88,47 @@ fn process_script(
     module_fs_path: &Path,
 ) -> Result<Vec<u8>, ModelBuildingError> {
     module_skeleton_generator::generate_module_skeleton(module, base_system, module_fs_path)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
 
-    // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
-    let bundler_output = std::process::Command::new("deno")
-        .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
-        .output()
-        .map_err(|err| {
-            ModelBuildingError::Generic(format!(
-                "While trying to invoke `deno` in order to bundle .ts files: {err}"
-            ))
+    let ps = tokio_runtime
+        .block_on(ProcState::from_options(Arc::new(
+            CliOptions::new(
+                Flags::default(),
+                std::env::current_dir().unwrap(),
+                None,
+                None,
+                None,
+            )
+            .unwrap(),
+        )))
+        .unwrap();
+
+    let path = format!(
+        "file://{}",
+        std::fs::canonicalize(module_fs_path)
+            .unwrap()
+            .to_str()
+            .unwrap()
+    );
+
+    let mut cache = ps.create_graph_loader();
+    let graph = tokio_runtime
+        .block_on(ps.create_graph_with_loader(vec![Url::parse(&path).unwrap()], &mut cache))
+        .map_err(|e| {
+            ModelBuildingError::Generic(format!("While trying to create Deno graph: {:?}", e))
         })?;
 
-    if bundler_output.status.success() {
-        Ok(bundler_output.stdout)
-    } else {
-        std::io::stdout().write_all(&bundler_output.stderr).unwrap();
-        Err(ModelBuildingError::Generic(
-            "Deno bundler did not exit successfully".to_string(),
-        ))
-    }
+    let bundle_res = deno_emit::bundle_graph(
+        &graph,
+        deno_emit::BundleOptions {
+            bundle_type: deno_emit::BundleType::Module,
+            emit_ignore_directives: false,
+            emit_options: deno_emit::EmitOptions::default(),
+        },
+    )
+    .map_err(|e| {
+        ModelBuildingError::Generic(format!("While trying to bundle Deno script: {:?}", e))
+    })?;
+
+    Ok(bundle_res.code.into_bytes())
 }
