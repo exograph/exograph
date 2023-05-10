@@ -11,6 +11,7 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
 use exo_deno::{Arg, DenoModule, DenoModuleSharedState, UserCode};
+use tokio::runtime::Handle;
 
 const ASSERT_JS: &str = include_str!("./assert.js");
 
@@ -34,6 +35,7 @@ pub fn dynamic_assert_using_deno(
     actual: serde_json::Value,
     prelude: &str,
     testvariables: &HashMap<String, serde_json::Value>,
+    runtime: &Handle,
 ) -> Result<()> {
     let testvariables_json = serde_json::to_value(testvariables)?;
 
@@ -59,7 +61,6 @@ pub fn dynamic_assert_using_deno(
         None,
     );
 
-    let runtime = tokio::runtime::Runtime::new()?;
     let mut deno_module = runtime.block_on(deno_module_future)?;
 
     // run method
@@ -85,6 +86,7 @@ pub fn evaluate_using_deno(
     not_really_json: &str,
     prelude: &str,
     testvariables: &HashMap<String, serde_json::Value>,
+    runtime: &Handle,
 ) -> Result<serde_json::Value> {
     let testvariables_json = serde_json::to_value(testvariables)?;
 
@@ -108,7 +110,6 @@ pub fn evaluate_using_deno(
         None,
     );
 
-    let runtime = tokio::runtime::Runtime::new().unwrap();
     let mut deno_module = runtime.block_on(deno_module_future)?;
 
     // run method
@@ -122,6 +123,8 @@ pub fn evaluate_using_deno(
 
 #[cfg(test)]
 mod tests {
+    use tokio::runtime::Runtime;
+
     use crate::exotest::assertion::evaluate_using_deno;
 
     use super::dynamic_assert_using_deno;
@@ -160,7 +163,15 @@ mod tests {
         .into_iter()
         .collect();
 
-        dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables).unwrap();
+        let runtime = Runtime::new().unwrap();
+        dynamic_assert_using_deno(
+            expected,
+            actual_payload(),
+            "",
+            &testvariables,
+            runtime.handle(),
+        )
+        .unwrap();
     }
 
     #[test]
@@ -182,7 +193,8 @@ mod tests {
         .into_iter()
         .collect();
 
-        let result = evaluate_using_deno(payload, "", &testvariables).unwrap();
+        let runtime = Runtime::new().unwrap();
+        let result = evaluate_using_deno(payload, "", &testvariables, runtime.handle()).unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(result);
@@ -203,8 +215,15 @@ mod tests {
 
         let testvariables = vec![].into_iter().collect();
 
-        let err =
-            dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables).unwrap_err();
+        let runtime = Runtime::new().unwrap();
+        let err = dynamic_assert_using_deno(
+            expected,
+            actual_payload(),
+            "",
+            &testvariables,
+            runtime.handle(),
+        )
+        .unwrap_err();
 
         assert!(err
             .to_string()
@@ -225,8 +244,15 @@ mod tests {
 
         let testvariables = vec![].into_iter().collect();
 
-        let err =
-            dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables).unwrap_err();
+        let runtime = Runtime::new().unwrap();
+        let err = dynamic_assert_using_deno(
+            expected,
+            actual_payload(),
+            "",
+            &testvariables,
+            runtime.handle(),
+        )
+        .unwrap_err();
 
         assert!(err
             .to_string()
@@ -252,6 +278,15 @@ mod tests {
         "#;
 
         let testvariables = vec![].into_iter().collect();
-        dynamic_assert_using_deno(expected, actual_payload(), prelude, &testvariables).unwrap();
+
+        let runtime = Runtime::new().unwrap();
+        dynamic_assert_using_deno(
+            expected,
+            actual_payload(),
+            prelude,
+            &testvariables,
+            runtime.handle(),
+        )
+        .unwrap();
     }
 }

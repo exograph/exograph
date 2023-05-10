@@ -10,6 +10,13 @@ bincode.workspace = true
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-builder-util" }
 deno-model = { path = "../deno-model" }
+deno_emit = "0.16.0"
+url = "2.3.1"
+tokio.workspace = true
+anyhow.workspace = true
+
+# we use a patched version of Deno that exposes the CLI internals as a library
+deno = { git = "https://github.com/exograph/deno.git", branch = "patched" }
 
 [dev-dependencies]
 
