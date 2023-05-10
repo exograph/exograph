@@ -7,10 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
+use async_recursion::async_recursion;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
-use std::{io::Write, path::PathBuf, sync::atomic::Ordering};
+use std::{path::PathBuf, sync::atomic::Ordering};
 
 use crate::util::watcher;
 
@@ -18,7 +19,11 @@ use super::{
     command::{default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition},
     schema::migration_helper::migration_statements,
 };
-use exo_sql::{schema::spec::SchemaSpec, testing::db::EphemeralDatabaseLauncher, Database};
+use exo_sql::{
+    schema::spec::SchemaSpec,
+    testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher},
+    Database,
+};
 use futures::FutureExt;
 
 pub struct YoloCommandDefinition {}
@@ -57,92 +62,98 @@ fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
 
     let jwt_secret = super::util::generate_random_string();
 
-    let prestart_callback = || {
-        async {
-            // set envs for server
-            std::env::set_var("EXO_POSTGRES_URL", &db.url());
-            std::env::remove_var("EXO_POSTGRES_USER");
-            std::env::remove_var("EXO_POSTGRES_PASSWORD");
-            std::env::set_var("EXO_INTROSPECTION", "true");
-            std::env::set_var("EXO_JWT_SECRET", &jwt_secret);
-            std::env::set_var("EXO_CORS_DOMAINS", "*");
-
-            println!("JWT secret is {}", &jwt_secret.cyan());
-            println!("Postgres URL is {}", &db.url().cyan());
-
-            // generate migrations for current database
-            println!("Generating migrations...");
-            let database = Database::from_env(None)?;
-
-            let old_schema =  {
-                let client = database.get_client().await?;
-                SchemaSpec::from_db(&client).await
-            }?;
-
-            for issue in &old_schema.issues {
-                println!("{issue}");
-            }
-
-            let new_postgres_subsystem = super::schema::util::create_postgres_system(model)?;
-            let new_schema =
-                SchemaSpec::from_model(new_postgres_subsystem.tables.into_iter().collect());
-
-            let statements = migration_statements(&old_schema.value, &new_schema);
-
-            // execute migration
-            let result: Result<()> = {
-                println!("Running migrations...");
-                let mut client = database.get_client().await?;
-                let transaction = client.transaction().await?;
-                for (statement, _) in statements {
-                    transaction.execute(&statement, &[]).await?;
-                }
-                transaction.commit().await.map_err(|e| anyhow!(e))
-            };
-
-            if let Err(e) = result {
-                println!("Error while applying migration: {e}");
-                println!("Choose an option:");
-                print!("[c]ontinue without applying, (r)ebuild docker, (p)ause for manual repair, or (e)xit: ");
-                std::io::stdout().flush()?;
-
-                let mut input: String = String::new();
-                let result = std::io::stdin().read_line(&mut input).map(|_| input.trim());
-
-                match result {
-                    // rebuild 
-                    Ok("r") => {
-                        run(model, port)?;
-                    }
-
-                    // pause for manual repair
-                    Ok("p") => {
-                        println!("=====");
-                        println!(
-                            "Pausing for manual repair. Postgres URL is {}",
-                            db.url()
-                        );
-                        println!("Press enter to continue.");
-                        println!("=====");
-                        std::io::stdin().read_line(&mut input)?;
-                    }
-
-                    // exit
-                    Ok("e") => {
-                        println!("Exiting...");
-                        let _ = crate::SIGINT.0.send(());
-                    }
-
-                    // continue, do nothing
-                    _ => {
-                        println!("Continuing...");
-                    }
-                }
-            }
-
-            Ok(())
-        }.boxed()
-    };
+    let prestart_callback = || run_server(model, &jwt_secret, db.as_ref()).boxed();
 
     rt.block_on(watcher::start_watcher(model, port, prestart_callback))
+}
+
+#[async_recursion]
+async fn run_server(
+    model: &PathBuf,
+    jwt_secret: &str,
+    db: &(dyn EphemeralDatabase + Send + Sync),
+) -> Result<()> {
+    // set envs for server
+    std::env::set_var("EXO_POSTGRES_URL", &db.url());
+    std::env::remove_var("EXO_POSTGRES_USER");
+    std::env::remove_var("EXO_POSTGRES_PASSWORD");
+    std::env::set_var("EXO_INTROSPECTION", "true");
+    std::env::set_var("EXO_JWT_SECRET", jwt_secret);
+    std::env::set_var("EXO_CORS_DOMAINS", "*");
+
+    println!("JWT secret is {}", &jwt_secret.cyan());
+    println!("Postgres URL is {}", &db.url().cyan());
+
+    // generate migrations for current database
+    println!("Generating migrations...");
+    let database = Database::from_env(None)?;
+
+    let old_schema = {
+        let client = database.get_client().await?;
+        SchemaSpec::from_db(&client).await
+    }?;
+
+    for issue in &old_schema.issues {
+        println!("{issue}");
+    }
+
+    let new_postgres_subsystem = super::schema::util::create_postgres_system(model)?;
+    let new_schema = SchemaSpec::from_model(new_postgres_subsystem.tables.into_iter().collect());
+
+    let migrations = migration_statements(&old_schema.value, &new_schema);
+
+    // execute migration
+    let result: Result<()> = {
+        println!("Running migrations...");
+        migrations.apply(&database, true).await
+    };
+
+    const CONTINUE: &str = "Continue with old schema";
+    const REBUILD: &str = "Rebuild Postgres schema (wipe out all data)";
+    const PAUSE: &str = "Pause for manual repair";
+    const EXIT: &str = "Exit";
+
+    if let Err(e) = result {
+        println!("Error while applying migration: {e}");
+        let options = vec![CONTINUE, REBUILD, PAUSE, EXIT];
+        let ans = inquire::Select::new("Choose an option:", options).prompt()?;
+
+        match ans {
+            CONTINUE => {
+                println!("Continuing with old incompatible schema...");
+            }
+            REBUILD => {
+                let client = database.get_client().await?;
+                client
+                    .execute("DROP SCHEMA public CASCADE", &[])
+                    .await
+                    .expect("Failed to drop schema");
+                client
+                    .execute("CREATE SCHEMA public", &[])
+                    .await
+                    .expect("Failed to create schema");
+
+                run_server(model, jwt_secret, db).await?;
+            }
+            PAUSE => {
+                println!("Pausing for manual repair");
+                println!(
+                    "You can get the migrations by running: {}{}{}",
+                    "EXO_POSTGRES_URL=".cyan(),
+                    db.url().cyan(),
+                    " exo schema migration".cyan()
+                );
+                println!("Press enter to continue.");
+                let mut input: String = String::new();
+                std::io::stdin().read_line(&mut input)?;
+            }
+            EXIT => {
+                println!("Exiting...");
+                let _ = crate::SIGINT.0.send(());
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    Ok(())
 }

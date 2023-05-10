@@ -7,12 +7,77 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql::schema::{op::SchemaOp, spec::SchemaSpec};
+use exo_sql::{
+    schema::{op::SchemaOp, spec::SchemaSpec},
+    Database,
+};
+
+pub(crate) struct Migrations {
+    pub statements: Vec<MigrationStatement>,
+}
+
+pub(crate) struct MigrationStatement {
+    pub statement: String,
+    pub is_destructive: bool,
+}
+
+impl Migrations {
+    pub async fn apply(
+        &self,
+        database: &Database,
+        allow_destructive_changes: bool,
+    ) -> Result<(), anyhow::Error> {
+        let mut client = database.get_client().await?;
+        let transaction = client.transaction().await?;
+        for MigrationStatement {
+            statement,
+            is_destructive,
+        } in self.statements.iter()
+        {
+            if !is_destructive || allow_destructive_changes {
+                transaction.execute(statement, &[]).await?;
+            } else {
+                return Err(anyhow::anyhow!(
+                    "Destructive change detected: {}",
+                    statement
+                ));
+            }
+        }
+        Ok(transaction.commit().await?)
+    }
+
+    pub fn write(
+        &self,
+        writer: &mut dyn std::io::Write,
+        allow_destructive_changes: bool,
+    ) -> std::io::Result<()> {
+        for MigrationStatement {
+            statement,
+            is_destructive,
+        } in self.statements.iter()
+        {
+            if *is_destructive && !allow_destructive_changes {
+                write!(writer, "-- ")?;
+            }
+            writeln!(writer, "{statement}\n")?;
+        }
+        Ok(())
+    }
+}
+
+impl MigrationStatement {
+    pub fn new(statement: String, is_destructive: bool) -> Self {
+        Self {
+            statement,
+            is_destructive,
+        }
+    }
+}
 
 pub(crate) fn migration_statements(
     old_schema_spec: &SchemaSpec,
     new_schema_spec: &SchemaSpec,
-) -> Vec<(String, bool)> {
+) -> Migrations {
     let mut pre_statements = vec![];
     let mut statements = vec![];
     let mut post_statements = vec![];
@@ -40,19 +105,21 @@ pub(crate) fn migration_statements(
         let statement = diff.to_sql();
 
         for constraint in statement.pre_statements.into_iter() {
-            pre_statements.push((constraint, is_destructive));
+            pre_statements.push(MigrationStatement::new(constraint, is_destructive));
         }
 
-        statements.push((statement.statement, is_destructive));
+        statements.push(MigrationStatement::new(statement.statement, is_destructive));
 
         for constraint in statement.post_statements.into_iter() {
-            post_statements.push((constraint, is_destructive));
+            post_statements.push(MigrationStatement::new(constraint, is_destructive));
         }
     }
 
     pre_statements.extend(statements);
     pre_statements.extend(post_statements);
-    pre_statements
+    Migrations {
+        statements: pre_statements,
+    }
 }
 
 #[cfg(test)]
@@ -858,10 +925,16 @@ mod tests {
         expected: Vec<(&str, bool)>,
         message: &str,
     ) {
-        fn clean_actual(actual: Vec<(String, bool)>) -> Vec<(String, bool)> {
+        fn clean_actual(actual: Migrations) -> Vec<(String, bool)> {
             actual
+                .statements
                 .into_iter()
-                .map(|(s, d)| (s.replace('\t', "    "), d))
+                .map(
+                    |MigrationStatement {
+                         statement: s,
+                         is_destructive: d,
+                     }| (s.replace('\t', "    "), d),
+                )
                 .collect()
         }
         fn clean_expected(expected: Vec<(&str, bool)>) -> Vec<(String, bool)> {

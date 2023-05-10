@@ -11,6 +11,7 @@ path = "src/main.rs"
 [dependencies]
 colored.workspace = true
 tokio.workspace = true
+async-recursion.workspace = true
 anyhow.workspace = true
 heck.workspace = true
 lazy_static.workspace = true
@@ -23,6 +24,7 @@ ctrlc = "3.2"
 tempfile.workspace = true
 zip = "0.6.4"
 home = "0.5.4"
+inquire = "0.6.2"
 
 exo-sql = { path = "../../libs/exo-sql" }
 builder = { path = "../builder" }

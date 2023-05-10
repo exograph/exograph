@@ -70,14 +70,8 @@ impl CommandDefinition for MigrateCommandDefinition {
             let new_schema =
                 SchemaSpec::from_model(new_postgres_subsystem.tables.into_iter().collect());
 
-            let statements = migration_statements(&old_schema.value, &new_schema);
-
-            for (statement, is_destructive) in statements {
-                if is_destructive && !allow_destructive_changes {
-                    write!(buffer, "-- ")?;
-                }
-                writeln!(buffer, "{statement}")?;
-            }
+            migration_statements(&old_schema.value, &new_schema)
+                .write(&mut buffer, allow_destructive_changes)?;
 
             Ok(())
         })

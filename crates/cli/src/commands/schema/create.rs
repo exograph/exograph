@@ -38,17 +38,16 @@ impl CommandDefinition for CreateCommandDefinition {
         let model: PathBuf = default_model_file();
         let output: Option<PathBuf> = get(matches, "output");
 
-        let postgres_subsystem = util::create_postgres_system(&model)?;
+        let postgres_subsystem = util::create_postgres_system(model)?;
 
         let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
 
         // Creating the schema from the model is the same as migrating from an empty database.
-        for (statement, _) in migration_statements(
+        migration_statements(
             &SchemaSpec::default(),
             &SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect()),
-        ) {
-            writeln!(buffer, "{statement}\n")?;
-        }
+        )
+        .write(&mut buffer, true)?;
 
         Ok(())
     }
