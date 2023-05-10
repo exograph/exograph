@@ -14,13 +14,12 @@ use crate::{
         database_arg, default_model_file, ensure_exo_project_dir, get, output_arg,
         CommandDefinition,
     },
-    util::{open_database, open_file_for_output},
+    util::open_file_for_output,
 };
 
-use super::{migration_helper::migration_statements, util};
+use super::migration::Migration;
 use anyhow::Result;
 use clap::{Arg, Command};
-use exo_sql::schema::spec::SchemaSpec;
 
 pub(super) struct MigrateCommandDefinition {}
 
@@ -56,22 +55,8 @@ impl CommandDefinition for MigrateCommandDefinition {
             .unwrap();
 
         rt.block_on(async {
-            let database = open_database(database.as_deref())?;
-            let client = database.get_client().await?;
-
-            let old_schema = SchemaSpec::from_db(&client).await?;
-
-            for issue in &old_schema.issues {
-                eprintln!("{issue}");
-            }
-
-            let new_postgres_subsystem = util::create_postgres_system(&model)?;
-
-            let new_schema =
-                SchemaSpec::from_model(new_postgres_subsystem.tables.into_iter().collect());
-
-            migration_statements(&old_schema.value, &new_schema)
-                .write(&mut buffer, allow_destructive_changes)?;
+            let migrations = Migration::from_db_and_model(database.as_deref(), &model).await?;
+            migrations.write(&mut buffer, allow_destructive_changes)?;
 
             Ok(())
         })
