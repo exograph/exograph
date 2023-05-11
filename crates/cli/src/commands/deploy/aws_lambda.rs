@@ -51,7 +51,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         let app_name: String = get_required(matches, "app-name")?;
 
-        build(false)?;
+        build(false).await?;
 
         let aws_lambda_dir = PathBuf::from("target/aws-lambda");
         create_dir_all(aws_lambda_dir)?;

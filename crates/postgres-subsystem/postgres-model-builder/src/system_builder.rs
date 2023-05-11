@@ -150,8 +150,8 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn optional_fields() {
+    #[tokio::test]
+    async fn optional_fields() {
         let src = r#"
             @postgres
             module ConcertModule {
@@ -173,7 +173,7 @@ mod tests {
             }
         "#;
 
-        let system = create_system(src);
+        let system = create_system(src).await;
         let get_table = |n| get_table_from_arena(n, &system.tables);
 
         let concerts = get_table("concerts");
@@ -204,8 +204,8 @@ mod tests {
         assert!(venues_address.is_nullable);
     }
 
-    #[test]
-    fn one_to_one() {
+    #[tokio::test]
+    async fn one_to_one() {
         let src = r#"
         @postgres
         module UserModule {
@@ -221,7 +221,7 @@ mod tests {
         }
         "#;
 
-        let system = create_system(src);
+        let system = create_system(src).await;
         let get_table = |n| get_table_from_arena(n, &system.tables);
 
         let users = get_table("users");
@@ -237,8 +237,8 @@ mod tests {
         assert!(!users_membership.is_nullable);
     }
 
-    #[test]
-    fn type_hint_annotations() {
+    #[tokio::test]
+    async fn type_hint_annotations() {
         let src = r#"
             @postgres
             module LogModule {
@@ -259,7 +259,7 @@ mod tests {
             }
         "#;
 
-        let system = create_system(src);
+        let system = create_system(src).await;
         let get_table = |n| get_table_from_arena(n, &system.tables);
 
         let logs = get_table("logs");
@@ -372,7 +372,9 @@ mod tests {
         panic!("No such column {name}")
     }
 
-    fn create_system(src: &str) -> PostgresSubsystem {
-        crate::test_utils::create_postgres_system_from_str(src, "test.exo".to_string()).unwrap()
+    async fn create_system(src: &str) -> PostgresSubsystem {
+        crate::test_utils::create_postgres_system_from_str(src, "test.exo".to_string())
+            .await
+            .unwrap()
     }
 }

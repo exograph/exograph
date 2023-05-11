@@ -86,7 +86,7 @@ impl Migration {
             eprintln!("{issue}");
         }
 
-        let new_schema = extract_model_schema(model_path)?;
+        let new_schema = extract_model_schema(model_path).await?;
 
         Ok(Migration::from_schemas(&old_schema.value, &new_schema))
     }
@@ -107,7 +107,7 @@ impl Migration {
             eprintln!("{issue}");
         }
 
-        let new_schema = extract_model_schema(model_path)?;
+        let new_schema = extract_model_schema(model_path).await?;
 
         let diff = old_schema.value.diff(&new_schema);
 
@@ -180,8 +180,8 @@ async fn extract_db_schema(db_url: Option<&str>) -> Result<WithIssues<SchemaSpec
     SchemaSpec::from_db(&client).await
 }
 
-fn extract_model_schema(model_path: &PathBuf) -> Result<SchemaSpec, ParserError> {
-    let postgres_subsystem = util::create_postgres_system(model_path)?;
+async fn extract_model_schema(model_path: &PathBuf) -> Result<SchemaSpec, ParserError> {
+    let postgres_subsystem = util::create_postgres_system(model_path).await?;
 
     Ok(SchemaSpec::from_model(
         postgres_subsystem.tables.into_iter().collect(),
@@ -219,8 +219,8 @@ mod tests {
     use exo_sql::schema::spec::SchemaSpec;
     use stripmargin::StripMargin;
 
-    #[test]
-    fn add_model() {
+    #[tokio::test]
+    async fn add_model() {
         assert_changes(
             "",
             r#"
@@ -259,11 +259,12 @@ mod tests {
                 ("CREATE INDEX ON \"concerts\" (\"published\");", false),
             ],
             vec![(r#"DROP TABLE "concerts" CASCADE;"#, true)],
-        );
+        )
+        .await
     }
 
-    #[test]
-    fn add_field() {
+    #[tokio::test]
+    async fn add_field() {
         assert_changes(
             r#"
             @postgres
@@ -314,11 +315,12 @@ mod tests {
                 ("CREATE INDEX ON \"concerts\" (\"published\");", false),
             ],
             vec![(r#"ALTER TABLE "concerts" DROP COLUMN "published";"#, true)],
-        );
+        )
+        .await
     }
 
-    #[test]
-    fn add_relation_and_related_model() {
+    #[tokio::test]
+    async fn add_relation_and_related_model() {
         assert_changes(
             r#"
             @postgres
@@ -401,11 +403,11 @@ mod tests {
                 (r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true),
                 (r#"DROP TABLE "venues" CASCADE;"#, true),
             ],
-        );
+        ).await
     }
 
-    #[test]
-    fn add_relation_field() {
+    #[tokio::test]
+    async fn add_relation_field() {
         assert_changes(
             r#"
             @postgres
@@ -489,11 +491,11 @@ mod tests {
                 ("CREATE INDEX ON \"concerts\" (\"venue_id\");", false),
             ],
             vec![(r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true)],
-        );
+        ).await
     }
 
-    #[test]
-    fn update_relation_optionality() {
+    #[tokio::test]
+    async fn update_relation_optionality() {
         // venue: Venue <-> venue: Venue?
         assert_changes(
             r#"
@@ -575,11 +577,11 @@ mod tests {
                 ("ALTER TABLE \"concerts\" ALTER COLUMN \"venue_id\" DROP NOT NULL;", false),
             ],
             vec![("ALTER TABLE \"concerts\" ALTER COLUMN \"venue_id\" SET NOT NULL;", false)],
-        );
+        ).await
     }
 
-    #[test]
-    fn one_to_one_constraints() {
+    #[tokio::test]
+    async fn one_to_one_constraints() {
         assert_changes(
             r#"
                 @postgres
@@ -671,11 +673,11 @@ mod tests {
                     false,
                 ),
             ],
-        )
+        ).await
     }
 
-    #[test]
-    fn multi_column_unique_constraint() {
+    #[tokio::test]
+    async fn multi_column_unique_constraint() {
         assert_changes(
             r#"
                 @postgres
@@ -733,11 +735,11 @@ mod tests {
                 r#"ALTER TABLE "rsvps" DROP CONSTRAINT "email_event_id";"#,
                 false,
             )],
-        )
+        ).await
     }
 
-    #[test]
-    fn multi_column_unique_constraint_participation_change() {
+    #[tokio::test]
+    async fn multi_column_unique_constraint_participation_change() {
         assert_changes(
             r#"
                 @postgres
@@ -811,11 +813,11 @@ mod tests {
                     false,
                 ),
             ],
-        )
+        ).await
     }
 
-    #[test]
-    fn default_value_change() {
+    #[tokio::test]
+    async fn default_value_change() {
         assert_changes(
             r#"
                 @postgres
@@ -896,10 +898,11 @@ mod tests {
                 ),
             ],
         )
+        .await
     }
 
-    #[test]
-    fn not_null() {
+    #[tokio::test]
+    async fn not_null() {
         assert_changes(
             r#"
                 @postgres
@@ -954,16 +957,19 @@ mod tests {
                 false,
             )],
         )
+        .await
     }
 
-    fn compute_spec(model: &str) -> SchemaSpec {
+    async fn compute_spec(model: &str) -> SchemaSpec {
         let postgres_subsystem =
-            util::create_postgres_system_from_str(model, "test.exo".to_string()).unwrap();
+            util::create_postgres_system_from_str(model, "test.exo".to_string())
+                .await
+                .unwrap();
 
         SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect())
     }
 
-    fn assert_changes(
+    async fn assert_changes(
         old_system: &str,
         new_system: &str,
         old_create: Vec<(&str, bool)>,
@@ -971,8 +977,8 @@ mod tests {
         up_migration: Vec<(&str, bool)>,
         down_migration: Vec<(&str, bool)>,
     ) {
-        let old_system = compute_spec(old_system);
-        let new_system = compute_spec(new_system);
+        let old_system = compute_spec(old_system).await;
+        let new_system = compute_spec(new_system).await;
 
         assert_change(
             &SchemaSpec::default(),

@@ -787,6 +787,7 @@ dependencies = [
  "core-model-builder",
  "core-plugin-interface",
  "core-plugin-shared",
+ "futures",
  "insta",
  "regex",
  "serde",
@@ -1879,6 +1880,7 @@ name = "deno-model-builder"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "bincode",
  "core-plugin-interface",
  "deno",
@@ -5466,6 +5468,7 @@ dependencies = [
  "lazy_static",
  "postgres-model",
  "serde",
+ "tokio",
  "typed-generational-arena",
 ]
 

@@ -13,6 +13,7 @@ regex.workspace = true
 serde.workspace = true
 codemap.workspace = true
 codemap-diagnostic.workspace = true
+futures.workspace = true
 
 wildmatch.workspace = true
 thiserror.workspace = true

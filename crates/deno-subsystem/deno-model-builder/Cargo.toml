@@ -13,6 +13,7 @@ deno-model = { path = "../deno-model" }
 deno_emit = "0.16.0"
 url = "2.3.1"
 tokio.workspace = true
+async-trait.workspace = true
 anyhow.workspace = true
 
 # we use a patched version of Deno that exposes the CLI internals as a library

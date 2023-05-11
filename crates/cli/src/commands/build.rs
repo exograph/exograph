@@ -37,7 +37,7 @@ impl CommandDefinition for BuildCommandDefinition {
 
     /// Build exograph server binary
     async fn execute(&self, _matches: &ArgMatches) -> Result<()> {
-        build(true)?;
+        build(true).await?;
 
         Ok(())
     }
@@ -61,14 +61,16 @@ impl Display for BuildError {
 }
 
 /// Use statically linked builder to avoid dynamic loading for the CLI
-pub(crate) fn build_system_with_static_builders(model: &Path) -> Result<Vec<u8>, ParserError> {
-    let static_builders: Vec<Box<dyn SubsystemBuilder>> = vec![
+pub(crate) async fn build_system_with_static_builders(
+    model: &Path,
+) -> Result<Vec<u8>, ParserError> {
+    let static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>> = vec![
         Box::new(postgres_model_builder::PostgresSubsystemBuilder {}),
         Box::new(deno_model_builder::DenoSubsystemBuilder {}),
         Box::new(wasm_model_builder::WasmSubsystemBuilder {}),
     ];
 
-    builder::build_system(model, static_builders)
+    builder::build_system(model, static_builders).await
 }
 
 /// Build exo_ir file
@@ -79,12 +81,13 @@ pub(crate) fn build_system_with_static_builders(model: &Path) -> Result<Vec<u8>,
 /// * `print_message` - if true, it will print a message indicating the time it took to build the model. We need this
 ///                        to avoid printing the message when building the model through `exo serve`, where we don't want to print the message
 ///                        upon detecting changes
-pub(crate) fn build(print_message: bool) -> Result<(), BuildError> {
+pub(crate) async fn build(print_message: bool) -> Result<(), BuildError> {
     ensure_exo_project_dir(&PathBuf::from("."))?;
 
     let model: PathBuf = default_model_file();
-    let serialized_system =
-        build_system_with_static_builders(&model).map_err(BuildError::ParserError)?;
+    let serialized_system = build_system_with_static_builders(&model)
+        .await
+        .map_err(BuildError::ParserError)?;
 
     let exo_ir_file_name = PathBuf::from("target/index.exo_ir");
     create_dir_all("target").map_err(|e| {

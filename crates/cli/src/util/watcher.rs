@@ -66,7 +66,7 @@ where
     // - if the return value is an Ok(None), this mean that we have encountered some error, but it is not necessarily
     //   unrecoverable (the watcher should not exit)
     let build_and_start_server = &|| async {
-        let build_result = build(false);
+        let build_result = build(false).await;
 
         match build_result {
             Ok(()) => {

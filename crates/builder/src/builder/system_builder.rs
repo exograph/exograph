@@ -32,8 +32,8 @@ use core_plugin_shared::system_serializer::SystemSerializer;
 /// (this is done in place, so references created from elsewhere remain valid). Since all model
 /// types have been created in the first pass, the expansion pass can refer to other types (which may still be
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
-pub fn build(
-    subsystem_builders: &[Box<dyn SubsystemBuilder>],
+pub async fn build(
+    subsystem_builders: &[Box<dyn SubsystemBuilder + Send + Sync>],
     typechecked_system: TypecheckedSystem,
 ) -> Result<Vec<u8>, ModelBuildingError> {
     let base_system = core_model_builder::builder::system_builder::build(&typechecked_system)?;
@@ -46,25 +46,29 @@ pub fn build(
     // subsystem that don't need serialization (empty subsystems). This will ensure that we assign
     // the correct subsystem indices (which will be eventually used to dispatch interceptors to the
     // correct subsystem)
-    let subsystems: Vec<SerializableSubsystem> = subsystem_builders
-        .iter()
-        .map(|builder| builder.build(&typechecked_system, &base_system))
-        .collect::<Result<Vec<_>, ModelBuildingError>>()?
-        .into_iter()
-        .flatten()
-        .enumerate()
-        .map(|(subsystem_index, build_info)| {
-            subsystem_interceptions.push((subsystem_index, build_info.interceptions));
-            query_names.extend(build_info.query_names);
-            mutation_names.extend(build_info.mutation_names);
+    let subsystems: Vec<SerializableSubsystem> = futures::future::join_all(
+        subsystem_builders
+            .iter()
+            .map(|builder| builder.build(&typechecked_system, &base_system)),
+    )
+    .await
+    .into_iter()
+    .collect::<Result<Vec<_>, ModelBuildingError>>()?
+    .into_iter()
+    .flatten()
+    .enumerate()
+    .map(|(subsystem_index, build_info)| {
+        subsystem_interceptions.push((subsystem_index, build_info.interceptions));
+        query_names.extend(build_info.query_names);
+        mutation_names.extend(build_info.mutation_names);
 
-            SerializableSubsystem {
-                id: build_info.id,
-                subsystem_index,
-                serialized_subsystem: build_info.serialized_subsystem,
-            }
-        })
-        .collect();
+        SerializableSubsystem {
+            id: build_info.id,
+            subsystem_index,
+            serialized_subsystem: build_info.serialized_subsystem,
+        }
+    })
+    .collect();
 
     let query_interception_map =
         interceptor_weaver::weave(&query_names, &subsystem_interceptions, OperationKind::Query);

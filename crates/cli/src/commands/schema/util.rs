@@ -17,21 +17,21 @@ use postgres_model::subsystem::PostgresSubsystem;
 
 use crate::commands::build::build_system_with_static_builders;
 
-pub(crate) fn create_postgres_system(
+pub(crate) async fn create_postgres_system(
     model_file: impl AsRef<Path>,
 ) -> Result<PostgresSubsystem, ParserError> {
-    let serialized_system = build_system_with_static_builders(model_file.as_ref())?;
+    let serialized_system = build_system_with_static_builders(model_file.as_ref()).await?;
     let system = SerializableSystem::deserialize(serialized_system)?;
 
     deserialize_postgres_subsystem(system)
 }
 
 #[cfg(test)]
-pub(crate) fn create_postgres_system_from_str(
+pub(crate) async fn create_postgres_system_from_str(
     model_str: &str,
     file_name: String,
 ) -> Result<PostgresSubsystem, ParserError> {
-    let serialized_system = builder::build_system_from_str(model_str, file_name)?;
+    let serialized_system = builder::build_system_from_str(model_str, file_name).await?;
     let system = SerializableSystem::deserialize(serialized_system)?;
 
     deserialize_postgres_subsystem(system)

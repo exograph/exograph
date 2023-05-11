@@ -86,7 +86,7 @@ impl CommandDefinition for FlyCommandDefinition {
 
         let image_tag = format!("{}:{}", app_name, version);
 
-        build(false)?;
+        build(false).await?;
 
         let fly_dir = PathBuf::from("target/fly");
 

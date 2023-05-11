@@ -91,7 +91,7 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
 }
 
 fn populate_annotation_env(
-    subsystem_builders: &[Box<dyn SubsystemBuilder>],
+    subsystem_builders: &[Box<dyn SubsystemBuilder + Send + Sync>],
     env: &mut HashMap<String, AnnotationSpec>,
 ) {
     let mut annotations = vec![
@@ -241,7 +241,7 @@ fn populate_annotation_env(
 }
 
 pub fn build(
-    subsystem_builders: &[Box<dyn SubsystemBuilder>],
+    subsystem_builders: &[Box<dyn SubsystemBuilder + Send + Sync>],
     ast_system: AstSystem<Untyped>,
 ) -> Result<TypecheckedSystem, ParserError> {
     let mut types_arena: MappedArena<Type> = MappedArena::default();

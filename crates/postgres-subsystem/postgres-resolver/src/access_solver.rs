@@ -273,7 +273,7 @@ mod tests {
         }
     }
 
-    fn test_system() -> TestSystem {
+    async fn test_system() -> TestSystem {
         let postgres_subsystem = crate::test_utils::create_postgres_system_from_str(
             r#"
                 context AccessContext {
@@ -301,7 +301,9 @@ mod tests {
             "#,
             "test.exo".to_string(),
         )
+        .await
         .unwrap();
+
         let (table_id, table) = postgres_subsystem
             .tables
             .iter()
@@ -585,7 +587,7 @@ mod tests {
     #[tokio::test]
     async fn basic_eq() {
         test_relational_op(
-            &test_system(),
+            &test_system().await,
             AccessRelationalOp::Eq,
             |_, _| AbstractPredicate::True,
             |_, _| AbstractPredicate::False,
@@ -599,7 +601,7 @@ mod tests {
     #[tokio::test]
     async fn basic_neq() {
         test_relational_op(
-            &test_system(),
+            &test_system().await,
             AccessRelationalOp::Neq,
             |_, _| AbstractPredicate::False,
             |_, _| AbstractPredicate::True,
@@ -613,7 +615,7 @@ mod tests {
     #[tokio::test]
     async fn basic_lt() {
         test_relational_op(
-            &test_system(),
+            &test_system().await,
             AccessRelationalOp::Lt,
             AbstractPredicate::Lt,
             AbstractPredicate::Lt,
@@ -627,7 +629,7 @@ mod tests {
     #[tokio::test]
     async fn basic_lte() {
         test_relational_op(
-            &test_system(),
+            &test_system().await,
             AccessRelationalOp::Lte,
             AbstractPredicate::Lte,
             AbstractPredicate::Lte,
@@ -641,7 +643,7 @@ mod tests {
     #[tokio::test]
     async fn basic_gt() {
         test_relational_op(
-            &test_system(),
+            &test_system().await,
             AccessRelationalOp::Gt,
             AbstractPredicate::Gt,
             AbstractPredicate::Gt,
@@ -655,7 +657,7 @@ mod tests {
     #[tokio::test]
     async fn basic_gte() {
         test_relational_op(
-            &test_system(),
+            &test_system().await,
             AccessRelationalOp::Gte,
             AbstractPredicate::Gte,
             AbstractPredicate::Gte,
@@ -814,7 +816,7 @@ mod tests {
     #[tokio::test]
     async fn basic_and() {
         test_logical_op(
-            &test_system(),
+            &test_system().await,
             AccessLogicalExpression::And,
             AbstractPredicate::True,
             AbstractPredicate::False,
@@ -829,7 +831,7 @@ mod tests {
     #[tokio::test]
     async fn basic_or() {
         test_logical_op(
-            &test_system(),
+            &test_system().await,
             AccessLogicalExpression::Or,
             AbstractPredicate::True,
             AbstractPredicate::False,
@@ -843,7 +845,7 @@ mod tests {
 
     #[tokio::test]
     async fn basic_not() {
-        let test_system = test_system();
+        let test_system = test_system().await;
         let TestSystem {
             system,
             dept1_id_column_path: dept1_id_column_id,
@@ -919,7 +921,7 @@ mod tests {
             system,
             test_system_resolver,
             ..
-        } = test_system();
+        } = test_system().await;
 
         let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             context_selection_expr("AccessContext", "role"),
@@ -941,7 +943,7 @@ mod tests {
     async fn context_and_dynamic() {
         // Scenario: AuthContext.role == "ROLE_ADMIN" || self.published
 
-        let test_system = test_system();
+        let test_system = test_system().await;
         let TestSystem {
             system,
             published_column_path,
@@ -983,7 +985,7 @@ mod tests {
     async fn context_compared_with_dynamic() {
         // Scenario: AuthContext.user_id == self.owner_id
 
-        let test_system = test_system();
+        let test_system = test_system().await;
         let TestSystem {
             system,
             owner_id_column_path,
@@ -1023,7 +1025,7 @@ mod tests {
     async fn varied_rule_for_roles() {
         // Scenario: AuthContext.role == "ROLE_ADMIN" || (AuthContext.role == "ROLE_USER" && self.published == true)
 
-        let test_system = test_system();
+        let test_system = test_system().await;
         let TestSystem {
             system,
             published_column_path,
@@ -1098,7 +1100,7 @@ mod tests {
 
     #[tokio::test]
     async fn top_level_boolean_literal() {
-        let test_system = test_system();
+        let test_system = test_system().await;
         let TestSystem {
             test_system_resolver,
             ..
@@ -1122,7 +1124,7 @@ mod tests {
     async fn top_level_boolean_column() {
         // Scenario: self.published
 
-        let test_system = test_system();
+        let test_system = test_system().await;
         let TestSystem {
             system,
             published_column_path: published_column_id,
@@ -1147,7 +1149,7 @@ mod tests {
     async fn top_level_boolean_context() {
         // Scenario: AuthContext.is_admin
 
-        let test_system = test_system();
+        let test_system = test_system().await;
         let TestSystem {
             system,
             test_system_resolver,
