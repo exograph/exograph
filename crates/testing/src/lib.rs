@@ -15,10 +15,9 @@ use colored::Colorize;
 use exo_sql::testing::db::{EphemeralDatabaseLauncher, EphemeralDatabaseServer};
 use exotest::integration_tests::{build_exo_ir_file, run_testfile};
 use exotest::loader::load_project_dir;
-use rayon::ThreadPoolBuilder;
 use std::cmp::min;
 use std::path::PathBuf;
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
 
 use crate::exotest::introspection_tests::run_introspection_test;
 use crate::exotest::loader::ProjectTests;
@@ -60,16 +59,12 @@ pub fn run(
 
     // Estimate an optimal pool size
     let pool_size = min(number_of_integration_tests, cpus * 2);
-    let pool = ThreadPoolBuilder::new()
-        .num_threads(pool_size)
-        .build()
-        .unwrap();
 
-    let (tx, rx) = mpsc::channel();
+    let (tasks, read_tasks) = crossbeam_channel::unbounded::<Box<dyn FnOnce() + Send>>();
+
+    let (tx, rx) = std::sync::mpsc::channel();
 
     let ephemeral_server = Arc::new(EphemeralDatabaseLauncher::create_server()?);
-
-    let runtime = tokio::runtime::Runtime::new().unwrap();
 
     // Then build all the model files, spawning the production mode tests once the build completes
     for ProjectTests {
@@ -81,32 +76,48 @@ pub fn run(
         let tx = tx.clone();
         let ephemeral_server = ephemeral_server.clone();
 
-        let handle = runtime.handle().clone();
-        pool.spawn(move || match build_exo_ir_file(&model_path) {
-            Ok(()) => {
-                if run_introspection_tests {
-                    tx.send(run_introspection_test(&model_path, &handle))
-                        .unwrap();
-                };
+        tasks
+            .send(Box::new(move || match build_exo_ir_file(&model_path) {
+                Ok(()) => {
+                    let runtime = tokio::runtime::Runtime::new().unwrap();
+                    let local = tokio::task::LocalSet::new();
+                    local.block_on(&runtime, async move {
+                        if run_introspection_tests {
+                            tx.send(run_introspection_test(&model_path).await)
+                                .map_err(|_| ())
+                                .unwrap();
+                        };
 
-                for test in tests.iter() {
-                    let result = run_testfile(
-                        test,
-                        &model_path,
-                        ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
-                        &handle,
-                    );
-                    tx.send(result).unwrap();
+                        for test in tests.iter() {
+                            let result = run_testfile(
+                                test,
+                                &model_path,
+                                ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
+                            )
+                            .await;
+                            tx.send(result).map_err(|_| ()).unwrap();
+                        }
+                    })
                 }
+                Err(e) => tx
+                    .send(Err(e).with_context(|| {
+                        format!(
+                            "While trying to build exo_ir file for {}",
+                            model_path.display()
+                        )
+                    }))
+                    .map_err(|_| ())
+                    .unwrap(),
+            }))
+            .unwrap();
+    }
+
+    for _ in 0..pool_size {
+        let my_reader = read_tasks.clone();
+        std::thread::spawn(move || {
+            while let Ok(next) = my_reader.recv() {
+                next();
             }
-            Err(e) => tx
-                .send(Err(e).with_context(|| {
-                    format!(
-                        "While trying to build exo_ir file for {}",
-                        model_path.display()
-                    )
-                }))
-                .unwrap(),
         });
     }
 

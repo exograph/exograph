@@ -11,7 +11,6 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
 use exo_deno::{Arg, DenoModule, DenoModuleSharedState, UserCode};
-use tokio::runtime::Handle;
 
 const ASSERT_JS: &str = include_str!("./assert.js");
 
@@ -30,12 +29,11 @@ const ASSERT_JS: &str = include_str!("./assert.js");
 //   takes the actual value and returns a Boolean (or throws a ExographError)
 //
 // See unit tests for usage.
-pub fn dynamic_assert_using_deno(
+pub async fn dynamic_assert_using_deno(
     expected: &str,
     actual: serde_json::Value,
     prelude: &str,
     testvariables: &HashMap<String, serde_json::Value>,
-    runtime: &Handle,
 ) -> Result<()> {
     let testvariables_json = serde_json::to_value(testvariables)?;
 
@@ -44,7 +42,7 @@ pub fn dynamic_assert_using_deno(
     let script = script.replace("\"%%PRELUDE%%\"", prelude);
     let script = script.replace("\"%%JSON%%\"", expected);
 
-    let deno_module_future = DenoModule::new(
+    let mut deno_module = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/assert.js".to_owned(),
             script: script.into(),
@@ -59,16 +57,16 @@ pub fn dynamic_assert_using_deno(
         Some("ExographError"),
         None,
         None,
-    );
-
-    let mut deno_module = runtime.block_on(deno_module_future)?;
+    )
+    .await?;
 
     // run method
-    let _ = runtime
-        .block_on(deno_module.execute_function(
+    let _ = deno_module
+        .execute_function(
             "test",
             vec![Arg::Serde(actual.clone()), Arg::Serde(testvariables_json)],
-        ))
+        )
+        .await
         .map_err(|e| {
             anyhow!(
                 "{}\n➞ Expected: \n{}\n➞ Got: \n{}\n",
@@ -82,11 +80,10 @@ pub fn dynamic_assert_using_deno(
 }
 
 // Evaluates substitutions only in a stringified 'JSON' payload.
-pub fn evaluate_using_deno(
+pub async fn evaluate_using_deno(
     not_really_json: &str,
     prelude: &str,
     testvariables: &HashMap<String, serde_json::Value>,
-    runtime: &Handle,
 ) -> Result<serde_json::Value> {
     let testvariables_json = serde_json::to_value(testvariables)?;
 
@@ -95,7 +92,7 @@ pub fn evaluate_using_deno(
     let script = script.replace("\"%%PRELUDE%%\"", prelude);
     let script = script.replace("\"%%JSON%%\"", not_really_json);
 
-    let deno_module_future = DenoModule::new(
+    let mut deno_module = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/assert.js".to_owned(),
             script: script.into(),
@@ -108,23 +105,18 @@ pub fn evaluate_using_deno(
         None,
         None,
         None,
-    );
-
-    let mut deno_module = runtime.block_on(deno_module_future)?;
+    )
+    .await?;
 
     // run method
-    runtime.block_on(async {
-        deno_module
-            .execute_function("evaluate", vec![Arg::Serde(testvariables_json)])
-            .await
-            .map_err(|e| anyhow!(e))
-    })
+    deno_module
+        .execute_function("evaluate", vec![Arg::Serde(testvariables_json)])
+        .await
+        .map_err(|e| anyhow!(e))
 }
 
 #[cfg(test)]
 mod tests {
-    use tokio::runtime::Runtime;
-
     use crate::exotest::assertion::evaluate_using_deno;
 
     use super::dynamic_assert_using_deno;
@@ -144,8 +136,8 @@ mod tests {
         .unwrap()
     }
 
-    #[test]
-    fn test_dynamic_assert() {
+    #[tokio::test]
+    async fn test_dynamic_assert() {
         let expected = r#"
             {
                 "data": {
@@ -163,19 +155,13 @@ mod tests {
         .into_iter()
         .collect();
 
-        let runtime = Runtime::new().unwrap();
-        dynamic_assert_using_deno(
-            expected,
-            actual_payload(),
-            "",
-            &testvariables,
-            runtime.handle(),
-        )
-        .unwrap();
+        dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables)
+            .await
+            .unwrap();
     }
 
-    #[test]
-    fn test_evaluation() {
+    #[tokio::test]
+    async fn test_evaluation() {
         let payload = r#"
             {
                 "data": {
@@ -193,16 +179,17 @@ mod tests {
         .into_iter()
         .collect();
 
-        let runtime = Runtime::new().unwrap();
-        let result = evaluate_using_deno(payload, "", &testvariables, runtime.handle()).unwrap();
+        let result = evaluate_using_deno(payload, "", &testvariables)
+            .await
+            .unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(result);
         });
     }
 
-    #[test]
-    fn test_dynamic_assert_failing_normal_payloads() {
+    #[tokio::test]
+    async fn test_dynamic_assert_failing_normal_payloads() {
         let expected = r#"
             {
                 "data": {
@@ -215,23 +202,17 @@ mod tests {
 
         let testvariables = vec![].into_iter().collect();
 
-        let runtime = Runtime::new().unwrap();
-        let err = dynamic_assert_using_deno(
-            expected,
-            actual_payload(),
-            "",
-            &testvariables,
-            runtime.handle(),
-        )
-        .unwrap_err();
+        let err = dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables)
+            .await
+            .unwrap_err();
 
         assert!(err
             .to_string()
             .starts_with("assert failed: expected biz on key c, got qux"));
     }
 
-    #[test]
-    fn test_dynamic_assert_failing_closure_test() {
+    #[tokio::test]
+    async fn test_dynamic_assert_failing_closure_test() {
         let expected = r#"
             {
                 "data": {
@@ -244,23 +225,17 @@ mod tests {
 
         let testvariables = vec![].into_iter().collect();
 
-        let runtime = Runtime::new().unwrap();
-        let err = dynamic_assert_using_deno(
-            expected,
-            actual_payload(),
-            "",
-            &testvariables,
-            runtime.handle(),
-        )
-        .unwrap_err();
+        let err = dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables)
+            .await
+            .unwrap_err();
 
         assert!(err
             .to_string()
             .starts_with("assert function failed for field c!"));
     }
 
-    #[test]
-    fn test_deno_prelude_and_async() {
+    #[tokio::test]
+    async fn test_deno_prelude_and_async() {
         let prelude = r#"
             function someAsyncOp() {
                 return new Promise(resolve => setTimeout(resolve, 1000));
@@ -279,14 +254,8 @@ mod tests {
 
         let testvariables = vec![].into_iter().collect();
 
-        let runtime = Runtime::new().unwrap();
-        dynamic_assert_using_deno(
-            expected,
-            actual_payload(),
-            prelude,
-            &testvariables,
-            runtime.handle(),
-        )
-        .unwrap();
+        dynamic_assert_using_deno(expected, actual_payload(), prelude, &testvariables)
+            .await
+            .unwrap();
     }
 }
