@@ -11,7 +11,7 @@ use anyhow::{anyhow, Result};
 use clap::{ArgMatches, Command};
 use colored::Colorize;
 use futures::FutureExt;
-use std::{io::stdin, path::PathBuf};
+use std::path::PathBuf;
 use tokio::runtime::Runtime;
 
 use super::command::{get, port_arg, CommandDefinition};
@@ -19,6 +19,7 @@ use crate::{
     commands::{
         command::{default_model_file, ensure_exo_project_dir},
         schema::{migration::Migration, verify::VerificationErrors},
+        util::wait_for_enter,
     },
     util::watcher,
 };
@@ -62,6 +63,18 @@ impl CommandDefinition for DevCommandDefinition {
 
                 match verification_result {
                     Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
+                        let migrations = Migration::from_db_and_model(None, &model).await?;
+
+                        // If migrations are safe to apply, let's go ahead with those
+                        if !migrations.has_destructive_changes() {
+                            if apply_migration(&migrations).await? {
+                                break Ok(());
+                            } else {
+                                // Migration failed, perhaps due to adding a non-nullable column and table already had rows
+                                continue;
+                            }
+                        }
+
                         println!("{}", "The schema of the current database is not compatible with the current model for the following reasons:".red().bold());
                         println!("{}", e.to_string().red().bold());
 
@@ -71,30 +84,22 @@ impl CommandDefinition for DevCommandDefinition {
                         match ans {
                             MIGRATE => {
                                 println!("{}", "Attempting migration...".blue().bold());
-                                let migrations = Migration::from_db_and_model(None, &model).await?;
 
-                                if migrations.has_destructive_changes() {
-                                    let allow_destructive_changes =
-                                        inquire::Confirm::new("This migration contains destructive changes. Do you still want to proceed?")
-                                        .with_default(false)
-                                        .prompt()?;
+                                // We will reach here only if the migration has some destructive changes (we auto-apply safe migrations; see above)
+                                let allow_destructive_changes =
+                                    inquire::Confirm::new("This migration contains destructive changes. Do you still want to proceed?")
+                                    .with_default(false)
+                                    .prompt()?;
 
-                                    if !allow_destructive_changes {
-                                        println!("{}", "Aborting migration...".red().bold());
-                                        continue;
-                                    }
+                                if !allow_destructive_changes {
+                                    println!("{}", "Aborting migration...".red().bold());
+                                    continue;
                                 }
-                                let result = migrations.apply(None, true).await;
-                                match result {
-                                    Ok(_) => {
-                                        println!("{}", "Migration successful!".green().bold());
-                                        break Ok(());
-                                    }
-                                    Err(e) => {
-                                        println!("{}", "Migration failed!".red().bold());
-                                        println!("{}", e.to_string().red().bold());
-                                        println!("{}", "Please fix the model and try again.".red().bold());
-                                    }
+
+                                if apply_migration(&migrations).await? {
+                                    break Ok(());
+                                } else {
+                                    continue;
                                 }
                             }
                             CONTINUE => {
@@ -102,10 +107,7 @@ impl CommandDefinition for DevCommandDefinition {
                                 break Ok(());
                             }
                             PAUSE => {
-                                println!("{}", "Paused. Press enter to re-verify.".blue().bold());
-
-                                let mut line = String::new();
-                                stdin().read_line(&mut line)?;
+                                wait_for_enter(&"Paused. Press enter to re-verify.".blue().bold())?;
                             }
                             EXIT => {
                                 println!("Exiting...");
@@ -123,5 +125,22 @@ impl CommandDefinition for DevCommandDefinition {
                 }
             }
         }.boxed()))
+    }
+}
+
+async fn apply_migration(migrations: &Migration) -> Result<bool> {
+    println!("{}", "Applying migration...".blue().bold());
+    let result = migrations.apply(None, true).await;
+    match result {
+        Ok(_) => {
+            println!("{}", "Migration successful!".green().bold());
+            Ok(true)
+        }
+        Err(e) => {
+            println!("{}", "Migration failed!".red().bold());
+            println!("{}", e.to_string().red().bold());
+            wait_for_enter(&"Press enter to re-verify.".blue().bold())?;
+            Ok(false)
+        }
     }
 }
