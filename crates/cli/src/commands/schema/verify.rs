@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use builder::error::ParserError;
 use clap::Command;
 use exo_sql::database_error::DatabaseError;
@@ -21,6 +22,7 @@ use super::migration::Migration;
 
 pub(super) struct VerifyCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for VerifyCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("verify")
@@ -30,18 +32,13 @@ impl CommandDefinition for VerifyCommandDefinition {
 
     /// Verify that a schema is compatible with a exograph model
 
-    fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         ensure_exo_project_dir(&PathBuf::from("."))?;
 
         let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
 
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_io()
-            .build()
-            .unwrap();
-
-        let verification_result = rt.block_on(Migration::verify(database.as_deref(), &model));
+        let verification_result = Migration::verify(database.as_deref(), &model).await;
 
         match &verification_result {
             Ok(()) => eprintln!("This model is compatible with the database schema!"),

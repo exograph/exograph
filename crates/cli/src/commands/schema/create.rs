@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use anyhow::Result;
+use async_trait::async_trait;
 use clap::Command;
 use std::{io::Write, path::PathBuf};
 
@@ -24,6 +25,7 @@ use super::{migration::Migration, util};
 
 pub(super) struct CreateCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for CreateCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("create")
@@ -32,7 +34,7 @@ impl CommandDefinition for CreateCommandDefinition {
     }
 
     /// Create a database schema from a exograph model
-    fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         ensure_exo_project_dir(&PathBuf::from("."))?;
 
         let model: PathBuf = default_model_file();

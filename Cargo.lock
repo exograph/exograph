@@ -1105,6 +1105,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-recursion",
+ "async-trait",
  "builder",
  "clap 4.2.7",
  "colored",

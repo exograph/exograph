@@ -11,10 +11,12 @@ use std::path::PathBuf;
 
 use super::command::{get, get_required, CommandDefinition};
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 
 pub struct TestCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for TestCommandDefinition {
     fn command(&self) -> Command {
         Command::new("test")
@@ -35,7 +37,7 @@ impl CommandDefinition for TestCommandDefinition {
             )
     }
 
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
         let dir: PathBuf = get_required(matches, "dir")?;
         let pattern: Option<String> = get(matches, "pattern"); // glob pattern indicating tests to be executed
 

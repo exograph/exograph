@@ -14,6 +14,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use clap::{Arg, ArgAction, Command};
 use colored::Colorize;
 use heck::ToSnakeCase;
@@ -25,6 +26,7 @@ use crate::commands::{
 
 pub(super) struct FlyCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for FlyCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("fly")
@@ -75,7 +77,7 @@ impl CommandDefinition for FlyCommandDefinition {
     ///
     /// To avoid clobbering existing files, this command will create a `fly` directory in the same
     /// directory as the model file, and put the `fly.toml` and `Dockerfile` in there.
-    fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         let app_name: String = get_required(matches, "app-name")?;
         let version: String = get_required(matches, "version")?;
         let envs: Option<Vec<String>> = matches.get_many("env").map(|env| env.cloned().collect());

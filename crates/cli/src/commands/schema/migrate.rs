@@ -19,10 +19,12 @@ use crate::{
 
 use super::migration::Migration;
 use anyhow::Result;
+use async_trait::async_trait;
 use clap::{Arg, Command};
 
 pub(super) struct MigrateCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for MigrateCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("migrate")
@@ -39,7 +41,7 @@ impl CommandDefinition for MigrateCommandDefinition {
     }
 
     /// Perform a database migration for a exograph model
-    fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         ensure_exo_project_dir(&PathBuf::from("."))?;
 
         let model: PathBuf = default_model_file();
@@ -47,18 +49,11 @@ impl CommandDefinition for MigrateCommandDefinition {
         let output: Option<PathBuf> = get(matches, "output");
         let allow_destructive_changes: bool = matches.get_flag("allow-destructive-changes");
 
+        let migrations = Migration::from_db_and_model(database.as_deref(), &model).await?;
+
         let mut buffer: Box<dyn io::Write> = open_file_for_output(output.as_deref())?;
+        migrations.write(&mut buffer, allow_destructive_changes)?;
 
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_io()
-            .build()
-            .unwrap();
-
-        rt.block_on(async {
-            let migrations = Migration::from_db_and_model(database.as_deref(), &model).await?;
-            migrations.write(&mut buffer, allow_destructive_changes)?;
-
-            Ok(())
-        })
+        Ok(())
     }
 }

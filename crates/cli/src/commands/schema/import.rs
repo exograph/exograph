@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use anyhow::Result;
+use async_trait::async_trait;
 use clap::Command;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::{schema::spec::SchemaSpec, Database};
@@ -23,6 +24,7 @@ use crate::util::open_file_for_output;
 
 pub(super) struct ImportCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for ImportCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("import")
@@ -32,17 +34,10 @@ impl CommandDefinition for ImportCommandDefinition {
     }
 
     /// Create a exograph model file based on a database schema
-    fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         let output: Option<PathBuf> = get(matches, "output");
-        // Create runtime and make the rest of this an async block
-        // (then block on it)
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_io()
-            .build()
-            .unwrap();
-
         let mut issues = Vec::new();
-        let mut schema = rt.block_on(import_schema())?;
+        let mut schema = import_schema().await?;
         let mut model = schema.value.to_model();
 
         issues.append(&mut schema.issues);

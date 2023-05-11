@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use builder::error::ParserError;
 use clap::{ArgMatches, Command};
 
@@ -28,13 +29,14 @@ use super::command::CommandDefinition;
 
 pub struct BuildCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for BuildCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("build").about("Build exograph server binary")
     }
 
     /// Build exograph server binary
-    fn execute(&self, _matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, _matches: &ArgMatches) -> Result<()> {
         build(true)?;
 
         Ok(())

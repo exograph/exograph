@@ -14,6 +14,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Ok, Result};
+use async_trait::async_trait;
 use clap::{Arg, Command};
 use colored::Colorize;
 
@@ -32,6 +33,7 @@ use crate::commands::{
 /// TODO: Revisit once we have a proper release process.
 pub(super) struct AwsLambdaCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for AwsLambdaCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("aws-lambda")
@@ -46,7 +48,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
             )
     }
 
-    fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         let app_name: String = get_required(matches, "app-name")?;
 
         build(false)?;

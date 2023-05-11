@@ -12,6 +12,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 
 use super::command::{get_required, new_project_arg, CommandDefinition};
@@ -23,6 +24,7 @@ static GITIGNORE_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/gitignore")
 
 pub struct NewCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for NewCommandDefinition {
     fn command(&self) -> Command {
         Command::new("new")
@@ -30,7 +32,7 @@ impl CommandDefinition for NewCommandDefinition {
             .arg(new_project_arg())
     }
 
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
         let path: PathBuf = get_required(matches, "path")?;
 
         if path.exists() {
