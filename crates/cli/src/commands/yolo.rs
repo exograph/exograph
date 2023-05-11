@@ -14,7 +14,10 @@ use colored::Colorize;
 use std::{path::PathBuf, sync::atomic::Ordering};
 
 use crate::{
-    commands::schema::migration::{self, Migration},
+    commands::{
+        schema::migration::{self, Migration},
+        util::wait_for_enter,
+    },
     util::watcher,
 };
 
@@ -83,14 +86,11 @@ async fn run_server(
     println!("Postgres URL is {}", &db.url().cyan());
 
     // generate migrations for current database
-    println!("Generating migrations...");
     let migrations = Migration::from_db_and_model(None, model).await?;
 
     // execute migration
-    let result: Result<()> = {
-        println!("Running migrations...");
-        migrations.apply(None, true).await
-    };
+    println!("Applying migrations...");
+    let result = migrations.apply(None, true).await;
 
     const CONTINUE: &str = "Continue with old schema";
     const REBUILD: &str = "Rebuild Postgres schema (wipe out all data)";
@@ -118,9 +118,7 @@ async fn run_server(
                     db.url().cyan(),
                     " exo schema migration".cyan()
                 );
-                println!("Press enter to continue.");
-                let mut input: String = String::new();
-                std::io::stdin().read_line(&mut input)?;
+                wait_for_enter("Press enter to continue.")?;
             }
             EXIT => {
                 println!("Exiting...");

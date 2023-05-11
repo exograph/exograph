@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::io::stdin;
+
 use rand::Rng;
 
 pub(super) fn generate_random_string() -> String {
@@ -16,4 +18,13 @@ pub(super) fn generate_random_string() -> String {
         .map(char::from)
         .map(|c| c.to_ascii_lowercase())
         .collect()
+}
+
+pub(crate) fn wait_for_enter(prompt: &str) -> std::io::Result<()> {
+    println!("{prompt}");
+
+    let mut line = String::new();
+    stdin().read_line(&mut line)?;
+
+    Ok(())
 }
