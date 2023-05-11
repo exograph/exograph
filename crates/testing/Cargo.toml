@@ -14,9 +14,8 @@ serde.workspace = true
 jsonwebtoken.workspace = true
 serde_yaml = "0.9.4"
 serde_json.workspace = true
-postgres = { version = "0.19.2", features = ["with-chrono-0_4"] }
+tokio-postgres.workspace = true
 rand.workspace = true
-rayon = "1.5.1"
 regex.workspace = true
 tokio.workspace = true
 async-graphql-parser.workspace = true
@@ -35,6 +34,8 @@ resolver = { path = "../resolver" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 
 server-common = { path = "../server-common" }
+futures.workspace = true
+crossbeam-channel = "0.5.8"
 
 [features]
 static-postgres-resolver = ["server-common/static-postgres-resolver"]

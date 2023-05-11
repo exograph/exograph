@@ -15,6 +15,7 @@ use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
+use futures::future::OptionFuture;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
@@ -23,7 +24,6 @@ use resolver::{
 };
 use serde::Serialize;
 use serde_json::{json, Map, Value};
-use tokio::runtime::Handle;
 use unescape::unescape;
 
 use std::net::{IpAddr, Ipv4Addr};
@@ -47,11 +47,10 @@ struct ExoPost {
     variables: Map<String, Value>,
 }
 
-pub(crate) fn run_testfile(
+pub(crate) async fn run_testfile(
     testfile: &ParsedTestfile,
     project_dir: &PathBuf,
     ephemeral_database: &dyn EphemeralDatabaseServer,
-    runtime: &Handle,
 ) -> Result<TestResult> {
     let log_prefix = format!("({})\n :: ", testfile.name()).purple();
 
@@ -86,7 +85,7 @@ pub(crate) fn run_testfile(
         }
 
         let query = std::str::from_utf8(&cli_child.stdout)?;
-        run_psql(query, db_instance.as_ref())?;
+        run_psql(query, db_instance.as_ref()).await?;
 
         // spawn a exo instance
         println!("{log_prefix} Initializing exo-server ...");
@@ -145,7 +144,7 @@ pub(crate) fn run_testfile(
     // run the init section
     println!("{log_prefix} Initializing database...");
     for operation in testfile.init_operations.iter() {
-        let result = run_operation(operation, &mut ctx, runtime).with_context(|| {
+        let result = run_operation(operation, &mut ctx).await.with_context(|| {
             format!(
                 "While initializing database for testfile {}",
                 testfile.name()
@@ -165,7 +164,8 @@ pub(crate) fn run_testfile(
 
     let mut fail = None;
     for operation in testfile.test_operation_stages.iter() {
-        let result = run_operation(operation, &mut ctx, runtime)
+        let result = run_operation(operation, &mut ctx)
+            .await
             .with_context(|| anyhow!("While running tests for {}", testfile.name()));
 
         match result {
@@ -241,10 +241,9 @@ impl Request for MemoryRequest {
     }
 }
 
-fn run_operation(
+async fn run_operation(
     gql: &TestfileOperation,
     ctx: &mut TestfileContext,
-    runtime: &Handle,
 ) -> Result<OperationResult> {
     match gql {
         TestfileOperation::GqlDocument {
@@ -260,14 +259,17 @@ fn run_operation(
 
             // process substitutions in query variables section
             // and extend our collection with the results
-            let variables_map: Map<String, Value> = variables
-                .as_ref()
-                .map(|vars| evaluate_using_deno(vars, &deno_prelude, &ctx.testvariables, runtime))
-                .transpose()?
-                .unwrap_or_else(|| Value::Object(Map::new()))
-                .as_object()
-                .expect("evaluation to finish with a variable map")
-                .clone();
+            let variables_map: Map<String, Value> = OptionFuture::from(
+                variables
+                    .as_ref()
+                    .map(|vars| evaluate_using_deno(vars, &deno_prelude, &ctx.testvariables)),
+            )
+            .await
+            .transpose()?
+            .unwrap_or_else(|| Value::Object(Map::new()))
+            .as_object()
+            .expect("evaluation to finish with a variable map")
+            .clone();
             ctx.testvariables.extend(variables_map.clone());
 
             // remove @bind directives from our query
@@ -300,12 +302,11 @@ fn run_operation(
             request.add_header("Content-Type", "application/json");
 
             // add extra headers from testfile
-            let headers = headers
-                .as_ref()
-                .map(|headers| {
-                    evaluate_using_deno(headers, &deno_prelude, &ctx.testvariables, runtime)
-                })
-                .transpose()?;
+            let headers = OptionFuture::from(headers.as_ref().map(|headers| async {
+                evaluate_using_deno(headers, &deno_prelude, &ctx.testvariables).await
+            }))
+            .await
+            .transpose()?;
 
             if let Some(Value::Object(map)) = headers {
                 for (header, value) in map.iter() {
@@ -325,12 +326,12 @@ fn run_operation(
 
             // run the operation
             let body = run_query(
-                runtime,
                 operations_payload,
                 request_context,
                 &ctx.server,
                 &mut ctx.cookies,
-            );
+            )
+            .await;
 
             // resolve testvariables from the result of our current operation
             // and extend our collection with them
@@ -353,8 +354,9 @@ fn run_operation(
                         body,
                         &deno_prelude,
                         &ctx.testvariables,
-                        runtime,
-                    ) {
+                    )
+                    .await
+                    {
                         Ok(()) => Ok(OperationResult::AssertPassed),
                         Err(e) => Ok(OperationResult::AssertFailed(e)),
                     }
@@ -369,24 +371,19 @@ fn run_operation(
         }
 
         TestfileOperation::Sql(query) => {
-            run_psql(query, ctx.db.as_ref())?;
+            run_psql(query, ctx.db.as_ref()).await?;
             Ok(OperationResult::Finished)
         }
     }
 }
 
-pub fn run_query(
-    runtime: &Handle,
+pub async fn run_query(
     operations_payload: OperationsPayload,
-    request_context: RequestContext,
+    request_context: RequestContext<'_>,
     server: &SystemResolver,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
-    let res = runtime.block_on(resolve_in_memory(
-        operations_payload,
-        server,
-        request_context,
-    ));
+    let res = resolve_in_memory(operations_payload, server, request_context).await;
 
     match res {
         Ok(res) => {

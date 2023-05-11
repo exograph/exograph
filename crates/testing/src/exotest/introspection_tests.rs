@@ -17,7 +17,6 @@ use include_dir::{include_dir, Dir};
 use resolver::{create_system_resolver, LOCAL_ALLOW_INTROSPECTION};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
-use tokio::runtime::Handle;
 
 use crate::exotest::common::TestResultKind;
 
@@ -29,7 +28,7 @@ use super::{
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
 const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");
 
-pub(crate) fn run_introspection_test(model_path: &Path, runtime: &Handle) -> Result<TestResult> {
+pub(crate) async fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     let log_prefix = format!("(introspection: {})\n :: ", model_path.display()).purple();
     println!("{log_prefix} Running introspection tests...");
 
@@ -54,7 +53,7 @@ pub(crate) fn run_introspection_test(model_path: &Path, runtime: &Handle) -> Res
         })?
     };
 
-    let result = check_introspection(&server, runtime)?;
+    let result = check_introspection(&server).await?;
 
     match result {
         Ok(()) => Ok(TestResult {
@@ -69,10 +68,10 @@ pub(crate) fn run_introspection_test(model_path: &Path, runtime: &Handle) -> Res
     }
 }
 
-fn check_introspection(server: &SystemResolver, runtime: &Handle) -> Result<Result<()>> {
+async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
     let script = INTROSPECTION_ASSERT_JS;
 
-    let deno_module_future = DenoModule::new(
+    let mut deno_module = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/introspection_tests.js".to_owned(),
             script: script.into(),
@@ -105,11 +104,12 @@ fn check_introspection(server: &SystemResolver, runtime: &Handle) -> Result<Resu
                 .unwrap()
                 .replace("process.env.NODE_ENV === 'production'", "false"),
         )]),
-    );
+    )
+    .await?;
 
-    let mut deno_module = runtime.block_on(deno_module_future)?;
-
-    let query = runtime.block_on(deno_module.execute_function("introspectionQuery", vec![]))?;
+    let query = deno_module
+        .execute_function("introspectionQuery", vec![])
+        .await?;
 
     let request = MemoryRequest::new(HashMap::new());
     let request_context = RequestContext::new(&request, vec![], server)?;
@@ -124,17 +124,19 @@ fn check_introspection(server: &SystemResolver, runtime: &Handle) -> Result<Resu
     };
 
     let result = run_query(
-        runtime,
         operations_payload,
         request_context,
         server,
         &mut HashMap::new(),
-    );
+    )
+    .await;
 
-    let result = runtime.block_on(deno_module.execute_function(
-        "assertSchema",
-        vec![Arg::Serde(Value::String(result.to_string()))],
-    ));
+    let result = deno_module
+        .execute_function(
+            "assertSchema",
+            vec![Arg::Serde(Value::String(result.to_string()))],
+        )
+        .await;
 
     match result {
         Ok(_) => Ok(Ok(())),
