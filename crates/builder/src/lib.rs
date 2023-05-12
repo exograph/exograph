@@ -30,9 +30,9 @@ use core_model_builder::{
 use regex::Regex;
 
 /// Build a model system from a exo file
-pub fn build_system(
+pub async fn build_system(
     model_file: impl AsRef<Path>,
-    static_builders: Vec<Box<dyn SubsystemBuilder>>,
+    static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
 ) -> Result<Vec<u8>, ParserError> {
     let file_content = fs::read_to_string(model_file.as_ref())?;
     let mut codemap = CodeMap::new();
@@ -44,11 +44,15 @@ pub fn build_system(
         codemap,
         static_builders,
     )
+    .await
 }
 
 // Can we expose this only for testing purposes?
 // #[cfg(test)]
-pub fn build_system_from_str(model_str: &str, file_name: String) -> Result<Vec<u8>, ParserError> {
+pub async fn build_system_from_str(
+    model_str: &str,
+    file_name: String,
+) -> Result<Vec<u8>, ParserError> {
     let mut codemap = CodeMap::new();
     codemap.add_file(file_name.clone(), model_str.to_string());
 
@@ -57,11 +61,12 @@ pub fn build_system_from_str(model_str: &str, file_name: String) -> Result<Vec<u
         codemap,
         vec![],
     )
+    .await
 }
 
 pub fn load_subsystem_builders(
-    static_builders: Vec<Box<dyn SubsystemBuilder>>,
-) -> Result<Vec<Box<dyn SubsystemBuilder>>, LibraryLoadingError> {
+    static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
+) -> Result<Vec<Box<dyn SubsystemBuilder + Send + Sync>>, LibraryLoadingError> {
     let mut dir = current_exe()?;
     dir.pop();
 
@@ -98,20 +103,29 @@ pub fn load_subsystem_builders(
     Ok(subsystem_builders)
 }
 
-fn build_from_ast_system(
+async fn build_from_ast_system(
     ast_system: Result<AstSystem<Untyped>, ParserError>,
     codemap: CodeMap,
-    static_builders: Vec<Box<dyn SubsystemBuilder>>,
+    static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
 ) -> Result<Vec<u8>, ParserError> {
     let subsystem_builders = load_subsystem_builders(static_builders)
         .map_err(|e| ParserError::Generic(format!("{e}")))?;
 
-    ast_system
-        .and_then(|ast_system| typechecker::build(&subsystem_builders, ast_system))
-        .and_then(|typechecked_system| {
-            builder::build(&subsystem_builders, typechecked_system).map_err(|e| e.into())
-        })
+    let ast_system = ast_system.map_err(|err| {
+        emit_diagnostics(&err, &codemap);
+        err
+    })?;
+
+    let typechecked_system =
+        typechecker::build(&subsystem_builders, ast_system).map_err(|err| {
+            emit_diagnostics(&err, &codemap);
+            err
+        })?;
+
+    builder::build(&subsystem_builders, typechecked_system)
+        .await
         .map_err(|err| {
+            let err = err.into();
             emit_diagnostics(&err, &codemap);
             err
         })

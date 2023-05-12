@@ -11,6 +11,7 @@ use std::vec;
 
 use crate::system_builder::ModelWasmSystemWithInterceptors;
 use core_plugin_interface::{
+    async_trait::async_trait,
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,
@@ -26,6 +27,7 @@ use core_plugin_interface::{
 };
 pub struct WasmSubsystemBuilder {}
 
+#[async_trait]
 impl SubsystemBuilder for WasmSubsystemBuilder {
     fn id(&self) -> &'static str {
         "wasm"
@@ -43,12 +45,12 @@ impl SubsystemBuilder for WasmSubsystemBuilder {
         )]
     }
 
-    fn build(
+    async fn build(
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
-        let subsystem = crate::system_builder::build(typechecked_system, base_system)?;
+        let subsystem = crate::system_builder::build(typechecked_system, base_system).await?;
 
         let Some(ModelWasmSystemWithInterceptors {
             underlying: subsystem,

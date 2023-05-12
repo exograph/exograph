@@ -23,7 +23,9 @@ pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
         std::env::set_var("EXO_POSTGRES_URL", "postgres://a@dummy-value");
     }
 
-    let model_system = builder::build_system_from_str(exo_model, "index.exo".to_string()).unwrap();
+    let model_system = builder::build_system_from_str(exo_model, "index.exo".to_string())
+        .await
+        .unwrap();
     let system_resolver =
         Arc::new(create_system_resolver_from_serialized_bytes(model_system, vec![]).unwrap());
 

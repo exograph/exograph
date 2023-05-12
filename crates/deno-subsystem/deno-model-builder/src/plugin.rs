@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use async_trait::async_trait;
+
 use core_plugin_interface::{
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
@@ -26,6 +28,7 @@ use crate::system_builder::ModelDenoSystemWithInterceptors;
 
 pub struct DenoSubsystemBuilder {}
 
+#[async_trait]
 impl SubsystemBuilder for DenoSubsystemBuilder {
     fn id(&self) -> &'static str {
         "deno"
@@ -43,12 +46,12 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
         )]
     }
 
-    fn build(
+    async fn build(
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
-        let subsystem = crate::system_builder::build(typechecked_system, base_system)?;
+        let subsystem = crate::system_builder::build(typechecked_system, base_system).await?;
 
         let Some(ModelDenoSystemWithInterceptors {
             underlying: subsystem,

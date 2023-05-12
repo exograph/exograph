@@ -10,26 +10,29 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 
 use super::build::BuildError;
 
+#[async_trait]
 pub trait CommandDefinition {
     fn command(&self) -> Command;
 
-    fn execute(&self, matches: &ArgMatches) -> Result<()>;
+    async fn execute(&self, matches: &ArgMatches) -> Result<()>;
 }
+
 pub struct SubcommandDefinition {
     pub name: &'static str,
     pub about: &'static str,
-    pub command_definitions: Vec<Box<dyn CommandDefinition>>,
+    pub command_definitions: Vec<Box<dyn CommandDefinition + Sync>>,
 }
 
 impl SubcommandDefinition {
     pub fn new(
         name: &'static str,
         about: &'static str,
-        command_definitions: Vec<Box<dyn CommandDefinition>>,
+        command_definitions: Vec<Box<dyn CommandDefinition + Sync>>,
     ) -> Self {
         Self {
             name,
@@ -39,6 +42,7 @@ impl SubcommandDefinition {
     }
 }
 
+#[async_trait]
 impl CommandDefinition for SubcommandDefinition {
     fn command(&self) -> Command {
         Command::new(self.name)
@@ -53,15 +57,18 @@ impl CommandDefinition for SubcommandDefinition {
             )
     }
 
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
         let subcommand = matches.subcommand().unwrap();
-        for command_definition in &self.command_definitions {
-            if command_definition.command().get_name() == subcommand.0 {
-                return command_definition.execute(subcommand.1);
-            }
-        }
 
-        Err(anyhow!("Unknown subcommand: {}", subcommand.0))
+        let command_definition = self
+            .command_definitions
+            .iter()
+            .find(|command_definition| command_definition.command().get_name() == subcommand.0);
+
+        match command_definition {
+            Some(command_definition) => command_definition.execute(subcommand.1).await,
+            None => Err(anyhow!("Unknown subcommand: {}", subcommand.0)),
+        }
     }
 }
 

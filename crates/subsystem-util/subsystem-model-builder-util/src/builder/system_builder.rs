@@ -74,7 +74,7 @@ pub struct ModuleSubsystemWithInterceptors {
 ///                               annotation (e.g. `"deno"` for `@deno`).
 /// `process_script` - A closure that will process a script at the provided [`Path`] into a runnable form for usage
 ///                    during subsystem resolution at runtime.
-pub fn build_with_selection(
+pub async fn build_with_selection(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     module_selection_closure: impl Fn(&AstModule<Typed>) -> Option<String>,
@@ -90,7 +90,8 @@ pub fn build_with_selection(
         base_system,
         module_selection_closure,
         process_script,
-    )?;
+    )
+    .await?;
 
     let resolved_env = ResolvedTypeEnv {
         contexts: &base_system.contexts,

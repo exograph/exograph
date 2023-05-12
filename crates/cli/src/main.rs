@@ -41,7 +41,8 @@ lazy_static::lazy_static! {
 
 pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // register a sigint handler
     ctrlc::set_handler(move || {
         // set SIGINT event when receiving signal
@@ -76,5 +77,5 @@ fn main() -> Result<()> {
 
     let matches = command.get_matches();
 
-    subcommand_definition.execute(&matches)
+    subcommand_definition.execute(&matches).await
 }

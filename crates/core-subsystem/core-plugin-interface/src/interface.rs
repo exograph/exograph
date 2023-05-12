@@ -18,11 +18,13 @@ use crate::core_model_builder::{
 };
 use crate::core_resolver::plugin::SubsystemResolver;
 use crate::error::ModelSerializationError;
+use async_trait::async_trait;
 use core_model_builder::typechecker::typ::TypecheckedSystem;
 use thiserror::Error;
 
 use crate::build_info::SubsystemCheckError;
 
+#[async_trait]
 pub trait SubsystemBuilder {
     /// Unique string to identify the subsystem by. Should be shared with the corresponding
     /// [SubsystemLoader].
@@ -75,7 +77,7 @@ pub trait SubsystemBuilder {
     /// - `Ok(Some(SubsystemBuild { .. }))`: The subsystem was built successfully.
     /// - `Ok(None)`: There were no user-declared modules (no build is required).
     /// - `Err(ModelBuildingError { .. })`: The subsystem was not built successfully.
-    fn build(
+    async fn build(
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
@@ -163,7 +165,7 @@ fn load_subsystem_library<T: ?Sized>(
 /// Loads a subsystem builder from a dynamic library.
 pub fn load_subsystem_builder(
     library_path: &Path,
-) -> Result<Box<dyn SubsystemBuilder>, LibraryLoadingError> {
+) -> Result<Box<dyn SubsystemBuilder + Send + Sync>, LibraryLoadingError> {
     load_subsystem_library(library_path, "__exograph_subsystem_builder")
 }
 

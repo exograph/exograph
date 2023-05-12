@@ -117,9 +117,9 @@ mod tests {
         serializable_system::SerializableSystem, system_serializer::SystemSerializer,
     };
 
-    #[test]
-    fn argument_valid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn argument_valid() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -139,9 +139,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn with_operation_name_valid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn with_operation_name_valid() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -161,9 +161,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn stray_argument_invalid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn stray_argument_invalid() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -183,9 +183,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn unspecified_required_argument_invalid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn unspecified_required_argument_invalid() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -205,9 +205,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn variable_resolution_valid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn variable_resolution_valid() {
+        let schema = create_test_schema().await;
 
         let variables = create_variables(
             r#"
@@ -235,9 +235,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn variable_resolution_invalid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn variable_resolution_invalid() {
+        let schema = create_test_schema().await;
 
         let variables = create_variables(r#"{ "concert_id": 2 }"#);
         let validator = DocumentValidator::new(&schema, None, Some(variables), 10, 10);
@@ -258,9 +258,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn invalid_subfield() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn invalid_subfield() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -277,9 +277,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn aliases_valid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn aliases_valid() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -295,9 +295,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn mergeable_leaf_fields() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn mergeable_leaf_fields() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -316,9 +316,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn mergeable_leaf_fields_with_alias() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn mergeable_leaf_fields_with_alias() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -337,9 +337,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn unmergeable_leaf_fields_all_aliases() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn unmergeable_leaf_fields_all_aliases() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -356,9 +356,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn unmergeable_leaf_fields_mixed_aliases() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn unmergeable_leaf_fields_mixed_aliases() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -375,9 +375,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn mergeable_non_leaf_fields() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn mergeable_non_leaf_fields() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -404,9 +404,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn unmergeable_non_leaf_fields() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn unmergeable_non_leaf_fields() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -429,9 +429,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn mergeable_non_leaf_fields_with_alias() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn mergeable_non_leaf_fields_with_alias() {
+        let schema = create_test_schema().await;
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
@@ -458,9 +458,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn multi_operations_valid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn multi_operations_valid() {
+        let schema = create_test_schema().await;
 
         let query = r#"
             query concert1 {
@@ -487,9 +487,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn multi_operations_no_operation_name_invalid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn multi_operations_no_operation_name_invalid() {
+        let schema = create_test_schema().await;
 
         let query = r#"
             query concert1 {
@@ -512,9 +512,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn multi_operations_mismatched_operation_name_invalid() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn multi_operations_mismatched_operation_name_invalid() {
+        let schema = create_test_schema().await;
 
         let query = r#"
             query concert1 {
@@ -537,9 +537,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn fragment_recursion_direct() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn fragment_recursion_direct() {
+        let schema = create_test_schema().await;
 
         let query = r#"
             query {
@@ -558,9 +558,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn fragment_recursion_indirect() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn fragment_recursion_indirect() {
+        let schema = create_test_schema().await;
 
         let query = r#"
             query {
@@ -583,9 +583,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn query_depth_limit_direct() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn query_depth_limit_direct() {
+        let schema = create_test_schema().await;
 
         let query = r#"
             query {
@@ -613,9 +613,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn query_depth_limit_through_fragment() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn query_depth_limit_through_fragment() {
+        let schema = create_test_schema().await;
 
         let query = r#"
             query {
@@ -645,9 +645,9 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }
 
-    #[test]
-    fn introspection_query_depth_limit_direct() {
-        let schema = create_test_schema();
+    #[tokio::test]
+    async fn introspection_query_depth_limit_direct() {
+        let schema = create_test_schema().await;
 
         let query = r#"
             query {
@@ -673,7 +673,7 @@ mod tests {
         serde_json::from_str(variables).unwrap()
     }
 
-    fn create_test_schema() -> Schema {
+    async fn create_test_schema() -> Schema {
         let test_exo = r#"
             @postgres
             module LogModule {
@@ -691,7 +691,8 @@ mod tests {
                 }
             }
         "#;
-        let postgres_subsystem = create_postgres_system_from_str(test_exo, "test.exo".to_string());
+        let postgres_subsystem =
+            create_postgres_system_from_str(test_exo, "test.exo".to_string()).await;
 
         Schema::new(
             postgres_subsystem.schema_types(),
@@ -716,11 +717,13 @@ mod tests {
     /// for now and will make these test live outside of the core being tested. A more dramatic
     /// solution would be to create a "test" subsystem that can be used for testing
     /// purposes--something to consider in the future.
-    pub fn create_postgres_system_from_str(
+    pub async fn create_postgres_system_from_str(
         model_str: &str,
         file_name: String,
     ) -> Box<dyn core_plugin_interface::core_resolver::plugin::SubsystemResolver> {
-        let serialized_system = builder::build_system_from_str(model_str, file_name).unwrap();
+        let serialized_system = builder::build_system_from_str(model_str, file_name)
+            .await
+            .unwrap();
         let system = SerializableSystem::deserialize(serialized_system).unwrap();
 
         let subsystem_id = "postgres";

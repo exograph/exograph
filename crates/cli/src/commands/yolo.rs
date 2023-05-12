@@ -9,6 +9,7 @@
 
 use anyhow::Result;
 use async_recursion::async_recursion;
+use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
 use std::{path::PathBuf, sync::atomic::Ordering};
@@ -29,6 +30,7 @@ use futures::FutureExt;
 
 pub struct YoloCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for YoloCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("yolo")
@@ -37,22 +39,17 @@ impl CommandDefinition for YoloCommandDefinition {
     }
 
     /// Run local exograph server with a temporary database
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
         ensure_exo_project_dir(&PathBuf::from("."))?;
 
         let model: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
 
-        run(&model, port)
+        run(&model, port).await
     }
 }
 
-fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_io()
-        .build()
-        .unwrap();
-
+async fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
     // make sure we do not exit on SIGINT
     // we spawn processes/containers that need to be cleaned up through drop(),
     // which does not run on a normal SIGINT exit
@@ -65,7 +62,7 @@ fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
 
     let prestart_callback = || run_server(model, &jwt_secret, db.as_ref()).boxed();
 
-    rt.block_on(watcher::start_watcher(model, port, prestart_callback))
+    watcher::start_watcher(model, port, prestart_callback).await
 }
 
 #[async_recursion]

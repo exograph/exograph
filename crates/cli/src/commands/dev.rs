@@ -8,11 +8,11 @@
 // by the Apache License, Version 2.0.
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
 use futures::FutureExt;
 use std::path::PathBuf;
-use tokio::runtime::Runtime;
 
 use super::command::{get, port_arg, CommandDefinition};
 use crate::{
@@ -26,6 +26,7 @@ use crate::{
 
 pub struct DevCommandDefinition {}
 
+#[async_trait]
 impl CommandDefinition for DevCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("dev")
@@ -34,7 +35,7 @@ impl CommandDefinition for DevCommandDefinition {
     }
 
     /// Run local exograph server
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
         ensure_exo_project_dir(&PathBuf::from("."))?;
 
         let model: PathBuf = default_model_file();
@@ -48,14 +49,12 @@ impl CommandDefinition for DevCommandDefinition {
         std::env::set_var("EXO_INTROSPECTION", "true");
         std::env::set_var("EXO_CORS_DOMAINS", "*");
 
-        let rt = Runtime::new()?;
-
         const MIGRATE: &str = "Attempt migration";
         const CONTINUE: &str = "Continue with old schema";
         const PAUSE: &str = "Pause for manual repair";
         const EXIT: &str = "Exit";
 
-        rt.block_on(watcher::start_watcher(&model, port, || async {
+        watcher::start_watcher(&model, port, || async {
             println!("{}", "\nVerifying new model...".blue().bold());
 
             loop {
@@ -124,7 +123,7 @@ impl CommandDefinition for DevCommandDefinition {
                     }
                 }
             }
-        }.boxed()))
+        }.boxed()).await
     }
 }
 
