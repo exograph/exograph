@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{path::Path, sync::Arc};
+use std::{path::Path, sync::Arc, thread};
 
 use core_plugin_interface::{
     core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
@@ -89,10 +89,13 @@ fn process_script(
     module_fs_path: &Path,
 ) -> Result<Vec<u8>, ModelBuildingError> {
     module_skeleton_generator::generate_module_skeleton(module, base_system, module_fs_path)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
 
-    let ps = tokio_runtime
-        .block_on(ProcState::from_options(Arc::new(
+    // TODO: Make the process_script function async. Currently, we can't because `ProcState` isn't a
+    // `Send`. But to make this useful as a callback, we would make this function return a
+    // `BoxFuture`, which has the `Send` requirement.
+    let ps = thread::spawn(|| {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(ProcState::from_options(Arc::new(
             CliOptions::new(
                 Flags::default(),
                 std::env::current_dir().unwrap(),
@@ -102,7 +105,10 @@ fn process_script(
             )
             .unwrap(),
         )))
-        .unwrap();
+        .unwrap()
+    })
+    .join()
+    .unwrap();
 
     let path = format!(
         "file://{}",
@@ -113,11 +119,16 @@ fn process_script(
     );
 
     let mut cache = ps.create_graph_loader();
-    let graph = tokio_runtime
-        .block_on(ps.create_graph_with_loader(vec![Url::parse(&path).unwrap()], &mut cache))
-        .map_err(|e| {
-            ModelBuildingError::Generic(format!("While trying to create Deno graph: {:?}", e))
-        })?;
+    let graph = thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+
+        rt.block_on(ps.create_graph_with_loader(vec![Url::parse(&path).unwrap()], &mut cache))
+    })
+    .join()
+    .unwrap()
+    .map_err(|e| {
+        ModelBuildingError::Generic(format!("While trying to create Deno graph: {:?}", e))
+    })?;
 
     let bundle_res = deno_emit::bundle_graph(
         &graph,
