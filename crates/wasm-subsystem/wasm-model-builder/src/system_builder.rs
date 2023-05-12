@@ -28,7 +28,7 @@ pub struct ModelWasmSystemWithInterceptors {
     pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
-pub fn build(
+pub async fn build(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
 ) -> Result<Option<ModelWasmSystemWithInterceptors>, ModelBuildingError> {
@@ -40,7 +40,8 @@ pub fn build(
         base_system,
         module_selection_closure,
         process_script,
-    )?;
+    )
+    .await?;
 
     let underlying_module_system = module_system.underlying;
 

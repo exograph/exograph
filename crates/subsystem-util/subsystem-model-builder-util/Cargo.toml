@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 serde.workspace = true
+tokio.workspace = true
 codemap-diagnostic.workspace = true
 codemap.workspace = true
 

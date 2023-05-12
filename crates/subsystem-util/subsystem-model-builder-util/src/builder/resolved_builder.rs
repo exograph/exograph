@@ -143,7 +143,7 @@ pub struct ResolvedModuleSystem {
     pub modules: MappedArena<ResolvedModule>,
 }
 
-pub fn build(
+pub async fn build(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     module_selection_closure: impl Fn(&AstModule<Typed>) -> Option<String>,
@@ -161,7 +161,8 @@ pub fn build(
         &mut errors,
         module_selection_closure,
         process_script,
-    )?;
+    )
+    .await?;
 
     if errors.is_empty() {
         Ok(resolved_system)
@@ -170,7 +171,7 @@ pub fn build(
     }
 }
 
-fn resolve(
+async fn resolve(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     errors: &mut Vec<Diagnostic>,
@@ -187,7 +188,8 @@ fn resolve(
         errors,
         module_selection_closure,
         &process_script,
-    )?;
+    )
+    .await?;
 
     Ok(ResolvedModuleSystem {
         module_types: resolve_module_types(errors, typechecked_system, |typ| {
@@ -211,7 +213,7 @@ fn resolve(
     })
 }
 
-fn resolve_modules(
+async fn resolve_modules(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     errors: &mut Vec<Diagnostic>,
@@ -236,14 +238,15 @@ fn resolve_modules(
                 errors,
                 &mut resolved_modules,
                 &process_script,
-            )?;
+            )
+            .await?;
         }
     }
 
     Ok(resolved_modules)
 }
 
-fn resolve_module(
+async fn resolve_module(
     module: &AstModule<Typed>,
     base_system: &BaseModelSystem,
     annotation_name: String,
@@ -547,8 +550,8 @@ mod tests {
 
     use super::{build, ResolvedModuleSystem};
 
-    #[test]
-    fn type_disambiguation() {
+    #[tokio::test]
+    async fn type_disambiguation() {
         let model = r#"
             @deno("x.ts")
             module TestModule {
@@ -568,11 +571,11 @@ mod tests {
             } 
         "#;
 
-        assert_success(model);
+        assert_success(model).await;
     }
 
-    #[test]
-    fn input_type_used_as_output_type() {
+    #[tokio::test]
+    async fn input_type_used_as_output_type() {
         let model = r#"
             @deno("x.ts")
             module TestModule {
@@ -586,15 +589,15 @@ mod tests {
             } 
         "#;
 
-        assert_err(model);
+        assert_err(model).await;
     }
 
-    fn assert_success(src: &str) {
-        assert!(create_resolved_system(src).is_ok())
+    async fn assert_success(src: &str) {
+        assert!(create_resolved_system(src).await.is_ok())
     }
 
-    fn assert_err(src: &str) {
-        assert!(create_resolved_system(src).is_err())
+    async fn assert_err(src: &str) {
+        assert!(create_resolved_system(src).await.is_err())
     }
 
     fn process_script(
@@ -605,7 +608,7 @@ mod tests {
         Ok(vec![])
     }
 
-    fn create_resolved_system(src: &str) -> Result<ResolvedModuleSystem, ModelBuildingError> {
+    async fn create_resolved_system(src: &str) -> Result<ResolvedModuleSystem, ModelBuildingError> {
         let mut codemap = CodeMap::new();
         let subsystem_builders = load_subsystem_builders(vec![]).unwrap();
         let parsed = parser::parse_str(src, &mut codemap, "input.exo")
@@ -620,5 +623,6 @@ mod tests {
             |module| module.annotations.get("deno").map(|_| "deno".to_string()),
             process_script,
         )
+        .await
     }
 }

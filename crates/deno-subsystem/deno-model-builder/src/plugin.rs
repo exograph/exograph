@@ -51,7 +51,7 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
-        let subsystem = crate::system_builder::build(typechecked_system, base_system)?;
+        let subsystem = crate::system_builder::build(typechecked_system, base_system).await?;
 
         let Some(ModelDenoSystemWithInterceptors {
             underlying: subsystem,

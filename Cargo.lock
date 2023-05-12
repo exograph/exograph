@@ -6835,6 +6835,7 @@ dependencies = [
  "core-plugin-shared",
  "serde",
  "subsystem-model-util",
+ "tokio",
 ]
 
 [[package]]
