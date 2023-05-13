@@ -1,0 +1,12 @@
+operation: |
+  query {
+      gcd(a: 15, b: 20)
+      lcm(a: 15, b: 20)
+  }
+response: |
+  {
+    "data": {
+      "gcd": 5,
+      "lcm": 60
+    }
+  }
