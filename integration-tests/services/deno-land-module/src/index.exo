@@ -1,0 +1,8 @@
+@deno("gcd_lcm.ts")
+module TodoDatabase {
+  @access(true)
+  query gcd(a: Int, b: Int): Int
+
+  @access(true)
+  query lcm(a: Int, b: Int): Int
+}
