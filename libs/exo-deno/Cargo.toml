@@ -23,5 +23,5 @@ include_dir.workspace = true
 [lib]
 
 [features]
-default = ["typescript-loader"]
+default = []
 typescript-loader = ["dep:deno_ast"]

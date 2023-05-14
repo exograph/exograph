@@ -13,7 +13,6 @@ use deno_core::resolve_import;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
-use deno_core::ModuleType;
 use deno_core::ResolutionKind;
 
 use std::cell::RefCell;
@@ -23,12 +22,15 @@ use std::sync::Arc;
 
 use include_dir::Dir;
 
+use crate::deno_executor_pool::DenoScriptDefn;
+
 /// A module loader that allows loading source code from memory for the given module specifier;
 /// otherwise, loading it from an FsModuleLoader
 /// Based on <https://deno.land/x/deno@v1.15.0/cli/standalone.rs>
 pub(super) struct EmbeddedModuleLoader {
+    #[allow(unused)]
     pub embedded_dirs: HashMap<String, &'static Dir<'static>>,
-    pub source_code_map: Arc<RefCell<HashMap<ModuleSpecifier, Vec<u8>>>>,
+    pub source_code_map: Arc<RefCell<DenoScriptDefn>>,
 }
 
 impl ModuleLoader for EmbeddedModuleLoader {
@@ -51,14 +53,14 @@ impl ModuleLoader for EmbeddedModuleLoader {
         if let Some(script) = self.source_code_map.borrow().get(module_specifier) {
             // return copy of module source in memory
 
-            let script = script.clone();
+            let (script, module_type) = script.clone();
             let module_specifier = module_specifier.clone();
             async move {
                 Ok(ModuleSource {
                     code: script.into(),
                     module_url_specified: module_specifier.to_string(),
                     module_url_found: module_specifier.to_string(),
-                    module_type: ModuleType::JavaScript,
+                    module_type,
                 })
             }
             .boxed_local()
@@ -67,6 +69,8 @@ impl ModuleLoader for EmbeddedModuleLoader {
 
             let source_code_map = self.source_code_map.clone();
             let module_specifier = module_specifier.clone();
+
+            #[cfg(feature = "typescript-loader")]
             let embedded_dirs = self.embedded_dirs.clone();
 
             async move {
@@ -83,7 +87,10 @@ impl ModuleLoader for EmbeddedModuleLoader {
 
                 // cache result for later
                 let mut map = source_code_map.borrow_mut();
-                map.insert(module_specifier, module_source.code.clone().into());
+                map.insert(
+                    module_specifier,
+                    (module_source.code.clone().into(), module_source.module_type),
+                );
 
                 Ok(module_source)
             }

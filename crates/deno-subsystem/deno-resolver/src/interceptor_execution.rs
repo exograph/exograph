@@ -51,7 +51,7 @@ pub async fn execute_interceptor<'a>(
         .executor
         .execute_and_get_r(
             &script.path,
-            &script.script,
+            bincode::deserialize(&script.script).unwrap(),
             &interceptor.method_name,
             arg_sequence,
             Some(InterceptedOperationInfo {

@@ -82,7 +82,7 @@ pub async fn build_with_selection(
         &AstModule<Typed>,
         &BaseModelSystem,
         &Path,
-    ) -> Result<Vec<u8>, ModelBuildingError>,
+    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<ModuleSubsystemWithInterceptors, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
     let resolved_system = resolved_builder::build(

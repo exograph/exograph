@@ -78,6 +78,10 @@ wasmtime = "6.0.1"
 wasmtime-wasi = "6.0.1"
 wildmatch = "2.1.0"
 
+# reduce binary size, does not affect stack traces
+[profile.dev]
+debug = 1
+
 [profile.release]
 lto = true
 codegen-units = 1

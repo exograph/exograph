@@ -151,7 +151,7 @@ pub async fn build(
         &AstModule<Typed>,
         &BaseModelSystem,
         &Path,
-    ) -> Result<Vec<u8>, ModelBuildingError>,
+    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<ResolvedModuleSystem, ModelBuildingError> {
     let mut errors = Vec::new();
 
@@ -180,7 +180,7 @@ async fn resolve(
         &AstModule<Typed>,
         &BaseModelSystem,
         &Path,
-    ) -> Result<Vec<u8>, ModelBuildingError>,
+    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<ResolvedModuleSystem, ModelBuildingError> {
     let resolved_modules = resolve_modules(
         typechecked_system,
@@ -222,7 +222,7 @@ async fn resolve_modules(
         &AstModule<Typed>,
         &BaseModelSystem,
         &Path,
-    ) -> Result<Vec<u8>, ModelBuildingError>,
+    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<MappedArena<ResolvedModule>, ModelBuildingError> {
     let mut resolved_modules: MappedArena<ResolvedModule> = MappedArena::default();
 
@@ -257,7 +257,7 @@ async fn resolve_module(
         &AstModule<Typed>,
         &BaseModelSystem,
         &Path,
-    ) -> Result<Vec<u8>, ModelBuildingError>,
+    ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
     // Extract the source path from the annotation
     // `@deno("util/auth.ts")` -> `util/auth.ts`
@@ -272,7 +272,7 @@ async fn resolve_module(
     source_path.pop();
     source_path.push(&module_relative_path);
 
-    let bundled_script = process_script(module, base_system, &source_path)?;
+    let (script_path, bundled_script) = process_script(module, base_system, &source_path)?;
 
     fn extract_intercept_annot<'a>(
         annotations: &'a AnnotationMap,
@@ -286,7 +286,7 @@ async fn resolve_module(
         ResolvedModule {
             name: module.name.clone(),
             script: bundled_script,
-            script_path: module_relative_path.as_str().to_string(),
+            script_path,
             methods: module
                 .methods
                 .iter()
@@ -603,9 +603,9 @@ mod tests {
     fn process_script(
         _module: &AstModule<Typed>,
         _base_system: &BaseModelSystem,
-        _path: &Path,
-    ) -> Result<Vec<u8>, ModelBuildingError> {
-        Ok(vec![])
+        path: &Path,
+    ) -> Result<(String, Vec<u8>), ModelBuildingError> {
+        Ok((path.to_str().unwrap().to_string(), vec![]))
     }
 
     async fn create_resolved_system(src: &str) -> Result<ResolvedModuleSystem, ModelBuildingError> {

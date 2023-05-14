@@ -99,7 +99,7 @@ impl<'a> DenoOperation<'a> {
             .executor
             .execute_and_get_r(
                 &script.path,
-                &script.script,
+                bincode::deserialize(&script.script).unwrap(),
                 &self.method.name,
                 arg_sequence,
                 None,

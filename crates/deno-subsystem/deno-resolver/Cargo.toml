@@ -19,6 +19,7 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 maybe-owned.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+bincode.workspace = true
 
 exo-deno = { path = "../../../libs/exo-deno" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
