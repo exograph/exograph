@@ -36,7 +36,6 @@ pub struct ManyToOneRelation {
     // - foreign_pk_field_id: Venue.id
     // - self_column_id: concerts.venue_id
     // - foreign_pk_column_id: venues.id
-    // Concert.venue
     pub cardinality: RelationCardinality,
     pub foreign_pk_field_id: EntityFieldId,
     pub self_column_id: ColumnId,

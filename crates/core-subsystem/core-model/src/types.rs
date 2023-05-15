@@ -38,6 +38,14 @@ impl<T> FieldType<T> {
         }
     }
 
+    /// Return the base type (i.e. by removing optional decoration)
+    pub fn base_type(&self) -> &FieldType<T> {
+        match self {
+            FieldType::Optional(inner_typ) => inner_typ.as_ref(),
+            _ => self,
+        }
+    }
+
     /// Return the innermost (i.e. leaf) type
     pub fn innermost(&self) -> &T {
         match self {

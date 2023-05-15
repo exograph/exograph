@@ -850,17 +850,7 @@ fn create_relation(
     resolved_env: &ResolvedTypeEnv,
     expand_foreign_relations: bool,
 ) -> PostgresRelation {
-    fn compute_column_id(
-        table: &PhysicalTable,
-        table_id: SerializableSlabIndex<PhysicalTable>,
-        field: &ResolvedField,
-    ) -> Option<ColumnId> {
-        table
-            .column_index(&field.column_name)
-            .map(|index| ColumnId::new(table_id, index))
-    }
-
-    fn placehold_relation() -> PostgresRelation {
+    fn placeholder_relation() -> PostgresRelation {
         // Create an impossible value (will be filled later when expanding relations)
         PostgresRelation::Scalar {
             column_id: ColumnId {
@@ -878,77 +868,38 @@ fn create_relation(
         let column_id = compute_column_id(self_table, *self_table_id, field).unwrap();
         PostgresRelation::Pk { column_id }
     } else {
-        fn compute_base_type(
-            field_type: &FieldType<ResolvedFieldType>,
-        ) -> &FieldType<ResolvedFieldType> {
-            match field_type {
-                FieldType::Optional(inner_typ) => inner_typ.as_ref(),
-                _ => field_type,
-            }
-        }
         // we can treat Optional fields as their inner type for the purposes of computing relations
-        let field_base_typ = compute_base_type(&field.typ);
+        let field_base_typ = &field.typ.base_type();
 
         match field_base_typ {
             FieldType::List(underlying) => {
+                // Since the field type is a list, the relation depends on the underlying type.
+                // 1. If it is a primitive, we treat it as a scalar ("List" of a primitive type is still a scalar from the database perspective)
+                // 2. Otherwise (if it is a composite), it is a one-to-many relation.
                 match underlying.deref(resolved_env) {
-                    ResolvedType::Primitive(_) => {
-                        // List of a primitive type is still a scalar from the database perspective
-                        PostgresRelation::Scalar {
-                            column_id: compute_column_id(self_table, *self_table_id, field)
-                                .unwrap(),
-                        }
-                    }
+                    ResolvedType::Primitive(_) => PostgresRelation::Scalar {
+                        column_id: compute_column_id(self_table, *self_table_id, field).unwrap(),
+                    },
                     ResolvedType::Composite(foreign_field_type) => {
                         if expand_foreign_relations {
-                            // If the field is of a list type and the underlying type is not a primitive,
-                            // then it is a OneToMany relation with the self's type being the "One" side
-                            // and the field's type being the "Many" side.
-                            let foreign_type_id = building
-                                .get_entity_type_id(&foreign_field_type.name)
-                                .unwrap();
-                            let foreign_type = &building.entity_types[foreign_type_id];
-                            let foreign_table_id = foreign_type.table_id;
-                            let foreign_table = &building.database.get_table(foreign_table_id);
-
-                            let foreign_column_id =
-                                compute_column_id(foreign_table, foreign_table_id, field).unwrap();
-
-                            let self_pk_column_id = ColumnId::new(
-                                *self_table_id,
-                                self_table.get_pk_column_index().unwrap(),
-                            );
-
-                            let foreign_resolved_field = foreign_field_type
-                                .fields
-                                .iter()
-                                .find(|f| f.column_name == field.column_name)
-                                .unwrap();
-
-                            let foreign_field_id = get_field_id(
-                                building.entity_types.values_ref(),
-                                foreign_type_id,
-                                &foreign_resolved_field.name,
+                            compute_one_to_many(
+                                field,
+                                self_type,
+                                foreign_field_type,
+                                RelationCardinality::Unbounded,
+                                building,
                             )
-                            .unwrap();
-
-                            PostgresRelation::OneToMany(OneToManyRelation {
-                                foreign_field_id,
-                                cardinality: RelationCardinality::Unbounded,
-                                self_pk_column_id,
-                                foreign_column_id,
-                            })
                         } else {
-                            placehold_relation()
+                            placeholder_relation()
                         }
                     }
                 }
             }
 
             FieldType::Plain(ResolvedFieldType { type_name, .. }) => {
-                let field_type = resolved_env.get_by_key(type_name).unwrap();
+                let foreign_resolved_type = resolved_env.get_by_key(type_name).unwrap();
 
-                match field_type {
+                match foreign_resolved_type {
                     ResolvedType::Primitive(_) => {
                         let column_id =
                             compute_column_id(self_table, *self_table_id, field).unwrap();
@@ -957,113 +908,52 @@ fn create_relation(
                     ResolvedType::Composite(foreign_field_type) => {
                         // A field's type is "Plain" or "Optional" and the field type is composite,
                         // but we can't be sure if this is a ManyToOne or OneToMany unless we examine the other side's type.
-
-                        let foreign_resolved_type = resolved_env.get_by_key(type_name).unwrap();
                         let foreign_type_field_typ = &foreign_resolved_type
                             .as_composite()
-                            .fields
-                            .iter()
-                            .find(|f| f.column_name == field.column_name)
+                            .field_by_column_name(&field.column_name)
                             .unwrap()
                             .typ;
-
-                        let foreign_type_id = building
-                            .get_entity_type_id(&foreign_field_type.name)
-                            .unwrap();
-                        let foreign_type = &building.entity_types[foreign_type_id];
-                        let foreign_table_id = foreign_type.table_id;
-                        let foreign_table = &building.database.get_table(foreign_table_id);
 
                         match (&field.typ, foreign_type_field_typ) {
                             (FieldType::Optional(_), FieldType::Plain(_)) => {
                                 if expand_foreign_relations {
-                                    let foreign_column_id =
-                                        compute_column_id(foreign_table, foreign_table_id, field)
-                                            .unwrap();
-
-                                    let self_pk_column_id = ColumnId::new(
-                                        *self_table_id,
-                                        self_table.get_pk_column_index().unwrap(),
-                                    );
-
-                                    let foreign_resolved_field = foreign_field_type
-                                        .fields
-                                        .iter()
-                                        .find(|f| f.column_name == field.column_name)
-                                        .unwrap();
-
-                                    let foreign_field_id = get_field_id(
-                                        building.entity_types.values_ref(),
-                                        foreign_type_id,
-                                        &foreign_resolved_field.name,
+                                    compute_one_to_many(
+                                        field,
+                                        self_type,
+                                        foreign_field_type,
+                                        RelationCardinality::Optional,
+                                        building,
                                     )
-                                    .unwrap();
-
-                                    PostgresRelation::OneToMany(OneToManyRelation {
-                                        foreign_field_id,
-                                        cardinality: RelationCardinality::Optional,
-                                        self_pk_column_id,
-                                        foreign_column_id,
-                                    })
                                 } else {
-                                    placehold_relation()
+                                    placeholder_relation()
                                 }
                             }
                             (FieldType::Plain { .. }, FieldType::Optional(_)) => {
                                 if expand_foreign_relations {
-                                    let column_id =
-                                        compute_column_id(self_table, *self_table_id, field)
-                                            .unwrap();
-
-                                    let foreign_column_id = ColumnId::new(
-                                        foreign_table_id,
-                                        foreign_table
-                                            .get_pk_column_index()
-                                            .expect("No primary key column found"),
-                                    );
-
-                                    let foreign_field_id =
-                                        foreign_type.pk_field_id(foreign_type_id).unwrap();
-
-                                    PostgresRelation::ManyToOne(ManyToOneRelation {
-                                        cardinality: RelationCardinality::Optional,
-                                        self_column_id: column_id,
-                                        foreign_pk_column_id: foreign_column_id,
-                                        foreign_pk_field_id: foreign_field_id,
-                                    })
+                                    compute_many_to_one(
+                                        field,
+                                        self_type,
+                                        foreign_field_type,
+                                        RelationCardinality::Optional,
+                                        building,
+                                    )
                                 } else {
-                                    placehold_relation()
+                                    placeholder_relation()
                                 }
                             }
-                            (field_typ, foreign_field_type) => {
-                                match (field_base_typ, compute_base_type(foreign_field_type)) {
+                            (field_typ, foreign_type_field_typ) => {
+                                match (field_base_typ, foreign_type_field_typ.base_type()) {
                                     (FieldType::Plain(_), FieldType::List(_)) => {
                                         if expand_foreign_relations {
-                                            let column_id = compute_column_id(
-                                                self_table,
-                                                *self_table_id,
+                                            compute_many_to_one(
                                                 field,
+                                                self_type,
+                                                foreign_field_type,
+                                                RelationCardinality::Unbounded,
+                                                building,
                                             )
-                                            .unwrap();
-
-                                            let foreign_column_id = ColumnId::new(
-                                                foreign_table_id,
-                                                foreign_table
-                                                    .get_pk_column_index()
-                                                    .expect("No primary key column found"),
-                                            );
-
-                                            let foreign_field_id =
-                                                foreign_type.pk_field_id(foreign_type_id).unwrap();
-
-                                            PostgresRelation::ManyToOne(ManyToOneRelation {
-                                                cardinality: RelationCardinality::Unbounded,
-                                                foreign_pk_column_id: foreign_column_id,
-                                                self_column_id: column_id,
-                                                foreign_pk_field_id: foreign_field_id,
-                                            })
                                         } else {
-                                            placehold_relation()
+                                            placeholder_relation()
                                         }
                                     }
                                     _ => {
@@ -1081,4 +971,95 @@ fn create_relation(
             FieldType::Optional(_) => panic!("Optional in an Optional?"),
         }
     }
+}
+
+fn compute_column_id(
+    table: &PhysicalTable,
+    table_id: SerializableSlabIndex<PhysicalTable>,
+    field: &ResolvedField,
+) -> Option<ColumnId> {
+    table
+        .column_index(&field.column_name)
+        .map(|index| ColumnId::new(table_id, index))
+}
+
+fn compute_one_to_many(
+    field: &ResolvedField,
+    self_type: &EntityType,
+    foreign_field_type: &ResolvedCompositeType,
+    cardinality: RelationCardinality,
+    building: &SystemContextBuilding,
+) -> PostgresRelation {
+    let self_table_id = &self_type.table_id;
+    let self_table = &building.database.get_table(*self_table_id);
+
+    // If the field is of a list type and the underlying type is not a primitive,
+    // then it is a OneToMany relation with the self's type being the "One" side
+    // and the field's type being the "Many" side.
+    let foreign_type_id = building
+        .get_entity_type_id(&foreign_field_type.name)
+        .unwrap();
+    let foreign_type = &building.entity_types[foreign_type_id];
+    let foreign_table_id = foreign_type.table_id;
+    let foreign_table = &building.database.get_table(foreign_table_id);
+
+    let foreign_column_id = compute_column_id(foreign_table, foreign_table_id, field).unwrap();
+
+    let self_pk_column_id =
+        ColumnId::new(*self_table_id, self_table.get_pk_column_index().unwrap());
+
+    let foreign_resolved_field = foreign_field_type
+        .fields
+        .iter()
+        .find(|f| f.column_name == field.column_name)
+        .unwrap();
+
+    let foreign_field_id = get_field_id(
+        building.entity_types.values_ref(),
+        foreign_type_id,
+        &foreign_resolved_field.name,
+    )
+    .unwrap();
+
+    PostgresRelation::OneToMany(OneToManyRelation {
+        foreign_field_id,
+        cardinality,
+        self_pk_column_id,
+        foreign_column_id,
+    })
+}
+
+fn compute_many_to_one(
+    field: &ResolvedField,
+    self_type: &EntityType,
+    foreign_field_type: &ResolvedCompositeType,
+    cardinality: RelationCardinality,
+    building: &SystemContextBuilding,
+) -> PostgresRelation {
+    let self_table_id = &self_type.table_id;
+    let self_table = &building.database.get_table(*self_table_id);
+
+    let foreign_type_id = building
+        .get_entity_type_id(&foreign_field_type.name)
+        .unwrap();
+    let foreign_type = &building.entity_types[foreign_type_id];
+    let foreign_table_id = foreign_type.table_id;
+    let foreign_table = &building.database.get_table(foreign_table_id);
+
+    let foreign_column_id = ColumnId::new(
+        foreign_table_id,
+        foreign_table
+            .get_pk_column_index()
+            .expect("No primary key column found"),
+    );
+
+    let column_id = compute_column_id(self_table, *self_table_id, field).unwrap();
+    let foreign_field_id = foreign_type.pk_field_id(foreign_type_id).unwrap();
+
+    PostgresRelation::ManyToOne(ManyToOneRelation {
+        cardinality,
+        self_column_id: column_id,
+        foreign_pk_column_id: foreign_column_id,
+        foreign_pk_field_id: foreign_field_id,
+    })
 }
