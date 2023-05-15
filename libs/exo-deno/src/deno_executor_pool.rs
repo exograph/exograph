@@ -9,7 +9,7 @@
 
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
-use deno_core::Extension;
+use deno_core::{Extension, ModuleSpecifier, ModuleType};
 use serde_json::Value;
 use tokio::sync::Mutex;
 
@@ -25,6 +25,9 @@ use std::fmt::Debug;
 
 type DenoActorPoolMap<C, M, R> = HashMap<String, DenoActorPool<C, M, R>>;
 type DenoActorPool<C, M, R> = Vec<DenoActor<C, M, R>>;
+
+/// Serialized type for modules loaded during the build phase
+pub type DenoScriptDefn = HashMap<ModuleSpecifier, (Vec<u8>, ModuleType)>;
 
 pub struct DenoExecutorConfig<C> {
     user_agent_name: &'static str,
@@ -120,7 +123,7 @@ impl<
     pub async fn execute(
         &self,
         script_path: &str,
-        script: &[u8],
+        script: DenoScriptDefn,
         method_name: &str,
         arguments: Vec<Arg>,
         call_context: C,
@@ -143,7 +146,7 @@ impl<
     pub async fn execute_and_get_r(
         &self,
         script_path: &str,
-        script: &[u8],
+        script: DenoScriptDefn,
         method_name: &str,
         arguments: Vec<Arg>,
         call_context: C,
@@ -159,7 +162,7 @@ impl<
     async fn get_executor(
         &self,
         script_path: &str,
-        script: &[u8],
+        script: DenoScriptDefn,
     ) -> Result<DenoExecutor<C, M, R>, DenoError> {
         // find or allocate a free actor in our pool
         let actor = {
@@ -186,12 +189,12 @@ impl<
     fn create_actor(
         &self,
         script_path: &str,
-        script: &[u8],
+        script: DenoScriptDefn,
     ) -> Result<DenoActor<C, M, R>, DenoError> {
         DenoActor::new(
             UserCode::LoadFromMemory {
                 path: script_path.to_owned(),
-                script: script.to_owned(),
+                script,
             },
             self.config.user_agent_name,
             self.config.shims.clone(),
@@ -214,7 +217,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_actor_executor() {
-        let module_path = "test_js/direct.js";
+        let module_path = "file://test_js/direct.js";
         let module_script = include_bytes!("test_js/direct.js");
 
         let executor_pool = DenoExecutorPool::<(), (), ()>::new(
@@ -230,7 +233,12 @@ mod tests {
         let res = executor_pool
             .execute(
                 module_path,
-                module_script,
+                vec![(
+                    ModuleSpecifier::parse(module_path).unwrap(),
+                    (module_script.to_vec(), ModuleType::JavaScript),
+                )]
+                .into_iter()
+                .collect(),
                 "addAndDouble",
                 vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
                 (),
@@ -243,7 +251,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_actor_executor_concurrent() {
-        let module_path = "test_js/direct.js";
+        let module_path = "file://test_js/direct.js";
         let module_script = include_bytes!("test_js/direct.js");
 
         let executor_pool = DenoExecutorPool::new(
@@ -267,8 +275,20 @@ mod tests {
             method_name: &str,
             arguments: Vec<Arg>,
         ) -> Result<Value, DenoError> {
-            pool.execute(script_path, script, method_name, arguments, (), ())
-                .await
+            pool.execute(
+                script_path,
+                vec![(
+                    ModuleSpecifier::parse(script_path).unwrap(),
+                    (script.to_vec(), ModuleType::JavaScript),
+                )]
+                .into_iter()
+                .collect(),
+                method_name,
+                arguments,
+                (),
+                (),
+            )
+            .await
         }
 
         for _ in 1..=total_futures {

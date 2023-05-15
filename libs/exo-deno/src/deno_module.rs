@@ -13,6 +13,7 @@ use deno_core::serde_json;
 use deno_core::v8;
 use deno_core::Extension;
 use deno_core::ModuleSpecifier;
+use deno_core::ModuleType;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_io::Stdio;
 use deno_runtime::deno_web::BlobStore;
@@ -38,6 +39,7 @@ use std::sync::Arc;
 use crate::deno_error::DenoDiagnosticError;
 use crate::deno_error::DenoError;
 use crate::deno_error::DenoInternalError;
+use crate::deno_executor_pool::DenoScriptDefn;
 
 use super::embedded_module_loader::EmbeddedModuleLoader;
 
@@ -46,7 +48,10 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
 }
 
 pub enum UserCode {
-    LoadFromMemory { script: Vec<u8>, path: String },
+    LoadFromMemory {
+        script: DenoScriptDefn,
+        path: String,
+    },
     LoadFromFs(PathBuf),
 }
 
@@ -111,10 +116,13 @@ impl DenoModule {
         };
 
         let user_module_path = match &user_code {
-            UserCode::LoadFromFs(user_module_path) => fs::canonicalize(user_module_path)?
-                .to_string_lossy()
-                .to_string(),
-            UserCode::LoadFromMemory { path, .. } => format!("file:///{path}"),
+            UserCode::LoadFromFs(user_module_path) => {
+                let abs = fs::canonicalize(user_module_path)?
+                    .to_string_lossy()
+                    .to_string();
+                format!("file://{abs}")
+            }
+            UserCode::LoadFromMemory { path, .. } => path.to_string(),
         };
 
         let source_code = format!(
@@ -125,17 +133,25 @@ impl DenoModule {
         let main_module_specifier = "file:///main.js".to_string();
         let module_loader = Rc::new(EmbeddedModuleLoader {
             source_code_map: {
-                let mut map: HashMap<ModuleSpecifier, Vec<u8>> = match &user_code {
+                let mut map: DenoScriptDefn = match &user_code {
                     UserCode::LoadFromFs(_) => {
-                        vec![(ModuleSpecifier::parse("file:///main.js")?, source_code)]
+                        vec![(
+                            ModuleSpecifier::parse("file:///main.js")?,
+                            (source_code, ModuleType::JavaScript),
+                        )]
                     }
-                    UserCode::LoadFromMemory { path, script } => vec![
-                        (ModuleSpecifier::parse("file:///main.js")?, source_code),
-                        (
-                            ModuleSpecifier::parse(&format!("file:///{path}"))?,
-                            script.to_owned(),
-                        ),
-                    ],
+                    UserCode::LoadFromMemory { script, .. } => {
+                        let mut out = vec![(
+                            ModuleSpecifier::parse("file:///main.js")?,
+                            (source_code, ModuleType::JavaScript),
+                        )];
+
+                        for (specifier, (source, typ)) in script {
+                            out.push((specifier.clone(), (source.clone(), *typ)));
+                        }
+
+                        out
+                    }
                 }
                 .into_iter()
                 .collect();
@@ -143,7 +159,10 @@ impl DenoModule {
                 // override entries with provided extra_sources
                 if let Some(extra_sources) = extra_sources {
                     for (url, source) in extra_sources {
-                        map.insert(ModuleSpecifier::parse(url)?, source.into_bytes());
+                        map.insert(
+                            ModuleSpecifier::parse(url)?,
+                            (source.into_bytes(), ModuleType::JavaScript),
+                        );
                     }
                 }
 

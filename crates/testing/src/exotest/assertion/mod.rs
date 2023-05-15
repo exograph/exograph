@@ -10,7 +10,10 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
-use exo_deno::{Arg, DenoModule, DenoModuleSharedState, UserCode};
+use exo_deno::{
+    deno_core::{url::Url, ModuleType},
+    Arg, DenoModule, DenoModuleSharedState, UserCode,
+};
 
 const ASSERT_JS: &str = include_str!("./assert.js");
 
@@ -44,8 +47,13 @@ pub async fn dynamic_assert_using_deno(
 
     let mut deno_module = DenoModule::new(
         UserCode::LoadFromMemory {
-            path: "internal/assert.js".to_owned(),
-            script: script.into(),
+            path: "file:///internal/assert.js".to_owned(),
+            script: vec![(
+                Url::parse("file:///internal/assert.js").unwrap(),
+                (script.into(), ModuleType::JavaScript),
+            )]
+            .into_iter()
+            .collect(),
         },
         "ExographTest",
         vec![],
@@ -94,8 +102,13 @@ pub async fn evaluate_using_deno(
 
     let mut deno_module = DenoModule::new(
         UserCode::LoadFromMemory {
-            path: "internal/assert.js".to_owned(),
-            script: script.into(),
+            path: "file:///internal/assert.js".to_owned(),
+            script: vec![(
+                Url::parse("file:///internal/assert.js").unwrap(),
+                (script.into(), ModuleType::JavaScript),
+            )]
+            .into_iter()
+            .collect(),
         },
         "ExographTest",
         vec![],

@@ -80,8 +80,10 @@ fn process_script(
     _module: &AstModule<Typed>,
     _base_system: &BaseModelSystem,
     module_fs_path: &Path,
-) -> Result<Vec<u8>, ModelBuildingError> {
-    std::fs::read(module_fs_path).map_err(|err| {
-        ModelBuildingError::Generic(format!("While trying to read bundled module: {err}"))
-    })
+) -> Result<(String, Vec<u8>), ModelBuildingError> {
+    std::fs::read(module_fs_path)
+        .map(|o| (module_fs_path.to_str().unwrap().to_string(), o))
+        .map_err(|err| {
+            ModelBuildingError::Generic(format!("While trying to read bundled module: {err}"))
+        })
 }

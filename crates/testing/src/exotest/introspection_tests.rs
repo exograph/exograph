@@ -11,7 +11,11 @@ use anyhow::{anyhow, Result};
 use colored::Colorize;
 
 use core_resolver::{context::RequestContext, system_resolver::SystemResolver, OperationsPayload};
-use exo_deno::{deno_error::DenoError, Arg, DenoModule, DenoModuleSharedState, UserCode};
+use exo_deno::{
+    deno_core::{url::Url, ModuleType},
+    deno_error::DenoError,
+    Arg, DenoModule, DenoModuleSharedState, UserCode,
+};
 use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
 use include_dir::{include_dir, Dir};
 use resolver::{create_system_resolver, LOCAL_ALLOW_INTROSPECTION};
@@ -73,8 +77,13 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
 
     let mut deno_module = DenoModule::new(
         UserCode::LoadFromMemory {
-            path: "internal/introspection_tests.js".to_owned(),
-            script: script.into(),
+            path: "file://internal/introspection_tests.js".to_owned(),
+            script: vec![(
+                Url::parse("file://internal/introspection_tests.js").unwrap(),
+                (script.into(), ModuleType::JavaScript),
+            )]
+            .into_iter()
+            .collect(),
         },
         "ExographTest",
         vec![],

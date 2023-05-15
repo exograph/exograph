@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{path::Path, sync::Arc, thread};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use core_plugin_interface::{
     core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
@@ -20,6 +20,9 @@ use core_plugin_interface::{
 };
 
 use deno::{CliOptions, Flags, ProcState};
+use deno_ast::{MediaType, ParseParams, SourceTextInfo};
+use deno_core::ModuleType;
+use deno_graph::{Module, ModuleSpecifier};
 use deno_model::{
     interceptor::Interceptor,
     operation::{DenoMutation, DenoQuery},
@@ -87,13 +90,13 @@ fn process_script(
     module: &AstModule<Typed>,
     base_system: &BaseModelSystem,
     module_fs_path: &Path,
-) -> Result<Vec<u8>, ModelBuildingError> {
+) -> Result<(String, Vec<u8>), ModelBuildingError> {
     module_skeleton_generator::generate_module_skeleton(module, base_system, module_fs_path)?;
 
     // TODO: Make the process_script function async. Currently, we can't because `ProcState` isn't a
     // `Send`. But to make this useful as a callback, we would make this function return a
     // `BoxFuture`, which has the `Send` requirement.
-    let ps = thread::spawn(|| {
+    let ps = std::thread::spawn(|| {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(ProcState::from_options(Arc::new(
             CliOptions::new(
@@ -119,28 +122,72 @@ fn process_script(
     );
 
     let mut cache = ps.create_graph_loader();
-    let graph = thread::spawn(move || {
+    let root = Url::parse(&path).unwrap();
+    let root_clone = root.clone();
+    let graph = std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
-
-        rt.block_on(ps.create_graph_with_loader(vec![Url::parse(&path).unwrap()], &mut cache))
+        rt.block_on(ps.create_graph_with_loader(vec![root_clone], &mut cache))
+            .map_err(|e| {
+                ModelBuildingError::Generic(format!("While trying to create Deno graph: {:?}", e))
+            })
     })
     .join()
-    .unwrap()
-    .map_err(|e| {
-        ModelBuildingError::Generic(format!("While trying to create Deno graph: {:?}", e))
-    })?;
+    .unwrap()?;
 
-    let bundle_res = deno_emit::bundle_graph(
-        &graph,
-        deno_emit::BundleOptions {
-            bundle_type: deno_emit::BundleType::Module,
-            emit_ignore_directives: false,
-            emit_options: deno_emit::EmitOptions::default(),
-        },
-    )
-    .map_err(|e| {
-        ModelBuildingError::Generic(format!("While trying to bundle Deno script: {:?}", e))
-    })?;
+    let mut module_sources = vec![];
+    for module in graph.modules() {
+        match module {
+            Module::Esm(e) => module_sources.push((e.specifier.clone(), e.source.to_string())),
+            Module::Json(j) => module_sources.push((j.specifier.clone(), j.source.to_string())),
+            o => {
+                return Err(ModelBuildingError::Generic(format!(
+                    "Unsuported module type in Deno graph: {}",
+                    o.specifier()
+                )))
+            }
+        }
+    }
 
-    Ok(bundle_res.code.into_bytes())
+    let modules: HashMap<ModuleSpecifier, (Vec<u8>, ModuleType)> = module_sources
+        .into_iter()
+        .map(|(specifier, content)| {
+            let media_type = MediaType::from(&specifier);
+
+            // from Deno examples
+            let (module_type, should_transpile) = match MediaType::from(&path) {
+                MediaType::JavaScript | MediaType::Mjs | MediaType::Cjs => {
+                    (deno_core::ModuleType::JavaScript, false)
+                }
+                MediaType::Jsx => (deno_core::ModuleType::JavaScript, true),
+                MediaType::TypeScript
+                | MediaType::Mts
+                | MediaType::Cts
+                | MediaType::Dts
+                | MediaType::Dmts
+                | MediaType::Dcts
+                | MediaType::Tsx => (deno_core::ModuleType::JavaScript, true),
+                MediaType::Json => (deno_core::ModuleType::Json, false),
+                _ => panic!("Unknown media type {:?}", media_type),
+            };
+
+            let transpiled = if should_transpile {
+                let parsed = deno_ast::parse_module(ParseParams {
+                    specifier: specifier.to_string(),
+                    text_info: SourceTextInfo::from_string(content),
+                    media_type,
+                    capture_tokens: false,
+                    scope_analysis: false,
+                    maybe_syntax: None,
+                })
+                .unwrap();
+                parsed.transpile(&Default::default()).unwrap().text
+            } else {
+                content
+            };
+
+            (specifier, (transpiled.as_bytes().to_vec(), module_type))
+        })
+        .collect();
+
+    Ok((root.to_string(), bincode::serialize(&modules).unwrap()))
 }
