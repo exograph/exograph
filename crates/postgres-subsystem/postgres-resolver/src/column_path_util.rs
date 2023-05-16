@@ -50,7 +50,7 @@ fn to_column_table(
     (column, table)
 }
 
-fn to_column_path_link<'a>(
+pub fn to_column_path_link<'a>(
     link: &ColumnIdPathLink,
     system: &'a PostgresSubsystem,
 ) -> ColumnPathLink<'a> {

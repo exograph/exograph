@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::types::EntityType;
+use crate::{column_path::ColumnIdPathLink, types::EntityType};
 
 use super::column_id::ColumnId;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
@@ -34,11 +34,13 @@ pub enum PostgresRelation {
         column_id: ColumnId,
         other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
+        column_id_path_link: ColumnIdPathLink,
     },
     OneToMany {
         other_type_column_id: ColumnId,
         other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
+        column_id_path_link: ColumnIdPathLink,
     },
 }
 

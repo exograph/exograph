@@ -31,6 +31,7 @@ use postgres_model::{
     access::Access,
     aggregate::{AggregateField, AggregateFieldType},
     column_id::ColumnId,
+    column_path::ColumnIdPathLink,
     relation::{PostgresRelation, RelationCardinality},
     types::{EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, TypeIndex},
 };
@@ -729,7 +730,7 @@ fn determine_column_type<'a>(
 
 fn create_relation(
     field: &ResolvedField,
-    table_id: SerializableSlabIndex<PhysicalTable>,
+    self_table_id: SerializableSlabIndex<PhysicalTable>,
     building: &SystemContextBuilding,
     resolved_env: &ResolvedTypeEnv,
 ) -> PostgresRelation {
@@ -738,20 +739,16 @@ fn create_relation(
         table_id: SerializableSlabIndex<PhysicalTable>,
         field: &ResolvedField,
     ) -> Option<ColumnId> {
-        let column_name = field.column_name.to_string();
-
         table
-            .column_index(&column_name)
+            .column_index(&field.column_name)
             .map(|index| ColumnId::new(table_id, index))
     }
 
-    let table = &building.tables[table_id];
+    let self_table = &building.tables[self_table_id];
 
     if field.is_pk {
-        let column_id = compute_column_id(table, table_id, field);
-        PostgresRelation::Pk {
-            column_id: column_id.unwrap(),
-        }
+        let column_id = compute_column_id(self_table, self_table_id, field).unwrap();
+        PostgresRelation::Pk { column_id }
     } else {
         fn compute_base_type(
             field_type: &FieldType<ResolvedFieldType>,
@@ -766,31 +763,39 @@ fn create_relation(
 
         match field_base_typ {
             FieldType::List(underlying) => {
-                if let ResolvedType::Primitive(_) = underlying.deref(resolved_env) {
-                    // List of a primitive type is still a scalar from the database perspective
-                    PostgresRelation::Scalar {
-                        column_id: compute_column_id(table, table_id, field).unwrap(),
+                match underlying.deref(resolved_env) {
+                    ResolvedType::Primitive(_) => {
+                        // List of a primitive type is still a scalar from the database perspective
+                        PostgresRelation::Scalar {
+                            column_id: compute_column_id(self_table, self_table_id, field).unwrap(),
+                        }
                     }
-                } else {
-                    // If the field is of a list type and the underlying type is not a primitive,
-                    // then it is a OneToMany relation with the self's type being the "One" side
-                    // and the field's type being the "Many" side.
-                    let field_type = underlying.deref(resolved_env).as_composite();
+                    ResolvedType::Composite(field_type) => {
+                        // If the field is of a list type and the underlying type is not a primitive,
+                        // then it is a OneToMany relation with the self's type being the "One" side
+                        // and the field's type being the "Many" side.
+                        let other_type_id = building.get_entity_type_id(&field_type.name).unwrap();
+                        let other_type = &building.entity_types[other_type_id];
+                        let other_table_id = other_type.table_id;
+                        let other_table = &building.tables[other_table_id];
 
-                    let other_type_id = building
-                        .get_entity_type_id(field_type.name.as_str())
-                        .unwrap();
-                    let other_type = &building.entity_types[other_type_id];
-                    let other_table_id = other_type.table_id;
-                    let other_table = &building.tables[other_table_id];
+                        let other_type_column_id =
+                            compute_column_id(other_table, other_table_id, field).unwrap();
 
-                    let other_type_column_id =
-                        compute_column_id(other_table, other_table_id, field).unwrap();
+                        let self_pk_column_id =
+                            ColumnId::new(self_table_id, self_table.get_pk_column_index().unwrap());
 
-                    PostgresRelation::OneToMany {
-                        other_type_column_id,
-                        other_type_id,
-                        cardinality: RelationCardinality::Unbounded,
+                        let column_id_path_link = ColumnIdPathLink {
+                            self_column_id: self_pk_column_id,
+                            linked_column_id: Some(other_type_column_id),
+                        };
+
+                        PostgresRelation::OneToMany {
+                            other_type_column_id,
+                            other_type_id,
+                            cardinality: RelationCardinality::Unbounded,
+                            column_id_path_link,
+                        }
                     }
                 }
             }
@@ -800,10 +805,9 @@ fn create_relation(
 
                 match field_type {
                     ResolvedType::Primitive(_) => {
-                        let column_id = compute_column_id(table, table_id, field);
-                        PostgresRelation::Scalar {
-                            column_id: column_id.unwrap(),
-                        }
+                        let column_id =
+                            compute_column_id(self_table, self_table_id, field).unwrap();
+                        PostgresRelation::Scalar { column_id }
                     }
                     ResolvedType::Composite(ct) => {
                         // A field's type is "Plain" or "Optional" and the field type is composite,
@@ -819,38 +823,74 @@ fn create_relation(
                             .typ;
 
                         let other_type_id = building.get_entity_type_id(&ct.name).unwrap();
+                        let other_type = &building.entity_types[other_type_id];
+                        let other_table_id = other_type.table_id;
+                        let other_table = &building.tables[other_table_id];
 
                         match (&field.typ, other_type_field_typ) {
                             (FieldType::Optional(_), FieldType::Plain(_)) => {
-                                let other_type = &building.entity_types[other_type_id];
-                                let other_table_id = other_type.table_id;
-                                let other_table = &building.tables[other_table_id];
                                 let other_type_column_id =
                                     compute_column_id(other_table, other_table_id, field).unwrap();
 
+                                let self_pk_column_id = ColumnId::new(
+                                    self_table_id,
+                                    self_table.get_pk_column_index().unwrap(),
+                                );
+
+                                let column_id_path_link = ColumnIdPathLink {
+                                    self_column_id: self_pk_column_id,
+                                    linked_column_id: Some(other_type_column_id),
+                                };
                                 PostgresRelation::OneToMany {
                                     other_type_column_id,
                                     other_type_id,
                                     cardinality: RelationCardinality::Optional,
+                                    column_id_path_link,
                                 }
                             }
                             (FieldType::Plain { .. }, FieldType::Optional(_)) => {
-                                let column_id = compute_column_id(table, table_id, field);
+                                let column_id =
+                                    compute_column_id(self_table, self_table_id, field).unwrap();
+
+                                let relation_link = ColumnIdPathLink {
+                                    self_column_id: column_id,
+                                    linked_column_id: Some(ColumnId::new(
+                                        other_table_id,
+                                        other_table
+                                            .get_pk_column_index()
+                                            .expect("No primary key column found"),
+                                    )),
+                                };
 
                                 PostgresRelation::ManyToOne {
-                                    column_id: column_id.unwrap(),
+                                    column_id,
                                     other_type_id,
                                     cardinality: RelationCardinality::Optional,
+                                    column_id_path_link: relation_link,
                                 }
                             }
                             (field_typ, other_field_type) => {
                                 match (field_base_typ, compute_base_type(other_field_type)) {
                                     (FieldType::Plain(_), FieldType::List(_)) => {
-                                        let column_id = compute_column_id(table, table_id, field);
+                                        let column_id =
+                                            compute_column_id(self_table, self_table_id, field)
+                                                .unwrap();
+
+                                        let relation_link = ColumnIdPathLink {
+                                            self_column_id: column_id,
+                                            linked_column_id: Some(ColumnId::new(
+                                                other_table_id,
+                                                other_table
+                                                    .get_pk_column_index()
+                                                    .expect("No primary key column found"),
+                                            )),
+                                        };
+
                                         PostgresRelation::ManyToOne {
-                                            column_id: column_id.unwrap(),
+                                            column_id,
                                             other_type_id,
                                             cardinality: RelationCardinality::Unbounded,
+                                            column_id_path_link: relation_link,
                                         }
                                     }
                                     _ => {

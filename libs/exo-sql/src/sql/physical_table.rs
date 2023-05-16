@@ -46,6 +46,10 @@ impl PhysicalTable {
         self.columns.iter().find(|column| column.name == name)
     }
 
+    pub fn get_pk_column_index(&self) -> Option<usize> {
+        self.columns.iter().position(|c| c.is_pk)
+    }
+
     pub fn get_pk_physical_column(&self) -> Option<&PhysicalColumn> {
         self.columns.iter().find(|column| column.is_pk)
     }
