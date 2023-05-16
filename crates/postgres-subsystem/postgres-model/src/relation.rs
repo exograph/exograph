@@ -31,13 +31,13 @@ pub enum PostgresRelation {
         column_id: ColumnId,
     },
     ManyToOne {
-        column_id: ColumnId,
         other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
         column_id_path_link: ColumnIdPathLink,
     },
+    // In one-to-many, we need information about the other type's primary key, so that we can
+    // build a query that joins the two tables, etc.
     OneToMany {
-        other_type_column_id: ColumnId,
         other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
         column_id_path_link: ColumnIdPathLink,
@@ -47,10 +47,30 @@ pub enum PostgresRelation {
 impl PostgresRelation {
     pub fn self_column(&self) -> Option<ColumnId> {
         match self {
-            PostgresRelation::Pk { column_id }
-            | PostgresRelation::Scalar { column_id }
-            | PostgresRelation::ManyToOne { column_id, .. } => Some(*column_id),
+            PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
+                Some(*column_id)
+            }
+            PostgresRelation::ManyToOne {
+                column_id_path_link,
+                ..
+            } => Some(column_id_path_link.self_column_id),
             _ => None,
+        }
+    }
+
+    pub fn column_path_link(&self) -> ColumnIdPathLink {
+        match &self {
+            PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
+                ColumnIdPathLink::new(*column_id, None)
+            }
+            PostgresRelation::ManyToOne {
+                column_id_path_link,
+                ..
+            } => column_id_path_link.clone(),
+            PostgresRelation::OneToMany {
+                column_id_path_link,
+                ..
+            } => column_id_path_link.clone(),
         }
     }
 }

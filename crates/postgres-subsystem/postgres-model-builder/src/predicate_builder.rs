@@ -20,7 +20,6 @@ use std::collections::HashMap;
 use crate::shallow::Shallow;
 
 use super::{
-    column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
 };
@@ -236,11 +235,7 @@ fn create_composite_filter_type_kind(
         .map(|field| {
             let param_type_name = get_parameter_type_name(field.typ.name());
 
-            let column_path_link = Some(column_path_utils::column_path_link(
-                composite_type,
-                field,
-                &building.entity_types,
-            ));
+            let column_path_link = Some(field.relation.column_path_link());
 
             PredicateParameter {
                 name: field.name.to_string(),

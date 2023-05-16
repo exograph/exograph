@@ -791,7 +791,6 @@ fn create_relation(
                         };
 
                         PostgresRelation::OneToMany {
-                            other_type_column_id,
                             other_type_id,
                             cardinality: RelationCardinality::Unbounded,
                             column_id_path_link,
@@ -842,7 +841,6 @@ fn create_relation(
                                     linked_column_id: Some(other_type_column_id),
                                 };
                                 PostgresRelation::OneToMany {
-                                    other_type_column_id,
                                     other_type_id,
                                     cardinality: RelationCardinality::Optional,
                                     column_id_path_link,
@@ -863,7 +861,6 @@ fn create_relation(
                                 };
 
                                 PostgresRelation::ManyToOne {
-                                    column_id,
                                     other_type_id,
                                     cardinality: RelationCardinality::Optional,
                                     column_id_path_link: relation_link,
@@ -887,7 +884,6 @@ fn create_relation(
                                         };
 
                                         PostgresRelation::ManyToOne {
-                                            column_id,
                                             other_type_id,
                                             cardinality: RelationCardinality::Unbounded,
                                             column_id_path_link: relation_link,
