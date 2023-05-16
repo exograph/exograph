@@ -22,7 +22,6 @@ use postgres_model::{
 use crate::shallow::Shallow;
 
 use super::{
-    column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
     type_builder::ResolvedTypeEnv,
@@ -105,7 +104,6 @@ fn expand_type(
         .flat_map(|field| {
             new_field_param(
                 field,
-                entity_type,
                 &building.primitive_types,
                 &building.entity_types,
                 &building.order_by_types,
@@ -151,7 +149,6 @@ fn new_param(
 
 pub fn new_field_param(
     entity_field: &PostgresField<EntityType>,
-    composite_type: &EntityType,
     primitive_types: &MappedArena<PostgresPrimitiveType>,
     entity_types: &MappedArena<EntityType>,
     order_by_types: &MappedArena<OrderByParameterType>,
@@ -172,11 +169,7 @@ pub fn new_field_param(
     let field_entity_type =
         field_type_id.to_type(primitive_types.values_ref(), entity_types.values_ref());
 
-    let column_path_link = Some(column_path_utils::column_path_link(
-        composite_type,
-        entity_field,
-        entity_types,
-    ));
+    let column_path_link = Some(entity_field.relation.column_path_link());
 
     Some(new_param(
         &entity_field.name,

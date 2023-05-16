@@ -13,8 +13,8 @@ use super::{
     util::{check_access, Arguments},
 };
 use crate::{
-    operation_resolver::OperationSelectionResolver, order_by_mapper::OrderByParameterInput,
-    sql_mapper::extract_and_map,
+    column_path_util::to_column_path_link, operation_resolver::OperationSelectionResolver,
+    order_by_mapper::OrderByParameterInput, sql_mapper::extract_and_map,
 };
 use async_recursion::async_recursion;
 use async_trait::async_trait;
@@ -23,8 +23,8 @@ use core_plugin_interface::core_resolver::{
     context::RequestContext, validation::field::ValidatedField,
 };
 use exo_sql::{
-    AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, ColumnPathLink,
-    Limit, Offset, SelectionCardinality, SelectionElement,
+    AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, Limit, Offset,
+    SelectionCardinality, SelectionElement,
 };
 use futures::StreamExt;
 use postgres_model::{
@@ -188,13 +188,11 @@ async fn map_field<'content>(
 
         match entity_field {
             Some(entity_field) => {
-                map_persistent_field(entity_field, return_type, field, subsystem, request_context)
-                    .await?
+                map_persistent_field(entity_field, field, subsystem, request_context).await?
             }
             None => {
                 let agg_field = return_type.aggregate_field(&field.name).unwrap();
-                map_aggregate_field(agg_field, return_type, field, subsystem, request_context)
-                    .await?
+                map_aggregate_field(agg_field, field, subsystem, request_context).await?
             }
         }
     };
@@ -207,7 +205,6 @@ async fn map_field<'content>(
 
 async fn map_persistent_field<'content>(
     entity_field: &PostgresField<EntityType>,
-    return_type: &EntityType,
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
@@ -218,24 +215,14 @@ async fn map_persistent_field<'content>(
             Ok(SelectionElement::Physical(column))
         }
         PostgresRelation::ManyToOne {
-            column_id,
             other_type_id,
+            column_id_path_link,
             ..
         } => {
             let other_type = &subsystem.entity_types[*other_type_id];
-            let other_table = &subsystem.tables[other_type.table_id];
 
             let other_table_pk_query = &subsystem.pk_queries[other_type.pk_query];
-            let self_table = &subsystem.tables[return_type.table_id];
-            let relation_link = ColumnPathLink {
-                self_column: (column_id.get_column(subsystem), self_table),
-                linked_column: Some((
-                    other_table
-                        .get_pk_physical_column()
-                        .expect("No primary key column found"),
-                    other_table,
-                )),
-            };
+            let relation_link = to_column_path_link(column_id_path_link, subsystem);
 
             let nested_abstract_select = other_table_pk_query
                 .resolve_select(field, request_context, subsystem)
@@ -247,22 +234,14 @@ async fn map_persistent_field<'content>(
             ))
         }
         PostgresRelation::OneToMany {
-            other_type_column_id,
             other_type_id,
             cardinality,
+            column_id_path_link,
+            ..
         } => {
             let other_type = &subsystem.entity_types[*other_type_id];
-            let self_table = &subsystem.tables[return_type.table_id];
-            let self_table_pk_column = self_table
-                .get_pk_physical_column()
-                .expect("No primary key column found");
-            let relation_link = ColumnPathLink {
-                self_column: (self_table_pk_column, self_table),
-                linked_column: Some((
-                    other_type_column_id.get_column(subsystem),
-                    &subsystem.tables[other_type.table_id],
-                )),
-            };
+
+            let relation_link = to_column_path_link(column_id_path_link, subsystem);
 
             let nested_abstract_select = {
                 // Get an appropriate query based on the cardinality of the relation
@@ -292,30 +271,21 @@ async fn map_persistent_field<'content>(
 
 async fn map_aggregate_field<'content>(
     agg_field: &AggregateField,
-    return_type: &EntityType,
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement<'content>, PostgresExecutionError> {
     if let Some(PostgresRelation::OneToMany {
-        other_type_column_id,
         other_type_id,
         cardinality,
+        column_id_path_link,
+        ..
     }) = &agg_field.relation
     {
         // TODO: Avoid code duplication with map_persistent_field
         let other_type = &subsystem.entity_types[*other_type_id];
-        let self_table = &subsystem.tables[return_type.table_id];
-        let self_table_pk_column = self_table
-            .get_pk_physical_column()
-            .expect("No primary key column found");
-        let relation_link = ColumnPathLink {
-            self_column: (self_table_pk_column, self_table),
-            linked_column: Some((
-                other_type_column_id.get_column(subsystem),
-                &subsystem.tables[other_type.table_id],
-            )),
-        };
+
+        let relation_link = to_column_path_link(column_id_path_link, subsystem);
 
         let nested_abstract_select = {
             // Aggregate is supported only for unbounded relations (i.e. not supported for one-to-one)

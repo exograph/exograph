@@ -26,8 +26,6 @@ use postgres_model::{
     types::{base_type, EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
 };
 
-use super::column_path_utils;
-
 use super::type_builder::ResolvedTypeEnv;
 
 enum PathSelection<'a> {
@@ -209,7 +207,6 @@ fn compute_selection<'a>(
     fn get_column<'a>(
         field_name: &str,
         self_type_info: &'a EntityType,
-        entity_types: &MappedArena<EntityType>,
     ) -> (
         ColumnIdPathLink,
         &'a FieldType<PostgresFieldType<EntityType>>,
@@ -221,8 +218,7 @@ fn compute_selection<'a>(
         };
 
         let field = get_field(field_name);
-        let column_path_link =
-            column_path_utils::column_path_link(self_type_info, field, entity_types);
+        let column_path_link = field.relation.column_path_link();
 
         (column_path_link, &field.typ)
     }
@@ -236,8 +232,7 @@ fn compute_selection<'a>(
                 let self_type_info =
                     self_type_info.expect("Type for the access selection is not defined");
 
-                let (field_column_path, field_type) =
-                    get_column(field_name, self_type_info, subsystem_entity_types);
+                let (field_column_path, field_type) = get_column(field_name, self_type_info);
 
                 let field_composite_type = match base_type(
                     field_type,
