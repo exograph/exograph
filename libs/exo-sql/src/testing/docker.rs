@@ -33,7 +33,8 @@ pub struct DockerPostgresDatabase {
 
 impl DockerPostgresDatabaseServer {
     pub fn check_availability() -> Result<(), EphemeralDatabaseSetupError> {
-        which::which("docker")?;
+        which::which("docker")
+            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("docker", e))?;
         Ok(())
     }
 

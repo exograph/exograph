@@ -10,6 +10,7 @@
 use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
+use deno_core::url::Url;
 use deno_core::v8;
 use deno_core::Extension;
 use deno_core::ModuleSpecifier;
@@ -47,6 +48,7 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
 }
 
+#[derive(Debug)]
 pub enum UserCode {
     LoadFromMemory {
         script: DenoScriptDefn,
@@ -117,12 +119,10 @@ impl DenoModule {
 
         let user_module_path = match &user_code {
             UserCode::LoadFromFs(user_module_path) => {
-                let abs = fs::canonicalize(user_module_path)?
-                    .to_string_lossy()
-                    .to_string();
-                format!("file://{abs}")
+                let abs = fs::canonicalize(user_module_path)?;
+                Url::from_file_path(&abs).unwrap()
             }
-            UserCode::LoadFromMemory { path, .. } => path.to_string(),
+            UserCode::LoadFromMemory { path, .. } => Url::parse(path).unwrap(),
         };
 
         let source_code = format!(
@@ -438,7 +438,12 @@ mod tests {
     #[tokio::test]
     async fn test_direct_sync() {
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_owned()),
+            UserCode::LoadFromFs(
+                Path::new("src")
+                    .join("test_js")
+                    .join("direct.js")
+                    .to_owned(),
+            ),
             "deno_module",
             vec![],
             vec![],
@@ -468,7 +473,12 @@ mod tests {
     #[tokio::test]
     async fn test_direct_async() {
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_owned()),
+            UserCode::LoadFromFs(
+                Path::new("src")
+                    .join("test_js")
+                    .join("direct.js")
+                    .to_owned(),
+            ),
             "deno_module",
             vec![],
             vec![],
@@ -506,7 +516,12 @@ mod tests {
         static GET_JSON_SHIM: (&str, &[&str]) = ("__shim", &[include_str!("./test_js/shim.js")]);
 
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/through_shim.js").to_owned()),
+            UserCode::LoadFromFs(
+                Path::new("src")
+                    .join("test_js")
+                    .join("through_shim.js")
+                    .to_owned(),
+            ),
             "deno_module",
             vec![GET_JSON_SHIM],
             vec![],
@@ -551,7 +566,12 @@ mod tests {
         static GET_JSON_SHIM: (&str, &[&str]) = ("__shim", &[include_str!("./test_js/shim.js")]);
 
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/through_shim.js").to_owned()),
+            UserCode::LoadFromFs(
+                Path::new("src")
+                    .join("test_js")
+                    .join("through_shim.js")
+                    .to_owned(),
+            ),
             "deno_module",
             vec![GET_JSON_SHIM],
             vec![],
@@ -609,7 +629,12 @@ mod tests {
     #[tokio::test]
     async fn test_register_sync_ops() {
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/through_rust_fn.js").to_owned()),
+            UserCode::LoadFromFs(
+                Path::new("src")
+                    .join("test_js")
+                    .join("through_rust_fn.js")
+                    .to_owned(),
+            ),
             "deno_module",
             vec![],
             vec![],
@@ -637,7 +662,12 @@ mod tests {
     #[tokio::test]
     async fn test_register_async_ops() {
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/through_rust_fn.js").to_owned()),
+            UserCode::LoadFromFs(
+                Path::new("src")
+                    .join("test_js")
+                    .join("through_rust_fn.js")
+                    .to_owned(),
+            ),
             "deno_module",
             vec![],
             vec![],

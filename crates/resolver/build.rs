@@ -8,15 +8,34 @@
 // by the Apache License, Version 2.0.
 
 fn main() {
-    let graphiql_folder_path = std::env::current_dir().unwrap().join("../../graphiql");
-    let graphiql_folder = graphiql_folder_path.to_str().unwrap();
+    let graphiql_folder_path = std::env::current_dir()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("graphiql");
 
-    println!("cargo:rerun-if-changed={graphiql_folder}/src");
-    println!("cargo:rerun-if-changed={graphiql_folder}/public");
-    println!("cargo:rerun-if-changed={graphiql_folder}/package.json");
-    println!("cargo:rerun-if-changed={graphiql_folder}/package-lock.json");
+    println!(
+        "cargo:rerun-if-changed={}",
+        graphiql_folder_path.join("src").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        graphiql_folder_path.join("public").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        graphiql_folder_path.join("package.json").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        graphiql_folder_path.join("package-lock.json").display()
+    );
 
-    if !std::process::Command::new("npm")
+    let npm = which::which("npm").unwrap();
+
+    if !std::process::Command::new(npm.clone())
         .arg("ci")
         .current_dir(&graphiql_folder_path)
         .spawn()
@@ -28,7 +47,7 @@ fn main() {
         panic!("Failed to install graphiql dependencies");
     }
 
-    if !std::process::Command::new("npm")
+    if !std::process::Command::new(npm)
         .arg("run")
         .arg("prod-build")
         .current_dir(graphiql_folder_path)

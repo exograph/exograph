@@ -9,13 +9,13 @@
 
 //! Ephemeral database server based on a local postgres installation
 
-use nix::sys::signal::{self, Signal};
-use nix::unistd::Pid;
-use std::{
-    fs::OpenOptions,
-    io::Write,
-    process::{Child, Stdio},
-};
+#[cfg(not(unix))]
+use std::net::TcpListener;
+
+#[cfg(unix)]
+use std::{fs::OpenOptions, io::Write};
+
+use std::process::Stdio;
 use tempfile::TempDir;
 
 use super::{
@@ -24,21 +24,28 @@ use super::{
 };
 
 pub struct LocalPostgresDatabaseServer {
-    process: Child,
+    port: Option<u16>,
     data_dir: TempDir,
 }
 
 pub struct LocalPostgresDatabase {
+    #[allow(unused)]
     data_dir: String,
+    #[allow(unused)]
+    port: Option<u16>,
     name: String,
 }
 
 impl LocalPostgresDatabaseServer {
     pub fn check_availability() -> Result<(), EphemeralDatabaseSetupError> {
-        which::which("initdb")?;
-        which::which("postgres")?;
-        which::which("pg_isready")?;
-        which::which("createdb")?;
+        which::which("initdb")
+            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("initdb", e))?;
+        which::which("pg_ctl")
+            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("postgres", e))?;
+        which::which("pg_isready")
+            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("pg_isready", e))?;
+        which::which("createdb")
+            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("createdb", e))?;
         Ok(())
     }
 
@@ -63,29 +70,59 @@ impl LocalPostgresDatabaseServer {
             true,
         )?;
 
-        let config_file = data_dir.path().join("postgresql.conf");
-        let mut file = OpenOptions::new()
-            .append(true)
-            .open(&config_file)
-            .map_err(|e| {
+        #[cfg(unix)]
+        {
+            let config_file = data_dir.path().join("postgresql.conf");
+            let mut file = OpenOptions::new()
+                .append(true)
+                .open(&config_file)
+                .map_err(|e| {
+                    EphemeralDatabaseSetupError::Generic(format!(
+                        "Failed to open Postgres config file: {e}"
+                    ))
+                })?;
+
+            file.write_all(b"\nlisten_addresses = ''\n").map_err(|e| {
                 EphemeralDatabaseSetupError::Generic(format!(
-                    "Failed to open Postgres config file: {e}"
+                    "Failed to write to Postgres config file: {e}"
                 ))
             })?;
-        file.write_all(b"\nlisten_addresses = ''\n").map_err(|e| {
-            EphemeralDatabaseSetupError::Generic(format!(
-                "Failed to write to Postgres config file: {e}"
-            ))
-        })?;
-        drop(file);
+            drop(file);
+        }
 
-        let postgres = std::process::Command::new("postgres")
-            .args([
-                "-D",
-                data_dir.path().to_str().unwrap(),
-                "-k",
-                data_dir.path().to_str().unwrap(),
-            ])
+        let mut postgres = std::process::Command::new("pg_ctl");
+        postgres.args(["start", "-D", data_dir.path().to_str().unwrap()]);
+
+        #[cfg(unix)]
+        {
+            postgres.args(["-o", &format!("-k {}", data_dir.path().to_str().unwrap())]);
+        }
+
+        let port: Option<u16> = {
+            #[cfg(unix)]
+            {
+                None
+            }
+
+            #[cfg(not(unix))]
+            {
+                let temp_listener = TcpListener::bind("127.0.0.1:0").unwrap();
+                Some(temp_listener.local_addr().unwrap().port())
+            }
+        };
+
+        #[cfg(not(unix))]
+        {
+            postgres.args([
+                "-o",
+                &format!(
+                    "-h localhost -p {}",
+                    port.as_ref().unwrap().to_string().as_str()
+                ),
+            ]);
+        }
+
+        postgres
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
@@ -95,30 +132,45 @@ impl LocalPostgresDatabaseServer {
 
         let mut tries = 0;
         loop {
-            let result = launch_process(
-                "pg_isready",
-                &["-h", data_dir.path().to_str().unwrap(), "-U", "exo"],
-                true,
-            );
+            #[cfg(not(unix))]
+            let port_string = port.map(|p| format!("{}", p));
+            let args = {
+                #[cfg(unix)]
+                {
+                    vec!["-h", data_dir.path().to_str().unwrap(), "-U", "exo"]
+                }
+
+                #[cfg(not(unix))]
+                {
+                    vec![
+                        "-h",
+                        "localhost",
+                        "-p",
+                        port_string.as_ref().unwrap().as_str(),
+                        "-U",
+                        "exo",
+                    ]
+                }
+            };
+
+            let result = launch_process("pg_isready", &args, true);
 
             if result.is_ok() {
                 break;
             }
 
             tries += 1;
-            if tries > 1000 {
+            if tries > 10 {
                 return Err(EphemeralDatabaseSetupError::Generic(
                     "Postgres failed to start".into(),
                 ));
             }
 
-            std::thread::sleep(std::time::Duration::from_millis(1));
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            eprintln!("Waiting for Postgres to start...");
         }
 
-        Ok(Box::new(LocalPostgresDatabaseServer {
-            process: postgres,
-            data_dir,
-        }))
+        Ok(Box::new(LocalPostgresDatabaseServer { port, data_dir }))
     }
 }
 
@@ -127,20 +179,40 @@ impl EphemeralDatabaseServer for LocalPostgresDatabaseServer {
         &self,
         name: &str,
     ) -> Result<Box<dyn EphemeralDatabase + Send + Sync>, EphemeralDatabaseSetupError> {
-        launch_process(
-            "createdb",
-            &[
-                "-h",
-                self.data_dir.path().to_str().unwrap(),
-                "-U",
-                "exo",
-                name,
-            ],
-            true,
-        )?;
+        #[cfg(not(unix))]
+        let port_string = self.port.map(|p| format!("{}", p));
+
+        let args = {
+            #[cfg(unix)]
+            {
+                vec![
+                    "-h",
+                    self.data_dir.path().to_str().unwrap(),
+                    "-U",
+                    "exo",
+                    name,
+                ]
+            }
+
+            #[cfg(not(unix))]
+            {
+                vec![
+                    "-h",
+                    "localhost",
+                    "-p",
+                    port_string.as_ref().unwrap().as_str(),
+                    "-U",
+                    "exo",
+                    name,
+                ]
+            }
+        };
+
+        launch_process("createdb", &args, true)?;
 
         Ok(Box::new(LocalPostgresDatabase {
             data_dir: self.data_dir.path().to_str().unwrap().into(),
+            port: self.port,
             name: name.into(),
         }))
     }
@@ -148,20 +220,14 @@ impl EphemeralDatabaseServer for LocalPostgresDatabaseServer {
 
 impl Drop for LocalPostgresDatabaseServer {
     fn drop(&mut self) {
-        // Killing ungracefully will not release shared memory and semaphores. This will eventually
-        // lead to a "FATAL:  could not create shared memory segment: No space left on device"
-        // error. At that point, the only way seems to be restarting the system (increasing shared
-        // memory limits doesn't help immediately). So we send a SIGINT per
-        // https://www.postgresql.org/docs/current/server-shutdown.html to let the process clean up
-        // properly.
-
-        signal::kill(
-            Pid::from_raw(self.process.id().try_into().unwrap()),
-            Signal::SIGINT,
-        )
-        .unwrap();
-
-        self.process.wait().unwrap();
+        std::process::Command::new("pg_ctl")
+            .args(["stop", "-D", self.data_dir.path().to_str().unwrap()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
 
         std::fs::remove_dir_all(self.data_dir.path()).unwrap();
     }
@@ -169,21 +235,52 @@ impl Drop for LocalPostgresDatabaseServer {
 
 impl EphemeralDatabase for LocalPostgresDatabase {
     fn url(&self) -> String {
-        format!(
-            "postgres://exo@{}/{}",
-            urlencoding::encode(&self.data_dir),
-            self.name
-        )
+        #[cfg(unix)]
+        {
+            format!(
+                "postgres://exo@{}/{}",
+                urlencoding::encode(&self.data_dir),
+                self.name
+            )
+        }
+
+        #[cfg(not(unix))]
+        {
+            format!(
+                "postgres://exo@localhost:{}/{}",
+                self.port.unwrap(),
+                self.name
+            )
+        }
     }
 }
 
 impl Drop for LocalPostgresDatabase {
     fn drop(&mut self) {
-        launch_process(
-            "dropdb",
-            &["-h", &self.data_dir, "--force", "-U", "exo", &self.name],
-            false,
-        )
-        .unwrap_or(()); // Ignore errors
+        #[cfg(not(unix))]
+        let port_string = self.port.map(|p| format!("{}", p));
+
+        let args = {
+            #[cfg(unix)]
+            {
+                vec!["-h", &self.data_dir, "--force", "-U", "exo", &self.name]
+            }
+
+            #[cfg(not(unix))]
+            {
+                vec![
+                    "-h",
+                    "localhost",
+                    "-p",
+                    port_string.as_ref().unwrap().as_str(),
+                    "--force",
+                    "-U",
+                    "exo",
+                    &self.name,
+                ]
+            }
+        };
+
+        launch_process("dropdb", &args, false).unwrap_or(()); // Ignore errors
     }
 }

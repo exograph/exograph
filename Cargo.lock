@@ -1123,6 +1123,7 @@ dependencies = [
  "inquire",
  "lazy_static",
  "notify-debouncer-mini",
+ "openssl",
  "postgres-model",
  "postgres-model-builder",
  "rand",
@@ -2882,7 +2883,6 @@ dependencies = [
  "deadpool-postgres",
  "lazy_static",
  "maybe-owned",
- "nix 0.26.2",
  "once_cell",
  "openssl",
  "postgres-openssl",
@@ -4405,15 +4405,6 @@ dependencies = [
 
 [[package]]
 name = "memoffset"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
-name = "memoffset"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d61c719bcfbcf5d62b3a09efa6088de8c54bc0bfcd3ea7ae39fcc186108b8de1"
@@ -4605,8 +4596,6 @@ dependencies = [
  "bitflags",
  "cfg-if 1.0.0",
  "libc",
- "memoffset 0.7.1",
- "pin-utils",
  "static_assertions",
 ]
 
@@ -4844,6 +4833,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
+name = "openssl-src"
+version = "111.25.3+1.1.1t"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "924757a6a226bf60da5f7dd0311a34d2b52283dd82ddeb103208ddc66362f80c"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "openssl-sys"
 version = "0.9.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4851,6 +4849,7 @@ checksum = "8e17f59264b2809d77ae94f0e1ebabc434773f370d6ca667bd223ea10e06cc7e"
 dependencies = [
  "cc",
  "libc",
+ "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
@@ -5957,6 +5956,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "which",
 ]
 
 [[package]]
@@ -6409,6 +6409,7 @@ dependencies = [
  "async-trait",
  "core-resolver",
  "futures",
+ "openssl",
  "resolver",
  "serde_json",
  "server-common",
@@ -6425,6 +6426,7 @@ dependencies = [
  "core-resolver",
  "futures",
  "lambda_runtime",
+ "openssl",
  "opentelemetry 0.17.0",
  "opentelemetry-jaeger",
  "resolver",
@@ -7354,6 +7356,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "unescape",
+ "which",
  "wildmatch",
 ]
 

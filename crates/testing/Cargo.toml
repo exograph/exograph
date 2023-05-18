@@ -6,6 +6,12 @@ publish = false
 
 [lib]
 
+[features]
+static-postgres-resolver = ["server-common/static-postgres-resolver"]
+static-deno-resolver = ["server-common/static-deno-resolver"]
+static-wasm-resolver = ["server-common/static-wasm-resolver"]
+default = ["static-postgres-resolver", "static-deno-resolver", "static-wasm-resolver"]
+
 [dependencies]
 anyhow.workspace = true
 colored.workspace = true
@@ -37,11 +43,8 @@ server-common = { path = "../server-common" }
 futures.workspace = true
 crossbeam-channel = "0.5.8"
 
-[features]
-static-postgres-resolver = ["server-common/static-postgres-resolver"]
-static-deno-resolver = ["server-common/static-deno-resolver"]
-static-wasm-resolver = ["server-common/static-wasm-resolver"]
-default = ["static-postgres-resolver", "static-deno-resolver", "static-wasm-resolver"]
-
 [dev-dependencies]
 insta = { workspace = true, features = ["yaml"] }
+
+[build-dependencies]
+which = "4.4.0"

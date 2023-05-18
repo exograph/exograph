@@ -2,7 +2,7 @@
 name = "server-aws-lambda"
 version = "0.1.0"
 edition = "2021"
-publish = false
+repository = "https://github.com/exograph/exograph"
 
 [dependencies]
 async-trait.workspace = true
@@ -16,6 +16,9 @@ tokio = { workspace = true, features = ["full"] }
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+openssl = { version = "0.10.50", features = ["vendored"] }
 
 [dev-dependencies]
 builder = { path = "../builder" }

@@ -113,16 +113,9 @@ fn process_script(
     .join()
     .unwrap();
 
-    let path = format!(
-        "file://{}",
-        std::fs::canonicalize(module_fs_path)
-            .unwrap()
-            .to_str()
-            .unwrap()
-    );
-
     let mut cache = ps.create_graph_loader();
-    let root = Url::parse(&path).unwrap();
+    let absolute_module_path = std::fs::canonicalize(module_fs_path).unwrap();
+    let root = Url::from_file_path(absolute_module_path.clone()).unwrap();
     let root_clone = root.clone();
     let graph = std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -154,7 +147,7 @@ fn process_script(
             let media_type = MediaType::from(&specifier);
 
             // from Deno examples
-            let (module_type, should_transpile) = match MediaType::from(&path) {
+            let (module_type, should_transpile) = match MediaType::from(&absolute_module_path) {
                 MediaType::JavaScript | MediaType::Mjs | MediaType::Cjs => {
                     (deno_core::ModuleType::JavaScript, false)
                 }

@@ -31,7 +31,6 @@ which = "4.4.0"
 rand.workspace = true
 tempfile.workspace = true
 urlencoding = "2.1.2"
-nix = "0.26.2"
 
 [dev-dependencies]
 serde_json.workspace = true
