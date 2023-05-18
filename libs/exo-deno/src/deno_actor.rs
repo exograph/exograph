@@ -121,7 +121,7 @@ where
 
             local.block_on(&runtime, async {
                 // first, initialize the Deno module
-                let mut deno_module = DenoModule::new(
+                let deno_module = DenoModule::new(
                     code,
                     user_agent_name,
                     shims,
@@ -132,8 +132,15 @@ where
                     None,
                     None,
                 )
-                .await
-                .expect("Could not create new DenoModule in DenoActor thread");
+                .await;
+
+                let mut deno_module = match deno_module {
+                    Ok(m) => m,
+                    Err(e) => {
+                        eprintln!("{:?}", e);
+                        panic!("Could not create new DenoModule in DenoActor thread")
+                    }
+                };
 
                 // store the request sender in Deno OpState for use by ops
                 deno_module

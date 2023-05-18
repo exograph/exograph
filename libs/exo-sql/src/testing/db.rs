@@ -22,16 +22,29 @@ impl EphemeralDatabaseLauncher {
     /// Currently, it prefers a local installation, but falls back to Docker if it's not available
     pub fn create_server(
     ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
-        if LocalPostgresDatabaseServer::check_availability().is_ok() {
+        let local_res = LocalPostgresDatabaseServer::check_availability();
+        if local_res.is_ok() {
             println!("Launching PostgreSQL locally...");
             LocalPostgresDatabaseServer::start()
-        } else if DockerPostgresDatabaseServer::check_availability().is_ok() {
-            println!("Launching PostgreSQL in Docker...");
-            DockerPostgresDatabaseServer::start()
         } else {
-            Err(EphemeralDatabaseSetupError::Generic(
-                "Neither local PostgreSQL nor Docker is available".to_string(),
-            ))
+            eprintln!(
+                "Local PostgreSQL is not available: {}",
+                local_res.unwrap_err()
+            );
+
+            let docker_res = DockerPostgresDatabaseServer::check_availability();
+            if docker_res.is_ok() {
+                println!("Launching PostgreSQL in Docker...");
+                DockerPostgresDatabaseServer::start()
+            } else {
+                eprintln!(
+                    "Docker PostgreSQL is not available: {}",
+                    docker_res.unwrap_err()
+                );
+                Err(EphemeralDatabaseSetupError::Generic(
+                    "Neither local PostgreSQL nor Docker is available".to_string(),
+                ))
+            }
         }
     }
 }
@@ -59,16 +72,18 @@ pub(super) fn launch_process(
     args: &[&str],
     report_errors: bool,
 ) -> Result<(), EphemeralDatabaseSetupError> {
-    let mut command = std::process::Command::new(name);
-    let command = command.args(args);
-    let command = command
+    let mut command = std::process::Command::new(name)
+        .args(args)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-
-    let mut command = command.spawn().map_err(|e| {
-        EphemeralDatabaseSetupError::Generic(format!("Failed to launch process {}: {}", name, e))
-    })?;
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            EphemeralDatabaseSetupError::Generic(format!(
+                "Failed to launch process {}: {}",
+                name, e
+            ))
+        })?;
 
     let status = command.wait().map_err(|e| {
         EphemeralDatabaseSetupError::Generic(format!("Failed to wait for process {}: {}", name, e))

@@ -1,4 +1,5 @@
 [toolchain]
+# make sure to update cargo-dist config!
 channel = "1.69.0"
 components = ["clippy", "rustfmt"]
 targets = ["wasm32-wasi"]

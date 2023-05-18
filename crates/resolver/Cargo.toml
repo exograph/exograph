@@ -29,3 +29,6 @@ introspection-resolver = { path = "../introspection-subsystem/introspection-reso
 [dev-dependencies]
 tokio.workspace = true
 builder = { path = "../builder" }
+
+[build-dependencies]
+which = "4.4.0"

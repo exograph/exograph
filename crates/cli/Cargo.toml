@@ -2,7 +2,7 @@
 name = "cli"
 version = "0.1.0"
 edition = "2021"
-publish = false
+repository = "https://github.com/exograph/exograph"
 
 [[bin]]
 name = "exo"
@@ -38,6 +38,9 @@ core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 postgres-model-builder = { path = "../postgres-subsystem/postgres-model-builder" }
 deno-model-builder = { path = "../deno-subsystem/deno-model-builder" }
 wasm-model-builder = { path = "../wasm-subsystem/wasm-model-builder" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+openssl = { version = "0.10.50", features = ["vendored"] }
 
 [dev-dependencies]
 stripmargin = "0.1.1"
