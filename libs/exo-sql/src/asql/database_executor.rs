@@ -13,7 +13,7 @@ use std::sync::atomic::AtomicBool;
 use crate::{
     database_error::DatabaseError,
     sql::{
-        database::Database,
+        database_client::DatabaseClient,
         transaction::{TransactionScript, TransactionStepResult},
     },
     transform::{pg::Postgres, transformer::OperationTransformer},
@@ -22,7 +22,7 @@ use crate::{
 use super::abstract_operation::AbstractOperation;
 
 pub struct DatabaseExecutor {
-    pub database: Database,
+    pub database: DatabaseClient,
 }
 
 impl DatabaseExecutor {
@@ -84,7 +84,7 @@ impl Drop for TransactionHolder {
 impl TransactionHolder {
     pub async fn with_tx(
         &mut self,
-        database: &Database,
+        database: &DatabaseClient,
         work: &TransactionScript<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
         if self.finalized.load(std::sync::atomic::Ordering::SeqCst) {

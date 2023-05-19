@@ -11,7 +11,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use clap::Command;
 use exo_sql::schema::issue::WithIssues;
-use exo_sql::{schema::spec::SchemaSpec, Database};
+use exo_sql::{schema::spec::SchemaSpec, DatabaseClient};
 use std::{io::Write, path::PathBuf};
 
 use heck::ToUpperCamelCase;
@@ -59,7 +59,7 @@ impl CommandDefinition for ImportCommandDefinition {
 }
 
 async fn import_schema() -> Result<WithIssues<SchemaSpec>> {
-    let database = Database::from_env(Some(1))?; // TODO: error handling here
+    let database = DatabaseClient::from_env(Some(1))?; // TODO: error handling here
     let client = database.get_client().await?;
     let schema = SchemaSpec::from_db(&client).await?;
     Ok(schema)

@@ -18,7 +18,7 @@ mod test_util;
 
 pub mod array_util;
 pub mod column;
-pub mod database;
+pub mod database_client;
 pub mod order;
 pub mod physical_column;
 pub mod predicate;

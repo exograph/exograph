@@ -29,7 +29,7 @@ thread_local! {
     pub static LOCAL_CONNECTION_POOL_SIZE: RefCell<Option<usize>> = RefCell::new(None);
 }
 
-pub struct Database {
+pub struct DatabaseClient {
     pool: Pool,
 }
 
@@ -39,7 +39,7 @@ struct SslConfig {
     cert_path: Option<String>,
 }
 
-impl<'a> Database {
+impl<'a> DatabaseClient {
     // pool_size_override useful when we want to explicitly control the pool size (for example, to 1, when importing database schema)
     pub fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
         let url = LOCAL_URL

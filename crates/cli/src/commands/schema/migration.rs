@@ -13,7 +13,7 @@ use builder::error::ParserError;
 use exo_sql::{
     database_error::DatabaseError,
     schema::{issue::WithIssues, op::SchemaOp, spec::SchemaSpec},
-    Database,
+    DatabaseClient,
 };
 
 use super::{util, verify::VerificationErrors};
@@ -203,11 +203,11 @@ pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
     Ok(())
 }
 
-pub fn open_database(database: Option<&str>) -> Result<Database, DatabaseError> {
+pub fn open_database(database: Option<&str>) -> Result<DatabaseClient, DatabaseError> {
     if let Some(database) = database {
-        Ok(Database::from_db_url(database)?)
+        Ok(DatabaseClient::from_db_url(database)?)
     } else {
-        Ok(Database::from_env(Some(1))?)
+        Ok(DatabaseClient::from_env(Some(1))?)
     }
 }
 
