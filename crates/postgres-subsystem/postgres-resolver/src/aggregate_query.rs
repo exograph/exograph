@@ -55,7 +55,7 @@ impl OperationSelectionResolver for AggregateQuery {
         let predicate = AbstractPredicate::and(query_predicate, access_predicate);
         let return_postgres_type = &self.return_type.typ(&subsystem.entity_types);
 
-        let root_physical_table = &subsystem.tables[return_postgres_type.table_id];
+        let root_physical_table = &subsystem.database.tables[return_postgres_type.table_id];
 
         let content_object = content_select(
             &self.return_type,

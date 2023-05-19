@@ -305,6 +305,7 @@ mod tests {
         .unwrap();
 
         let (table_id, table) = postgres_subsystem
+            .database
             .tables
             .iter()
             .find(|table| table.1.name == "articles")

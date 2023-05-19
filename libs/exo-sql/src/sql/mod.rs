@@ -18,11 +18,13 @@ mod test_util;
 
 pub mod array_util;
 pub mod column;
+pub mod database;
 pub mod database_client;
 pub mod order;
 pub mod physical_column;
 pub mod predicate;
 
+pub use database::Database;
 pub use sql_bytes::SQLBytes;
 pub use sql_param::SQLParam;
 pub use sql_param_container::SQLParamContainer;

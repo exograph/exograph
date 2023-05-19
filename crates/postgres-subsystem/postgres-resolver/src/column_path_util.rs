@@ -41,6 +41,7 @@ fn to_column_table(
 ) -> (&PhysicalColumn, &PhysicalTable) {
     let column = column_id.get_column(system);
     let table = &system
+        .database
         .tables
         .iter()
         .find(|(_, table)| table.name == column.table_name)

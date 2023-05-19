@@ -126,7 +126,7 @@ async fn compute_select<'content>(
     )
     .await?;
 
-    let root_physical_table = &subsystem.tables[return_postgres_type.table_id];
+    let root_physical_table = &subsystem.database.tables[return_postgres_type.table_id];
 
     let selection_cardinality = match return_type {
         OperationReturnType::List(_) => SelectionCardinality::Many,

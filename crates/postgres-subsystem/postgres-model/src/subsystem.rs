@@ -29,7 +29,7 @@ use core_plugin_interface::{
     error::ModelSerializationError,
     system_serializer::SystemSerializer,
 };
-use exo_sql::PhysicalTable;
+use exo_sql::Database;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -52,7 +52,7 @@ pub struct PostgresSubsystem {
     pub mutation_types: SerializableSlab<MutationType>, // create, update, delete input types such as `PersonUpdateInput`
     pub mutations: MappedArena<PostgresMutation>,
 
-    pub tables: SerializableSlab<PhysicalTable>,
+    pub database: Database,
 }
 
 impl PostgresSubsystem {
@@ -130,7 +130,7 @@ impl Default for PostgresSubsystem {
             aggregate_queries: MappedArena::default(),
             mutation_types: SerializableSlab::new(),
             mutations: MappedArena::default(),
-            tables: SerializableSlab::new(),
+            database: Database::default(),
         }
     }
 }

@@ -183,11 +183,12 @@ fn compute_nested_reference_column<'a>(
     system: &'a PostgresSubsystem,
 ) -> Option<&'a PhysicalColumn> {
     let pk_column = {
-        let container_table = &system.tables[container_entity_type.table_id];
+        let container_table = &system.database.tables[container_entity_type.table_id];
         container_table.get_pk_physical_column().unwrap()
     };
 
-    let nested_table = &system.tables[system.entity_types[field_entity_type.entity_type].table_id];
+    let nested_table =
+        &system.database.tables[system.entity_types[field_entity_type.entity_type].table_id];
 
     nested_table
         .columns

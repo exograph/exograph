@@ -184,7 +184,7 @@ async fn extract_model_schema(model_path: &PathBuf) -> Result<SchemaSpec, Parser
     let postgres_subsystem = util::create_postgres_system(model_path).await?;
 
     Ok(SchemaSpec::from_model(
-        postgres_subsystem.tables.into_iter().collect(),
+        postgres_subsystem.database.tables.into_iter().collect(),
     ))
 }
 
@@ -966,7 +966,7 @@ mod tests {
                 .await
                 .unwrap();
 
-        SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect())
+        SchemaSpec::from_model(postgres_subsystem.database.tables.into_iter().collect())
     }
 
     async fn assert_changes(

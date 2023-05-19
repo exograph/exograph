@@ -98,7 +98,7 @@ pub(crate) fn return_type_info<'a>(
     let typ = return_type.typ(&subsystem.entity_types);
 
     (
-        &subsystem.tables[typ.table_id],
+        &subsystem.database.tables[typ.table_id],
         &subsystem.pk_queries[typ.pk_query],
         &subsystem.collection_queries[typ.collection_query],
     )

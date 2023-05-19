@@ -27,6 +27,6 @@ impl ColumnId {
     }
 
     pub fn get_column<'a>(&self, system: &'a PostgresSubsystem) -> &'a PhysicalColumn {
-        &system.tables[self.table_id].columns[self.column_index]
+        &system.database.tables[self.table_id].columns[self.column_index]
     }
 }

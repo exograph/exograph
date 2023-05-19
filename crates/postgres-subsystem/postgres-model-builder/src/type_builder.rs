@@ -176,7 +176,7 @@ fn expand_type_no_fields(
         columns,
     };
 
-    let table_id = building.tables.add(&table_name, table);
+    let table_id = building.database.tables.insert(table);
 
     let pk_query = building
         .pk_queries
@@ -744,7 +744,7 @@ fn create_relation(
             .map(|index| ColumnId::new(table_id, index))
     }
 
-    let self_table = &building.tables[self_table_id];
+    let self_table = &building.database.tables[self_table_id];
 
     if field.is_pk {
         let column_id = compute_column_id(self_table, self_table_id, field).unwrap();
@@ -777,7 +777,7 @@ fn create_relation(
                         let other_type_id = building.get_entity_type_id(&field_type.name).unwrap();
                         let other_type = &building.entity_types[other_type_id];
                         let other_table_id = other_type.table_id;
-                        let other_table = &building.tables[other_table_id];
+                        let other_table = &building.database.tables[other_table_id];
 
                         let other_type_column_id =
                             compute_column_id(other_table, other_table_id, field).unwrap();
@@ -824,7 +824,7 @@ fn create_relation(
                         let other_type_id = building.get_entity_type_id(&ct.name).unwrap();
                         let other_type = &building.entity_types[other_type_id];
                         let other_table_id = other_type.table_id;
-                        let other_table = &building.tables[other_table_id];
+                        let other_table = &building.database.tables[other_table_id];
 
                         match (&field.typ, other_type_field_typ) {
                             (FieldType::Optional(_), FieldType::Plain(_)) => {

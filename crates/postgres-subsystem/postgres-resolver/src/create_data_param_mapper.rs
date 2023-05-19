@@ -208,14 +208,14 @@ async fn map_foreign<'a>(
     // we need to create a column that evaluates to `select "venues"."id" from "venues"`
 
     let parent_type = underlying_type(parent_data_type, subsystem);
-    let parent_table = &subsystem.tables[parent_type.table_id];
+    let parent_table = &subsystem.database.tables[parent_type.table_id];
 
     let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(subsystem);
 
     // Find the column that the current entity refers to in the parent entity
     // In the above example, this would be "venue_id"
     let self_type = underlying_type(field_type, subsystem);
-    let self_table = &subsystem.tables[self_type.table_id];
+    let self_table = &subsystem.database.tables[self_type.table_id];
     let self_reference_column = self_type
         .fields
         .iter()

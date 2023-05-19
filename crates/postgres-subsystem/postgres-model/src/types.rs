@@ -119,7 +119,7 @@ impl MutationType {
     pub fn table<'a>(&'a self, system: &'a PostgresSubsystem) -> &'a PhysicalTable {
         let entity_type = &system.entity_types[self.entity_type];
         let table_id = entity_type.table_id;
-        &system.tables[table_id]
+        &system.database.tables[table_id]
     }
 }
 
