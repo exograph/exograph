@@ -63,7 +63,7 @@ pub enum SchemaOp<'a> {
 }
 
 impl SchemaOp<'_> {
-    pub fn to_sql(&self, database: &Database) -> SchemaStatement {
+    pub fn to_sql(&self, old_database: &Database, new_database: &Database) -> SchemaStatement {
         fn create_index(
             column: &PhysicalColumn,
             post_statements: &mut Vec<String>,
@@ -81,24 +81,24 @@ impl SchemaOp<'_> {
 
         match self {
             SchemaOp::CreateTable { table } => {
-                let mut table_creation = table.creation_sql(database);
+                let mut table_creation = table.creation_sql(new_database);
 
                 for column in table.columns.iter() {
-                    create_index(column, &mut table_creation.post_statements, database)
+                    create_index(column, &mut table_creation.post_statements, new_database)
                 }
 
                 table_creation
             }
             SchemaOp::DeleteTable { table } => table.deletion_sql(),
             SchemaOp::CreateColumn { column } => {
-                let mut column_stmt = column.to_sql(database);
+                let mut column_stmt = column.to_sql(new_database);
 
-                create_index(column, &mut column_stmt.post_statements, database);
+                create_index(column, &mut column_stmt.post_statements, new_database);
 
                 SchemaStatement {
                     statement: format!(
                         "ALTER TABLE \"{}\" ADD {};",
-                        &database.get_table(column.table_id).name,
+                        &new_database.get_table(column.table_id).name,
                         column_stmt.statement
                     ),
                     pre_statements: column_stmt.pre_statements,
@@ -108,7 +108,7 @@ impl SchemaOp<'_> {
             SchemaOp::DeleteColumn { column } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" DROP COLUMN \"{}\";",
-                    database.get_table(column.table_id).name,
+                    old_database.get_table(column.table_id).name,
                     column.name
                 ),
                 ..Default::default()
@@ -119,7 +119,7 @@ impl SchemaOp<'_> {
             } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" SET DEFAULT {};",
-                    database.get_table(column.table_id).name,
+                    new_database.get_table(column.table_id).name,
                     column.name,
                     default_value
                 ),
@@ -128,7 +128,7 @@ impl SchemaOp<'_> {
             SchemaOp::UnsetColumnDefaultValue { column } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" DROP DEFAULT;",
-                    database.get_table(column.table_id).name,
+                    new_database.get_table(column.table_id).name,
                     column.name
                 ),
                 ..Default::default()
@@ -164,7 +164,7 @@ impl SchemaOp<'_> {
             SchemaOp::SetNotNull { column } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" SET NOT NULL;",
-                    database.get_table(column.table_id).name,
+                    new_database.get_table(column.table_id).name,
                     column.name,
                 ),
                 ..Default::default()
@@ -172,7 +172,7 @@ impl SchemaOp<'_> {
             SchemaOp::UnsetNotNull { column } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" DROP NOT NULL;",
-                    database.get_table(column.table_id).name,
+                    new_database.get_table(column.table_id).name,
                     column.name
                 ),
                 ..Default::default()
@@ -180,12 +180,12 @@ impl SchemaOp<'_> {
         }
     }
 
-    pub fn error_string(&self, database: &Database) -> Option<String> {
+    pub fn error_string(&self, old_database: &Database, new_database: &Database) -> Option<String> {
         match self {
             SchemaOp::CreateTable { table } => Some(format!("The table `{}` exists in the model, but does not exist in the database.", table.name)),
             SchemaOp::DeleteTable { .. } => None, // An extra table in the database is not a problem
 
-            SchemaOp::CreateColumn { column } => Some(format!("The column `{}` in the table `{}` exists in the model, but does not exist in the database table.", column.name, column.get_table_name(database))),
+            SchemaOp::CreateColumn { column } => Some(format!("The column `{}` in the table `{}` exists in the model, but does not exist in the database table.", column.name, column.get_table_name(new_database))),
             SchemaOp::DeleteColumn { column } => {
                 if column.is_nullable {
                     // Extra nullable columns are not a problem
@@ -193,12 +193,12 @@ impl SchemaOp<'_> {
                 } else {
                     // Such column will cause failure when inserting new records
                     Some(format!("The non-nullable column `{}` in the table `{}` exists in the database table, but does not exist in the model.", 
-                    column.name, column.get_table_name(database)))
+                    column.name, column.get_table_name(old_database)))
                 }
             }
 
-            SchemaOp::SetColumnDefaultValue { column, default_value } => Some(format!("The default value for column `{}` in table `{}` does not match `{}`", column.name, column.get_table_name(database), default_value)),
-            SchemaOp::UnsetColumnDefaultValue { column } => Some(format!("The column `{}` in table `{}` is not set in the model.", column.name, column.get_table_name(database))),
+            SchemaOp::SetColumnDefaultValue { column, default_value } => Some(format!("The default value for column `{}` in table `{}` does not match `{}`", column.name, column.get_table_name(new_database), default_value)),
+            SchemaOp::UnsetColumnDefaultValue { column } => Some(format!("The column `{}` in table `{}` is not set in the model.", column.name, column.get_table_name(new_database))),
 
             SchemaOp::CreateExtension { extension } => Some(format!("The model requires the extension `{extension}`.")),
             SchemaOp::RemoveExtension { .. } => None,
@@ -209,8 +209,8 @@ impl SchemaOp<'_> {
                 Some(format!("Extra unique constaint `{}` in table `{}` found that is not require by the model.", constraint, table.name))
             }
 
-            SchemaOp::SetNotNull { column } => Some(format!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.name, column.get_table_name(database))),
-            SchemaOp::UnsetNotNull { column } => Some(format!("The model requires that the column `{}` in table `{}` is nullable.", column.name, column.get_table_name(database))),
+            SchemaOp::SetNotNull { column } => Some(format!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.name, column.get_table_name(new_database))),
+            SchemaOp::UnsetNotNull { column } => Some(format!("The model requires that the column `{}` in table `{}` is nullable.", column.name, column.get_table_name(new_database))),
         }
     }
 }

@@ -15,9 +15,8 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver, context::RequestContext, value::Val,
 };
-use exo_sql::{AbstractPredicate, PhysicalTable};
+use exo_sql::{AbstractPredicate, ColumnIdPath, ColumnIdPathLink, TableId};
 use postgres_model::{
-    column_path::{ColumnIdPath, ColumnIdPathLink},
     query::{CollectionQuery, PkQuery},
     subsystem::PostgresSubsystem,
 };
@@ -31,7 +30,7 @@ pub(crate) async fn check_access<'a>(
     kind: &SQLOperationKind,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
+) -> Result<AbstractPredicate, PostgresExecutionError> {
     let return_type = return_type.typ(&subsystem.entity_types);
 
     let access_predicate = {
@@ -94,11 +93,11 @@ pub(crate) fn get_argument_field<'a>(argument_value: &'a Val, field_name: &str) 
 pub(crate) fn return_type_info<'a>(
     return_type: &'a OperationReturnType<EntityType>,
     subsystem: &'a PostgresSubsystem,
-) -> (&'a PhysicalTable, &'a PkQuery, &'a CollectionQuery) {
+) -> (TableId, &'a PkQuery, &'a CollectionQuery) {
     let typ = return_type.typ(&subsystem.entity_types);
 
     (
-        &subsystem.database.tables[typ.table_id],
+        typ.table_id,
         &subsystem.pk_queries[typ.pk_query],
         &subsystem.collection_queries[typ.collection_query],
     )

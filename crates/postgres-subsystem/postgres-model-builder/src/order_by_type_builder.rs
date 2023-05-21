@@ -12,8 +12,8 @@ use core_plugin_interface::core_model::{
     types::FieldType,
 };
 
+use exo_sql::ColumnIdPathLink;
 use postgres_model::{
-    column_path::ColumnIdPathLink,
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},
     types::{EntityType, PostgresField, PostgresPrimitiveType, PostgresType},

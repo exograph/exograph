@@ -144,7 +144,7 @@ async fn delete_operation<'content>(
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractDelete<'content>, PostgresExecutionError> {
-    let (table, _, _) = return_type_info(return_type, subsystem);
+    let (table_id, _, _) = return_type_info(return_type, subsystem);
 
     let access_predicate = check_access(
         return_type,
@@ -164,7 +164,7 @@ async fn delete_operation<'content>(
     let predicate = Predicate::and(access_predicate, predicate);
 
     Ok(AbstractDelete {
-        table,
+        table_id,
         predicate,
         selection: select,
     })

@@ -12,8 +12,8 @@ use core_plugin_interface::core_model::{
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 
+use exo_sql::ColumnIdPathLink;
 use postgres_model::{
-    column_path::ColumnIdPathLink,
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     order::{OrderByParameter, OrderByParameterType},
     predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},

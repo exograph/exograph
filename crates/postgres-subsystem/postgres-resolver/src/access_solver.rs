@@ -26,30 +26,27 @@ use core_plugin_interface::{
         context_extractor::ContextExtractor, value::Val,
     },
 };
-use exo_sql::{AbstractPredicate, ColumnPath, SQLParamContainer};
-use postgres_model::{
-    access::DatabaseAccessPrimitiveExpression, column_path::ColumnIdPath,
-    subsystem::PostgresSubsystem,
-};
+use exo_sql::{AbstractPredicate, ColumnIdPath, ColumnPath, SQLParamContainer};
+use postgres_model::{access::DatabaseAccessPrimitiveExpression, subsystem::PostgresSubsystem};
 
 // Only to get around the orphan rule while implementing AccessSolver
-pub struct AbstractPredicateWrapper<'a>(pub AbstractPredicate<'a>);
+pub struct AbstractPredicateWrapper(pub AbstractPredicate);
 
-impl<'a> std::ops::Not for AbstractPredicateWrapper<'a> {
-    type Output = AbstractPredicateWrapper<'a>;
+impl std::ops::Not for AbstractPredicateWrapper {
+    type Output = AbstractPredicateWrapper;
 
     fn not(self) -> Self::Output {
         AbstractPredicateWrapper(self.0.not())
     }
 }
 
-impl<'a> From<bool> for AbstractPredicateWrapper<'a> {
+impl From<bool> for AbstractPredicateWrapper {
     fn from(value: bool) -> Self {
         AbstractPredicateWrapper(AbstractPredicate::from(value))
     }
 }
 
-impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper<'a> {
+impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper {
     fn and(self, other: Self) -> Self {
         AbstractPredicateWrapper(AbstractPredicate::and(self.0, other.0))
     }
@@ -67,14 +64,14 @@ pub enum SolvedPrimitiveExpression<'a> {
 }
 
 #[async_trait]
-impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWrapper<'a>>
+impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWrapper>
     for PostgresSubsystem
 {
     async fn solve_relational_op(
         &'a self,
         request_context: &'a RequestContext<'a>,
         op: &'a AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
-    ) -> AbstractPredicateWrapper<'a> {
+    ) -> AbstractPredicateWrapper {
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresSubsystem,
             request_context: &'a RequestContext<'a>,
@@ -106,13 +103,13 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         let left = reduce_primitive_expression(self, request_context, left).await;
         let right = reduce_primitive_expression(self, request_context, right).await;
 
-        type ColumnPredicateFn<'a> = fn(ColumnPath<'a>, ColumnPath<'a>) -> AbstractPredicate<'a>;
-        type ValuePredicateFn<'a> = fn(Val, Val) -> AbstractPredicate<'a>;
+        type ColumnPredicateFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;
+        type ValuePredicateFn = fn(Val, Val) -> AbstractPredicate;
 
-        let helper = |unresolved_context_predicate: AbstractPredicate<'a>,
-                      column_predicate: ColumnPredicateFn<'a>,
-                      value_predicate: ValuePredicateFn<'a>|
-         -> AbstractPredicate<'a> {
+        let helper = |unresolved_context_predicate: AbstractPredicate,
+                      column_predicate: ColumnPredicateFn,
+                      value_predicate: ValuePredicateFn|
+         -> AbstractPredicate {
             match (left, right) {
                 (SolvedPrimitiveExpression::UnresolvedContext(_), _)
                 | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => {
@@ -122,10 +119,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 (
                     SolvedPrimitiveExpression::Column(left_col),
                     SolvedPrimitiveExpression::Column(right_col),
-                ) => column_predicate(
-                    to_column_path(&left_col, self),
-                    to_column_path(&right_col, self),
-                ),
+                ) => column_predicate(to_column_path(&left_col), to_column_path(&right_col)),
 
                 (
                     SolvedPrimitiveExpression::Value(left_value),
@@ -138,12 +132,12 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 (
                     SolvedPrimitiveExpression::Value(value),
                     SolvedPrimitiveExpression::Column(column),
-                ) => column_predicate(literal_column(value), to_column_path(&column, self)),
+                ) => column_predicate(literal_column(value), to_column_path(&column)),
 
                 (
                     SolvedPrimitiveExpression::Column(column),
                     SolvedPrimitiveExpression::Value(value),
-                ) => column_predicate(to_column_path(&column, self), literal_column(value)),
+                ) => column_predicate(to_column_path(&column), literal_column(value)),
             }
         };
 
@@ -194,12 +188,12 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     }
 }
 
-fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a PostgresSubsystem) -> ColumnPath<'a> {
-    column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
+fn to_column_path(column_id: &ColumnIdPath) -> ColumnPath {
+    column_path_util::to_column_path(&Some(column_id.clone()), &None)
 }
 
 /// Converts a value to a literal column path
-fn literal_column(value: Val) -> ColumnPath<'static> {
+fn literal_column(value: Val) -> ColumnPath {
     match value {
         Val::Null => ColumnPath::Null,
         Val::Bool(v) => ColumnPath::Param(SQLParamContainer::new(v)),
@@ -227,7 +221,7 @@ mod tests {
     use core_resolver::context::Request;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::system_resolver::SystemResolver;
-    use postgres_model::{column_id::ColumnId, column_path::ColumnIdPathLink};
+    use exo_sql::{ColumnId, ColumnIdPathLink};
     use serde_json::{json, Value};
 
     use super::*;
@@ -257,19 +251,19 @@ mod tests {
 
     impl TestSystem {
         fn published_column(&self) -> ColumnPath {
-            super::to_column_path(&self.published_column_path, &self.system)
+            super::to_column_path(&self.published_column_path)
         }
 
         fn owner_id_column(&self) -> ColumnPath {
-            super::to_column_path(&self.owner_id_column_path, &self.system)
+            super::to_column_path(&self.owner_id_column_path)
         }
 
         fn dept1_id_column(&self) -> ColumnPath {
-            super::to_column_path(&self.dept1_id_column_path, &self.system)
+            super::to_column_path(&self.dept1_id_column_path)
         }
 
         fn dept2_id_column(&self) -> ColumnPath {
-            super::to_column_path(&self.dept2_id_column_path, &self.system)
+            super::to_column_path(&self.dept2_id_column_path)
         }
     }
 
@@ -306,7 +300,7 @@ mod tests {
 
         let (table_id, table) = postgres_subsystem
             .database
-            .tables
+            .tables()
             .iter()
             .find(|table| table.1.name == "articles")
             .unwrap();
@@ -416,23 +410,23 @@ mod tests {
         expr: &'a AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> AbstractPredicate<'a> {
+    ) -> AbstractPredicate {
         subsystem.solve(request_context, expr).await.0
     }
 
-    type CompareFn<'a> = fn(ColumnPath<'a>, ColumnPath<'a>) -> AbstractPredicate<'a>;
+    type CompareFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;
 
-    async fn test_relational_op<'a>(
-        test_system: &'a TestSystem,
+    async fn test_relational_op(
+        test_system: &TestSystem,
         op: fn(
             Box<DatabaseAccessPrimitiveExpression>,
             Box<DatabaseAccessPrimitiveExpression>,
         ) -> AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
-        context_match_predicate: CompareFn<'a>,
-        context_mismatch_predicate: CompareFn<'a>,
-        context_missing_predicate: AbstractPredicate<'a>,
-        context_value_predicate: CompareFn<'a>,
-        column_column_predicate: CompareFn<'a>,
+        context_match_predicate: CompareFn,
+        context_mismatch_predicate: CompareFn,
+        context_missing_predicate: AbstractPredicate,
+        context_value_predicate: CompareFn,
+        column_column_predicate: CompareFn,
     ) {
         let TestSystem {
             system,
@@ -673,21 +667,18 @@ mod tests {
         AccessPredicateExpression<DatabaseAccessPrimitiveExpression>;
 
     #[allow(clippy::too_many_arguments)]
-    async fn test_logical_op<'a>(
-        test_system: &'a TestSystem,
+    async fn test_logical_op(
+        test_system: &TestSystem,
         op: fn(
             Box<DatabaseAccessPredicateExpression>,
             Box<DatabaseAccessPredicateExpression>,
         ) -> AccessLogicalExpression<DatabaseAccessPrimitiveExpression>,
-        both_value_true: AbstractPredicate<'a>,
-        both_value_false: AbstractPredicate<'a>,
-        one_value_true: AbstractPredicate<'a>,
-        one_literal_true_other_column: fn(AbstractPredicate<'a>) -> AbstractPredicate<'a>,
-        one_literal_false_other_column: fn(AbstractPredicate<'a>) -> AbstractPredicate<'a>,
-        both_columns: fn(
-            Box<AbstractPredicate<'a>>,
-            Box<AbstractPredicate<'a>>,
-        ) -> AbstractPredicate<'a>,
+        both_value_true: AbstractPredicate,
+        both_value_false: AbstractPredicate,
+        one_value_true: AbstractPredicate,
+        one_literal_true_other_column: fn(AbstractPredicate) -> AbstractPredicate,
+        one_literal_false_other_column: fn(AbstractPredicate) -> AbstractPredicate,
+        both_columns: fn(Box<AbstractPredicate>, Box<AbstractPredicate>) -> AbstractPredicate,
     ) {
         let TestSystem {
             system,

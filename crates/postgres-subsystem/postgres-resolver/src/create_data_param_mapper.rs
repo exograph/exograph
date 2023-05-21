@@ -14,12 +14,11 @@ use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
-    AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
+    AbstractInsert, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement, InsertionRow,
     NestedElementRelation, NestedInsertion,
 };
 use futures::future::{join_all, try_join_all};
 use postgres_model::{
-    column_id::ColumnId,
     mutation::DataParameter,
     relation::PostgresRelation,
     subsystem::PostgresSubsystem,
@@ -48,12 +47,12 @@ impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractInsert<'a>, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
-        let table = data_type.table(subsystem);
+        let table_id = data_type.table(subsystem);
 
         let rows = map_argument(data_type, argument, subsystem, request_context).await?;
 
         let abs_insert = AbstractInsert {
-            table,
+            table_id,
             rows,
             selection: self.select,
         };
@@ -135,14 +134,14 @@ async fn map_self_column<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
 ) -> Result<InsertionElement<'a>, PostgresExecutionError> {
-    let key_column = key_column_id.get_column(subsystem);
+    let key_column = key_column_id.get_column(&subsystem.database);
     let argument_value = match &field.relation {
         PostgresRelation::ManyToOne { other_type_id, .. } => {
             // TODO: Include enough information in the ManyToOne relation to not need this much logic here
             let other_type = &subsystem.entity_types[*other_type_id];
             let other_type_pk_field_name = other_type
                 .pk_column_id()
-                .map(|column_id| &column_id.get_column(subsystem).name)
+                .map(|column_id| &column_id.get_column(&subsystem.database).name)
                 .ok_or_else(|| {
                     PostgresExecutionError::Generic(format!(
                         "{} did not have a primary key field when computing many-to-one for {}",
@@ -163,11 +162,12 @@ async fn map_self_column<'a>(
 
     let value_column = cast::literal_column(argument_value, key_column).with_context(format!(
         "While trying to get literal column for {}.{}",
-        key_column.table_name, key_column.name
+        subsystem.database.get_table(key_column.table_id).name,
+        key_column.name
     ))?;
 
     Ok(InsertionElement::SelfInsert(ColumnValuePair::new(
-        key_column,
+        key_column_id,
         value_column.into(),
     )))
 }
@@ -208,25 +208,27 @@ async fn map_foreign<'a>(
     // we need to create a column that evaluates to `select "venues"."id" from "venues"`
 
     let parent_type = underlying_type(parent_data_type, subsystem);
-    let parent_table = &subsystem.database.tables[parent_type.table_id];
 
-    let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(subsystem);
+    let parent_pk_physical_column = parent_type
+        .pk_column_id()
+        .unwrap()
+        .get_column(&subsystem.database);
 
     // Find the column that the current entity refers to in the parent entity
     // In the above example, this would be "venue_id"
     let self_type = underlying_type(field_type, subsystem);
-    let self_table = &subsystem.database.tables[self_type.table_id];
-    let self_reference_column = self_type
+    let self_reference_column_id = self_type
         .fields
         .iter()
         .find(|self_field| match self_field.relation.self_column() {
-            Some(column_id) => match &column_id.get_column(subsystem).typ {
+            Some(column_id) => match &column_id.get_column(&subsystem.database).typ {
                 exo_sql::PhysicalColumnType::ColumnReference {
                     ref_table_name,
                     ref_column_name,
                     ..
                 } => {
-                    ref_table_name == &parent_pk_physical_column.table_name
+                    let ref_table_id = subsystem.database.get_table_id(ref_table_name).unwrap();
+                    ref_table_id == parent_pk_physical_column.table_id
                         && ref_column_name == &parent_pk_physical_column.name
                 }
                 _ => false,
@@ -236,17 +238,16 @@ async fn map_foreign<'a>(
         .unwrap()
         .relation
         .self_column()
-        .unwrap()
-        .get_column(subsystem);
+        .unwrap();
 
     let insertion = map_argument(field_type, argument, subsystem, request_context).await?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
         relation: NestedElementRelation {
-            column: self_reference_column,
-            table: self_table,
+            column_id: self_reference_column_id,
+            table_id: self_type.table_id,
         },
-        parent_table,
+        parent_table: parent_type.table_id,
         insertions: insertion,
     }))
 }

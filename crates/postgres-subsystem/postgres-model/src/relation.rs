@@ -7,10 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{column_path::ColumnIdPathLink, types::EntityType};
+use crate::types::EntityType;
 
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
-use exo_sql::ColumnId;
+use exo_sql::{ColumnId, ColumnIdPathLink};
 use serde::{Deserialize, Serialize};
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as

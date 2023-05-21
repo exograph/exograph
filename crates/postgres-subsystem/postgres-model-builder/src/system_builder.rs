@@ -145,7 +145,6 @@ impl SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
-    use core_plugin_interface::core_model::mapped_arena::SerializableSlab;
     use exo_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
     use super::*;
@@ -350,7 +349,7 @@ mod tests {
     }
 
     fn get_table_from_arena<'a>(name: &'a str, database: &'a Database) -> &'a PhysicalTable {
-        for (_, item) in database.tables.iter() {
+        for (_, item) in database.tables().iter() {
             if item.name == name {
                 return item;
             }

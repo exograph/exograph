@@ -31,7 +31,13 @@ impl Database {
         &self.tables[id.table_id].columns[id.column_index]
     }
 
-    pub(crate) fn get_table_mut(&mut self, id: TableId) -> &mut PhysicalTable {
+    pub fn get_column_ids(&self, table_id: TableId) -> Vec<ColumnId> {
+        (0..self.tables[table_id].columns.len())
+            .map(|column_index| ColumnId::new(table_id, column_index))
+            .collect()
+    }
+
+    pub fn get_table_mut(&mut self, id: TableId) -> &mut PhysicalTable {
         &mut self.tables[id]
     }
 
@@ -51,8 +57,8 @@ impl Database {
         })
     }
 
-    // Keeping it `pub(crate)`, since we need to resolve table names only during schema building (and not during resolution)
-    pub(crate) fn get_table_id(&self, table_name: &str) -> Option<TableId> {
+    // TODO: Make it `pub(crate)`, since we need to resolve table names only during schema building (and not during resolution)
+    pub fn get_table_id(&self, table_name: &str) -> Option<TableId> {
         self.tables.iter().find_map(|(id, table)| {
             if table.name == table_name {
                 Some(id)

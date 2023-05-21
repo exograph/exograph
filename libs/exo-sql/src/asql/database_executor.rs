@@ -32,9 +32,9 @@ impl DatabaseExecutor {
     /// Currently makes a hard assumption on Postgres implementation, but this could be made more generic.
     pub async fn execute<'a>(
         &self,
-        database: &Database,
         operation: &'a AbstractOperation<'a>,
         tx_holder: &mut TransactionHolder,
+        database: &Database,
     ) -> Result<TransactionStepResult, DatabaseError> {
         let database_kind = Postgres {};
         let transaction_script = database_kind.to_transaction_script(database, operation);

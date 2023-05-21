@@ -342,43 +342,20 @@ mod tests {
 
     #[test]
     fn nested_op_predicate() {
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::Eq(l, r),
-            |l, r| format!("{l} = {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::Neq(l, r),
-            |l, r| format!("{l} <> {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::Lt(l, r),
-            |l, r| format!("{l} < {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::Lte(l, r),
-            |l, r| format!("{l} <= {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::Gt(l, r),
-            |l, r| format!("{l} > {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::Gte(l, r),
-            |l, r| format!("{l} >= {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::In(l, r),
-            |l, r| format!("{l} IN {r}"),
-        );
+        test_nested_op_predicate(AbstractPredicate::Eq, |l, r| format!("{l} = {r}"));
+        test_nested_op_predicate(AbstractPredicate::Neq, |l, r| format!("{l} <> {r}"));
+        test_nested_op_predicate(AbstractPredicate::Lt, |l, r| format!("{l} < {r}"));
+        test_nested_op_predicate(AbstractPredicate::Lte, |l, r| format!("{l} <= {r}"));
+        test_nested_op_predicate(AbstractPredicate::Gt, |l, r| format!("{l} > {r}"));
+        test_nested_op_predicate(AbstractPredicate::Gte, |l, r| format!("{l} >= {r}"));
+        test_nested_op_predicate(AbstractPredicate::In, |l, r| format!("{l} IN {r}"));
 
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::StringStartsWith(l, r),
-            |l, r| format!("{l} LIKE {r} || '%'"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::StringEndsWith(l, r),
-            |l, r| format!("{l} LIKE '%' || {r}"),
-        );
+        test_nested_op_predicate(AbstractPredicate::StringStartsWith, |l, r| {
+            format!("{l} LIKE {r} || '%'")
+        });
+        test_nested_op_predicate(AbstractPredicate::StringEndsWith, |l, r| {
+            format!("{l} LIKE '%' || {r}")
+        });
         test_nested_op_predicate(
             |l, r| AbstractPredicate::StringLike(l, r, CaseSensitivity::Insensitive),
             |l, r| format!("{l} ILIKE {r}"),
@@ -388,26 +365,19 @@ mod tests {
             |l, r| format!("{l} LIKE {r}"),
         );
 
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::JsonContainedBy(l, r),
-            |l, r| format!("{l} <@ {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::JsonContains(l, r),
-            |l, r| format!("{l} @> {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::JsonMatchAllKeys(l, r),
-            |l, r| format!("{l} ?& {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::JsonMatchAnyKey(l, r),
-            |l, r| format!("{l} ?| {r}"),
-        );
-        test_nested_op_predicate(
-            |l, r| AbstractPredicate::JsonMatchKey(l, r),
-            |l, r| format!("{l} ? {r}"),
-        );
+        test_nested_op_predicate(AbstractPredicate::JsonContainedBy, |l, r| {
+            format!("{l} <@ {r}")
+        });
+        test_nested_op_predicate(AbstractPredicate::JsonContains, |l, r| {
+            format!("{l} @> {r}")
+        });
+        test_nested_op_predicate(AbstractPredicate::JsonMatchAllKeys, |l, r| {
+            format!("{l} ?& {r}")
+        });
+        test_nested_op_predicate(AbstractPredicate::JsonMatchAnyKey, |l, r| {
+            format!("{l} ?| {r}")
+        });
+        test_nested_op_predicate(AbstractPredicate::JsonMatchKey, |l, r| format!("{l} ? {r}"));
     }
 
     #[test]

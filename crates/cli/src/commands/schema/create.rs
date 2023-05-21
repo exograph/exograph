@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use clap::Command;
 use std::{io::Write, path::PathBuf};
 
-use exo_sql::{schema::spec::SchemaSpec, Database};
+use exo_sql::Database;
 
 use crate::{
     commands::command::{

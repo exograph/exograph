@@ -20,9 +20,9 @@ use core_plugin_interface::core_model_builder::{
     typechecker::Typed,
 };
 
+use exo_sql::{ColumnIdPath, ColumnIdPathLink};
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression,
-    column_path::{ColumnIdPath, ColumnIdPathLink},
     types::{base_type, EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
 };
 

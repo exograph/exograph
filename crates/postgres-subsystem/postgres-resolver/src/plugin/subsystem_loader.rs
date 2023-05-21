@@ -29,9 +29,9 @@ impl SubsystemLoader for PostgresSubsystemLoader {
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
         let subsystem = PostgresSubsystem::deserialize(serialized_subsystem)?;
 
-        let database = DatabaseClient::from_env(None)
+        let database_client = DatabaseClient::from_env(None)
             .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?;
-        let executor = DatabaseExecutor { database };
+        let executor = DatabaseExecutor { database_client };
 
         Ok(Box::new(PostgresSubsystemResolver {
             id: self.id(),

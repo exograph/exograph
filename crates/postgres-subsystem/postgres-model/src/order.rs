@@ -9,7 +9,6 @@
 
 use crate::subsystem::PostgresSubsystem;
 
-use super::column_path::ColumnIdPathLink;
 use async_graphql_parser::{
     types::{EnumType, EnumValueDefinition, InputObjectType, Type, TypeDefinition, TypeKind},
     Pos, Positioned,
@@ -24,6 +23,7 @@ use core_plugin_interface::core_model::{
     types::{FieldType, Named},
 };
 
+use exo_sql::ColumnIdPathLink;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]

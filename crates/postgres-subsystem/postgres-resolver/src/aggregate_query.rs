@@ -55,7 +55,7 @@ impl OperationSelectionResolver for AggregateQuery {
         let predicate = AbstractPredicate::and(query_predicate, access_predicate);
         let return_postgres_type = &self.return_type.typ(&subsystem.entity_types);
 
-        let root_physical_table = &subsystem.database.tables[return_postgres_type.table_id];
+        let root_physical_table_id = return_postgres_type.table_id;
 
         let content_object = content_select(
             &self.return_type,
@@ -66,7 +66,7 @@ impl OperationSelectionResolver for AggregateQuery {
         .await?;
 
         Ok(AbstractSelect {
-            table: root_physical_table,
+            table_id: root_physical_table_id,
             selection: exo_sql::Selection::Json(content_object, SelectionCardinality::One),
             predicate,
             order_by: None,
@@ -110,7 +110,6 @@ async fn map_field<'content>(
 
         match &model_field.relation {
             PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
-                let column = column_id.get_column(subsystem);
                 let elements = field
                     .subfields
                     .iter()
@@ -120,7 +119,7 @@ async fn map_field<'content>(
                         } else {
                             SelectionElement::Function {
                                 function_name: subfield.name.to_string(),
-                                column,
+                                column_id: *column_id,
                             }
                         };
                         (subfield.output_name(), MaybeOwned::Owned(selection_elem))

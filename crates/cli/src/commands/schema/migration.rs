@@ -12,7 +12,11 @@ use std::path::PathBuf;
 use builder::error::ParserError;
 use exo_sql::{
     database_error::DatabaseError,
-    schema::{issue::WithIssues, op::SchemaOp, spec::SchemaSpec},
+    schema::{
+        issue::WithIssues,
+        op::SchemaOp,
+        spec::{diff, from_db},
+    },
     Database, DatabaseClient,
 };
 
@@ -35,7 +39,7 @@ impl Migration {
         let mut statements = vec![];
         let mut post_statements = vec![];
 
-        let diffs = old_schema_spec.diff(new_schema_spec);
+        let diffs = diff(old_schema_spec, new_schema_spec);
 
         for diff in diffs.iter() {
             let is_destructive = match diff {
@@ -55,7 +59,7 @@ impl Migration {
                 | SchemaOp::UnsetNotNull { .. } => false,
             };
 
-            let statement = diff.to_sql();
+            let statement = diff.to_sql(old_schema_spec, new_schema_spec);
 
             for constraint in statement.pre_statements.into_iter() {
                 pre_statements.push(MigrationStatement::new(constraint, is_destructive));
@@ -109,9 +113,12 @@ impl Migration {
 
         let new_schema = extract_model_schema(model_path).await?;
 
-        let diff = old_schema.value.diff(&new_schema);
+        let diff = diff(&old_schema.value, &new_schema);
 
-        let errors: Vec<_> = diff.iter().flat_map(|op| op.error_string()).collect();
+        let errors: Vec<_> = diff
+            .iter()
+            .flat_map(|op| op.error_string(&old_schema.value, &new_schema))
+            .collect();
 
         if !errors.is_empty() {
             Err(VerificationErrors::ModelNotCompatible(errors))
@@ -173,11 +180,11 @@ impl MigrationStatement {
     }
 }
 
-async fn extract_db_schema(db_url: Option<&str>) -> Result<WithIssues<SchemaSpec>, DatabaseError> {
+async fn extract_db_schema(db_url: Option<&str>) -> Result<WithIssues<Database>, DatabaseError> {
     let database = open_database(db_url)?;
     let client = database.get_client().await?;
 
-    SchemaSpec::from_db(&client).await
+    from_db(&client).await
 }
 
 async fn extract_model_schema(model_path: &PathBuf) -> Result<Database, ParserError> {
@@ -214,7 +221,6 @@ mod tests {
     use crate::commands::schema::util;
 
     use super::*;
-    use exo_sql::schema::spec::SchemaSpec;
     use stripmargin::StripMargin;
 
     #[tokio::test]
@@ -979,13 +985,13 @@ mod tests {
         let new_system = compute_spec(new_system).await;
 
         assert_change(
-            &SchemaSpec::default(),
+            &Database::default(),
             &old_system,
             old_create,
             "Create old system schema",
         );
         assert_change(
-            &SchemaSpec::default(),
+            &Database::default(),
             &new_system,
             new_create,
             "Create new system schema",
@@ -1013,8 +1019,8 @@ mod tests {
     }
 
     fn assert_change(
-        old_system: &SchemaSpec,
-        new_system: &SchemaSpec,
+        old_system: &Database,
+        new_system: &Database,
         expected: Vec<(&str, bool)>,
         message: &str,
     ) {

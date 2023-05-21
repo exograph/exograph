@@ -60,9 +60,7 @@ impl TableDependency {
     /// }
     /// ```
     pub fn from_column_path(paths_list: &[Vec<ColumnIdPathLink>]) -> Option<Self> {
-        println!("paths_list: {:?}", paths_list);
         let table_id = paths_list.get(0)?.get(0)?.self_column_id.table_id;
-        println!("table_id: {:?}", table_id);
 
         assert!(
             paths_list
