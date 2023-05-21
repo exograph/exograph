@@ -57,21 +57,6 @@ impl PhysicalColumn {
     }
 }
 
-// impl Default for PhysicalColumn {
-//     fn default() -> Self {
-//         Self {
-//             table_id: Default::default(),
-//             name: Default::default(),
-//             typ: PhysicalColumnType::Blob,
-//             is_pk: false,
-//             is_auto_increment: false,
-//             is_nullable: true,
-//             unique_constraints: vec![],
-//             default_value: None,
-//         }
-//     }
-// }
-
 impl ExpressionBuilder for PhysicalColumn {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_column(&database.get_table(self.table_id).name, &self.name)

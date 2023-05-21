@@ -273,10 +273,8 @@ fn logical_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
 mod tests {
     use std::sync::Arc;
 
-    use crate::schema::database_spec::test_helper::{
-        int_column, json_column, pk_column, string_column,
-    };
-    use crate::schema::database_spec::TableSpec;
+    use crate::schema::table_spec::TableSpec;
+    use crate::schema::test_helper::{int_column, json_column, pk_column, string_column};
     use crate::ColumnId;
     use crate::{schema::database_spec::DatabaseSpec, sql::SQLParamContainer};
 

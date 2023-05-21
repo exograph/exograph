@@ -9,10 +9,8 @@
 
 #![cfg(test)]
 
-use crate::schema::database_spec::test_helper::{
-    int_column, pk_column, pk_reference_column, string_column,
-};
-use crate::schema::database_spec::{DatabaseSpec, TableSpec};
+use crate::schema::test_helper::{int_column, pk_column, pk_reference_column, string_column};
+use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
 use crate::{ColumnId, Database, TableId};
 
 pub struct TestSetup {

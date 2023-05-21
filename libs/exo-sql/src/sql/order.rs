@@ -51,8 +51,8 @@ impl ExpressionBuilder for OrderBy {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::schema::database_spec::test_helper::{int_column, pk_column, string_column};
-    use crate::schema::database_spec::{DatabaseSpec, TableSpec};
+    use crate::schema::test_helper::{int_column, pk_column, string_column};
+    use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
 
     #[test]
     fn single() {

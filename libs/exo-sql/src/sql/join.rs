@@ -55,13 +55,12 @@ impl ExpressionBuilder for LeftJoin<'_> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::schema::test_helper::{int_column, pk_column, pk_reference_column};
     use crate::{
-        schema::database_spec::{DatabaseSpec, TableSpec},
+        schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
         Column,
     };
-
-    use super::*;
-    use crate::schema::database_spec::test_helper::{int_column, pk_column, pk_reference_column};
 
     #[test]
     fn basic_join() {

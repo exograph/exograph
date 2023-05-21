@@ -82,9 +82,10 @@ impl<'a> ExpressionBuilder for Select<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        schema::database_spec::{
+        schema::{
+            database_spec::DatabaseSpec,
+            table_spec::TableSpec,
             test_helper::{int_column, pk_column, string_column},
-            DatabaseSpec, TableSpec,
         },
         sql::json_object::{JsonObject, JsonObjectElement},
     };
