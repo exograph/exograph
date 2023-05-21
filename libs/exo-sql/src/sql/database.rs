@@ -7,8 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashSet;
-
 use crate::{PhysicalColumn, PhysicalTable};
 
 use serde::{Deserialize, Serialize};
@@ -47,14 +45,6 @@ impl Database {
 
     pub fn insert_table(&mut self, table: PhysicalTable) -> TableId {
         self.tables.insert(table)
-    }
-
-    pub fn required_extensions(&self) -> HashSet<String> {
-        self.tables.iter().fold(HashSet::new(), |acc, (_, table)| {
-            acc.union(&table.get_required_extensions())
-                .cloned()
-                .collect()
-        })
     }
 
     // TODO: Make it `pub(crate)`, since we need to resolve table names only during schema building (and not during resolution)

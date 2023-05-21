@@ -10,15 +10,16 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Command;
+use exo_sql::schema::column_spec::{ColumnSpec, ColumnTypeSpec};
+use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
-use exo_sql::schema::spec::from_db;
-use exo_sql::{Database, DatabaseClient};
+use exo_sql::schema::table_spec::TableSpec;
+use exo_sql::DatabaseClient;
 use std::{io::Write, path::PathBuf};
 
 use heck::ToUpperCamelCase;
 
 use exo_sql::schema::issue::Issue;
-use exo_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
 use crate::commands::command::{database_arg, get, output_arg, CommandDefinition};
 use crate::util::open_file_for_output;
@@ -39,13 +40,13 @@ impl CommandDefinition for ImportCommandDefinition {
         let output: Option<PathBuf> = get(matches, "output");
         let mut issues = Vec::new();
         let mut schema = import_schema().await?;
-        let mut model = schema.value.to_model(&schema.value);
+        let mut model = schema.value.to_model();
 
         issues.append(&mut schema.issues);
         issues.append(&mut model.issues);
 
         let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
-        buffer.write_all(schema.value.to_model(&schema.value).value.as_bytes())?;
+        buffer.write_all(schema.value.to_model().value.as_bytes())?;
 
         for issue in &issues {
             eprintln!("{issue}");
@@ -59,15 +60,15 @@ impl CommandDefinition for ImportCommandDefinition {
     }
 }
 
-async fn import_schema() -> Result<WithIssues<Database>> {
+async fn import_schema() -> Result<WithIssues<DatabaseSpec>> {
     let database_client = DatabaseClient::from_env(Some(1))?; // TODO: error handling here
     let client = database_client.get_client().await?;
-    let database = from_db(&client).await?;
+    let database = DatabaseSpec::from_live_database(&client).await?;
     Ok(database)
 }
 
 pub trait ToModel {
-    fn to_model(&self, database: &Database) -> WithIssues<String>;
+    fn to_model(&self) -> WithIssues<String>;
 }
 
 /// Converts the name of a SQL table to a exograph model name (for example, concert_artist -> ConcertArtist).
@@ -75,15 +76,15 @@ fn to_model_name(name: &str) -> String {
     name.to_upper_camel_case()
 }
 
-impl ToModel for Database {
+impl ToModel for DatabaseSpec {
     /// Converts the schema specification to a exograph file.
-    fn to_model(&self, database: &Database) -> WithIssues<String> {
+    fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
         let stmt = self
-            .tables()
+            .tables
             .iter()
-            .map(|(_, table)| {
-                let mut model = table.to_model(database);
+            .map(|table| {
+                let mut model = table.to_model();
                 issues.append(&mut model.issues);
                 format!("{}\n\n", model.value)
             })
@@ -96,9 +97,9 @@ impl ToModel for Database {
     }
 }
 
-impl ToModel for PhysicalTable {
+impl ToModel for TableSpec {
     /// Converts the table specification to a exograph model.
-    fn to_model(&self, database: &Database) -> WithIssues<String> {
+    fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
 
         let table_annot = format!("@table(\"{}\")", self.name);
@@ -106,7 +107,7 @@ impl ToModel for PhysicalTable {
             .columns
             .iter()
             .map(|c| {
-                let mut model = c.to_model(database);
+                let mut model = c.to_model();
                 issues.append(&mut model.issues);
                 format!("  {}\n", model.value)
             })
@@ -132,9 +133,9 @@ impl ToModel for PhysicalTable {
     }
 }
 
-impl ToModel for PhysicalColumn {
+impl ToModel for ColumnSpec {
     /// Converts the column specification to a exograph model.
-    fn to_model(&self, database: &Database) -> WithIssues<String> {
+    fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
 
         let pk_str = if self.is_pk { " @pk" } else { "" };
@@ -145,12 +146,12 @@ impl ToModel for PhysicalColumn {
         };
 
         let (mut data_type, annots) = self.typ.to_model();
-        if let PhysicalColumnType::ColumnReference { ref_table_name, .. } = &self.typ {
+        if let ColumnTypeSpec::ColumnReference { ref_table_name, .. } = &self.typ {
             data_type = to_model_name(&data_type);
 
             issues.push(Issue::Hint(format!(
                 "consider adding a field to `{}` of type `[{}]` to create a one-to-many relationship",
-                ref_table_name, to_model_name(&database.get_table(self.table_id).name),
+                ref_table_name, to_model_name(&self.name),
             )));
         }
 

@@ -1,9 +1,25 @@
-use crate::{Database, PhysicalColumn, PhysicalColumnType, PhysicalTable};
+// Copyright Exograph, Inc. All rights reserved.
+//
+// Use of this software is governed by the Business Source License
+// included in the LICENSE file at the root of this repository.
+//
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0.
 
-use super::{column_spec::ColumnTypeSpec, table_spec::TableSpec};
+use std::collections::HashSet;
+
+use deadpool_postgres::Client;
+
+use crate::{
+    database_error::DatabaseError, schema::column_spec::ColumnSpec, Database, PhysicalColumn,
+    PhysicalTable,
+};
+
+use super::{issue::WithIssues, table_spec::TableSpec};
 
 pub struct DatabaseSpec {
-    tables: Vec<TableSpec>,
+    pub tables: Vec<TableSpec>,
 }
 
 impl DatabaseSpec {
@@ -13,6 +29,14 @@ impl DatabaseSpec {
 }
 
 impl DatabaseSpec {
+    pub fn required_extensions(&self) -> HashSet<String> {
+        self.tables.iter().fold(HashSet::new(), |acc, table| {
+            acc.union(&table.get_required_extensions())
+                .cloned()
+                .collect()
+        })
+    }
+
     pub fn to_database(self) -> Database {
         let mut database = Database::default();
 
@@ -36,7 +60,7 @@ impl DatabaseSpec {
                 .map(|column_spec| PhysicalColumn {
                     table_id,
                     name: column_spec.name,
-                    typ: Self::map_typ(column_spec.typ),
+                    typ: column_spec.typ.to_database_type(),
                     is_pk: column_spec.is_pk,
                     is_auto_increment: column_spec.is_auto_increment,
                     is_nullable: column_spec.is_nullable,
@@ -51,39 +75,49 @@ impl DatabaseSpec {
         database
     }
 
-    fn map_typ(typ: ColumnTypeSpec) -> PhysicalColumnType {
-        match typ {
-            ColumnTypeSpec::Int { bits } => PhysicalColumnType::Int { bits },
-            ColumnTypeSpec::String { max_length } => PhysicalColumnType::String { max_length },
-            ColumnTypeSpec::Boolean => PhysicalColumnType::Boolean,
-            ColumnTypeSpec::Timestamp {
-                timezone,
-                precision,
-            } => PhysicalColumnType::Timestamp {
-                timezone,
-                precision,
-            },
-            ColumnTypeSpec::Date => PhysicalColumnType::Date,
-            ColumnTypeSpec::Time { precision } => PhysicalColumnType::Time { precision },
-            ColumnTypeSpec::Json => PhysicalColumnType::Json,
-            ColumnTypeSpec::Blob => PhysicalColumnType::Blob,
-            ColumnTypeSpec::Uuid => PhysicalColumnType::Uuid,
-            ColumnTypeSpec::Array { typ } => PhysicalColumnType::Array {
-                typ: Box::new(Self::map_typ(*typ)),
-            },
-            ColumnTypeSpec::ColumnReference {
-                ref_table_name,
-                ref_column_name,
-                ref_pk_type,
-            } => PhysicalColumnType::ColumnReference {
-                ref_table_name,
-                ref_column_name,
-                ref_pk_type: Box::new(Self::map_typ(*ref_pk_type)),
-            },
-            ColumnTypeSpec::Float { bits } => PhysicalColumnType::Float { bits },
-            ColumnTypeSpec::Numeric { precision, scale } => {
-                PhysicalColumnType::Numeric { precision, scale }
-            }
+    pub fn from_database(database: Database) -> DatabaseSpec {
+        let tables = database
+            .tables()
+            .into_iter()
+            .map(|(_, table)| TableSpec {
+                name: table.name.clone(),
+                columns: table
+                    .columns
+                    .clone()
+                    .into_iter()
+                    .map(ColumnSpec::from_physical)
+                    .collect(),
+            })
+            .collect();
+
+        DatabaseSpec { tables }
+    }
+
+    /// Creates a new schema specification from an SQL database.
+    pub async fn from_live_database(
+        client: &Client,
+    ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
+        // Query to get a list of all the tables in the database
+        const QUERY: &str =
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
+
+        let mut issues = Vec::new();
+        let mut tables = Vec::new();
+
+        for row in client
+            .query(QUERY, &[])
+            .await
+            .map_err(DatabaseError::Delegate)?
+        {
+            let table_name: String = row.get("table_name");
+            let mut table = TableSpec::from_db(client, &table_name).await?;
+            issues.append(&mut table.issues);
+            tables.push(table.value);
         }
+
+        Ok(WithIssues {
+            value: DatabaseSpec { tables },
+            issues,
+        })
     }
 }

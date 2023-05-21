@@ -12,12 +12,8 @@ use std::path::PathBuf;
 use builder::error::ParserError;
 use exo_sql::{
     database_error::DatabaseError,
-    schema::{
-        issue::WithIssues,
-        op::SchemaOp,
-        spec::{diff, from_db},
-    },
-    Database, DatabaseClient,
+    schema::{database_spec::DatabaseSpec, issue::WithIssues, op::SchemaOp, spec::diff},
+    DatabaseClient,
 };
 
 use super::{util, verify::VerificationErrors};
@@ -34,7 +30,7 @@ pub(crate) struct MigrationStatement {
 }
 
 impl Migration {
-    pub fn from_schemas(old_schema_spec: &Database, new_schema_spec: &Database) -> Self {
+    pub fn from_schemas(old_schema_spec: &DatabaseSpec, new_schema_spec: &DatabaseSpec) -> Self {
         let mut pre_statements = vec![];
         let mut statements = vec![];
         let mut post_statements = vec![];
@@ -59,7 +55,7 @@ impl Migration {
                 | SchemaOp::UnsetNotNull { .. } => false,
             };
 
-            let statement = diff.to_sql(old_schema_spec, new_schema_spec);
+            let statement = diff.to_sql();
 
             for constraint in statement.pre_statements.into_iter() {
                 pre_statements.push(MigrationStatement::new(constraint, is_destructive));
@@ -90,9 +86,9 @@ impl Migration {
             eprintln!("{issue}");
         }
 
-        let new_schema = extract_model_schema(model_path).await?;
+        let database_spec = extract_model_schema(model_path).await?;
 
-        Ok(Migration::from_schemas(&old_schema.value, &new_schema))
+        Ok(Migration::from_schemas(&old_schema.value, &database_spec))
     }
 
     pub fn has_destructive_changes(&self) -> bool {
@@ -115,10 +111,7 @@ impl Migration {
 
         let diff = diff(&old_schema.value, &new_schema);
 
-        let errors: Vec<_> = diff
-            .iter()
-            .flat_map(|op| op.error_string(&old_schema.value, &new_schema))
-            .collect();
+        let errors: Vec<_> = diff.iter().flat_map(|op| op.error_string()).collect();
 
         if !errors.is_empty() {
             Err(VerificationErrors::ModelNotCompatible(errors))
@@ -180,17 +173,19 @@ impl MigrationStatement {
     }
 }
 
-async fn extract_db_schema(db_url: Option<&str>) -> Result<WithIssues<Database>, DatabaseError> {
+async fn extract_db_schema(
+    db_url: Option<&str>,
+) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
     let database = open_database(db_url)?;
     let client = database.get_client().await?;
 
-    from_db(&client).await
+    DatabaseSpec::from_live_database(&client).await
 }
 
-async fn extract_model_schema(model_path: &PathBuf) -> Result<Database, ParserError> {
+async fn extract_model_schema(model_path: &PathBuf) -> Result<DatabaseSpec, ParserError> {
     let postgres_subsystem = util::create_postgres_system(model_path).await?;
 
-    Ok(postgres_subsystem.database)
+    Ok(DatabaseSpec::from_database(postgres_subsystem.database))
 }
 
 pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
@@ -964,13 +959,13 @@ mod tests {
         .await
     }
 
-    async fn compute_spec(model: &str) -> Database {
+    async fn compute_spec(model: &str) -> DatabaseSpec {
         let postgres_subsystem =
             util::create_postgres_system_from_str(model, "test.exo".to_string())
                 .await
                 .unwrap();
 
-        postgres_subsystem.database
+        DatabaseSpec::from_database(postgres_subsystem.database)
     }
 
     async fn assert_changes(
@@ -985,13 +980,13 @@ mod tests {
         let new_system = compute_spec(new_system).await;
 
         assert_change(
-            &Database::default(),
+            &DatabaseSpec::new(vec![]),
             &old_system,
             old_create,
             "Create old system schema",
         );
         assert_change(
-            &Database::default(),
+            &DatabaseSpec::new(vec![]),
             &new_system,
             new_create,
             "Create new system schema",
@@ -1019,8 +1014,8 @@ mod tests {
     }
 
     fn assert_change(
-        old_system: &Database,
-        new_system: &Database,
+        old_system: &DatabaseSpec,
+        new_system: &DatabaseSpec,
         expected: Vec<(&str, bool)>,
         message: &str,
     ) {

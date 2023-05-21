@@ -15,7 +15,5 @@ pub mod spec;
 pub mod table_spec;
 pub mod test_helper;
 
-mod column;
 mod constraint;
 mod statement;
-mod table;
