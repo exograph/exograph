@@ -26,7 +26,7 @@ use core_plugin_interface::{
         context_extractor::ContextExtractor, value::Val,
     },
 };
-use exo_sql::{AbstractPredicate, ColumnIdPath, ColumnPath, SQLParamContainer};
+use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
 use postgres_model::{access::DatabaseAccessPrimitiveExpression, subsystem::PostgresSubsystem};
 
 // Only to get around the orphan rule while implementing AccessSolver
@@ -59,7 +59,7 @@ impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper {
 #[derive(Debug)]
 pub enum SolvedPrimitiveExpression<'a> {
     Value(Val),
-    Column(ColumnIdPath),
+    Column(PhysicalColumnPath),
     UnresolvedContext(&'a ContextSelection), // For example, AuthContext.role for an anonymous user
 }
 
@@ -188,7 +188,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     }
 }
 
-fn to_column_path(column_id: &ColumnIdPath) -> ColumnPath {
+fn to_column_path(column_id: &PhysicalColumnPath) -> ColumnPath {
     column_path_util::to_column_path(&Some(column_id.clone()), &None)
 }
 
@@ -221,17 +221,17 @@ mod tests {
     use core_resolver::context::Request;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::system_resolver::SystemResolver;
-    use exo_sql::{ColumnId, ColumnIdPathLink};
+    use exo_sql::{ColumnId, PhysicalColumnPathLink};
     use serde_json::{json, Value};
 
     use super::*;
 
     struct TestSystem {
         system: PostgresSubsystem,
-        published_column_path: ColumnIdPath,
-        owner_id_column_path: ColumnIdPath,
-        dept1_id_column_path: ColumnIdPath,
-        dept2_id_column_path: ColumnIdPath,
+        published_column_path: PhysicalColumnPath,
+        owner_id_column_path: PhysicalColumnPath,
+        dept1_id_column_path: PhysicalColumnPath,
+        dept2_id_column_path: PhysicalColumnPath,
         test_system_resolver: SystemResolver,
     }
 
@@ -316,29 +316,29 @@ mod tests {
         let dept1_id_column_id = get_column_id("dept1_id");
         let dept2_id_column_id = get_column_id("dept2_id");
 
-        let published_column_path = ColumnIdPath {
-            path: vec![ColumnIdPathLink {
+        let published_column_path = PhysicalColumnPath {
+            path: vec![PhysicalColumnPathLink {
                 self_column_id: published_column_id,
                 linked_column_id: None,
             }],
         };
 
-        let owner_id_column_path = ColumnIdPath {
-            path: vec![ColumnIdPathLink {
+        let owner_id_column_path = PhysicalColumnPath {
+            path: vec![PhysicalColumnPathLink {
                 self_column_id: owner_id_column_id,
                 linked_column_id: None,
             }],
         };
 
-        let dept1_id_column_path = ColumnIdPath {
-            path: vec![ColumnIdPathLink {
+        let dept1_id_column_path = PhysicalColumnPath {
+            path: vec![PhysicalColumnPathLink {
                 self_column_id: dept1_id_column_id,
                 linked_column_id: None,
             }],
         };
 
-        let dept2_id_column_path = ColumnIdPath {
-            path: vec![ColumnIdPathLink {
+        let dept2_id_column_path = PhysicalColumnPath {
+            path: vec![PhysicalColumnPathLink {
                 self_column_id: dept2_id_column_id,
                 linked_column_id: None,
             }],
@@ -398,7 +398,7 @@ mod tests {
 
     // self.published => self.published == true
     fn boolean_column_selection(
-        column_path: ColumnIdPath,
+        column_path: PhysicalColumnPath,
     ) -> AccessPredicateExpression<DatabaseAccessPrimitiveExpression> {
         AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             Box::new(DatabaseAccessPrimitiveExpression::Column(column_path)),

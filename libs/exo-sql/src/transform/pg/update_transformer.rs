@@ -301,7 +301,7 @@ fn delete_op<'a>(
 mod tests {
     use crate::{
         asql::{
-            column_path::{ColumnIdPathLink, ColumnPath},
+            column_path::{ColumnPath, PhysicalColumnPathLink},
             predicate::AbstractPredicate,
             select::AbstractSelect,
             selection::{
@@ -325,7 +325,7 @@ mod tests {
                  venues_name_column,
                  ..
              }| {
-                let venue_id_path = ColumnPath::Physical(vec![ColumnIdPathLink {
+                let venue_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
                     self_column_id: venues_id_column,
                     linked_column_id: None,
                 }]);
@@ -383,7 +383,7 @@ mod tests {
                  concerts_venue_id_column,
                  ..
              }| {
-                let venue_id_path = ColumnPath::Physical(vec![ColumnIdPathLink {
+                let venue_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
                     self_column_id: venues_id_column,
                     linked_column_id: None,
                 }]);

@@ -46,7 +46,7 @@ pub mod database_error;
 /// Public types at the root level of this crate
 pub use asql::{
     abstract_operation::AbstractOperation,
-    column_path::{ColumnIdPath, ColumnIdPathLink, ColumnPath, ColumnPathLink},
+    column_path::{ColumnPath, PhysicalColumnPath, PhysicalColumnPathLink},
     database_executor::{DatabaseExecutor, TransactionHolder},
     delete::AbstractDelete,
     insert::{AbstractInsert, ColumnValuePair, InsertionElement, InsertionRow, NestedInsertion},

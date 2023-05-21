@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
-    AbstractPredicate, CaseSensitivity, ColumnIdPath, ColumnPath, ParamEquality, Predicate,
+    AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, PhysicalColumnPath, Predicate,
 };
 use futures::future::try_join_all;
 use postgres_model::{
@@ -29,7 +29,7 @@ use super::{cast::cast_value, postgres_execution_error::PostgresExecutionError};
 
 struct PredicateParamInput<'a> {
     pub param: &'a PredicateParameter,
-    pub parent_column_path: Option<ColumnIdPath>,
+    pub parent_column_path: Option<PhysicalColumnPath>,
 }
 
 #[async_trait]
@@ -244,7 +244,7 @@ pub fn predicate_from_name<C: PartialEq + ParamEquality>(
 fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a Val,
-    parent_column_path: Option<ColumnIdPath>,
+    parent_column_path: Option<PhysicalColumnPath>,
     subsystem: &'a PostgresSubsystem,
 ) -> Result<(ColumnPath, ColumnPath), PostgresExecutionError> {
     let op_physical_column_id = param

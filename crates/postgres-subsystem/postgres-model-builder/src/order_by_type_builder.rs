@@ -12,7 +12,7 @@ use core_plugin_interface::core_model::{
     types::FieldType,
 };
 
-use exo_sql::ColumnIdPathLink;
+use exo_sql::PhysicalColumnPathLink;
 use postgres_model::{
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},
@@ -118,7 +118,7 @@ fn new_param(
     name: &str,
     entity_type_name: &str,
     is_primitive: bool,
-    column_path_link: Option<ColumnIdPathLink>,
+    column_path_link: Option<PhysicalColumnPathLink>,
     order_by_types: &MappedArena<OrderByParameterType>,
 ) -> OrderByParameter {
     let (param_type_name, param_type_id) =

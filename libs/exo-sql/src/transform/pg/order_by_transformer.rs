@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::ColumnIdPath,
+    asql::column_path::PhysicalColumnPath,
     sql::order::{OrderBy, OrderByElement},
     transform::transformer::OrderByTransformer,
     AbstractOrderBy, ColumnId,
@@ -35,6 +35,6 @@ impl OrderByTransformer for Postgres {
     }
 }
 
-fn leaf_column(column_id_path: &ColumnIdPath) -> ColumnId {
+fn leaf_column(column_id_path: &PhysicalColumnPath) -> ColumnId {
     column_id_path.path.last().unwrap().self_column_id
 }

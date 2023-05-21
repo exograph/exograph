@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::ColumnIdPathLink,
+    asql::column_path::PhysicalColumnPathLink,
     sql::{predicate::ConcretePredicate, select::Select, table::Table},
     transform::{
         join_util,
@@ -102,8 +102,8 @@ pub(super) fn nest_subselect<'a>(
 pub(super) fn join_info<'a>(
     base_table_id: TableId,
     predicate: &AbstractPredicate,
-    predicate_column_paths: Vec<Vec<ColumnIdPathLink>>,
-    order_by_column_paths: Vec<Vec<ColumnIdPathLink>>,
+    predicate_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
+    order_by_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
     additional_predicate: Option<ConcretePredicate<'a>>,
     transformer: &Postgres,
     database: &'a Database,

@@ -13,7 +13,7 @@ use futures::future::join_all;
 use crate::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper};
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
-use exo_sql::{AbstractOrderBy, ColumnIdPath, Ordering};
+use exo_sql::{AbstractOrderBy, Ordering, PhysicalColumnPath};
 use postgres_model::{
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
     subsystem::PostgresSubsystem,
@@ -23,7 +23,7 @@ use crate::util::to_column_id_path;
 
 pub(crate) struct OrderByParameterInput<'a> {
     pub param: &'a OrderByParameter,
-    pub parent_column_path: Option<ColumnIdPath>,
+    pub parent_column_path: Option<PhysicalColumnPath>,
 }
 
 #[async_trait]
@@ -83,7 +83,7 @@ async fn order_by_pair<'a>(
     typ: &'a OrderByParameterType,
     parameter_name: &str,
     parameter_value: &'a Val,
-    parent_column_path: Option<ColumnIdPath>,
+    parent_column_path: Option<PhysicalColumnPath>,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractOrderBy, PostgresExecutionError> {
@@ -107,7 +107,7 @@ async fn order_by_pair<'a>(
     // If this is a leaf node ({something: ASC} kind), then resolve the ordering. If not, then recurse with a new parent column path.
     if matches!(base_param_type.kind, OrderByParameterTypeKind::Primitive) {
         let new_column_path = to_column_id_path(&parent_column_path, &parameter.column_path_link)
-            .unwrap_or(ColumnIdPath { path: vec![] });
+            .unwrap_or(PhysicalColumnPath { path: vec![] });
         ordering(parameter_value).map(|ordering| AbstractOrderBy(vec![(new_column_path, ordering)]))
     } else {
         let new_parent_column_path =

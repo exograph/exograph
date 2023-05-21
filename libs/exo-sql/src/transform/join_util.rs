@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::ColumnIdPathLink,
+    asql::column_path::PhysicalColumnPathLink,
     sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
     transform::table_dependency::{DependencyLink, TableDependency},
     TableId,
@@ -16,7 +16,10 @@ use crate::{
 
 /// Compute the join needed to access the leaf columns of a list of column paths. Will return a
 /// `Table::Physical` if there are no dependencies to join otherwise a `Table::Join`.
-pub fn compute_join<'a>(table_id: TableId, paths_list: &[Vec<ColumnIdPathLink>]) -> Table<'a> {
+pub fn compute_join<'a>(
+    table_id: TableId,
+    paths_list: &[Vec<PhysicalColumnPathLink>],
+) -> Table<'a> {
     /// Recursively build the join tree.
     fn from_dependency(dependency: TableDependency) -> Table<'static> {
         dependency.dependencies.into_iter().fold(
@@ -44,7 +47,7 @@ pub fn compute_join<'a>(table_id: TableId, paths_list: &[Vec<ColumnIdPathLink>])
 #[cfg(test)]
 mod tests {
     use crate::{
-        asql::column_path::ColumnIdPathLink, sql::ExpressionBuilder,
+        asql::column_path::PhysicalColumnPathLink, sql::ExpressionBuilder,
         transform::test_util::TestSetup,
     };
 
@@ -61,11 +64,11 @@ mod tests {
              }| {
                 // (concert.venue_id, venue.id) -> (venue.name, None)
                 let concert_venue = vec![
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: concerts_venue_id_column,
                         linked_column_id: Some(venues_id_column),
                     },
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: venues_name_column,
                         linked_column_id: None,
                     },
@@ -107,15 +110,15 @@ mod tests {
              }| {
                 // (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.name, None)
                 let concert_ca_artist = vec![
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: concerts_id_column,
                         linked_column_id: Some(concert_artists_concert_id_column),
                     },
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: concert_artists_artist_id_column,
                         linked_column_id: Some(artists_id_column),
                     },
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: artists_name_column,
                         linked_column_id: None,
                     },
@@ -123,19 +126,19 @@ mod tests {
 
                 // (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.address_id, address.id) -> (address.city, None)
                 let concert_ca_artist_address = vec![
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: concerts_id_column,
                         linked_column_id: Some(concert_artists_concert_id_column),
                     },
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: concert_artists_artist_id_column,
                         linked_column_id: Some(artists_id_column),
                     },
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: artists_address_id_column,
                         linked_column_id: Some(addresses_id_column),
                     },
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: addresses_city_column,
                         linked_column_id: None,
                     },
@@ -143,11 +146,11 @@ mod tests {
 
                 // (concert.venue_id, venue.id) -> (venue.name, None)
                 let concert_venue = vec![
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: concerts_venue_id_column,
                         linked_column_id: Some(venues_id_column),
                     },
-                    ColumnIdPathLink {
+                    PhysicalColumnPathLink {
                         self_column_id: venues_name_column,
                         linked_column_id: None,
                     },

@@ -12,7 +12,7 @@ use maybe_owned::MaybeOwned;
 
 use crate::{ColumnId, TableId};
 
-use super::{column_path::ColumnIdPathLink, select::AbstractSelect};
+use super::{column_path::PhysicalColumnPathLink, select::AbstractSelect};
 
 /// A selection element along with its alias
 #[derive(Debug)]
@@ -58,7 +58,7 @@ pub enum SelectionElement<'a> {
     /// A constant such as `"hello"` (useful to supply it to database and get back the same value). Useful for `__typename` field.
     Constant(String),
     /// A subselect such as `... FROM (SELECT * FROM table)`
-    SubSelect(ColumnIdPathLink, AbstractSelect<'a>),
+    SubSelect(PhysicalColumnPathLink, AbstractSelect<'a>),
 }
 
 /// Relation between two tables

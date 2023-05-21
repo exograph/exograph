@@ -7,11 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql::{ColumnIdPath, ColumnIdPathLink, ColumnPath};
+use exo_sql::{ColumnPath, PhysicalColumnPath, PhysicalColumnPathLink};
 
 pub fn to_column_path(
-    parent_column_id_path: &Option<ColumnIdPath>,
-    next_column_id_path_link: &Option<ColumnIdPathLink>,
+    parent_column_id_path: &Option<PhysicalColumnPath>,
+    next_column_id_path_link: &Option<PhysicalColumnPathLink>,
 ) -> ColumnPath {
     let mut path: Vec<_> = match parent_column_id_path {
         Some(parent_column_id_path) => parent_column_id_path.path.clone(),

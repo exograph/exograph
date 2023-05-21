@@ -26,7 +26,7 @@ use core_plugin_interface::{
 };
 
 use exo_sql::{
-    ColumnId, ColumnIdPathLink, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType,
+    ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnPathLink, PhysicalColumnType,
     PhysicalTable, TableId,
 };
 
@@ -788,7 +788,7 @@ fn create_relation(
                         let self_pk_column_id =
                             ColumnId::new(self_table_id, self_table.get_pk_column_index().unwrap());
 
-                        let column_id_path_link = ColumnIdPathLink {
+                        let column_id_path_link = PhysicalColumnPathLink {
                             self_column_id: self_pk_column_id,
                             linked_column_id: Some(other_type_column_id),
                         };
@@ -839,7 +839,7 @@ fn create_relation(
                                     self_table.get_pk_column_index().unwrap(),
                                 );
 
-                                let column_id_path_link = ColumnIdPathLink {
+                                let column_id_path_link = PhysicalColumnPathLink {
                                     self_column_id: self_pk_column_id,
                                     linked_column_id: Some(other_type_column_id),
                                 };
@@ -853,7 +853,7 @@ fn create_relation(
                                 let column_id =
                                     compute_column_id(self_table, self_table_id, field).unwrap();
 
-                                let relation_link = ColumnIdPathLink {
+                                let relation_link = PhysicalColumnPathLink {
                                     self_column_id: column_id,
                                     linked_column_id: Some(ColumnId::new(
                                         other_table_id,
@@ -876,7 +876,7 @@ fn create_relation(
                                             compute_column_id(self_table, self_table_id, field)
                                                 .unwrap();
 
-                                        let relation_link = ColumnIdPathLink {
+                                        let relation_link = PhysicalColumnPathLink {
                                             self_column_id: column_id,
                                             linked_column_id: Some(ColumnId::new(
                                                 other_table_id,

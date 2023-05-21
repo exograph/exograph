@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::ColumnIdPathLink,
+    asql::column_path::PhysicalColumnPathLink,
     sql::predicate::ConcretePredicate,
     transform::{pg::SelectionLevel, transformer::PredicateTransformer},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnId, ColumnPath,
@@ -130,7 +130,7 @@ fn to_subselect_predicate<'a>(
         fn form_subselect<'p>(
             path: &ColumnPath,
             other: &ColumnPath,
-            predicate_op: impl Fn(Vec<ColumnIdPathLink>, ColumnPath) -> AbstractPredicate,
+            predicate_op: impl Fn(Vec<PhysicalColumnPathLink>, ColumnPath) -> AbstractPredicate,
             database: &'p Database,
             select_transformer: &Postgres,
         ) -> Option<ConcretePredicate<'p>> {
@@ -283,7 +283,7 @@ fn leaf_column<'c>(column_path: &ColumnPath) -> Column<'c> {
 /// and the fourth element is the remaining links in the column path.
 fn column_path_components(
     column_path: &ColumnPath,
-) -> Option<(ColumnId, ColumnId, &[ColumnIdPathLink])> {
+) -> Option<(ColumnId, ColumnId, &[PhysicalColumnPathLink])> {
     match column_path {
         ColumnPath::Physical(links) => links.split_first().and_then(|(head, tail)| {
             head.linked_column_id
@@ -312,7 +312,7 @@ mod tests {
                  ..
              }| {
                 let abstract_predicate = AbstractPredicate::Eq(
-                    ColumnPath::Physical(vec![ColumnIdPathLink {
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink {
                         self_column_id: concerts_name_column,
                         linked_column_id: None,
                     }]),
@@ -392,7 +392,7 @@ mod tests {
                   }| {
                 let abstract_predicate = AbstractPredicate::and(
                     AbstractPredicate::Eq(
-                        ColumnPath::Physical(vec![ColumnIdPathLink {
+                        ColumnPath::Physical(vec![PhysicalColumnPathLink {
                             self_column_id: concerts_venue_id_column,
                             linked_column_id: None,
                         }]),
@@ -400,11 +400,11 @@ mod tests {
                     ),
                     AbstractPredicate::Eq(
                         ColumnPath::Physical(vec![
-                            ColumnIdPathLink {
+                            PhysicalColumnPathLink {
                                 self_column_id: concerts_venue_id_column,
                                 linked_column_id: Some(venues_id_column),
                             },
-                            ColumnIdPathLink {
+                            PhysicalColumnPathLink {
                                 self_column_id: venues_name_column,
                                 linked_column_id: None,
                             },
@@ -455,11 +455,11 @@ mod tests {
                           ..
                       }| {
                     let physical_column = ColumnPath::Physical(vec![
-                        ColumnIdPathLink {
+                        PhysicalColumnPathLink {
                             self_column_id: concerts_venue_id_column,
                             linked_column_id: Some(venues_id_column),
                         },
-                        ColumnIdPathLink {
+                        PhysicalColumnPathLink {
                             self_column_id: venues_name_column,
                             linked_column_id: None,
                         },

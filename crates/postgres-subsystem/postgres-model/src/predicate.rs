@@ -17,7 +17,7 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named},
 };
-use exo_sql::ColumnIdPathLink;
+use exo_sql::PhysicalColumnPathLink;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -36,7 +36,7 @@ pub struct PredicateParameter {
     ///   venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     ///   where: None
     /// ```
-    pub column_path_link: Option<ColumnIdPathLink>,
+    pub column_path_link: Option<PhysicalColumnPathLink>,
 }
 
 /// Thw wrapper around PredicateParameterType to be able to satisfy the Named trait, without cloning the parameter type.

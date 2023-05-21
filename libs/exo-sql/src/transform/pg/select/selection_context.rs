@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::ColumnIdPathLink,
+    asql::column_path::PhysicalColumnPathLink,
     sql::predicate::ConcretePredicate,
     transform::pg::{Postgres, SelectionLevel},
     AbstractSelect, ColumnPath, Database,
@@ -20,8 +20,8 @@ pub(crate) struct SelectionContext<'c, 'a> {
     pub database: &'a Database,
     pub abstract_select: &'c AbstractSelect<'a>,
     pub has_a_one_to_many_predicate: bool,
-    pub predicate_column_paths: Vec<Vec<ColumnIdPathLink>>,
-    pub order_by_column_paths: Vec<Vec<ColumnIdPathLink>>,
+    pub predicate_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
+    pub order_by_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
     pub additional_predicate: Option<ConcretePredicate<'a>>,
     pub selection_level: SelectionLevel,
     pub allow_duplicate_rows: bool,

@@ -168,7 +168,7 @@ impl Postgres {
 mod tests {
     use crate::{
         asql::{
-            column_path::{ColumnIdPath, ColumnIdPathLink, ColumnPath},
+            column_path::{ColumnPath, PhysicalColumnPath, PhysicalColumnPathLink},
             predicate::AbstractPredicate,
             selection::{
                 AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement,
@@ -221,7 +221,7 @@ mod tests {
                  concerts_id_column,
                  ..
              }| {
-                let concert_id_path = ColumnPath::Physical(vec![ColumnIdPathLink {
+                let concert_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
                     self_column_id: concerts_id_column,
                     linked_column_id: None,
                 }]);
@@ -312,7 +312,7 @@ mod tests {
                             AliasedSelectionElement::new(
                                 "venue".to_string(),
                                 SelectionElement::SubSelect(
-                                    ColumnIdPathLink {
+                                    PhysicalColumnPathLink {
                                         self_column_id: concerts_venue_id_column,
                                         linked_column_id: Some(venues_id_column),
                                     },
@@ -373,7 +373,7 @@ mod tests {
                             AliasedSelectionElement::new(
                                 "concerts".to_string(),
                                 SelectionElement::SubSelect(
-                                    ColumnIdPathLink {
+                                    PhysicalColumnPathLink {
                                         self_column_id: concerts_venue_id_column,
                                         linked_column_id: Some(venues_id_column),
                                     },
@@ -430,11 +430,11 @@ mod tests {
                 // }
                 let predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(vec![
-                        ColumnIdPathLink {
+                        PhysicalColumnPathLink {
                             self_column_id: concerts_venue_id_column,
                             linked_column_id: Some(venues_id_column),
                         },
-                        ColumnIdPathLink {
+                        PhysicalColumnPathLink {
                             self_column_id: venues_name_column,
                             linked_column_id: None,
                         },
@@ -476,8 +476,8 @@ mod tests {
                  concerts_name_column,
                  ..
              }| {
-                let concert_name_path = ColumnIdPath {
-                    path: vec![ColumnIdPathLink {
+                let concert_name_path = PhysicalColumnPath {
+                    path: vec![PhysicalColumnPathLink {
                         self_column_id: concerts_name_column,
                         linked_column_id: None,
                     }],
@@ -514,7 +514,7 @@ mod tests {
                  concerts_name_column,
                  ..
              }| {
-                let concert_name_path = ColumnPath::Physical(vec![ColumnIdPathLink {
+                let concert_name_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
                     self_column_id: concerts_name_column,
                     linked_column_id: None,
                 }]);
@@ -558,13 +558,13 @@ mod tests {
                  venues_id_column,
                  ..
              }| {
-                let venues_name_path = ColumnIdPath {
+                let venues_name_path = PhysicalColumnPath {
                     path: vec![
-                        ColumnIdPathLink {
+                        PhysicalColumnPathLink {
                             self_column_id: concerts_venue_id_column,
                             linked_column_id: Some(venues_id_column),
                         },
-                        ColumnIdPathLink {
+                        PhysicalColumnPathLink {
                             self_column_id: venues_name_column,
                             linked_column_id: None,
                         },

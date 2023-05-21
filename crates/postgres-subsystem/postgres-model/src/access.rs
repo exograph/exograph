@@ -9,7 +9,7 @@
 
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
 use core_plugin_interface::core_model::context_type::ContextSelection;
-use exo_sql::ColumnIdPath;
+use exo_sql::PhysicalColumnPath;
 use serde::{Deserialize, Serialize};
 
 /// Access specification for a model
@@ -38,7 +38,7 @@ impl Access {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DatabaseAccessPrimitiveExpression {
     ContextSelection(ContextSelection), // for example, AuthContext.role
-    Column(ColumnIdPath),               // for example, self.id
+    Column(PhysicalColumnPath),         // for example, self.id
     StringLiteral(String),              // for example, "ADMIN"
     BooleanLiteral(bool),               // for example, true
     NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)

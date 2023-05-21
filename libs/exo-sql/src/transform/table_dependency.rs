@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::{asql::column_path::ColumnIdPathLink, TableId};
+use crate::{asql::column_path::PhysicalColumnPathLink, TableId};
 
 #[derive(Debug)]
 pub struct TableDependency {
@@ -21,7 +21,7 @@ pub struct TableDependency {
 
 #[derive(Debug)]
 pub struct DependencyLink {
-    pub link: ColumnIdPathLink,
+    pub link: PhysicalColumnPathLink,
     pub dependency: TableDependency,
 }
 
@@ -59,7 +59,7 @@ impl TableDependency {
     ///    ]
     /// }
     /// ```
-    pub fn from_column_path(paths_list: &[Vec<ColumnIdPathLink>]) -> Option<Self> {
+    pub fn from_column_path(paths_list: &[Vec<PhysicalColumnPathLink>]) -> Option<Self> {
         let table_id = paths_list.get(0)?.get(0)?.self_column_id.table_id;
 
         assert!(
@@ -72,11 +72,11 @@ impl TableDependency {
         // Use `BTreeMap` to get a stable ordering of the dependencies
         // (mostly for testing purpose, but also to get predictable results)
         //
-        // Group by the `ColumnPathLink` to paths that start with it.
-        // Later the key (`ColumnPathLink`) and values (`Vec<ColumnPathLink>`) will
+        // Group by the `ColumnIdPathLink` to paths that start with it.
+        // Later the key (`ColumnIdPathLink`) and values (`Vec<ColumnIdPathLink>`) will
         // be used to create `DependencyLink`s.
         let grouped = paths_list.iter().fold(
-            BTreeMap::<ColumnIdPathLink, Vec<Vec<ColumnIdPathLink>>>::new(),
+            BTreeMap::<PhysicalColumnPathLink, Vec<Vec<PhysicalColumnPathLink>>>::new(),
             |mut acc, paths| match &paths[..] {
                 [head, tail @ ..] => {
                     if head.linked_column_id.is_some() {
