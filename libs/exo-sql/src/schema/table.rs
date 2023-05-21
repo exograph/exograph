@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::database_error::DatabaseError;
 use crate::sql::physical_column::PhysicalColumnType;
-use crate::{PhysicalColumn, PhysicalTable};
+use crate::{Database, PhysicalColumn, PhysicalTable, TableId};
 use deadpool_postgres::Client;
 
 use super::constraint::{sorted_comma_list, Constraints};
@@ -38,7 +38,7 @@ impl PhysicalTable {
 
             match new_column {
                 Some(new_column) => {
-                    changes.extend(existing_column.diff(new_column));
+                    changes.extend(existing_column.diff(new_column, &self.name, &new.name));
                 }
                 None => {
                     // column was removed
@@ -106,11 +106,13 @@ impl PhysicalTable {
     /// Creates a new table specification from an SQL table.
     pub(super) async fn from_db(
         client: &Client,
-        table_name: &str,
+        table_id: TableId,
+        database: &Database,
     ) -> Result<WithIssues<PhysicalTable>, DatabaseError> {
+        let table_name = &database.get_table(table_id).name;
         // Query to get a list of columns in the table
         let columns_query = format!(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+            "SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'",
         );
 
         let mut issues = Vec::new();
@@ -123,13 +125,18 @@ impl PhysicalTable {
             // Assumption that there is only one column in the foreign key (for now a correct assumption since we don't support composite keys)
             let self_column_name = foreign_constraint.self_columns.iter().next().unwrap();
             let ref_column_name = foreign_constraint.ref_columns.iter().next().unwrap();
+            let ref_table_id = database
+                .get_table_id(&foreign_constraint.ref_table)
+                .unwrap();
+
             let mut column = PhysicalColumn::from_db(
                 client,
-                &foreign_constraint.ref_table,
+                ref_table_id,
                 ref_column_name,
                 true,
                 None,
                 vec![],
+                database,
             )
             .await?;
             issues.append(&mut column.issues);
@@ -164,11 +171,12 @@ impl PhysicalTable {
 
             let mut column = PhysicalColumn::from_db(
                 client,
-                table_name,
+                database.get_table_id(table_name).unwrap(),
                 &name,
                 constraints.primary_key.columns.contains(&name),
                 column_type_mapping.get(&name).cloned(),
                 unique_constraint_names,
+                database,
             )
             .await?;
             issues.append(&mut column.issues);
@@ -188,13 +196,13 @@ impl PhysicalTable {
     }
 
     /// Converts the table specification to SQL statements.
-    pub(super) fn creation_sql(&self) -> SchemaStatement {
+    pub(super) fn creation_sql(&self, database: &Database) -> SchemaStatement {
         let mut post_statements = Vec::new();
         let column_stmts: String = self
             .columns
             .iter()
             .map(|c| {
-                let mut s = c.to_sql();
+                let mut s = c.to_sql(database);
                 post_statements.append(&mut s.post_statements);
                 s.statement
             })

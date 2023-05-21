@@ -439,7 +439,7 @@ fn compute_nested_delete_object_arg<'a>(
 ) -> NestedAbstractDelete<'a> {
     assert!(matches!(argument, Val::Object(..)));
 
-    let table = field_entity_type.table(subsystem);
+    let table_id = field_entity_type.table(subsystem);
 
     //
     let nested = compute_update_columns(field_entity_type, argument, subsystem);
@@ -470,10 +470,10 @@ fn compute_nested_delete_object_arg<'a>(
     NestedAbstractDelete {
         relation: NestedElementRelation {
             column: nested_reference_col,
-            table,
+            table_id,
         },
         delete: AbstractDelete {
-            table,
+            table_id,
             predicate,
             selection: AbstractSelect {
                 table,

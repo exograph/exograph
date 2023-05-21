@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{Limit, Offset};
+use crate::{Database, Limit, Offset};
 
 use super::{
     column::Column, group_by::GroupBy, order::OrderBy, predicate::ConcretePredicate, table::Table,
@@ -24,7 +24,7 @@ pub struct Select<'a> {
     /// The predicate to filter the rows
     pub predicate: ConcretePredicate<'a>,
     /// The order by clause
-    pub order_by: Option<OrderBy<'a>>,
+    pub order_by: Option<OrderBy>,
     /// The offset clause
     pub offset: Option<Offset>,
     /// The limit clause
@@ -38,12 +38,12 @@ pub struct Select<'a> {
 }
 
 impl<'a> ExpressionBuilder for Select<'a> {
-    fn build(&self, builder: &mut SQLBuilder) {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("SELECT ");
 
         // Columns
         builder.push_iter(self.columns.iter(), ", ", |builder, col| {
-            col.build(builder);
+            col.build(database, builder);
 
             if self.top_level_selection && matches!(col, Column::JsonObject(_) | Column::JsonAgg(_))
             {
@@ -53,28 +53,28 @@ impl<'a> ExpressionBuilder for Select<'a> {
         });
 
         builder.push_str(" FROM ");
-        self.table.build(builder);
+        self.table.build(database, builder);
 
         // Avoid correct, but inelegant "WHERE TRUE" clause
         if self.predicate != ConcretePredicate::True {
             builder.push_str(" WHERE ");
-            self.predicate.build(builder);
+            self.predicate.build(database, builder);
         }
         if let Some(group_by) = &self.group_by {
             builder.push_space();
-            group_by.build(builder);
+            group_by.build(database, builder);
         }
         if let Some(order_by) = &self.order_by {
             builder.push_space();
-            order_by.build(builder);
+            order_by.build(database, builder);
         }
         if let Some(limit) = &self.limit {
             builder.push_space();
-            limit.build(builder);
+            limit.build(database, builder);
         }
         if let Some(offset) = &self.offset {
             builder.push_space();
-            offset.build(builder);
+            offset.build(database, builder);
         }
     }
 }
@@ -82,45 +82,36 @@ impl<'a> ExpressionBuilder for Select<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
+        schema::database_spec::{
+            test_helper::{int_column, pk_column, string_column},
+            DatabaseSpec, TableSpec,
+        },
         sql::json_object::{JsonObject, JsonObjectElement},
-        sql::physical_column::{IntBits, PhysicalColumn, PhysicalColumnType},
-        PhysicalTable,
     };
 
     use super::*;
 
     #[test]
     fn json_object() {
-        let physical_table = PhysicalTable {
-            name: "people".to_string(),
-            columns: vec![
-                PhysicalColumn {
-                    table_name: "people".to_string(),
-                    name: "name".to_string(),
-                    typ: PhysicalColumnType::String { max_length: None },
-                    ..Default::default()
-                },
-                PhysicalColumn {
-                    table_name: "people".to_string(),
-                    name: "age".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    ..Default::default()
-                },
-            ],
-        };
+        let database = DatabaseSpec::new(vec![TableSpec::new(
+            "people",
+            vec![pk_column("id"), string_column("name"), int_column("age")],
+        )])
+        .to_database();
 
-        let age_col = physical_table.get_column("age").unwrap();
-        let age_col2 = physical_table.get_column("age").unwrap();
+        let table_id = database.get_table_id("people").unwrap();
+        let age_col_id = database.get_column_id(table_id, "age").unwrap();
+        let age_col2_id = database.get_column_id(table_id, "age").unwrap();
+        let name_col_id = database.get_column_id(table_id, "name").unwrap();
 
-        let name_col = physical_table.get_column("name").unwrap();
         let json_col = Column::JsonObject(JsonObject(vec![
-            JsonObjectElement::new("namex".to_string(), name_col),
-            JsonObjectElement::new("agex".to_string(), age_col),
+            JsonObjectElement::new("namex".to_string(), Column::Physical(name_col_id)),
+            JsonObjectElement::new("agex".to_string(), Column::Physical(age_col_id)),
         ]));
-        let table = Table::Physical(&physical_table);
+        let table = Table::Physical(table_id);
         let selected_table = Select {
             table,
-            columns: vec![age_col2, json_col],
+            columns: vec![Column::Physical(age_col2_id), json_col],
             predicate: ConcretePredicate::True,
             order_by: None,
             limit: None,
@@ -130,7 +121,7 @@ mod tests {
         };
 
         assert_binding!(
-            selected_table.to_sql(),
+            selected_table.to_sql(&database),
             r#"SELECT "people"."age", json_build_object('namex', "people"."name", 'agex', "people"."age")::text FROM "people""#
         );
     }

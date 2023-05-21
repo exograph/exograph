@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use crate::Database;
+
 use super::{
     cte::WithQuery,
     delete::Delete,
@@ -29,13 +31,13 @@ pub enum SQLOperation<'a> {
 }
 
 impl<'a> ExpressionBuilder for SQLOperation<'a> {
-    fn build(&self, builder: &mut SQLBuilder) {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {
-            SQLOperation::Select(select) => select.build(builder),
-            SQLOperation::Insert(insert) => insert.build(builder),
-            SQLOperation::Delete(delete) => delete.build(builder),
-            SQLOperation::Update(update) => update.build(builder),
-            SQLOperation::WithQuery(cte) => cte.build(builder),
+            SQLOperation::Select(select) => select.build(database, builder),
+            SQLOperation::Insert(insert) => insert.build(database, builder),
+            SQLOperation::Delete(delete) => delete.build(database, builder),
+            SQLOperation::Update(update) => update.build(database, builder),
+            SQLOperation::WithQuery(cte) => cte.build(database, builder),
         }
     }
 }

@@ -10,6 +10,7 @@
 pub mod issue;
 pub mod op;
 pub mod spec;
+pub mod database_spec;
 
 mod column;
 mod constraint;

@@ -9,6 +9,8 @@
 
 use maybe_owned::MaybeOwned;
 
+use crate::Database;
+
 use super::{
     column::Column, physical_table::PhysicalTable, predicate::ConcretePredicate, ExpressionBuilder,
     SQLBuilder,
@@ -29,18 +31,18 @@ impl<'a> ExpressionBuilder for Delete<'a> {
     /// Build a delete operation for the `DELETE FROM <table> WHERE <predicate> RETURNING <returning>`.
     /// The `WHERE` clause is omitted if the predicate is `true` and the `RETURNING` clause is omitted
     /// if the list of columns to return is empty.
-    fn build(&self, builder: &mut SQLBuilder) {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("DELETE FROM ");
-        self.table.build(builder);
+        self.table.build(database, builder);
 
         if self.predicate.as_ref() != &ConcretePredicate::True {
             builder.push_str(" WHERE ");
-            self.predicate.build(builder);
+            self.predicate.build(database, builder);
         }
 
         if !self.returning.is_empty() {
             builder.push_str(" RETURNING ");
-            builder.push_elems(&self.returning, ", ");
+            builder.push_elems(database, &self.returning, ", ");
         }
     }
 }

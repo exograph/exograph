@@ -18,6 +18,7 @@ use crate::{
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::{pg::SelectionLevel, transformer::SelectTransformer},
+    Database,
 };
 
 use super::{
@@ -111,15 +112,26 @@ impl SelectTransformer for Postgres {
         name = "SelectTransformer::to_select for Postgres"
         skip(self)
         )]
-    fn to_select<'a>(&self, abstract_select: &AbstractSelect<'a>) -> Select<'a> {
-        self.compute_select(abstract_select, None, SelectionLevel::TopLevel, false)
+    fn to_select<'a>(
+        &self,
+        abstract_select: &AbstractSelect<'a>,
+        database: &'a Database,
+    ) -> Select<'a> {
+        self.compute_select(
+            abstract_select,
+            None,
+            SelectionLevel::TopLevel,
+            false,
+            database,
+        )
     }
 
     fn to_transaction_script<'a>(
         &self,
         abstract_select: &'a AbstractSelect,
+        database: &'a Database,
     ) -> TransactionScript<'a> {
-        let select = self.to_select(abstract_select);
+        let select = self.to_select(abstract_select, database);
         let mut transaction_script = TransactionScript::default();
         transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
             SQLOperation::Select(select),
@@ -137,8 +149,10 @@ impl Postgres {
         additional_predicate: Option<ConcretePredicate<'a>>,
         selection_level: SelectionLevel,
         allow_duplicate_rows: bool,
+        database: &'a Database,
     ) -> Select<'a> {
         let selection_context = SelectionContext::new(
+            database,
             abstract_select,
             additional_predicate,
             selection_level,
@@ -146,7 +160,7 @@ impl Postgres {
             self,
         );
         let chain = SelectionStrategyChain::default();
-        chain.to_select(selection_context).unwrap()
+        chain.to_select(selection_context, database).unwrap()
     }
 }
 
@@ -154,7 +168,7 @@ impl Postgres {
 mod tests {
     use crate::{
         asql::{
-            column_path::{ColumnPath, ColumnPathLink},
+            column_path::{ColumnIdPath, ColumnIdPathLink, ColumnPath},
             predicate::AbstractPredicate,
             selection::{
                 AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement,
@@ -172,12 +186,13 @@ mod tests {
     fn simple_selection() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  concerts_table,
                  concerts_id_column,
                  ..
              }| {
                 let aselect = AbstractSelect {
-                    table: concerts_table,
+                    table_id: concerts_table,
                     selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
@@ -188,8 +203,11 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect);
-                assert_binding!(select.to_sql(), r#"SELECT "concerts"."id" FROM "concerts""#);
+                let select = Postgres {}.to_select(&aselect, &database);
+                assert_binding!(
+                    select.to_sql(&database),
+                    r#"SELECT "concerts"."id" FROM "concerts""#
+                );
             },
         );
     }
@@ -198,19 +216,20 @@ mod tests {
     fn simple_predicate() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  concerts_table,
                  concerts_id_column,
                  ..
              }| {
-                let concert_id_path = ColumnPath::Physical(vec![ColumnPathLink {
-                    self_column: (concerts_id_column, concerts_table),
-                    linked_column: None,
+                let concert_id_path = ColumnPath::Physical(vec![ColumnIdPathLink {
+                    self_column_id: concerts_id_column,
+                    linked_column_id: None,
                 }]);
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::Eq(concert_id_path, literal);
 
                 let aselect = AbstractSelect {
-                    table: concerts_table,
+                    table_id: concerts_table,
                     selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
@@ -221,9 +240,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect);
+                let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
-                    select.to_sql(),
+                    select.to_sql(&database),
                     r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."id" = $1"#,
                     5
                 );
@@ -235,12 +254,13 @@ mod tests {
     fn non_nested_json() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  concerts_table,
                  concerts_id_column,
                  ..
              }| {
                 let aselect = AbstractSelect {
-                    table: concerts_table,
+                    table_id: concerts_table,
                     selection: Selection::Json(
                         vec![AliasedSelectionElement::new(
                             "id".to_string(),
@@ -254,9 +274,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect);
+                let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
-                    select.to_sql(),
+                    select.to_sql(&database),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts""#
                 );
             },
@@ -273,6 +293,7 @@ mod tests {
         // }
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  concerts_table,
                  venues_table,
                  concerts_id_column,
@@ -281,7 +302,7 @@ mod tests {
                  ..
              }| {
                 let aselect = AbstractSelect {
-                    table: concerts_table,
+                    table_id: concerts_table,
                     selection: Selection::Json(
                         vec![
                             AliasedSelectionElement::new(
@@ -291,12 +312,12 @@ mod tests {
                             AliasedSelectionElement::new(
                                 "venue".to_string(),
                                 SelectionElement::SubSelect(
-                                    ColumnPathLink {
-                                        self_column: (concerts_venue_id_column, concerts_table),
-                                        linked_column: Some((venues_id_column, venues_table)),
+                                    ColumnIdPathLink {
+                                        self_column_id: concerts_venue_id_column,
+                                        linked_column_id: Some(venues_id_column),
                                     },
                                     AbstractSelect {
-                                        table: venues_table,
+                                        table_id: venues_table,
                                         selection: Selection::Json(
                                             vec![AliasedSelectionElement::new(
                                                 "id".to_string(),
@@ -320,9 +341,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect);
+                let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
-                    select.to_sql(),
+                    select.to_sql(&database),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id", 'venue', (SELECT json_build_object('id', "venues"."id") FROM "venues" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "concerts""#
                 );
             },
@@ -333,6 +354,7 @@ mod tests {
     fn nested_one_to_many_json() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  concerts_table,
                  venues_table,
                  concerts_id_column,
@@ -341,7 +363,7 @@ mod tests {
                  ..
              }| {
                 let aselect = AbstractSelect {
-                    table: venues_table,
+                    table_id: venues_table,
                     selection: Selection::Json(
                         vec![
                             AliasedSelectionElement::new(
@@ -351,12 +373,12 @@ mod tests {
                             AliasedSelectionElement::new(
                                 "concerts".to_string(),
                                 SelectionElement::SubSelect(
-                                    ColumnPathLink {
-                                        self_column: (concerts_venue_id_column, concerts_table),
-                                        linked_column: Some((venues_id_column, venues_table)),
+                                    ColumnIdPathLink {
+                                        self_column_id: concerts_venue_id_column,
+                                        linked_column_id: Some(venues_id_column),
                                     },
                                     AbstractSelect {
-                                        table: concerts_table,
+                                        table_id: concerts_table,
                                         selection: Selection::Json(
                                             vec![AliasedSelectionElement::new(
                                                 "id".to_string(),
@@ -380,9 +402,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect);
+                let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
-                    select.to_sql(),
+                    select.to_sql(&database),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "venues""#
                 );
             },
@@ -393,10 +415,10 @@ mod tests {
     fn nested_predicate() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  concerts_table,
                  concerts_id_column,
                  concerts_venue_id_column,
-                 venues_table,
                  venues_id_column,
                  venues_name_column,
                  ..
@@ -408,19 +430,19 @@ mod tests {
                 // }
                 let predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(vec![
-                        ColumnPathLink {
-                            self_column: (concerts_venue_id_column, concerts_table),
-                            linked_column: Some((venues_id_column, venues_table)),
+                        ColumnIdPathLink {
+                            self_column_id: concerts_venue_id_column,
+                            linked_column_id: Some(venues_id_column),
                         },
-                        ColumnPathLink {
-                            self_column: (venues_name_column, venues_table),
-                            linked_column: None,
+                        ColumnIdPathLink {
+                            self_column_id: venues_name_column,
+                            linked_column_id: None,
                         },
                     ]),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
                 let aselect = AbstractSelect {
-                    table: concerts_table,
+                    table_id: concerts_table,
                     selection: Selection::Json(
                         vec![AliasedSelectionElement::new(
                             "id".to_string(),
@@ -434,9 +456,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect);
+                let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
-                    select.to_sql(),
+                    select.to_sql(&database),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
                     "v1".to_string()
                 );
@@ -448,18 +470,21 @@ mod tests {
     fn simple_order_by() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  concerts_table,
                  concerts_id_column,
                  concerts_name_column,
                  ..
              }| {
-                let concert_name_path = ColumnPath::Physical(vec![ColumnPathLink {
-                    self_column: (concerts_name_column, concerts_table),
-                    linked_column: None,
-                }]);
+                let concert_name_path = ColumnIdPath {
+                    path: vec![ColumnIdPathLink {
+                        self_column_id: concerts_name_column,
+                        linked_column_id: None,
+                    }],
+                };
 
                 let aselect = AbstractSelect {
-                    table: concerts_table,
+                    table_id: concerts_table,
                     selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
@@ -470,9 +495,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect);
+                let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
-                    select.to_sql(),
+                    select.to_sql(&database),
                     r#"SELECT "concerts"."id" FROM "concerts" ORDER BY "concerts"."name" ASC"#
                 );
             },
@@ -483,21 +508,22 @@ mod tests {
     fn with_predicate_limit_and_offset() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  concerts_table,
                  concerts_id_column,
                  concerts_name_column,
                  ..
              }| {
-                let concert_name_path = ColumnPath::Physical(vec![ColumnPathLink {
-                    self_column: (concerts_name_column, concerts_table),
-                    linked_column: None,
+                let concert_name_path = ColumnPath::Physical(vec![ColumnIdPathLink {
+                    self_column_id: concerts_name_column,
+                    linked_column_id: None,
                 }]);
 
                 let literal = ColumnPath::Param(SQLParamContainer::new("c1".to_string()));
                 let predicate = AbstractPredicate::Eq(concert_name_path, literal);
 
                 let aselect = AbstractSelect {
-                    table: concerts_table,
+                    table_id: concerts_table,
                     selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
@@ -508,9 +534,9 @@ mod tests {
                     limit: Some(Limit(20)),
                 };
 
-                let select = Postgres {}.to_select(&aselect);
+                let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
-                    select.to_sql(),
+                    select.to_sql(&database),
                     r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."name" = $1 LIMIT $2 OFFSET $3"#,
                     "c1".to_string(),
                     20i64,
@@ -524,27 +550,29 @@ mod tests {
     fn nested_order_by() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  concerts_table,
-                 venues_table,
                  concerts_id_column,
                  venues_name_column,
                  concerts_venue_id_column,
                  venues_id_column,
                  ..
              }| {
-                let venues_name_path = ColumnPath::Physical(vec![
-                    ColumnPathLink {
-                        self_column: (concerts_venue_id_column, concerts_table),
-                        linked_column: Some((venues_id_column, venues_table)),
-                    },
-                    ColumnPathLink {
-                        self_column: (venues_name_column, venues_table),
-                        linked_column: None,
-                    },
-                ]);
+                let venues_name_path = ColumnIdPath {
+                    path: vec![
+                        ColumnIdPathLink {
+                            self_column_id: concerts_venue_id_column,
+                            linked_column_id: Some(venues_id_column),
+                        },
+                        ColumnIdPathLink {
+                            self_column_id: venues_name_column,
+                            linked_column_id: None,
+                        },
+                    ],
+                };
 
                 let aselect = AbstractSelect {
-                    table: concerts_table,
+                    table_id: concerts_table,
                     selection: Selection::Seq(vec![AliasedSelectionElement::new(
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
@@ -555,9 +583,9 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect);
+                let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
-                    select.to_sql(),
+                    select.to_sql(&database),
                     r#"SELECT "concerts"."id" FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC"#
                 );
             },

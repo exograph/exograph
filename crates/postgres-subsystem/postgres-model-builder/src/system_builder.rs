@@ -174,7 +174,7 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
-        let get_table = |n| get_table_from_arena(n, &system.database.tables);
+        let get_table = |n| get_table_from_arena(n, &system.database);
 
         let concerts = get_table("concerts");
         let venues = get_table("venues");
@@ -222,7 +222,7 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
-        let get_table = |n| get_table_from_arena(n, &system.database.tables);
+        let get_table = |n| get_table_from_arena(n, &system.database);
 
         let users = get_table("users");
         let memberships = get_table("memberships");
@@ -260,7 +260,7 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
-        let get_table = |n| get_table_from_arena(n, &system.database.tables);
+        let get_table = |n| get_table_from_arena(n, &system.database);
 
         let logs = get_table("logs");
         let logs_id = get_column_from_table("id", logs);
@@ -349,11 +349,8 @@ mod tests {
         };
     }
 
-    fn get_table_from_arena<'a>(
-        name: &'a str,
-        tables: &'a SerializableSlab<PhysicalTable>,
-    ) -> &'a PhysicalTable {
-        for (_, item) in tables.iter() {
+    fn get_table_from_arena<'a>(name: &'a str, database: &'a Database) -> &'a PhysicalTable {
+        for (_, item) in database.tables.iter() {
             if item.name == name {
                 return item;
             }

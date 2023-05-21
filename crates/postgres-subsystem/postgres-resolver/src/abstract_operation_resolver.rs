@@ -30,7 +30,7 @@ pub async fn resolve_operation<'e>(
 
     let mut result = subsystem_resolver
         .executor
-        .execute(op, &mut tx)
+        .execute(op, &mut tx, &subsystem_resolver.subsystem.database)
         .await
         .map_err(PostgresExecutionError::Postgres)?;
 

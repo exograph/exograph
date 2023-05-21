@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::sql::select::Select;
+use crate::{sql::select::Select, Database};
 
 use super::{
     selection_context::SelectionContext,
@@ -68,8 +68,13 @@ impl SelectionStrategy for PlainSubqueryStrategy {
         !selection_context.has_a_one_to_many_predicate || selection_context.allow_duplicate_rows
     }
 
-    fn to_select<'a>(&self, selection_context: SelectionContext<'_, 'a>) -> Select<'a> {
+    fn to_select<'a>(
+        &self,
+        selection_context: SelectionContext<'_, 'a>,
+        _database: &Database,
+    ) -> Select<'a> {
         let SelectionContext {
+            database,
             abstract_select,
             additional_predicate,
             selection_level,
@@ -80,30 +85,33 @@ impl SelectionStrategy for PlainSubqueryStrategy {
         } = selection_context;
 
         let (join, predicate) = join_info(
-            abstract_select.table,
+            abstract_select.table_id,
             &abstract_select.predicate,
             predicate_column_paths,
             order_by_column_paths,
             additional_predicate,
             transformer,
+            database,
         );
 
         let inner_select = compute_inner_select(
             join,
-            abstract_select.table,
+            abstract_select.table_id,
             predicate,
             &abstract_select.order_by,
             &abstract_select.limit,
             &abstract_select.offset,
             transformer,
+            database,
         );
 
         nest_subselect(
             inner_select,
             &abstract_select.selection,
             selection_level,
-            &abstract_select.table.name,
+            &database.get_table(abstract_select.table_id).name,
             transformer,
+            database,
         )
     }
 }

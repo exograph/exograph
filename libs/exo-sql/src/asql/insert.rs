@@ -28,13 +28,12 @@ use maybe_owned::MaybeOwned;
 use super::select::AbstractSelect;
 use super::selection::NestedElementRelation;
 use crate::sql::column::Column;
-use crate::sql::physical_column::PhysicalColumn;
-use crate::PhysicalTable;
+use crate::{ColumnId, TableId};
 
 #[derive(Debug)]
 pub struct AbstractInsert<'a> {
     /// Table to insert into
-    pub table: &'a PhysicalTable,
+    pub table_id: TableId,
     /// Rows to insert
     pub rows: Vec<InsertionRow<'a>>,
     /// The selection to return
@@ -68,9 +67,9 @@ impl<'a> InsertionRow<'a> {
 #[derive(Debug)]
 pub struct NestedInsertion<'a> {
     /// The parent table (for example the `venues` table in `Venue <-> [Concert]`)
-    pub parent_table: &'a PhysicalTable,
+    pub parent_table: TableId,
     /// Relation between the parent table and the nested table (column: concerts.venue_id, table: concerts)
-    pub relation: NestedElementRelation<'a>,
+    pub relation: NestedElementRelation,
     /// The insertions to be performed on the nested table ([{title: "c1", published: true, price: 1.2}, {title: "c2", published: false, price: 2.4}]}])
     pub insertions: Vec<InsertionRow<'a>>,
 }
@@ -78,12 +77,12 @@ pub struct NestedInsertion<'a> {
 /// A pair of column and value to be inserted into the table.
 #[derive(Debug)]
 pub struct ColumnValuePair<'a> {
-    pub column: &'a PhysicalColumn,
+    pub column: ColumnId,
     pub value: MaybeOwned<'a, Column<'a>>,
 }
 
 impl<'a> ColumnValuePair<'a> {
-    pub fn new(column: &'a PhysicalColumn, value: MaybeOwned<'a, Column<'a>>) -> Self {
+    pub fn new(column: ColumnId, value: MaybeOwned<'a, Column<'a>>) -> Self {
         Self { column, value }
     }
 }

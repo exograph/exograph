@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::PhysicalTable;
+use crate::TableId;
 
 use super::{predicate::AbstractPredicate, select::AbstractSelect};
 
@@ -15,9 +15,9 @@ use super::{predicate::AbstractPredicate, select::AbstractSelect};
 #[derive(Debug)]
 pub struct AbstractDelete<'a> {
     /// The table to delete from
-    pub table: &'a PhysicalTable,
+    pub table_id: TableId,
     /// The predicate to filter rows.
-    pub predicate: AbstractPredicate<'a>,
+    pub predicate: AbstractPredicate,
     /// The selection to return
     pub selection: AbstractSelect<'a>,
 }

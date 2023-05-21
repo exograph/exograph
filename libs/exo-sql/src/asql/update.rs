@@ -44,7 +44,7 @@
 //! user-provided predicates (id = 100 for update and id =  110 for delete). TODO: Should we
 //! fail if the the combined predicate does not match any rows?
 
-use crate::{sql::column::Column, sql::physical_column::PhysicalColumn, PhysicalTable};
+use crate::{sql::column::Column, ColumnId, TableId};
 
 use super::{
     delete::AbstractDelete, insert::AbstractInsert, predicate::AbstractPredicate,
@@ -59,12 +59,12 @@ use super::{
 #[derive(Debug)]
 pub struct AbstractUpdate<'a> {
     /// The table to update
-    pub table: &'a PhysicalTable,
+    pub table_id: TableId,
     /// The predicate to filter rows.
-    pub predicate: AbstractPredicate<'a>,
+    pub predicate: AbstractPredicate,
 
     /// The columns to update and their values for the `table`
-    pub column_values: Vec<(&'a PhysicalColumn, Column<'a>)>,
+    pub column_values: Vec<(ColumnId, Column<'a>)>,
 
     /// Nested updates
     pub nested_updates: Vec<NestedAbstractUpdate<'a>>,
@@ -81,7 +81,7 @@ pub struct AbstractUpdate<'a> {
 #[derive(Debug)]
 pub struct NestedAbstractUpdate<'a> {
     /// Relation between the parent table and the nested table (column: concert_artist.concert_id, table: concert_artist)
-    pub relation: NestedElementRelation<'a>,
+    pub relation: NestedElementRelation,
     /// The update to apply to the nested table
     pub update: AbstractUpdate<'a>,
 }
@@ -90,7 +90,7 @@ pub struct NestedAbstractUpdate<'a> {
 #[derive(Debug)]
 pub struct NestedAbstractInsert<'a> {
     /// Same as `NestedAbstractUpdate::relation`
-    pub relation: NestedElementRelation<'a>,
+    pub relation: NestedElementRelation,
     /// The insert to apply to the nested table
     pub insert: AbstractInsert<'a>,
 }
@@ -99,7 +99,7 @@ pub struct NestedAbstractInsert<'a> {
 #[derive(Debug)]
 pub struct NestedAbstractDelete<'a> {
     /// Same as `NestedAbstractUpdate::relation`
-    pub relation: NestedElementRelation<'a>,
+    pub relation: NestedElementRelation,
     /// The delete to apply to the nested table
     pub delete: AbstractDelete<'a>,
 }

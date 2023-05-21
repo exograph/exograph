@@ -13,7 +13,7 @@ use builder::error::ParserError;
 use exo_sql::{
     database_error::DatabaseError,
     schema::{issue::WithIssues, op::SchemaOp, spec::SchemaSpec},
-    DatabaseClient,
+    Database, DatabaseClient,
 };
 
 use super::{util, verify::VerificationErrors};
@@ -30,7 +30,7 @@ pub(crate) struct MigrationStatement {
 }
 
 impl Migration {
-    pub fn from_schemas(old_schema_spec: &SchemaSpec, new_schema_spec: &SchemaSpec) -> Self {
+    pub fn from_schemas(old_schema_spec: &Database, new_schema_spec: &Database) -> Self {
         let mut pre_statements = vec![];
         let mut statements = vec![];
         let mut post_statements = vec![];
@@ -180,12 +180,10 @@ async fn extract_db_schema(db_url: Option<&str>) -> Result<WithIssues<SchemaSpec
     SchemaSpec::from_db(&client).await
 }
 
-async fn extract_model_schema(model_path: &PathBuf) -> Result<SchemaSpec, ParserError> {
+async fn extract_model_schema(model_path: &PathBuf) -> Result<Database, ParserError> {
     let postgres_subsystem = util::create_postgres_system(model_path).await?;
 
-    Ok(SchemaSpec::from_model(
-        postgres_subsystem.database.tables.into_iter().collect(),
-    ))
+    Ok(postgres_subsystem.database)
 }
 
 pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
@@ -960,13 +958,13 @@ mod tests {
         .await
     }
 
-    async fn compute_spec(model: &str) -> SchemaSpec {
+    async fn compute_spec(model: &str) -> Database {
         let postgres_subsystem =
             util::create_postgres_system_from_str(model, "test.exo".to_string())
                 .await
                 .unwrap();
 
-        SchemaSpec::from_model(postgres_subsystem.database.tables.into_iter().collect())
+        postgres_subsystem.database
     }
 
     async fn assert_changes(

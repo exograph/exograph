@@ -35,7 +35,6 @@ use crate::{
     sql::{
         column::Column,
         cte::{CteExpression, WithQuery},
-        physical_column::PhysicalColumn,
         predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
@@ -43,7 +42,7 @@ use crate::{
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::transformer::{InsertTransformer, SelectTransformer},
-    Limit, Offset,
+    ColumnId, Database, Limit, Offset,
 };
 
 use super::Postgres;
@@ -56,9 +55,10 @@ impl InsertTransformer for Postgres {
     fn to_transaction_script<'a>(
         &self,
         abstract_insert: &'a AbstractInsert,
+        database: &'a Database,
     ) -> TransactionScript<'a> {
         let AbstractInsert {
-            table,
+            table_id,
             rows,
             selection,
         } = abstract_insert;
@@ -70,7 +70,7 @@ impl InsertTransformer for Postgres {
 
         // Align the columns and values for the top-level table. This way, if there are multiple rows,
         // we can insert them in a single statement.
-        let (self_column_names, self_column_values_seq) = align(self_rows);
+        let (self_column_ids, self_column_values_seq) = align(self_rows);
 
         // Insert statements for the top-level table.
         // For a single row insertion, this will look like:
@@ -88,8 +88,15 @@ impl InsertTransformer for Postgres {
         // Specifically, we need to create a new `insert` for each row, get the id from each
         // inserted row, and then use those ids in the predicate while forming the final `select`
         // (`select ... from <table> where <table>.id in (<collected ids>)`)
+        let table = database.get_table(*table_id);
+
+        let self_columns = self_column_ids
+            .iter()
+            .map(|column_id| database.get_column(*column_id))
+            .collect::<Vec<_>>();
+
         let root_insert = SQLOperation::Insert(table.insert(
-            self_column_names,
+            self_columns,
             self_column_values_seq,
             vec![Column::Star(None).into()],
         ));
@@ -140,7 +147,7 @@ impl InsertTransformer for Postgres {
             }
         };
 
-        let select = self.to_select(selection);
+        let select = self.to_select(selection, database);
 
         let mut transaction_script = TransactionScript::default();
 
@@ -168,17 +175,17 @@ impl InsertTransformer for Postgres {
                         .iter()
                         .map(|insertion| insertion.partition_self_and_nested().0)
                         .collect();
-                    let (mut column_names, mut column_values_seq) = align(self_insertion_elems);
-                    column_names.push(relation.column);
+                    let (mut column_ids, mut column_values_seq) = align(self_insertion_elems);
+                    column_ids.push(relation.column_id);
 
                     // To form the `(SELECT "venues"."id" FROM "venues")` part
-                    let parent_pk_physical_column = table
-                        .get_pk_physical_column()
+                    let parent_pk_physical_column = database
+                        .get_pk_column(*table_id)
                         .expect("Could not find primary key");
                     let parent_index: Option<u32> = None;
                     column_values_seq.iter_mut().for_each(|value| {
                         let parent_reference = Column::SubSelect(Box::new(Select {
-                            table: Table::Physical(parent_table),
+                            table: Table::Physical(*parent_table),
                             columns: vec![Column::Physical(parent_pk_physical_column)],
                             predicate: ConcretePredicate::True,
                             order_by: None,
@@ -192,10 +199,15 @@ impl InsertTransformer for Postgres {
                     });
 
                     // Nested insert CTE. In the example above the `"concerts" AS ( ... )` part
+                    let relation_table = database.get_table(relation.table_id);
+                    let columns = column_ids
+                        .iter()
+                        .map(|column_id| database.get_column(*column_id))
+                        .collect::<Vec<_>>();
                     CteExpression {
-                        name: relation.table.name.clone(),
-                        operation: SQLOperation::Insert(relation.table.insert(
-                            column_names,
+                        name: relation_table.name.clone(),
+                        operation: SQLOperation::Insert(relation_table.insert(
+                            columns,
                             column_values_seq,
                             vec![Column::Star(None).into()],
                         )),
@@ -246,10 +258,7 @@ impl InsertTransformer for Postgres {
 /// (a, b, c), [(1, 2, null), (3, null, 4)]
 pub fn align<'a>(
     unaligned: Vec<Vec<&'a ColumnValuePair>>,
-) -> (
-    Vec<&'a PhysicalColumn>,
-    Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
-) {
+) -> (Vec<ColumnId>, Vec<Vec<MaybeOwned<'a, Column<'a>>>>) {
     let mut all_keys = HashSet::new();
     for row in unaligned.iter() {
         for insertion_value in row.iter() {

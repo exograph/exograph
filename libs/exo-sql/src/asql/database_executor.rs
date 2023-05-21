@@ -17,12 +17,13 @@ use crate::{
         transaction::{TransactionScript, TransactionStepResult},
     },
     transform::{pg::Postgres, transformer::OperationTransformer},
+    Database,
 };
 
 use super::abstract_operation::AbstractOperation;
 
 pub struct DatabaseExecutor {
-    pub database: DatabaseClient,
+    pub database_client: DatabaseClient,
 }
 
 impl DatabaseExecutor {
@@ -31,13 +32,16 @@ impl DatabaseExecutor {
     /// Currently makes a hard assumption on Postgres implementation, but this could be made more generic.
     pub async fn execute<'a>(
         &self,
+        database: &Database,
         operation: &'a AbstractOperation<'a>,
         tx_holder: &mut TransactionHolder,
     ) -> Result<TransactionStepResult, DatabaseError> {
         let database_kind = Postgres {};
-        let transaction_script = database_kind.to_transaction_script(operation);
+        let transaction_script = database_kind.to_transaction_script(database, operation);
 
-        tx_holder.with_tx(&self.database, &transaction_script).await
+        tx_holder
+            .with_tx(database, &self.database_client, &transaction_script)
+            .await
     }
 }
 
@@ -84,7 +88,8 @@ impl Drop for TransactionHolder {
 impl TransactionHolder {
     pub async fn with_tx(
         &mut self,
-        database: &DatabaseClient,
+        database: &Database,
+        client: &DatabaseClient,
         work: &TransactionScript<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
         if self.finalized.load(std::sync::atomic::Ordering::SeqCst) {
@@ -98,7 +103,7 @@ impl TransactionHolder {
         let tx = unsafe { self.transaction.map(|ptr| ptr.as_mut().unwrap()) };
 
         match tx {
-            Some(tx) => work.execute(tx).await,
+            Some(tx) => work.execute(database, tx).await,
 
             None => {
                 // first, grab a client if none are available
@@ -110,7 +115,7 @@ impl TransactionHolder {
                     };
 
                     if client_owned.is_none() {
-                        let client = database.get_client().await?;
+                        let client = client.get_client().await?;
                         self.client = Some(Box::leak(Box::new(client)));
                     };
                 }
@@ -120,7 +125,7 @@ impl TransactionHolder {
                     // SAFETY: this should always be de-referenceable when it is a Some(_)
                     let client = unsafe { self.client.map(|ptr| ptr.as_mut().unwrap()) }.unwrap();
                     let mut tx = Box::new(client.transaction().await?);
-                    let res = work.execute(&mut tx).await;
+                    let res = work.execute(database, &mut tx).await;
 
                     self.transaction = Some(Box::leak(tx));
 

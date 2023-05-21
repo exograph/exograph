@@ -7,7 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::{physical_column::PhysicalColumn, ExpressionBuilder, SQLBuilder};
+use crate::{ColumnId, Database};
+
+use super::{ExpressionBuilder, SQLBuilder};
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Ordering {
     Asc,
@@ -15,20 +17,21 @@ pub enum Ordering {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct OrderByElement<'a>(pub &'a PhysicalColumn, pub Ordering);
+pub struct OrderByElement(pub ColumnId, pub Ordering);
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct OrderBy<'a>(pub Vec<OrderByElement<'a>>);
+pub struct OrderBy(pub Vec<OrderByElement>);
 
-impl<'a> OrderByElement<'a> {
-    pub fn new(column: &'a PhysicalColumn, ordering: Ordering) -> Self {
-        Self(column, ordering)
+impl OrderByElement {
+    pub fn new(column_id: ColumnId, ordering: Ordering) -> Self {
+        Self(column_id, ordering)
     }
 }
 
-impl<'a> ExpressionBuilder for OrderByElement<'a> {
-    fn build(&self, builder: &mut SQLBuilder) {
-        self.0.build(builder);
+impl ExpressionBuilder for OrderByElement {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
+        let column = database.get_column(self.0);
+        column.build(database, builder);
         builder.push_space();
         if self.1 == Ordering::Asc {
             builder.push_str("ASC");
@@ -38,56 +41,60 @@ impl<'a> ExpressionBuilder for OrderByElement<'a> {
     }
 }
 
-impl<'a> ExpressionBuilder for OrderBy<'a> {
-    fn build(&self, builder: &mut SQLBuilder) {
+impl ExpressionBuilder for OrderBy {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("ORDER BY ");
-        builder.push_elems(&self.0, ", ");
+        builder.push_elems(database, &self.0, ", ");
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sql::physical_column::{IntBits, PhysicalColumn, PhysicalColumnType};
+    use crate::schema::database_spec::test_helper::{int_column, pk_column, string_column};
+    use crate::schema::database_spec::{DatabaseSpec, TableSpec};
 
     #[test]
     fn single() {
-        let age_col = PhysicalColumn {
-            table_name: "people".to_string(),
-            name: "age".to_string(),
-            typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-            ..Default::default()
-        };
+        let database = DatabaseSpec::new(vec![TableSpec::new(
+            "people",
+            vec![pk_column("id"), int_column("age")],
+        )])
+        .to_database();
 
-        let order_by = OrderBy(vec![OrderByElement::new(&age_col, Ordering::Desc)]);
+        let people_table_id = database.get_table_id("people").unwrap();
 
-        assert_binding!(order_by.to_sql(), r#"ORDER BY "people"."age" DESC"#);
+        let age_col = database.get_column_id(people_table_id, "age").unwrap();
+
+        let order_by = OrderBy(vec![OrderByElement::new(age_col, Ordering::Desc)]);
+
+        assert_binding!(
+            order_by.to_sql(&database),
+            r#"ORDER BY "people"."age" DESC"#
+        );
     }
 
     #[test]
     fn multiple() {
-        let name_col = PhysicalColumn {
-            table_name: "people".to_string(),
-            name: "name".to_string(),
-            typ: PhysicalColumnType::String { max_length: None },
-            ..Default::default()
-        };
+        let database = DatabaseSpec::new(vec![TableSpec::new(
+            "people",
+            vec![pk_column("id"), string_column("name"), int_column("age")],
+        )])
+        .to_database();
 
-        let age_col = PhysicalColumn {
-            table_name: "people".to_string(),
-            name: "age".to_string(),
-            typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-            ..Default::default()
-        };
+        let table_id = database.get_table_id("people").unwrap();
+
+        let name_col = database.get_column_id(table_id, "name").unwrap();
+        let age_col = database.get_column_id(table_id, "age").unwrap();
 
         {
             let order_by = OrderBy(vec![
-                OrderByElement::new(&name_col, Ordering::Asc),
-                OrderByElement::new(&age_col, Ordering::Desc),
+                OrderByElement::new(name_col, Ordering::Asc),
+                OrderByElement::new(age_col, Ordering::Desc),
             ]);
 
             assert_binding!(
-                order_by.to_sql(),
+                order_by.to_sql(&database),
                 r#"ORDER BY "people"."name" ASC, "people"."age" DESC"#
             );
         }
@@ -95,12 +102,12 @@ mod test {
         // Reverse the order and it should be reflected in the statement
         {
             let order_by = OrderBy(vec![
-                OrderByElement::new(&age_col, Ordering::Desc),
-                OrderByElement::new(&name_col, Ordering::Asc),
+                OrderByElement::new(age_col, Ordering::Desc),
+                OrderByElement::new(name_col, Ordering::Asc),
             ]);
 
             assert_binding!(
-                order_by.to_sql(),
+                order_by.to_sql(&database),
                 r#"ORDER BY "people"."age" DESC, "people"."name" ASC"#
             );
         }

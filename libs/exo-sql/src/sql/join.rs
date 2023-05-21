@@ -9,6 +9,8 @@
 
 use maybe_owned::MaybeOwned;
 
+use crate::Database;
+
 use super::{predicate::ConcretePredicate, table::Table, ExpressionBuilder, SQLBuilder};
 
 /// Represents a join between two tables. Currently, supports only left join.
@@ -42,74 +44,59 @@ impl<'a> LeftJoin<'a> {
 
 impl ExpressionBuilder for LeftJoin<'_> {
     /// Build expression of the form `<left> LEFT JOIN <right> ON <predicate>`.
-    fn build(&self, builder: &mut SQLBuilder) {
-        self.left.build(builder);
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
+        self.left.build(database, builder);
         builder.push_str(" LEFT JOIN ");
-        self.right.build(builder);
+        self.right.build(database, builder);
         builder.push_str(" ON ");
-        self.predicate.build(builder);
+        self.predicate.build(database, builder);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        sql::physical_column::{IntBits, PhysicalColumn, PhysicalColumnType},
-        PhysicalTable,
+        schema::database_spec::{DatabaseSpec, TableSpec},
+        Column,
     };
 
     use super::*;
+    use crate::schema::database_spec::test_helper::{int_column, pk_column, pk_reference_column};
 
     #[test]
     fn basic_join() {
-        let concert_physical_table = PhysicalTable {
-            name: "concerts".to_string(),
-            columns: vec![
-                PhysicalColumn {
-                    table_name: "concerts".to_string(),
-                    name: "id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: true,
-                    ..Default::default()
-                },
-                PhysicalColumn {
-                    table_name: "concerts".to_string(),
-                    name: "venue_id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    ..Default::default()
-                },
-            ],
-        };
+        let database = DatabaseSpec::new(vec![
+            TableSpec::new(
+                "concerts",
+                vec![pk_column("id"), pk_reference_column("venue_id", "venues")],
+            ),
+            TableSpec::new("venues", vec![pk_column("id"), int_column("capacity")]),
+        ])
+        .to_database();
 
-        let venue_physical_table = PhysicalTable {
-            name: "venues".to_string(),
-            columns: vec![
-                PhysicalColumn {
-                    table_name: "venues".to_string(),
-                    name: "id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    ..Default::default()
-                },
-                PhysicalColumn {
-                    table_name: "venues".to_string(),
-                    name: "capacity".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    ..Default::default()
-                },
-            ],
-        };
+        let concert_physical_table_id = database.get_table_id("concerts").unwrap();
+        let venue_physical_table_id = database.get_table_id("venues").unwrap();
 
-        let concert_table = Table::Physical(&concert_physical_table);
-        let venue_table = Table::Physical(&venue_physical_table);
         let join_predicate = ConcretePredicate::Eq(
-            concert_physical_table.get_column("venue_id").unwrap(),
-            venue_physical_table.get_column("id").unwrap(),
+            Column::Physical(
+                database
+                    .get_column_id(concert_physical_table_id, "venue_id")
+                    .unwrap(),
+            ),
+            Column::Physical(
+                database
+                    .get_column_id(venue_physical_table_id, "id")
+                    .unwrap(),
+            ),
         )
         .into();
+
+        let concert_table = Table::Physical(concert_physical_table_id);
+        let venue_table = Table::Physical(venue_physical_table_id);
         let join = LeftJoin::new(concert_table, venue_table, join_predicate);
 
         let mut builder = SQLBuilder::new();
-        join.build(&mut builder);
+        join.build(&database, &mut builder);
 
         assert_binding!(
             builder.into_sql(),

@@ -10,7 +10,7 @@
 use tokio_postgres::{GenericClient, Row, Transaction};
 use tracing::{debug, error, instrument};
 
-use crate::{database_error::DatabaseError, sql::SQLBuilder};
+use crate::{database_error::DatabaseError, sql::SQLBuilder, Database};
 
 use super::{
     sql_operation::{SQLOperation, TemplateSQLOperation},
@@ -54,13 +54,14 @@ impl<'a> TransactionScript<'a> {
         )]
     pub async fn execute(
         &self,
+        database: &Database,
         tx: &mut Transaction<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
         let mut transaction_context = TransactionContext { results: vec![] };
 
         // Execute each step in the transaction and store the result in the transaction_context
         for step in self.steps.iter() {
-            let result = step.execute(tx, &transaction_context).await?;
+            let result = step.execute(database, tx, &transaction_context).await?;
             transaction_context.results.push(result)
         }
 
@@ -94,11 +95,12 @@ impl<'a> TransactionStep<'a> {
         )]
     pub async fn execute(
         &self,
+        database: &Database,
         client: &mut impl GenericClient,
         transaction_context: &TransactionContext,
     ) -> Result<TransactionStepResult, DatabaseError> {
         match self {
-            Self::Concrete(step) => step.execute(client).await,
+            Self::Concrete(step) => step.execute(database, client).await,
             Self::Template(step) => {
                 let concrete = step.resolve(transaction_context);
 
@@ -106,10 +108,10 @@ impl<'a> TransactionStep<'a> {
                     [init @ .., last] => {
                         // Execute all but the last step
                         for substep in init {
-                            substep.execute(client).await?;
+                            substep.execute(database, client).await?;
                         }
                         // Execute the last step and return the result
-                        last.execute(client).await
+                        last.execute(database, client).await
                     }
                     _ => Ok(vec![]),
                 }
@@ -138,17 +140,19 @@ impl<'a> ConcreteTransactionStep<'a> {
         )]
     pub async fn execute(
         &'a self,
+        database: &Database,
         client: &mut impl GenericClient,
     ) -> Result<TransactionStepResult, DatabaseError> {
-        self.run_query(client).await
+        self.run_query(database, client).await
     }
 
     async fn run_query(
         &'a self,
+        database: &Database,
         client: &mut impl GenericClient,
     ) -> Result<Vec<Row>, DatabaseError> {
         let mut sql_builder = SQLBuilder::new();
-        self.operation.build(&mut sql_builder);
+        self.operation.build(database, &mut sql_builder);
         let (stmt, params) = sql_builder.into_sql();
 
         let params: Vec<_> = params.iter().map(|p| p.as_pg()).collect();

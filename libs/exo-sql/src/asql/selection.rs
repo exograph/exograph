@@ -10,9 +10,9 @@
 //! Support for selecting columns in a table, including json aggregates
 use maybe_owned::MaybeOwned;
 
-use crate::{sql::physical_column::PhysicalColumn, ColumnPathLink, PhysicalTable};
+use crate::{ColumnId, TableId};
 
-use super::select::AbstractSelect;
+use super::{column_path::ColumnIdPathLink, select::AbstractSelect};
 
 /// A selection element along with its alias
 #[derive(Debug)]
@@ -47,31 +47,34 @@ pub enum Selection<'a> {
 #[derive(Debug)]
 pub enum SelectionElement<'a> {
     /// A column in the table
-    Physical(&'a PhysicalColumn),
+    Physical(ColumnId),
     /// A function such as `SUM(price)`
     Function {
         function_name: String,
-        column: &'a PhysicalColumn,
+        column_id: ColumnId,
     },
     /// A json object such as `{"name": "concerts"."name", "price": "concerts"."price"}`
     Object(Vec<(String, MaybeOwned<'a, SelectionElement<'a>>)>),
     /// A constant such as `"hello"` (useful to supply it to database and get back the same value). Useful for `__typename` field.
     Constant(String),
     /// A subselect such as `... FROM (SELECT * FROM table)`
-    SubSelect(ColumnPathLink<'a>, AbstractSelect<'a>),
+    SubSelect(ColumnIdPathLink, AbstractSelect<'a>),
 }
 
 /// Relation between two tables
 /// The `column` is the column in the one table that is joined to the other `table`('s primary key)
 /// TODO: Could this idea be consolidated with the `ColumnPath`? After all, both represent a way to link two tables
 #[derive(Debug)]
-pub struct NestedElementRelation<'a> {
-    pub column: &'a PhysicalColumn,
-    pub table: &'a PhysicalTable,
+pub struct NestedElementRelation {
+    pub column_id: ColumnId,
+    pub table_id: TableId,
 }
 
-impl<'a> NestedElementRelation<'a> {
-    pub fn new(column: &'a PhysicalColumn, table: &'a PhysicalTable) -> Self {
-        Self { column, table }
+impl NestedElementRelation {
+    pub fn new(column_id: ColumnId, table_id: TableId) -> Self {
+        Self {
+            column_id,
+            table_id,
+        }
     }
 }

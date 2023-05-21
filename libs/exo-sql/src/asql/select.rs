@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{Limit, Offset, PhysicalTable};
+use crate::{Limit, Offset, TableId};
 
 use super::{order_by::AbstractOrderBy, predicate::AbstractPredicate, selection::Selection};
 
@@ -15,14 +15,14 @@ use super::{order_by::AbstractOrderBy, predicate::AbstractPredicate, selection::
 #[derive(Debug)]
 pub struct AbstractSelect<'a> {
     /// The table to select from
-    pub table: &'a PhysicalTable,
+    pub table_id: TableId,
     /// The columns to select
     pub selection: Selection<'a>,
     /// The predicate to filter rows. This is not an `Option` to ensure that the caller makes a conscious
     /// decision about whether to use `True` or `False` (rather than assuming that `None` means `True` or `False`).
-    pub predicate: AbstractPredicate<'a>,
+    pub predicate: AbstractPredicate,
     /// The order by clause
-    pub order_by: Option<AbstractOrderBy<'a>>,
+    pub order_by: Option<AbstractOrderBy>,
     /// The offset
     pub offset: Option<Offset>,
     /// The limit

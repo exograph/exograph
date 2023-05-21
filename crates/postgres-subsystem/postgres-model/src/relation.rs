@@ -9,8 +9,8 @@
 
 use crate::{column_path::ColumnIdPathLink, types::EntityType};
 
-use super::column_id::ColumnId;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
+use exo_sql::ColumnId;
 use serde::{Deserialize, Serialize};
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as

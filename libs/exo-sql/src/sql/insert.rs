@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::PhysicalTable;
+use crate::{Database, PhysicalTable};
 
 use super::{
     column::{Column, ProxyColumn},
@@ -35,25 +35,25 @@ impl<'a> ExpressionBuilder for Insert<'a> {
     /// Build the insert statement for the form `INSERT INTO <table> (<columns>) VALUES (<values>)
     /// RETURNING <returning-columns>`. The `RETURNING` clause is omitted if the list of columns to
     /// return is empty.
-    fn build(&self, builder: &mut SQLBuilder) {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("INSERT INTO ");
-        self.table.build(builder);
+        self.table.build(database, builder);
 
         builder.push_str(" (");
         builder.without_fully_qualified_column_names(|builder| {
-            builder.push_elems(&self.columns, ", ");
+            builder.push_elems(database, &self.columns, ", ");
         });
 
         builder.push_str(") VALUES (");
 
         builder.push_iter(self.values_seq.iter(), "), (", |builder, values| {
-            builder.push_elems(values, ", ");
+            builder.push_elems(database, values, ", ");
         });
         builder.push(')');
 
         if !self.returning.is_empty() {
             builder.push_str(" RETURNING ");
-            builder.push_elems(&self.returning, ", ")
+            builder.push_elems(database, &self.returning, ", ")
         }
     }
 }
@@ -61,7 +61,7 @@ impl<'a> ExpressionBuilder for Insert<'a> {
 #[derive(Debug)]
 pub struct TemplateInsert<'a> {
     pub table: &'a PhysicalTable,
-    pub column_names: Vec<&'a PhysicalColumn>,
+    pub columns: Vec<&'a PhysicalColumn>,
     pub column_values_seq: Vec<Vec<ProxyColumn<'a>>>,
     pub returning: Vec<Column<'a>>,
 }
@@ -112,7 +112,7 @@ impl<'a> TemplateInsert<'a> {
         } else {
             let TemplateInsert {
                 table,
-                column_names,
+                columns,
                 column_values_seq,
                 returning,
             } = self;
@@ -125,7 +125,7 @@ impl<'a> TemplateInsert<'a> {
 
             Some(Insert {
                 table,
-                columns: column_names.clone(),
+                columns: columns.clone(),
                 values_seq: resolved_cols,
                 returning: returning.iter().map(|ret| ret.into()).collect(),
             })

@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::database_error::DatabaseError;
-use crate::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
+use crate::{Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, TableId};
 
 use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
@@ -18,9 +18,14 @@ use std::collections::HashSet;
 use std::fmt::Write;
 
 impl PhysicalColumn {
-    pub fn diff<'a>(&'a self, new: &'a Self) -> Vec<SchemaOp<'a>> {
+    pub fn diff<'a>(
+        &'a self,
+        new: &'a Self,
+        self_table_name: &str,
+        new_table_name: &str,
+    ) -> Vec<SchemaOp<'a>> {
         let mut changes = vec![];
-        let table_name_same = self.table_name == new.table_name;
+        let table_name_same = self_table_name == new_table_name;
         let column_name_same = self.name == new.name;
         let type_same = self.typ == new.typ;
         let is_pk_same = self.is_pk == new.is_pk;
@@ -67,16 +72,18 @@ impl PhysicalColumn {
     /// `explicit_type`.
     pub(super) async fn from_db(
         client: &Client,
-        table_name: &str,
+        table_id: TableId,
         column_name: &str,
         is_pk: bool,
         explicit_type: Option<PhysicalColumnType>,
         unique_constraints: Vec<String>,
+        database: &Database,
     ) -> Result<WithIssues<Option<PhysicalColumn>>, DatabaseError> {
         // Find all sequences in the database that are used for SERIAL (autoIncrement) columns
         // e.g. an autoIncrement column `id` in the table `users` will create a sequence called
         // `users_id_seq`
         let serial_columns_query = "SELECT relname FROM pg_class WHERE relkind = 'S'";
+        let table_name = database.get_table(table_id).name.clone();
 
         let mut issues = Vec::new();
 
@@ -158,7 +165,7 @@ impl PhysicalColumn {
 
         Ok(WithIssues {
             value: db_type.map(|typ| PhysicalColumn {
-                table_name: table_name.to_owned(),
+                table_id,
                 name: column_name.to_owned(),
                 typ,
                 is_pk,
@@ -172,14 +179,16 @@ impl PhysicalColumn {
     }
 
     /// Converts the column specification to SQL statements.
-    pub(super) fn to_sql(&self) -> SchemaStatement {
+    pub(super) fn to_sql(&self, database: &Database) -> SchemaStatement {
         let SchemaStatement {
             statement,
             post_statements,
             ..
-        } = self
-            .typ
-            .to_sql(&self.table_name, &self.name, self.is_auto_increment);
+        } = self.typ.to_sql(
+            &self.get_table_name(database),
+            &self.name,
+            self.is_auto_increment,
+        );
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
         let not_null_str = if !self.is_nullable && !self.is_pk {
             // primary keys are implied to be not null
