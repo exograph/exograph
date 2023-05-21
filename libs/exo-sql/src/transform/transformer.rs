@@ -54,11 +54,7 @@ impl OperationTransformer for Postgres {
 }
 
 pub trait SelectTransformer {
-    fn to_select<'a>(
-        &self,
-        abstract_select: &AbstractSelect<'a>,
-        database: &'a Database,
-    ) -> Select<'a>;
+    fn to_select(&self, abstract_select: &AbstractSelect, database: &Database) -> Select;
 
     fn to_transaction_script<'a>(
         &self,
@@ -98,12 +94,12 @@ pub trait UpdateTransformer {
 }
 
 pub trait PredicateTransformer {
-    fn to_predicate<'a>(
+    fn to_predicate(
         &self,
         predicate: &AbstractPredicate,
         assume_tables_in_context: bool,
-        database: &'a Database,
-    ) -> ConcretePredicate<'a>;
+        database: &Database,
+    ) -> ConcretePredicate;
 }
 
 pub trait OrderByTransformer {

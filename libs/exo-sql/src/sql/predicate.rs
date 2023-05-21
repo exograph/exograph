@@ -54,7 +54,7 @@ where
     Not(Box<Predicate<C>>),
 }
 
-pub type ConcretePredicate<'a> = Predicate<Column<'a>>;
+pub type ConcretePredicate = Predicate<Column>;
 
 impl<C> Predicate<C>
 where
@@ -144,7 +144,7 @@ pub trait ParamEquality {
     fn param_eq(&self, other: &Self) -> Option<bool>;
 }
 
-impl ParamEquality for Column<'_> {
+impl ParamEquality for Column {
     fn param_eq(&self, other: &Self) -> Option<bool> {
         match (self, other) {
             (Column::Param(v1), Column::Param(v2)) => Some(v1 == v2),
@@ -153,7 +153,7 @@ impl ParamEquality for Column<'_> {
     }
 }
 
-impl<'a> ExpressionBuilder for ConcretePredicate<'a> {
+impl ExpressionBuilder for ConcretePredicate {
     /// Build a predicate into a SQL string.
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match &self {
@@ -352,7 +352,7 @@ mod tests {
 
         let title_col_id = database.get_column_id(table_id, "title").unwrap();
 
-        fn title_test_data(title_col_id: ColumnId) -> (Column<'static>, Column<'static>) {
+        fn title_test_data(title_col_id: ColumnId) -> (Column, Column) {
             let title_col = Column::Physical(title_col_id);
             let title_value_col = Column::Param(SQLParamContainer::new("utawaku"));
 
@@ -414,9 +414,7 @@ mod tests {
 
         let json_col_id = database.get_column_id(table_id, "data").unwrap();
 
-        fn json_test_data(
-            json_col_id: ColumnId,
-        ) -> (Column<'static>, Arc<serde_json::Value>, Column<'static>) {
+        fn json_test_data(json_col_id: ColumnId) -> (Column, Arc<serde_json::Value>, Column) {
             let json_col = Column::Physical(json_col_id);
 
             let json_value: serde_json::Value = serde_json::from_str(

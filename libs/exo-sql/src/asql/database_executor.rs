@@ -30,9 +30,9 @@ impl DatabaseExecutor {
     /// Execute an operation on a database.
     ///
     /// Currently makes a hard assumption on Postgres implementation, but this could be made more generic.
-    pub async fn execute<'a>(
+    pub async fn execute(
         &self,
-        operation: &'a AbstractOperation<'a>,
+        operation: &AbstractOperation,
         tx_holder: &mut TransactionHolder,
         database: &Database,
     ) -> Result<TransactionStepResult, DatabaseError> {

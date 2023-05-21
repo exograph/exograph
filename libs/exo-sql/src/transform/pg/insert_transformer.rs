@@ -258,7 +258,7 @@ impl InsertTransformer for Postgres {
 /// (a, b, c), [(1, 2, null), (3, null, 4)]
 pub fn align<'a>(
     unaligned: Vec<Vec<&'a ColumnValuePair>>,
-) -> (Vec<ColumnId>, Vec<Vec<MaybeOwned<'a, Column<'a>>>>) {
+) -> (Vec<ColumnId>, Vec<Vec<MaybeOwned<'a, Column>>>) {
     let mut all_keys = HashSet::new();
     for row in unaligned.iter() {
         for insertion_value in row.iter() {
@@ -282,10 +282,10 @@ pub fn align<'a>(
 
     let keys_count = all_keys.len();
 
-    let mut aligned: Vec<Vec<MaybeOwned<'a, Column<'a>>>> = Vec::with_capacity(unaligned.len());
+    let mut aligned: Vec<Vec<MaybeOwned<'a, Column>>> = Vec::with_capacity(unaligned.len());
 
     for unaligned_row in unaligned.into_iter() {
-        let mut aligned_row: Vec<MaybeOwned<'a, Column<'a>>> = Vec::with_capacity(keys_count);
+        let mut aligned_row: Vec<MaybeOwned<'a, Column>> = Vec::with_capacity(keys_count);
 
         for _ in 0..keys_count {
             aligned_row.push(Column::Null.into());

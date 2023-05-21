@@ -73,7 +73,7 @@ impl DeleteTransformer for Postgres {
         let root_delete = SQLOperation::Delete(
             database
                 .get_table(abstract_delete.table_id)
-                .delete(predicate.into(), vec![Column::Star(None).into()]),
+                .delete(predicate, vec![Column::Star(None)]),
         );
 
         // The select (often a json aggregation)

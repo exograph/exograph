@@ -112,11 +112,7 @@ impl SelectTransformer for Postgres {
         name = "SelectTransformer::to_select for Postgres"
         skip(self)
         )]
-    fn to_select<'a>(
-        &self,
-        abstract_select: &AbstractSelect<'a>,
-        database: &'a Database,
-    ) -> Select<'a> {
+    fn to_select<'a>(&self, abstract_select: &AbstractSelect, database: &'a Database) -> Select {
         self.compute_select(
             abstract_select,
             None,
@@ -143,14 +139,14 @@ impl SelectTransformer for Postgres {
 impl Postgres {
     /// A lower-level version of [`to_select`] that allows for additional predicates and
     /// control over whether duplicate rows are allowed.
-    pub fn compute_select<'a>(
+    pub fn compute_select(
         &self,
-        abstract_select: &AbstractSelect<'a>,
-        additional_predicate: Option<ConcretePredicate<'a>>,
+        abstract_select: &AbstractSelect,
+        additional_predicate: Option<ConcretePredicate>,
         selection_level: SelectionLevel,
         allow_duplicate_rows: bool,
-        database: &'a Database,
-    ) -> Select<'a> {
+        database: &Database,
+    ) -> Select {
         let selection_context = SelectionContext::new(
             database,
             abstract_select,

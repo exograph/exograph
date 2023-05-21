@@ -7,29 +7,23 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use maybe_owned::MaybeOwned;
-
 use crate::Database;
 
 use super::{predicate::ConcretePredicate, table::Table, ExpressionBuilder, SQLBuilder};
 
 /// Represents a join between two tables. Currently, supports only left join.
 #[derive(Debug, PartialEq)]
-pub struct LeftJoin<'a> {
+pub struct LeftJoin {
     /// The left table in the join such as `concerts`.
-    left: Box<Table<'a>>,
+    left: Box<Table>,
     /// The right table in the join such as `venues`.
-    right: Box<Table<'a>>,
+    right: Box<Table>,
     /// The join predicate such as `concerts.venue_id = venues.id`.
-    predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
+    predicate: ConcretePredicate,
 }
 
-impl<'a> LeftJoin<'a> {
-    pub fn new(
-        left: Table<'a>,
-        right: Table<'a>,
-        predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
-    ) -> Self {
+impl LeftJoin {
+    pub fn new(left: Table, right: Table, predicate: ConcretePredicate) -> Self {
         LeftJoin {
             left: Box::new(left),
             right: Box::new(right),
@@ -37,12 +31,12 @@ impl<'a> LeftJoin<'a> {
         }
     }
 
-    pub fn left(&self) -> &Table<'a> {
+    pub fn left(&self) -> &Table {
         &self.left
     }
 }
 
-impl ExpressionBuilder for LeftJoin<'_> {
+impl ExpressionBuilder for LeftJoin {
     /// Build expression of the form `<left> LEFT JOIN <right> ON <predicate>`.
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         self.left.build(database, builder);
@@ -87,8 +81,7 @@ mod tests {
                     .get_column_id(venue_physical_table_id, "id")
                     .unwrap(),
             ),
-        )
-        .into();
+        );
 
         let concert_table = Table::Physical(concert_physical_table_id);
         let venue_table = Table::Physical(venue_physical_table_id);

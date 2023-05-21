@@ -41,7 +41,7 @@ impl OperationResolver for PostgresMutation {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractOperation, PostgresExecutionError> {
         let return_type = &self.return_type;
 
         let abstract_select = {
@@ -101,10 +101,10 @@ async fn create_operation<'content>(
     return_type: &'content OperationReturnType<EntityType>,
     data_param: &'content DataParameter,
     field: &'content ValidatedField,
-    select: AbstractSelect<'content>,
+    select: AbstractSelect,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractInsert<'content>, PostgresExecutionError> {
+) -> Result<AbstractInsert, PostgresExecutionError> {
     let access_predicate = check_access(
         return_type,
         &SQLOperationKind::Create,
@@ -140,10 +140,10 @@ async fn delete_operation<'content>(
     return_type: &'content OperationReturnType<EntityType>,
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
-    select: AbstractSelect<'content>,
+    select: AbstractSelect,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractDelete<'content>, PostgresExecutionError> {
+) -> Result<AbstractDelete, PostgresExecutionError> {
     let (table_id, _, _) = return_type_info(return_type, subsystem);
 
     let access_predicate = check_access(
@@ -175,10 +175,10 @@ async fn update_operation<'content>(
     data_param: &'content DataParameter,
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
-    select: AbstractSelect<'content>,
+    select: AbstractSelect,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractUpdate<'content>, PostgresExecutionError> {
+) -> Result<AbstractUpdate, PostgresExecutionError> {
     let access_predicate = check_access(
         return_type,
         &SQLOperationKind::Update,

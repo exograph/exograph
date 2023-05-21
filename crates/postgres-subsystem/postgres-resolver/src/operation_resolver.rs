@@ -23,7 +23,7 @@ pub trait OperationSelectionResolver {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> Result<AbstractSelect<'a>, PostgresExecutionError>;
+    ) -> Result<AbstractSelect, PostgresExecutionError>;
 }
 
 #[async_trait]
@@ -33,7 +33,7 @@ pub trait OperationResolver {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> Result<AbstractOperation<'a>, PostgresExecutionError>;
+    ) -> Result<AbstractOperation, PostgresExecutionError>;
 }
 
 #[async_trait]
@@ -43,7 +43,7 @@ impl<T: OperationSelectionResolver + Send + Sync> OperationResolver for T {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractOperation, PostgresExecutionError> {
         self.resolve_select(field, request_context, subsystem)
             .await
             .map(AbstractOperation::Select)

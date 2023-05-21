@@ -69,7 +69,7 @@ impl UpdateTransformer for Postgres {
         abstract_update: &'a AbstractUpdate,
         database: &'a Database,
     ) -> TransactionScript<'a> {
-        let column_id_values: Vec<(ColumnId, MaybeOwned<'a, Column<'a>>)> = abstract_update
+        let column_id_values: Vec<(ColumnId, MaybeOwned<'a, Column>)> = abstract_update
             .column_values
             .iter()
             .map(|(c, v)| (*c, v.into()))
@@ -184,7 +184,7 @@ fn update_op<'a>(
     predicate_transformer: &impl PredicateTransformer,
     database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
-    let mut column_id_values: Vec<(ColumnId, ProxyColumn<'a>)> = nested_update
+    let mut column_id_values: Vec<(ColumnId, ProxyColumn)> = nested_update
         .update
         .column_values
         .iter()

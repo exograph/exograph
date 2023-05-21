@@ -16,13 +16,13 @@ use super::{
 
 /// A select statement
 #[derive(Debug, PartialEq)]
-pub struct Select<'a> {
+pub struct Select {
     /// The table to select from
-    pub table: Table<'a>,
+    pub table: Table,
     /// The columns to select
-    pub columns: Vec<Column<'a>>,
+    pub columns: Vec<Column>,
     /// The predicate to filter the rows
-    pub predicate: ConcretePredicate<'a>,
+    pub predicate: ConcretePredicate,
     /// The order by clause
     pub order_by: Option<OrderBy>,
     /// The offset clause
@@ -30,14 +30,14 @@ pub struct Select<'a> {
     /// The limit clause
     pub limit: Option<Limit>,
     /// The group by clause
-    pub group_by: Option<GroupBy<'a>>,
+    pub group_by: Option<GroupBy>,
     /// Whether this is a top-level selection. This is used to put the `::text` cast on a top-level select statement
     /// This way, we can grab the JSON as a string and return it to the user as is. Specifically, we don't want to
     /// decode into a JSON object and then re-encode it as a string.
     pub top_level_selection: bool,
 }
 
-impl<'a> ExpressionBuilder for Select<'a> {
+impl ExpressionBuilder for Select {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("SELECT ");
 

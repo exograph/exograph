@@ -42,22 +42,22 @@ pub(crate) trait SelectionStrategy {
         &self,
         selection_context: SelectionContext<'_, 'a>,
         database: &'a Database,
-    ) -> Select<'a>;
+    ) -> Select;
 }
 
 /// Compute an inner select that picks up all the columns from the given table, and applies the
 /// given clauses.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn compute_inner_select<'a>(
-    table: Table<'a>,
+pub(super) fn compute_inner_select(
+    table: Table,
     wildcard_table: TableId,
-    predicate: ConcretePredicate<'a>,
+    predicate: ConcretePredicate,
     order_by: &Option<AbstractOrderBy>,
     limit: &Option<Limit>,
     offset: &Option<Offset>,
     transformer: &impl OrderByTransformer,
     database: &Database,
-) -> Select<'a> {
+) -> Select {
     Select {
         table,
         columns: vec![Column::Star(Some(
@@ -73,14 +73,14 @@ pub(super) fn compute_inner_select<'a>(
 }
 
 /// Compute a nested version of the given inner select, with the given selection applied.
-pub(super) fn nest_subselect<'a>(
-    inner_select: Select<'a>,
-    selection: &Selection<'a>,
+pub(super) fn nest_subselect(
+    inner_select: Select,
+    selection: &Selection,
     selection_level: SelectionLevel,
     alias: &str,
     transformer: &Postgres,
-    database: &'a Database,
-) -> Select<'a> {
+    database: &Database,
+) -> Select {
     let selection_aggregate = selection.selection_aggregate(transformer, database);
 
     Select {
@@ -99,15 +99,15 @@ pub(super) fn nest_subselect<'a>(
 }
 
 /// Compute the join and a suitable predicate for the given base table and predicate.
-pub(super) fn join_info<'a>(
+pub(super) fn join_info(
     base_table_id: TableId,
     predicate: &AbstractPredicate,
     predicate_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
     order_by_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
-    additional_predicate: Option<ConcretePredicate<'a>>,
+    additional_predicate: Option<ConcretePredicate>,
     transformer: &Postgres,
-    database: &'a Database,
-) -> (Table<'a>, ConcretePredicate<'a>) {
+    database: &Database,
+) -> (Table, ConcretePredicate) {
     let columns_paths: Vec<_> = predicate_column_paths
         .into_iter()
         .chain(order_by_column_paths.into_iter())

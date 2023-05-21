@@ -22,9 +22,9 @@ pub struct Delete<'a> {
     /// The table to delete from.
     pub table: &'a PhysicalTable,
     /// The predicate to filter rows by.
-    pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
+    pub predicate: MaybeOwned<'a, ConcretePredicate>,
     /// The columns to return.
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub returning: Vec<MaybeOwned<'a, Column>>,
 }
 
 impl<'a> ExpressionBuilder for Delete<'a> {
@@ -50,8 +50,8 @@ impl<'a> ExpressionBuilder for Delete<'a> {
 #[derive(Debug)]
 pub struct TemplateDelete<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: ConcretePredicate<'a>,
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub predicate: ConcretePredicate,
+    pub returning: Vec<Column>,
 }
 
 // TODO: Tie this properly to the prev_step
@@ -66,10 +66,7 @@ impl<'a> TemplateDelete<'a> {
         Delete {
             table,
             predicate: predicate.into(),
-            returning: returning
-                .iter()
-                .map(|c| MaybeOwned::Borrowed(c.as_ref()))
-                .collect(),
+            returning: returning.iter().map(MaybeOwned::Borrowed).collect(),
         }
     }
 }

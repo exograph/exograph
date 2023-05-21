@@ -17,7 +17,7 @@ pub struct WithQuery<'a> {
     /// The "WITH" expressions
     pub expressions: Vec<CteExpression<'a>>,
     /// The select statement
-    pub select: Select<'a>,
+    pub select: Select,
 }
 
 /// A common table expression of the form `<name> AS (<operation>)`.

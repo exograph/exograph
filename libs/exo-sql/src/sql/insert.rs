@@ -26,9 +26,9 @@ pub struct Insert<'a> {
     /// The columns to insert into such as `(age, name)`
     pub columns: Vec<&'a PhysicalColumn>,
     /// The values to insert such as `(30, "John"), (35, "Jane")`
-    pub values_seq: Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
+    pub values_seq: Vec<Vec<MaybeOwned<'a, Column>>>,
     /// The columns to return.
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub returning: Vec<MaybeOwned<'a, Column>>,
 }
 
 impl<'a> ExpressionBuilder for Insert<'a> {
@@ -63,7 +63,7 @@ pub struct TemplateInsert<'a> {
     pub table: &'a PhysicalTable,
     pub columns: Vec<&'a PhysicalColumn>,
     pub column_values_seq: Vec<Vec<ProxyColumn<'a>>>,
-    pub returning: Vec<Column<'a>>,
+    pub returning: Vec<Column>,
 }
 
 impl<'a> TemplateInsert<'a> {
@@ -76,10 +76,10 @@ impl<'a> TemplateInsert<'a> {
     }
 
     fn expand_row<'b>(
-        column_values_seq: &'b [Vec<ProxyColumn<'b>>],
+        column_values_seq: &'b [Vec<ProxyColumn>],
         row_index: usize,
         transaction_context: &TransactionContext,
-    ) -> Vec<Vec<MaybeOwned<'b, Column<'b>>>> {
+    ) -> Vec<Vec<MaybeOwned<'b, Column>>> {
         column_values_seq
             .iter()
             .map(|row| {

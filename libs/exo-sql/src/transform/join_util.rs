@@ -16,12 +16,9 @@ use crate::{
 
 /// Compute the join needed to access the leaf columns of a list of column paths. Will return a
 /// `Table::Physical` if there are no dependencies to join otherwise a `Table::Join`.
-pub fn compute_join<'a>(
-    table_id: TableId,
-    paths_list: &[Vec<PhysicalColumnPathLink>],
-) -> Table<'a> {
+pub fn compute_join(table_id: TableId, paths_list: &[Vec<PhysicalColumnPathLink>]) -> Table {
     /// Recursively build the join tree.
-    fn from_dependency(dependency: TableDependency) -> Table<'static> {
+    fn from_dependency(dependency: TableDependency) -> Table {
         dependency.dependencies.into_iter().fold(
             Table::Physical(dependency.table_id),
             |acc, DependencyLink { link, dependency }| {
@@ -32,7 +29,7 @@ pub fn compute_join<'a>(
 
                 let join_table_query = from_dependency(dependency);
 
-                Table::Join(LeftJoin::new(acc, join_table_query, join_predicate.into()))
+                Table::Join(LeftJoin::new(acc, join_table_query, join_predicate))
             },
         )
     }

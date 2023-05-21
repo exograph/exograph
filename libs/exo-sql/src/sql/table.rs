@@ -13,20 +13,20 @@ use super::{join::LeftJoin, select::Select, ExpressionBuilder, SQLBuilder};
 
 /// A table-like concept that can be used in in place of `SELECT FROM <table-query> ...`.
 #[derive(Debug, PartialEq)]
-pub enum Table<'a> {
+pub enum Table {
     /// A physical table such as `concerts`.
     Physical(TableId),
     /// A join between two tables such as `concerts LEFT JOIN venues ON concerts.venue_id = venues.id`.
-    Join(LeftJoin<'a>),
+    Join(LeftJoin),
     /// A sub-select such as `(SELECT * FROM concerts) AS concerts`.
     SubSelect {
-        select: Box<Select<'a>>,
+        select: Box<Select>,
         /// The alias of the sub-select (optional, since we need to alias the sub-select when used in a FROM clause)
         alias: Option<String>,
     },
 }
 
-impl<'a> ExpressionBuilder for Table<'a> {
+impl ExpressionBuilder for Table {
     /// Build the table into a SQL string.
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {

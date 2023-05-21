@@ -21,7 +21,7 @@ use crate::{
 };
 
 pub async fn resolve_operation<'e>(
-    op: &AbstractOperation<'e>,
+    op: &AbstractOperation,
     subsystem_resolver: &'e PostgresSubsystemResolver,
     request_context: &'e RequestContext<'e>,
 ) -> Result<QueryResponse, PostgresExecutionError> {

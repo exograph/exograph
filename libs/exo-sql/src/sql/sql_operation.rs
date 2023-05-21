@@ -23,7 +23,7 @@ use super::{
 /// Top-level SQL operation, which may be executed by the database.
 #[derive(Debug)]
 pub enum SQLOperation<'a> {
-    Select(Select<'a>),
+    Select(Select),
     Insert(Insert<'a>),
     Delete(Delete<'a>),
     Update(Update<'a>),

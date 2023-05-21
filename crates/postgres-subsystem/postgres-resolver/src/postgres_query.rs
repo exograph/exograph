@@ -44,7 +44,7 @@ impl OperationSelectionResolver for PkQuery {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractSelect, PostgresExecutionError> {
         compute_select(
             &self.parameters.predicate_param,
             None,
@@ -66,7 +66,7 @@ impl OperationSelectionResolver for CollectionQuery {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractSelect, PostgresExecutionError> {
         let CollectionQueryParameters {
             predicate_param,
             order_by_param,
@@ -98,7 +98,7 @@ async fn compute_select<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractSelect<'content>, PostgresExecutionError> {
+) -> Result<AbstractSelect, PostgresExecutionError> {
     let access_predicate = check_access(
         return_type,
         &SQLOperationKind::Retrieve,
@@ -164,7 +164,7 @@ async fn content_select<'content>(
     fields: &'content [ValidatedField],
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<Vec<AliasedSelectionElement<'content>>, PostgresExecutionError> {
+) -> Result<Vec<AliasedSelectionElement>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
         .then(|field| async { map_field(return_type, field, subsystem, request_context).await })
         .collect::<Vec<Result<_, _>>>()
@@ -178,7 +178,7 @@ async fn map_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AliasedSelectionElement<'content>, PostgresExecutionError> {
+) -> Result<AliasedSelectionElement, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.to_owned())
     } else {
@@ -206,7 +206,7 @@ async fn map_persistent_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<SelectionElement<'content>, PostgresExecutionError> {
+) -> Result<SelectionElement, PostgresExecutionError> {
     match &entity_field.relation {
         PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
             Ok(SelectionElement::Physical(*column_id))
@@ -271,7 +271,7 @@ async fn map_aggregate_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<SelectionElement<'content>, PostgresExecutionError> {
+) -> Result<SelectionElement, PostgresExecutionError> {
     if let Some(PostgresRelation::OneToMany {
         other_type_id,
         cardinality,

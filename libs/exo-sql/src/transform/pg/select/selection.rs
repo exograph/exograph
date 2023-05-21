@@ -17,17 +17,13 @@ use crate::{
     AliasedSelectionElement, Column, Database, Selection, SelectionCardinality, SelectionElement,
 };
 
-pub enum SelectionSQL<'a> {
-    Single(Column<'a>),
-    Seq(Vec<Column<'a>>),
+pub enum SelectionSQL {
+    Single(Column),
+    Seq(Vec<Column>),
 }
 
-impl<'a> Selection<'a> {
-    pub fn to_sql(
-        &self,
-        select_transformer: &Postgres,
-        database: &'a Database,
-    ) -> SelectionSQL<'a> {
+impl Selection {
+    pub fn to_sql(&self, select_transformer: &Postgres, database: &Database) -> SelectionSQL {
         match self {
             Selection::Seq(seq) => SelectionSQL::Seq(
                 seq.iter()
@@ -65,8 +61,8 @@ impl<'a> Selection<'a> {
     pub fn selection_aggregate(
         &self,
         select_transformer: &Postgres,
-        database: &'a Database,
-    ) -> Vec<Column<'a>> {
+        database: &Database,
+    ) -> Vec<Column> {
         match self.to_sql(select_transformer, database) {
             SelectionSQL::Single(elem) => vec![elem],
             SelectionSQL::Seq(elems) => elems,
@@ -74,8 +70,8 @@ impl<'a> Selection<'a> {
     }
 }
 
-impl<'a> SelectionElement<'a> {
-    pub fn to_sql(&self, transformer: &Postgres, database: &'a Database) -> Column<'a> {
+impl SelectionElement {
+    pub fn to_sql(&self, transformer: &Postgres, database: &Database) -> Column {
         match self {
             SelectionElement::Physical(column_id) => Column::Physical(*column_id),
             SelectionElement::Function {

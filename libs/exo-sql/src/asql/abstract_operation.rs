@@ -13,9 +13,9 @@ use super::{
 
 /// Top-level abstract operation. A transformed version of this can be submitted to a database.
 #[derive(Debug)]
-pub enum AbstractOperation<'a> {
-    Select(AbstractSelect<'a>),
-    Delete(AbstractDelete<'a>),
-    Insert(AbstractInsert<'a>),
-    Update(AbstractUpdate<'a>),
+pub enum AbstractOperation {
+    Select(AbstractSelect),
+    Delete(AbstractDelete),
+    Insert(AbstractInsert),
+    Update(AbstractUpdate),
 }

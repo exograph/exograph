@@ -7,13 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use maybe_owned::MaybeOwned;
+
 use crate::{ColumnId, Database};
 
 use super::{
     json_agg::JsonAgg, json_object::JsonObject, select::Select, transaction::TransactionStepId,
     ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
-use maybe_owned::MaybeOwned;
 
 /// A column-like concept covering any usage where a database table column could be used. For
 /// example, in a predicate you can say `first_name = 'Sam'` or `first_name = last_name`. Here,
@@ -24,18 +25,18 @@ use maybe_owned::MaybeOwned;
 /// <value>` in a predicate or `<column> = <value>` in an `update <table> set <column> = <value>`,
 /// etc.
 #[derive(Debug, PartialEq)]
-pub enum Column<'a> {
+pub enum Column {
     /// An actual physical column in a table
     Physical(ColumnId),
     /// A literal value such as a string or number e.g. 'Sam'. This will be mapped to a placeholder
     /// to avoid SQL injection.
     Param(SQLParamContainer),
     /// A JSON object. This is used to represent the result of a JSON object aggregation.
-    JsonObject(JsonObject<'a>),
+    JsonObject(JsonObject),
     /// A JSON array. This is used to represent the result of a JSON array aggregation.
-    JsonAgg(JsonAgg<'a>),
+    JsonAgg(JsonAgg),
     /// A sub-select query.
-    SubSelect(Box<Select<'a>>),
+    SubSelect(Box<Select>),
     // TODO: Generalize the following to return any type of value, not just strings
     /// A constant string so that we can have a query return a particular value passed in as in
     /// `select 'Concert', id from "concerts"`. Here 'Concert' is the constant string. Needed to
@@ -52,7 +53,7 @@ pub enum Column<'a> {
     },
 }
 
-impl<'a> ExpressionBuilder for Column<'a> {
+impl ExpressionBuilder for Column {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {
             Column::Physical(column_id) => {
@@ -102,7 +103,7 @@ impl<'a> ExpressionBuilder for Column<'a> {
 /// multi-step insert/update.
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
-    Concrete(MaybeOwned<'a, Column<'a>>),
+    Concrete(MaybeOwned<'a, Column>),
     // A template version of a column that will be replaced with a concrete column at runtime
     Template {
         col_index: usize,

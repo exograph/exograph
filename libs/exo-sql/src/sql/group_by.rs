@@ -7,18 +7,23 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{Database, PhysicalColumn};
+use crate::{ColumnId, Database};
 
 use super::{ExpressionBuilder, SQLBuilder};
 
 /// A group by clause
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GroupBy<'a>(pub Vec<&'a PhysicalColumn>);
+pub struct GroupBy(pub Vec<ColumnId>);
 
-impl<'a> ExpressionBuilder for GroupBy<'a> {
+impl ExpressionBuilder for GroupBy {
     /// Build expression of the form `GROUP BY <comma-separated-columns>`
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("GROUP BY ");
-        builder.push_elems(database, &self.0, ", ");
+        let columns = self
+            .0
+            .iter()
+            .map(|column_id| database.get_column(*column_id))
+            .collect::<Vec<_>>();
+        builder.push_elems(database, &columns, ", ");
     }
 }

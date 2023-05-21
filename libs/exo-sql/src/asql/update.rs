@@ -57,49 +57,49 @@ use super::{
 /// starting at the root table. For example, while updating a concert, this allows adding a new concert-artist,
 /// updating (say, role or rank) of an existing concert-artist, or deleting an existing concert-artist.
 #[derive(Debug)]
-pub struct AbstractUpdate<'a> {
+pub struct AbstractUpdate {
     /// The table to update
     pub table_id: TableId,
     /// The predicate to filter rows.
     pub predicate: AbstractPredicate,
 
     /// The columns to update and their values for the `table`
-    pub column_values: Vec<(ColumnId, Column<'a>)>,
+    pub column_values: Vec<(ColumnId, Column)>,
 
     /// Nested updates
-    pub nested_updates: Vec<NestedAbstractUpdate<'a>>,
+    pub nested_updates: Vec<NestedAbstractUpdate>,
     /// Nested inserts
-    pub nested_inserts: Vec<NestedAbstractInsert<'a>>,
+    pub nested_inserts: Vec<NestedAbstractInsert>,
     /// Nested deletes
-    pub nested_deletes: Vec<NestedAbstractDelete<'a>>,
+    pub nested_deletes: Vec<NestedAbstractDelete>,
 
     /// The selection to return
-    pub selection: AbstractSelect<'a>,
+    pub selection: AbstractSelect,
 }
 
 /// In our example, the `update: [{id: 100, artist: {id: 10}, rank: 2}, {id: 101, artist: {id: 10}, role: "accompanying"}]` part
 #[derive(Debug)]
-pub struct NestedAbstractUpdate<'a> {
+pub struct NestedAbstractUpdate {
     /// Relation between the parent table and the nested table (column: concert_artist.concert_id, table: concert_artist)
     pub relation: NestedElementRelation,
     /// The update to apply to the nested table
-    pub update: AbstractUpdate<'a>,
+    pub update: AbstractUpdate,
 }
 
 /// In our example, the `create: [{artist: {id: 30}, rank: 2, role: "main"}]` part
 #[derive(Debug)]
-pub struct NestedAbstractInsert<'a> {
+pub struct NestedAbstractInsert {
     /// Same as `NestedAbstractUpdate::relation`
     pub relation: NestedElementRelation,
     /// The insert to apply to the nested table
-    pub insert: AbstractInsert<'a>,
+    pub insert: AbstractInsert,
 }
 
 /// In our example, the `delete: [{id: 110}]` part
 #[derive(Debug)]
-pub struct NestedAbstractDelete<'a> {
+pub struct NestedAbstractDelete {
     /// Same as `NestedAbstractUpdate::relation`
     pub relation: NestedElementRelation,
     /// The delete to apply to the nested table
-    pub delete: AbstractDelete<'a>,
+    pub delete: AbstractDelete,
 }

@@ -24,12 +24,12 @@ impl PredicateTransformer for Postgres {
     /// * `predicate` - The predicate to transform
     /// * `tables_supplied` - Whether the tables are already in context. If they are, the predicate can simply use the table.column syntax.
     ///                       If they are not, the predicate will need to bring in the tables being referred to.
-    fn to_predicate<'a>(
+    fn to_predicate(
         &self,
         predicate: &AbstractPredicate,
         tables_supplied: bool,
-        database: &'a Database,
-    ) -> ConcretePredicate<'a> {
+        database: &Database,
+    ) -> ConcretePredicate {
         if tables_supplied {
             to_join_predicate(predicate)
         } else {
@@ -42,7 +42,7 @@ impl PredicateTransformer for Postgres {
 ///
 /// The predicate generated will look like "concerts.price = $1 AND venues.name = $2". It assumes
 /// that the join would have brought in "concerts" and "venues" through a join.
-fn to_join_predicate<'a>(predicate: &AbstractPredicate) -> ConcretePredicate<'a> {
+fn to_join_predicate(predicate: &AbstractPredicate) -> ConcretePredicate {
     match predicate {
         AbstractPredicate::True => ConcretePredicate::True,
         AbstractPredicate::False => ConcretePredicate::False,
@@ -115,25 +115,25 @@ fn to_join_predicate<'a>(predicate: &AbstractPredicate) -> ConcretePredicate<'a>
 /// WHERE "concerts"."id" IN (SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."title" = $1)
 /// ```
 /// which will be correct, but unnecessarily complex.
-fn to_subselect_predicate<'a>(
+fn to_subselect_predicate(
     transformer: &Postgres,
     predicate: &AbstractPredicate,
-    database: &'a Database,
-) -> ConcretePredicate<'a> {
-    fn binary_operator<'p>(
+    database: &Database,
+) -> ConcretePredicate {
+    fn binary_operator(
         left: &ColumnPath,
         right: &ColumnPath,
         predicate_op: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
-        database: &'p Database,
+        database: &Database,
         select_transformer: &Postgres,
-    ) -> Option<ConcretePredicate<'p>> {
-        fn form_subselect<'p>(
+    ) -> Option<ConcretePredicate> {
+        fn form_subselect(
             path: &ColumnPath,
             other: &ColumnPath,
             predicate_op: impl Fn(Vec<PhysicalColumnPathLink>, ColumnPath) -> AbstractPredicate,
-            database: &'p Database,
+            database: &Database,
             select_transformer: &Postgres,
-        ) -> Option<ConcretePredicate<'p>> {
+        ) -> Option<ConcretePredicate> {
             column_path_components(path).map(|(self_column_id, foreign_column_id, tail_links)| {
                 let foreign_column = database.get_column(foreign_column_id);
                 let abstract_select = AbstractSelect {
@@ -269,7 +269,7 @@ fn to_subselect_predicate<'a>(
     .unwrap_or(to_join_predicate(predicate)) // fallback to join predicate
 }
 
-fn leaf_column<'c>(column_path: &ColumnPath) -> Column<'c> {
+fn leaf_column(column_path: &ColumnPath) -> Column {
     match column_path {
         ColumnPath::Physical(links) => Column::Physical(links.last().unwrap().self_column_id),
         ColumnPath::Param(l) => Column::Param(l.clone()),

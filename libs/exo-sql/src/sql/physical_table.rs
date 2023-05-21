@@ -52,10 +52,10 @@ impl PhysicalTable {
         &'a self,
         columns: Vec<&'a PhysicalColumn>,
         column_values_seq: Vec<Vec<C>>,
-        returning: Vec<MaybeOwned<'a, Column<'a>>>,
+        returning: Vec<MaybeOwned<'a, Column>>,
     ) -> Insert
     where
-        C: Into<MaybeOwned<'a, Column<'a>>>,
+        C: Into<MaybeOwned<'a, Column>>,
     {
         Insert {
             table: self,
@@ -68,26 +68,22 @@ impl PhysicalTable {
         }
     }
 
-    pub fn delete<'a>(
-        &'a self,
-        predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
-        returning: Vec<MaybeOwned<'a, Column<'a>>>,
-    ) -> Delete {
+    pub fn delete(&self, predicate: ConcretePredicate, returning: Vec<Column>) -> Delete {
         Delete {
             table: self,
-            predicate,
-            returning,
+            predicate: predicate.into(),
+            returning: returning.into_iter().map(|col| col.into()).collect(),
         }
     }
 
     pub fn update<'a, C>(
         &'a self,
         column_values: Vec<(&'a PhysicalColumn, C)>,
-        predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
-        returning: Vec<MaybeOwned<'a, Column<'a>>>,
+        predicate: MaybeOwned<'a, ConcretePredicate>,
+        returning: Vec<MaybeOwned<'a, Column>>,
     ) -> Update
     where
-        C: Into<MaybeOwned<'a, Column<'a>>>,
+        C: Into<MaybeOwned<'a, Column>>,
     {
         Update {
             table: self,

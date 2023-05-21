@@ -13,11 +13,11 @@ use super::{predicate::AbstractPredicate, select::AbstractSelect};
 
 /// Abstract representation of a delete operation
 #[derive(Debug)]
-pub struct AbstractDelete<'a> {
+pub struct AbstractDelete {
     /// The table to delete from
     pub table_id: TableId,
     /// The predicate to filter rows.
     pub predicate: AbstractPredicate,
     /// The selection to return
-    pub selection: AbstractSelect<'a>,
+    pub selection: AbstractSelect,
 }

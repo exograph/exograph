@@ -35,17 +35,17 @@ pub struct UpdateOperation<'a> {
     pub data_param: &'a DataParameter,
     pub return_type: &'a OperationReturnType<EntityType>,
     pub predicate: AbstractPredicate,
-    pub select: AbstractSelect<'a>,
+    pub select: AbstractSelect,
 }
 
 #[async_trait]
-impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
+impl<'a> SQLMapper<'a, AbstractUpdate> for UpdateOperation<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractUpdate<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractUpdate, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
 
         let self_update_columns = compute_update_columns(data_type, argument, subsystem);
@@ -84,7 +84,7 @@ fn compute_update_columns<'a>(
     data_type: &'a MutationType,
     argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
-) -> Vec<(ColumnId, Column<'a>)> {
+) -> Vec<(ColumnId, Column)> {
     data_type
         .fields
         .iter()
@@ -127,9 +127,9 @@ async fn compute_nested_ops<'a>(
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> (
-    Vec<NestedAbstractUpdate<'a>>,
-    Vec<NestedAbstractInsert<'a>>,
-    Vec<NestedAbstractDelete<'a>>,
+    Vec<NestedAbstractUpdate>,
+    Vec<NestedAbstractInsert>,
+    Vec<NestedAbstractDelete>,
 ) {
     let mut nested_updates = vec![];
     let mut nested_inserts = vec![];
@@ -217,7 +217,7 @@ fn compute_nested_update<'a>(
     argument: &'a Val,
     container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
-) -> Vec<NestedAbstractUpdate<'a>> {
+) -> Vec<NestedAbstractUpdate> {
     let nested_reference_col =
         compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
             .unwrap();
@@ -258,7 +258,7 @@ fn compute_nested_update_object_arg<'a>(
     argument: &'a Val,
     nested_reference_col: ColumnId,
     subsystem: &'a PostgresSubsystem,
-) -> NestedAbstractUpdate<'a> {
+) -> NestedAbstractUpdate {
     assert!(matches!(argument, Val::Object(..)));
 
     let table_id = field_entity_type.table(subsystem);
@@ -322,14 +322,14 @@ async fn compute_nested_inserts<'a>(
     container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Vec<NestedAbstractInsert<'a>> {
+) -> Vec<NestedAbstractInsert> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
         container_entity_type: &'a EntityType,
         subsystem: &'a PostgresSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<NestedAbstractInsert<'a>, PostgresExecutionError> {
+    ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
         let nested_reference_col =
             compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
                 .unwrap();
@@ -403,7 +403,7 @@ fn compute_nested_delete<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
     container_entity_type: &'a EntityType,
-) -> Vec<NestedAbstractDelete<'a>> {
+) -> Vec<NestedAbstractDelete> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
 
@@ -447,7 +447,7 @@ fn compute_nested_delete_object_arg<'a>(
     argument: &'a Val,
     nested_reference_col: ColumnId,
     subsystem: &'a PostgresSubsystem,
-) -> NestedAbstractDelete<'a> {
+) -> NestedAbstractDelete {
     assert!(matches!(argument, Val::Object(..)));
 
     let table_id = field_entity_type.table(subsystem);

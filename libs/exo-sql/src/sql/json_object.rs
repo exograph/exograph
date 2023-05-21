@@ -16,22 +16,22 @@ use super::{
 
 /// A JSON object corresponding to the Postgres' `json_build_object` function.
 #[derive(Debug, PartialEq)]
-pub struct JsonObject<'a>(pub Vec<JsonObjectElement<'a>>);
+pub struct JsonObject(pub Vec<JsonObjectElement>);
 
 /// A key-value pair in a JSON object.
 #[derive(Debug, PartialEq)]
-pub struct JsonObjectElement<'a> {
+pub struct JsonObjectElement {
     pub key: String,
-    pub value: Column<'a>,
+    pub value: Column,
 }
 
-impl<'a> JsonObjectElement<'a> {
-    pub fn new(key: String, value: Column<'a>) -> Self {
+impl JsonObjectElement {
+    pub fn new(key: String, value: Column) -> Self {
         Self { key, value }
     }
 }
 
-impl<'a> ExpressionBuilder for JsonObject<'a> {
+impl ExpressionBuilder for JsonObject {
     /// Build expression of the form `json_build_object(<comma-separated-elements>)`.
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("json_build_object(");
@@ -40,7 +40,7 @@ impl<'a> ExpressionBuilder for JsonObject<'a> {
     }
 }
 
-impl<'a> ExpressionBuilder for JsonObjectElement<'a> {
+impl ExpressionBuilder for JsonObjectElement {
     /// Build an SQL query for an element in a JSON object. The SQL expression will be `'<key>',
     /// <value>`, where `<value>` is the SQL expression for the value of the JSON object element. The
     /// value of the JSON object element is encoded as base64 if it is a blob, and as text if it is a

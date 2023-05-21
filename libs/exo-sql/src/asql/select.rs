@@ -13,11 +13,11 @@ use super::{order_by::AbstractOrderBy, predicate::AbstractPredicate, selection::
 
 /// Represents an abstract select operation, but without specific details about how to execute it.
 #[derive(Debug)]
-pub struct AbstractSelect<'a> {
+pub struct AbstractSelect {
     /// The table to select from
     pub table_id: TableId,
     /// The columns to select
-    pub selection: Selection<'a>,
+    pub selection: Selection,
     /// The predicate to filter rows. This is not an `Option` to ensure that the caller makes a conscious
     /// decision about whether to use `True` or `False` (rather than assuming that `None` means `True` or `False`).
     pub predicate: AbstractPredicate,

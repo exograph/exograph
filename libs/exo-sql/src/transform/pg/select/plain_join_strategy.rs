@@ -102,7 +102,7 @@ impl SelectionStrategy for PlainJoinStrategy {
         &self,
         selection_context: SelectionContext<'_, 'a>,
         database: &'a Database,
-    ) -> Select<'a> {
+    ) -> Select {
         let SelectionContext {
             abstract_select,
             additional_predicate,

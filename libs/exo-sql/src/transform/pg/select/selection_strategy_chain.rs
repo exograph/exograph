@@ -36,7 +36,7 @@ impl<'s> SelectionStrategyChain<'s> {
         &self,
         selection_context: SelectionContext<'_, 'a>,
         database: &'a Database,
-    ) -> Option<Select<'a>> {
+    ) -> Option<Select> {
         let strategy = self
             .strategies
             .iter()

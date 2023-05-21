@@ -25,11 +25,11 @@ pub struct Update<'a> {
     /// The table to update.
     pub table: &'a PhysicalTable,
     /// The predicate to filter rows to update.
-    pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
+    pub predicate: MaybeOwned<'a, ConcretePredicate>,
     /// The columns to update and their values.
-    pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)>,
+    pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column>)>,
     /// The columns to return.
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub returning: Vec<MaybeOwned<'a, Column>>,
 }
 
 impl<'a> ExpressionBuilder for Update<'a> {
@@ -70,9 +70,9 @@ impl<'a> ExpressionBuilder for Update<'a> {
 #[derive(Debug)]
 pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: ConcretePredicate<'a>,
+    pub predicate: ConcretePredicate,
     pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub returning: Vec<Column>,
 }
 
 impl<'a> TemplateUpdate<'a> {
@@ -108,11 +108,7 @@ impl<'a> TemplateUpdate<'a> {
                     table: self.table,
                     predicate: (&self.predicate).into(),
                     column_values: resolved_column_values,
-                    returning: self
-                        .returning
-                        .iter()
-                        .map(|col| col.as_ref().into())
-                        .collect(),
+                    returning: self.returning.iter().map(|col| col.into()).collect(),
                 }
             })
             .collect()

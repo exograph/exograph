@@ -35,17 +35,17 @@ use super::{
 pub struct InsertOperation<'a> {
     pub data_param: &'a DataParameter,
     pub return_type: &'a OperationReturnType<EntityType>,
-    pub select: AbstractSelect<'a>,
+    pub select: AbstractSelect,
 }
 
 #[async_trait]
-impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
+impl<'a> SQLMapper<'a, AbstractInsert> for InsertOperation<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractInsert<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractInsert, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
         let table_id = data_type.table(subsystem);
 
@@ -70,7 +70,7 @@ pub(crate) async fn map_argument<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<Vec<InsertionRow<'a>>, PostgresExecutionError> {
+) -> Result<Vec<InsertionRow>, PostgresExecutionError> {
     match argument {
         Val::List(arguments) => {
             let mapped = arguments
@@ -91,7 +91,7 @@ async fn map_single<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<InsertionRow<'a>, PostgresExecutionError> {
+) -> Result<InsertionRow, PostgresExecutionError> {
     let mapped = data_type.fields.iter().map(|field| async move {
         // Process fields that map to a column in the current table
         let field_self_column = field.relation.self_column();
@@ -133,7 +133,7 @@ async fn map_self_column<'a>(
     field: &'a PostgresField<MutationType>,
     argument: &'a Val,
     subsystem: &'a PostgresSubsystem,
-) -> Result<InsertionElement<'a>, PostgresExecutionError> {
+) -> Result<InsertionElement, PostgresExecutionError> {
     let key_column = key_column_id.get_column(&subsystem.database);
     let argument_value = match &field.relation {
         PostgresRelation::ManyToOne { other_type_id, .. } => {
@@ -168,7 +168,7 @@ async fn map_self_column<'a>(
 
     Ok(InsertionElement::SelfInsert(ColumnValuePair::new(
         key_column_id,
-        value_column.into(),
+        value_column,
     )))
 }
 
@@ -181,7 +181,7 @@ async fn map_foreign<'a>(
     parent_data_type: &'a MutationType,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<InsertionElement<'a>, PostgresExecutionError> {
+) -> Result<InsertionElement, PostgresExecutionError> {
     fn underlying_type<'a>(
         data_type: &'a MutationType,
         system: &'a PostgresSubsystem,

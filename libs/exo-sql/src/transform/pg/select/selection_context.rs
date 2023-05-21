@@ -18,11 +18,11 @@ use crate::{
 /// by each strategy.
 pub(crate) struct SelectionContext<'c, 'a> {
     pub database: &'a Database,
-    pub abstract_select: &'c AbstractSelect<'a>,
+    pub abstract_select: &'c AbstractSelect,
     pub has_a_one_to_many_predicate: bool,
     pub predicate_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
     pub order_by_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
-    pub additional_predicate: Option<ConcretePredicate<'a>>,
+    pub additional_predicate: Option<ConcretePredicate>,
     pub selection_level: SelectionLevel,
     pub allow_duplicate_rows: bool,
     pub transformer: &'c Postgres,
@@ -31,8 +31,8 @@ pub(crate) struct SelectionContext<'c, 'a> {
 impl<'c, 'a> SelectionContext<'c, 'a> {
     pub fn new(
         database: &'a Database,
-        abstract_select: &'c AbstractSelect<'a>,
-        additional_predicate: Option<ConcretePredicate<'a>>,
+        abstract_select: &'c AbstractSelect,
+        additional_predicate: Option<ConcretePredicate>,
         selection_level: SelectionLevel,
         allow_duplicate_rows: bool,
         transformer: &'c Postgres,
