@@ -96,7 +96,7 @@ impl UpdateTransformer for Postgres {
         let table = database.get_table(abstract_update.table_id);
         let column_values = column_id_values
             .into_iter()
-            .map(|(col_id, col)| (database.get_column(col_id), col))
+            .map(|(col_id, col)| (col_id.get_column(database), col))
             .collect();
         let root_update = SQLOperation::Update(table.update(
             column_values,
@@ -203,7 +203,7 @@ fn update_op<'a>(
 
     let column_values = column_id_values
         .into_iter()
-        .map(|(col_id, col)| (database.get_column(col_id), col))
+        .map(|(col_id, col)| (col_id.get_column(database), col))
         .collect();
 
     TemplateSQLOperation::Update(TemplateUpdate {
@@ -254,7 +254,7 @@ fn insert_op<'a>(
 
     let columns = column_id_names
         .iter()
-        .map(|col_id| database.get_column(*col_id))
+        .map(|col_id| col_id.get_column(database))
         .collect();
 
     TemplateSQLOperation::Insert(TemplateInsert {

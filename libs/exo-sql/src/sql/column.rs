@@ -57,7 +57,7 @@ impl ExpressionBuilder for Column {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {
             Column::Physical(column_id) => {
-                let column = database.get_column(*column_id);
+                let column = column_id.get_column(database);
                 column.build(database, builder)
             }
             Column::Function {
@@ -66,7 +66,7 @@ impl ExpressionBuilder for Column {
             } => {
                 builder.push_str(function_name);
                 builder.push('(');
-                let column = database.get_column(*column_id);
+                let column = column_id.get_column(database);
                 column.build(database, builder);
                 builder.push(')');
             }

@@ -252,7 +252,7 @@ fn operands<'a>(
         .as_ref()
         .expect("Could not find column path link while forming operands")
         .self_column_id;
-    let op_physical_column = &subsystem.database.get_column(op_physical_column_id);
+    let op_physical_column = op_physical_column_id.get_column(&subsystem.database);
 
     let op_value = cast_value(op_value, &op_physical_column.typ);
 

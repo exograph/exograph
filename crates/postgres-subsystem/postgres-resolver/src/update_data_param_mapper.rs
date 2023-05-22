@@ -194,7 +194,7 @@ fn compute_nested_reference_column<'a>(
         .get_column_ids(nested_table_id)
         .iter()
         .find(|column_id| {
-            let column = &system.database.get_column(**column_id);
+            let column = column_id.get_column(&system.database);
             match &column.typ {
                 PhysicalColumnType::ColumnReference {
                     ref_table_name,
@@ -265,7 +265,7 @@ fn compute_nested_update_object_arg<'a>(
 
     let nested = compute_update_columns(field_entity_type, argument, subsystem);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| {
-        let column = subsystem.database.get_column(elem.0);
+        let column = elem.0.get_column(&subsystem.database);
         column.is_pk
     });
 
@@ -455,7 +455,7 @@ fn compute_nested_delete_object_arg<'a>(
     //
     let nested = compute_update_columns(field_entity_type, argument, subsystem);
     let (pk_columns, _nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| {
-        let column = subsystem.database.get_column(elem.0);
+        let column = elem.0.get_column(&subsystem.database);
         column.is_pk
     });
 

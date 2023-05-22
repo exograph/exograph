@@ -135,7 +135,7 @@ fn to_subselect_predicate(
             select_transformer: &Postgres,
         ) -> Option<ConcretePredicate> {
             column_path_components(path).map(|(self_column_id, foreign_column_id, tail_links)| {
-                let foreign_column = database.get_column(foreign_column_id);
+                let foreign_column = foreign_column_id.get_column(database);
                 let abstract_select = AbstractSelect {
                     table_id: self_column_id.table_id,
                     selection: Selection::Seq(vec![AliasedSelectionElement::new(

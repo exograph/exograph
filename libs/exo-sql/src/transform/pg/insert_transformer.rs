@@ -92,7 +92,7 @@ impl InsertTransformer for Postgres {
 
         let self_columns = self_column_ids
             .iter()
-            .map(|column_id| database.get_column(*column_id))
+            .map(|column_id| column_id.get_column(database))
             .collect::<Vec<_>>();
 
         let root_insert = SQLOperation::Insert(table.insert(
@@ -202,7 +202,7 @@ impl InsertTransformer for Postgres {
                     let relation_table = database.get_table(relation.table_id);
                     let columns = column_ids
                         .iter()
-                        .map(|column_id| database.get_column(*column_id))
+                        .map(|column_id| column_id.get_column(database))
                         .collect::<Vec<_>>();
                     CteExpression {
                         name: relation_table.name.clone(),

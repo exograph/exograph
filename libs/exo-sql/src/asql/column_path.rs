@@ -76,7 +76,7 @@ impl PhysicalColumnPathLink {
     /// one-to-many link. For example, when referring from a venue to concerts, the `venue.id` would
     /// be the self column and `concert.venue_id` would be the linked column.
     pub fn is_one_to_many(&self, database: &Database) -> bool {
-        let self_column = database.get_column(self.self_column_id);
+        let self_column = self.self_column_id.get_column(database);
         self_column.is_pk && self.linked_column_id.is_some()
     }
 }
