@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::database_error::DatabaseError;
+use crate::{database_error::DatabaseError, Database, TableId};
 
 use super::{ExpressionBuilder, SQLBuilder};
 use regex::Regex;
@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub struct PhysicalColumn {
     /// The name of the table this column belongs to
-    pub table_name: String,
+    pub table_id: TableId,
     /// The name of the column
     pub name: String,
     /// The type of the column
@@ -43,28 +43,23 @@ pub struct PhysicalColumn {
 /// prints the table name and column name.
 impl std::fmt::Debug for PhysicalColumn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("Column: {}.{}", &self.table_name, &self.name))
+        f.write_str(&format!(
+            "Column: {}.{}",
+            &self.table_id.arr_idx(),
+            &self.name
+        ))
     }
 }
 
-impl Default for PhysicalColumn {
-    fn default() -> Self {
-        Self {
-            table_name: Default::default(),
-            name: Default::default(),
-            typ: PhysicalColumnType::Blob,
-            is_pk: false,
-            is_auto_increment: false,
-            is_nullable: true,
-            unique_constraints: vec![],
-            default_value: None,
-        }
+impl PhysicalColumn {
+    pub fn get_table_name(&self, database: &Database) -> String {
+        database.get_table(self.table_id).name.clone()
     }
 }
 
 impl ExpressionBuilder for PhysicalColumn {
-    fn build(&self, builder: &mut SQLBuilder) {
-        builder.push_column(&self.table_name, &self.name)
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
+        builder.push_column(&database.get_table(self.table_id).name, &self.name)
     }
 }
 
@@ -230,88 +225,6 @@ impl PhysicalColumnType {
                     }
                 }
             }),
-        }
-    }
-
-    pub fn to_model(&self) -> (String, String) {
-        match self {
-            PhysicalColumnType::Int { bits } => (
-                "Int".to_string(),
-                match bits {
-                    IntBits::_16 => " @bits16",
-                    IntBits::_32 => "",
-                    IntBits::_64 => " @bits64",
-                }
-                .to_string(),
-            ),
-
-            PhysicalColumnType::Float { bits } => (
-                "Float".to_string(),
-                match bits {
-                    FloatBits::_24 => " @singlePrecision",
-                    FloatBits::_53 => " @doublePrecision",
-                }
-                .to_owned(),
-            ),
-
-            PhysicalColumnType::Numeric { precision, scale } => ("Numeric".to_string(), {
-                let precision_part = precision
-                    .map(|p| format!("@precision({p})"))
-                    .unwrap_or_default();
-
-                let scale_part = scale.map(|s| format!("@scale({s})")).unwrap_or_default();
-
-                format!(" {precision_part} {scale_part}")
-            }),
-
-            PhysicalColumnType::String { max_length } => (
-                "String".to_string(),
-                match max_length {
-                    Some(max_length) => format!(" @maxLength({max_length})"),
-                    None => "".to_string(),
-                },
-            ),
-
-            PhysicalColumnType::Boolean => ("Boolean".to_string(), "".to_string()),
-
-            PhysicalColumnType::Timestamp {
-                timezone,
-                precision,
-            } => (
-                if *timezone {
-                    "Instant"
-                } else {
-                    "LocalDateTime"
-                }
-                .to_string(),
-                match precision {
-                    Some(precision) => format!(" @precision({precision})"),
-                    None => "".to_string(),
-                },
-            ),
-
-            PhysicalColumnType::Time { precision } => (
-                "LocalTime".to_string(),
-                match precision {
-                    Some(precision) => format!(" @precision({precision})"),
-                    None => "".to_string(),
-                },
-            ),
-
-            PhysicalColumnType::Date => ("LocalDate".to_string(), "".to_string()),
-
-            PhysicalColumnType::Json => ("Json".to_string(), "".to_string()),
-            PhysicalColumnType::Blob => ("Blob".to_string(), "".to_string()),
-            PhysicalColumnType::Uuid => ("Uuid".to_string(), "".to_string()),
-
-            PhysicalColumnType::Array { typ } => {
-                let (data_type, annotations) = typ.to_model();
-                (format!("[{data_type}]"), annotations)
-            }
-
-            PhysicalColumnType::ColumnReference { ref_table_name, .. } => {
-                (ref_table_name.clone(), "".to_string())
-            }
         }
     }
 }

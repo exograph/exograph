@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use clap::Command;
 use std::{io::Write, path::PathBuf};
 
-use exo_sql::schema::spec::SchemaSpec;
+use exo_sql::schema::database_spec::DatabaseSpec;
 
 use crate::{
     commands::command::{
@@ -46,8 +46,8 @@ impl CommandDefinition for CreateCommandDefinition {
 
         // Creating the schema from the model is the same as migrating from an empty database.
         let migrations = Migration::from_schemas(
-            &SchemaSpec::default(),
-            &SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect()),
+            &DatabaseSpec::new(vec![]),
+            &DatabaseSpec::from_database(postgres_subsystem.database),
         );
         migrations.write(&mut buffer, true)?;
 

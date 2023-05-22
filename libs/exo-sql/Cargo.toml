@@ -25,6 +25,7 @@ lazy_static.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+typed-generational-arena.workspace = true
 url = "2.2.2"
 
 which = "4.4.0"

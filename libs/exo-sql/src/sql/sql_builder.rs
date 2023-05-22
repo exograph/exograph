@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use crate::SQLParam;
+use crate::{Database, SQLParam};
 
 use super::ExpressionBuilder;
 
@@ -96,9 +96,14 @@ impl SQLBuilder {
     /// Push elements of a slice, separated by `sep`. The elements must themselves implement
     /// `ExpressionBuilder`. This is a convenience method that encodes the common pattern of
     /// building a list of expressions and separating them by a separator.
-    pub fn push_elems<T: ExpressionBuilder>(&mut self, elems: &[T], sep: &str) {
+    pub fn push_elems<T: ExpressionBuilder>(
+        &mut self,
+        database: &Database,
+        elems: &[T],
+        sep: &str,
+    ) {
         self.push_iter(elems.iter(), sep, |builder, elem| {
-            elem.build(builder);
+            elem.build(database, builder);
         });
     }
 

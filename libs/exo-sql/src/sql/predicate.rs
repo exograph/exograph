@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use crate::Database;
+
 use super::{column::Column, ExpressionBuilder, SQLBuilder};
 
 /// Case sensitivity for string predicates.
@@ -52,7 +54,7 @@ where
     Not(Box<Predicate<C>>),
 }
 
-pub type ConcretePredicate<'a> = Predicate<Column<'a>>;
+pub type ConcretePredicate = Predicate<Column>;
 
 impl<C> Predicate<C>
 where
@@ -142,7 +144,7 @@ pub trait ParamEquality {
     fn param_eq(&self, other: &Self) -> Option<bool>;
 }
 
-impl ParamEquality for Column<'_> {
+impl ParamEquality for Column {
     fn param_eq(&self, other: &Self) -> Option<bool> {
         match (self, other) {
             (Column::Param(v1), Column::Param(v2)) => Some(v1 == v2),
@@ -151,32 +153,32 @@ impl ParamEquality for Column<'_> {
     }
 }
 
-impl<'a> ExpressionBuilder for ConcretePredicate<'a> {
+impl ExpressionBuilder for ConcretePredicate {
     /// Build a predicate into a SQL string.
-    fn build(&self, builder: &mut SQLBuilder) {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match &self {
             ConcretePredicate::True => builder.push_str("TRUE"),
             ConcretePredicate::False => builder.push_str("FALSE"),
             ConcretePredicate::Eq(column1, column2) => {
-                relational_combine(column1, column2, "=", builder)
+                relational_combine(column1, column2, "=", database, builder)
             }
             ConcretePredicate::Neq(column1, column2) => {
-                relational_combine(column1, column2, "<>", builder)
+                relational_combine(column1, column2, "<>", database, builder)
             }
             ConcretePredicate::Lt(column1, column2) => {
-                relational_combine(column1, column2, "<", builder)
+                relational_combine(column1, column2, "<", database, builder)
             }
             ConcretePredicate::Lte(column1, column2) => {
-                relational_combine(column1, column2, "<=", builder)
+                relational_combine(column1, column2, "<=", database, builder)
             }
             ConcretePredicate::Gt(column1, column2) => {
-                relational_combine(column1, column2, ">", builder)
+                relational_combine(column1, column2, ">", database, builder)
             }
             ConcretePredicate::Gte(column1, column2) => {
-                relational_combine(column1, column2, ">=", builder)
+                relational_combine(column1, column2, ">=", database, builder)
             }
             ConcretePredicate::In(column1, column2) => {
-                relational_combine(column1, column2, "IN", builder)
+                relational_combine(column1, column2, "IN", database, builder)
             }
 
             ConcretePredicate::StringLike(column1, column2, case_sensitivity) => {
@@ -188,45 +190,46 @@ impl<'a> ExpressionBuilder for ConcretePredicate<'a> {
                     } else {
                         "LIKE"
                     },
+                    database,
                     builder,
                 )
             }
             // we use the postgres concat operator (||) in order to handle both literals and column references
             ConcretePredicate::StringStartsWith(column1, column2) => {
-                column1.build(builder);
+                column1.build(database, builder);
                 builder.push_str(" LIKE ");
-                column2.build(builder);
+                column2.build(database, builder);
                 builder.push_str(" || '%'");
             }
             ConcretePredicate::StringEndsWith(column1, column2) => {
-                column1.build(builder);
+                column1.build(database, builder);
                 builder.push_str(" LIKE '%' || ");
-                column2.build(builder);
+                column2.build(database, builder);
             }
             ConcretePredicate::JsonContains(column1, column2) => {
-                relational_combine(column1, column2, "@>", builder)
+                relational_combine(column1, column2, "@>", database, builder)
             }
             ConcretePredicate::JsonContainedBy(column1, column2) => {
-                relational_combine(column1, column2, "<@", builder)
+                relational_combine(column1, column2, "<@", database, builder)
             }
             ConcretePredicate::JsonMatchKey(column1, column2) => {
-                relational_combine(column1, column2, "?", builder)
+                relational_combine(column1, column2, "?", database, builder)
             }
             ConcretePredicate::JsonMatchAnyKey(column1, column2) => {
-                relational_combine(column1, column2, "?|", builder)
+                relational_combine(column1, column2, "?|", database, builder)
             }
             ConcretePredicate::JsonMatchAllKeys(column1, column2) => {
-                relational_combine(column1, column2, "?&", builder)
+                relational_combine(column1, column2, "?&", database, builder)
             }
             ConcretePredicate::And(predicate1, predicate2) => {
-                logical_combine(predicate1, predicate2, "AND", builder)
+                logical_combine(predicate1, predicate2, "AND", database, builder)
             }
             ConcretePredicate::Or(predicate1, predicate2) => {
-                logical_combine(predicate1, predicate2, "OR", builder)
+                logical_combine(predicate1, predicate2, "OR", database, builder)
             }
             ConcretePredicate::Not(predicate) => {
                 builder.push_str("NOT(");
-                predicate.build(builder);
+                predicate.build(database, builder);
                 builder.push(')');
             }
         }
@@ -238,13 +241,14 @@ fn relational_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
     left: &'a E1,
     right: &'a E2,
     op: &'static str,
+    database: &Database,
     builder: &mut SQLBuilder,
 ) {
-    left.build(builder);
+    left.build(database, builder);
     builder.push_space();
     builder.push_str(op);
     builder.push_space();
-    right.build(builder);
+    right.build(database, builder);
 }
 
 /// Combine two expressions with a logical binary operator.
@@ -252,14 +256,15 @@ fn logical_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
     left: &'a E1,
     right: &'a E2,
     op: &'static str,
+    database: &Database,
     builder: &mut SQLBuilder,
 ) {
     builder.push('(');
-    left.build(builder);
+    left.build(database, builder);
     builder.push_space();
     builder.push_str(op);
     builder.push_space();
-    right.build(builder);
+    right.build(database, builder);
     builder.push(')');
 }
 
@@ -268,66 +273,67 @@ fn logical_combine<'a, E1: ExpressionBuilder, E2: ExpressionBuilder>(
 mod tests {
     use std::sync::Arc;
 
-    use crate::sql::{
-        physical_column::{IntBits, PhysicalColumn, PhysicalColumnType},
-        SQLParamContainer,
-    };
+    use crate::schema::table_spec::TableSpec;
+    use crate::schema::test_helper::{int_column, json_column, pk_column, string_column};
+    use crate::ColumnId;
+    use crate::{schema::database_spec::DatabaseSpec, sql::SQLParamContainer};
 
     use super::*;
 
     #[test]
     fn true_predicate() {
-        assert_binding!(ConcretePredicate::True.to_sql(), "TRUE");
+        let database = Database::default();
+        assert_binding!(ConcretePredicate::True.to_sql(&database), "TRUE");
     }
 
     #[test]
     fn false_predicate() {
-        assert_binding!(ConcretePredicate::False.to_sql(), "FALSE");
+        let database = Database::default();
+        assert_binding!(ConcretePredicate::False.to_sql(&database), "FALSE");
     }
 
     #[test]
     fn eq_predicate() {
-        let age_col = PhysicalColumn {
-            table_name: "people".to_string(),
-            name: "age".to_string(),
-            typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-            ..Default::default()
-        };
-        let age_col = Column::Physical(&age_col);
+        let database = DatabaseSpec::new(vec![TableSpec::new(
+            "people",
+            vec![pk_column("id"), int_column("age")],
+        )])
+        .to_database();
+
+        let people_table_id = database.get_table_id("people").unwrap();
+        let age_column_id = database.get_column_id(people_table_id, "age").unwrap();
+
+        let age_col = Column::Physical(age_column_id);
         let age_value_col = Column::Param(SQLParamContainer::new(5));
 
         let predicate = Predicate::Eq(age_col, age_value_col);
 
-        assert_binding!(predicate.to_sql(), r#""people"."age" = $1"#, 5);
+        assert_binding!(predicate.to_sql(&database), r#""people"."age" = $1"#, 5);
     }
 
     #[test]
     fn and_predicate() {
-        let name_col = PhysicalColumn {
-            table_name: "people".to_string(),
-            name: "name".to_string(),
-            typ: PhysicalColumnType::String { max_length: None },
-            ..Default::default()
-        };
-        let name_col = Column::Physical(&name_col);
-        let name_value_col = Column::Param(SQLParamContainer::new("foo"));
+        let database = DatabaseSpec::new(vec![TableSpec::new(
+            "people",
+            vec![pk_column("id"), string_column("name"), int_column("age")],
+        )])
+        .to_database();
 
-        let age_col = PhysicalColumn {
-            table_name: "people".to_string(),
-            name: "age".to_string(),
-            typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-            ..Default::default()
-        };
-        let age_col = Column::Physical(&age_col);
+        let people_table_id = database.get_table_id("people").unwrap();
+
+        let name_col_id = database.get_column_id(people_table_id, "name").unwrap();
+        let age_col_id = database.get_column_id(people_table_id, "age").unwrap();
+
+        let name_value_col = Column::Param(SQLParamContainer::new("foo"));
         let age_value_col = Column::Param(SQLParamContainer::new(5));
 
-        let name_predicate = ConcretePredicate::Eq(name_col, name_value_col);
-        let age_predicate = ConcretePredicate::Eq(age_col, age_value_col);
+        let name_predicate = ConcretePredicate::Eq(Column::Physical(name_col_id), name_value_col);
+        let age_predicate = ConcretePredicate::Eq(Column::Physical(age_col_id), age_value_col);
 
         let predicate = ConcretePredicate::And(Box::new(name_predicate), Box::new(age_predicate));
 
         assert_binding!(
-            predicate.to_sql(),
+            predicate.to_sql(&database),
             r#"("people"."name" = $1 AND "people"."age" = $2)"#,
             "foo",
             5
@@ -336,58 +342,61 @@ mod tests {
 
     #[test]
     fn string_predicates() {
-        let title_physical_col = PhysicalColumn {
-            table_name: "videos".to_string(),
-            name: "title".to_string(),
-            typ: PhysicalColumnType::String { max_length: None },
-            ..Default::default()
-        };
+        let database = DatabaseSpec::new(vec![TableSpec::new(
+            "videos",
+            vec![pk_column("id"), string_column("title")],
+        )])
+        .to_database();
 
-        fn title_test_data(title_physical_col: &PhysicalColumn) -> (Column<'_>, Column<'_>) {
-            let title_col = Column::Physical(title_physical_col);
+        let table_id = database.get_table_id("videos").unwrap();
+
+        let title_col_id = database.get_column_id(table_id, "title").unwrap();
+
+        fn title_test_data(title_col_id: ColumnId) -> (Column, Column) {
+            let title_col = Column::Physical(title_col_id);
             let title_value_col = Column::Param(SQLParamContainer::new("utawaku"));
 
             (title_col, title_value_col)
         }
 
         // like
-        let (title_col, title_value_col) = title_test_data(&title_physical_col);
+        let (title_col, title_value_col) = title_test_data(title_col_id);
 
         let like_predicate =
             ConcretePredicate::StringLike(title_col, title_value_col, CaseSensitivity::Sensitive);
         assert_binding!(
-            like_predicate.to_sql(),
+            like_predicate.to_sql(&database),
             r#""videos"."title" LIKE $1"#,
             "utawaku"
         );
 
         // ilike
-        let (title_col, title_value_col) = title_test_data(&title_physical_col);
+        let (title_col, title_value_col) = title_test_data(title_col_id);
 
         let ilike_predicate =
             ConcretePredicate::StringLike(title_col, title_value_col, CaseSensitivity::Insensitive);
         assert_binding!(
-            ilike_predicate.to_sql(),
+            ilike_predicate.to_sql(&database),
             r#""videos"."title" ILIKE $1"#,
             "utawaku"
         );
 
         // startsWith
-        let (title_col, title_value_col) = title_test_data(&title_physical_col);
+        let (title_col, title_value_col) = title_test_data(title_col_id);
 
         let starts_with_predicate = ConcretePredicate::StringStartsWith(title_col, title_value_col);
         assert_binding!(
-            starts_with_predicate.to_sql(),
+            starts_with_predicate.to_sql(&database),
             r#""videos"."title" LIKE $1 || '%'"#,
             "utawaku"
         );
 
         // endsWith
-        let (title_col, title_value_col) = title_test_data(&title_physical_col);
+        let (title_col, title_value_col) = title_test_data(title_col_id);
 
         let ends_with_predicate = ConcretePredicate::StringEndsWith(title_col, title_value_col);
         assert_binding!(
-            ends_with_predicate.to_sql(),
+            ends_with_predicate.to_sql(&database),
             r#""videos"."title" LIKE '%' || $1"#,
             "utawaku"
         );
@@ -395,19 +404,18 @@ mod tests {
 
     #[test]
     fn json_predicates() {
-        //// Setup
+        let database = DatabaseSpec::new(vec![TableSpec::new(
+            "card",
+            vec![pk_column("id"), json_column("data")],
+        )])
+        .to_database();
 
-        let json_physical_col = PhysicalColumn {
-            table_name: "card".to_string(),
-            name: "data".to_string(),
-            typ: PhysicalColumnType::Json,
-            ..Default::default()
-        };
+        let table_id = database.get_table_id("card").unwrap();
 
-        fn json_test_data(
-            json_physical_col: &PhysicalColumn,
-        ) -> (Column<'_>, Arc<serde_json::Value>, Column<'_>) {
-            let json_col = Column::Physical(json_physical_col);
+        let json_col_id = database.get_column_id(table_id, "data").unwrap();
+
+        fn json_test_data(json_col_id: ColumnId) -> (Column, Arc<serde_json::Value>, Column) {
+            let json_col = Column::Physical(json_col_id);
 
             let json_value: serde_json::Value = serde_json::from_str(
                 r#"
@@ -431,21 +439,21 @@ mod tests {
         //// Test bindings starting now
 
         // contains
-        let (json_col, json_value, json_value_col) = json_test_data(&json_physical_col);
+        let (json_col, json_value, json_value_col) = json_test_data(json_col_id);
 
         let contains_predicate = ConcretePredicate::JsonContains(json_col, json_value_col);
         assert_binding!(
-            contains_predicate.to_sql(),
+            contains_predicate.to_sql(&database),
             r#""card"."data" @> $1"#,
             *json_value
         );
 
         // containedBy
-        let (json_col, json_value, json_value_col) = json_test_data(&json_physical_col);
+        let (json_col, json_value, json_value_col) = json_test_data(json_col_id);
 
         let contained_by_predicate = ConcretePredicate::JsonContainedBy(json_col, json_value_col);
         assert_binding!(
-            contained_by_predicate.to_sql(),
+            contained_by_predicate.to_sql(&database),
             r#""card"."data" <@ $1"#,
             *json_value
         );
@@ -453,18 +461,22 @@ mod tests {
         // matchKey
         let json_key_list_col = Column::Param(SQLParamContainer::new(json_key_list.clone()));
 
-        let (json_col, _, _) = json_test_data(&json_physical_col);
+        let (json_col, _, _) = json_test_data(json_col_id);
 
         let match_key_predicate = ConcretePredicate::JsonMatchKey(json_col, json_key_col);
-        assert_binding!(match_key_predicate.to_sql(), r#""card"."data" ? $1"#, "a");
+        assert_binding!(
+            match_key_predicate.to_sql(&database),
+            r#""card"."data" ? $1"#,
+            "a"
+        );
 
         // matchAnyKey
-        let (json_col, _, _) = json_test_data(&json_physical_col);
+        let (json_col, _, _) = json_test_data(json_col_id);
 
         let match_any_key_predicate =
             ConcretePredicate::JsonMatchAnyKey(json_col, json_key_list_col);
         assert_binding!(
-            match_any_key_predicate.to_sql(),
+            match_any_key_predicate.to_sql(&database),
             r#""card"."data" ?| $1"#,
             json_key_list
         );
@@ -472,12 +484,12 @@ mod tests {
         // matchAllKeys
         let json_key_list_col = Column::Param(SQLParamContainer::new(json_key_list.clone()));
 
-        let (json_col, _, _) = json_test_data(&json_physical_col);
+        let (json_col, _, _) = json_test_data(json_col_id);
 
         let match_all_keys_predicate =
             ConcretePredicate::JsonMatchAllKeys(json_col, json_key_list_col);
         assert_binding!(
-            match_all_keys_predicate.to_sql(),
+            match_all_keys_predicate.to_sql(&database),
             r#""card"."data" ?& $1"#,
             json_key_list
         );

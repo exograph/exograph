@@ -7,11 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+pub mod column_spec;
+pub mod database_spec;
 pub mod issue;
 pub mod op;
 pub mod spec;
+pub mod table_spec;
+pub mod test_helper;
 
-mod column;
 mod constraint;
 mod statement;
-mod table;

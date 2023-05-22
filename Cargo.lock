@@ -2896,6 +2896,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "tracing",
+ "typed-generational-arena",
  "url",
  "urlencoding",
  "which",

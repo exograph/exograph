@@ -23,7 +23,6 @@ use exo_sql::{
     SelectionElement,
 };
 use futures::StreamExt;
-use maybe_owned::MaybeOwned;
 use postgres_model::{
     query::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
     types::EntityType,
@@ -36,7 +35,7 @@ impl OperationSelectionResolver for AggregateQuery {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractSelect, PostgresExecutionError> {
         let access_predicate = check_access(
             &self.return_type,
             &SQLOperationKind::Retrieve,
@@ -55,7 +54,7 @@ impl OperationSelectionResolver for AggregateQuery {
         let predicate = AbstractPredicate::and(query_predicate, access_predicate);
         let return_postgres_type = &self.return_type.typ(&subsystem.entity_types);
 
-        let root_physical_table = &subsystem.tables[return_postgres_type.table_id];
+        let root_physical_table_id = return_postgres_type.table_id;
 
         let content_object = content_select(
             &self.return_type,
@@ -66,7 +65,7 @@ impl OperationSelectionResolver for AggregateQuery {
         .await?;
 
         Ok(AbstractSelect {
-            table: root_physical_table,
+            table_id: root_physical_table_id,
             selection: exo_sql::Selection::Json(content_object, SelectionCardinality::One),
             predicate,
             order_by: None,
@@ -82,7 +81,7 @@ async fn content_select<'content>(
     fields: &'content [ValidatedField],
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<Vec<AliasedSelectionElement<'content>>, PostgresExecutionError> {
+) -> Result<Vec<AliasedSelectionElement>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
         .then(|field| async { map_field(return_type, field, subsystem, request_context).await })
         .collect::<Vec<Result<_, _>>>()
@@ -96,7 +95,7 @@ async fn map_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     _request_context: &'content RequestContext<'content>,
-) -> Result<AliasedSelectionElement<'content>, PostgresExecutionError> {
+) -> Result<AliasedSelectionElement, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.type_name().to_string())
     } else {
@@ -110,7 +109,6 @@ async fn map_field<'content>(
 
         match &model_field.relation {
             PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
-                let column = column_id.get_column(subsystem);
                 let elements = field
                     .subfields
                     .iter()
@@ -120,10 +118,10 @@ async fn map_field<'content>(
                         } else {
                             SelectionElement::Function {
                                 function_name: subfield.name.to_string(),
-                                column,
+                                column_id: *column_id,
                             }
                         };
-                        (subfield.output_name(), MaybeOwned::Owned(selection_elem))
+                        (subfield.output_name(), selection_elem)
                     })
                     .collect();
                 SelectionElement::Object(elements)

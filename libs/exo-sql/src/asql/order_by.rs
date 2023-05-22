@@ -9,14 +9,14 @@
 
 use crate::sql::order::Ordering;
 
-use super::column_path::ColumnPath;
+use super::column_path::PhysicalColumnPath;
 
 /// Represents an abstract order-by clause
 #[derive(Debug)]
-pub struct AbstractOrderBy<'a>(pub Vec<(ColumnPath<'a>, Ordering)>);
+pub struct AbstractOrderBy(pub Vec<(PhysicalColumnPath, Ordering)>);
 
-impl<'a> AbstractOrderBy<'a> {
-    pub fn column_paths(&self) -> Vec<&ColumnPath<'a>> {
+impl AbstractOrderBy {
+    pub fn column_paths(&self) -> Vec<&PhysicalColumnPath> {
         self.0.iter().map(|(path, _)| path).collect()
     }
 }

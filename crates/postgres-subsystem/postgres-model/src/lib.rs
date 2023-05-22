@@ -9,8 +9,6 @@
 
 pub mod access;
 pub mod aggregate;
-pub mod column_id;
-pub mod column_path;
 pub mod limit_offset;
 pub mod mutation;
 pub mod operation;

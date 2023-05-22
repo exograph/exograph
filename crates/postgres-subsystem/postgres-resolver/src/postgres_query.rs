@@ -13,8 +13,8 @@ use super::{
     util::{check_access, Arguments},
 };
 use crate::{
-    column_path_util::to_column_path_link, operation_resolver::OperationSelectionResolver,
-    order_by_mapper::OrderByParameterInput, sql_mapper::extract_and_map,
+    operation_resolver::OperationSelectionResolver, order_by_mapper::OrderByParameterInput,
+    sql_mapper::extract_and_map,
 };
 use async_recursion::async_recursion;
 use async_trait::async_trait;
@@ -44,7 +44,7 @@ impl OperationSelectionResolver for PkQuery {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractSelect, PostgresExecutionError> {
         compute_select(
             &self.parameters.predicate_param,
             None,
@@ -66,7 +66,7 @@ impl OperationSelectionResolver for CollectionQuery {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
-    ) -> Result<AbstractSelect<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractSelect, PostgresExecutionError> {
         let CollectionQueryParameters {
             predicate_param,
             order_by_param,
@@ -91,14 +91,14 @@ impl OperationSelectionResolver for CollectionQuery {
 #[allow(clippy::too_many_arguments)]
 async fn compute_select<'content>(
     predicate_param: &'content PredicateParameter,
-    order_by: Option<AbstractOrderBy<'content>>,
+    order_by: Option<AbstractOrderBy>,
     limit: Option<Limit>,
     offset: Option<Offset>,
     return_type: &'content OperationReturnType<EntityType>,
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractSelect<'content>, PostgresExecutionError> {
+) -> Result<AbstractSelect, PostgresExecutionError> {
     let access_predicate = check_access(
         return_type,
         &SQLOperationKind::Retrieve,
@@ -126,14 +126,12 @@ async fn compute_select<'content>(
     )
     .await?;
 
-    let root_physical_table = &subsystem.tables[return_postgres_type.table_id];
-
     let selection_cardinality = match return_type {
         OperationReturnType::List(_) => SelectionCardinality::Many,
         _ => SelectionCardinality::One,
     };
     Ok(AbstractSelect {
-        table: root_physical_table,
+        table_id: return_postgres_type.table_id,
         selection: exo_sql::Selection::Json(content_object, selection_cardinality),
         predicate,
         order_by,
@@ -147,7 +145,7 @@ async fn compute_order_by<'content>(
     arguments: &'content Arguments,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<Option<AbstractOrderBy<'content>>, PostgresExecutionError> {
+) -> Result<Option<AbstractOrderBy>, PostgresExecutionError> {
     extract_and_map(
         OrderByParameterInput {
             param,
@@ -166,7 +164,7 @@ async fn content_select<'content>(
     fields: &'content [ValidatedField],
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<Vec<AliasedSelectionElement<'content>>, PostgresExecutionError> {
+) -> Result<Vec<AliasedSelectionElement>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
         .then(|field| async { map_field(return_type, field, subsystem, request_context).await })
         .collect::<Vec<Result<_, _>>>()
@@ -180,7 +178,7 @@ async fn map_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AliasedSelectionElement<'content>, PostgresExecutionError> {
+) -> Result<AliasedSelectionElement, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.to_owned())
     } else {
@@ -208,11 +206,10 @@ async fn map_persistent_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<SelectionElement<'content>, PostgresExecutionError> {
+) -> Result<SelectionElement, PostgresExecutionError> {
     match &entity_field.relation {
         PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
-            let column = column_id.get_column(subsystem);
-            Ok(SelectionElement::Physical(column))
+            Ok(SelectionElement::Physical(*column_id))
         }
         PostgresRelation::ManyToOne {
             other_type_id,
@@ -222,7 +219,7 @@ async fn map_persistent_field<'content>(
             let other_type = &subsystem.entity_types[*other_type_id];
 
             let other_table_pk_query = &subsystem.pk_queries[other_type.pk_query];
-            let relation_link = to_column_path_link(column_id_path_link, subsystem);
+            let relation_link = column_id_path_link.clone();
 
             let nested_abstract_select = other_table_pk_query
                 .resolve_select(field, request_context, subsystem)
@@ -241,7 +238,7 @@ async fn map_persistent_field<'content>(
         } => {
             let other_type = &subsystem.entity_types[*other_type_id];
 
-            let relation_link = to_column_path_link(column_id_path_link, subsystem);
+            let relation_link = column_id_path_link.clone();
 
             let nested_abstract_select = {
                 // Get an appropriate query based on the cardinality of the relation
@@ -274,7 +271,7 @@ async fn map_aggregate_field<'content>(
     field: &'content ValidatedField,
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<SelectionElement<'content>, PostgresExecutionError> {
+) -> Result<SelectionElement, PostgresExecutionError> {
     if let Some(PostgresRelation::OneToMany {
         other_type_id,
         cardinality,
@@ -285,7 +282,7 @@ async fn map_aggregate_field<'content>(
         // TODO: Avoid code duplication with map_persistent_field
         let other_type = &subsystem.entity_types[*other_type_id];
 
-        let relation_link = to_column_path_link(column_id_path_link, subsystem);
+        let relation_link = column_id_path_link.clone();
 
         let nested_abstract_select = {
             // Aggregate is supported only for unbounded relations (i.e. not supported for one-to-one)

@@ -25,13 +25,14 @@ use core_plugin_interface::{
     core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed},
 };
 
-use exo_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
+use exo_sql::{
+    ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnPathLink, PhysicalColumnType,
+    PhysicalTable, TableId,
+};
 
 use postgres_model::{
     access::Access,
     aggregate::{AggregateField, AggregateFieldType},
-    column_id::ColumnId,
-    column_path::ColumnIdPathLink,
     relation::{PostgresRelation, RelationCardinality},
     types::{EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, TypeIndex},
 };
@@ -165,18 +166,20 @@ fn expand_type_no_fields(
 ) {
     let table_name = resolved_type.table_name.clone();
 
+    let table = PhysicalTable {
+        name: table_name,
+        columns: vec![],
+    };
+
+    let table_id = building.database.insert_table(table);
+
     let columns = resolved_type
         .fields
         .iter()
-        .flat_map(|field| create_column(field, &table_name, resolved_env))
+        .flat_map(|field| create_column(field, table_id, resolved_env))
         .collect();
 
-    let table = PhysicalTable {
-        name: table_name.clone(),
-        columns,
-    };
-
-    let table_id = building.tables.add(&table_name, table);
+    building.database.get_table_mut(table_id).columns = columns;
 
     let pk_query = building
         .pk_queries
@@ -442,7 +445,7 @@ fn create_agg_field(
 
 fn create_column(
     field: &ResolvedField,
-    table_name: &str,
+    table_id: TableId,
     env: &ResolvedTypeEnv,
 ) -> Option<PhysicalColumn> {
     // Check that the field holds to a self column
@@ -482,7 +485,7 @@ fn create_column(
 
             match field_type {
                 ResolvedType::Primitive(pt) => Some(PhysicalColumn {
-                    table_name: table_name.to_string(),
+                    table_id,
                     name: field.column_name.to_string(),
                     typ: determine_column_type(pt, field),
                     is_pk: field.is_pk,
@@ -505,7 +508,7 @@ fn create_column(
                     // and it refers to the pk column in the other table.
                     let other_pk_field = ct.pk_field().unwrap();
                     Some(PhysicalColumn {
-                        table_name: table_name.to_string(),
+                        table_id,
                         name: field.column_name.to_string(),
                         typ: PhysicalColumnType::ColumnReference {
                             ref_table_name: ct.table_name.to_string(),
@@ -558,7 +561,7 @@ fn create_column(
                 }
 
                 Some(PhysicalColumn {
-                    table_name: table_name.to_string(),
+                    table_id,
                     name: field.column_name.to_string(),
                     typ: determine_column_type(&pt, field),
                     is_pk: false,
@@ -744,7 +747,7 @@ fn create_relation(
             .map(|index| ColumnId::new(table_id, index))
     }
 
-    let self_table = &building.tables[self_table_id];
+    let self_table = &building.database.get_table(self_table_id);
 
     if field.is_pk {
         let column_id = compute_column_id(self_table, self_table_id, field).unwrap();
@@ -777,7 +780,7 @@ fn create_relation(
                         let other_type_id = building.get_entity_type_id(&field_type.name).unwrap();
                         let other_type = &building.entity_types[other_type_id];
                         let other_table_id = other_type.table_id;
-                        let other_table = &building.tables[other_table_id];
+                        let other_table = &building.database.get_table(other_table_id);
 
                         let other_type_column_id =
                             compute_column_id(other_table, other_table_id, field).unwrap();
@@ -785,7 +788,7 @@ fn create_relation(
                         let self_pk_column_id =
                             ColumnId::new(self_table_id, self_table.get_pk_column_index().unwrap());
 
-                        let column_id_path_link = ColumnIdPathLink {
+                        let column_id_path_link = PhysicalColumnPathLink {
                             self_column_id: self_pk_column_id,
                             linked_column_id: Some(other_type_column_id),
                         };
@@ -824,7 +827,7 @@ fn create_relation(
                         let other_type_id = building.get_entity_type_id(&ct.name).unwrap();
                         let other_type = &building.entity_types[other_type_id];
                         let other_table_id = other_type.table_id;
-                        let other_table = &building.tables[other_table_id];
+                        let other_table = &building.database.get_table(other_table_id);
 
                         match (&field.typ, other_type_field_typ) {
                             (FieldType::Optional(_), FieldType::Plain(_)) => {
@@ -836,7 +839,7 @@ fn create_relation(
                                     self_table.get_pk_column_index().unwrap(),
                                 );
 
-                                let column_id_path_link = ColumnIdPathLink {
+                                let column_id_path_link = PhysicalColumnPathLink {
                                     self_column_id: self_pk_column_id,
                                     linked_column_id: Some(other_type_column_id),
                                 };
@@ -850,7 +853,7 @@ fn create_relation(
                                 let column_id =
                                     compute_column_id(self_table, self_table_id, field).unwrap();
 
-                                let relation_link = ColumnIdPathLink {
+                                let relation_link = PhysicalColumnPathLink {
                                     self_column_id: column_id,
                                     linked_column_id: Some(ColumnId::new(
                                         other_table_id,
@@ -873,7 +876,7 @@ fn create_relation(
                                             compute_column_id(self_table, self_table_id, field)
                                                 .unwrap();
 
-                                        let relation_link = ColumnIdPathLink {
+                                        let relation_link = PhysicalColumnPathLink {
                                             self_column_id: column_id,
                                             linked_column_id: Some(ColumnId::new(
                                                 other_table_id,

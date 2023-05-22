@@ -38,7 +38,6 @@ use crate::{
         cte::{CteExpression, WithQuery},
         delete::TemplateDelete,
         insert::TemplateInsert,
-        physical_column::PhysicalColumn,
         sql_operation::{SQLOperation, TemplateSQLOperation},
         transaction::{
             ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
@@ -47,6 +46,7 @@ use crate::{
         update::TemplateUpdate,
     },
     transform::transformer::{PredicateTransformer, SelectTransformer, UpdateTransformer},
+    ColumnId, Database,
 };
 
 use super::Postgres;
@@ -67,16 +67,17 @@ impl UpdateTransformer for Postgres {
     fn to_transaction_script<'a>(
         &self,
         abstract_update: &'a AbstractUpdate,
+        database: &'a Database,
     ) -> TransactionScript<'a> {
-        let column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)> = abstract_update
+        let column_id_values: Vec<(ColumnId, MaybeOwned<'a, Column>)> = abstract_update
             .column_values
             .iter()
             .map(|(c, v)| (*c, v.into()))
             .collect();
 
-        let predicate = self.to_predicate(&abstract_update.predicate, false);
+        let predicate = self.to_predicate(&abstract_update.predicate, false, database);
 
-        let select = self.to_select(&abstract_update.selection);
+        let select = self.to_select(&abstract_update.selection, database);
 
         // If there is no nested update, select all the columns, so that the select statement will have all
         // those column (and not have to specify the WHERE clause once again).
@@ -84,16 +85,20 @@ impl UpdateTransformer for Postgres {
         // column in the nested updates added to the transaction script.
         let return_col = if !abstract_update.nested_updates.is_empty() {
             Column::Physical(
-                abstract_update
-                    .table
-                    .get_pk_physical_column()
+                database
+                    .get_pk_column(abstract_update.table_id)
                     .expect("No primary key column"),
             )
         } else {
             Column::Star(None)
         };
 
-        let root_update = SQLOperation::Update(abstract_update.table.update(
+        let table = database.get_table(abstract_update.table_id);
+        let column_values = column_id_values
+            .into_iter()
+            .map(|(col_id, col)| (database.get_column(col_id), col))
+            .collect();
+        let root_update = SQLOperation::Update(table.update(
             column_values,
             predicate.into(),
             vec![return_col.into()],
@@ -115,7 +120,7 @@ impl UpdateTransformer for Postgres {
                 .for_each(|nested_update| {
                     // Create a template update operation and bind it to the root step
                     let update_op = TemplateTransactionStep {
-                        operation: update_op(nested_update, root_step_id, self),
+                        operation: update_op(nested_update, root_step_id, self, database),
                         prev_step_id: root_step_id,
                     };
 
@@ -127,7 +132,7 @@ impl UpdateTransformer for Postgres {
                 .iter()
                 .for_each(|nested_insert| {
                     let insert_op = TemplateTransactionStep {
-                        operation: insert_op(nested_insert, root_step_id),
+                        operation: insert_op(nested_insert, root_step_id, database),
                         prev_step_id: root_step_id,
                     };
 
@@ -139,7 +144,7 @@ impl UpdateTransformer for Postgres {
                 .iter()
                 .for_each(|nested_delete| {
                     let delete_op = TemplateTransactionStep {
-                        operation: delete_op(nested_delete, root_step_id, self),
+                        operation: delete_op(nested_delete, root_step_id, self, database),
                         prev_step_id: root_step_id,
                     };
 
@@ -161,7 +166,7 @@ impl UpdateTransformer for Postgres {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::WithQuery(WithQuery {
                     expressions: vec![CteExpression {
-                        name: abstract_update.table.name.clone(),
+                        name: table.name.clone(),
                         operation: root_update,
                     }],
                     select,
@@ -177,15 +182,16 @@ fn update_op<'a>(
     nested_update: &'a NestedAbstractUpdate,
     parent_step_id: TransactionStepId,
     predicate_transformer: &impl PredicateTransformer,
+    database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
-    let mut column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)> = nested_update
+    let mut column_id_values: Vec<(ColumnId, ProxyColumn)> = nested_update
         .update
         .column_values
         .iter()
         .map(|(col, val)| (*col, ProxyColumn::Concrete(val.into())))
         .collect();
-    column_values.push((
-        nested_update.relation.column,
+    column_id_values.push((
+        nested_update.relation.column_id,
         ProxyColumn::Template {
             // The column index is always 0 because we want to get the only column in the row
             // such as `UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING
@@ -195,9 +201,18 @@ fn update_op<'a>(
         },
     ));
 
+    let column_values = column_id_values
+        .into_iter()
+        .map(|(col_id, col)| (database.get_column(col_id), col))
+        .collect();
+
     TemplateSQLOperation::Update(TemplateUpdate {
-        table: nested_update.update.table,
-        predicate: predicate_transformer.to_predicate(&nested_update.update.predicate, false),
+        table: database.get_table(nested_update.update.table_id),
+        predicate: predicate_transformer.to_predicate(
+            &nested_update.update.predicate,
+            false,
+            database,
+        ),
         column_values,
         returning: vec![],
     })
@@ -206,6 +221,7 @@ fn update_op<'a>(
 fn insert_op<'a>(
     nested_insert: &'a NestedAbstractInsert,
     parent_step_id: TransactionStepId,
+    database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
     let rows = &nested_insert.insert.rows;
 
@@ -215,8 +231,8 @@ fn insert_op<'a>(
         .map(|row| row.partition_self_and_nested())
         .unzip();
 
-    let (mut column_names, column_values_seq) = super::insert_transformer::align(self_elems);
-    column_names.push(nested_insert.relation.column);
+    let (mut column_id_names, column_values_seq) = super::insert_transformer::align(self_elems);
+    column_id_names.push(nested_insert.relation.column_id);
 
     let column_values_seq: Vec<_> = column_values_seq
         .into_iter()
@@ -236,9 +252,14 @@ fn insert_op<'a>(
         })
         .collect();
 
+    let columns = column_id_names
+        .iter()
+        .map(|col_id| database.get_column(*col_id))
+        .collect();
+
     TemplateSQLOperation::Insert(TemplateInsert {
-        table: nested_insert.insert.table,
-        column_names,
+        table: database.get_table(nested_insert.insert.table_id),
+        columns,
         column_values_seq,
         returning: vec![],
     })
@@ -248,6 +269,7 @@ fn delete_op<'a>(
     nested_delete: &'a NestedAbstractDelete,
     _parent_step_id: TransactionStepId,
     predicate_transformer: &impl PredicateTransformer,
+    database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
     // TODO: We need TemplatePredicate here, because we need to use the proxy column in the nested delete
     // let predicate = Predicate::and(
@@ -265,10 +287,11 @@ fn delete_op<'a>(
     //     ),
     // );
 
-    let predicate = predicate_transformer.to_predicate(&nested_delete.delete.predicate, false);
+    let predicate =
+        predicate_transformer.to_predicate(&nested_delete.delete.predicate, false, database);
 
     TemplateSQLOperation::Delete(TemplateDelete {
-        table: nested_delete.delete.table,
+        table: database.get_table(nested_delete.delete.table_id),
         predicate,
         returning: vec![],
     })
@@ -278,7 +301,7 @@ fn delete_op<'a>(
 mod tests {
     use crate::{
         asql::{
-            column_path::{ColumnPath, ColumnPathLink},
+            column_path::{ColumnPath, PhysicalColumnPathLink},
             predicate::AbstractPredicate,
             select::AbstractSelect,
             selection::{
@@ -296,20 +319,21 @@ mod tests {
     fn simple_update() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  venues_table,
                  venues_id_column,
                  venues_name_column,
                  ..
              }| {
-                let venue_id_path = ColumnPath::Physical(vec![ColumnPathLink {
-                    self_column: (venues_id_column, venues_table),
-                    linked_column: None,
+                let venue_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
+                    self_column_id: venues_id_column,
+                    linked_column_id: None,
                 }]);
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let abs_update = AbstractUpdate {
-                    table: venues_table,
+                    table_id: venues_table,
                     predicate,
                     column_values: vec![(
                         venues_name_column,
@@ -319,6 +343,7 @@ mod tests {
                     nested_inserts: vec![],
                     nested_deletes: vec![],
                     selection: AbstractSelect {
+                        table_id: venues_table,
                         selection: Selection::Seq(vec![
                             AliasedSelectionElement::new(
                                 "id".to_string(),
@@ -329,7 +354,6 @@ mod tests {
                                 SelectionElement::Physical(venues_name_column),
                             ),
                         ]),
-                        table: venues_table,
                         predicate: Predicate::True,
                         order_by: None,
                         offset: None,
@@ -337,7 +361,8 @@ mod tests {
                     },
                 };
 
-                let update = UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update);
+                let update =
+                    UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update, &database);
 
                 // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{update:#?}");
@@ -349,6 +374,7 @@ mod tests {
     fn nested_update() {
         TestSetup::with_setup(
             |TestSetup {
+                 database,
                  venues_table,
                  venues_id_column,
                  venues_name_column,
@@ -357,28 +383,28 @@ mod tests {
                  concerts_venue_id_column,
                  ..
              }| {
-                let venue_id_path = ColumnPath::Physical(vec![ColumnPathLink {
-                    self_column: (venues_id_column, venues_table),
-                    linked_column: None,
+                let venue_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
+                    self_column_id: venues_id_column,
+                    linked_column_id: None,
                 }]);
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
                     relation: NestedElementRelation {
-                        column: concerts_venue_id_column,
-                        table: concerts_table,
+                        column_id: concerts_venue_id_column,
+                        table_id: concerts_table,
                     },
                     update: AbstractUpdate {
-                        table: concerts_table,
+                        table_id: concerts_table,
                         predicate: Predicate::True,
                         column_values: vec![(
                             concerts_name_column,
                             Column::Param(SQLParamContainer::new("new_concert_name".to_string())),
                         )],
                         selection: AbstractSelect {
+                            table_id: venues_table,
                             selection: Selection::Seq(vec![]),
-                            table: venues_table,
                             predicate: Predicate::True,
                             order_by: None,
                             offset: None,
@@ -391,7 +417,7 @@ mod tests {
                 };
 
                 let abs_update = AbstractUpdate {
-                    table: venues_table,
+                    table_id: venues_table,
                     predicate,
                     column_values: vec![(
                         venues_name_column,
@@ -401,6 +427,7 @@ mod tests {
                     nested_inserts: vec![],
                     nested_deletes: vec![],
                     selection: AbstractSelect {
+                        table_id: venues_table,
                         selection: Selection::Seq(vec![
                             AliasedSelectionElement::new(
                                 "id".to_string(),
@@ -411,7 +438,6 @@ mod tests {
                                 SelectionElement::Physical(venues_name_column),
                             ),
                         ]),
-                        table: venues_table,
                         predicate: Predicate::True,
                         order_by: None,
                         offset: None,
@@ -419,7 +445,8 @@ mod tests {
                     },
                 };
 
-                let update = UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update);
+                let update =
+                    UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update, &database);
 
                 // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{update:#?}");

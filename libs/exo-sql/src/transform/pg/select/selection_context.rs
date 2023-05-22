@@ -8,19 +8,21 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    asql::column_path::PhysicalColumnPathLink,
     sql::predicate::ConcretePredicate,
     transform::pg::{Postgres, SelectionLevel},
-    AbstractSelect, ColumnPath, ColumnPathLink,
+    AbstractSelect, ColumnPath, Database,
 };
 
 /// A context for the selection transformation to avoid repeating the same work
 /// by each strategy.
 pub(crate) struct SelectionContext<'c, 'a> {
-    pub abstract_select: &'c AbstractSelect<'a>,
+    pub database: &'a Database,
+    pub abstract_select: &'c AbstractSelect,
     pub has_a_one_to_many_predicate: bool,
-    pub predicate_column_paths: Vec<Vec<ColumnPathLink<'a>>>,
-    pub order_by_column_paths: Vec<Vec<ColumnPathLink<'a>>>,
-    pub additional_predicate: Option<ConcretePredicate<'a>>,
+    pub predicate_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
+    pub order_by_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
+    pub additional_predicate: Option<ConcretePredicate>,
     pub selection_level: SelectionLevel,
     pub allow_duplicate_rows: bool,
     pub transformer: &'c Postgres,
@@ -28,44 +30,42 @@ pub(crate) struct SelectionContext<'c, 'a> {
 
 impl<'c, 'a> SelectionContext<'c, 'a> {
     pub fn new(
-        abstract_select: &'c AbstractSelect<'a>,
-        additional_predicate: Option<ConcretePredicate<'a>>,
+        database: &'a Database,
+        abstract_select: &'c AbstractSelect,
+        additional_predicate: Option<ConcretePredicate>,
         selection_level: SelectionLevel,
         allow_duplicate_rows: bool,
         transformer: &'c Postgres,
     ) -> Self {
-        fn column_path_owned<'a>(
-            column_paths: Vec<&ColumnPath<'a>>,
-        ) -> Vec<Vec<ColumnPathLink<'a>>> {
-            column_paths
-                .into_iter()
-                .filter_map(|path| match path {
-                    ColumnPath::Physical(links) => Some(links.to_vec()),
-                    _ => None,
-                })
-                .collect()
-        }
-
-        let predicate_column_paths: Vec<Vec<ColumnPathLink>> =
-            column_path_owned(abstract_select.predicate.column_paths());
+        let predicate_column_paths: Vec<_> = abstract_select
+            .predicate
+            .column_paths()
+            .iter()
+            .flat_map(|p| match p {
+                ColumnPath::Physical(links) => Some(links.to_vec()),
+                _ => None,
+            })
+            .collect();
 
         let order_by_column_paths = abstract_select
             .order_by
             .as_ref()
-            .map(|ob| column_path_owned(ob.column_paths()))
+            .map(|ob| ob.column_paths().iter().map(|p| p.path.to_vec()).collect())
             .unwrap_or_else(Vec::new);
 
         // Sanity check that there are no one-to-many links in the order by clause
         // such a clause would be ill-formed
-        order_by_column_paths
-            .iter()
-            .for_each(|path| path.iter().for_each(|link| assert!(!link.is_one_to_many())));
+        order_by_column_paths.iter().for_each(|path| {
+            path.iter()
+                .for_each(|link| assert!(!link.is_one_to_many(database)))
+        });
 
         let has_a_one_to_many_predicate = predicate_column_paths
             .iter()
-            .any(|path| path.iter().any(|link| link.is_one_to_many()));
+            .any(|path| path.iter().any(|link| link.is_one_to_many(database)));
 
         Self {
+            database,
             abstract_select,
             has_a_one_to_many_predicate,
             predicate_column_paths,

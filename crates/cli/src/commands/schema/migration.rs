@@ -12,8 +12,8 @@ use std::path::PathBuf;
 use builder::error::ParserError;
 use exo_sql::{
     database_error::DatabaseError,
-    schema::{issue::WithIssues, op::SchemaOp, spec::SchemaSpec},
-    Database,
+    schema::{database_spec::DatabaseSpec, issue::WithIssues, op::SchemaOp, spec::diff},
+    DatabaseClient,
 };
 
 use super::{util, verify::VerificationErrors};
@@ -30,12 +30,12 @@ pub(crate) struct MigrationStatement {
 }
 
 impl Migration {
-    pub fn from_schemas(old_schema_spec: &SchemaSpec, new_schema_spec: &SchemaSpec) -> Self {
+    pub fn from_schemas(old_schema_spec: &DatabaseSpec, new_schema_spec: &DatabaseSpec) -> Self {
         let mut pre_statements = vec![];
         let mut statements = vec![];
         let mut post_statements = vec![];
 
-        let diffs = old_schema_spec.diff(new_schema_spec);
+        let diffs = diff(old_schema_spec, new_schema_spec);
 
         for diff in diffs.iter() {
             let is_destructive = match diff {
@@ -86,9 +86,9 @@ impl Migration {
             eprintln!("{issue}");
         }
 
-        let new_schema = extract_model_schema(model_path).await?;
+        let database_spec = extract_model_schema(model_path).await?;
 
-        Ok(Migration::from_schemas(&old_schema.value, &new_schema))
+        Ok(Migration::from_schemas(&old_schema.value, &database_spec))
     }
 
     pub fn has_destructive_changes(&self) -> bool {
@@ -109,7 +109,7 @@ impl Migration {
 
         let new_schema = extract_model_schema(model_path).await?;
 
-        let diff = old_schema.value.diff(&new_schema);
+        let diff = diff(&old_schema.value, &new_schema);
 
         let errors: Vec<_> = diff.iter().flat_map(|op| op.error_string()).collect();
 
@@ -173,19 +173,19 @@ impl MigrationStatement {
     }
 }
 
-async fn extract_db_schema(db_url: Option<&str>) -> Result<WithIssues<SchemaSpec>, DatabaseError> {
+async fn extract_db_schema(
+    db_url: Option<&str>,
+) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
     let database = open_database(db_url)?;
     let client = database.get_client().await?;
 
-    SchemaSpec::from_db(&client).await
+    DatabaseSpec::from_live_database(&client).await
 }
 
-async fn extract_model_schema(model_path: &PathBuf) -> Result<SchemaSpec, ParserError> {
+async fn extract_model_schema(model_path: &PathBuf) -> Result<DatabaseSpec, ParserError> {
     let postgres_subsystem = util::create_postgres_system(model_path).await?;
 
-    Ok(SchemaSpec::from_model(
-        postgres_subsystem.tables.into_iter().collect(),
-    ))
+    Ok(DatabaseSpec::from_database(postgres_subsystem.database))
 }
 
 pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
@@ -203,11 +203,11 @@ pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
     Ok(())
 }
 
-pub fn open_database(database: Option<&str>) -> Result<Database, DatabaseError> {
+pub fn open_database(database: Option<&str>) -> Result<DatabaseClient, DatabaseError> {
     if let Some(database) = database {
-        Ok(Database::from_db_url(database)?)
+        Ok(DatabaseClient::from_db_url(database)?)
     } else {
-        Ok(Database::from_env(Some(1))?)
+        Ok(DatabaseClient::from_env(Some(1))?)
     }
 }
 
@@ -216,7 +216,6 @@ mod tests {
     use crate::commands::schema::util;
 
     use super::*;
-    use exo_sql::schema::spec::SchemaSpec;
     use stripmargin::StripMargin;
 
     #[tokio::test]
@@ -960,13 +959,13 @@ mod tests {
         .await
     }
 
-    async fn compute_spec(model: &str) -> SchemaSpec {
+    async fn compute_spec(model: &str) -> DatabaseSpec {
         let postgres_subsystem =
             util::create_postgres_system_from_str(model, "test.exo".to_string())
                 .await
                 .unwrap();
 
-        SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect())
+        DatabaseSpec::from_database(postgres_subsystem.database)
     }
 
     async fn assert_changes(
@@ -981,13 +980,13 @@ mod tests {
         let new_system = compute_spec(new_system).await;
 
         assert_change(
-            &SchemaSpec::default(),
+            &DatabaseSpec::new(vec![]),
             &old_system,
             old_create,
             "Create old system schema",
         );
         assert_change(
-            &SchemaSpec::default(),
+            &DatabaseSpec::new(vec![]),
             &new_system,
             new_create,
             "Create new system schema",
@@ -1015,8 +1014,8 @@ mod tests {
     }
 
     fn assert_change(
-        old_system: &SchemaSpec,
-        new_system: &SchemaSpec,
+        old_system: &DatabaseSpec,
+        new_system: &DatabaseSpec,
         expected: Vec<(&str, bool)>,
         message: &str,
     ) {

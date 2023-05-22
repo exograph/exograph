@@ -8,14 +8,14 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    asql::column_path::PhysicalColumnPathLink,
     sql::{predicate::ConcretePredicate, select::Select, table::Table},
     transform::{
         join_util,
         pg::{Postgres, SelectionLevel},
         transformer::{OrderByTransformer, PredicateTransformer},
     },
-    AbstractOrderBy, AbstractPredicate, Column, ColumnPathLink, Limit, Offset, PhysicalTable,
-    Selection,
+    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, Offset, Selection, TableId,
 };
 
 use super::selection_context::SelectionContext;
@@ -38,23 +38,31 @@ pub(crate) trait SelectionStrategy {
     fn suitable(&self, selection_context: &SelectionContext) -> bool;
 
     /// Computes the SQL query for the given selection context. If a strategy
-    fn to_select<'a>(&self, selection_context: SelectionContext<'_, 'a>) -> Select<'a>;
+    fn to_select<'a>(
+        &self,
+        selection_context: SelectionContext<'_, 'a>,
+        database: &'a Database,
+    ) -> Select;
 }
 
 /// Compute an inner select that picks up all the columns from the given table, and applies the
 /// given clauses.
-pub(super) fn compute_inner_select<'a>(
-    table: Table<'a>,
-    wildcard_table: &PhysicalTable,
-    predicate: ConcretePredicate<'a>,
-    order_by: &Option<AbstractOrderBy<'a>>,
+#[allow(clippy::too_many_arguments)]
+pub(super) fn compute_inner_select(
+    table: Table,
+    wildcard_table: TableId,
+    predicate: ConcretePredicate,
+    order_by: &Option<AbstractOrderBy>,
     limit: &Option<Limit>,
     offset: &Option<Offset>,
     transformer: &impl OrderByTransformer,
-) -> Select<'a> {
+    database: &Database,
+) -> Select {
     Select {
         table,
-        columns: vec![Column::Star(Some(wildcard_table.name.clone()))],
+        columns: vec![Column::Star(Some(
+            database.get_table(wildcard_table).name.clone(),
+        ))],
         predicate,
         order_by: order_by.as_ref().map(|ob| transformer.to_order_by(ob)),
         offset: offset.clone(),
@@ -65,14 +73,15 @@ pub(super) fn compute_inner_select<'a>(
 }
 
 /// Compute a nested version of the given inner select, with the given selection applied.
-pub(super) fn nest_subselect<'a>(
-    inner_select: Select<'a>,
-    selection: &Selection<'a>,
+pub(super) fn nest_subselect(
+    inner_select: Select,
+    selection: &Selection,
     selection_level: SelectionLevel,
     alias: &str,
     transformer: &Postgres,
-) -> Select<'a> {
-    let selection_aggregate = selection.selection_aggregate(transformer);
+    database: &Database,
+) -> Select {
+    let selection_aggregate = selection.selection_aggregate(transformer, database);
 
     Select {
         table: Table::SubSelect {
@@ -90,21 +99,22 @@ pub(super) fn nest_subselect<'a>(
 }
 
 /// Compute the join and a suitable predicate for the given base table and predicate.
-pub(super) fn join_info<'a>(
-    base_table: &'a PhysicalTable,
-    predicate: &AbstractPredicate<'a>,
-    predicate_column_paths: Vec<Vec<ColumnPathLink<'a>>>,
-    order_by_column_paths: Vec<Vec<ColumnPathLink<'a>>>,
-    additional_predicate: Option<ConcretePredicate<'a>>,
+pub(super) fn join_info(
+    base_table_id: TableId,
+    predicate: &AbstractPredicate,
+    predicate_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
+    order_by_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
+    additional_predicate: Option<ConcretePredicate>,
     transformer: &Postgres,
-) -> (Table<'a>, ConcretePredicate<'a>) {
+    database: &Database,
+) -> (Table, ConcretePredicate) {
     let columns_paths: Vec<_> = predicate_column_paths
         .into_iter()
         .chain(order_by_column_paths.into_iter())
         .collect();
 
-    let join = join_util::compute_join(base_table, &columns_paths);
-    let predicate = transformer.to_predicate(predicate, true);
+    let join = join_util::compute_join(base_table_id, &columns_paths);
+    let predicate = transformer.to_predicate(predicate, true, database);
 
     let predicate = ConcretePredicate::and(
         predicate,

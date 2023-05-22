@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::PhysicalTable;
+use crate::{Database, PhysicalTable};
 
 use super::{
     column::{Column, ProxyColumn},
@@ -25,20 +25,20 @@ pub struct Update<'a> {
     /// The table to update.
     pub table: &'a PhysicalTable,
     /// The predicate to filter rows to update.
-    pub predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
+    pub predicate: MaybeOwned<'a, ConcretePredicate>,
     /// The columns to update and their values.
-    pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)>,
+    pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column>)>,
     /// The columns to return.
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub returning: Vec<MaybeOwned<'a, Column>>,
 }
 
 impl<'a> ExpressionBuilder for Update<'a> {
     /// Build the update statement for the form `UPDATE <table> SET <column = value, ...> WHERE
     /// <predicate> RETURNING <returning-columns>`. The `WHERE` is omitted if the predicate is
     /// `True` and `RETURNING` is omitted if the list of columns to return is empty.
-    fn build(&self, builder: &mut SQLBuilder) {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("UPDATE ");
-        self.table.build(builder);
+        self.table.build(database, builder);
 
         builder.push_str(" SET ");
         builder.push_iter(
@@ -46,23 +46,23 @@ impl<'a> ExpressionBuilder for Update<'a> {
             ", ",
             |builder, (column, value)| {
                 builder.without_fully_qualified_column_names(|builder| {
-                    column.build(builder);
+                    column.build(database, builder);
                 });
 
                 builder.push_str(" = ");
 
-                value.build(builder);
+                value.build(database, builder);
             },
         );
 
         if self.predicate.as_ref() != &ConcretePredicate::True {
             builder.push_str(" WHERE ");
-            self.predicate.build(builder);
+            self.predicate.build(database, builder);
         }
 
         if !self.returning.is_empty() {
             builder.push_str(" RETURNING ");
-            builder.push_elems(&self.returning, ", ");
+            builder.push_elems(database, &self.returning, ", ");
         }
     }
 }
@@ -70,9 +70,9 @@ impl<'a> ExpressionBuilder for Update<'a> {
 #[derive(Debug)]
 pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: ConcretePredicate<'a>,
+    pub predicate: ConcretePredicate,
     pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub returning: Vec<Column>,
 }
 
 impl<'a> TemplateUpdate<'a> {
@@ -108,11 +108,7 @@ impl<'a> TemplateUpdate<'a> {
                     table: self.table,
                     predicate: (&self.predicate).into(),
                     column_values: resolved_column_values,
-                    returning: self
-                        .returning
-                        .iter()
-                        .map(|col| col.as_ref().into())
-                        .collect(),
+                    returning: self.returning.iter().map(|col| col.into()).collect(),
                 }
             })
             .collect()

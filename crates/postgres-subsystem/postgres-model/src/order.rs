@@ -9,7 +9,6 @@
 
 use crate::subsystem::PostgresSubsystem;
 
-use super::column_path::ColumnIdPathLink;
 use async_graphql_parser::{
     types::{EnumType, EnumValueDefinition, InputObjectType, Type, TypeDefinition, TypeKind},
     Pos, Positioned,
@@ -24,6 +23,7 @@ use core_plugin_interface::core_model::{
     types::{FieldType, Named},
 };
 
+use exo_sql::PhysicalColumnPathLink;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,7 +38,7 @@ pub struct OrderByParameter {
     ///   venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     ///   order_by: None
     /// ```
-    pub column_path_link: Option<ColumnIdPathLink>,
+    pub column_path_link: Option<PhysicalColumnPathLink>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

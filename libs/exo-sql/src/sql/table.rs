@@ -7,34 +7,36 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::PhysicalTable;
+use crate::{Database, TableId};
 
 use super::{join::LeftJoin, select::Select, ExpressionBuilder, SQLBuilder};
 
 /// A table-like concept that can be used in in place of `SELECT FROM <table-query> ...`.
 #[derive(Debug, PartialEq)]
-pub enum Table<'a> {
+pub enum Table {
     /// A physical table such as `concerts`.
-    Physical(&'a PhysicalTable),
+    Physical(TableId),
     /// A join between two tables such as `concerts LEFT JOIN venues ON concerts.venue_id = venues.id`.
-    Join(LeftJoin<'a>),
+    Join(LeftJoin),
     /// A sub-select such as `(SELECT * FROM concerts) AS concerts`.
     SubSelect {
-        select: Box<Select<'a>>,
+        select: Box<Select>,
         /// The alias of the sub-select (optional, since we need to alias the sub-select when used in a FROM clause)
         alias: Option<String>,
     },
 }
 
-impl<'a> ExpressionBuilder for Table<'a> {
+impl ExpressionBuilder for Table {
     /// Build the table into a SQL string.
-    fn build(&self, builder: &mut SQLBuilder) {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {
-            Table::Physical(physical_table) => builder.push_identifier(&physical_table.name),
-            Table::Join(join) => join.build(builder),
+            Table::Physical(physical_table) => {
+                builder.push_identifier(&database.get_table(*physical_table).name)
+            }
+            Table::Join(join) => join.build(database, builder),
             Table::SubSelect { select, alias } => {
                 builder.push('(');
-                select.build(builder);
+                select.build(database, builder);
                 builder.push(')');
                 if let Some(alias) = alias {
                     builder.push_str(" AS ");

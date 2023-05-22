@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use super::access::Access;
-use super::{column_id::ColumnId, relation::PostgresRelation};
+use super::relation::PostgresRelation;
 use crate::aggregate::AggregateField;
 use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, PkQuery};
 use crate::subsystem::PostgresSubsystem;
@@ -24,7 +24,7 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named},
 };
-use exo_sql::PhysicalTable;
+use exo_sql::{ColumnId, PhysicalTable, TableId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -116,10 +116,9 @@ impl EntityType {
 }
 
 impl MutationType {
-    pub fn table<'a>(&'a self, system: &'a PostgresSubsystem) -> &'a PhysicalTable {
+    pub fn table<'a>(&'a self, system: &'a PostgresSubsystem) -> TableId {
         let entity_type = &system.entity_types[self.entity_type];
-        let table_id = entity_type.table_id;
-        &system.tables[table_id]
+        entity_type.table_id
     }
 }
 

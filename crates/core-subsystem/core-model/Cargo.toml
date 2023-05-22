@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 serde.workspace = true
-typed-generational-arena = { version = "0.2", features = ["serde"] }
+typed-generational-arena.workspace = true
 async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
 

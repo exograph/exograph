@@ -20,16 +20,19 @@ use core_plugin_interface::core_model_builder::{
     typechecker::Typed,
 };
 
+use exo_sql::{PhysicalColumnPath, PhysicalColumnPathLink};
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression,
-    column_path::{ColumnIdPath, ColumnIdPathLink},
     types::{base_type, EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
 };
 
 use super::type_builder::ResolvedTypeEnv;
 
 enum PathSelection<'a> {
-    Column(ColumnIdPath, &'a FieldType<PostgresFieldType<EntityType>>),
+    Column(
+        PhysicalColumnPath,
+        &'a FieldType<PostgresFieldType<EntityType>>,
+    ),
     Context(ContextSelection, &'a ContextFieldType),
 }
 
@@ -208,7 +211,7 @@ fn compute_selection<'a>(
         field_name: &str,
         self_type_info: &'a EntityType,
     ) -> (
-        ColumnIdPathLink,
+        PhysicalColumnPathLink,
         &'a FieldType<PostgresFieldType<EntityType>>,
     ) {
         let get_field = |field_name: &str| {
@@ -255,7 +258,7 @@ fn compute_selection<'a>(
         );
 
         PathSelection::Column(
-            ColumnIdPath {
+            PhysicalColumnPath {
                 path: column_path_elems,
             },
             field_type.unwrap(),

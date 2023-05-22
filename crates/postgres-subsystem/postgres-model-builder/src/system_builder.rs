@@ -25,7 +25,7 @@ use postgres_model::{
     types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 
-use exo_sql::PhysicalTable;
+use exo_sql::Database;
 
 use crate::aggregate_type_builder;
 
@@ -61,7 +61,7 @@ pub fn build(
             pk_queries: building.pk_queries,
             collection_queries: building.collection_queries,
             aggregate_queries: building.aggregate_queries,
-            tables: building.tables.values(),
+            database: building.database,
             mutation_types: building.mutation_types.values(),
             mutations: building.mutations,
         }
@@ -134,7 +134,7 @@ pub struct SystemContextBuilding {
 
     pub mutation_types: MappedArena<MutationType>,
     pub mutations: MappedArena<PostgresMutation>,
-    pub tables: MappedArena<PhysicalTable>,
+    pub database: Database,
 }
 
 impl SystemContextBuilding {
@@ -145,8 +145,7 @@ impl SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
-    use core_plugin_interface::core_model::mapped_arena::SerializableSlab;
-    use exo_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
+    use exo_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
     use super::*;
 
@@ -174,7 +173,7 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
-        let get_table = |n| get_table_from_arena(n, &system.tables);
+        let get_table = |n| get_table_from_arena(n, &system.database);
 
         let concerts = get_table("concerts");
         let venues = get_table("venues");
@@ -222,7 +221,7 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
-        let get_table = |n| get_table_from_arena(n, &system.tables);
+        let get_table = |n| get_table_from_arena(n, &system.database);
 
         let users = get_table("users");
         let memberships = get_table("memberships");
@@ -260,7 +259,7 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
-        let get_table = |n| get_table_from_arena(n, &system.tables);
+        let get_table = |n| get_table_from_arena(n, &system.database);
 
         let logs = get_table("logs");
         let logs_id = get_column_from_table("id", logs);
@@ -349,11 +348,8 @@ mod tests {
         };
     }
 
-    fn get_table_from_arena<'a>(
-        name: &'a str,
-        tables: &'a SerializableSlab<PhysicalTable>,
-    ) -> &'a PhysicalTable {
-        for (_, item) in tables.iter() {
+    fn get_table_from_arena<'a>(name: &'a str, database: &'a Database) -> &'a PhysicalTable {
+        for (_, item) in database.tables().iter() {
             if item.name == name {
                 return item;
             }

@@ -9,226 +9,117 @@
 
 #![cfg(test)]
 
-use crate::{
-    sql::physical_column::{IntBits, PhysicalColumn, PhysicalColumnType},
-    PhysicalTable,
-};
+use crate::schema::test_helper::{int_column, pk_column, pk_reference_column, string_column};
+use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
+use crate::{ColumnId, Database, TableId};
 
-pub struct TestSetup<'a> {
-    pub concerts_table: &'a PhysicalTable,
-    pub concert_artists_table: &'a PhysicalTable,
-    pub artists_table: &'a PhysicalTable,
-    pub addresses_table: &'a PhysicalTable,
-    pub venues_table: &'a PhysicalTable,
+pub struct TestSetup {
+    pub database: Database,
 
-    pub concerts_id_column: &'a PhysicalColumn,
-    pub concerts_name_column: &'a PhysicalColumn,
-    pub concerts_venue_id_column: &'a PhysicalColumn,
+    pub concerts_table: TableId,
+    pub concert_artists_table: TableId,
+    pub artists_table: TableId,
+    pub addresses_table: TableId,
+    pub venues_table: TableId,
 
-    pub concert_artists_concert_id_column: &'a PhysicalColumn,
-    pub concert_artists_artist_id_column: &'a PhysicalColumn,
+    pub concerts_id_column: ColumnId,
+    pub concerts_name_column: ColumnId,
+    pub concerts_venue_id_column: ColumnId,
 
-    pub artists_id_column: &'a PhysicalColumn,
-    pub artists_name_column: &'a PhysicalColumn,
-    pub artists_address_id_column: &'a PhysicalColumn,
+    pub concert_artists_concert_id_column: ColumnId,
+    pub concert_artists_artist_id_column: ColumnId,
 
-    pub addresses_id_column: &'a PhysicalColumn,
-    pub addresses_city_column: &'a PhysicalColumn,
+    pub artists_id_column: ColumnId,
+    pub artists_name_column: ColumnId,
+    pub artists_address_id_column: ColumnId,
 
-    pub venues_id_column: &'a PhysicalColumn,
-    pub venues_name_column: &'a PhysicalColumn,
+    pub addresses_id_column: ColumnId,
+    pub addresses_city_column: ColumnId,
+
+    pub venues_id_column: ColumnId,
+    pub venues_name_column: ColumnId,
 }
 
-impl TestSetup<'_> {
-    pub fn with_setup(test_fn: impl Fn(&TestSetup)) {
-        let concerts_table = &PhysicalTable {
-            name: "concerts".to_string(),
-            columns: vec![
-                PhysicalColumn {
-                    table_name: "concerts".to_string(),
-                    name: "id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: true,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-                PhysicalColumn {
-                    table_name: "concerts".to_string(),
-                    name: "name".to_string(),
-                    typ: PhysicalColumnType::String { max_length: None },
-                    is_pk: false,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-                PhysicalColumn {
-                    table_name: "concerts".to_string(),
-                    name: "venue_id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: false,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-            ],
-        };
+impl TestSetup {
+    pub fn with_setup(test_fn: impl Fn(TestSetup)) {
+        let database = DatabaseSpec::new(vec![
+            TableSpec::new(
+                "concerts",
+                vec![
+                    pk_column("id"),
+                    int_column("venue_id"),
+                    string_column("name"),
+                ],
+            ),
+            TableSpec::new(
+                "venues",
+                vec![
+                    pk_column("id"),
+                    string_column("name"),
+                    pk_reference_column("artist_id", "artists"),
+                ],
+            ),
+            TableSpec::new(
+                "concert_artists",
+                vec![
+                    pk_column("id"),
+                    pk_reference_column("concert_id", "concerts"),
+                    pk_reference_column("artist_id", "artists"),
+                ],
+            ),
+            TableSpec::new(
+                "artists",
+                vec![
+                    pk_column("id"),
+                    string_column("name"),
+                    pk_reference_column("address_id", "addresses"),
+                ],
+            ),
+            TableSpec::new("addresses", vec![pk_column("id"), string_column("city")]),
+        ])
+        .to_database();
 
-        let concerts_id_column = concerts_table.get_physical_column("id").unwrap();
-        let concerts_name_column = concerts_table.get_physical_column("name").unwrap();
-        let concerts_venue_id_column = concerts_table.get_physical_column("venue_id").unwrap();
+        let concert_table_id = database.get_table_id("concerts").unwrap();
 
-        let venues_table = &PhysicalTable {
-            name: "venues".to_string(),
-            columns: vec![
-                PhysicalColumn {
-                    table_name: "venues".to_string(),
-                    name: "id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: true,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-                PhysicalColumn {
-                    table_name: "venues".to_string(),
-                    name: "name".to_string(),
-                    typ: PhysicalColumnType::String { max_length: None },
-                    is_pk: false,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-            ],
-        };
-
-        let venues_id_column = venues_table.get_physical_column("id").unwrap();
-        let venues_name_column = venues_table.get_physical_column("name").unwrap();
-
-        let concert_artists_table = &PhysicalTable {
-            name: "concert_artists".to_string(),
-            columns: vec![
-                PhysicalColumn {
-                    table_name: "concert_artists".to_string(),
-                    name: "id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: true,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-                PhysicalColumn {
-                    table_name: "concert_artists".to_string(),
-                    name: "concert_id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: false,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-                PhysicalColumn {
-                    table_name: "concert_artists".to_string(),
-                    name: "artist_id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: false,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-            ],
-        };
-
-        let _concert_artists_id_column = concert_artists_table.get_physical_column("id").unwrap();
-        let concert_artists_concert_id_column = concert_artists_table
-            .get_physical_column("concert_id")
-            .unwrap();
-        let concert_artists_artist_id_column = concert_artists_table
-            .get_physical_column("artist_id")
+        let concerts_id_column = database.get_column_id(concert_table_id, "id").unwrap();
+        let concerts_name_column = database.get_column_id(concert_table_id, "name").unwrap();
+        let concerts_venue_id_column = database
+            .get_column_id(concert_table_id, "venue_id")
             .unwrap();
 
-        let artists_table = &PhysicalTable {
-            name: "artists".to_string(),
-            columns: vec![
-                PhysicalColumn {
-                    table_name: "artists".to_string(),
-                    name: "id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: true,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-                PhysicalColumn {
-                    table_name: "artists".to_string(),
-                    name: "name".to_string(),
-                    typ: PhysicalColumnType::String { max_length: None },
-                    is_pk: false,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-                PhysicalColumn {
-                    table_name: "artists".to_string(),
-                    name: "address_id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: false,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-            ],
-        };
+        let venues_table_id = database.get_table_id("venues").unwrap();
+        let venues_id_column = database.get_column_id(venues_table_id, "id").unwrap();
+        let venues_name_column = database.get_column_id(venues_table_id, "name").unwrap();
 
-        let artists_id_column = artists_table.get_physical_column("id").unwrap();
-        let artists_name_column = artists_table.get_physical_column("name").unwrap();
-        let artists_address_id_column = artists_table.get_physical_column("address_id").unwrap();
+        let concert_artists_table_id = database.get_table_id("concert_artists").unwrap();
+        let _concert_artists_id_column = database
+            .get_column_id(concert_artists_table_id, "id")
+            .unwrap();
+        let concert_artists_concert_id_column = database
+            .get_column_id(concert_artists_table_id, "concert_id")
+            .unwrap();
+        let concert_artists_artist_id_column = database
+            .get_column_id(concert_artists_table_id, "artist_id")
+            .unwrap();
 
-        let addresses_table = &PhysicalTable {
-            name: "addresses".to_string(),
-            columns: vec![
-                PhysicalColumn {
-                    table_name: "addresses".to_string(),
-                    name: "id".to_string(),
-                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: true,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-                PhysicalColumn {
-                    table_name: "addresses".to_string(),
-                    name: "city".to_string(),
-                    typ: PhysicalColumnType::String { max_length: None },
-                    is_pk: false,
-                    is_auto_increment: false,
-                    is_nullable: true,
-                    unique_constraints: vec![],
-                    default_value: None,
-                },
-            ],
-        };
+        let artists_table_id = database.get_table_id("artists").unwrap();
+        let artists_id_column = database.get_column_id(artists_table_id, "id").unwrap();
+        let artists_name_column = database.get_column_id(artists_table_id, "name").unwrap();
+        let artists_address_id_column = database
+            .get_column_id(artists_table_id, "address_id")
+            .unwrap();
 
-        let addresses_id_column = addresses_table.get_physical_column("id").unwrap();
-        let addresses_city_column = addresses_table.get_physical_column("city").unwrap();
+        let addresses_table_id = database.get_table_id("addresses").unwrap();
+        let addresses_id_column = database.get_column_id(addresses_table_id, "id").unwrap();
+        let addresses_city_column = database.get_column_id(addresses_table_id, "city").unwrap();
 
         let test_setup = TestSetup {
-            concerts_table,
-            concert_artists_table,
-            artists_table,
-            addresses_table,
-            venues_table,
+            database,
+            concerts_table: concert_table_id,
+            concert_artists_table: concert_artists_table_id,
+            artists_table: artists_table_id,
+            addresses_table: addresses_table_id,
+            venues_table: venues_table_id,
 
             concerts_id_column,
             concerts_name_column,
@@ -248,6 +139,6 @@ impl TestSetup<'_> {
             venues_name_column,
         };
 
-        test_fn(&test_setup)
+        test_fn(test_setup)
     }
 }

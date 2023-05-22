@@ -10,10 +10,11 @@
 use async_trait::async_trait;
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
-use exo_sql::{AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, Predicate};
+use exo_sql::{
+    AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, PhysicalColumnPath, Predicate,
+};
 use futures::future::try_join_all;
 use postgres_model::{
-    column_path::ColumnIdPath,
     predicate::{PredicateParameter, PredicateParameterTypeKind},
     subsystem::PostgresSubsystem,
 };
@@ -28,17 +29,17 @@ use super::{cast::cast_value, postgres_execution_error::PostgresExecutionError};
 
 struct PredicateParamInput<'a> {
     pub param: &'a PredicateParameter,
-    pub parent_column_path: Option<ColumnIdPath>,
+    pub parent_column_path: Option<PhysicalColumnPath>,
 }
 
 #[async_trait]
-impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
+impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
         subsystem: &'a PostgresSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
+    ) -> Result<AbstractPredicate, PostgresExecutionError> {
         let parameter_type = &subsystem.predicate_types[self.param.typ.innermost().type_id];
 
         match &parameter_type.kind {
@@ -243,21 +244,22 @@ pub fn predicate_from_name<C: PartialEq + ParamEquality>(
 fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a Val,
-    parent_column_path: Option<ColumnIdPath>,
+    parent_column_path: Option<PhysicalColumnPath>,
     subsystem: &'a PostgresSubsystem,
-) -> Result<(ColumnPath<'a>, ColumnPath<'a>), PostgresExecutionError> {
-    let op_physical_column = param
+) -> Result<(ColumnPath, ColumnPath), PostgresExecutionError> {
+    let op_physical_column_id = param
         .column_path_link
         .as_ref()
         .expect("Could not find column path link while forming operands")
-        .self_column_id
-        .get_column(subsystem);
+        .self_column_id;
+    let op_physical_column = &subsystem.database.get_column(op_physical_column_id);
+
     let op_value = cast_value(op_value, &op_physical_column.typ);
 
     op_value
         .map(move |op_value| {
             (
-                to_column_path(&parent_column_path, &param.column_path_link, subsystem),
+                to_column_path(&parent_column_path, &param.column_path_link),
                 ColumnPath::Param(op_value.unwrap()),
             )
         })
@@ -269,7 +271,7 @@ pub async fn compute_predicate<'a>(
     arguments: &'a Arguments,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
+) -> Result<AbstractPredicate, PostgresExecutionError> {
     extract_and_map(
         PredicateParamInput {
             param,

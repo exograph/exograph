@@ -9,7 +9,7 @@
 
 use tracing::debug;
 
-use crate::sql::select::Select;
+use crate::{sql::select::Select, Database};
 
 use super::{
     plain_join_strategy::PlainJoinStrategy, plain_subquery_strategy::PlainSubqueryStrategy,
@@ -32,7 +32,11 @@ impl<'s> SelectionStrategyChain<'s> {
 
     /// Find the first strategy that is suitable for the given selection context, and return a
     /// `Select` object that can be used to generate the SQL query.
-    pub fn to_select<'a>(&self, selection_context: SelectionContext<'_, 'a>) -> Option<Select<'a>> {
+    pub fn to_select<'a>(
+        &self,
+        selection_context: SelectionContext<'_, 'a>,
+        database: &'a Database,
+    ) -> Option<Select> {
         let strategy = self
             .strategies
             .iter()
@@ -40,7 +44,7 @@ impl<'s> SelectionStrategyChain<'s> {
 
         debug!("Using selection strategy: {}", strategy.id());
 
-        Some(strategy.to_select(selection_context))
+        Some(strategy.to_select(selection_context, database))
     }
 }
 

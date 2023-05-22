@@ -7,11 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::{
-    json_agg::JsonAgg, json_object::JsonObject, physical_column::PhysicalColumn, select::Select,
-    transaction::TransactionStepId, ExpressionBuilder, SQLBuilder, SQLParamContainer,
-};
 use maybe_owned::MaybeOwned;
+
+use crate::{ColumnId, Database};
+
+use super::{
+    json_agg::JsonAgg, json_object::JsonObject, select::Select, transaction::TransactionStepId,
+    ExpressionBuilder, SQLBuilder, SQLParamContainer,
+};
 
 /// A column-like concept covering any usage where a database table column could be used. For
 /// example, in a predicate you can say `first_name = 'Sam'` or `first_name = last_name`. Here,
@@ -22,18 +25,18 @@ use maybe_owned::MaybeOwned;
 /// <value>` in a predicate or `<column> = <value>` in an `update <table> set <column> = <value>`,
 /// etc.
 #[derive(Debug, PartialEq)]
-pub enum Column<'a> {
+pub enum Column {
     /// An actual physical column in a table
-    Physical(&'a PhysicalColumn),
+    Physical(ColumnId),
     /// A literal value such as a string or number e.g. 'Sam'. This will be mapped to a placeholder
     /// to avoid SQL injection.
     Param(SQLParamContainer),
     /// A JSON object. This is used to represent the result of a JSON object aggregation.
-    JsonObject(JsonObject<'a>),
+    JsonObject(JsonObject),
     /// A JSON array. This is used to represent the result of a JSON array aggregation.
-    JsonAgg(JsonAgg<'a>),
+    JsonAgg(JsonAgg),
     /// A sub-select query.
-    SubSelect(Box<Select<'a>>),
+    SubSelect(Box<Select>),
     // TODO: Generalize the following to return any type of value, not just strings
     /// A constant string so that we can have a query return a particular value passed in as in
     /// `select 'Concert', id from "concerts"`. Here 'Concert' is the constant string. Needed to
@@ -46,31 +49,35 @@ pub enum Column<'a> {
     /// A function applied to a column. For example, `count(*)` or `lower(first_name)`.
     Function {
         function_name: String,
-        column: &'a PhysicalColumn,
+        column_id: ColumnId,
     },
 }
 
-impl<'a> ExpressionBuilder for Column<'a> {
-    fn build(&self, builder: &mut SQLBuilder) {
+impl ExpressionBuilder for Column {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {
-            Column::Physical(pc) => pc.build(builder),
+            Column::Physical(column_id) => {
+                let column = database.get_column(*column_id);
+                column.build(database, builder)
+            }
             Column::Function {
                 function_name,
-                column,
+                column_id,
             } => {
                 builder.push_str(function_name);
                 builder.push('(');
-                column.build(builder);
+                let column = database.get_column(*column_id);
+                column.build(database, builder);
                 builder.push(')');
             }
             Column::Param(value) => builder.push_param(value.param()),
             Column::JsonObject(obj) => {
-                obj.build(builder);
+                obj.build(database, builder);
             }
-            Column::JsonAgg(agg) => agg.build(builder),
+            Column::JsonAgg(agg) => agg.build(database, builder),
             Column::SubSelect(selection_table) => {
                 builder.push('(');
-                selection_table.build(builder);
+                selection_table.build(database, builder);
                 builder.push(')');
             }
             Column::Constant(value) => {
@@ -96,7 +103,7 @@ impl<'a> ExpressionBuilder for Column<'a> {
 /// multi-step insert/update.
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
-    Concrete(MaybeOwned<'a, Column<'a>>),
+    Concrete(MaybeOwned<'a, Column>),
     // A template version of a column that will be replaced with a concrete column at runtime
     Template {
         col_index: usize,

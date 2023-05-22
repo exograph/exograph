@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use crate::Database;
+
 use super::{
     column::Column, delete::Delete, insert::Insert, physical_column::PhysicalColumn,
     predicate::ConcretePredicate, update::Update, ExpressionBuilder,
@@ -38,14 +40,6 @@ impl PhysicalTable {
         self.columns.iter().position(|c| c.name == name)
     }
 
-    pub fn get_column(&self, name: &str) -> Option<Column> {
-        self.get_physical_column(name).map(Column::Physical)
-    }
-
-    pub fn get_physical_column(&self, name: &str) -> Option<&PhysicalColumn> {
-        self.columns.iter().find(|column| column.name == name)
-    }
-
     pub fn get_pk_column_index(&self) -> Option<usize> {
         self.columns.iter().position(|c| c.is_pk)
     }
@@ -56,16 +50,16 @@ impl PhysicalTable {
 
     pub fn insert<'a, C>(
         &'a self,
-        column_names: Vec<&'a PhysicalColumn>,
+        columns: Vec<&'a PhysicalColumn>,
         column_values_seq: Vec<Vec<C>>,
-        returning: Vec<MaybeOwned<'a, Column<'a>>>,
+        returning: Vec<MaybeOwned<'a, Column>>,
     ) -> Insert
     where
-        C: Into<MaybeOwned<'a, Column<'a>>>,
+        C: Into<MaybeOwned<'a, Column>>,
     {
         Insert {
             table: self,
-            columns: column_names,
+            columns,
             values_seq: column_values_seq
                 .into_iter()
                 .map(|rows| rows.into_iter().map(|col| col.into()).collect())
@@ -74,26 +68,22 @@ impl PhysicalTable {
         }
     }
 
-    pub fn delete<'a>(
-        &'a self,
-        predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
-        returning: Vec<MaybeOwned<'a, Column<'a>>>,
-    ) -> Delete {
+    pub fn delete(&self, predicate: ConcretePredicate, returning: Vec<Column>) -> Delete {
         Delete {
             table: self,
-            predicate,
-            returning,
+            predicate: predicate.into(),
+            returning: returning.into_iter().map(|col| col.into()).collect(),
         }
     }
 
     pub fn update<'a, C>(
         &'a self,
         column_values: Vec<(&'a PhysicalColumn, C)>,
-        predicate: MaybeOwned<'a, ConcretePredicate<'a>>,
-        returning: Vec<MaybeOwned<'a, Column<'a>>>,
+        predicate: MaybeOwned<'a, ConcretePredicate>,
+        returning: Vec<MaybeOwned<'a, Column>>,
     ) -> Update
     where
-        C: Into<MaybeOwned<'a, Column<'a>>>,
+        C: Into<MaybeOwned<'a, Column>>,
     {
         Update {
             table: self,
@@ -109,7 +99,7 @@ impl PhysicalTable {
 
 impl ExpressionBuilder for PhysicalTable {
     /// Build a table reference for the `<table>`.
-    fn build(&self, builder: &mut crate::sql::SQLBuilder) {
+    fn build(&self, _database: &Database, builder: &mut crate::sql::SQLBuilder) {
         builder.push_identifier(&self.name);
     }
 }

@@ -15,9 +15,8 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver, context::RequestContext, value::Val,
 };
-use exo_sql::{AbstractPredicate, PhysicalTable};
+use exo_sql::{AbstractPredicate, PhysicalColumnPath, PhysicalColumnPathLink, TableId};
 use postgres_model::{
-    column_path::{ColumnIdPath, ColumnIdPathLink},
     query::{CollectionQuery, PkQuery},
     subsystem::PostgresSubsystem,
 };
@@ -31,7 +30,7 @@ pub(crate) async fn check_access<'a>(
     kind: &SQLOperationKind,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
+) -> Result<AbstractPredicate, PostgresExecutionError> {
     let return_type = return_type.typ(&subsystem.entity_types);
 
     let access_predicate = {
@@ -64,17 +63,17 @@ pub fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Val>
 }
 
 pub(crate) fn to_column_id_path(
-    parent_column_id_path: &Option<ColumnIdPath>,
-    next_column_id_path_link: &Option<ColumnIdPathLink>,
-) -> Option<ColumnIdPath> {
+    parent_column_id_path: &Option<PhysicalColumnPath>,
+    next_column_id_path_link: &Option<PhysicalColumnPathLink>,
+) -> Option<PhysicalColumnPath> {
     match (parent_column_id_path, next_column_id_path_link) {
         (Some(parent_column_id_path), Some(next_column_id_path_link)) => {
             let mut path: Vec<_> = parent_column_id_path.path.clone();
             path.push(next_column_id_path_link.clone());
-            Some(ColumnIdPath { path })
+            Some(PhysicalColumnPath { path })
         }
         (Some(parent_column_id_path), None) => Some(parent_column_id_path.clone()),
-        (None, Some(next_column_id_path_link)) => Some(ColumnIdPath {
+        (None, Some(next_column_id_path_link)) => Some(PhysicalColumnPath {
             path: vec![next_column_id_path_link.clone()],
         }),
         (None, None) => None,
@@ -94,11 +93,11 @@ pub(crate) fn get_argument_field<'a>(argument_value: &'a Val, field_name: &str) 
 pub(crate) fn return_type_info<'a>(
     return_type: &'a OperationReturnType<EntityType>,
     subsystem: &'a PostgresSubsystem,
-) -> (&'a PhysicalTable, &'a PkQuery, &'a CollectionQuery) {
+) -> (TableId, &'a PkQuery, &'a CollectionQuery) {
     let typ = return_type.typ(&subsystem.entity_types);
 
     (
-        &subsystem.tables[typ.table_id],
+        typ.table_id,
         &subsystem.pk_queries[typ.pk_query],
         &subsystem.collection_queries[typ.collection_query],
     )

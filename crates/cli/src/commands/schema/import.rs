@@ -10,14 +10,16 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Command;
+use exo_sql::schema::column_spec::{ColumnSpec, ColumnTypeSpec};
+use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
-use exo_sql::{schema::spec::SchemaSpec, Database};
+use exo_sql::schema::table_spec::TableSpec;
+use exo_sql::DatabaseClient;
 use std::{io::Write, path::PathBuf};
 
 use heck::ToUpperCamelCase;
 
 use exo_sql::schema::issue::Issue;
-use exo_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
 use crate::commands::command::{database_arg, get, output_arg, CommandDefinition};
 use crate::util::open_file_for_output;
@@ -58,11 +60,11 @@ impl CommandDefinition for ImportCommandDefinition {
     }
 }
 
-async fn import_schema() -> Result<WithIssues<SchemaSpec>> {
-    let database = Database::from_env(Some(1))?; // TODO: error handling here
-    let client = database.get_client().await?;
-    let schema = SchemaSpec::from_db(&client).await?;
-    Ok(schema)
+async fn import_schema() -> Result<WithIssues<DatabaseSpec>> {
+    let database_client = DatabaseClient::from_env(Some(1))?; // TODO: error handling here
+    let client = database_client.get_client().await?;
+    let database = DatabaseSpec::from_live_database(&client).await?;
+    Ok(database)
 }
 
 pub trait ToModel {
@@ -74,7 +76,7 @@ fn to_model_name(name: &str) -> String {
     name.to_upper_camel_case()
 }
 
-impl ToModel for SchemaSpec {
+impl ToModel for DatabaseSpec {
     /// Converts the schema specification to a exograph file.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
@@ -95,7 +97,7 @@ impl ToModel for SchemaSpec {
     }
 }
 
-impl ToModel for PhysicalTable {
+impl ToModel for TableSpec {
     /// Converts the table specification to a exograph model.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
@@ -131,7 +133,7 @@ impl ToModel for PhysicalTable {
     }
 }
 
-impl ToModel for PhysicalColumn {
+impl ToModel for ColumnSpec {
     /// Converts the column specification to a exograph model.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
@@ -144,12 +146,12 @@ impl ToModel for PhysicalColumn {
         };
 
         let (mut data_type, annots) = self.typ.to_model();
-        if let PhysicalColumnType::ColumnReference { ref_table_name, .. } = &self.typ {
+        if let ColumnTypeSpec::ColumnReference { ref_table_name, .. } = &self.typ {
             data_type = to_model_name(&data_type);
 
             issues.push(Issue::Hint(format!(
                 "consider adding a field to `{}` of type `[{}]` to create a one-to-many relationship",
-                ref_table_name, to_model_name(&self.table_name),
+                ref_table_name, to_model_name(&self.name),
             )));
         }
 

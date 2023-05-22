@@ -46,7 +46,7 @@ pub mod database_error;
 /// Public types at the root level of this crate
 pub use asql::{
     abstract_operation::AbstractOperation,
-    column_path::{ColumnPath, ColumnPathLink},
+    column_path::{ColumnPath, PhysicalColumnPath, PhysicalColumnPathLink},
     database_executor::{DatabaseExecutor, TransactionHolder},
     delete::AbstractDelete,
     insert::{AbstractInsert, ColumnValuePair, InsertionElement, InsertionRow, NestedInsertion},
@@ -63,7 +63,10 @@ pub use asql::{
 pub use sql::{
     array_util::{self, ArrayEntry},
     column::Column,
-    database::{Database, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL},
+    database::ColumnId,
+    database::Database,
+    database::TableId,
+    database_client::{DatabaseClient, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL},
     limit::Limit,
     offset::Offset,
     order::Ordering,

@@ -10,7 +10,7 @@
 use crate::{
     sql::select::Select,
     transform::{pg::SelectionLevel, transformer::OrderByTransformer},
-    Selection,
+    Database, Selection,
 };
 
 use super::{
@@ -98,7 +98,11 @@ impl SelectionStrategy for PlainJoinStrategy {
         }
     }
 
-    fn to_select<'a>(&self, selection_context: SelectionContext<'_, 'a>) -> Select<'a> {
+    fn to_select<'a>(
+        &self,
+        selection_context: SelectionContext<'_, 'a>,
+        database: &'a Database,
+    ) -> Select {
         let SelectionContext {
             abstract_select,
             additional_predicate,
@@ -110,15 +114,18 @@ impl SelectionStrategy for PlainJoinStrategy {
         } = selection_context;
 
         let (join, predicate) = join_info(
-            abstract_select.table,
+            abstract_select.table_id,
             &abstract_select.predicate,
             predicate_column_paths,
             order_by_column_paths,
             additional_predicate,
             transformer,
+            database,
         );
 
-        let selection_aggregate = abstract_select.selection.selection_aggregate(transformer);
+        let selection_aggregate = abstract_select
+            .selection
+            .selection_aggregate(transformer, database);
 
         Select {
             table: join,

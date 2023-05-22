@@ -48,10 +48,10 @@ pub enum CastError {
     Postgres(#[from] exo_sql::database_error::DatabaseError),
 }
 
-pub(crate) fn literal_column<'a>(
-    value: &'a Val,
+pub(crate) fn literal_column(
+    value: &Val,
     associated_column: &PhysicalColumn,
-) -> Result<Column<'a>, PostgresExecutionError> {
+) -> Result<Column, PostgresExecutionError> {
     cast_value(value, &associated_column.typ)
         .map(|value| value.map(Column::Param).unwrap_or(Column::Null))
         .map_err(PostgresExecutionError::CastError)

@@ -8,9 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    asql::column_path::PhysicalColumnPath,
     sql::order::{OrderBy, OrderByElement},
     transform::transformer::OrderByTransformer,
-    AbstractOrderBy, ColumnPath, PhysicalColumn,
+    AbstractOrderBy, ColumnId,
 };
 
 use super::Postgres;
@@ -23,7 +24,7 @@ impl OrderByTransformer for Postgres {
     /// ```sql
     /// ORDER BY table.column ASC, table2.column2 DESC
     /// ```
-    fn to_order_by<'a>(&self, order_by: &AbstractOrderBy<'a>) -> OrderBy<'a> {
+    fn to_order_by<'a>(&self, order_by: &AbstractOrderBy) -> OrderBy {
         OrderBy(
             order_by
                 .0
@@ -34,9 +35,6 @@ impl OrderByTransformer for Postgres {
     }
 }
 
-fn leaf_column<'a>(column_path: &ColumnPath<'a>) -> &'a PhysicalColumn {
-    match column_path {
-        ColumnPath::Physical(links) => links.last().unwrap().self_column.0,
-        _ => panic!("Cannot get leaf column from literal or null"),
-    }
+fn leaf_column(column_id_path: &PhysicalColumnPath) -> ColumnId {
+    column_id_path.path.last().unwrap().self_column_id
 }

@@ -7,10 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{column_path::ColumnIdPathLink, types::EntityType};
+use crate::types::EntityType;
 
-use super::column_id::ColumnId;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
+use exo_sql::{ColumnId, PhysicalColumnPathLink};
 use serde::{Deserialize, Serialize};
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as
@@ -33,14 +33,14 @@ pub enum PostgresRelation {
     ManyToOne {
         other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
-        column_id_path_link: ColumnIdPathLink,
+        column_id_path_link: PhysicalColumnPathLink,
     },
     // In one-to-many, we need information about the other type's primary key, so that we can
     // build a query that joins the two tables, etc.
     OneToMany {
         other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
-        column_id_path_link: ColumnIdPathLink,
+        column_id_path_link: PhysicalColumnPathLink,
     },
 }
 
@@ -58,10 +58,10 @@ impl PostgresRelation {
         }
     }
 
-    pub fn column_path_link(&self) -> ColumnIdPathLink {
+    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
         match &self {
             PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
-                ColumnIdPathLink::new(*column_id, None)
+                PhysicalColumnPathLink::new(*column_id, None)
             }
             PostgresRelation::ManyToOne {
                 column_id_path_link,

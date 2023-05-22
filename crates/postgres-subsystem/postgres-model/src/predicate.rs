@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{column_path::ColumnIdPathLink, subsystem::PostgresSubsystem};
+use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{InputObjectType, Type, TypeDefinition, TypeKind};
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
@@ -17,6 +17,7 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named},
 };
+use exo_sql::PhysicalColumnPathLink;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -35,7 +36,7 @@ pub struct PredicateParameter {
     ///   venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     ///   where: None
     /// ```
-    pub column_path_link: Option<ColumnIdPathLink>,
+    pub column_path_link: Option<PhysicalColumnPathLink>,
 }
 
 /// Thw wrapper around PredicateParameterType to be able to satisfy the Named trait, without cloning the parameter type.

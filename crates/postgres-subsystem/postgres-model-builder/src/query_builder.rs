@@ -12,8 +12,8 @@ use core_plugin_interface::core_model::{
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 
+use exo_sql::PhysicalColumnPathLink;
 use postgres_model::{
-    column_path::ColumnIdPathLink,
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     order::{OrderByParameter, OrderByParameterType},
     predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},
@@ -121,7 +121,7 @@ pub fn pk_predicate_param(
         column_path_link: pk_field
             .relation
             .self_column()
-            .map(|column_id| ColumnIdPathLink {
+            .map(|column_id| PhysicalColumnPathLink {
                 self_column_id: column_id,
                 linked_column_id: None,
             }),

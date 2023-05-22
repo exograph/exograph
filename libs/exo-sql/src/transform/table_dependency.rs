@@ -9,23 +9,23 @@
 
 use std::collections::BTreeMap;
 
-use crate::{asql::column_path::ColumnPathLink, PhysicalTable};
+use crate::{asql::column_path::PhysicalColumnPathLink, TableId};
 
 #[derive(Debug)]
-pub struct TableDependency<'a> {
+pub struct TableDependency {
     /// The base table being joined. In the example below (in impl TableDependency), "concerts"
-    pub table: &'a PhysicalTable,
+    pub table_id: TableId,
     /// The tables being joined. In the example below, ("venue1_id", "venues") and ("venue2_id", "venues")
-    pub dependencies: Vec<DependencyLink<'a>>,
+    pub dependencies: Vec<DependencyLink>,
 }
 
 #[derive(Debug)]
-pub struct DependencyLink<'a> {
-    pub link: ColumnPathLink<'a>,
-    pub dependency: TableDependency<'a>,
+pub struct DependencyLink {
+    pub link: PhysicalColumnPathLink,
+    pub dependency: TableDependency,
 }
 
-impl<'a> TableDependency<'a> {
+impl TableDependency {
     /// Compute TableDependency from a list of column paths
     /// If the following path is given:
     /// ```no_rust
@@ -59,27 +59,27 @@ impl<'a> TableDependency<'a> {
     ///    ]
     /// }
     /// ```
-    pub fn from_column_path(paths_list: &[Vec<ColumnPathLink<'a>>]) -> Option<Self> {
-        let table = paths_list.get(0)?.get(0)?.self_column.1;
+    pub fn from_column_path(paths_list: &[Vec<PhysicalColumnPathLink>]) -> Option<Self> {
+        let table_id = paths_list.get(0)?.get(0)?.self_column_id.table_id;
 
         assert!(
             paths_list
                 .iter()
-                .all(|path| path.get(0).unwrap().self_column.1 == table),
+                .all(|path| path.get(0).unwrap().self_column_id.table_id == table_id),
             "All paths must start from the same table"
         );
 
         // Use `BTreeMap` to get a stable ordering of the dependencies
         // (mostly for testing purpose, but also to get predictable results)
         //
-        // Group by the `ColumnPathLink` to paths that start with it.
-        // Later the key (`ColumnPathLink`) and values (`Vec<ColumnPathLink>`) will
+        // Group by the `ColumnIdPathLink` to paths that start with it.
+        // Later the key (`ColumnIdPathLink`) and values (`Vec<ColumnIdPathLink>`) will
         // be used to create `DependencyLink`s.
         let grouped = paths_list.iter().fold(
-            BTreeMap::<ColumnPathLink, Vec<Vec<ColumnPathLink<'a>>>>::new(),
+            BTreeMap::<PhysicalColumnPathLink, Vec<Vec<PhysicalColumnPathLink>>>::new(),
             |mut acc, paths| match &paths[..] {
                 [head, tail @ ..] => {
-                    if head.linked_column.is_some() {
+                    if head.linked_column_id.is_some() {
                         acc.entry(head.clone()).or_default().push(tail.to_vec());
                     }
                     acc
@@ -99,7 +99,7 @@ impl<'a> TableDependency<'a> {
             .collect();
 
         Some(Self {
-            table,
+            table_id,
             dependencies,
         })
     }
