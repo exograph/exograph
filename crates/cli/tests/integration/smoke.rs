@@ -31,7 +31,8 @@ const EXPECTED_SCHEMA: &str = include_str!("todos.sql");
 
 #[test]
 fn exo_smoke_tests() -> Result<(), Error> {
-    let tmp_dir = tempfile::tempdir().expect("Failed to create tempdir");
+    let cargo_tmp_dir = env!("CARGO_TARGET_TMPDIR");
+    let tmp_dir = tempfile::tempdir_in(cargo_tmp_dir).expect("Failed to create tempdir");
 
     let mut cmd = exo(tmp_dir.path(), ["new", "mariposas"]);
     let p = spawn_command(cmd, Some(5000))?;
