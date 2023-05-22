@@ -41,7 +41,9 @@ wasm-model-builder = { path = "../wasm-subsystem/wasm-model-builder" }
 [target.'cfg(target_os = "windows")'.dependencies]
 openssl = { version = "0.10.50", features = ["vendored"] }
 
+[target.'cfg(unix)'.dev-dependencies]
+rexpect = "0.5.0"
+
 [dev-dependencies]
 stripmargin = "0.1.1"
-rexpect = "0.5.0"
 tempfile.workspace = true
