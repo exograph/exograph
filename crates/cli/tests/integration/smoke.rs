@@ -5,24 +5,13 @@ use std::{
 
 use rexpect::{error::Error, session::spawn_command};
 
-#[cfg(debug_assertions)]
-const PROFILE: &str = "debug";
-
-#[cfg(not(debug_assertions))]
-const PROFILE: &str = "release";
-
-// Create the exo command based on the profile.
-// We need the full path to the binary since we will be changing working
-// directory during the tests and a relative path from the project directory
-// won't be valid.
 fn exo<I>(cwd: impl AsRef<Path>, args: I) -> Command
 where
     I: IntoIterator<Item = &'static str>,
 {
-    let exotech_dir = env!("CARGO_MANIFEST_DIR").trim_end_matches("crates/cli");
-    let exo = format!("{exotech_dir}/target/{PROFILE}/exo");
+    let bin = env!("CARGO_BIN_EXE_exo");
 
-    let mut cmd = Command::new(exo);
+    let mut cmd = Command::new(bin);
     cmd.current_dir(cwd).args(args);
     cmd
 }
@@ -33,6 +22,7 @@ const EXPECTED_SCHEMA: &str = include_str!("todos.sql");
 fn exo_smoke_tests() -> Result<(), Error> {
     let cargo_tmp_dir = env!("CARGO_TARGET_TMPDIR");
     let tmp_dir = tempfile::tempdir_in(cargo_tmp_dir).expect("Failed to create tempdir");
+    assert!(tmp_dir.path().exists(), "tempdir not found");
 
     let mut cmd = exo(tmp_dir.path(), ["new", "mariposas"]);
     let p = spawn_command(cmd, Some(5000))?;
