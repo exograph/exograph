@@ -178,8 +178,58 @@ fn expand_type_no_fields(
         .iter()
         .flat_map(|field| create_column(field, table_id, resolved_env))
         .collect();
-
     building.database.get_table_mut(table_id).columns = columns;
+
+    let column_reference_type_mapping: Vec<_> = resolved_type
+        .fields
+        .iter()
+        .flat_map(|field| {
+            if field.self_column {
+                compute_reference_column_type(field, table_id, resolved_env, building)
+                    .map(|typ| (field.column_name.clone(), typ))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    column_reference_type_mapping
+        .into_iter()
+        .for_each(|(column_name, typ)| {
+            let mut column = building
+                .database
+                .get_table_mut(table_id)
+                .columns
+                .iter_mut()
+                .find(|column| column.name == column_name)
+                .unwrap();
+            column.typ = typ;
+        });
+    //     let mut column = building
+    //             .database
+    //             .get_table_mut(table_id)
+    //             .columns
+    //             .iter_mut()
+    //             .find(|column| column.name == field.column_name)
+    //             .unwrap();
+    // });
+
+    // resolved_type.fields.iter().for_each(|field| {
+    //     if field.self_column {
+    //         let mut column = building
+    //             .database
+    //             .get_table_mut(table_id)
+    //             .columns
+    //             .iter_mut()
+    //             .find(|column| column.name == field.column_name)
+    //             .unwrap();
+    //         if let Some(typ) =
+    //             compute_reference_column_type(field, table_id, resolved_env, building)
+    //         {
+    //             column.typ = typ;
+    //         }
+    //     }
+    // });
 
     let pk_query = building
         .pk_queries
@@ -502,22 +552,14 @@ fn create_column(
                     unique_constraints: unique_constraint_name,
                     default_value,
                 }),
-                ResolvedType::Composite(ct) => {
+                ResolvedType::Composite(_) => {
                     // Many-to-one:
                     // Column from the current table (but of the type of the pk column of the other table)
                     // and it refers to the pk column in the other table.
-                    let other_pk_field = ct.pk_field().unwrap();
                     Some(PhysicalColumn {
                         table_id,
                         name: field.column_name.to_string(),
-                        typ: PhysicalColumnType::ColumnReference {
-                            ref_table_name: ct.table_name.to_string(),
-                            ref_column_name: other_pk_field.column_name.to_string(),
-                            ref_pk_type: Box::new(determine_column_type(
-                                &other_pk_field.typ.deref(env).as_primitive(),
-                                field,
-                            )),
-                        },
+                        typ: PhysicalColumnType::Boolean, // A placeholder value. Will be resolve in the next phase (see compute_reference_column_type)
                         is_pk: false,
                         is_auto_increment: false,
                         is_nullable: optional,
@@ -576,6 +618,47 @@ fn create_column(
             }
         }
         FieldType::Optional(_) => panic!("Optional in an Optional?"),
+    }
+}
+
+fn compute_reference_column_type(
+    field: &ResolvedField,
+    table_id: TableId,
+    env: &ResolvedTypeEnv,
+    building: &SystemContextBuilding,
+) -> Option<PhysicalColumnType> {
+    let typ = match &field.typ {
+        FieldType::Optional(inner_typ) => inner_typ.as_ref(),
+        _ => &field.typ,
+    };
+    match typ {
+        FieldType::Plain(ResolvedFieldType { type_name, .. }) => {
+            let field_type = env.get_by_key(type_name).unwrap();
+            match field_type {
+                ResolvedType::Composite(ct) => {
+                    // Column from the current table (but of the type of the pk column of the other table)
+                    // and it refers to the pk column in the other table.
+
+                    let other_pk_field = ct.pk_field().unwrap();
+                    let ref_column_id = building
+                        .database
+                        .get_column_id(table_id, &other_pk_field.column_name)
+                        .unwrap();
+
+                    Some(PhysicalColumnType::ColumnReference {
+                        ref_column_id,
+                        ref_table_name: ct.table_name.to_string(),
+                        ref_column_name: other_pk_field.column_name.to_string(),
+                        ref_pk_type: Box::new(determine_column_type(
+                            &other_pk_field.typ.deref(env).as_primitive(),
+                            field,
+                        )),
+                    })
+                }
+                _ => None,
+            }
+        }
+        _ => None,
     }
 }
 

@@ -89,6 +89,7 @@ pub enum PhysicalColumnType {
         typ: Box<PhysicalColumnType>,
     },
     ColumnReference {
+        ref_column_id: ColumnId,
         ref_table_name: String,
         ref_column_name: String,
         ref_pk_type: Box<PhysicalColumnType>,
@@ -102,7 +103,7 @@ pub enum PhysicalColumnType {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntBits {
     _16,
     _32,
@@ -110,7 +111,7 @@ pub enum IntBits {
 }
 
 /// Number of bits in the float's mantissa.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FloatBits {
     _24,
     _53,

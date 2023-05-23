@@ -48,7 +48,7 @@ lazy_static! {
 }
 
 impl Constraints {
-    pub(super) async fn from_db(
+    pub(super) async fn from_live_db(
         client: &Client,
         table_name: &str,
     ) -> Result<Constraints, DatabaseError> {

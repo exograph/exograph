@@ -15,7 +15,7 @@ use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractInsert, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement, InsertionRow,
-    NestedElementRelation, NestedInsertion,
+    NestedElementRelation, NestedInsertion, PhysicalColumnType,
 };
 use futures::future::{join_all, try_join_all};
 use postgres_model::{
@@ -222,7 +222,7 @@ async fn map_foreign<'a>(
         .iter()
         .find(|self_field| match self_field.relation.self_column() {
             Some(column_id) => match &column_id.get_column(&subsystem.database).typ {
-                exo_sql::PhysicalColumnType::ColumnReference {
+                PhysicalColumnType::ColumnReference {
                     ref_table_name,
                     ref_column_name,
                     ..

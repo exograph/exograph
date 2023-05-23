@@ -61,8 +61,7 @@ impl Database {
             .map(|column_index| ColumnId::new(table_id, column_index))
     }
 
-    #[cfg(test)]
-    pub(crate) fn get_column_id(&self, table_id: TableId, column_name: &str) -> Option<ColumnId> {
+    pub fn get_column_id(&self, table_id: TableId, column_name: &str) -> Option<ColumnId> {
         self.tables[table_id]
             .column_index(column_name)
             .map(|column_index| ColumnId::new(table_id, column_index))
