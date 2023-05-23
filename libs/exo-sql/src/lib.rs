@@ -53,10 +53,7 @@ pub use asql::{
     order_by::AbstractOrderBy,
     predicate::AbstractPredicate,
     select::AbstractSelect,
-    selection::{
-        AliasedSelectionElement, NestedElementRelation, Selection, SelectionCardinality,
-        SelectionElement,
-    },
+    selection::{AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement},
     update::{AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate},
 };
 

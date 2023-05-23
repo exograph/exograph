@@ -191,7 +191,7 @@ fn update_op<'a>(
         .map(|(col, val)| (*col, ProxyColumn::Concrete(val.into())))
         .collect();
     column_id_values.push((
-        nested_update.relation.column_id,
+        nested_update.relation_column_id,
         ProxyColumn::Template {
             // The column index is always 0 because we want to get the only column in the row
             // such as `UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING
@@ -232,7 +232,7 @@ fn insert_op<'a>(
         .unzip();
 
     let (mut column_id_names, column_values_seq) = super::insert_transformer::align(self_elems);
-    column_id_names.push(nested_insert.relation.column_id);
+    column_id_names.push(nested_insert.relation_column_id);
 
     let column_values_seq: Vec<_> = column_values_seq
         .into_iter()
@@ -304,9 +304,7 @@ mod tests {
             column_path::{ColumnPath, PhysicalColumnPathLink},
             predicate::AbstractPredicate,
             select::AbstractSelect,
-            selection::{
-                AliasedSelectionElement, NestedElementRelation, Selection, SelectionElement,
-            },
+            selection::{AliasedSelectionElement, Selection, SelectionElement},
             update::NestedAbstractUpdate,
         },
         sql::{column::Column, predicate::Predicate, SQLParamContainer},
@@ -391,10 +389,7 @@ mod tests {
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
-                    relation: NestedElementRelation {
-                        column_id: concerts_venue_id_column,
-                        table_id: concerts_table,
-                    },
+                    relation_column_id: concerts_venue_id_column,
                     update: AbstractUpdate {
                         table_id: concerts_table,
                         predicate: Predicate::True,

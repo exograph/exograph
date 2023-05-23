@@ -48,7 +48,7 @@ use crate::{sql::column::Column, ColumnId, TableId};
 
 use super::{
     delete::AbstractDelete, insert::AbstractInsert, predicate::AbstractPredicate,
-    select::AbstractSelect, selection::NestedElementRelation,
+    select::AbstractSelect,
 };
 
 /// Abstract representation of an update statement.
@@ -80,8 +80,8 @@ pub struct AbstractUpdate {
 /// In our example, the `update: [{id: 100, artist: {id: 10}, rank: 2}, {id: 101, artist: {id: 10}, role: "accompanying"}]` part
 #[derive(Debug)]
 pub struct NestedAbstractUpdate {
-    /// Relation between the parent table and the nested table (column: concert_artist.concert_id, table: concert_artist)
-    pub relation: NestedElementRelation,
+    /// The column that refers to the foreign table. In our example, this would be `concert_artist.concert_id` (which refers to `concert.id`)
+    pub relation_column_id: ColumnId,
     /// The update to apply to the nested table
     pub update: AbstractUpdate,
 }
@@ -89,8 +89,8 @@ pub struct NestedAbstractUpdate {
 /// In our example, the `create: [{artist: {id: 30}, rank: 2, role: "main"}]` part
 #[derive(Debug)]
 pub struct NestedAbstractInsert {
-    /// Same as `NestedAbstractUpdate::relation`
-    pub relation: NestedElementRelation,
+    /// Same as `NestedAbstractUpdate::relation_column_id`
+    pub relation_column_id: ColumnId,
     /// The insert to apply to the nested table
     pub insert: AbstractInsert,
 }
@@ -98,8 +98,8 @@ pub struct NestedAbstractInsert {
 /// In our example, the `delete: [{id: 110}]` part
 #[derive(Debug)]
 pub struct NestedAbstractDelete {
-    /// Same as `NestedAbstractUpdate::relation`
-    pub relation: NestedElementRelation,
+    /// Same as `NestedAbstractUpdate::relation_column_id`
+    pub relation_column_id: ColumnId,
     /// The delete to apply to the nested table
     pub delete: AbstractDelete,
 }

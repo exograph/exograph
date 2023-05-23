@@ -167,7 +167,7 @@ impl InsertTransformer for Postgres {
             // ```
             let nested_ctes = nested_rows.into_iter().map(
                 |NestedInsertion {
-                     relation,
+                     relation_column_id,
                      parent_table,
                      insertions,
                  }| {
@@ -176,7 +176,7 @@ impl InsertTransformer for Postgres {
                         .map(|insertion| insertion.partition_self_and_nested().0)
                         .collect();
                     let (mut column_ids, mut column_values_seq) = align(self_insertion_elems);
-                    column_ids.push(relation.column_id);
+                    column_ids.push(*relation_column_id);
 
                     // To form the `(SELECT "venues"."id" FROM "venues")` part
                     let parent_pk_physical_column = database
@@ -199,7 +199,7 @@ impl InsertTransformer for Postgres {
                     });
 
                     // Nested insert CTE. In the example above the `"concerts" AS ( ... )` part
-                    let relation_table = database.get_table(relation.table_id);
+                    let relation_table = database.get_table(relation_column_id.table_id);
                     let columns = column_ids
                         .iter()
                         .map(|column_id| column_id.get_column(database))

@@ -14,7 +14,7 @@ use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
-    NestedElementRelation, PhysicalColumnPathLink, PhysicalColumnType, Selection,
+    PhysicalColumnPathLink, PhysicalColumnType, Selection,
 };
 use futures::future::join_all;
 use postgres_model::{
@@ -292,10 +292,7 @@ fn compute_nested_update_object_arg<'a>(
         });
 
     NestedAbstractUpdate {
-        relation: NestedElementRelation {
-            column_id: nested_reference_col,
-            table_id,
-        },
+        relation_column_id: nested_reference_col,
         update: AbstractUpdate {
             table_id,
             predicate,
@@ -345,10 +342,7 @@ async fn compute_nested_inserts<'a>(
         .await?;
 
         Ok(NestedAbstractInsert {
-            relation: NestedElementRelation {
-                column_id: nested_reference_col,
-                table_id,
-            },
+            relation_column_id: nested_reference_col,
             insert: AbstractInsert {
                 table_id,
                 rows,
@@ -482,10 +476,7 @@ fn compute_nested_delete_object_arg<'a>(
         });
 
     NestedAbstractDelete {
-        relation: NestedElementRelation {
-            column_id: nested_reference_col,
-            table_id,
-        },
+        relation_column_id: nested_reference_col,
         delete: AbstractDelete {
             table_id,
             predicate,

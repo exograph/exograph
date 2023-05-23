@@ -35,8 +35,10 @@ pub enum PostgresRelation {
         cardinality: RelationCardinality,
         column_id_path_link: PhysicalColumnPathLink,
     },
-    // In one-to-many, we need information about the other type's primary key, so that we can
-    // build a query that joins the two tables, etc.
+    // In case of Venue -> [Concert] and the enclosing type is `Venue`, we will have:
+    // - other_type_id: Concert
+    // - cardinality: Unbounded
+    // - column_id_path_link: (self_column_id: venues.id, linked_column_id: concerts.venue_id)
     OneToMany {
         other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,

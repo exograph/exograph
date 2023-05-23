@@ -24,7 +24,6 @@
 //! Here, concerts created will have their `venue_id` set to the id of the venue being created.
 
 use super::select::AbstractSelect;
-use super::selection::NestedElementRelation;
 use crate::sql::column::Column;
 use crate::{ColumnId, TableId};
 
@@ -64,8 +63,8 @@ impl InsertionRow {
 pub struct NestedInsertion {
     /// The parent table (for example the `venues` table in `Venue <-> [Concert]`)
     pub parent_table: TableId,
-    /// Relation between the parent table and the nested table (column: concerts.venue_id, table: concerts)
-    pub relation: NestedElementRelation,
+    /// The column that refers to the the parent table (`concerts.venue_id` which refers to `venues.id`)
+    pub relation_column_id: ColumnId,
     /// The insertions to be performed on the nested table ([{title: "c1", published: true, price: 1.2}, {title: "c2", published: false, price: 2.4}]}])
     pub insertions: Vec<InsertionRow>,
 }

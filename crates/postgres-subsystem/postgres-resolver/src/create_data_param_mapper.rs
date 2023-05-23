@@ -15,7 +15,7 @@ use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractInsert, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement, InsertionRow,
-    NestedElementRelation, NestedInsertion, PhysicalColumnType,
+    NestedInsertion, PhysicalColumnPathLink,
 };
 use futures::future::{join_all, try_join_all};
 use postgres_model::{
@@ -93,10 +93,9 @@ async fn map_single<'a>(
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionRow, PostgresExecutionError> {
     let mapped = data_type.fields.iter().map(|field| async move {
-        // Process fields that map to a column in the current table
-        let field_self_column = field.relation.self_column();
         let field_arg = super::util::get_argument_field(argument, &field.name);
 
+        // If the argument has not been supplied, but has a default value, extract it from the context
         let field_arg = match field_arg {
             Some(_) => Ok(field_arg),
             None => {
@@ -112,11 +111,36 @@ async fn map_single<'a>(
         .ok()?;
 
         field_arg.map(|field_arg| async move {
-            match field_self_column {
-                Some(field_self_column) => {
-                    map_self_column(field_self_column, field, field_arg, subsystem).await
+            match &field.relation {
+                PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
+                    map_self_column(*column_id, field, field_arg, subsystem).await
                 }
-                None => map_foreign(field, field_arg, data_type, subsystem, request_context).await,
+                PostgresRelation::ManyToOne {
+                    column_id_path_link,
+                    ..
+                } => {
+                    map_self_column(
+                        column_id_path_link.self_column_id,
+                        field,
+                        field_arg,
+                        subsystem,
+                    )
+                    .await
+                }
+                PostgresRelation::OneToMany {
+                    column_id_path_link,
+                    ..
+                } => {
+                    map_foreign(
+                        field,
+                        field_arg,
+                        column_id_path_link,
+                        data_type,
+                        subsystem,
+                        request_context,
+                    )
+                    .await
+                }
             }
         })
     });
@@ -176,9 +200,10 @@ async fn map_self_column<'a>(
 /// For example, if the data parameter is `data: {name: "venue-name", concerts: [{<concert-info1>}, {<concert-info2>}]} }
 /// this needs to be called for the `concerts` part (which is mapped to a separate table)
 async fn map_foreign<'a>(
-    field: &'a PostgresField<MutationType>,
-    argument: &'a Val,
-    parent_data_type: &'a MutationType,
+    field: &'a PostgresField<MutationType>, // "concerts"
+    argument: &'a Val,                      // [{<concert-info1>}, {<concert-info2>}]
+    column_id_path_link: &PhysicalColumnPathLink,
+    parent_data_type: &'a MutationType, // "VenueCreationInput"
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionElement, PostgresExecutionError> {
@@ -197,56 +222,17 @@ async fn map_foreign<'a>(
 
     let field_type = match field_type {
         PostgresType::Composite(field_type) => field_type,
-        _ => todo!(""), // TODO: Handle this at type-level
+        _ => unreachable!("Foreign type cannot be a primitive"), // TODO: Handle this at the type-level
     };
 
-    // TODO: Cleanup in the next round
-
-    // Find the column corresponding to the primary key in the parent
-    // For example, if the mutation is (assume `Venue -> [Concert]` relation)
-    // `createVenue(data: {name: "V1", published: true, concerts: [{title: "C1V1", published: true}, {title: "C1V2", published: false}]})`
-    // we need to create a column that evaluates to `select "venues"."id" from "venues"`
-
-    let parent_type = underlying_type(parent_data_type, subsystem);
-
-    let parent_pk_physical_column = parent_type
-        .pk_column_id()
-        .unwrap()
-        .get_column(&subsystem.database);
-
-    // Find the column that the current entity refers to in the parent entity
-    // In the above example, this would be "venue_id"
-    let self_type = underlying_type(field_type, subsystem);
-    let self_reference_column_id = self_type
-        .fields
-        .iter()
-        .find(|self_field| match self_field.relation.self_column() {
-            Some(column_id) => match &column_id.get_column(&subsystem.database).typ {
-                PhysicalColumnType::ColumnReference {
-                    ref_table_name,
-                    ref_column_name,
-                    ..
-                } => {
-                    let ref_table_id = subsystem.database.get_table_id(ref_table_name).unwrap();
-                    ref_table_id == parent_pk_physical_column.table_id
-                        && ref_column_name == &parent_pk_physical_column.name
-                }
-                _ => false,
-            },
-            None => false,
-        })
-        .unwrap()
-        .relation
-        .self_column()
-        .unwrap();
+    let parent_type = underlying_type(parent_data_type, subsystem); // "Venue"
 
     let insertion = map_argument(field_type, argument, subsystem, request_context).await?;
 
+    let relation_column_id = column_id_path_link.linked_column_id.unwrap();
+
     Ok(InsertionElement::NestedInsert(NestedInsertion {
-        relation: NestedElementRelation {
-            column_id: self_reference_column_id,
-            table_id: self_type.table_id,
-        },
+        relation_column_id,
         parent_table: parent_type.table_id,
         insertions: insertion,
     }))
