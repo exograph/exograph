@@ -80,6 +80,23 @@ pub struct EntityType {
     pub access: Access,
 }
 
+pub fn get_field_id(
+    types: &SerializableSlab<EntityType>,
+    entity_id: SerializableSlabIndex<EntityType>,
+    field_name: &str,
+) -> Option<EntityFieldId> {
+    let entity = &types[entity_id];
+    entity
+        .fields
+        .iter()
+        .position(|field| field.name == field_name)
+        .map(|field_index| EntityFieldId(field_index, entity_id))
+}
+
+/// Encapsulates a field on an entity type (mirros how `ColumnId` is structured)
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct EntityFieldId(usize, SerializableSlabIndex<EntityType>);
+
 impl Named for EntityType {
     fn name(&self) -> &str {
         &self.name
@@ -95,7 +112,11 @@ pub struct MutationType {
 }
 
 impl EntityType {
-    pub fn field(&self, name: &str) -> Option<&PostgresField<EntityType>> {
+    pub fn field(&self, id: EntityFieldId) -> &PostgresField<EntityType> {
+        &self.fields[id.0]
+    }
+
+    pub fn field_by_name(&self, name: &str) -> Option<&PostgresField<EntityType>> {
         self.fields.iter().find(|field| field.name == name)
     }
 
@@ -105,7 +126,17 @@ impl EntityType {
             .find(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
     }
 
-    pub fn aggregate_field(&self, name: &str) -> Option<&AggregateField> {
+    pub fn pk_field_id(
+        &self,
+        entity_id: SerializableSlabIndex<EntityType>,
+    ) -> Option<EntityFieldId> {
+        self.fields
+            .iter()
+            .position(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
+            .map(|field_index| EntityFieldId(field_index, entity_id))
+    }
+
+    pub fn aggregate_field_by_name(&self, name: &str) -> Option<&AggregateField> {
         self.agg_fields.iter().find(|field| field.name == name)
     }
 }

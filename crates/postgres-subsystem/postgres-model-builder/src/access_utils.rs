@@ -215,7 +215,7 @@ fn compute_selection<'a>(
         &'a FieldType<PostgresFieldType<EntityType>>,
     ) {
         let get_field = |field_name: &str| {
-            self_type_info.field(field_name).unwrap_or_else(|| {
+            self_type_info.field_by_name(field_name).unwrap_or_else(|| {
                 panic!("Field {field_name} not found while processing access rules")
             })
         };

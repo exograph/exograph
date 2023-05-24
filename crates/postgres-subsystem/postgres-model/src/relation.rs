@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::types::EntityType;
+use crate::types::{EntityFieldId, EntityType};
 
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use exo_sql::{ColumnId, PhysicalColumnPathLink};
@@ -34,6 +34,7 @@ pub enum PostgresRelation {
         other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
         column_id_path_link: PhysicalColumnPathLink,
+        foreign_field_id: EntityFieldId,
     },
     // In case of Venue -> [Concert] and the enclosing type is `Venue`, we will have:
     // - other_type_id: Concert
@@ -43,6 +44,7 @@ pub enum PostgresRelation {
         other_type_id: SerializableSlabIndex<EntityType>,
         cardinality: RelationCardinality,
         column_id_path_link: PhysicalColumnPathLink,
+        self_pk_field_id: EntityFieldId,
     },
 }
 

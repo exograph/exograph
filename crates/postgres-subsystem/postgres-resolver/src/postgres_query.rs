@@ -182,14 +182,14 @@ async fn map_field<'content>(
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.to_owned())
     } else {
-        let entity_field = return_type.field(&field.name);
+        let entity_field = return_type.field_by_name(&field.name);
 
         match entity_field {
             Some(entity_field) => {
                 map_persistent_field(entity_field, field, subsystem, request_context).await?
             }
             None => {
-                let agg_field = return_type.aggregate_field(&field.name).unwrap();
+                let agg_field = return_type.aggregate_field_by_name(&field.name).unwrap();
                 map_aggregate_field(agg_field, field, subsystem, request_context).await?
             }
         }
