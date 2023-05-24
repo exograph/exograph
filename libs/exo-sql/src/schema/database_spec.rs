@@ -12,12 +12,13 @@ use std::collections::HashSet;
 use deadpool_postgres::Client;
 
 use crate::{
-    database_error::DatabaseError, schema::column_spec::ColumnSpec, Database, PhysicalColumn,
-    PhysicalTable,
+    database_error::DatabaseError, schema::column_spec::ColumnSpec, ColumnId, Database,
+    PhysicalColumn, PhysicalColumnType, PhysicalTable, TableId,
 };
 
 use super::{issue::WithIssues, table_spec::TableSpec};
 
+#[derive(Debug)]
 pub struct DatabaseSpec {
     pub tables: Vec<TableSpec>,
 }
@@ -41,7 +42,7 @@ impl DatabaseSpec {
         let mut database = Database::default();
 
         // Step 1: Create tables (without columns)
-        let tables: Vec<_> = self
+        let tables: Vec<(TableId, Vec<ColumnSpec>)> = self
             .tables
             .into_iter()
             .map(|table| {
@@ -74,7 +75,7 @@ impl DatabaseSpec {
 
         // Step 3: Set column types. We have to perform this in a separate step because we need all tables and columns to exists
         //         for us to be able to get the column ids.
-        let updates: Vec<_> = tables
+        let updates: Vec<(ColumnId, PhysicalColumnType)> = tables
             .iter()
             .flat_map(|(table_id, column_specs)| {
                 let table = database.get_table(*table_id);
@@ -112,7 +113,7 @@ impl DatabaseSpec {
                     .columns
                     .clone()
                     .into_iter()
-                    .map(ColumnSpec::from_physical)
+                    .map(|c| ColumnSpec::from_physical(c, &database))
                     .collect(),
             })
             .collect();

@@ -14,7 +14,7 @@ use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
-    PhysicalColumnPathLink, PhysicalColumnType, Selection,
+    PhysicalColumnPathLink, Selection,
 };
 use futures::future::join_all;
 use postgres_model::{
@@ -51,16 +51,8 @@ impl<'a> SQLMapper<'a, AbstractUpdate> for UpdateOperation<'a> {
         let self_update_columns = compute_update_columns(data_type, argument, subsystem);
         let (table_id, _, _) = return_type_info(self.return_type, subsystem);
 
-        let container_entity_type = self.return_type.typ(&subsystem.entity_types);
-
-        let (nested_updates, nested_inserts, nested_deletes) = compute_nested_ops(
-            data_type,
-            argument,
-            container_entity_type,
-            subsystem,
-            request_context,
-        )
-        .await;
+        let (nested_updates, nested_inserts, nested_deletes) =
+            compute_nested_ops(data_type, argument, subsystem, request_context).await;
 
         let abs_update = AbstractUpdate {
             table_id,
@@ -95,10 +87,7 @@ fn compute_update_columns<'a>(
                     let argument_value = match &field.relation {
                         PostgresRelation::ManyToOne { other_type_id, .. } => {
                             let other_type = &subsystem.entity_types[*other_type_id];
-                            let other_type_pk_field_name = other_type
-                                .pk_column_id()
-                                .map(|column_id| &column_id.get_column(&subsystem.database).name)
-                                .unwrap();
+                            let other_type_pk_field_name = &other_type.pk_field().unwrap().name;
                             match get_argument_field(argument_value, other_type_pk_field_name) {
                                 Some(other_type_pk_arg) => other_type_pk_arg,
                                 None => todo!(),
@@ -123,7 +112,6 @@ fn compute_update_columns<'a>(
 async fn compute_nested_ops<'a>(
     arg_type: &'a MutationType,
     arg: &'a Val,
-    container_entity_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> (
@@ -136,10 +124,15 @@ async fn compute_nested_ops<'a>(
     let mut nested_deletes = vec![];
 
     for field in arg_type.fields.iter() {
-        if let PostgresRelation::OneToMany { .. } = &field.relation {
+        if let PostgresRelation::OneToMany {
+            column_id_path_link,
+            ..
+        } = &field.relation
+        {
             let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
-                    panic!("One to many relation should target a composite type")
+                    // TODO: Fix this at the type-level
+                    unreachable!("One to many relation should target a composite type")
                 }
                 TypeIndex::Composite(type_id) => &subsystem.mutation_types[type_id],
             };
@@ -148,7 +141,7 @@ async fn compute_nested_ops<'a>(
                 nested_updates.extend(compute_nested_update(
                     arg_type,
                     argument,
-                    container_entity_type,
+                    column_id_path_link,
                     subsystem,
                 ));
 
@@ -156,7 +149,7 @@ async fn compute_nested_ops<'a>(
                     compute_nested_inserts(
                         arg_type,
                         argument,
-                        container_entity_type,
+                        column_id_path_link,
                         subsystem,
                         request_context,
                     )
@@ -166,8 +159,8 @@ async fn compute_nested_ops<'a>(
                 nested_deletes.extend(compute_nested_delete(
                     arg_type,
                     argument,
+                    column_id_path_link,
                     subsystem,
-                    container_entity_type,
                 ));
             }
         }
@@ -176,51 +169,14 @@ async fn compute_nested_ops<'a>(
     (nested_updates, nested_inserts, nested_deletes)
 }
 
-// Which column in field_entity_type corresponds to the primary column in container_entity_type?
-fn compute_nested_reference_column<'a>(
-    field_entity_type: &'a MutationType,
-    container_entity_type: &'a EntityType,
-    system: &'a PostgresSubsystem,
-) -> Option<ColumnId> {
-    let pk_column = {
-        let container_table = &system.database.get_table(container_entity_type.table_id);
-        container_table.get_pk_physical_column().unwrap()
-    };
-
-    let nested_table_id = system.entity_types[field_entity_type.entity_type].table_id;
-
-    system
-        .database
-        .get_column_ids(nested_table_id)
-        .iter()
-        .find(|column_id| {
-            let column = column_id.get_column(&system.database);
-            match &column.typ {
-                PhysicalColumnType::ColumnReference {
-                    ref_table_name,
-                    ref_column_name,
-                    ..
-                } => {
-                    // TODO: Temporory workaround. We won't need this once we move this information into exo-sql
-                    let ref_table_id = system.database.get_table_id(ref_table_name).unwrap();
-                    pk_column.table_id == ref_table_id && &pk_column.name == ref_column_name
-                }
-                _ => false,
-            }
-        })
-        .copied()
-}
-
 // Look for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
-    container_entity_type: &'a EntityType,
+    column_id_path_link: &PhysicalColumnPathLink,
     subsystem: &'a PostgresSubsystem,
 ) -> Vec<NestedAbstractUpdate> {
-    let nested_reference_col =
-        compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
-            .unwrap();
+    let nested_reference_col = column_id_path_link.linked_column_id.unwrap();
 
     let (update_arg, field_entity_type) =
         extract_argument(argument, field_entity_type, "update", subsystem);
@@ -316,20 +272,18 @@ fn compute_nested_update_object_arg<'a>(
 async fn compute_nested_inserts<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
-    container_entity_type: &'a EntityType,
+    column_id_path_link: &PhysicalColumnPathLink,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Vec<NestedAbstractInsert> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
-        container_entity_type: &'a EntityType,
+        column_id_path_link: &PhysicalColumnPathLink,
         subsystem: &'a PostgresSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
-        let nested_reference_col =
-            compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
-                .unwrap();
+        let nested_reference_col = column_id_path_link.linked_column_id.unwrap();
 
         let table_id = field_entity_type.table(subsystem);
 
@@ -366,7 +320,7 @@ async fn compute_nested_inserts<'a>(
             _arg @ Val::Object(..) => vec![create_nested(
                 field_entity_type,
                 create_arg,
-                container_entity_type,
+                column_id_path_link,
                 subsystem,
                 request_context,
             )
@@ -377,7 +331,7 @@ async fn compute_nested_inserts<'a>(
                     create_nested(
                         field_entity_type,
                         arg,
-                        container_entity_type,
+                        column_id_path_link,
                         subsystem,
                         request_context,
                     )
@@ -395,15 +349,13 @@ async fn compute_nested_inserts<'a>(
 fn compute_nested_delete<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
+    column_id_path_link: &PhysicalColumnPathLink,
     subsystem: &'a PostgresSubsystem,
-    container_entity_type: &'a EntityType,
 ) -> Vec<NestedAbstractDelete> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
 
-    let nested_reference_col =
-        compute_nested_reference_column(field_entity_type, container_entity_type, subsystem)
-            .unwrap();
+    let nested_reference_col = column_id_path_link.linked_column_id.unwrap();
 
     let (delete_arg, field_entity_type) =
         extract_argument(argument, field_entity_type, "delete", subsystem);

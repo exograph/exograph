@@ -90,8 +90,6 @@ pub enum PhysicalColumnType {
     },
     ColumnReference {
         ref_column_id: ColumnId,
-        ref_table_name: String,
-        ref_column_name: String,
         ref_pk_type: Box<PhysicalColumnType>,
     },
     Float {

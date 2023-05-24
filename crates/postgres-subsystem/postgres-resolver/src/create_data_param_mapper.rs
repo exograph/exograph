@@ -163,15 +163,15 @@ async fn map_self_column<'a>(
         PostgresRelation::ManyToOne { other_type_id, .. } => {
             // TODO: Include enough information in the ManyToOne relation to not need this much logic here
             let other_type = &subsystem.entity_types[*other_type_id];
-            let other_type_pk_field_name = other_type
-                .pk_column_id()
-                .map(|column_id| &column_id.get_column(&subsystem.database).name)
+            let other_type_pk_field_name = &other_type
+                .pk_field()
                 .ok_or_else(|| {
                     PostgresExecutionError::Generic(format!(
                         "{} did not have a primary key field when computing many-to-one for {}",
                         other_type.name, field.name
                     ))
-                })?;
+                })?
+                .name;
             match super::util::get_argument_field(argument, other_type_pk_field_name) {
                 Some(other_type_pk_arg) => other_type_pk_arg,
                 None => {

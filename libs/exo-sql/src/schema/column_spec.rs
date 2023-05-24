@@ -285,10 +285,10 @@ impl ColumnSpec {
         changes
     }
 
-    pub(crate) fn from_physical(column: PhysicalColumn) -> ColumnSpec {
+    pub(crate) fn from_physical(column: PhysicalColumn, database: &Database) -> ColumnSpec {
         ColumnSpec {
             name: column.name,
-            typ: ColumnTypeSpec::from_physical(column.typ),
+            typ: ColumnTypeSpec::from_physical(column.typ, database),
             is_pk: column.is_pk,
             is_auto_increment: column.is_auto_increment,
             is_nullable: column.is_nullable,
@@ -460,8 +460,6 @@ impl ColumnTypeSpec {
                 .unwrap();
             Some(PhysicalColumnType::ColumnReference {
                 ref_column_id,
-                ref_table_name: ref_table_name.to_owned(),
-                ref_column_name: ref_column_name.to_owned(),
                 ref_pk_type: Box::new(ref_pk_type.to_database_type()),
             })
         } else {
@@ -727,7 +725,7 @@ impl ColumnTypeSpec {
         }
     }
 
-    pub fn from_physical(typ: PhysicalColumnType) -> ColumnTypeSpec {
+    pub fn from_physical(typ: PhysicalColumnType, database: &Database) -> ColumnTypeSpec {
         match typ {
             PhysicalColumnType::Int { bits } => ColumnTypeSpec::Int { bits },
             PhysicalColumnType::String { max_length } => ColumnTypeSpec::String { max_length },
@@ -745,18 +743,21 @@ impl ColumnTypeSpec {
             PhysicalColumnType::Blob => ColumnTypeSpec::Blob,
             PhysicalColumnType::Uuid => ColumnTypeSpec::Uuid,
             PhysicalColumnType::Array { typ } => ColumnTypeSpec::Array {
-                typ: Box::new(ColumnTypeSpec::from_physical(*typ)),
+                typ: Box::new(ColumnTypeSpec::from_physical(*typ, database)),
             },
             PhysicalColumnType::ColumnReference {
-                ref_column_id: _,
-                ref_table_name,
-                ref_column_name,
+                ref_column_id,
                 ref_pk_type,
-            } => ColumnTypeSpec::ColumnReference {
-                ref_table_name,
-                ref_column_name,
-                ref_pk_type: Box::new(ColumnTypeSpec::from_physical(*ref_pk_type)),
-            },
+            } => {
+                let ref_table_name = database.get_table(ref_column_id.table_id).name.clone();
+                let ref_column_name = ref_column_id.get_column(database).name.clone();
+
+                ColumnTypeSpec::ColumnReference {
+                    ref_table_name,
+                    ref_column_name,
+                    ref_pk_type: Box::new(ColumnTypeSpec::from_physical(*ref_pk_type, database)),
+                }
+            }
             PhysicalColumnType::Float { bits } => ColumnTypeSpec::Float { bits },
             PhysicalColumnType::Numeric { precision, scale } => {
                 ColumnTypeSpec::Numeric { precision, scale }

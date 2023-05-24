@@ -98,6 +98,12 @@ pub(crate) fn build_expanded(
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
+            expand_type_set_column_refernece(c, resolved_env, building);
+        }
+    }
+
+    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(c) = &resolved_type {
             expand_type_fields(c, building, resolved_env);
         }
     }
@@ -180,57 +186,6 @@ fn expand_type_no_fields(
         .collect();
     building.database.get_table_mut(table_id).columns = columns;
 
-    let column_reference_type_mapping: Vec<_> = resolved_type
-        .fields
-        .iter()
-        .flat_map(|field| {
-            if field.self_column {
-                compute_reference_column_type(field, table_id, resolved_env, building)
-                    .map(|typ| (field.column_name.clone(), typ))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    column_reference_type_mapping
-        .into_iter()
-        .for_each(|(column_name, typ)| {
-            let mut column = building
-                .database
-                .get_table_mut(table_id)
-                .columns
-                .iter_mut()
-                .find(|column| column.name == column_name)
-                .unwrap();
-            column.typ = typ;
-        });
-    //     let mut column = building
-    //             .database
-    //             .get_table_mut(table_id)
-    //             .columns
-    //             .iter_mut()
-    //             .find(|column| column.name == field.column_name)
-    //             .unwrap();
-    // });
-
-    // resolved_type.fields.iter().for_each(|field| {
-    //     if field.self_column {
-    //         let mut column = building
-    //             .database
-    //             .get_table_mut(table_id)
-    //             .columns
-    //             .iter_mut()
-    //             .find(|column| column.name == field.column_name)
-    //             .unwrap();
-    //         if let Some(typ) =
-    //             compute_reference_column_type(field, table_id, resolved_env, building)
-    //         {
-    //             column.typ = typ;
-    //         }
-    //     }
-    // });
-
     let pk_query = building
         .pk_queries
         .get_id(&resolved_type.pk_query())
@@ -252,6 +207,41 @@ fn expand_type_no_fields(
     existing_type.pk_query = pk_query;
     existing_type.collection_query = collection_query;
     existing_type.aggregate_query = aggregate_query;
+}
+
+fn expand_type_set_column_refernece(
+    resolved_type: &ResolvedCompositeType,
+    resolved_env: &ResolvedTypeEnv,
+    building: &mut SystemContextBuilding,
+) {
+    let table_name = &resolved_type.table_name;
+
+    let table_id = building.database.get_table_id(table_name).unwrap();
+    let column_reference_type_mapping: Vec<_> = resolved_type
+        .fields
+        .iter()
+        .flat_map(|field| {
+            if field.self_column {
+                compute_reference_column_type(field, resolved_env, building)
+                    .map(|typ| (field.column_name.clone(), typ))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    column_reference_type_mapping
+        .into_iter()
+        .for_each(|(column_name, typ)| {
+            let mut column = building
+                .database
+                .get_table_mut(table_id)
+                .columns
+                .iter_mut()
+                .find(|column| column.name == column_name)
+                .unwrap();
+            column.typ = typ;
+        });
 }
 
 /// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can
@@ -623,7 +613,6 @@ fn create_column(
 
 fn compute_reference_column_type(
     field: &ResolvedField,
-    table_id: TableId,
     env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> Option<PhysicalColumnType> {
@@ -640,15 +629,14 @@ fn compute_reference_column_type(
                     // and it refers to the pk column in the other table.
 
                     let other_pk_field = ct.pk_field().unwrap();
+                    let ref_table_id = building.database.get_table_id(&ct.table_name).unwrap();
                     let ref_column_id = building
                         .database
-                        .get_column_id(table_id, &other_pk_field.column_name)
+                        .get_column_id(ref_table_id, &other_pk_field.column_name)
                         .unwrap();
 
                     Some(PhysicalColumnType::ColumnReference {
                         ref_column_id,
-                        ref_table_name: ct.table_name.to_string(),
-                        ref_column_name: other_pk_field.column_name.to_string(),
                         ref_pk_type: Box::new(determine_column_type(
                             &other_pk_field.typ.deref(env).as_primitive(),
                             field,
