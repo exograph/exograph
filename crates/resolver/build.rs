@@ -7,9 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-fn main() {
-    let graphiql_folder_path = std::env::current_dir()
-        .unwrap()
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // TODO: Simplify this once https://github.com/rust-lang/cargo/pull/12158 lands
+    let graphiql_folder_path = std::env::current_dir()?
         .parent()
         .unwrap()
         .parent()
@@ -33,15 +33,13 @@ fn main() {
         graphiql_folder_path.join("package-lock.json").display()
     );
 
-    let npm = which::which("npm").unwrap();
+    let npm = which::which("npm").map_err(|e| format!("Failed to find npm: {}", e))?;
 
     if !std::process::Command::new(npm.clone())
         .arg("ci")
         .current_dir(&graphiql_folder_path)
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap()
+        .spawn()?
+        .wait()?
         .success()
     {
         panic!("Failed to install graphiql dependencies");
@@ -51,12 +49,12 @@ fn main() {
         .arg("run")
         .arg("prod-build")
         .current_dir(graphiql_folder_path)
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap()
+        .spawn()?
+        .wait()?
         .success()
     {
         panic!("Failed to build graphiql");
     }
+
+    Ok(())
 }
