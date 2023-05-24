@@ -80,26 +80,35 @@ fn compute_update_columns<'a>(
     data_type
         .fields
         .iter()
-        .flat_map(|field| {
-            field.relation.self_column().and_then(|key_column_id| {
+        .flat_map(|field| match &field.relation {
+            PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
                 get_argument_field(argument, &field.name).map(|argument_value| {
-                    let key_column = key_column_id.get_column(&subsystem.database);
-                    let argument_value = match &field.relation {
-                        PostgresRelation::ManyToOne { other_type_id, .. } => {
-                            let other_type = &subsystem.entity_types[*other_type_id];
-                            let other_type_pk_field_name = &other_type.pk_field().unwrap().name;
-                            match get_argument_field(argument_value, other_type_pk_field_name) {
-                                Some(other_type_pk_arg) => other_type_pk_arg,
-                                None => todo!(),
-                            }
-                        }
-                        _ => argument_value,
-                    };
-
-                    let value_column = cast::literal_column(argument_value, key_column);
-                    (key_column_id, value_column.unwrap())
+                    let column = column_id.get_column(&subsystem.database);
+                    let value_column = cast::literal_column(argument_value, column);
+                    (*column_id, value_column.unwrap())
                 })
-            })
+            }
+            PostgresRelation::ManyToOne {
+                other_type_id,
+                column_id_path_link,
+                ..
+            } => {
+                let column_id = column_id_path_link.self_column_id;
+                let key_column = column_id.get_column(&subsystem.database);
+
+                let other_type = &subsystem.entity_types[*other_type_id];
+                let other_type_pk_field_name = &other_type.pk_field().unwrap().name;
+                get_argument_field(argument, &field.name).map(|argument_value| {
+                    match get_argument_field(argument_value, other_type_pk_field_name) {
+                        Some(other_type_pk_arg) => {
+                            let value_column = cast::literal_column(other_type_pk_arg, key_column);
+                            (column_id, value_column.unwrap())
+                        }
+                        None => unreachable!("Expected pk argument"), // Validation should have caught this
+                    }
+                })
+            }
+            PostgresRelation::OneToMany { .. } => None,
         })
         .collect()
 }
@@ -317,7 +326,7 @@ async fn compute_nested_inserts<'a>(
 
     match create_arg {
         Some(create_arg) => match create_arg {
-            _arg @ Val::Object(..) => vec![create_nested(
+            Val::Object(..) => vec![create_nested(
                 field_entity_type,
                 create_arg,
                 column_id_path_link,
@@ -398,7 +407,6 @@ fn compute_nested_delete_object_arg<'a>(
 
     let table_id = field_entity_type.table(subsystem);
 
-    //
     let nested = compute_update_columns(field_entity_type, argument, subsystem);
     let (pk_columns, _nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| {
         let column = elem.0.get_column(&subsystem.database);

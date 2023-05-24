@@ -24,7 +24,7 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named},
 };
-use exo_sql::{ColumnId, PhysicalTable, TableId};
+use exo_sql::{PhysicalTable, TableId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -103,11 +103,6 @@ impl EntityType {
         self.fields
             .iter()
             .find(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
-    }
-
-    pub fn pk_column_id(&self) -> Option<ColumnId> {
-        self.pk_field()
-            .and_then(|pk_field| pk_field.relation.self_column())
     }
 
     pub fn aggregate_field(&self, name: &str) -> Option<&AggregateField> {
