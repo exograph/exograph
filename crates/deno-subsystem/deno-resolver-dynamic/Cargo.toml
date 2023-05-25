@@ -12,3 +12,4 @@ deno-resolver = { path = "../deno-resolver" }
 
 [lib]
 crate-type = ["cdylib"]
+doctest = false

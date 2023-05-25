@@ -37,3 +37,4 @@ resolver = { path = "../../resolver" }
 
 [lib]
 crate-type = ["lib"]
+doctest = false

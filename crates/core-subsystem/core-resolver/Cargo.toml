@@ -36,3 +36,4 @@ builder = { path = "../../builder", features = ["test-context"] }
 core-plugin-interface = { path = "../core-plugin-interface" }
 
 [lib]
+doctest = false

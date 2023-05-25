@@ -28,8 +28,13 @@ openssl = { version = "0.10.50", features = ["vendored"] }
 static-postgres-resolver = ["server-common/static-postgres-resolver"]
 static-deno-resolver = ["server-common/static-deno-resolver"]
 static-wasm-resolver = ["server-common/static-wasm-resolver"]
-default = ["static-postgres-resolver", "static-deno-resolver", "static-wasm-resolver"]
+default = [
+  "static-postgres-resolver",
+  "static-deno-resolver",
+  "static-wasm-resolver",
+]
 
 [[bin]]
 name = "exo-server"
 path = "src/main.rs"
+doctest = false

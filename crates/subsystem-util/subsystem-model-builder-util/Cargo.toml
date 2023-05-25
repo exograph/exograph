@@ -19,3 +19,4 @@ subsystem-model-util = { path = "../subsystem-model-util" }
 builder = { path = "../../builder" }
 
 [lib]
+doctest = false

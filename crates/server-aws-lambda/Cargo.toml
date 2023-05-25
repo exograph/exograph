@@ -8,7 +8,9 @@ repository = "https://github.com/exograph/exograph"
 async-trait.workspace = true
 lambda_runtime = "0.6.1"
 futures.workspace = true
-opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.17", default-features = false, features = [
+  "trace",
+] }
 opentelemetry-jaeger = "0.16"
 serde_json = { workspace = true, features = ["preserve_order"] }
 tokio = { workspace = true, features = ["full"] }
@@ -27,8 +29,13 @@ builder = { path = "../builder" }
 static-postgres-resolver = ["server-common/static-postgres-resolver"]
 static-deno-resolver = ["server-common/static-deno-resolver"]
 static-wasm-resolver = ["server-common/static-wasm-resolver"]
-default = ["static-postgres-resolver", "static-deno-resolver", "static-wasm-resolver"]
+default = [
+  "static-postgres-resolver",
+  "static-deno-resolver",
+  "static-wasm-resolver",
+]
 
 [[bin]]
 name = "bootstrap"
 path = "src/main.rs"
+doctest = false

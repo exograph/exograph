@@ -21,6 +21,7 @@ tracing.workspace = true
 include_dir.workspace = true
 
 [lib]
+doctest = false
 
 [features]
 default = []

@@ -32,3 +32,6 @@ builder = { path = "../builder" }
 
 [build-dependencies]
 which = "4.4.0"
+
+[lib]
+doctest = false

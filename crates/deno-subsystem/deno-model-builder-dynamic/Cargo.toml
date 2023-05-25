@@ -12,3 +12,4 @@ deno-model-builder = { path = "../deno-model-builder" }
 
 [lib]
 crate-type = ["cdylib"]
+doctest = false
