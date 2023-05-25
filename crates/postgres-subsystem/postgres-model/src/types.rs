@@ -94,8 +94,22 @@ pub fn get_field_id(
 }
 
 /// Encapsulates a field on an entity type (mirros how `ColumnId` is structured)
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct EntityFieldId(usize, SerializableSlabIndex<EntityType>);
+
+impl EntityFieldId {
+    pub fn entity_type_id(&self) -> SerializableSlabIndex<EntityType> {
+        self.1
+    }
+
+    pub fn resolve<'a>(
+        &self,
+        types: &'a SerializableSlab<EntityType>,
+    ) -> &'a PostgresField<EntityType> {
+        let entity = &types[self.1];
+        &entity.fields[self.0]
+    }
+}
 
 impl Named for EntityType {
     fn name(&self) -> &str {
@@ -253,8 +267,10 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
             | PostgresRelation::ManyToOne { .. } => {
                 vec![]
             }
-            PostgresRelation::OneToMany { other_type_id, .. } => {
-                let other_type = &system.entity_types[other_type_id];
+            PostgresRelation::OneToMany {
+                foreign_field_id, ..
+            } => {
+                let other_type = &system.entity_types[foreign_field_id.entity_type_id()];
                 let collection_query = &system.collection_queries[other_type.collection_query];
 
                 let CollectionQueryParameters {

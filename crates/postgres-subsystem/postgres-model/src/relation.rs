@@ -7,9 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::types::{EntityFieldId, EntityType};
+use crate::types::EntityFieldId;
 
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use exo_sql::{ColumnId, PhysicalColumnPathLink};
 use serde::{Deserialize, Serialize};
 
@@ -31,20 +30,28 @@ pub enum PostgresRelation {
         column_id: ColumnId,
     },
     ManyToOne {
-        other_type_id: SerializableSlabIndex<EntityType>,
+        // Concert.venue
         cardinality: RelationCardinality,
+        foreign_field_id: EntityFieldId, // foreign field id (e.g. Venue.id)
+        column_id: ColumnId,             // self column id (e.g. concerts.venue_id)
+
+        // As a result, we can get the column path (e.g. concerts.venue_id -> venues.id)
+        // -- column_id_path_link (we can get it from the column_id and the foreign_field_id)
         column_id_path_link: PhysicalColumnPathLink,
-        foreign_field_id: EntityFieldId,
     },
     // In case of Venue -> [Concert] and the enclosing type is `Venue`, we will have:
     // - other_type_id: Concert
     // - cardinality: Unbounded
     // - column_id_path_link: (self_column_id: venues.id, linked_column_id: concerts.venue_id)
     OneToMany {
-        other_type_id: SerializableSlabIndex<EntityType>,
+        // Venue.concerts
         cardinality: RelationCardinality,
+        foreign_field_id: EntityFieldId, // foreign field id (e.g. Concert.venue)
+        pk_column_id: ColumnId,          // self pk column id (e.g. venues.id)
+
+        //
+        // - column_id_path_link (self_pk_column_id -> foreign_field_id.column_id e.g venues.id -> concerts.venue_id)
         column_id_path_link: PhysicalColumnPathLink,
-        self_pk_field_id: EntityFieldId,
     },
 }
 

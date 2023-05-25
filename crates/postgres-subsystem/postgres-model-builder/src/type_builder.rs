@@ -34,7 +34,10 @@ use postgres_model::{
     access::Access,
     aggregate::{AggregateField, AggregateFieldType},
     relation::{PostgresRelation, RelationCardinality},
-    types::{EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, TypeIndex},
+    types::{
+        get_field_id, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
+        TypeIndex,
+    },
 };
 
 use super::{
@@ -354,8 +357,11 @@ fn expand_dynamic_default_values(
 
                                             Some(context_selection)
                                         }
-                                        PostgresRelation::ManyToOne { other_type_id, .. } => {
-                                            let other_type = &building.entity_types[other_type_id];
+                                        PostgresRelation::ManyToOne {
+                                            foreign_field_id, ..
+                                        } => {
+                                            let other_type = &building.entity_types
+                                                [foreign_field_id.entity_type_id()];
                                             let other_type_pk = &other_type.pk_field().unwrap().typ;
 
                                             if !matches(other_type_pk, context_type) {
@@ -893,13 +899,13 @@ fn create_relation(
                                 .unwrap(),
                         }
                     }
-                    ResolvedType::Composite(field_type) => {
+                    ResolvedType::Composite(other_field_type) => {
                         if expand_foreign_relations {
                             // If the field is of a list type and the underlying type is not a primitive,
                             // then it is a OneToMany relation with the self's type being the "One" side
                             // and the field's type being the "Many" side.
                             let other_type_id =
-                                building.get_entity_type_id(&field_type.name).unwrap();
+                                building.get_entity_type_id(&other_field_type.name).unwrap();
                             let other_type = &building.entity_types[other_type_id];
                             let other_table_id = other_type.table_id;
                             let other_table = &building.database.get_table(other_table_id);
@@ -917,13 +923,24 @@ fn create_relation(
                                 linked_column_id: Some(other_type_column_id),
                             };
 
-                            let self_pk_field_id = self_type.pk_field_id(type_id).unwrap();
+                            let other_resolved_field = other_field_type
+                                .fields
+                                .iter()
+                                .find(|f| f.column_name == field.column_name)
+                                .unwrap();
+
+                            let foreign_field_id = get_field_id(
+                                building.entity_types.values_ref(),
+                                other_type_id,
+                                &other_resolved_field.name,
+                            )
+                            .unwrap();
 
                             PostgresRelation::OneToMany {
-                                other_type_id,
+                                foreign_field_id,
                                 cardinality: RelationCardinality::Unbounded,
+                                pk_column_id: self_pk_column_id,
                                 column_id_path_link,
-                                self_pk_field_id,
                             }
                         } else {
                             placehold_relation()
@@ -941,7 +958,7 @@ fn create_relation(
                             compute_column_id(self_table, *self_table_id, field).unwrap();
                         PostgresRelation::Scalar { column_id }
                     }
-                    ResolvedType::Composite(ct) => {
+                    ResolvedType::Composite(other_field_type) => {
                         // A field's type is "Plain" or "Optional" and the field type is composite,
                         // but we can't be sure if this is a ManyToOne or OneToMany unless we examine the other side's type.
 
@@ -954,7 +971,8 @@ fn create_relation(
                             .unwrap()
                             .typ;
 
-                        let other_type_id = building.get_entity_type_id(&ct.name).unwrap();
+                        let other_type_id =
+                            building.get_entity_type_id(&other_field_type.name).unwrap();
                         let other_type = &building.entity_types[other_type_id];
                         let other_table_id = other_type.table_id;
                         let other_table = &building.database.get_table(other_table_id);
@@ -976,13 +994,24 @@ fn create_relation(
                                         linked_column_id: Some(other_type_column_id),
                                     };
 
-                                    let self_pk_field_id = self_type.pk_field_id(type_id).unwrap();
+                                    let other_resolved_field = other_field_type
+                                        .fields
+                                        .iter()
+                                        .find(|f| f.column_name == field.column_name)
+                                        .unwrap();
+
+                                    let foreign_field_id = get_field_id(
+                                        building.entity_types.values_ref(),
+                                        other_type_id,
+                                        &other_resolved_field.name,
+                                    )
+                                    .unwrap();
 
                                     PostgresRelation::OneToMany {
-                                        other_type_id,
+                                        foreign_field_id,
                                         cardinality: RelationCardinality::Optional,
+                                        pk_column_id: self_pk_column_id,
                                         column_id_path_link,
-                                        self_pk_field_id,
                                     }
                                 } else {
                                     placehold_relation()
@@ -1008,8 +1037,8 @@ fn create_relation(
                                         other_type.pk_field_id(other_type_id).unwrap();
 
                                     PostgresRelation::ManyToOne {
-                                        other_type_id,
                                         cardinality: RelationCardinality::Optional,
+                                        column_id,
                                         column_id_path_link: relation_link,
                                         foreign_field_id,
                                     }
@@ -1042,9 +1071,9 @@ fn create_relation(
                                                 other_type.pk_field_id(other_type_id).unwrap();
 
                                             PostgresRelation::ManyToOne {
-                                                other_type_id,
                                                 cardinality: RelationCardinality::Unbounded,
                                                 column_id_path_link: relation_link,
+                                                column_id,
                                                 foreign_field_id,
                                             }
                                         } else {

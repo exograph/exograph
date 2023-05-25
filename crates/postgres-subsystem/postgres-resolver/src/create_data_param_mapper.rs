@@ -15,7 +15,7 @@ use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractInsert, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement, InsertionRow,
-    NestedInsertion, PhysicalColumnPathLink,
+    NestedInsertion,
 };
 use futures::future::{join_all, try_join_all};
 use postgres_model::{
@@ -115,26 +115,21 @@ async fn map_single<'a>(
                 PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
                     map_self_column(*column_id, field, field_arg, subsystem).await
                 }
-                PostgresRelation::ManyToOne {
-                    column_id_path_link,
-                    ..
-                } => {
-                    map_self_column(
-                        column_id_path_link.self_column_id,
-                        field,
-                        field_arg,
-                        subsystem,
-                    )
-                    .await
+                PostgresRelation::ManyToOne { column_id, .. } => {
+                    map_self_column(*column_id, field, field_arg, subsystem).await
                 }
                 PostgresRelation::OneToMany {
-                    column_id_path_link,
-                    ..
+                    foreign_field_id, ..
                 } => {
+                    let foreign_column = foreign_field_id
+                        .resolve(&subsystem.entity_types)
+                        .relation
+                        .self_column()
+                        .unwrap();
                     map_foreign(
                         field,
                         field_arg,
-                        column_id_path_link,
+                        foreign_column,
                         data_type,
                         subsystem,
                         request_context,
@@ -160,9 +155,11 @@ async fn map_self_column<'a>(
 ) -> Result<InsertionElement, PostgresExecutionError> {
     let key_column = key_column_id.get_column(&subsystem.database);
     let argument_value = match &field.relation {
-        PostgresRelation::ManyToOne { other_type_id, .. } => {
+        PostgresRelation::ManyToOne {
+            foreign_field_id, ..
+        } => {
             // TODO: Include enough information in the ManyToOne relation to not need this much logic here
-            let other_type = &subsystem.entity_types[*other_type_id];
+            let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
             let other_type_pk_field_name = &other_type
                 .pk_field()
                 .ok_or_else(|| {
@@ -202,7 +199,7 @@ async fn map_self_column<'a>(
 async fn map_foreign<'a>(
     field: &'a PostgresField<MutationType>, // "concerts"
     argument: &'a Val,                      // [{<concert-info1>}, {<concert-info2>}]
-    column_id_path_link: &PhysicalColumnPathLink,
+    foreign_column_id: ColumnId,
     parent_data_type: &'a MutationType, // "VenueCreationInput"
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
@@ -229,10 +226,8 @@ async fn map_foreign<'a>(
 
     let insertion = map_argument(field_type, argument, subsystem, request_context).await?;
 
-    let relation_column_id = column_id_path_link.linked_column_id.unwrap();
-
     Ok(InsertionElement::NestedInsert(NestedInsertion {
-        relation_column_id,
+        relation_column_id: foreign_column_id,
         parent_table: parent_type.table_id,
         insertions: insertion,
     }))

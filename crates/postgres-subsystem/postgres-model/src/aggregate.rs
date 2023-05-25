@@ -101,8 +101,10 @@ impl FieldDefinitionProvider<PostgresSubsystem> for AggregateField {
                 | PostgresRelation::ManyToOne { .. } => {
                     vec![]
                 }
-                PostgresRelation::OneToMany { other_type_id, .. } => {
-                    let other_type = &system.entity_types[*other_type_id];
+                PostgresRelation::OneToMany {
+                    foreign_field_id, ..
+                } => {
+                    let other_type = &system.entity_types[foreign_field_id.entity_type_id()];
                     let aggregate_query = &system.aggregate_queries[other_type.aggregate_query];
 
                     let AggregateQueryParameters { predicate_param } = &aggregate_query.parameters;

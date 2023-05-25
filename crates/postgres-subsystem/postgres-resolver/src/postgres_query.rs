@@ -212,11 +212,11 @@ async fn map_persistent_field<'content>(
             Ok(SelectionElement::Physical(*column_id))
         }
         PostgresRelation::ManyToOne {
-            other_type_id,
+            foreign_field_id,
             column_id_path_link,
             ..
         } => {
-            let other_type = &subsystem.entity_types[*other_type_id];
+            let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
             let other_table_pk_query = &subsystem.pk_queries[other_type.pk_query];
             let relation_link = column_id_path_link.clone();
@@ -231,12 +231,12 @@ async fn map_persistent_field<'content>(
             ))
         }
         PostgresRelation::OneToMany {
-            other_type_id,
+            foreign_field_id,
             cardinality,
             column_id_path_link,
             ..
         } => {
-            let other_type = &subsystem.entity_types[*other_type_id];
+            let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
             let relation_link = column_id_path_link.clone();
 
@@ -273,14 +273,14 @@ async fn map_aggregate_field<'content>(
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement, PostgresExecutionError> {
     if let Some(PostgresRelation::OneToMany {
-        other_type_id,
+        foreign_field_id,
         cardinality,
         column_id_path_link,
         ..
     }) = &agg_field.relation
     {
         // TODO: Avoid code duplication with map_persistent_field
-        let other_type = &subsystem.entity_types[*other_type_id];
+        let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
         let relation_link = column_id_path_link.clone();
 

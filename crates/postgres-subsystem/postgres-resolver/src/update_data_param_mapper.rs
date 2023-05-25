@@ -89,20 +89,18 @@ fn compute_update_columns<'a>(
                 })
             }
             PostgresRelation::ManyToOne {
-                other_type_id,
-                column_id_path_link,
+                foreign_field_id,
+                column_id: self_column_id,
                 ..
             } => {
-                let column_id = column_id_path_link.self_column_id;
-                let key_column = column_id.get_column(&subsystem.database);
-
-                let other_type = &subsystem.entity_types[*other_type_id];
+                let key_column = self_column_id.get_column(&subsystem.database);
+                let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
                 let other_type_pk_field_name = &other_type.pk_field().unwrap().name;
                 get_argument_field(argument, &field.name).map(|argument_value| {
                     match get_argument_field(argument_value, other_type_pk_field_name) {
                         Some(other_type_pk_arg) => {
                             let value_column = cast::literal_column(other_type_pk_arg, key_column);
-                            (column_id, value_column.unwrap())
+                            (*self_column_id, value_column.unwrap())
                         }
                         None => unreachable!("Expected pk argument"), // Validation should have caught this
                     }
@@ -134,10 +132,14 @@ async fn compute_nested_ops<'a>(
 
     for field in arg_type.fields.iter() {
         if let PostgresRelation::OneToMany {
-            column_id_path_link,
-            ..
+            foreign_field_id, ..
         } = &field.relation
         {
+            let foreign_column_id = foreign_field_id
+                .resolve(&subsystem.entity_types)
+                .relation
+                .self_column()
+                .unwrap();
             let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
                     // TODO: Fix this at the type-level
@@ -150,7 +152,7 @@ async fn compute_nested_ops<'a>(
                 nested_updates.extend(compute_nested_update(
                     arg_type,
                     argument,
-                    column_id_path_link,
+                    foreign_column_id,
                     subsystem,
                 ));
 
@@ -158,7 +160,7 @@ async fn compute_nested_ops<'a>(
                     compute_nested_inserts(
                         arg_type,
                         argument,
-                        column_id_path_link,
+                        foreign_column_id,
                         subsystem,
                         request_context,
                     )
@@ -168,7 +170,7 @@ async fn compute_nested_ops<'a>(
                 nested_deletes.extend(compute_nested_delete(
                     arg_type,
                     argument,
-                    column_id_path_link,
+                    foreign_column_id,
                     subsystem,
                 ));
             }
@@ -182,11 +184,9 @@ async fn compute_nested_ops<'a>(
 fn compute_nested_update<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
-    column_id_path_link: &PhysicalColumnPathLink,
+    foreign_column_id: ColumnId,
     subsystem: &'a PostgresSubsystem,
 ) -> Vec<NestedAbstractUpdate> {
-    let nested_reference_col = column_id_path_link.linked_column_id.unwrap();
-
     let (update_arg, field_entity_type) =
         extract_argument(argument, field_entity_type, "update", subsystem);
 
@@ -196,7 +196,7 @@ fn compute_nested_update<'a>(
                 vec![compute_nested_update_object_arg(
                     field_entity_type,
                     arg,
-                    nested_reference_col,
+                    foreign_column_id,
                     subsystem,
                 )]
             }
@@ -206,7 +206,7 @@ fn compute_nested_update<'a>(
                     compute_nested_update_object_arg(
                         field_entity_type,
                         arg,
-                        nested_reference_col,
+                        foreign_column_id,
                         subsystem,
                     )
                 })
@@ -281,19 +281,17 @@ fn compute_nested_update_object_arg<'a>(
 async fn compute_nested_inserts<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
-    column_id_path_link: &PhysicalColumnPathLink,
+    foreign_column_id: ColumnId,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Vec<NestedAbstractInsert> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
-        column_id_path_link: &PhysicalColumnPathLink,
+        foreign_column_id: ColumnId,
         subsystem: &'a PostgresSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
-        let nested_reference_col = column_id_path_link.linked_column_id.unwrap();
-
         let table_id = field_entity_type.table(subsystem);
 
         let rows = super::create_data_param_mapper::map_argument(
@@ -305,7 +303,7 @@ async fn compute_nested_inserts<'a>(
         .await?;
 
         Ok(NestedAbstractInsert {
-            relation_column_id: nested_reference_col,
+            relation_column_id: foreign_column_id,
             insert: AbstractInsert {
                 table_id,
                 rows,
@@ -329,7 +327,7 @@ async fn compute_nested_inserts<'a>(
             Val::Object(..) => vec![create_nested(
                 field_entity_type,
                 create_arg,
-                column_id_path_link,
+                foreign_column_id,
                 subsystem,
                 request_context,
             )
@@ -340,7 +338,7 @@ async fn compute_nested_inserts<'a>(
                     create_nested(
                         field_entity_type,
                         arg,
-                        column_id_path_link,
+                        foreign_column_id,
                         subsystem,
                         request_context,
                     )
@@ -358,13 +356,11 @@ async fn compute_nested_inserts<'a>(
 fn compute_nested_delete<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
-    column_id_path_link: &PhysicalColumnPathLink,
+    foreign_column_id: ColumnId,
     subsystem: &'a PostgresSubsystem,
 ) -> Vec<NestedAbstractDelete> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
-
-    let nested_reference_col = column_id_path_link.linked_column_id.unwrap();
 
     let (delete_arg, field_entity_type) =
         extract_argument(argument, field_entity_type, "delete", subsystem);
@@ -375,7 +371,7 @@ fn compute_nested_delete<'a>(
                 vec![compute_nested_delete_object_arg(
                     field_entity_type,
                     arg,
-                    nested_reference_col,
+                    foreign_column_id,
                     subsystem,
                 )]
             }
@@ -385,7 +381,7 @@ fn compute_nested_delete<'a>(
                     compute_nested_delete_object_arg(
                         field_entity_type,
                         arg,
-                        nested_reference_col,
+                        foreign_column_id,
                         subsystem,
                     )
                 })
