@@ -11,7 +11,7 @@ version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/exograph/exograph"
 
-[target.'cfg(linux)'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 async-trait.workspace = true
 lambda_runtime = "0.6.1"
 futures.workspace = true
@@ -26,7 +26,7 @@ resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 
-[target.'cfg(linux)'.dev-dependencies]
+[target.'cfg(target_os = "linux")'.dev-dependencies]
 builder = { path = "../builder" }
 
 [features]
