@@ -1,14 +1,23 @@
+# This crate is intended to be built only on Linux platforms.
+#
+# Once https://github.com/rust-lang/cargo/issues/5220 is resolved,
+# we will be able to include this crate in the workspace only for the linux target.
+# Until then, we need to scope dependencies to the linux target as well as mark
+# each source file as `#![cfg(target_os = "linux")]`.
+
 [package]
 name = "server-aws-lambda"
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/exograph/exograph"
 
-[dependencies]
+[target.'cfg(linux)'.dependencies]
 async-trait.workspace = true
 lambda_runtime = "0.6.1"
 futures.workspace = true
-opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
+opentelemetry = { version = "0.17", default-features = false, features = [
+  "trace",
+] }
 opentelemetry-jaeger = "0.16"
 serde_json = { workspace = true, features = ["preserve_order"] }
 tokio = { workspace = true, features = ["full"] }
@@ -17,17 +26,18 @@ resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 
-[target.'cfg(target_os = "windows")'.dependencies]
-openssl = { version = "0.10.50", features = ["vendored"] }
-
-[dev-dependencies]
+[target.'cfg(linux)'.dev-dependencies]
 builder = { path = "../builder" }
 
 [features]
 static-postgres-resolver = ["server-common/static-postgres-resolver"]
 static-deno-resolver = ["server-common/static-deno-resolver"]
 static-wasm-resolver = ["server-common/static-wasm-resolver"]
-default = ["static-postgres-resolver", "static-deno-resolver", "static-wasm-resolver"]
+default = [
+  "static-postgres-resolver",
+  "static-deno-resolver",
+  "static-wasm-resolver",
+]
 
 [[bin]]
 name = "bootstrap"

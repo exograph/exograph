@@ -6427,7 +6427,6 @@ dependencies = [
  "core-resolver",
  "futures",
  "lambda_runtime",
- "openssl",
  "opentelemetry 0.17.0",
  "opentelemetry-jaeger",
  "resolver",
