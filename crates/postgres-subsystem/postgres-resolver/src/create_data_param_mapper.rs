@@ -112,14 +112,15 @@ async fn map_single<'a>(
 
         field_arg.map(|field_arg| async move {
             match &field.relation {
-                PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
-                    map_self_column(*column_id, field, field_arg, subsystem).await
-                }
-                PostgresRelation::ManyToOne { column_id, .. } => {
+                PostgresRelation::Pk { column_id }
+                | PostgresRelation::Scalar { column_id }
+                | PostgresRelation::ManyToOne { column_id, .. } => {
                     map_self_column(*column_id, field, field_arg, subsystem).await
                 }
                 PostgresRelation::OneToMany {
-                    foreign_field_id, ..
+                    foreign_field_id,
+                    pk_column_id,
+                    ..
                 } => {
                     let foreign_column = foreign_field_id
                         .resolve(&subsystem.entity_types)
@@ -130,7 +131,7 @@ async fn map_single<'a>(
                         field,
                         field_arg,
                         foreign_column,
-                        data_type,
+                        *pk_column_id,
                         subsystem,
                         request_context,
                     )
@@ -200,17 +201,10 @@ async fn map_foreign<'a>(
     field: &'a PostgresField<MutationType>, // "concerts"
     argument: &'a Val,                      // [{<concert-info1>}, {<concert-info2>}]
     foreign_column_id: ColumnId,
-    parent_data_type: &'a MutationType, // "VenueCreationInput"
+    self_pk_column_id: ColumnId,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionElement, PostgresExecutionError> {
-    fn underlying_type<'a>(
-        data_type: &'a MutationType,
-        system: &'a PostgresSubsystem,
-    ) -> &'a EntityType {
-        &system.entity_types[data_type.entity_type]
-    }
-
     let field_type = base_type(
         &field.typ,
         &subsystem.primitive_types,
@@ -222,13 +216,11 @@ async fn map_foreign<'a>(
         _ => unreachable!("Foreign type cannot be a primitive"), // TODO: Handle this at the type-level
     };
 
-    let parent_type = underlying_type(parent_data_type, subsystem); // "Venue"
-
     let insertion = map_argument(field_type, argument, subsystem, request_context).await?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
-        relation_column_id: foreign_column_id,
-        parent_table: parent_type.table_id,
+        self_column_id: foreign_column_id,
+        parent_pk_column_id: self_pk_column_id,
         insertions: insertion,
     }))
 }

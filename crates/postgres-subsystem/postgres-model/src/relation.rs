@@ -34,6 +34,7 @@ pub enum PostgresRelation {
         cardinality: RelationCardinality,
         foreign_field_id: EntityFieldId, // foreign field id (e.g. Venue.id)
         column_id: ColumnId,             // self column id (e.g. concerts.venue_id)
+        // foreign_column_id: ColumnId,     // foreign column id (e.g. venues.id)
 
         // As a result, we can get the column path (e.g. concerts.venue_id -> venues.id)
         // -- column_id_path_link (we can get it from the column_id and the foreign_field_id)
@@ -47,7 +48,9 @@ pub enum PostgresRelation {
         // Venue.concerts
         cardinality: RelationCardinality,
         foreign_field_id: EntityFieldId, // foreign field id (e.g. Concert.venue)
-        pk_column_id: ColumnId,          // self pk column id (e.g. venues.id)
+
+        pk_column_id: ColumnId, // self pk column id (e.g. venues.id)
+        // foreign_column_id: ColumnId, // foreign column id (e.g. concerts.venue_id)
 
         //
         // - column_id_path_link (self_pk_column_id -> foreign_field_id.column_id e.g venues.id -> concerts.venue_id)
