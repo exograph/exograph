@@ -132,14 +132,9 @@ async fn compute_nested_ops<'a>(
 
     for field in arg_type.fields.iter() {
         if let PostgresRelation::OneToMany(OneToManyRelation {
-            foreign_field_id, ..
+            foreign_column_id, ..
         }) = &field.relation
         {
-            let foreign_column_id = foreign_field_id
-                .resolve(&subsystem.entity_types)
-                .relation
-                .self_column()
-                .unwrap();
             let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
                     // TODO: Fix this at the type-level
@@ -152,7 +147,7 @@ async fn compute_nested_ops<'a>(
                 nested_updates.extend(compute_nested_update(
                     arg_type,
                     argument,
-                    foreign_column_id,
+                    *foreign_column_id,
                     subsystem,
                 ));
 
@@ -160,7 +155,7 @@ async fn compute_nested_ops<'a>(
                     compute_nested_inserts(
                         arg_type,
                         argument,
-                        foreign_column_id,
+                        *foreign_column_id,
                         subsystem,
                         request_context,
                     )
@@ -170,7 +165,7 @@ async fn compute_nested_ops<'a>(
                 nested_deletes.extend(compute_nested_delete(
                     arg_type,
                     argument,
-                    foreign_column_id,
+                    *foreign_column_id,
                     subsystem,
                 ));
             }

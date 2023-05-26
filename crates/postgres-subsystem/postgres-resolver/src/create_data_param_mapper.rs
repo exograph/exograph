@@ -194,12 +194,7 @@ async fn map_foreign<'a>(
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionElement, PostgresExecutionError> {
-    let foreign_column_id = one_to_many_relation
-        .foreign_field_id
-        .resolve(&subsystem.entity_types)
-        .relation
-        .self_column()
-        .unwrap();
+    let foreign_column_id = one_to_many_relation.foreign_column_id;
 
     let self_pk_column_id = one_to_many_relation.pk_column_id;
 

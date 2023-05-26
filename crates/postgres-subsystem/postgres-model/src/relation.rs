@@ -72,18 +72,6 @@ impl OneToManyRelation {
 }
 
 impl PostgresRelation {
-    pub fn self_column(&self) -> Option<ColumnId> {
-        match self {
-            PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
-                Some(*column_id)
-            }
-            PostgresRelation::ManyToOne(relation) => {
-                Some(relation.column_path_link().self_column_id)
-            }
-            _ => None,
-        }
-    }
-
     pub fn column_path_link(&self) -> PhysicalColumnPathLink {
         match &self {
             PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
