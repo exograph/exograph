@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[lib]
+
+[features]
+default = []
+typescript-loader = ["dep:deno_ast"]
+cross = ["deno_runtime/dont_create_runtime_snapshot"]
+
 [dependencies]
 thiserror.workspace = true
 async-trait.workspace = true
@@ -19,9 +26,3 @@ serde_v8 = "0.85.0"
 serde_json.workspace = true
 tracing.workspace = true
 include_dir.workspace = true
-
-[lib]
-
-[features]
-default = []
-typescript-loader = ["dep:deno_ast"]

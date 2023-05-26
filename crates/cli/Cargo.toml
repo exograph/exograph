@@ -8,6 +8,10 @@ repository = "https://github.com/exograph/exograph"
 name = "exo"
 path = "src/main.rs"
 
+[features]
+cross = ["vendored-openssl"]
+vendored-openssl = ["openssl", "openssl/vendored"]
+
 [dependencies]
 colored.workspace = true
 tokio.workspace = true
@@ -38,9 +42,7 @@ core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 postgres-model-builder = { path = "../postgres-subsystem/postgres-model-builder" }
 deno-model-builder = { path = "../deno-subsystem/deno-model-builder" }
 wasm-model-builder = { path = "../wasm-subsystem/wasm-model-builder" }
-
-[target.'cfg(target_os = "windows")'.dependencies]
-openssl = { version = "0.10.50", features = ["vendored"] }
+openssl = { version = "0.10.50", optional = true }
 
 [dev-dependencies]
 stripmargin = "0.1.1"

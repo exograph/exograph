@@ -17,7 +17,7 @@ anyhow.workspace = true
 futures = "0.3"
 
 # we use a patched version of Deno that exposes the CLI internals as a library
-deno = { git = "https://github.com/exograph/deno.git", branch = "patched" }
+deno = { git = "https://github.com/exograph/deno.git", branch = "patched", default-features = false }
 deno_core = { git = "https://github.com/exograph/deno.git", branch = "patched" }
 deno_ast = { version = "0.24.0", features = ["transpiling"] }
 deno_graph = "0.44.3"
