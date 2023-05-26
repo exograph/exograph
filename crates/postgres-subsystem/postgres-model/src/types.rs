@@ -11,6 +11,7 @@ use super::access::Access;
 use super::relation::PostgresRelation;
 use crate::aggregate::AggregateField;
 use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, PkQuery};
+use crate::relation::OneToManyRelation;
 use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
@@ -267,9 +268,9 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
             | PostgresRelation::ManyToOne { .. } => {
                 vec![]
             }
-            PostgresRelation::OneToMany {
+            PostgresRelation::OneToMany(OneToManyRelation {
                 foreign_field_id, ..
-            } => {
+            }) => {
                 let other_type = &system.entity_types[foreign_field_id.entity_type_id()];
                 let collection_query = &system.collection_queries[other_type.collection_query];
 

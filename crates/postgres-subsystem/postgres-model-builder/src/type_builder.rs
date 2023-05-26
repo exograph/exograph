@@ -33,7 +33,7 @@ use exo_sql::{
 use postgres_model::{
     access::Access,
     aggregate::{AggregateField, AggregateFieldType},
-    relation::{PostgresRelation, RelationCardinality},
+    relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{
         get_field_id, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
         TypeIndex,
@@ -357,9 +357,10 @@ fn expand_dynamic_default_values(
 
                                             Some(context_selection)
                                         }
-                                        PostgresRelation::ManyToOne {
-                                            foreign_field_id, ..
-                                        } => {
+                                        PostgresRelation::ManyToOne(ManyToOneRelation {
+                                            foreign_field_id,
+                                            ..
+                                        }) => {
                                             let other_type = &building.entity_types
                                                 [foreign_field_id.entity_type_id()];
                                             let other_type_pk = &other_type.pk_field().unwrap().typ;
@@ -936,12 +937,12 @@ fn create_relation(
                             )
                             .unwrap();
 
-                            PostgresRelation::OneToMany {
+                            PostgresRelation::OneToMany(OneToManyRelation {
                                 foreign_field_id,
                                 cardinality: RelationCardinality::Unbounded,
                                 pk_column_id: self_pk_column_id,
                                 column_id_path_link,
-                            }
+                            })
                         } else {
                             placehold_relation()
                         }
@@ -1007,12 +1008,12 @@ fn create_relation(
                                     )
                                     .unwrap();
 
-                                    PostgresRelation::OneToMany {
+                                    PostgresRelation::OneToMany(OneToManyRelation {
                                         foreign_field_id,
                                         cardinality: RelationCardinality::Optional,
                                         pk_column_id: self_pk_column_id,
                                         column_id_path_link,
-                                    }
+                                    })
                                 } else {
                                     placehold_relation()
                                 }
@@ -1036,12 +1037,12 @@ fn create_relation(
                                     let foreign_field_id =
                                         other_type.pk_field_id(other_type_id).unwrap();
 
-                                    PostgresRelation::ManyToOne {
+                                    PostgresRelation::ManyToOne(ManyToOneRelation {
                                         cardinality: RelationCardinality::Optional,
                                         column_id,
                                         column_id_path_link: relation_link,
                                         foreign_field_id,
-                                    }
+                                    })
                                 } else {
                                     placehold_relation()
                                 }
@@ -1070,12 +1071,12 @@ fn create_relation(
                                             let foreign_field_id =
                                                 other_type.pk_field_id(other_type_id).unwrap();
 
-                                            PostgresRelation::ManyToOne {
+                                            PostgresRelation::ManyToOne(ManyToOneRelation {
                                                 cardinality: RelationCardinality::Unbounded,
                                                 column_id_path_link: relation_link,
                                                 column_id,
                                                 foreign_field_id,
-                                            }
+                                            })
                                         } else {
                                             placehold_relation()
                                         }

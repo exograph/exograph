@@ -32,7 +32,7 @@ use postgres_model::{
     order::OrderByParameter,
     predicate::PredicateParameter,
     query::{CollectionQuery, CollectionQueryParameters, PkQuery},
-    relation::{PostgresRelation, RelationCardinality},
+    relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     subsystem::PostgresSubsystem,
     types::{EntityType, PostgresField},
 };
@@ -211,11 +211,11 @@ async fn map_persistent_field<'content>(
         PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
             Ok(SelectionElement::Physical(*column_id))
         }
-        PostgresRelation::ManyToOne {
+        PostgresRelation::ManyToOne(ManyToOneRelation {
             foreign_field_id,
             column_id_path_link,
             ..
-        } => {
+        }) => {
             let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
             let other_table_pk_query = &subsystem.pk_queries[other_type.pk_query];
@@ -230,12 +230,12 @@ async fn map_persistent_field<'content>(
                 nested_abstract_select,
             ))
         }
-        PostgresRelation::OneToMany {
+        PostgresRelation::OneToMany(OneToManyRelation {
             foreign_field_id,
             cardinality,
             column_id_path_link,
             ..
-        } => {
+        }) => {
             let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
             let relation_link = column_id_path_link.clone();
@@ -272,12 +272,12 @@ async fn map_aggregate_field<'content>(
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement, PostgresExecutionError> {
-    if let Some(PostgresRelation::OneToMany {
+    if let Some(PostgresRelation::OneToMany(OneToManyRelation {
         foreign_field_id,
         cardinality,
         column_id_path_link,
         ..
-    }) = &agg_field.relation
+    })) = &agg_field.relation
     {
         // TODO: Avoid code duplication with map_persistent_field
         let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];

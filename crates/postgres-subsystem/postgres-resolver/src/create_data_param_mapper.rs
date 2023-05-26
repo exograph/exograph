@@ -20,7 +20,7 @@ use exo_sql::{
 use futures::future::{join_all, try_join_all};
 use postgres_model::{
     mutation::DataParameter,
-    relation::PostgresRelation,
+    relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
     subsystem::PostgresSubsystem,
     types::{base_type, EntityType, MutationType, PostgresField, PostgresType},
 };
@@ -114,24 +114,14 @@ async fn map_single<'a>(
             match &field.relation {
                 PostgresRelation::Pk { column_id }
                 | PostgresRelation::Scalar { column_id }
-                | PostgresRelation::ManyToOne { column_id, .. } => {
+                | PostgresRelation::ManyToOne(ManyToOneRelation { column_id, .. }) => {
                     map_self_column(*column_id, field, field_arg, subsystem).await
                 }
-                PostgresRelation::OneToMany {
-                    foreign_field_id,
-                    pk_column_id,
-                    ..
-                } => {
-                    let foreign_column = foreign_field_id
-                        .resolve(&subsystem.entity_types)
-                        .relation
-                        .self_column()
-                        .unwrap();
+                PostgresRelation::OneToMany(one_to_many_relation) => {
                     map_foreign(
                         field,
                         field_arg,
-                        foreign_column,
-                        *pk_column_id,
+                        one_to_many_relation,
                         subsystem,
                         request_context,
                     )
@@ -156,9 +146,9 @@ async fn map_self_column<'a>(
 ) -> Result<InsertionElement, PostgresExecutionError> {
     let key_column = key_column_id.get_column(&subsystem.database);
     let argument_value = match &field.relation {
-        PostgresRelation::ManyToOne {
+        PostgresRelation::ManyToOne(ManyToOneRelation {
             foreign_field_id, ..
-        } => {
+        }) => {
             // TODO: Include enough information in the ManyToOne relation to not need this much logic here
             let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
             let other_type_pk_field_name = &other_type
@@ -200,11 +190,19 @@ async fn map_self_column<'a>(
 async fn map_foreign<'a>(
     field: &'a PostgresField<MutationType>, // "concerts"
     argument: &'a Val,                      // [{<concert-info1>}, {<concert-info2>}]
-    foreign_column_id: ColumnId,
-    self_pk_column_id: ColumnId,
+    one_to_many_relation: &OneToManyRelation,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionElement, PostgresExecutionError> {
+    let foreign_column_id = one_to_many_relation
+        .foreign_field_id
+        .resolve(&subsystem.entity_types)
+        .relation
+        .self_column()
+        .unwrap();
+
+    let self_pk_column_id = one_to_many_relation.pk_column_id;
+
     let field_type = base_type(
         &field.typ,
         &subsystem.primitive_types,

@@ -14,7 +14,7 @@ use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
 
 use crate::query::AggregateQueryParameters;
-use crate::relation::PostgresRelation;
+use crate::relation::{OneToManyRelation, PostgresRelation};
 use crate::subsystem::PostgresSubsystem;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::type_normalization::{
@@ -101,9 +101,9 @@ impl FieldDefinitionProvider<PostgresSubsystem> for AggregateField {
                 | PostgresRelation::ManyToOne { .. } => {
                     vec![]
                 }
-                PostgresRelation::OneToMany {
+                PostgresRelation::OneToMany(OneToManyRelation {
                     foreign_field_id, ..
-                } => {
+                }) => {
                     let other_type = &system.entity_types[foreign_field_id.entity_type_id()];
                     let aggregate_query = &system.aggregate_queries[other_type.aggregate_query];
 

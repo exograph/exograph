@@ -23,39 +23,42 @@ pub enum RelationCardinality {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PostgresRelation {
-    Pk {
-        column_id: ColumnId,
-    },
-    Scalar {
-        column_id: ColumnId,
-    },
-    ManyToOne {
-        // Concert.venue
-        cardinality: RelationCardinality,
-        foreign_field_id: EntityFieldId, // foreign field id (e.g. Venue.id)
-        column_id: ColumnId,             // self column id (e.g. concerts.venue_id)
-        // foreign_column_id: ColumnId,     // foreign column id (e.g. venues.id)
+    Pk { column_id: ColumnId },
+    Scalar { column_id: ColumnId },
+    ManyToOne(ManyToOneRelation),
+    OneToMany(OneToManyRelation),
+}
 
-        // As a result, we can get the column path (e.g. concerts.venue_id -> venues.id)
-        // -- column_id_path_link (we can get it from the column_id and the foreign_field_id)
-        column_id_path_link: PhysicalColumnPathLink,
-    },
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ManyToOneRelation {
+    // Concert.venue
+    pub cardinality: RelationCardinality,
+    pub foreign_field_id: EntityFieldId, // foreign field id (e.g. Venue.id)
+    pub column_id: ColumnId,             // self column id (e.g. concerts.venue_id)
+    // foreign_column_id: ColumnId,     // foreign column id (e.g. venues.id)
+
+    // As a result, we can get the column path (e.g. concerts.venue_id -> venues.id)
+    // -- column_id_path_link (we can get it from the column_id and the foreign_field_id)
+    pub column_id_path_link: PhysicalColumnPathLink,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OneToManyRelation {
     // In case of Venue -> [Concert] and the enclosing type is `Venue`, we will have:
     // - other_type_id: Concert
     // - cardinality: Unbounded
     // - column_id_path_link: (self_column_id: venues.id, linked_column_id: concerts.venue_id)
-    OneToMany {
-        // Venue.concerts
-        cardinality: RelationCardinality,
-        foreign_field_id: EntityFieldId, // foreign field id (e.g. Concert.venue)
 
-        pk_column_id: ColumnId, // self pk column id (e.g. venues.id)
-        // foreign_column_id: ColumnId, // foreign column id (e.g. concerts.venue_id)
+    // Venue.concerts
+    pub cardinality: RelationCardinality,
+    pub foreign_field_id: EntityFieldId, // foreign field id (e.g. Concert.venue)
 
-        //
-        // - column_id_path_link (self_pk_column_id -> foreign_field_id.column_id e.g venues.id -> concerts.venue_id)
-        column_id_path_link: PhysicalColumnPathLink,
-    },
+    pub pk_column_id: ColumnId, // self pk column id (e.g. venues.id)
+    // foreign_column_id: ColumnId, // foreign column id (e.g. concerts.venue_id)
+
+    //
+    // - column_id_path_link (self_pk_column_id -> foreign_field_id.column_id e.g venues.id -> concerts.venue_id)
+    pub column_id_path_link: PhysicalColumnPathLink,
 }
 
 impl PostgresRelation {
@@ -64,10 +67,10 @@ impl PostgresRelation {
             PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
                 Some(*column_id)
             }
-            PostgresRelation::ManyToOne {
+            PostgresRelation::ManyToOne(ManyToOneRelation {
                 column_id_path_link,
                 ..
-            } => Some(column_id_path_link.self_column_id),
+            }) => Some(column_id_path_link.self_column_id),
             _ => None,
         }
     }
@@ -77,14 +80,14 @@ impl PostgresRelation {
             PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
                 PhysicalColumnPathLink::new(*column_id, None)
             }
-            PostgresRelation::ManyToOne {
+            PostgresRelation::ManyToOne(ManyToOneRelation {
                 column_id_path_link,
                 ..
-            } => column_id_path_link.clone(),
-            PostgresRelation::OneToMany {
+            }) => column_id_path_link.clone(),
+            PostgresRelation::OneToMany(OneToManyRelation {
                 column_id_path_link,
                 ..
-            } => column_id_path_link.clone(),
+            }) => column_id_path_link.clone(),
         }
     }
 }

@@ -19,7 +19,7 @@ use exo_sql::{
 use futures::future::join_all;
 use postgres_model::{
     mutation::DataParameter,
-    relation::PostgresRelation,
+    relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
     subsystem::PostgresSubsystem,
     types::{base_type, EntityType, MutationType, PostgresType, TypeIndex},
 };
@@ -88,11 +88,11 @@ fn compute_update_columns<'a>(
                     (*column_id, value_column.unwrap())
                 })
             }
-            PostgresRelation::ManyToOne {
+            PostgresRelation::ManyToOne(ManyToOneRelation {
                 foreign_field_id,
                 column_id: self_column_id,
                 ..
-            } => {
+            }) => {
                 let key_column = self_column_id.get_column(&subsystem.database);
                 let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
                 let other_type_pk_field_name = &other_type.pk_field().unwrap().name;
@@ -131,9 +131,9 @@ async fn compute_nested_ops<'a>(
     let mut nested_deletes = vec![];
 
     for field in arg_type.fields.iter() {
-        if let PostgresRelation::OneToMany {
+        if let PostgresRelation::OneToMany(OneToManyRelation {
             foreign_field_id, ..
-        } = &field.relation
+        }) = &field.relation
         {
             let foreign_column_id = foreign_field_id
                 .resolve(&subsystem.entity_types)
