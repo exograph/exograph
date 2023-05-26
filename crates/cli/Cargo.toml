@@ -7,7 +7,6 @@ repository = "https://github.com/exograph/exograph"
 [[bin]]
 name = "exo"
 path = "src/main.rs"
-doctest = false
 
 [dependencies]
 colored.workspace = true

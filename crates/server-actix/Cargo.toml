@@ -37,4 +37,3 @@ default = [
 [[bin]]
 name = "exo-server"
 path = "src/main.rs"
-doctest = false
