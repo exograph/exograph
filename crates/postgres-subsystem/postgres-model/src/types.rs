@@ -271,8 +271,8 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
             PostgresRelation::OneToMany(OneToManyRelation {
                 foreign_field_id, ..
             }) => {
-                let other_type = &system.entity_types[foreign_field_id.entity_type_id()];
-                let collection_query = &system.collection_queries[other_type.collection_query];
+                let foreign_type = &system.entity_types[foreign_field_id.entity_type_id()];
+                let collection_query = &system.collection_queries[foreign_type.collection_query];
 
                 let CollectionQueryParameters {
                     predicate_param,

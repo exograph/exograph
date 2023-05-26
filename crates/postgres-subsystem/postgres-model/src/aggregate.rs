@@ -104,8 +104,8 @@ impl FieldDefinitionProvider<PostgresSubsystem> for AggregateField {
                 PostgresRelation::OneToMany(OneToManyRelation {
                     foreign_field_id, ..
                 }) => {
-                    let other_type = &system.entity_types[foreign_field_id.entity_type_id()];
-                    let aggregate_query = &system.aggregate_queries[other_type.aggregate_query];
+                    let foreign_type = &system.entity_types[foreign_field_id.entity_type_id()];
+                    let aggregate_query = &system.aggregate_queries[foreign_type.aggregate_query];
 
                     let AggregateQueryParameters { predicate_param } = &aggregate_query.parameters;
 

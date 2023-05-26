@@ -89,17 +89,18 @@ fn compute_update_columns<'a>(
                 })
             }
             PostgresRelation::ManyToOne(ManyToOneRelation {
-                foreign_field_id,
-                column_id: self_column_id,
+                foreign_pk_field_id,
+                self_column_id,
                 ..
             }) => {
                 let key_column = self_column_id.get_column(&subsystem.database);
-                let other_type_pk_field_name =
-                    &foreign_field_id.resolve(&subsystem.entity_types).name;
+                let foreign_type_pk_field_name =
+                    &foreign_pk_field_id.resolve(&subsystem.entity_types).name;
                 get_argument_field(argument, &field.name).map(|argument_value| {
-                    match get_argument_field(argument_value, other_type_pk_field_name) {
-                        Some(other_type_pk_arg) => {
-                            let value_column = cast::literal_column(other_type_pk_arg, key_column);
+                    match get_argument_field(argument_value, foreign_type_pk_field_name) {
+                        Some(foreign_type_pk_arg) => {
+                            let value_column =
+                                cast::literal_column(foreign_type_pk_arg, key_column);
                             (*self_column_id, value_column.unwrap())
                         }
                         None => unreachable!("Expected pk argument"), // Validation should have caught this

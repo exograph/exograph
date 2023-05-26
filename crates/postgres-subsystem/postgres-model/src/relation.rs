@@ -31,41 +31,51 @@ pub enum PostgresRelation {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ManyToOneRelation {
+    // For the `Concert.venue` field (assuming [Concert] -> Venue), we will have:
+    // - cardinality: Unbounded
+    // - foreign_pk_field_id: Venue.id
+    // - self_column_id: concerts.venue_id
+    // - foreign_pk_column_id: venues.id
     // Concert.venue
     pub cardinality: RelationCardinality,
-    pub foreign_field_id: EntityFieldId, // foreign field id (e.g. Venue.id)
-    pub column_id: ColumnId,             // self column id (e.g. concerts.venue_id)
-    pub foreign_column_id: ColumnId,     // foreign column id (e.g. venues.id)
+    pub foreign_pk_field_id: EntityFieldId,
+    pub self_column_id: ColumnId,
+    pub foreign_pk_column_id: ColumnId,
 }
 
 impl ManyToOneRelation {
     pub fn column_path_link(&self) -> PhysicalColumnPathLink {
         PhysicalColumnPathLink {
-            self_column_id: self.column_id,
-            linked_column_id: Some(self.foreign_column_id),
+            self_column_id: self.self_column_id,
+            linked_column_id: Some(self.foreign_pk_column_id),
         }
     }
 }
 
+/// Model for a one-to-many relation.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OneToManyRelation {
-    // In case of Venue -> [Concert] and the enclosing type is `Venue`, we will have:
-    // - other_type_id: Concert
+    // For the `Venue.concerts` field (assuming Venue -> [Concert]), we will have:
     // - cardinality: Unbounded
-    // - column_id_path_link: (self_column_id: venues.id, linked_column_id: concerts.venue_id)
-
-    // Venue.concerts
+    // - foreign_field_id: Concert.venue
+    // - self_pk_column_id: venues.id
+    // - foreign_column_id: concerts.venue_id
     pub cardinality: RelationCardinality,
-    pub foreign_field_id: EntityFieldId, // foreign field id (e.g. Concert.venue)
+    pub foreign_field_id: EntityFieldId,
 
-    pub pk_column_id: ColumnId,      // self pk column id (e.g. venues.id)
-    pub foreign_column_id: ColumnId, // foreign column id (e.g. concerts.venue_id)
+    pub self_pk_column_id: ColumnId,
+
+    /// This is a redundant information (we can get this from foreign_field_id using
+    /// foreign_column_id.resolve(...).relation.<self-column-id>.unwrap()), since
+    /// the type of `relation` is `PostgresRelation`, so at the type level we don't know
+    /// if it's a `ManyToOne` or `OneToMany` relation and requires unwrapping.
+    pub foreign_column_id: ColumnId,
 }
 
 impl OneToManyRelation {
     pub fn column_path_link(&self) -> PhysicalColumnPathLink {
         PhysicalColumnPathLink {
-            self_column_id: self.pk_column_id,
+            self_column_id: self.self_pk_column_id,
             linked_column_id: Some(self.foreign_column_id),
         }
     }

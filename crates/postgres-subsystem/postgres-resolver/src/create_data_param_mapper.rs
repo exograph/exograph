@@ -114,9 +114,10 @@ async fn map_single<'a>(
             match &field.relation {
                 PostgresRelation::Pk { column_id }
                 | PostgresRelation::Scalar { column_id }
-                | PostgresRelation::ManyToOne(ManyToOneRelation { column_id, .. }) => {
-                    map_self_column(*column_id, field, field_arg, subsystem).await
-                }
+                | PostgresRelation::ManyToOne(ManyToOneRelation {
+                    self_column_id: column_id,
+                    ..
+                }) => map_self_column(*column_id, field, field_arg, subsystem).await,
                 PostgresRelation::OneToMany(one_to_many_relation) => {
                     map_foreign(
                         field,
@@ -147,21 +148,13 @@ async fn map_self_column<'a>(
     let key_column = key_column_id.get_column(&subsystem.database);
     let argument_value = match &field.relation {
         PostgresRelation::ManyToOne(ManyToOneRelation {
-            foreign_field_id, ..
+            foreign_pk_field_id,
+            ..
         }) => {
-            // TODO: Include enough information in the ManyToOne relation to not need this much logic here
-            let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
-            let other_type_pk_field_name = &other_type
-                .pk_field()
-                .ok_or_else(|| {
-                    PostgresExecutionError::Generic(format!(
-                        "{} did not have a primary key field when computing many-to-one for {}",
-                        other_type.name, field.name
-                    ))
-                })?
-                .name;
-            match super::util::get_argument_field(argument, other_type_pk_field_name) {
-                Some(other_type_pk_arg) => other_type_pk_arg,
+            let foreign_type_pk_field_name =
+                &foreign_pk_field_id.resolve(&subsystem.entity_types).name;
+            match super::util::get_argument_field(argument, foreign_type_pk_field_name) {
+                Some(foreign_type_pk_arg) => foreign_type_pk_arg,
                 None => {
                     // This can happen if we used a context value for a foreign key
                     // Instead of getting in the `{id: <value>}` format, we get the value directly
@@ -196,7 +189,7 @@ async fn map_foreign<'a>(
 ) -> Result<InsertionElement, PostgresExecutionError> {
     let foreign_column_id = one_to_many_relation.foreign_column_id;
 
-    let self_pk_column_id = one_to_many_relation.pk_column_id;
+    let self_pk_column_id = one_to_many_relation.self_pk_column_id;
 
     let field_type = base_type(
         &field.typ,
