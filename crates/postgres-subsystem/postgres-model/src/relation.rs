@@ -35,11 +35,16 @@ pub struct ManyToOneRelation {
     pub cardinality: RelationCardinality,
     pub foreign_field_id: EntityFieldId, // foreign field id (e.g. Venue.id)
     pub column_id: ColumnId,             // self column id (e.g. concerts.venue_id)
-    // foreign_column_id: ColumnId,     // foreign column id (e.g. venues.id)
+    pub foreign_column_id: ColumnId,     // foreign column id (e.g. venues.id)
+}
 
-    // As a result, we can get the column path (e.g. concerts.venue_id -> venues.id)
-    // -- column_id_path_link (we can get it from the column_id and the foreign_field_id)
-    pub column_id_path_link: PhysicalColumnPathLink,
+impl ManyToOneRelation {
+    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
+        PhysicalColumnPathLink {
+            self_column_id: self.column_id,
+            linked_column_id: Some(self.foreign_column_id),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -53,12 +58,17 @@ pub struct OneToManyRelation {
     pub cardinality: RelationCardinality,
     pub foreign_field_id: EntityFieldId, // foreign field id (e.g. Concert.venue)
 
-    pub pk_column_id: ColumnId, // self pk column id (e.g. venues.id)
-    // foreign_column_id: ColumnId, // foreign column id (e.g. concerts.venue_id)
+    pub pk_column_id: ColumnId,      // self pk column id (e.g. venues.id)
+    pub foreign_column_id: ColumnId, // foreign column id (e.g. concerts.venue_id)
+}
 
-    //
-    // - column_id_path_link (self_pk_column_id -> foreign_field_id.column_id e.g venues.id -> concerts.venue_id)
-    pub column_id_path_link: PhysicalColumnPathLink,
+impl OneToManyRelation {
+    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
+        PhysicalColumnPathLink {
+            self_column_id: self.pk_column_id,
+            linked_column_id: Some(self.foreign_column_id),
+        }
+    }
 }
 
 impl PostgresRelation {
@@ -67,10 +77,9 @@ impl PostgresRelation {
             PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
                 Some(*column_id)
             }
-            PostgresRelation::ManyToOne(ManyToOneRelation {
-                column_id_path_link,
-                ..
-            }) => Some(column_id_path_link.self_column_id),
+            PostgresRelation::ManyToOne(relation) => {
+                Some(relation.column_path_link().self_column_id)
+            }
             _ => None,
         }
     }
@@ -80,14 +89,8 @@ impl PostgresRelation {
             PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
                 PhysicalColumnPathLink::new(*column_id, None)
             }
-            PostgresRelation::ManyToOne(ManyToOneRelation {
-                column_id_path_link,
-                ..
-            }) => column_id_path_link.clone(),
-            PostgresRelation::OneToMany(OneToManyRelation {
-                column_id_path_link,
-                ..
-            }) => column_id_path_link.clone(),
+            PostgresRelation::ManyToOne(relation) => relation.column_path_link(),
+            PostgresRelation::OneToMany(relation) => relation.column_path_link(),
         }
     }
 }

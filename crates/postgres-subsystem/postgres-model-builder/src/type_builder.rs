@@ -26,8 +26,7 @@ use core_plugin_interface::{
 };
 
 use exo_sql::{
-    ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnPathLink, PhysicalColumnType,
-    PhysicalTable, TableId,
+    ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable, TableId,
 };
 
 use postgres_model::{
@@ -911,18 +910,13 @@ fn create_relation(
                             let other_table_id = other_type.table_id;
                             let other_table = &building.database.get_table(other_table_id);
 
-                            let other_type_column_id =
+                            let foreign_column_id =
                                 compute_column_id(other_table, other_table_id, field).unwrap();
 
                             let self_pk_column_id = ColumnId::new(
                                 *self_table_id,
                                 self_table.get_pk_column_index().unwrap(),
                             );
-
-                            let column_id_path_link = PhysicalColumnPathLink {
-                                self_column_id: self_pk_column_id,
-                                linked_column_id: Some(other_type_column_id),
-                            };
 
                             let other_resolved_field = other_field_type
                                 .fields
@@ -941,7 +935,7 @@ fn create_relation(
                                 foreign_field_id,
                                 cardinality: RelationCardinality::Unbounded,
                                 pk_column_id: self_pk_column_id,
-                                column_id_path_link,
+                                foreign_column_id,
                             })
                         } else {
                             placehold_relation()
@@ -981,7 +975,7 @@ fn create_relation(
                         match (&field.typ, other_type_field_typ) {
                             (FieldType::Optional(_), FieldType::Plain(_)) => {
                                 if expand_foreign_relations {
-                                    let other_type_column_id =
+                                    let foreign_column_id =
                                         compute_column_id(other_table, other_table_id, field)
                                             .unwrap();
 
@@ -989,11 +983,6 @@ fn create_relation(
                                         *self_table_id,
                                         self_table.get_pk_column_index().unwrap(),
                                     );
-
-                                    let column_id_path_link = PhysicalColumnPathLink {
-                                        self_column_id: self_pk_column_id,
-                                        linked_column_id: Some(other_type_column_id),
-                                    };
 
                                     let other_resolved_field = other_field_type
                                         .fields
@@ -1012,7 +1001,7 @@ fn create_relation(
                                         foreign_field_id,
                                         cardinality: RelationCardinality::Optional,
                                         pk_column_id: self_pk_column_id,
-                                        column_id_path_link,
+                                        foreign_column_id,
                                     })
                                 } else {
                                     placehold_relation()
@@ -1024,15 +1013,12 @@ fn create_relation(
                                         compute_column_id(self_table, *self_table_id, field)
                                             .unwrap();
 
-                                    let relation_link = PhysicalColumnPathLink {
-                                        self_column_id: column_id,
-                                        linked_column_id: Some(ColumnId::new(
-                                            other_table_id,
-                                            other_table
-                                                .get_pk_column_index()
-                                                .expect("No primary key column found"),
-                                        )),
-                                    };
+                                    let foreign_column_id = ColumnId::new(
+                                        other_table_id,
+                                        other_table
+                                            .get_pk_column_index()
+                                            .expect("No primary key column found"),
+                                    );
 
                                     let foreign_field_id =
                                         other_type.pk_field_id(other_type_id).unwrap();
@@ -1040,7 +1026,7 @@ fn create_relation(
                                     PostgresRelation::ManyToOne(ManyToOneRelation {
                                         cardinality: RelationCardinality::Optional,
                                         column_id,
-                                        column_id_path_link: relation_link,
+                                        foreign_column_id,
                                         foreign_field_id,
                                     })
                                 } else {
@@ -1058,22 +1044,19 @@ fn create_relation(
                                             )
                                             .unwrap();
 
-                                            let relation_link = PhysicalColumnPathLink {
-                                                self_column_id: column_id,
-                                                linked_column_id: Some(ColumnId::new(
-                                                    other_table_id,
-                                                    other_table
-                                                        .get_pk_column_index()
-                                                        .expect("No primary key column found"),
-                                                )),
-                                            };
+                                            let foreign_column_id = ColumnId::new(
+                                                other_table_id,
+                                                other_table
+                                                    .get_pk_column_index()
+                                                    .expect("No primary key column found"),
+                                            );
 
                                             let foreign_field_id =
                                                 other_type.pk_field_id(other_type_id).unwrap();
 
                                             PostgresRelation::ManyToOne(ManyToOneRelation {
                                                 cardinality: RelationCardinality::Unbounded,
-                                                column_id_path_link: relation_link,
+                                                foreign_column_id,
                                                 column_id,
                                                 foreign_field_id,
                                             })

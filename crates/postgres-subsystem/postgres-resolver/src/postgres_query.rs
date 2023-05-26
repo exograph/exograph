@@ -211,15 +211,15 @@ async fn map_persistent_field<'content>(
         PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
             Ok(SelectionElement::Physical(*column_id))
         }
-        PostgresRelation::ManyToOne(ManyToOneRelation {
-            foreign_field_id,
-            column_id_path_link,
-            ..
-        }) => {
+        PostgresRelation::ManyToOne(relation) => {
+            let ManyToOneRelation {
+                foreign_field_id, ..
+            } = relation;
+
             let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
             let other_table_pk_query = &subsystem.pk_queries[other_type.pk_query];
-            let relation_link = column_id_path_link.clone();
+            let relation_link = relation.column_path_link();
 
             let nested_abstract_select = other_table_pk_query
                 .resolve_select(field, request_context, subsystem)
@@ -230,15 +230,16 @@ async fn map_persistent_field<'content>(
                 nested_abstract_select,
             ))
         }
-        PostgresRelation::OneToMany(OneToManyRelation {
-            foreign_field_id,
-            cardinality,
-            column_id_path_link,
-            ..
-        }) => {
+        PostgresRelation::OneToMany(relation) => {
+            let OneToManyRelation {
+                foreign_field_id,
+                cardinality,
+                ..
+            } = relation;
+
             let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
-            let relation_link = column_id_path_link.clone();
+            let relation_link = relation.column_path_link();
 
             let nested_abstract_select = {
                 // Get an appropriate query based on the cardinality of the relation
@@ -272,17 +273,16 @@ async fn map_aggregate_field<'content>(
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement, PostgresExecutionError> {
-    if let Some(PostgresRelation::OneToMany(OneToManyRelation {
-        foreign_field_id,
-        cardinality,
-        column_id_path_link,
-        ..
-    })) = &agg_field.relation
-    {
+    if let Some(PostgresRelation::OneToMany(relation)) = &agg_field.relation {
+        let OneToManyRelation {
+            foreign_field_id,
+            cardinality,
+            ..
+        } = relation;
         // TODO: Avoid code duplication with map_persistent_field
         let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
-        let relation_link = column_id_path_link.clone();
+        let relation_link = relation.column_path_link();
 
         let nested_abstract_select = {
             // Aggregate is supported only for unbounded relations (i.e. not supported for one-to-one)

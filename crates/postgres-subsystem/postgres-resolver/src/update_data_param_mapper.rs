@@ -94,8 +94,8 @@ fn compute_update_columns<'a>(
                 ..
             }) => {
                 let key_column = self_column_id.get_column(&subsystem.database);
-                let other_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
-                let other_type_pk_field_name = &other_type.pk_field().unwrap().name;
+                let other_type_pk_field_name =
+                    &foreign_field_id.resolve(&subsystem.entity_types).name;
                 get_argument_field(argument, &field.name).map(|argument_value| {
                     match get_argument_field(argument_value, other_type_pk_field_name) {
                         Some(other_type_pk_arg) => {
