@@ -24,3 +24,4 @@ wasm-model = { path = "../wasm-model" }
 
 [lib]
 crate-type = ["lib"]
+doctest = false

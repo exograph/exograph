@@ -14,3 +14,4 @@ subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-bu
 
 [lib]
 crate-type = ["lib"]
+doctest = false

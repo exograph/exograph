@@ -21,3 +21,4 @@ core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 [dev-dependencies]
 
 [lib]
+doctest = false

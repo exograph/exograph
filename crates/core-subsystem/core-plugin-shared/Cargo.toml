@@ -13,3 +13,4 @@ bytes.workspace = true
 [dev-dependencies]
 
 [lib]
+doctest = false

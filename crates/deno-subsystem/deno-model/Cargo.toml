@@ -17,3 +17,4 @@ core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 
 
 [lib]
+doctest = false

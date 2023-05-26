@@ -8,10 +8,18 @@ publish = false
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-opentelemetry = "=0.18"
-opentelemetry = { version = "=0.18", default-features = false, features = [ "trace", "rt-tokio" ]}
-opentelemetry-otlp = { version = "=0.11", features = ["reqwest-client", "reqwest-rustls", "http-proto", "tls"]}
+opentelemetry = { version = "=0.18", default-features = false, features = [
+  "trace",
+  "rt-tokio",
+] }
+opentelemetry-otlp = { version = "=0.11", features = [
+  "reqwest-client",
+  "reqwest-rustls",
+  "http-proto",
+  "tls",
+] }
 # Tonic isn't used directly but we need these flags to establish a TLS connection
-tonic = { version = "0.8", features = ["tls", "tls-roots"]}
+tonic = { version = "0.8", features = ["tls", "tls-roots"] }
 
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
@@ -26,3 +34,4 @@ static-deno-resolver = ["deno-resolver"]
 static-wasm-resolver = ["wasm-resolver"]
 
 [lib]
+doctest = false

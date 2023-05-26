@@ -13,3 +13,4 @@ async-graphql-value.workspace = true
 [dev-dependencies]
 
 [lib]
+doctest = false

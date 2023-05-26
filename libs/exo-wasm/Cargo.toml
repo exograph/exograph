@@ -16,3 +16,4 @@ serde_json.workspace = true
 tracing.workspace = true
 
 [lib]
+doctest = false

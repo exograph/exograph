@@ -12,3 +12,4 @@ postgres-resolver = { path = "../postgres-resolver" }
 
 [lib]
 crate-type = ["cdylib"]
+doctest = false

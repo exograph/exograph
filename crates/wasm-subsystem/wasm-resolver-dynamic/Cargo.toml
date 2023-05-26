@@ -12,3 +12,4 @@ wasm-resolver = { path = "../wasm-resolver" }
 
 [lib]
 crate-type = ["cdylib"]
+doctest = false

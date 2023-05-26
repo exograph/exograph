@@ -26,3 +26,4 @@ deno_graph = "0.44.3"
 
 [lib]
 crate-type = ["lib"]
+doctest = false

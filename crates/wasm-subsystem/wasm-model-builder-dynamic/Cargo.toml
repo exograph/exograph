@@ -12,3 +12,4 @@ wasm-model-builder = { path = "../wasm-model-builder" }
 
 [lib]
 crate-type = ["cdylib"]
+doctest = false
