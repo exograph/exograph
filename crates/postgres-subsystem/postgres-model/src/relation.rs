@@ -45,10 +45,7 @@ pub struct ManyToOneRelation {
 
 impl ManyToOneRelation {
     pub fn column_path_link(&self) -> PhysicalColumnPathLink {
-        PhysicalColumnPathLink {
-            self_column_id: self.self_column_id,
-            linked_column_id: Some(self.foreign_pk_column_id),
-        }
+        PhysicalColumnPathLink::relation(self.self_column_id, self.foreign_pk_column_id)
     }
 }
 
@@ -74,10 +71,7 @@ pub struct OneToManyRelation {
 
 impl OneToManyRelation {
     pub fn column_path_link(&self) -> PhysicalColumnPathLink {
-        PhysicalColumnPathLink {
-            self_column_id: self.self_pk_column_id,
-            linked_column_id: Some(self.foreign_column_id),
-        }
+        PhysicalColumnPathLink::relation(self.self_pk_column_id, self.foreign_column_id)
     }
 }
 
@@ -85,7 +79,7 @@ impl PostgresRelation {
     pub fn column_path_link(&self) -> PhysicalColumnPathLink {
         match &self {
             PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
-                PhysicalColumnPathLink::new(*column_id, None)
+                PhysicalColumnPathLink::Leaf(*column_id)
             }
             PostgresRelation::ManyToOne(relation) => relation.column_path_link(),
             PostgresRelation::OneToMany(relation) => relation.column_path_link(),

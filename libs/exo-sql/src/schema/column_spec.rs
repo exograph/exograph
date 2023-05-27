@@ -20,17 +20,6 @@ use deadpool_postgres::Client;
 use regex::Regex;
 use std::collections::HashSet;
 
-// pub trait Shallow {
-//     fn shallow() -> Self;
-// }
-
-// impl<T> Shallow for SerializableSlabIndex<T> {
-//     fn shallow() -> Self {
-//         // Use an impossible index to make sure we don't accidentally use this (or if we use, it will panic)
-//         SerializableSlabIndex::from_idx(usize::MAX)
-//     }
-// }
-
 #[derive(Debug, Clone)]
 pub struct ColumnSpec {
     pub name: String,

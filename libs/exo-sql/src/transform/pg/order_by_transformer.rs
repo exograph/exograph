@@ -11,7 +11,7 @@ use crate::{
     asql::column_path::PhysicalColumnPath,
     sql::order::{OrderBy, OrderByElement},
     transform::transformer::OrderByTransformer,
-    AbstractOrderBy, ColumnId,
+    AbstractOrderBy, ColumnId, PhysicalColumnPathLink,
 };
 
 use super::Postgres;
@@ -36,5 +36,8 @@ impl OrderByTransformer for Postgres {
 }
 
 fn leaf_column(column_id_path: &PhysicalColumnPath) -> ColumnId {
-    column_id_path.path.last().unwrap().self_column_id
+    match column_id_path.path.last().unwrap() {
+        PhysicalColumnPathLink::Relation(_) => unreachable!(),
+        PhysicalColumnPathLink::Leaf(columnd_id) => *columnd_id,
+    }
 }
