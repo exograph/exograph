@@ -93,14 +93,14 @@ fn compute_update_columns<'a>(
                 self_column_id,
                 ..
             }) => {
-                let key_column = self_column_id.get_column(&subsystem.database);
+                let self_column = self_column_id.get_column(&subsystem.database);
                 let foreign_type_pk_field_name =
                     &foreign_pk_field_id.resolve(&subsystem.entity_types).name;
                 get_argument_field(argument, &field.name).map(|argument_value| {
                     match get_argument_field(argument_value, foreign_type_pk_field_name) {
                         Some(foreign_type_pk_arg) => {
                             let value_column =
-                                cast::literal_column(foreign_type_pk_arg, key_column);
+                                cast::literal_column(foreign_type_pk_arg, self_column);
                             (*self_column_id, value_column.unwrap())
                         }
                         None => unreachable!("Expected pk argument"), // Validation should have caught this
@@ -243,10 +243,7 @@ fn compute_nested_update_object_arg<'a>(
             AbstractPredicate::and(
                 acc,
                 AbstractPredicate::eq(
-                    ColumnPath::Physical(vec![PhysicalColumnPathLink {
-                        self_column_id: pk_col,
-                        linked_column_id: None,
-                    }]),
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(pk_col)]),
                     value,
                 ),
             )
@@ -418,10 +415,7 @@ fn compute_nested_delete_object_arg<'a>(
             AbstractPredicate::and(
                 acc,
                 AbstractPredicate::eq(
-                    ColumnPath::Physical(vec![PhysicalColumnPathLink {
-                        self_column_id: pk_col,
-                        linked_column_id: None,
-                    }]),
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(pk_col)]),
                     value,
                 ),
             )

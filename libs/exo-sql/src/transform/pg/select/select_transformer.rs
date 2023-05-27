@@ -217,10 +217,8 @@ mod tests {
                  concerts_id_column,
                  ..
              }| {
-                let concert_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
-                    self_column_id: concerts_id_column,
-                    linked_column_id: None,
-                }]);
+                let concert_id_path =
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(concerts_id_column)]);
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::Eq(concert_id_path, literal);
 
@@ -308,10 +306,10 @@ mod tests {
                             AliasedSelectionElement::new(
                                 "venue".to_string(),
                                 SelectionElement::SubSelect(
-                                    PhysicalColumnPathLink {
-                                        self_column_id: concerts_venue_id_column,
-                                        linked_column_id: Some(venues_id_column),
-                                    },
+                                    PhysicalColumnPathLink::relation(
+                                        concerts_venue_id_column,
+                                        venues_id_column,
+                                    ),
                                     AbstractSelect {
                                         table_id: venues_table,
                                         selection: Selection::Json(
@@ -369,10 +367,10 @@ mod tests {
                             AliasedSelectionElement::new(
                                 "concerts".to_string(),
                                 SelectionElement::SubSelect(
-                                    PhysicalColumnPathLink {
-                                        self_column_id: concerts_venue_id_column,
-                                        linked_column_id: Some(venues_id_column),
-                                    },
+                                    PhysicalColumnPathLink::relation(
+                                        concerts_venue_id_column,
+                                        venues_id_column,
+                                    ),
                                     AbstractSelect {
                                         table_id: concerts_table,
                                         selection: Selection::Json(
@@ -426,14 +424,11 @@ mod tests {
                 // }
                 let predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(vec![
-                        PhysicalColumnPathLink {
-                            self_column_id: concerts_venue_id_column,
-                            linked_column_id: Some(venues_id_column),
-                        },
-                        PhysicalColumnPathLink {
-                            self_column_id: venues_name_column,
-                            linked_column_id: None,
-                        },
+                        PhysicalColumnPathLink::relation(
+                            concerts_venue_id_column,
+                            venues_id_column,
+                        ),
+                        PhysicalColumnPathLink::Leaf(venues_name_column),
                     ]),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
@@ -473,10 +468,7 @@ mod tests {
                  ..
              }| {
                 let concert_name_path = PhysicalColumnPath {
-                    path: vec![PhysicalColumnPathLink {
-                        self_column_id: concerts_name_column,
-                        linked_column_id: None,
-                    }],
+                    path: vec![PhysicalColumnPathLink::Leaf(concerts_name_column)],
                 };
 
                 let aselect = AbstractSelect {
@@ -510,10 +502,8 @@ mod tests {
                  concerts_name_column,
                  ..
              }| {
-                let concert_name_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
-                    self_column_id: concerts_name_column,
-                    linked_column_id: None,
-                }]);
+                let concert_name_path =
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(concerts_name_column)]);
 
                 let literal = ColumnPath::Param(SQLParamContainer::new("c1".to_string()));
                 let predicate = AbstractPredicate::Eq(concert_name_path, literal);
@@ -556,14 +546,11 @@ mod tests {
              }| {
                 let venues_name_path = PhysicalColumnPath {
                     path: vec![
-                        PhysicalColumnPathLink {
-                            self_column_id: concerts_venue_id_column,
-                            linked_column_id: Some(venues_id_column),
-                        },
-                        PhysicalColumnPathLink {
-                            self_column_id: venues_name_column,
-                            linked_column_id: None,
-                        },
+                        PhysicalColumnPathLink::relation(
+                            concerts_venue_id_column,
+                            venues_id_column,
+                        ),
+                        PhysicalColumnPathLink::Leaf(venues_name_column),
                     ],
                 };
 

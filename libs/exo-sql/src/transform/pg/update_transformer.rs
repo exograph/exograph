@@ -323,10 +323,8 @@ mod tests {
                  venues_name_column,
                  ..
              }| {
-                let venue_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
-                    self_column_id: venues_id_column,
-                    linked_column_id: None,
-                }]);
+                let venue_id_path =
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(venues_id_column)]);
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
@@ -381,10 +379,8 @@ mod tests {
                  concerts_venue_id_column,
                  ..
              }| {
-                let venue_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
-                    self_column_id: venues_id_column,
-                    linked_column_id: None,
-                }]);
+                let venue_id_path =
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(venues_id_column)]);
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 

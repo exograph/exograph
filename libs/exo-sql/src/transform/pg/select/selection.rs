@@ -8,13 +8,15 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
+    asql::column_path::RelationPhysicalColumnPathLink,
     sql::{
         json_agg::JsonAgg,
         json_object::{JsonObject, JsonObjectElement},
         predicate::ConcretePredicate,
     },
     transform::pg::{Postgres, SelectionLevel},
-    AliasedSelectionElement, Column, Database, Selection, SelectionCardinality, SelectionElement,
+    AliasedSelectionElement, Column, Database, PhysicalColumnPathLink, Selection,
+    SelectionCardinality, SelectionElement,
 };
 
 pub enum SelectionSQL {
@@ -95,14 +97,20 @@ impl SelectionElement {
                 Column::JsonObject(JsonObject(elements))
             }
             SelectionElement::SubSelect(relation, select) => {
+                let subselect_predicate = match relation {
+                    PhysicalColumnPathLink::Relation(RelationPhysicalColumnPathLink {
+                        self_column_id,
+                        linked_column_id,
+                    }) => Some(ConcretePredicate::Eq(
+                        Column::Physical(*self_column_id),
+                        Column::Physical(*linked_column_id),
+                    )),
+                    PhysicalColumnPathLink::Leaf(_) => None,
+                };
+
                 Column::SubSelect(Box::new(transformer.compute_select(
                     select,
-                    relation.linked_column_id.map(|linked_column_id| {
-                        ConcretePredicate::Eq(
-                            Column::Physical(relation.self_column_id),
-                            Column::Physical(linked_column_id),
-                        )
-                    }),
+                    subselect_predicate,
                     SelectionLevel::Nested,
                     false,
                     database,
