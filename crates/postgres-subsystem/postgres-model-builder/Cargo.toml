@@ -25,3 +25,4 @@ builder = { path = "../../builder" }
 
 [lib]
 crate-type = ["lib"]
+doctest = false

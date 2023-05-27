@@ -26,7 +26,6 @@ clap = "4.1.4"
 futures.workspace = true
 rand.workspace = true
 ctrlc = "3.2"
-tempfile.workspace = true
 zip = "0.6.4"
 home = "0.5.4"
 inquire = "0.6.2"
@@ -44,5 +43,9 @@ deno-model-builder = { path = "../deno-subsystem/deno-model-builder" }
 wasm-model-builder = { path = "../wasm-subsystem/wasm-model-builder" }
 openssl = { version = "0.10.50", optional = true }
 
+[target.'cfg(unix)'.dev-dependencies]
+rexpect = "0.5.0"
+
 [dev-dependencies]
 stripmargin = "0.1.1"
+tempfile.workspace = true

@@ -4,13 +4,15 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-[lib]
-
 [features]
 static-postgres-resolver = ["server-common/static-postgres-resolver"]
 static-deno-resolver = ["server-common/static-deno-resolver"]
 static-wasm-resolver = ["server-common/static-wasm-resolver"]
-default = ["static-postgres-resolver", "static-deno-resolver", "static-wasm-resolver"]
+default = [
+  "static-postgres-resolver",
+  "static-deno-resolver",
+  "static-wasm-resolver",
+]
 
 [dependencies]
 anyhow.workspace = true
@@ -48,3 +50,6 @@ insta = { workspace = true, features = ["yaml"] }
 
 [build-dependencies]
 which = "4.4.0"
+
+[lib]
+doctest = false

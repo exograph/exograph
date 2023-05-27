@@ -12,3 +12,4 @@ postgres-model-builder = { path = "../postgres-model-builder" }
 
 [lib]
 crate-type = ["cdylib"]
+doctest = false
