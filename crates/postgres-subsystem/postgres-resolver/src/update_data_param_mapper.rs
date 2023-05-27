@@ -222,7 +222,7 @@ fn compute_nested_update_object_arg<'a>(
 ) -> NestedAbstractUpdate {
     assert!(matches!(argument, Val::Object(..)));
 
-    let table_id = field_entity_type.table(subsystem);
+    let table_id = field_entity_type.table_id;
 
     let nested = compute_update_columns(field_entity_type, argument, subsystem);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| {
@@ -285,7 +285,7 @@ async fn compute_nested_inserts<'a>(
         subsystem: &'a PostgresSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
-        let table_id = field_entity_type.table(subsystem);
+        let table_id = field_entity_type.table_id;
 
         let rows = super::create_data_param_mapper::map_argument(
             field_entity_type,
@@ -387,16 +387,14 @@ fn compute_nested_delete<'a>(
 
 // Compute delete step assuming that the argument is a single object (not an array)
 fn compute_nested_delete_object_arg<'a>(
-    field_entity_type: &'a MutationType,
+    field_mutation_type: &'a MutationType,
     argument: &'a Val,
     nested_reference_col: ColumnId,
     subsystem: &'a PostgresSubsystem,
 ) -> NestedAbstractDelete {
     assert!(matches!(argument, Val::Object(..)));
 
-    let table_id = field_entity_type.table(subsystem);
-
-    let nested = compute_update_columns(field_entity_type, argument, subsystem);
+    let nested = compute_update_columns(field_mutation_type, argument, subsystem);
     let (pk_columns, _nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| {
         let column = elem.0.get_column(&subsystem.database);
         column.is_pk
@@ -420,6 +418,8 @@ fn compute_nested_delete_object_arg<'a>(
                 ),
             )
         });
+
+    let table_id = field_mutation_type.table_id;
 
     NestedAbstractDelete {
         relation_column_id: nested_reference_col,
