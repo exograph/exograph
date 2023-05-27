@@ -123,14 +123,10 @@ impl Named for EntityType {
 pub struct MutationType {
     pub name: String,
     pub fields: Vec<PostgresField<MutationType>>,
-    pub entity_type: SerializableSlabIndex<EntityType>,
+    pub table_id: TableId,
 }
 
 impl EntityType {
-    pub fn field(&self, id: EntityFieldId) -> &PostgresField<EntityType> {
-        &self.fields[id.0]
-    }
-
     pub fn field_by_name(&self, name: &str) -> Option<&PostgresField<EntityType>> {
         self.fields.iter().find(|field| field.name == name)
     }
@@ -153,13 +149,6 @@ impl EntityType {
 
     pub fn aggregate_field_by_name(&self, name: &str) -> Option<&AggregateField> {
         self.agg_fields.iter().find(|field| field.name == name)
-    }
-}
-
-impl MutationType {
-    pub fn table<'a>(&'a self, system: &'a PostgresSubsystem) -> TableId {
-        let entity_type = &system.entity_types[self.entity_type];
-        entity_type.table_id
     }
 }
 

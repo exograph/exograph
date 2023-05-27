@@ -47,7 +47,7 @@ impl<'a> SQLMapper<'a, AbstractInsert> for InsertOperation<'a> {
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractInsert, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
-        let table_id = data_type.table(subsystem);
+        let table_id = data_type.table_id;
 
         let rows = map_argument(data_type, argument, subsystem, request_context).await?;
 

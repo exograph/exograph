@@ -178,8 +178,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
         // If not already expanded
-        if building.mutation_types[existing_type_id].entity_type == SerializableSlabIndex::shallow()
-        {
+        if building.mutation_types[existing_type_id].table_id == SerializableSlabIndex::shallow() {
             let fields_info = vec![
                 (
                     "create",
@@ -224,7 +223,11 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                 MutationType {
                     name: existing_type_name.clone(),
                     fields,
-                    entity_type: building.entity_types.get_id(&field_type.name).unwrap(),
+                    table_id: building
+                        .entity_types
+                        .get_by_key(&field_type.name)
+                        .unwrap()
+                        .table_id,
                 },
             )];
 
