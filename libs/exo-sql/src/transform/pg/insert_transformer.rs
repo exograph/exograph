@@ -42,7 +42,7 @@ use crate::{
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::transformer::{InsertTransformer, SelectTransformer},
-    ColumnId, Database, Limit, Offset,
+    ColumnId, Database,
 };
 
 use super::Postgres;
@@ -92,7 +92,7 @@ impl InsertTransformer for Postgres {
 
         let self_columns = self_column_ids
             .iter()
-            .map(|column_id| database.get_column(*column_id))
+            .map(|column_id| column_id.get_column(database))
             .collect::<Vec<_>>();
 
         let root_insert = SQLOperation::Insert(table.insert(
@@ -167,8 +167,8 @@ impl InsertTransformer for Postgres {
             // ```
             let nested_ctes = nested_rows.into_iter().map(
                 |NestedInsertion {
-                     relation,
-                     parent_table,
+                     self_column_id,
+                     parent_pk_column_id,
                      insertions,
                  }| {
                     let self_insertion_elems = insertions
@@ -176,21 +176,17 @@ impl InsertTransformer for Postgres {
                         .map(|insertion| insertion.partition_self_and_nested().0)
                         .collect();
                     let (mut column_ids, mut column_values_seq) = align(self_insertion_elems);
-                    column_ids.push(relation.column_id);
+                    column_ids.push(*self_column_id);
 
                     // To form the `(SELECT "venues"."id" FROM "venues")` part
-                    let parent_pk_physical_column = database
-                        .get_pk_column(*table_id)
-                        .expect("Could not find primary key");
-                    let parent_index: Option<u32> = None;
                     column_values_seq.iter_mut().for_each(|value| {
                         let parent_reference = Column::SubSelect(Box::new(Select {
-                            table: Table::Physical(*parent_table),
-                            columns: vec![Column::Physical(parent_pk_physical_column)],
+                            table: Table::Physical(parent_pk_column_id.table_id),
+                            columns: vec![Column::Physical(*parent_pk_column_id)],
                             predicate: ConcretePredicate::True,
                             order_by: None,
-                            offset: parent_index.map(|index| Offset(index as i64)),
-                            limit: parent_index.map(|_| Limit(1)),
+                            offset: None,
+                            limit: None,
                             group_by: None,
                             top_level_selection: false,
                         }));
@@ -199,10 +195,10 @@ impl InsertTransformer for Postgres {
                     });
 
                     // Nested insert CTE. In the example above the `"concerts" AS ( ... )` part
-                    let relation_table = database.get_table(relation.table_id);
+                    let relation_table = database.get_table(self_column_id.table_id);
                     let columns = column_ids
                         .iter()
-                        .map(|column_id| database.get_column(*column_id))
+                        .map(|column_id| column_id.get_column(database))
                         .collect::<Vec<_>>();
                     CteExpression {
                         name: relation_table.name.clone(),

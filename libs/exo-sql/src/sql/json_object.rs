@@ -51,7 +51,7 @@ impl ExpressionBuilder for JsonObjectElement {
         builder.push_str("', ");
 
         if let Column::Physical(column_id) = self.value {
-            let PhysicalColumn { typ, .. } = database.get_column(column_id);
+            let PhysicalColumn { typ, .. } = column_id.get_column(database);
             match &typ {
                 // encode blob fields in JSON objects as base64
                 // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode

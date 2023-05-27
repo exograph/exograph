@@ -89,8 +89,7 @@ pub enum PhysicalColumnType {
         typ: Box<PhysicalColumnType>,
     },
     ColumnReference {
-        ref_table_name: String,
-        ref_column_name: String,
+        ref_column_id: ColumnId,
         ref_pk_type: Box<PhysicalColumnType>,
     },
     Float {
@@ -102,7 +101,7 @@ pub enum PhysicalColumnType {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntBits {
     _16,
     _32,
@@ -110,7 +109,7 @@ pub enum IntBits {
 }
 
 /// Number of bits in the float's mantissa.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FloatBits {
     _24,
     _53,
@@ -226,5 +225,39 @@ impl PhysicalColumnType {
                 }
             }),
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy, Hash)]
+pub struct ColumnId {
+    pub table_id: TableId,
+    pub column_index: usize,
+}
+
+impl ColumnId {
+    pub fn new(table_id: TableId, column_index: usize) -> ColumnId {
+        ColumnId {
+            table_id,
+            column_index,
+        }
+    }
+
+    pub fn get_column<'a>(&self, database: &'a Database) -> &'a PhysicalColumn {
+        &database.get_table(self.table_id).columns[self.column_index]
+    }
+}
+
+impl PartialOrd for ColumnId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ColumnId {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        fn tupled(a: &ColumnId) -> (usize, usize) {
+            (a.table_id.arr_idx(), a.column_index)
+        }
+        tupled(self).cmp(&tupled(other))
     }
 }

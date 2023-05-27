@@ -9,7 +9,7 @@
 
 //! Support for selecting columns in a table, including json aggregates
 
-use crate::{ColumnId, TableId};
+use crate::ColumnId;
 
 use super::{column_path::PhysicalColumnPathLink, select::AbstractSelect};
 
@@ -58,22 +58,4 @@ pub enum SelectionElement {
     Constant(String),
     /// A subselect such as `... FROM (SELECT * FROM table)`
     SubSelect(PhysicalColumnPathLink, AbstractSelect),
-}
-
-/// Relation between two tables
-/// The `column_id` is the column in the one table that is joined to the other `table`('s primary key)
-/// TODO: Could this idea be consolidated with the `ColumnPath`? After all, both represent a way to link two tables
-#[derive(Debug)]
-pub struct NestedElementRelation {
-    pub column_id: ColumnId,
-    pub table_id: TableId,
-}
-
-impl NestedElementRelation {
-    pub fn new(column_id: ColumnId, table_id: TableId) -> Self {
-        Self {
-            column_id,
-            table_id,
-        }
-    }
 }

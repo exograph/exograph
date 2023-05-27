@@ -10,7 +10,7 @@
 use std::fmt::Write;
 
 use crate::database_error::DatabaseError;
-use crate::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
+use crate::{Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
 use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
@@ -73,7 +73,7 @@ impl ColumnSpec {
     ///
     /// If the column references another table's column, the column's type can be specified with
     /// `explicit_type`.
-    pub async fn from_db(
+    pub async fn from_live_db(
         client: &Client,
         table_name: &str,
         column_name: &str,
@@ -274,10 +274,10 @@ impl ColumnSpec {
         changes
     }
 
-    pub(crate) fn from_physical(column: PhysicalColumn) -> ColumnSpec {
+    pub(crate) fn from_physical(column: PhysicalColumn, database: &Database) -> ColumnSpec {
         ColumnSpec {
             name: column.name,
-            typ: ColumnTypeSpec::from_physical(column.typ),
+            typ: ColumnTypeSpec::from_physical(column.typ, database),
             is_pk: column.is_pk,
             is_auto_increment: column.is_auto_increment,
             is_nullable: column.is_nullable,
@@ -399,39 +399,60 @@ impl ColumnTypeSpec {
         }
     }
 
-    pub fn to_database_type(self) -> PhysicalColumnType {
+    pub fn to_database_type(&self) -> PhysicalColumnType {
         match self {
-            ColumnTypeSpec::Int { bits } => PhysicalColumnType::Int { bits },
-            ColumnTypeSpec::String { max_length } => PhysicalColumnType::String { max_length },
+            ColumnTypeSpec::Int { bits } => PhysicalColumnType::Int { bits: *bits },
+            ColumnTypeSpec::String { max_length } => PhysicalColumnType::String {
+                max_length: *max_length,
+            },
             ColumnTypeSpec::Boolean => PhysicalColumnType::Boolean,
             ColumnTypeSpec::Timestamp {
                 timezone,
                 precision,
             } => PhysicalColumnType::Timestamp {
-                timezone,
-                precision,
+                timezone: *timezone,
+                precision: *precision,
             },
             ColumnTypeSpec::Date => PhysicalColumnType::Date,
-            ColumnTypeSpec::Time { precision } => PhysicalColumnType::Time { precision },
+            ColumnTypeSpec::Time { precision } => PhysicalColumnType::Time {
+                precision: *precision,
+            },
             ColumnTypeSpec::Json => PhysicalColumnType::Json,
             ColumnTypeSpec::Blob => PhysicalColumnType::Blob,
             ColumnTypeSpec::Uuid => PhysicalColumnType::Uuid,
             ColumnTypeSpec::Array { typ } => PhysicalColumnType::Array {
                 typ: Box::new(typ.to_database_type()),
             },
-            ColumnTypeSpec::ColumnReference {
-                ref_table_name,
-                ref_column_name,
-                ref_pk_type,
-            } => PhysicalColumnType::ColumnReference {
-                ref_table_name,
-                ref_column_name,
-                ref_pk_type: Box::new(ref_pk_type.to_database_type()),
-            },
-            ColumnTypeSpec::Float { bits } => PhysicalColumnType::Float { bits },
-            ColumnTypeSpec::Numeric { precision, scale } => {
-                PhysicalColumnType::Numeric { precision, scale }
+            ColumnTypeSpec::ColumnReference { .. } => {
+                // Since we don't have `Database`, we can't compute the column_id
+                // so we just use a placeholder value, which will be replaced later (see `to_database_reference_type`)
+                PhysicalColumnType::Boolean
             }
+            ColumnTypeSpec::Float { bits } => PhysicalColumnType::Float { bits: *bits },
+            ColumnTypeSpec::Numeric { precision, scale } => PhysicalColumnType::Numeric {
+                precision: *precision,
+                scale: *scale,
+            },
+        }
+    }
+
+    pub fn to_database_reference_type(&self, database: &Database) -> Option<PhysicalColumnType> {
+        if let ColumnTypeSpec::ColumnReference {
+            ref_table_name,
+            ref_column_name,
+            ref_pk_type,
+        } = self
+        {
+            let ref_table_id = database.get_table_id(ref_table_name).unwrap();
+            let ref_column_id = database
+                .get_column_id(ref_table_id, ref_column_name)
+                .unwrap();
+            Some(PhysicalColumnType::ColumnReference {
+                ref_column_id,
+                ref_pk_type: Box::new(ref_pk_type.to_database_type()),
+            })
+        } else {
+            None
         }
     }
 
@@ -693,7 +714,7 @@ impl ColumnTypeSpec {
         }
     }
 
-    pub fn from_physical(typ: PhysicalColumnType) -> ColumnTypeSpec {
+    pub fn from_physical(typ: PhysicalColumnType, database: &Database) -> ColumnTypeSpec {
         match typ {
             PhysicalColumnType::Int { bits } => ColumnTypeSpec::Int { bits },
             PhysicalColumnType::String { max_length } => ColumnTypeSpec::String { max_length },
@@ -711,17 +732,21 @@ impl ColumnTypeSpec {
             PhysicalColumnType::Blob => ColumnTypeSpec::Blob,
             PhysicalColumnType::Uuid => ColumnTypeSpec::Uuid,
             PhysicalColumnType::Array { typ } => ColumnTypeSpec::Array {
-                typ: Box::new(ColumnTypeSpec::from_physical(*typ)),
+                typ: Box::new(ColumnTypeSpec::from_physical(*typ, database)),
             },
             PhysicalColumnType::ColumnReference {
-                ref_table_name,
-                ref_column_name,
+                ref_column_id,
                 ref_pk_type,
-            } => ColumnTypeSpec::ColumnReference {
-                ref_table_name,
-                ref_column_name,
-                ref_pk_type: Box::new(ColumnTypeSpec::from_physical(*ref_pk_type)),
-            },
+            } => {
+                let ref_table_name = database.get_table(ref_column_id.table_id).name.clone();
+                let ref_column_name = ref_column_id.get_column(database).name.clone();
+
+                ColumnTypeSpec::ColumnReference {
+                    ref_table_name,
+                    ref_column_name,
+                    ref_pk_type: Box::new(ColumnTypeSpec::from_physical(*ref_pk_type, database)),
+                }
+            }
             PhysicalColumnType::Float { bits } => ColumnTypeSpec::Float { bits },
             PhysicalColumnType::Numeric { precision, scale } => {
                 ColumnTypeSpec::Numeric { precision, scale }

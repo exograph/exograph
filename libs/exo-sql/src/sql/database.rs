@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{PhysicalColumn, PhysicalTable};
+use crate::{ColumnId, PhysicalTable};
 
 use serde::{Deserialize, Serialize};
 use typed_generational_arena::{Arena, IgnoreGeneration, Index};
@@ -23,10 +23,6 @@ pub struct Database {
 impl Database {
     pub fn get_table(&self, id: TableId) -> &PhysicalTable {
         &self.tables[id]
-    }
-
-    pub fn get_column(&self, id: ColumnId) -> &PhysicalColumn {
-        &self.tables[id.table_id].columns[id.column_index]
     }
 
     pub fn get_column_ids(&self, table_id: TableId) -> Vec<ColumnId> {
@@ -65,8 +61,7 @@ impl Database {
             .map(|column_index| ColumnId::new(table_id, column_index))
     }
 
-    #[cfg(test)]
-    pub(crate) fn get_column_id(&self, table_id: TableId, column_name: &str) -> Option<ColumnId> {
+    pub fn get_column_id(&self, table_id: TableId, column_name: &str) -> Option<ColumnId> {
         self.tables[table_id]
             .column_index(column_name)
             .map(|column_index| ColumnId::new(table_id, column_index))
@@ -78,39 +73,5 @@ impl Default for Database {
         Database {
             tables: SerializableSlab::new(),
         }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy, Hash)]
-pub struct ColumnId {
-    pub table_id: TableId,
-    column_index: usize,
-}
-
-impl ColumnId {
-    pub fn new(table_id: TableId, column_index: usize) -> ColumnId {
-        ColumnId {
-            table_id,
-            column_index,
-        }
-    }
-
-    pub fn get_column<'a>(&self, database: &'a Database) -> &'a PhysicalColumn {
-        &database.tables[self.table_id].columns[self.column_index]
-    }
-}
-
-impl PartialOrd for ColumnId {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for ColumnId {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        fn tupled(a: &ColumnId) -> (usize, usize) {
-            (a.table_id.arr_idx(), a.column_index)
-        }
-        tupled(self).cmp(&tupled(other))
     }
 }

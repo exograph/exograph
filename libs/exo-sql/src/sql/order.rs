@@ -30,7 +30,7 @@ impl OrderByElement {
 
 impl ExpressionBuilder for OrderByElement {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
-        let column = database.get_column(self.0);
+        let column = self.0.get_column(database);
         column.build(database, builder);
         builder.push_space();
         if self.1 == Ordering::Asc {

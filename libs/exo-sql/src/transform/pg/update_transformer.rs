@@ -96,7 +96,7 @@ impl UpdateTransformer for Postgres {
         let table = database.get_table(abstract_update.table_id);
         let column_values = column_id_values
             .into_iter()
-            .map(|(col_id, col)| (database.get_column(col_id), col))
+            .map(|(col_id, col)| (col_id.get_column(database), col))
             .collect();
         let root_update = SQLOperation::Update(table.update(
             column_values,
@@ -191,7 +191,7 @@ fn update_op<'a>(
         .map(|(col, val)| (*col, ProxyColumn::Concrete(val.into())))
         .collect();
     column_id_values.push((
-        nested_update.relation.column_id,
+        nested_update.relation_column_id,
         ProxyColumn::Template {
             // The column index is always 0 because we want to get the only column in the row
             // such as `UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING
@@ -203,7 +203,7 @@ fn update_op<'a>(
 
     let column_values = column_id_values
         .into_iter()
-        .map(|(col_id, col)| (database.get_column(col_id), col))
+        .map(|(col_id, col)| (col_id.get_column(database), col))
         .collect();
 
     TemplateSQLOperation::Update(TemplateUpdate {
@@ -232,7 +232,7 @@ fn insert_op<'a>(
         .unzip();
 
     let (mut column_id_names, column_values_seq) = super::insert_transformer::align(self_elems);
-    column_id_names.push(nested_insert.relation.column_id);
+    column_id_names.push(nested_insert.relation_column_id);
 
     let column_values_seq: Vec<_> = column_values_seq
         .into_iter()
@@ -254,7 +254,7 @@ fn insert_op<'a>(
 
     let columns = column_id_names
         .iter()
-        .map(|col_id| database.get_column(*col_id))
+        .map(|col_id| col_id.get_column(database))
         .collect();
 
     TemplateSQLOperation::Insert(TemplateInsert {
@@ -304,9 +304,7 @@ mod tests {
             column_path::{ColumnPath, PhysicalColumnPathLink},
             predicate::AbstractPredicate,
             select::AbstractSelect,
-            selection::{
-                AliasedSelectionElement, NestedElementRelation, Selection, SelectionElement,
-            },
+            selection::{AliasedSelectionElement, Selection, SelectionElement},
             update::NestedAbstractUpdate,
         },
         sql::{column::Column, predicate::Predicate, SQLParamContainer},
@@ -325,10 +323,8 @@ mod tests {
                  venues_name_column,
                  ..
              }| {
-                let venue_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
-                    self_column_id: venues_id_column,
-                    linked_column_id: None,
-                }]);
+                let venue_id_path =
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(venues_id_column)]);
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
@@ -383,18 +379,13 @@ mod tests {
                  concerts_venue_id_column,
                  ..
              }| {
-                let venue_id_path = ColumnPath::Physical(vec![PhysicalColumnPathLink {
-                    self_column_id: venues_id_column,
-                    linked_column_id: None,
-                }]);
+                let venue_id_path =
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(venues_id_column)]);
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
-                    relation: NestedElementRelation {
-                        column_id: concerts_venue_id_column,
-                        table_id: concerts_table,
-                    },
+                    relation_column_id: concerts_venue_id_column,
                     update: AbstractUpdate {
                         table_id: concerts_table,
                         predicate: Predicate::True,

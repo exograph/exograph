@@ -45,7 +45,7 @@ impl TableSpec {
     }
 
     /// Creates a new table specification from an SQL table.
-    pub(super) async fn from_db(
+    pub(super) async fn from_live_db(
         client: &Client,
         table_name: &str,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
@@ -56,7 +56,7 @@ impl TableSpec {
 
         let mut issues = Vec::new();
 
-        let constraints = Constraints::from_db(client, table_name).await?;
+        let constraints = Constraints::from_live_db(client, table_name).await?;
 
         let mut column_type_mapping = HashMap::new();
 
@@ -66,7 +66,7 @@ impl TableSpec {
             let ref_column_name = foreign_constraint.ref_columns.iter().next().unwrap();
 
             let mut column =
-                ColumnSpec::from_db(client, table_name, ref_column_name, true, None, vec![])
+                ColumnSpec::from_live_db(client, table_name, ref_column_name, true, None, vec![])
                     .await?;
             issues.append(&mut column.issues);
 
@@ -98,7 +98,7 @@ impl TableSpec {
                 })
                 .collect();
 
-            let mut column = ColumnSpec::from_db(
+            let mut column = ColumnSpec::from_live_db(
                 client,
                 table_name,
                 &name,

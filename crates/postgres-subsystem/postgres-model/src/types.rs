@@ -11,6 +11,7 @@ use super::access::Access;
 use super::relation::PostgresRelation;
 use crate::aggregate::AggregateField;
 use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, PkQuery};
+use crate::relation::OneToManyRelation;
 use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
@@ -24,7 +25,7 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named},
 };
-use exo_sql::{ColumnId, PhysicalTable, TableId};
+use exo_sql::{PhysicalTable, TableId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -80,6 +81,37 @@ pub struct EntityType {
     pub access: Access,
 }
 
+pub fn get_field_id(
+    types: &SerializableSlab<EntityType>,
+    entity_id: SerializableSlabIndex<EntityType>,
+    field_name: &str,
+) -> Option<EntityFieldId> {
+    let entity = &types[entity_id];
+    entity
+        .fields
+        .iter()
+        .position(|field| field.name == field_name)
+        .map(|field_index| EntityFieldId(field_index, entity_id))
+}
+
+/// Encapsulates a field on an entity type (mirros how `ColumnId` is structured)
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub struct EntityFieldId(usize, SerializableSlabIndex<EntityType>);
+
+impl EntityFieldId {
+    pub fn entity_type_id(&self) -> SerializableSlabIndex<EntityType> {
+        self.1
+    }
+
+    pub fn resolve<'a>(
+        &self,
+        types: &'a SerializableSlab<EntityType>,
+    ) -> &'a PostgresField<EntityType> {
+        let entity = &types[self.1];
+        &entity.fields[self.0]
+    }
+}
+
 impl Named for EntityType {
     fn name(&self) -> &str {
         &self.name
@@ -95,7 +127,11 @@ pub struct MutationType {
 }
 
 impl EntityType {
-    pub fn field(&self, name: &str) -> Option<&PostgresField<EntityType>> {
+    pub fn field(&self, id: EntityFieldId) -> &PostgresField<EntityType> {
+        &self.fields[id.0]
+    }
+
+    pub fn field_by_name(&self, name: &str) -> Option<&PostgresField<EntityType>> {
         self.fields.iter().find(|field| field.name == name)
     }
 
@@ -105,12 +141,17 @@ impl EntityType {
             .find(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
     }
 
-    pub fn pk_column_id(&self) -> Option<ColumnId> {
-        self.pk_field()
-            .and_then(|pk_field| pk_field.relation.self_column())
+    pub fn pk_field_id(
+        &self,
+        entity_id: SerializableSlabIndex<EntityType>,
+    ) -> Option<EntityFieldId> {
+        self.fields
+            .iter()
+            .position(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
+            .map(|field_index| EntityFieldId(field_index, entity_id))
     }
 
-    pub fn aggregate_field(&self, name: &str) -> Option<&AggregateField> {
+    pub fn aggregate_field_by_name(&self, name: &str) -> Option<&AggregateField> {
         self.agg_fields.iter().find(|field| field.name == name)
     }
 }
@@ -227,9 +268,11 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
             | PostgresRelation::ManyToOne { .. } => {
                 vec![]
             }
-            PostgresRelation::OneToMany { other_type_id, .. } => {
-                let other_type = &system.entity_types[other_type_id];
-                let collection_query = &system.collection_queries[other_type.collection_query];
+            PostgresRelation::OneToMany(OneToManyRelation {
+                foreign_field_id, ..
+            }) => {
+                let foreign_type = &system.entity_types[foreign_field_id.entity_type_id()];
+                let collection_query = &system.collection_queries[foreign_type.collection_query];
 
                 let CollectionQueryParameters {
                     predicate_param,

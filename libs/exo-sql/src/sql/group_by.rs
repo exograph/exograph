@@ -22,7 +22,7 @@ impl ExpressionBuilder for GroupBy {
         let columns = self
             .0
             .iter()
-            .map(|column_id| database.get_column(*column_id))
+            .map(|column_id| column_id.get_column(database))
             .collect::<Vec<_>>();
         builder.push_elems(database, &columns, ", ");
     }

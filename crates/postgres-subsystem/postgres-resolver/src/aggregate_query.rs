@@ -101,7 +101,7 @@ async fn map_field<'content>(
     } else {
         let entity_type = &return_type.typ(&subsystem.entity_types);
 
-        let model_field = entity_type.field(&field.name).unwrap();
+        let model_field = entity_type.field_by_name(&field.name).unwrap();
         let model_field_type = &model_field.typ.innermost().type_name;
         // This is duplicated from builder.
         // We need to rethink aggregation and the concept of aggregate fields in EntityType.

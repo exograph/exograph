@@ -156,10 +156,7 @@ mod tests {
                  ..
              }| {
                 let predicate = AbstractPredicate::Eq(
-                    ColumnPath::Physical(vec![PhysicalColumnPathLink {
-                        self_column_id: concerts_name_column,
-                        linked_column_id: None,
-                    }]),
+                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(concerts_name_column)]),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 
@@ -204,14 +201,11 @@ mod tests {
              }| {
                 let predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(vec![
-                        PhysicalColumnPathLink {
-                            self_column_id: concerts_venue_id_column,
-                            linked_column_id: Some(venues_id_column),
-                        },
-                        PhysicalColumnPathLink {
-                            self_column_id: venues_name_column,
-                            linked_column_id: None,
-                        },
+                        PhysicalColumnPathLink::relation(
+                            concerts_venue_id_column,
+                            venues_id_column,
+                        ),
+                        PhysicalColumnPathLink::Leaf(venues_name_column),
                     ]),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );

@@ -53,23 +53,20 @@ pub use asql::{
     order_by::AbstractOrderBy,
     predicate::AbstractPredicate,
     select::AbstractSelect,
-    selection::{
-        AliasedSelectionElement, NestedElementRelation, Selection, SelectionCardinality,
-        SelectionElement,
-    },
+    selection::{AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement},
     update::{AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate},
 };
 
 pub use sql::{
     array_util::{self, ArrayEntry},
     column::Column,
-    database::ColumnId,
     database::Database,
     database::TableId,
     database_client::{DatabaseClient, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL},
     limit::Limit,
     offset::Offset,
     order::Ordering,
+    physical_column::ColumnId,
     physical_column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
     physical_table::PhysicalTable,
     predicate::{CaseSensitivity, ParamEquality, Predicate},

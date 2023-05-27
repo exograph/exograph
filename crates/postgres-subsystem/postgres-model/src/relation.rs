@@ -7,9 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::types::EntityType;
+use crate::types::EntityFieldId;
 
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use exo_sql::{ColumnId, PhysicalColumnPathLink};
 use serde::{Deserialize, Serialize};
 
@@ -24,53 +23,66 @@ pub enum RelationCardinality {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PostgresRelation {
-    Pk {
-        column_id: ColumnId,
-    },
-    Scalar {
-        column_id: ColumnId,
-    },
-    ManyToOne {
-        other_type_id: SerializableSlabIndex<EntityType>,
-        cardinality: RelationCardinality,
-        column_id_path_link: PhysicalColumnPathLink,
-    },
-    // In one-to-many, we need information about the other type's primary key, so that we can
-    // build a query that joins the two tables, etc.
-    OneToMany {
-        other_type_id: SerializableSlabIndex<EntityType>,
-        cardinality: RelationCardinality,
-        column_id_path_link: PhysicalColumnPathLink,
-    },
+    Pk { column_id: ColumnId },
+    Scalar { column_id: ColumnId },
+    ManyToOne(ManyToOneRelation),
+    OneToMany(OneToManyRelation),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ManyToOneRelation {
+    // For the `Concert.venue` field (assuming [Concert] -> Venue), we will have:
+    // - cardinality: Unbounded
+    // - foreign_pk_field_id: Venue.id
+    // - self_column_id: concerts.venue_id
+    // - foreign_pk_column_id: venues.id
+    // Concert.venue
+    pub cardinality: RelationCardinality,
+    pub foreign_pk_field_id: EntityFieldId,
+    pub self_column_id: ColumnId,
+    pub foreign_pk_column_id: ColumnId,
+}
+
+impl ManyToOneRelation {
+    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
+        PhysicalColumnPathLink::relation(self.self_column_id, self.foreign_pk_column_id)
+    }
+}
+
+/// Model for a one-to-many relation.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OneToManyRelation {
+    // For the `Venue.concerts` field (assuming Venue -> [Concert]), we will have:
+    // - cardinality: Unbounded
+    // - foreign_field_id: Concert.venue
+    // - self_pk_column_id: venues.id
+    // - foreign_column_id: concerts.venue_id
+    pub cardinality: RelationCardinality,
+    pub foreign_field_id: EntityFieldId,
+
+    pub self_pk_column_id: ColumnId,
+
+    /// This is a redundant information (we can get this from foreign_field_id using
+    /// foreign_column_id.resolve(...).relation.<self-column-id>.unwrap()), since
+    /// the type of `relation` is `PostgresRelation`, so at the type level we don't know
+    /// if it's a `ManyToOne` or `OneToMany` relation and requires unwrapping.
+    pub foreign_column_id: ColumnId,
+}
+
+impl OneToManyRelation {
+    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
+        PhysicalColumnPathLink::relation(self.self_pk_column_id, self.foreign_column_id)
+    }
 }
 
 impl PostgresRelation {
-    pub fn self_column(&self) -> Option<ColumnId> {
-        match self {
-            PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
-                Some(*column_id)
-            }
-            PostgresRelation::ManyToOne {
-                column_id_path_link,
-                ..
-            } => Some(column_id_path_link.self_column_id),
-            _ => None,
-        }
-    }
-
     pub fn column_path_link(&self) -> PhysicalColumnPathLink {
         match &self {
             PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
-                PhysicalColumnPathLink::new(*column_id, None)
+                PhysicalColumnPathLink::Leaf(*column_id)
             }
-            PostgresRelation::ManyToOne {
-                column_id_path_link,
-                ..
-            } => column_id_path_link.clone(),
-            PostgresRelation::OneToMany {
-                column_id_path_link,
-                ..
-            } => column_id_path_link.clone(),
+            PostgresRelation::ManyToOne(relation) => relation.column_path_link(),
+            PostgresRelation::OneToMany(relation) => relation.column_path_link(),
         }
     }
 }
