@@ -4,6 +4,18 @@ version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/exograph/exograph"
 
+[features]
+default = [
+  "static-postgres-resolver",
+  "static-deno-resolver",
+  "static-wasm-resolver",
+]
+
+static-postgres-resolver = ["server-common/static-postgres-resolver"]
+static-deno-resolver = ["server-common/static-deno-resolver"]
+static-wasm-resolver = ["server-common/static-wasm-resolver"]
+vendored-openssl = ["openssl", "openssl/vendored"]
+
 [dependencies]
 async-trait.workspace = true
 actix-web = { version = "4.1.0", default-features = false, features = [
@@ -21,18 +33,7 @@ resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 
-[target.'cfg(target_os = "windows")'.dependencies]
-openssl = { version = "0.10.50", features = ["vendored"] }
-
-[features]
-static-postgres-resolver = ["server-common/static-postgres-resolver"]
-static-deno-resolver = ["server-common/static-deno-resolver"]
-static-wasm-resolver = ["server-common/static-wasm-resolver"]
-default = [
-  "static-postgres-resolver",
-  "static-deno-resolver",
-  "static-wasm-resolver",
-]
+openssl = { version = "0.10.50", optional = true }
 
 [[bin]]
 name = "exo-server"

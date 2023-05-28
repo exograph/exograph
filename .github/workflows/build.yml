@@ -3,7 +3,6 @@ name: Build Binaries
 on:
   push:
     branches: [ "main" ]
-  pull_request:
 
 jobs:
   # Build and packages all the things
