@@ -181,6 +181,10 @@ impl ResolvedCompositeType {
     pub fn pk_field(&self) -> Option<&ResolvedField> {
         self.fields.iter().find(|f| f.is_pk)
     }
+
+    pub fn field_by_column_name(&self, column_name: &str) -> Option<&ResolvedField> {
+        self.fields.iter().find(|f| f.column_name == column_name)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
