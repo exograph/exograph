@@ -94,6 +94,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2.3.0
         with:
           key: ${{ matrix.target }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build
         run: cargo build --target ${{ matrix.target }} ${{ matrix.cross_flag }} ${{ matrix.vendor_openssl_flag }}
       - name: Run tests
