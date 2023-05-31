@@ -70,5 +70,6 @@ pub use sql::{
     physical_column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
     physical_table::PhysicalTable,
     predicate::{CaseSensitivity, ParamEquality, Predicate},
+    relation::{ManyToOne, OneToMany},
     SQLBytes, SQLParam, SQLParamContainer,
 };

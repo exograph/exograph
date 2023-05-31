@@ -49,6 +49,7 @@ impl DatabaseSpec {
                 let table_id = database.insert_table(PhysicalTable {
                     name: table.name,
                     columns: vec![],
+                    references: vec![],
                 });
                 (table_id, table.columns)
             })
@@ -89,7 +90,7 @@ impl DatabaseSpec {
                     let column_id = database.get_column_id(*table_id, &column.name).unwrap();
                     column_spec
                         .typ
-                        .to_database_reference_type(&database)
+                        .to_database_reference_type(column_id, &database)
                         .map(|typ| (column_id, typ))
                 })
             })

@@ -9,7 +9,7 @@
 
 use crate::{database_error::DatabaseError, Database, TableId};
 
-use super::{ExpressionBuilder, SQLBuilder};
+use super::{relation::OneToMany, ExpressionBuilder, SQLBuilder};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -88,10 +88,7 @@ pub enum PhysicalColumnType {
     Array {
         typ: Box<PhysicalColumnType>,
     },
-    ColumnReference {
-        ref_column_id: ColumnId,
-        ref_pk_type: Box<PhysicalColumnType>,
-    },
+    OneToMany(OneToMany, Box<PhysicalColumnType>),
     Float {
         bits: FloatBits,
     },

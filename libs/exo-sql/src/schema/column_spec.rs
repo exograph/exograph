@@ -10,7 +10,8 @@
 use std::fmt::Write;
 
 use crate::database_error::DatabaseError;
-use crate::{Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
+use crate::sql::relation::OneToMany;
+use crate::{ColumnId, Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
 use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
@@ -436,7 +437,11 @@ impl ColumnTypeSpec {
         }
     }
 
-    pub fn to_database_reference_type(&self, database: &Database) -> Option<PhysicalColumnType> {
+    pub fn to_database_reference_type(
+        &self,
+        self_column_id: ColumnId,
+        database: &Database,
+    ) -> Option<PhysicalColumnType> {
         if let ColumnTypeSpec::ColumnReference {
             ref_table_name,
             ref_column_name,
@@ -447,10 +452,13 @@ impl ColumnTypeSpec {
             let ref_column_id = database
                 .get_column_id(ref_table_id, ref_column_name)
                 .unwrap();
-            Some(PhysicalColumnType::ColumnReference {
-                ref_column_id,
-                ref_pk_type: Box::new(ref_pk_type.to_database_type()),
-            })
+            Some(PhysicalColumnType::OneToMany(
+                OneToMany {
+                    self_column_id,
+                    foreign_column_id: ref_column_id,
+                },
+                Box::new(ref_pk_type.to_database_type()),
+            ))
         } else {
             None
         }
@@ -734,10 +742,13 @@ impl ColumnTypeSpec {
             PhysicalColumnType::Array { typ } => ColumnTypeSpec::Array {
                 typ: Box::new(ColumnTypeSpec::from_physical(*typ, database)),
             },
-            PhysicalColumnType::ColumnReference {
-                ref_column_id,
+            PhysicalColumnType::OneToMany(
+                OneToMany {
+                    foreign_column_id: ref_column_id,
+                    ..
+                },
                 ref_pk_type,
-            } => {
+            ) => {
                 let ref_table_name = database.get_table(ref_column_id.table_id).name.clone();
                 let ref_column_name = ref_column_id.get_column(database).name.clone();
 

@@ -23,6 +23,7 @@ pub mod database_client;
 pub mod order;
 pub mod physical_column;
 pub mod predicate;
+pub mod relation;
 
 pub use database::Database;
 pub use sql_bytes::SQLBytes;

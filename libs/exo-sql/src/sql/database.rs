@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::fmt::{Debug, Formatter};
+
 use crate::{ColumnId, PhysicalTable};
 
 use serde::{Deserialize, Serialize};
@@ -15,7 +17,7 @@ use typed_generational_arena::{Arena, IgnoreGeneration, Index};
 pub type SerializableSlab<T> = Arena<T, usize, IgnoreGeneration>;
 pub type TableId = Index<PhysicalTable, usize, IgnoreGeneration>;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Database {
     tables: SerializableSlab<PhysicalTable>,
 }
@@ -73,5 +75,23 @@ impl Default for Database {
         Database {
             tables: SerializableSlab::new(),
         }
+    }
+}
+
+impl Debug for Database {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (id, table) in self.tables.iter() {
+            writeln!(f, "{}: {}", id.arr_idx(), table.name)?;
+            writeln!(f, "  columns: ")?;
+            for (column_id, column) in table.columns.iter().enumerate() {
+                writeln!(f, "    {}: {:?}", column_id, column)?;
+            }
+            writeln!(f, "  references: ")?;
+            for (reference_id, reference) in table.references.iter().enumerate() {
+                writeln!(f, "    {}: {:?}", reference_id, reference)?;
+            }
+        }
+
+        Ok(())
     }
 }
