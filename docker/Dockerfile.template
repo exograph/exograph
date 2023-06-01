@@ -34,7 +34,7 @@ COPY ./crates/testing/package-lock.json ./crates/testing/package-lock.json
 ### Compile the depdencies and remove artifacts related to the non-dependency parts (so that when we use real code, they get rebuilt)
 RUN cd graphiql && npm ci
 RUN cd crates/testing && npm ci
-RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build --all ${BUILD_FLAG}
+RUN cargo build --all ${BUILD_FLAG}
 
 %%RM_DEPS%% 
 ## Build the actual image
@@ -44,7 +44,7 @@ ADD libs libs/
 ADD graphiql graphiql/
 
 ### Build the binaries
-RUN CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse cargo build --all ${BUILD_FLAG}
+RUN cargo build --all ${BUILD_FLAG}
 
 # Create an image that can be used for development--the `exo dev` style
 # This includes all binaries and shared libraries (needed for the build phase)
