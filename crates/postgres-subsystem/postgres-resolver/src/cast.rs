@@ -111,9 +111,9 @@ fn cast_number(
                 "Number literals cannot be specified for decimal fields".into(),
             ));
         }
-        PhysicalColumnType::OneToMany(_, ref_pk_type) => {
+        PhysicalColumnType::ManyToOne(_, foreign_pk_type) => {
             // TODO assumes that `id` columns are always integers
-            cast_number(number, ref_pk_type)?
+            cast_number(number, foreign_pk_type)?
         }
         // TODO: Expand for other number types such as float
         _ => {
@@ -256,7 +256,7 @@ fn cast_string(
 
         PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
 
-        PhysicalColumnType::OneToMany(_, ref_pk_type) => cast_string(string, ref_pk_type)?,
+        PhysicalColumnType::ManyToOne(_, foreign_pk_type) => cast_string(string, foreign_pk_type)?,
 
         _ => SQLParamContainer::new(string.to_owned()),
     };

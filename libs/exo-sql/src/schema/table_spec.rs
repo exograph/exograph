@@ -63,20 +63,26 @@ impl TableSpec {
         for foreign_constraint in constraints.foreign_constraints.iter() {
             // Assumption that there is only one column in the foreign key (for now a correct assumption since we don't support composite keys)
             let self_column_name = foreign_constraint.self_columns.iter().next().unwrap();
-            let ref_column_name = foreign_constraint.ref_columns.iter().next().unwrap();
+            let foreign_pk_column_name = foreign_constraint.foreign_columns.iter().next().unwrap();
 
-            let mut column =
-                ColumnSpec::from_live_db(client, table_name, ref_column_name, true, None, vec![])
-                    .await?;
+            let mut column = ColumnSpec::from_live_db(
+                client,
+                table_name,
+                foreign_pk_column_name,
+                true,
+                None,
+                vec![],
+            )
+            .await?;
             issues.append(&mut column.issues);
 
             if let Some(spec) = column.value {
                 column_type_mapping.insert(
                     self_column_name.clone(),
                     ColumnTypeSpec::ColumnReference {
-                        ref_table_name: foreign_constraint.ref_table.clone(),
-                        ref_column_name: ref_column_name.to_string(),
-                        ref_pk_type: Box::new(spec.typ),
+                        foreign_table_name: foreign_constraint.foreign_table.clone(),
+                        foreign_pk_column_name: foreign_pk_column_name.clone(),
+                        foreign_pk_type: Box::new(spec.typ),
                     },
                 );
             }

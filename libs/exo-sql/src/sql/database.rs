@@ -56,7 +56,7 @@ impl Database {
         })
     }
 
-    pub(crate) fn get_pk_column(&self, table_id: TableId) -> Option<ColumnId> {
+    pub fn get_pk_column_id(&self, table_id: TableId) -> Option<ColumnId> {
         let table = self.get_table(table_id);
         table
             .get_pk_column_index()

@@ -234,7 +234,7 @@ fn expand_type_set_column_refernece(
         .unwrap();
 
     let mut column_reference_type_mapping: Vec<(String, PhysicalColumnType)> = vec![];
-    let mut references: Vec<ManyToOne> = vec![];
+    let mut references: Vec<OneToMany> = vec![];
 
     resolved_type.fields.iter().for_each(|field| {
         if field.self_column {
@@ -243,13 +243,13 @@ fn expand_type_set_column_refernece(
                 .get_column_id(table_id, &field.column_name)
                 .unwrap();
             if let Some(reference_column_type) =
-                compute_one_to_many_column_type(field, self_column_id, resolved_env, building)
+                compute_many_to_one_column_type(field, self_column_id, resolved_env, building)
             {
                 column_reference_type_mapping
                     .push((field.column_name.clone(), reference_column_type));
             }
         } else if let Some(reference) =
-            compute_many_to_one(field, self_pk_column_id, resolved_env, building)
+            compute_one_to_many(field, self_pk_column_id, resolved_env, building)
         {
             references.push(reference);
         }
@@ -671,7 +671,7 @@ fn create_column(
     }
 }
 
-fn compute_one_to_many_column_type(
+fn compute_many_to_one_column_type(
     field: &ResolvedField,
     self_column_id: ColumnId,
     env: &ResolvedTypeEnv,
@@ -690,16 +690,16 @@ fn compute_one_to_many_column_type(
                     // and it refers to the pk column in the other table.
 
                     let foreign_pk_field = ct.pk_field().unwrap();
-                    let ref_table_id = building.database.get_table_id(&ct.table_name).unwrap();
-                    let ref_column_id = building
+                    let foreign_table_id = building.database.get_table_id(&ct.table_name).unwrap();
+                    let foreign_pk_column_id = building
                         .database
-                        .get_column_id(ref_table_id, &foreign_pk_field.column_name)
+                        .get_pk_column_id(foreign_table_id)
                         .unwrap();
 
-                    Some(PhysicalColumnType::OneToMany(
-                        OneToMany {
+                    Some(PhysicalColumnType::ManyToOne(
+                        ManyToOne {
                             self_column_id,
-                            foreign_column_id: ref_column_id,
+                            foreign_pk_column_id,
                         },
                         Box::new(determine_column_type(
                             &foreign_pk_field.typ.deref(env).as_primitive(),
@@ -714,12 +714,12 @@ fn compute_one_to_many_column_type(
     }
 }
 
-fn compute_many_to_one(
+fn compute_one_to_many(
     field: &ResolvedField,
     self_pk_column_id: ColumnId,
     env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
-) -> Option<ManyToOne> {
+) -> Option<OneToMany> {
     let typ = match &field.typ {
         FieldType::Optional(inner_typ) => inner_typ.as_ref(),
         _ => &field.typ,
@@ -739,7 +739,7 @@ fn compute_many_to_one(
                 .get_column_id(foreign_table_id, &field.column_name)
                 .unwrap();
 
-            Some(ManyToOne {
+            Some(OneToMany {
                 self_pk_column_id,
                 foreign_column_id,
             })
@@ -939,7 +939,7 @@ fn create_relation(
                     },
                     ResolvedType::Composite(foreign_field_type) => {
                         if expand_foreign_relations {
-                            compute_one_to_many(
+                            compute_many_to_one(
                                 field,
                                 self_type,
                                 foreign_field_type,
@@ -974,7 +974,7 @@ fn create_relation(
                         match (&field.typ, foreign_type_field_typ) {
                             (FieldType::Optional(_), FieldType::Plain(_)) => {
                                 if expand_foreign_relations {
-                                    compute_one_to_many(
+                                    compute_many_to_one(
                                         field,
                                         self_type,
                                         foreign_field_type,
@@ -985,9 +985,9 @@ fn create_relation(
                                     placeholder_relation()
                                 }
                             }
-                            (FieldType::Plain { .. }, FieldType::Optional(_)) => {
+                            (FieldType::Plain(_), FieldType::Optional(_)) => {
                                 if expand_foreign_relations {
-                                    compute_many_to_one_relation(
+                                    compute_one_to_many_relation(
                                         field,
                                         self_type,
                                         foreign_field_type,
@@ -1002,7 +1002,7 @@ fn create_relation(
                                 match (field_base_typ, foreign_type_field_typ.base_type()) {
                                     (FieldType::Plain(_), FieldType::List(_)) => {
                                         if expand_foreign_relations {
-                                            compute_many_to_one_relation(
+                                            compute_one_to_many_relation(
                                                 field,
                                                 self_type,
                                                 foreign_field_type,
@@ -1040,7 +1040,7 @@ fn compute_column_id(
         .map(|index| ColumnId::new(table_id, index))
 }
 
-fn compute_one_to_many(
+fn compute_many_to_one(
     field: &ResolvedField,
     self_type: &EntityType,
     foreign_field_type: &ResolvedCompositeType,
@@ -1086,7 +1086,7 @@ fn compute_one_to_many(
     })
 }
 
-fn compute_many_to_one_relation(
+fn compute_one_to_many_relation(
     field: &ResolvedField,
     self_type: &EntityType,
     foreign_field_type: &ResolvedCompositeType,

@@ -23,8 +23,8 @@ pub(super) struct PrimaryKeyConstraint {
 pub(super) struct ForeignKeyConstraint {
     pub(super) _constraint_name: String,
     pub(super) self_columns: HashSet<String>,
-    pub(super) ref_table: String,
-    pub(super) ref_columns: HashSet<String>,
+    pub(super) foreign_table: String,
+    pub(super) foreign_columns: HashSet<String>,
 }
 
 #[derive(Debug)]
@@ -96,14 +96,14 @@ impl Constraints {
             .map(|(_, conname, condef)| {
                 let matches = FOREIGN_KEY_RE.captures_iter(condef).next().unwrap();
                 let self_columns = Self::parse_column_list(&matches[1]); // name of the column
-                let ref_table = matches[2].to_owned(); // name of the table the column refers to
-                let ref_columns = Self::parse_column_list(&matches[3]); // name of the column in the referenced table
+                let foreign_table = matches[2].to_owned(); // name of the table the column refers to
+                let foreign_columns = Self::parse_column_list(&matches[3]); // name of the column in the referenced table
 
                 ForeignKeyConstraint {
                     _constraint_name: conname.to_string(),
                     self_columns,
-                    ref_table,
-                    ref_columns,
+                    foreign_table,
+                    foreign_columns,
                 }
             })
             .collect::<Vec<_>>();

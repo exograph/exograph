@@ -18,14 +18,14 @@ pub fn pk_column(name: impl Into<String>) -> ColumnSpec {
 
 pub fn pk_reference_column(
     name: impl Into<String>,
-    ref_table_name: impl Into<String>,
+    foreign_table_name: impl Into<String>,
 ) -> ColumnSpec {
     ColumnSpec {
         name: name.into(),
         typ: ColumnTypeSpec::ColumnReference {
-            ref_table_name: ref_table_name.into(),
-            ref_column_name: "id".to_string(),
-            ref_pk_type: Box::new(ColumnTypeSpec::Int {
+            foreign_table_name: foreign_table_name.into(),
+            foreign_pk_column_name: "id".to_string(),
+            foreign_pk_type: Box::new(ColumnTypeSpec::Int {
                 bits: crate::IntBits::_16,
             }),
         },

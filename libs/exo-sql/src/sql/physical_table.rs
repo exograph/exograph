@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{Database, ManyToOne};
+use crate::{Database, OneToMany};
 
 use super::{
     column::Column, delete::Delete, insert::Insert, physical_column::PhysicalColumn,
@@ -27,7 +27,7 @@ pub struct PhysicalTable {
     pub columns: Vec<PhysicalColumn>,
 
     // venues."concerts": (venues.id, concerts.venue_id)
-    pub references: Vec<ManyToOne>,
+    pub references: Vec<OneToMany>,
 }
 
 /// The derived implementation of `Debug` is quite verbose, so we implement it manually

@@ -86,7 +86,7 @@ impl UpdateTransformer for Postgres {
         let return_col = if !abstract_update.nested_updates.is_empty() {
             Column::Physical(
                 database
-                    .get_pk_column(abstract_update.table_id)
+                    .get_pk_column_id(abstract_update.table_id)
                     .expect("No primary key column"),
             )
         } else {

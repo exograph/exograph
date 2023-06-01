@@ -10,7 +10,7 @@
 use std::fmt::Write;
 
 use crate::database_error::DatabaseError;
-use crate::sql::relation::OneToMany;
+use crate::sql::relation::ManyToOne;
 use crate::{ColumnId, Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
 use super::issue::{Issue, WithIssues};
@@ -56,9 +56,9 @@ pub enum ColumnTypeSpec {
         typ: Box<ColumnTypeSpec>,
     },
     ColumnReference {
-        ref_table_name: String,
-        ref_column_name: String,
-        ref_pk_type: Box<ColumnTypeSpec>,
+        foreign_table_name: String,
+        foreign_pk_column_name: String,
+        foreign_pk_type: Box<ColumnTypeSpec>,
     },
     Float {
         bits: FloatBits,
@@ -443,21 +443,19 @@ impl ColumnTypeSpec {
         database: &Database,
     ) -> Option<PhysicalColumnType> {
         if let ColumnTypeSpec::ColumnReference {
-            ref_table_name,
-            ref_column_name,
-            ref_pk_type,
+            foreign_table_name,
+            foreign_pk_type,
+            ..
         } = self
         {
-            let ref_table_id = database.get_table_id(ref_table_name).unwrap();
-            let ref_column_id = database
-                .get_column_id(ref_table_id, ref_column_name)
-                .unwrap();
-            Some(PhysicalColumnType::OneToMany(
-                OneToMany {
+            let foreign_table_id = database.get_table_id(foreign_table_name).unwrap();
+            let foreign_pk_column_id = database.get_pk_column_id(foreign_table_id).unwrap();
+            Some(PhysicalColumnType::ManyToOne(
+                ManyToOne {
                     self_column_id,
-                    foreign_column_id: ref_column_id,
+                    foreign_pk_column_id,
                 },
-                Box::new(ref_pk_type.to_database_type()),
+                Box::new(foreign_pk_type.to_database_type()),
             ))
         } else {
             None
@@ -540,9 +538,9 @@ impl ColumnTypeSpec {
                 (format!("[{data_type}]"), annotations)
             }
 
-            ColumnTypeSpec::ColumnReference { ref_table_name, .. } => {
-                (ref_table_name.clone(), "".to_string())
-            }
+            ColumnTypeSpec::ColumnReference {
+                foreign_table_name, ..
+            } => (foreign_table_name.clone(), "".to_string()),
         }
     }
 
@@ -706,14 +704,14 @@ impl ColumnTypeSpec {
             }
 
             Self::ColumnReference {
-                ref_table_name,
-                ref_pk_type,
+                foreign_table_name,
+                foreign_pk_type,
                 ..
             } => {
                 let mut sql_statement =
-                    ref_pk_type.to_sql(table_name, column_name, is_auto_increment);
+                    foreign_pk_type.to_sql(table_name, column_name, is_auto_increment);
                 let foreign_constraint = format!(
-                    r#"ALTER TABLE "{table_name}" ADD CONSTRAINT "{table_name}_{column_name}_fk" FOREIGN KEY ("{column_name}") REFERENCES "{ref_table_name}";"#,
+                    r#"ALTER TABLE "{table_name}" ADD CONSTRAINT "{table_name}_{column_name}_fk" FOREIGN KEY ("{column_name}") REFERENCES "{foreign_table_name}";"#,
                 );
 
                 sql_statement.post_statements.push(foreign_constraint);
@@ -742,20 +740,26 @@ impl ColumnTypeSpec {
             PhysicalColumnType::Array { typ } => ColumnTypeSpec::Array {
                 typ: Box::new(ColumnTypeSpec::from_physical(*typ, database)),
             },
-            PhysicalColumnType::OneToMany(
-                OneToMany {
-                    foreign_column_id: ref_column_id,
+            PhysicalColumnType::ManyToOne(
+                ManyToOne {
+                    foreign_pk_column_id,
                     ..
                 },
-                ref_pk_type,
+                foreign_pk_type,
             ) => {
-                let ref_table_name = database.get_table(ref_column_id.table_id).name.clone();
-                let ref_column_name = ref_column_id.get_column(database).name.clone();
+                let foreign_table_name = database
+                    .get_table(foreign_pk_column_id.table_id)
+                    .name
+                    .clone();
+                let foreign_pk_column_name = foreign_pk_column_id.get_column(database).name.clone();
 
                 ColumnTypeSpec::ColumnReference {
-                    ref_table_name,
-                    ref_column_name,
-                    ref_pk_type: Box::new(ColumnTypeSpec::from_physical(*ref_pk_type, database)),
+                    foreign_table_name,
+                    foreign_pk_column_name,
+                    foreign_pk_type: Box::new(ColumnTypeSpec::from_physical(
+                        *foreign_pk_type,
+                        database,
+                    )),
                 }
             }
             PhysicalColumnType::Float { bits } => ColumnTypeSpec::Float { bits },
