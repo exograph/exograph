@@ -29,7 +29,7 @@ pub fn pk_reference_column(
                 bits: crate::IntBits::_16,
             }),
         },
-        is_pk: true,
+        is_pk: false,
         is_auto_increment: false,
         is_nullable: false,
         unique_constraints: vec![],
