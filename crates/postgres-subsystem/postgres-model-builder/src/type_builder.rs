@@ -1107,20 +1107,24 @@ fn compute_one_to_many_relation(
     let foreign_table_id = foreign_type.table_id;
     let foreign_table = &building.database.get_table(foreign_table_id);
 
-    let foreign_column_id = ColumnId::new(
+    let foreign_pk_column_id = ColumnId::new(
         foreign_table_id,
         foreign_table
             .get_pk_column_index()
             .expect("No primary key column found"),
     );
 
-    let column_id = compute_column_id(self_table, *self_table_id, field).unwrap();
-    let foreign_field_id = foreign_type.pk_field_id(foreign_type_id).unwrap();
+    let self_column_id = compute_column_id(self_table, *self_table_id, field).unwrap();
+    let foreign_pk_field_id = foreign_type.pk_field_id(foreign_type_id).unwrap();
+
+    let relation = ManyToOne {
+        self_column_id,
+        foreign_pk_column_id,
+    };
 
     PostgresRelation::ManyToOne(ManyToOneRelation {
         cardinality,
-        self_column_id: column_id,
-        foreign_pk_column_id: foreign_column_id,
-        foreign_pk_field_id: foreign_field_id,
+        underlying: relation,
+        foreign_pk_field_id,
     })
 }

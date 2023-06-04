@@ -9,7 +9,7 @@
 
 use crate::types::EntityFieldId;
 
-use exo_sql::{ColumnId, OneToMany, PhysicalColumnPathLink};
+use exo_sql::{ColumnId, ManyToOne, OneToMany, PhysicalColumnPathLink};
 use serde::{Deserialize, Serialize};
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as
@@ -34,17 +34,16 @@ pub struct ManyToOneRelation {
     // For the `Concert.venue` field (assuming [Concert] -> Venue), we will have:
     // - cardinality: Unbounded
     // - foreign_pk_field_id: Venue.id
-    // - self_column_id: concerts.venue_id
-    // - foreign_pk_column_id: venues.id
+    // - underlying.self_column_id: concerts.venue_id
+    // - underlying.foreign_pk_column_id: venues.id
     pub cardinality: RelationCardinality,
     pub foreign_pk_field_id: EntityFieldId,
-    pub self_column_id: ColumnId,
-    pub foreign_pk_column_id: ColumnId,
+    pub underlying: ManyToOne,
 }
 
 impl ManyToOneRelation {
     pub fn column_path_link(&self) -> PhysicalColumnPathLink {
-        PhysicalColumnPathLink::relation(self.self_column_id, self.foreign_pk_column_id)
+        self.underlying.column_path_link()
     }
 }
 
@@ -54,8 +53,8 @@ pub struct OneToManyRelation {
     // For the `Venue.concerts` field (assuming Venue -> [Concert]), we will have:
     // - cardinality: Unbounded
     // - foreign_field_id: Concert.venue
-    // - self_pk_column_id: venues.id
-    // - foreign_column_id: concerts.venue_id
+    // - underlying.self_pk_column_id: venues.id
+    // - underlying.foreign_column_id: concerts.venue_id
     pub cardinality: RelationCardinality,
     pub foreign_field_id: EntityFieldId,
     pub underlying: OneToMany,

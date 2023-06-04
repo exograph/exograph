@@ -15,7 +15,7 @@ use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractInsert, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement, InsertionRow,
-    NestedInsertion,
+    ManyToOne, NestedInsertion,
 };
 use futures::future::{join_all, try_join_all};
 use postgres_model::{
@@ -112,12 +112,16 @@ async fn map_single<'a>(
 
         field_arg.map(|field_arg| async move {
             match &field.relation {
-                PostgresRelation::Pk { column_id }
-                | PostgresRelation::Scalar { column_id }
+                PostgresRelation::Pk {
+                    column_id: self_column_id,
+                }
+                | PostgresRelation::Scalar {
+                    column_id: self_column_id,
+                }
                 | PostgresRelation::ManyToOne(ManyToOneRelation {
-                    self_column_id: column_id,
+                    underlying: ManyToOne { self_column_id, .. },
                     ..
-                }) => map_self_column(*column_id, field, field_arg, subsystem).await,
+                }) => map_self_column(*self_column_id, field, field_arg, subsystem).await,
                 PostgresRelation::OneToMany(one_to_many_relation) => {
                     map_foreign(
                         field,

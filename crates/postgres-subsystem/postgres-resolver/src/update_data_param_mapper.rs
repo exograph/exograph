@@ -13,8 +13,8 @@ use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
-    ColumnId, ColumnPath, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
-    OneToMany, PhysicalColumnPathLink, Selection,
+    ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
+    NestedAbstractUpdate, OneToMany, PhysicalColumnPathLink, Selection,
 };
 use futures::future::join_all;
 use postgres_model::{
@@ -90,7 +90,7 @@ fn compute_update_columns<'a>(
             }
             PostgresRelation::ManyToOne(ManyToOneRelation {
                 foreign_pk_field_id,
-                self_column_id,
+                underlying: ManyToOne { self_column_id, .. },
                 ..
             }) => {
                 let self_column = self_column_id.get_column(&subsystem.database);
