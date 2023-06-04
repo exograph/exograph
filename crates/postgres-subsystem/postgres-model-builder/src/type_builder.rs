@@ -1078,11 +1078,15 @@ fn compute_many_to_one(
     )
     .unwrap();
 
+    let relation = OneToMany {
+        self_pk_column_id,
+        foreign_column_id,
+    };
+
     PostgresRelation::OneToMany(OneToManyRelation {
         foreign_field_id,
         cardinality,
-        self_pk_column_id,
-        foreign_column_id,
+        underlying: relation,
     })
 }
 

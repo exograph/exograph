@@ -187,10 +187,6 @@ async fn map_foreign<'a>(
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionElement, PostgresExecutionError> {
-    let foreign_column_id = one_to_many_relation.foreign_column_id;
-
-    let self_pk_column_id = one_to_many_relation.self_pk_column_id;
-
     let field_type = base_type(
         &field.typ,
         &subsystem.primitive_types,
@@ -205,8 +201,7 @@ async fn map_foreign<'a>(
     let insertion = map_argument(field_type, argument, subsystem, request_context).await?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
-        self_column_id: foreign_column_id,
-        parent_pk_column_id: self_pk_column_id,
+        relation: one_to_many_relation.underlying,
         insertions: insertion,
     }))
 }

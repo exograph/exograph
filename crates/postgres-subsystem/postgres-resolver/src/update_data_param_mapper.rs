@@ -14,7 +14,7 @@ use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
-    PhysicalColumnPathLink, Selection,
+    OneToMany, PhysicalColumnPathLink, Selection,
 };
 use futures::future::join_all;
 use postgres_model::{
@@ -133,7 +133,10 @@ async fn compute_nested_ops<'a>(
 
     for field in arg_type.fields.iter() {
         if let PostgresRelation::OneToMany(OneToManyRelation {
-            foreign_column_id, ..
+            underlying: OneToMany {
+                foreign_column_id, ..
+            },
+            ..
         }) = &field.relation
         {
             let arg_type = match field.typ.innermost().type_id {

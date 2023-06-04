@@ -9,7 +9,7 @@
 
 use crate::types::EntityFieldId;
 
-use exo_sql::{ColumnId, PhysicalColumnPathLink};
+use exo_sql::{ColumnId, OneToMany, PhysicalColumnPathLink};
 use serde::{Deserialize, Serialize};
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as
@@ -58,19 +58,12 @@ pub struct OneToManyRelation {
     // - foreign_column_id: concerts.venue_id
     pub cardinality: RelationCardinality,
     pub foreign_field_id: EntityFieldId,
-
-    pub self_pk_column_id: ColumnId,
-
-    /// This is a redundant information (we can get this from foreign_field_id using
-    /// foreign_column_id.resolve(...).relation.<self-column-id>.unwrap()), since
-    /// the type of `relation` is `PostgresRelation`, so at the type level we don't know
-    /// if it's a `ManyToOne` or `OneToMany` relation and requires unwrapping.
-    pub foreign_column_id: ColumnId,
+    pub underlying: OneToMany,
 }
 
 impl OneToManyRelation {
     pub fn column_path_link(&self) -> PhysicalColumnPathLink {
-        PhysicalColumnPathLink::relation(self.self_pk_column_id, self.foreign_column_id)
+        self.underlying.column_path_link()
     }
 }
 
