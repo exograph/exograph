@@ -29,7 +29,7 @@ impl Database {
 
     pub fn get_column_ids(&self, table_id: TableId) -> Vec<ColumnId> {
         (0..self.tables[table_id].columns.len())
-            .map(|column_index| ColumnId::new(table_id, column_index))
+            .map(|column_index| new_column_id(table_id, column_index))
             .collect()
     }
 
@@ -45,7 +45,6 @@ impl Database {
         self.tables.insert(table)
     }
 
-    // TODO: Make it `pub(crate)`, since we need to resolve table names only during schema building (and not during resolution)
     pub fn get_table_id(&self, table_name: &str) -> Option<TableId> {
         self.tables.iter().find_map(|(id, table)| {
             if table.name == table_name {
@@ -60,13 +59,20 @@ impl Database {
         let table = self.get_table(table_id);
         table
             .get_pk_column_index()
-            .map(|column_index| ColumnId::new(table_id, column_index))
+            .map(|column_index| new_column_id(table_id, column_index))
     }
 
     pub fn get_column_id(&self, table_id: TableId, column_name: &str) -> Option<ColumnId> {
         self.tables[table_id]
             .column_index(column_name)
-            .map(|column_index| ColumnId::new(table_id, column_index))
+            .map(|column_index| new_column_id(table_id, column_index))
+    }
+}
+
+fn new_column_id(table_id: TableId, column_index: usize) -> ColumnId {
+    ColumnId {
+        table_id,
+        column_index,
     }
 }
 

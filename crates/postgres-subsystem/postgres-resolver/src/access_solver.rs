@@ -221,7 +221,7 @@ mod tests {
     use core_resolver::context::Request;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::system_resolver::SystemResolver;
-    use exo_sql::{ColumnId, PhysicalColumnPathLink};
+    use exo_sql::PhysicalColumnPathLink;
     use serde_json::{json, Value};
 
     use super::*;
@@ -298,17 +298,16 @@ mod tests {
         .await
         .unwrap();
 
-        let (table_id, table) = postgres_subsystem
+        let table_id = postgres_subsystem
             .database
-            .tables()
-            .iter()
-            .find(|table| table.1.name == "articles")
+            .get_table_id("articles")
             .unwrap();
 
         let get_column_id = |column_name: &str| {
-            let column_index = table.column_index(column_name).unwrap();
-
-            ColumnId::new(table_id, column_index)
+            postgres_subsystem
+                .database
+                .get_column_id(table_id, column_name)
+                .unwrap()
         };
 
         let published_column_id = get_column_id("published");

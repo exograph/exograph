@@ -232,13 +232,6 @@ pub struct ColumnId {
 }
 
 impl ColumnId {
-    pub fn new(table_id: TableId, column_index: usize) -> ColumnId {
-        ColumnId {
-            table_id,
-            column_index,
-        }
-    }
-
     pub fn get_column<'a>(&self, database: &'a Database) -> &'a PhysicalColumn {
         &database.get_table(self.table_id).columns[self.column_index]
     }
