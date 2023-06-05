@@ -3,6 +3,8 @@ name: Build Binaries
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - '*'
 
 jobs:
   # Build and packages all the things
@@ -62,3 +64,19 @@ jobs:
         with:
           name: exograph-${{ matrix.target }}
           path: dist
+      - name: Upload exo to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/exo${{matrix.bin_extension}}
+          asset_name: exo-${{matrix.target}}
+          tag: ${{ github.ref }}
+      - name: Upload exo-server to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/exo-server${{matrix.bin_extension}}
+          asset_name: exo-server-${{matrix.target}}
+          tag: ${{ github.ref }}
