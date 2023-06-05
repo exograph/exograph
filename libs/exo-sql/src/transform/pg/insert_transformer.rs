@@ -167,26 +167,26 @@ impl InsertTransformer for Postgres {
             // ```
             let nested_ctes = nested_rows.into_iter().map(
                 |NestedInsertion {
-                     relation,
+                     relation_id,
                      insertions,
                  }| {
                     let OneToMany {
                         self_pk_column_id,
                         foreign_column_id,
-                    } = relation;
+                    } = database.get_relation(relation_id.underlying).flipped();
 
                     let self_insertion_elems = insertions
                         .iter()
                         .map(|insertion| insertion.partition_self_and_nested().0)
                         .collect();
                     let (mut column_ids, mut column_values_seq) = align(self_insertion_elems);
-                    column_ids.push(*foreign_column_id);
+                    column_ids.push(foreign_column_id);
 
                     // To form the `(SELECT "venues"."id" FROM "venues")` part
                     column_values_seq.iter_mut().for_each(|value| {
                         let parent_reference = Column::SubSelect(Box::new(Select {
                             table: Table::Physical(self_pk_column_id.table_id),
-                            columns: vec![Column::Physical(*self_pk_column_id)],
+                            columns: vec![Column::Physical(self_pk_column_id)],
                             predicate: ConcretePredicate::True,
                             order_by: None,
                             offset: None,

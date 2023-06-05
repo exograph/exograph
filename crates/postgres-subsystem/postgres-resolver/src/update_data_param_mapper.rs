@@ -90,9 +90,12 @@ fn compute_update_columns<'a>(
             }
             PostgresRelation::ManyToOne(ManyToOneRelation {
                 foreign_pk_field_id,
-                underlying: ManyToOne { self_column_id, .. },
+                relation_id,
                 ..
             }) => {
+                let ManyToOne { self_column_id, .. } =
+                    subsystem.database.get_relation(*relation_id);
+
                 let self_column = self_column_id.get_column(&subsystem.database);
                 let foreign_type_pk_field_name =
                     &foreign_pk_field_id.resolve(&subsystem.entity_types).name;
@@ -132,13 +135,15 @@ async fn compute_nested_ops<'a>(
     let mut nested_deletes = vec![];
 
     for field in arg_type.fields.iter() {
-        if let PostgresRelation::OneToMany(OneToManyRelation {
-            underlying: OneToMany {
-                foreign_column_id, ..
-            },
-            ..
-        }) = &field.relation
+        if let PostgresRelation::OneToMany(OneToManyRelation { relation_id, .. }) = &field.relation
         {
+            let OneToMany {
+                foreign_column_id, ..
+            } = subsystem
+                .database
+                .get_relation(relation_id.underlying)
+                .flipped();
+
             let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
                     // TODO: Fix this at the type-level
@@ -151,7 +156,7 @@ async fn compute_nested_ops<'a>(
                 nested_updates.extend(compute_nested_update(
                     arg_type,
                     argument,
-                    *foreign_column_id,
+                    foreign_column_id,
                     subsystem,
                 ));
 
@@ -159,7 +164,7 @@ async fn compute_nested_ops<'a>(
                     compute_nested_inserts(
                         arg_type,
                         argument,
-                        *foreign_column_id,
+                        foreign_column_id,
                         subsystem,
                         request_context,
                     )
@@ -169,7 +174,7 @@ async fn compute_nested_ops<'a>(
                 nested_deletes.extend(compute_nested_delete(
                     arg_type,
                     argument,
-                    *foreign_column_id,
+                    foreign_column_id,
                     subsystem,
                 ));
             }

@@ -82,6 +82,7 @@ impl MutationBuilder for UpdateMutationBuilder {
             predicate_param: query_builder::pk_predicate_param(
                 entity_type,
                 &building.predicate_types,
+                &building.database,
             ),
         }
     }

@@ -12,6 +12,7 @@ use core_plugin_interface::core_model::{
     types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 
+use exo_sql::Database;
 use postgres_model::{
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     order::{OrderByParameter, OrderByParameterType},
@@ -60,6 +61,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
             entity_type,
             &building.predicate_types,
             &mut building.pk_queries,
+            &building.database,
         );
         expand_collection_query(
             entity_type,
@@ -97,15 +99,18 @@ fn expand_pk_query(
     entity_type: &EntityType,
     predicate_types: &MappedArena<PredicateParameterType>,
     pk_queries: &mut MappedArena<PkQuery>,
+    database: &Database,
 ) {
     let operation_name = entity_type.pk_query();
     let mut existing_query = &mut pk_queries.get_by_key_mut(&operation_name).unwrap();
-    existing_query.parameters.predicate_param = pk_predicate_param(entity_type, predicate_types);
+    existing_query.parameters.predicate_param =
+        pk_predicate_param(entity_type, predicate_types, database);
 }
 
 pub fn pk_predicate_param(
     entity_type: &EntityType,
     predicate_types: &MappedArena<PredicateParameterType>,
+    database: &Database,
 ) -> PredicateParameter {
     let pk_field = entity_type.pk_field().unwrap();
     let param_type_id = predicate_types.get_id(pk_field.typ.name()).unwrap();
@@ -117,7 +122,7 @@ pub fn pk_predicate_param(
     PredicateParameter {
         name: pk_field.name.to_string(),
         typ: FieldType::Plain(param_type),
-        column_path_link: Some(pk_field.relation.column_path_link()),
+        column_path_link: Some(pk_field.relation.column_path_link(database)),
     }
 }
 

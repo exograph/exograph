@@ -26,8 +26,8 @@ use core_plugin_interface::{
 };
 
 use exo_sql::{
-    ColumnId, FloatBits, IntBits, ManyToOne, OneToMany, PhysicalColumn, PhysicalColumnType,
-    PhysicalTable, TableId,
+    ColumnId, FloatBits, IntBits, ManyToOne, OneToManyRelationId, PhysicalColumn,
+    PhysicalColumnType, PhysicalTable, TableId,
 };
 
 use postgres_model::{
@@ -184,7 +184,6 @@ fn expand_type_no_fields(
     let table = PhysicalTable {
         name: table_name,
         columns: vec![],
-        references: vec![],
     };
 
     let table_id = building.database.insert_table(table);
@@ -227,14 +226,25 @@ fn expand_type_set_column_refernece(
     let table_name = &resolved_type.table_name;
     let table_id = building.database.get_table_id(table_name).unwrap();
 
-    let self_pk_field = resolved_type.pk_field().unwrap();
-    let self_pk_column_id = building
-        .database
-        .get_column_id(table_id, &self_pk_field.column_name)
-        .unwrap();
+    let relations: Vec<_> = resolved_type
+        .fields
+        .iter()
+        .flat_map(|field| {
+            if field.self_column {
+                let self_column_id = building
+                    .database
+                    .get_column_id(table_id, &field.column_name)
+                    .unwrap();
+                compute_many_to_one_relation(field, self_column_id, resolved_env, building)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    building.database.relations.extend(relations.into_iter());
 
     let mut column_reference_type_mapping: Vec<(String, PhysicalColumnType)> = vec![];
-    let mut references: Vec<OneToMany> = vec![];
 
     resolved_type.fields.iter().for_each(|field| {
         if field.self_column {
@@ -248,10 +258,6 @@ fn expand_type_set_column_refernece(
                 column_reference_type_mapping
                     .push((field.column_name.clone(), reference_column_type));
             }
-        } else if let Some(reference) =
-            compute_one_to_many(field, self_pk_column_id, resolved_env, building)
-        {
-            references.push(reference);
         }
     });
 
@@ -267,8 +273,6 @@ fn expand_type_set_column_refernece(
                 .unwrap();
             column.typ = typ;
         });
-
-    building.database.get_table_mut(table_id).references = references;
 }
 
 /// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can
@@ -451,6 +455,7 @@ pub fn compute_access_composite_types(
             resolved_env,
             &building.primitive_types,
             &building.entity_types,
+            &building.database,
         )
     };
 
@@ -671,6 +676,42 @@ fn create_column(
     }
 }
 
+fn compute_many_to_one_relation(
+    field: &ResolvedField,
+    self_column_id: ColumnId,
+    env: &ResolvedTypeEnv,
+    building: &SystemContextBuilding,
+) -> Option<ManyToOne> {
+    let typ = match &field.typ {
+        FieldType::Optional(inner_typ) => inner_typ.as_ref(),
+        _ => &field.typ,
+    };
+    match typ {
+        FieldType::Plain(ResolvedFieldType { type_name, .. }) => {
+            let field_type = env.get_by_key(type_name).unwrap();
+            match field_type {
+                ResolvedType::Composite(ct) => {
+                    // Column from the current table (but of the type of the pk column of the other table)
+                    // and it refers to the pk column in the other table.
+
+                    let foreign_table_id = building.database.get_table_id(&ct.table_name).unwrap();
+                    let foreign_pk_column_id = building
+                        .database
+                        .get_pk_column_id(foreign_table_id)
+                        .unwrap();
+
+                    Some(ManyToOne {
+                        self_column_id,
+                        foreign_pk_column_id,
+                    })
+                }
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
 fn compute_many_to_one_column_type(
     field: &ResolvedField,
     self_column_id: ColumnId,
@@ -711,40 +752,6 @@ fn compute_many_to_one_column_type(
             }
         }
         _ => None,
-    }
-}
-
-fn compute_one_to_many(
-    field: &ResolvedField,
-    self_pk_column_id: ColumnId,
-    env: &ResolvedTypeEnv,
-    building: &SystemContextBuilding,
-) -> Option<OneToMany> {
-    let typ = match &field.typ {
-        FieldType::Optional(inner_typ) => inner_typ.as_ref(),
-        _ => &field.typ,
-    };
-
-    let field_type = match typ {
-        FieldType::Plain(ft) => env.get_by_key(ft.name()).unwrap(),
-        FieldType::List(ct) => env.get_by_key(ct.name()).unwrap(),
-        FieldType::Optional(_) => panic!("Optional in an Optional?"),
-    };
-
-    match field_type {
-        ResolvedType::Composite(ct) => {
-            let foreign_table_id = building.database.get_table_id(&ct.table_name).unwrap();
-            let foreign_column_id = building
-                .database
-                .get_column_id(foreign_table_id, &field.column_name)
-                .unwrap();
-
-            Some(OneToMany {
-                self_pk_column_id,
-                foreign_column_id,
-            })
-        }
-        _ => unreachable!("Many-to-one or Optional-to-one relation must be with a composite type"),
     }
 }
 
@@ -946,7 +953,6 @@ fn create_relation(
                         if expand_foreign_relations {
                             compute_many_to_one(
                                 field,
-                                self_type,
                                 foreign_field_type,
                                 RelationCardinality::Unbounded,
                                 building,
@@ -983,7 +989,6 @@ fn create_relation(
                                 if expand_foreign_relations {
                                     compute_many_to_one(
                                         field,
-                                        self_type,
                                         foreign_field_type,
                                         RelationCardinality::Optional,
                                         building,
@@ -1039,7 +1044,6 @@ fn create_relation(
 
 fn compute_many_to_one(
     field: &ResolvedField,
-    self_type: &EntityType,
     foreign_field_type: &ResolvedCompositeType,
     cardinality: RelationCardinality,
     building: &SystemContextBuilding,
@@ -1058,9 +1062,6 @@ fn compute_many_to_one(
         .get_column_id(foreign_table_id, &field.column_name)
         .unwrap();
 
-    let self_table_id = &self_type.table_id;
-    let self_pk_column_id = building.database.get_pk_column_id(*self_table_id).unwrap();
-
     let foreign_resolved_field = foreign_field_type
         .fields
         .iter()
@@ -1074,15 +1075,18 @@ fn compute_many_to_one(
     )
     .unwrap();
 
-    let relation = OneToMany {
-        self_pk_column_id,
-        foreign_column_id,
+    let relation_id = building
+        .database
+        .get_relation_for_column(foreign_column_id)
+        .unwrap();
+    let relation_id = OneToManyRelationId {
+        underlying: relation_id,
     };
 
     PostgresRelation::OneToMany(OneToManyRelation {
         foreign_field_id,
         cardinality,
-        underlying: relation,
+        relation_id,
     })
 }
 
@@ -1099,12 +1103,6 @@ fn compute_one_to_many_relation(
         .get_entity_type_id(&foreign_field_type.name)
         .unwrap();
     let foreign_type = &building.entity_types[foreign_type_id];
-    let foreign_table_id = foreign_type.table_id;
-
-    let foreign_pk_column_id = building
-        .database
-        .get_pk_column_id(foreign_table_id)
-        .unwrap();
 
     let self_column_id = building
         .database
@@ -1112,14 +1110,14 @@ fn compute_one_to_many_relation(
         .unwrap();
     let foreign_pk_field_id = foreign_type.pk_field_id(foreign_type_id).unwrap();
 
-    let relation = ManyToOne {
-        self_column_id,
-        foreign_pk_column_id,
-    };
+    let relation_id = building
+        .database
+        .get_relation_for_column(self_column_id)
+        .unwrap();
 
     PostgresRelation::ManyToOne(ManyToOneRelation {
         cardinality,
-        underlying: relation,
         foreign_pk_field_id,
+        relation_id,
     })
 }

@@ -12,7 +12,7 @@ use core_plugin_interface::core_model::{
     types::FieldType,
 };
 
-use exo_sql::PhysicalColumnPathLink;
+use exo_sql::{Database, PhysicalColumnPathLink};
 use postgres_model::{
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},
@@ -107,6 +107,7 @@ fn expand_type(
                 &building.primitive_types,
                 &building.entity_types,
                 &building.order_by_types,
+                &building.database,
             )
         })
         .collect();
@@ -152,6 +153,7 @@ pub fn new_field_param(
     primitive_types: &MappedArena<PostgresPrimitiveType>,
     entity_types: &MappedArena<EntityType>,
     order_by_types: &MappedArena<OrderByParameterType>,
+    database: &Database,
 ) -> Option<OrderByParameter> {
     // If the field has one-to-many relationship, we cannot order by it. For example, it doesn't
     // make sense to order venues by concert id (assuming venue hosts multiple concerts)
@@ -169,7 +171,7 @@ pub fn new_field_param(
     let field_entity_type =
         field_type_id.to_type(primitive_types.values_ref(), entity_types.values_ref());
 
-    let column_path_link = Some(entity_field.relation.column_path_link());
+    let column_path_link = Some(entity_field.relation.column_path_link(database));
 
     Some(new_param(
         &entity_field.name,

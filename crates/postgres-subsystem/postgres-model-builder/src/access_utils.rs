@@ -20,7 +20,7 @@ use core_plugin_interface::core_model_builder::{
     typechecker::Typed,
 };
 
-use exo_sql::{PhysicalColumnPath, PhysicalColumnPathLink};
+use exo_sql::{Database, PhysicalColumnPath, PhysicalColumnPathLink};
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression,
     types::{base_type, EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
@@ -42,6 +42,7 @@ pub fn compute_predicate_expression(
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
+    database: &Database,
 ) -> Result<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
         AstExpr::FieldSelection(selection) => {
@@ -51,6 +52,7 @@ pub fn compute_predicate_expression(
                 resolved_env,
                 subsystem_primitive_types,
                 subsystem_entity_types,
+                database,
             ) {
                 PathSelection::Column(column_path, column_type) => {
                     if base_type(
@@ -103,6 +105,7 @@ pub fn compute_predicate_expression(
                     resolved_env,
                     subsystem_primitive_types,
                     subsystem_entity_types,
+                    database,
                 )
             };
             Ok(match op {
@@ -143,6 +146,7 @@ pub fn compute_predicate_expression(
                     resolved_env,
                     subsystem_primitive_types,
                     subsystem_entity_types,
+                    database,
                 )),
                 Box::new(compute_primitive_expr(
                     right,
@@ -150,6 +154,7 @@ pub fn compute_predicate_expression(
                     resolved_env,
                     subsystem_primitive_types,
                     subsystem_entity_types,
+                    database,
                 )),
             )))
         }
@@ -167,6 +172,7 @@ fn compute_primitive_expr(
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
+    database: &Database,
 ) -> DatabaseAccessPrimitiveExpression {
     match expr {
         AstExpr::FieldSelection(selection) => {
@@ -176,6 +182,7 @@ fn compute_primitive_expr(
                 resolved_env,
                 subsystem_primitive_types,
                 subsystem_entity_types,
+                database,
             ) {
                 PathSelection::Column(column_path, _) => {
                     DatabaseAccessPrimitiveExpression::Column(column_path)
@@ -206,10 +213,12 @@ fn compute_selection<'a>(
     resolved_env: &'a ResolvedTypeEnv<'a>,
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &'a MappedArena<EntityType>,
+    database: &Database,
 ) -> PathSelection<'a> {
     fn get_column<'a>(
         field_name: &str,
         self_type_info: &'a EntityType,
+        database: &Database,
     ) -> (
         PhysicalColumnPathLink,
         &'a FieldType<PostgresFieldType<EntityType>>,
@@ -221,7 +230,7 @@ fn compute_selection<'a>(
         };
 
         let field = get_field(field_name);
-        let column_path_link = field.relation.column_path_link();
+        let column_path_link = field.relation.column_path_link(database);
 
         (column_path_link, &field.typ)
     }
@@ -235,7 +244,8 @@ fn compute_selection<'a>(
                 let self_type_info =
                     self_type_info.expect("Type for the access selection is not defined");
 
-                let (field_column_path, field_type) = get_column(field_name, self_type_info);
+                let (field_column_path, field_type) =
+                    get_column(field_name, self_type_info, database);
 
                 let field_composite_type = match base_type(
                     field_type,

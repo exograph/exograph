@@ -220,7 +220,7 @@ async fn map_persistent_field<'content>(
             let foreign_type = &subsystem.entity_types[foreign_pk_field_id.entity_type_id()];
 
             let foreign_table_pk_query = &subsystem.pk_queries[foreign_type.pk_query];
-            let relation_link = relation.column_path_link();
+            let relation_link = relation.column_path_link(&subsystem.database);
 
             let nested_abstract_select = foreign_table_pk_query
                 .resolve_select(field, request_context, subsystem)
@@ -240,7 +240,7 @@ async fn map_persistent_field<'content>(
 
             let foreign_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
-            let relation_link = relation.column_path_link();
+            let relation_link = relation.column_path_link(&subsystem.database);
 
             let nested_abstract_select = {
                 // Get an appropriate query based on the cardinality of the relation
@@ -283,7 +283,7 @@ async fn map_aggregate_field<'content>(
         // TODO: Avoid code duplication with map_persistent_field
         let foreign_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
 
-        let relation_link = relation.column_path_link();
+        let relation_link = relation.column_path_link(&subsystem.database);
 
         let nested_abstract_select = {
             // Aggregate is supported only for unbounded relations (i.e. not supported for one-to-one)

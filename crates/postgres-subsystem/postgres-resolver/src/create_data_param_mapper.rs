@@ -112,16 +112,16 @@ async fn map_single<'a>(
 
         field_arg.map(|field_arg| async move {
             match &field.relation {
-                PostgresRelation::Pk {
-                    column_id: self_column_id,
+                PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
+                    map_self_column(*column_id, field, field_arg, subsystem).await
                 }
-                | PostgresRelation::Scalar {
-                    column_id: self_column_id,
+
+                PostgresRelation::ManyToOne(ManyToOneRelation { relation_id, .. }) => {
+                    let ManyToOne { self_column_id, .. } =
+                        subsystem.database.get_relation(*relation_id);
+                    map_self_column(*self_column_id, field, field_arg, subsystem).await
                 }
-                | PostgresRelation::ManyToOne(ManyToOneRelation {
-                    underlying: ManyToOne { self_column_id, .. },
-                    ..
-                }) => map_self_column(*self_column_id, field, field_arg, subsystem).await,
+
                 PostgresRelation::OneToMany(one_to_many_relation) => {
                     map_foreign(
                         field,
@@ -205,7 +205,7 @@ async fn map_foreign<'a>(
     let insertion = map_argument(field_type, argument, subsystem, request_context).await?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
-        relation: one_to_many_relation.underlying,
+        relation_id: one_to_many_relation.relation_id,
         insertions: insertion,
     }))
 }

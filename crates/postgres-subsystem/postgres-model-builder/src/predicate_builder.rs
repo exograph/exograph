@@ -235,7 +235,7 @@ fn create_composite_filter_type_kind(
         .map(|field| {
             let param_type_name = get_parameter_type_name(field.typ.name());
 
-            let column_path_link = Some(field.relation.column_path_link());
+            let column_path_link = Some(field.relation.column_path_link(&building.database));
 
             PredicateParameter {
                 name: field.name.to_string(),

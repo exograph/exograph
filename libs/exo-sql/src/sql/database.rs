@@ -9,10 +9,12 @@
 
 use std::fmt::{Debug, Formatter};
 
-use crate::{ColumnId, PhysicalTable};
+use crate::{ColumnId, ManyToOne, PhysicalTable};
 
 use serde::{Deserialize, Serialize};
 use typed_generational_arena::{Arena, IgnoreGeneration, Index};
+
+use super::relation::ManyToOneRelationId;
 
 pub type SerializableSlab<T> = Arena<T, usize, IgnoreGeneration>;
 pub type TableId = Index<PhysicalTable, usize, IgnoreGeneration>;
@@ -20,11 +22,16 @@ pub type TableId = Index<PhysicalTable, usize, IgnoreGeneration>;
 #[derive(Serialize, Deserialize)]
 pub struct Database {
     tables: SerializableSlab<PhysicalTable>,
+    pub relations: Vec<ManyToOne>,
 }
 
 impl Database {
     pub fn get_table(&self, id: TableId) -> &PhysicalTable {
         &self.tables[id]
+    }
+
+    pub fn get_relation(&self, id: ManyToOneRelationId) -> &ManyToOne {
+        &self.relations[id.index]
     }
 
     pub fn get_column_ids(&self, table_id: TableId) -> Vec<ColumnId> {
@@ -67,6 +74,13 @@ impl Database {
             .column_index(column_name)
             .map(|column_index| new_column_id(table_id, column_index))
     }
+
+    pub fn get_relation_for_column(&self, column_id: ColumnId) -> Option<ManyToOneRelationId> {
+        self.relations
+            .iter()
+            .position(|relation| relation.self_column_id == column_id)
+            .map(|index| ManyToOneRelationId { index })
+    }
 }
 
 fn new_column_id(table_id: TableId, column_index: usize) -> ColumnId {
@@ -80,6 +94,7 @@ impl Default for Database {
     fn default() -> Self {
         Database {
             tables: SerializableSlab::new(),
+            relations: vec![],
         }
     }
 }
@@ -91,10 +106,6 @@ impl Debug for Database {
             writeln!(f, "  columns: ")?;
             for (column_id, column) in table.columns.iter().enumerate() {
                 writeln!(f, "    {}: {:?}", column_id, column)?;
-            }
-            writeln!(f, "  references: ")?;
-            for (reference_id, reference) in table.references.iter().enumerate() {
-                writeln!(f, "    {}: {:?}", reference_id, reference)?;
             }
         }
 

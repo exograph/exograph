@@ -9,7 +9,9 @@
 
 use crate::types::EntityFieldId;
 
-use exo_sql::{ColumnId, ManyToOne, OneToMany, PhysicalColumnPathLink};
+use exo_sql::{
+    ColumnId, Database, ManyToOneRelationId, OneToManyRelationId, PhysicalColumnPathLink,
+};
 use serde::{Deserialize, Serialize};
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as
@@ -34,16 +36,17 @@ pub struct ManyToOneRelation {
     // For the `Concert.venue` field (assuming [Concert] -> Venue), we will have:
     // - cardinality: Unbounded
     // - foreign_pk_field_id: Venue.id
-    // - underlying.self_column_id: concerts.venue_id
-    // - underlying.foreign_pk_column_id: venues.id
+    // - relation_id.self_column_id: concerts.venue_id
+    // - relation_id.foreign_pk_column_id: venues.id
     pub cardinality: RelationCardinality,
     pub foreign_pk_field_id: EntityFieldId,
-    pub underlying: ManyToOne,
+    pub relation_id: ManyToOneRelationId,
 }
 
 impl ManyToOneRelation {
-    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
-        self.underlying.column_path_link()
+    pub fn column_path_link(&self, database: &Database) -> PhysicalColumnPathLink {
+        let relation = database.get_relation(self.relation_id);
+        relation.column_path_link()
     }
 }
 
@@ -53,27 +56,28 @@ pub struct OneToManyRelation {
     // For the `Venue.concerts` field (assuming Venue -> [Concert]), we will have:
     // - cardinality: Unbounded
     // - foreign_field_id: Concert.venue
-    // - underlying.self_pk_column_id: venues.id
-    // - underlying.foreign_column_id: concerts.venue_id
+    // - relation_id.self_pk_column_id: venues.id
+    // - relation_id.foreign_column_id: concerts.venue_id
     pub cardinality: RelationCardinality,
     pub foreign_field_id: EntityFieldId,
-    pub underlying: OneToMany,
+    pub relation_id: OneToManyRelationId,
 }
 
 impl OneToManyRelation {
-    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
-        self.underlying.column_path_link()
+    pub fn column_path_link(&self, database: &Database) -> PhysicalColumnPathLink {
+        let relation = database.get_relation(self.relation_id.underlying).flipped();
+        relation.column_path_link()
     }
 }
 
 impl PostgresRelation {
-    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
+    pub fn column_path_link(&self, database: &Database) -> PhysicalColumnPathLink {
         match &self {
             PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
                 PhysicalColumnPathLink::Leaf(*column_id)
             }
-            PostgresRelation::ManyToOne(relation) => relation.column_path_link(),
-            PostgresRelation::OneToMany(relation) => relation.column_path_link(),
+            PostgresRelation::ManyToOne(relation) => relation.column_path_link(database),
+            PostgresRelation::OneToMany(relation) => relation.column_path_link(database),
         }
     }
 }

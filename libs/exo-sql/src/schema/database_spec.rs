@@ -12,11 +12,11 @@ use std::collections::HashSet;
 use deadpool_postgres::Client;
 
 use crate::{
-    database_error::DatabaseError, schema::column_spec::ColumnSpec, ColumnId, Database,
+    database_error::DatabaseError, schema::column_spec::ColumnSpec, ColumnId, Database, ManyToOne,
     PhysicalColumn, PhysicalColumnType, PhysicalTable, TableId,
 };
 
-use super::{issue::WithIssues, table_spec::TableSpec};
+use super::{column_spec::ColumnTypeSpec, issue::WithIssues, table_spec::TableSpec};
 
 #[derive(Debug)]
 pub struct DatabaseSpec {
@@ -49,7 +49,6 @@ impl DatabaseSpec {
                 let table_id = database.insert_table(PhysicalTable {
                     name: table.name,
                     columns: vec![],
-                    references: vec![],
                 });
                 (table_id, table.columns)
             })
@@ -100,6 +99,44 @@ impl DatabaseSpec {
             let table = database.get_table_mut(column_id.table_id);
             table.columns[column_id.column_index].typ = typ;
         }
+
+        let relations: Vec<ManyToOne> = tables
+            .iter()
+            .flat_map(|(table_id, column_specs)| {
+                let table = database.get_table(*table_id);
+
+                let column_ids = database.get_column_ids(*table_id);
+
+                column_ids.into_iter().flat_map(|self_column_id| {
+                    let column = &table.columns[self_column_id.column_index];
+                    let column_spec = column_specs
+                        .iter()
+                        .find(|column_spec| column_spec.name == column.name)
+                        .unwrap();
+
+                    match &column_spec.typ {
+                        ColumnTypeSpec::ColumnReference {
+                            foreign_table_name,
+                            foreign_pk_column_name,
+                            ..
+                        } => {
+                            let foreign_table_id =
+                                database.get_table_id(foreign_table_name).unwrap();
+                            let foreign_pk_column_id = database
+                                .get_column_id(foreign_table_id, foreign_pk_column_name)
+                                .unwrap();
+                            Some(ManyToOne {
+                                self_column_id,
+                                foreign_pk_column_id,
+                            })
+                        }
+                        _ => None,
+                    }
+                })
+            })
+            .collect();
+
+        database.relations = relations;
 
         database
     }
