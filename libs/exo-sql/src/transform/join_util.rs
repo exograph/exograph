@@ -11,12 +11,12 @@ use crate::{
     asql::column_path::{PhysicalColumnPathLink, RelationPhysicalColumnPathLink},
     sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
     transform::table_dependency::{DependencyLink, TableDependency},
-    TableId,
+    PhysicalColumnPath, TableId,
 };
 
 /// Compute the join needed to access the leaf columns of a list of column paths. Will return a
 /// `Table::Physical` if there are no dependencies to join otherwise a `Table::Join`.
-pub fn compute_join(table_id: TableId, paths_list: &[Vec<PhysicalColumnPathLink>]) -> Table {
+pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Table {
     /// Recursively build the join tree.
     fn from_dependency(dependency: TableDependency) -> Table {
         dependency.dependencies.into_iter().fold(
@@ -53,7 +53,7 @@ pub fn compute_join(table_id: TableId, paths_list: &[Vec<PhysicalColumnPathLink>
 mod tests {
     use crate::{
         asql::column_path::PhysicalColumnPathLink, sql::ExpressionBuilder,
-        transform::test_util::TestSetup,
+        transform::test_util::TestSetup, PhysicalColumnPath,
     };
 
     #[test]
@@ -73,7 +73,8 @@ mod tests {
                     PhysicalColumnPathLink::Leaf(venues_name_column),
                 ];
 
-                let join = super::compute_join(concerts_table, &[concert_venue]);
+                let join =
+                    super::compute_join(concerts_table, &[PhysicalColumnPath::new(concert_venue)]);
 
                 assert_binding!(
                     join.to_sql(&database),
@@ -145,7 +146,11 @@ mod tests {
 
                 let join = super::compute_join(
                     concerts_table,
-                    &[concert_ca_artist, concert_ca_artist_address, concert_venue],
+                    &[
+                        PhysicalColumnPath::new(concert_ca_artist),
+                        PhysicalColumnPath::new(concert_ca_artist_address),
+                        PhysicalColumnPath::new(concert_venue),
+                    ],
                 );
 
                 assert_binding!(

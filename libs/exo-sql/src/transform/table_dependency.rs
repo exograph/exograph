@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::{asql::column_path::PhysicalColumnPathLink, TableId};
+use crate::{asql::column_path::PhysicalColumnPathLink, PhysicalColumnPath, TableId};
 
 #[derive(Debug)]
 pub struct TableDependency {
@@ -59,13 +59,13 @@ impl TableDependency {
     ///    ]
     /// }
     /// ```
-    pub fn from_column_path(paths_list: &[Vec<PhysicalColumnPathLink>]) -> Option<Self> {
-        let table_id = paths_list.get(0)?.get(0)?.self_column_id().table_id;
+    pub fn from_column_path(paths_list: &[PhysicalColumnPath]) -> Option<Self> {
+        let table_id = paths_list.get(0)?.lead_table_id();
 
         assert!(
             paths_list
                 .iter()
-                .all(|path| path.get(0).unwrap().self_column_id().table_id == table_id),
+                .all(|path| path.lead_table_id() == table_id),
             "All paths must start from the same table"
         );
 
@@ -76,11 +76,11 @@ impl TableDependency {
         // Later the key (`ColumnIdPathLink`) and values (`Vec<ColumnIdPathLink>`) will
         // be used to create `DependencyLink`s.
         let grouped = paths_list.iter().fold(
-            BTreeMap::<PhysicalColumnPathLink, Vec<Vec<PhysicalColumnPathLink>>>::new(),
-            |mut acc, paths| match &paths[..] {
-                [head, tail @ ..] => {
+            BTreeMap::<PhysicalColumnPathLink, Vec<PhysicalColumnPath>>::new(),
+            |mut acc, paths| match &paths.split_head() {
+                Some((head, tail)) => {
                     if let PhysicalColumnPathLink::Relation(_) = head {
-                        acc.entry(head.clone()).or_default().push(tail.to_vec());
+                        acc.entry(head.clone()).or_default().push(tail.clone());
                     }
                     acc
                 }

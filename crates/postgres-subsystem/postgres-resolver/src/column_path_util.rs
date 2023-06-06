@@ -22,5 +22,5 @@ pub fn to_column_path(
         path.push(next_column_path_link.clone());
     }
 
-    ColumnPath::Physical(path)
+    ColumnPath::Physical(PhysicalColumnPath::new(path))
 }

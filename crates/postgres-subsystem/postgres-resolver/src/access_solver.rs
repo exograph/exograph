@@ -16,7 +16,6 @@
 //! This module differs from Deno/Wasm in that it has an additional primitive expression type,
 //! `ColumnPath`, which we process into a predicate that we can pass to the database query.
 
-use crate::column_path_util;
 use async_trait::async_trait;
 use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
@@ -189,7 +188,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
 }
 
 fn to_column_path(column_id: &PhysicalColumnPath) -> ColumnPath {
-    column_path_util::to_column_path(&Some(column_id.clone()), &None)
+    ColumnPath::Physical(column_id.clone())
 }
 
 /// Converts a value to a literal column path

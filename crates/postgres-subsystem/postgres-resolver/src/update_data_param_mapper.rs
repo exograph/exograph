@@ -14,7 +14,7 @@ use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
-    NestedAbstractUpdate, OneToMany, PhysicalColumnPathLink, Selection,
+    NestedAbstractUpdate, OneToMany, PhysicalColumnPath, PhysicalColumnPathLink, Selection,
 };
 use futures::future::join_all;
 use postgres_model::{
@@ -251,7 +251,9 @@ fn compute_nested_update_object_arg<'a>(
             AbstractPredicate::and(
                 acc,
                 AbstractPredicate::eq(
-                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(pk_col)]),
+                    ColumnPath::Physical(PhysicalColumnPath::new(vec![
+                        PhysicalColumnPathLink::Leaf(pk_col),
+                    ])),
                     value,
                 ),
             )
@@ -421,7 +423,9 @@ fn compute_nested_delete_object_arg<'a>(
             AbstractPredicate::and(
                 acc,
                 AbstractPredicate::eq(
-                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(pk_col)]),
+                    ColumnPath::Physical(PhysicalColumnPath::new(vec![
+                        PhysicalColumnPathLink::Leaf(pk_col),
+                    ])),
                     value,
                 ),
             )

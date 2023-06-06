@@ -106,7 +106,7 @@ mod tests {
         },
         sql::{predicate::Predicate, ExpressionBuilder, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
-        AbstractPredicate, AbstractSelect, ColumnPath,
+        AbstractPredicate, AbstractSelect, ColumnPath, PhysicalColumnPath,
     };
 
     use super::*;
@@ -156,7 +156,9 @@ mod tests {
                  ..
              }| {
                 let predicate = AbstractPredicate::Eq(
-                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(concerts_name_column)]),
+                    ColumnPath::Physical(PhysicalColumnPath::new(vec![
+                        PhysicalColumnPathLink::Leaf(concerts_name_column),
+                    ])),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 
@@ -200,13 +202,13 @@ mod tests {
                  ..
              }| {
                 let predicate = AbstractPredicate::Eq(
-                    ColumnPath::Physical(vec![
+                    ColumnPath::Physical(PhysicalColumnPath::new(vec![
                         PhysicalColumnPathLink::relation(
                             concerts_venue_id_column,
                             venues_id_column,
                         ),
                         PhysicalColumnPathLink::Leaf(venues_name_column),
-                    ]),
+                    ])),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 

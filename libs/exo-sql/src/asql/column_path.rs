@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     sql::{predicate::ParamEquality, SQLParamContainer},
-    ColumnId, Database,
+    ColumnId, Database, TableId,
 };
 
 /// A link in `ColumnPath` to a column starting at a root table and ending at a leaf column. This
@@ -29,7 +29,7 @@ use crate::{
 /// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum ColumnPath {
-    Physical(Vec<PhysicalColumnPathLink>),
+    Physical(PhysicalColumnPath),
     Param(SQLParamContainer),
     Null,
 }
@@ -67,7 +67,7 @@ impl Ord for PhysicalColumnPathLink {
     }
 }
 
-/// A link in [`ColumnIdPath`] to connect two tables.
+/// A link in [`ColumnPath`] to connect two tables.
 /// Contains two columns that link one table to another, which may be used to form a join between two tables
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub enum PhysicalColumnPathLink {
@@ -135,4 +135,35 @@ impl PhysicalColumnPathLink {
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PhysicalColumnPath {
     pub path: Vec<PhysicalColumnPathLink>,
+}
+
+impl PhysicalColumnPath {
+    pub fn new(path: Vec<PhysicalColumnPathLink>) -> Self {
+        Self { path }
+    }
+
+    pub fn split_head(&self) -> Option<(PhysicalColumnPathLink, PhysicalColumnPath)> {
+        if self.path.is_empty() {
+            None
+        } else {
+            let mut path = self.path.clone();
+            let head = path.remove(0);
+            Some((head, PhysicalColumnPath { path }))
+        }
+    }
+
+    pub fn leaf_column(&self) -> ColumnId {
+        match self.path.last().unwrap() {
+            PhysicalColumnPathLink::Relation(_) => panic!(),
+            PhysicalColumnPathLink::Leaf(column_id) => *column_id,
+        }
+    }
+
+    pub fn has_one_to_many(&self, database: &Database) -> bool {
+        self.path.iter().any(|link| link.is_one_to_many(database))
+    }
+
+    pub fn lead_table_id(&self) -> TableId {
+        self.path[0].self_column_id().table_id
+    }
 }
