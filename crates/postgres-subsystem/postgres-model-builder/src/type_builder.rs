@@ -26,8 +26,8 @@ use core_plugin_interface::{
 };
 
 use exo_sql::{
-    ColumnId, FloatBits, IntBits, ManyToOne, OneToManyRelationId, PhysicalColumn,
-    PhysicalColumnType, PhysicalTable, TableId,
+    ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalTable,
+    TableId,
 };
 
 use postgres_model::{
@@ -1005,13 +1005,9 @@ fn compute_many_to_one(
     )
     .unwrap();
 
-    let relation_id = building
-        .database
-        .get_relation_for_column(foreign_column_id)
+    let relation_id = foreign_column_id
+        .get_otm_relation(&building.database)
         .unwrap();
-    let relation_id = OneToManyRelationId {
-        underlying: relation_id,
-    };
 
     PostgresRelation::OneToMany(OneToManyRelation {
         foreign_field_id,
@@ -1040,10 +1036,7 @@ fn compute_one_to_many_relation(
         .unwrap();
     let foreign_pk_field_id = foreign_type.pk_field_id(foreign_type_id).unwrap();
 
-    let relation_id = building
-        .database
-        .get_relation_for_column(self_column_id)
-        .unwrap();
+    let relation_id = self_column_id.get_mto_relation(&building.database).unwrap();
 
     PostgresRelation::ManyToOne(ManyToOneRelation {
         cardinality,

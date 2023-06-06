@@ -173,7 +173,7 @@ impl InsertTransformer for Postgres {
                     let OneToMany {
                         self_pk_column_id,
                         foreign_column_id,
-                    } = database.get_relation(relation_id.underlying).flipped();
+                    } = relation_id.deref(database);
 
                     let self_insertion_elems = insertions
                         .iter()

@@ -15,7 +15,7 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver, context::RequestContext, value::Val,
 };
-use exo_sql::{AbstractPredicate, PhysicalColumnPath, PhysicalColumnPathLink, TableId};
+use exo_sql::{AbstractPredicate, ColumnPathLink, PhysicalColumnPath, TableId};
 use postgres_model::{
     query::{CollectionQuery, PkQuery},
     subsystem::PostgresSubsystem,
@@ -64,7 +64,7 @@ pub fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Val>
 
 pub(crate) fn to_column_id_path(
     parent_column_id_path: &Option<PhysicalColumnPath>,
-    next_column_id_path_link: &Option<PhysicalColumnPathLink>,
+    next_column_id_path_link: &Option<ColumnPathLink>,
 ) -> Option<PhysicalColumnPath> {
     match (parent_column_id_path, next_column_id_path_link) {
         (Some(parent_column_id_path), Some(next_column_id_path_link)) => {

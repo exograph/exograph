@@ -43,24 +43,21 @@ impl ParamEquality for ColumnPath {
     }
 }
 
-impl PartialOrd for PhysicalColumnPathLink {
+impl PartialOrd for ColumnPathLink {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for PhysicalColumnPathLink {
+impl Ord for ColumnPathLink {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (
-                PhysicalColumnPathLink::Relation(relation),
-                PhysicalColumnPathLink::Relation(other),
-            ) => relation.cmp(other),
-            (PhysicalColumnPathLink::Leaf(column_id), PhysicalColumnPathLink::Leaf(other)) => {
-                column_id.cmp(other)
+            (ColumnPathLink::Relation(relation), ColumnPathLink::Relation(other)) => {
+                relation.cmp(other)
             }
-            (PhysicalColumnPathLink::Relation(_), PhysicalColumnPathLink::Leaf(_))
-            | (PhysicalColumnPathLink::Leaf(_), PhysicalColumnPathLink::Relation(_)) => {
+            (ColumnPathLink::Leaf(column_id), ColumnPathLink::Leaf(other)) => column_id.cmp(other),
+            (ColumnPathLink::Relation(_), ColumnPathLink::Leaf(_))
+            | (ColumnPathLink::Leaf(_), ColumnPathLink::Relation(_)) => {
                 panic!("Cannot compare a relation to a leaf")
             }
         }
@@ -70,14 +67,14 @@ impl Ord for PhysicalColumnPathLink {
 /// A link in [`ColumnPath`] to connect two tables.
 /// Contains two columns that link one table to another, which may be used to form a join between two tables
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
-pub enum PhysicalColumnPathLink {
-    Relation(RelationPhysicalColumnPathLink),
+pub enum ColumnPathLink {
+    Relation(RelationLink),
     Leaf(ColumnId),
 }
 
-impl PhysicalColumnPathLink {
+impl ColumnPathLink {
     pub fn relation(self_column_id: ColumnId, linked_column_id: ColumnId) -> Self {
-        Self::Relation(RelationPhysicalColumnPathLink {
+        Self::Relation(RelationLink {
             self_column_id,
             linked_column_id,
         })
@@ -85,34 +82,34 @@ impl PhysicalColumnPathLink {
 
     pub fn self_column_id(&self) -> ColumnId {
         match self {
-            PhysicalColumnPathLink::Relation(relation) => relation.self_column_id,
-            PhysicalColumnPathLink::Leaf(column_id) => *column_id,
+            ColumnPathLink::Relation(relation) => relation.self_column_id,
+            ColumnPathLink::Leaf(column_id) => *column_id,
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct RelationPhysicalColumnPathLink {
+pub struct RelationLink {
     /// The column in the current table that is linked to the next table.
     pub self_column_id: ColumnId,
     /// The column in the next table that is linked to the current table. None implies that this is a terminal column (such as artist.name).
     pub linked_column_id: ColumnId,
 }
 
-impl PartialOrd for RelationPhysicalColumnPathLink {
+impl PartialOrd for RelationLink {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for RelationPhysicalColumnPathLink {
+impl Ord for RelationLink {
     fn cmp(&self, other: &Self) -> Ordering {
         (self.self_column_id, self.linked_column_id)
             .cmp(&(other.self_column_id, other.linked_column_id))
     }
 }
 
-impl PhysicalColumnPathLink {
+impl ColumnPathLink {
     /// Determines if this link is a one-to-many link.
     ///
     /// If the self column is a primary key and the linked column links to a table, then this is a
@@ -120,11 +117,10 @@ impl PhysicalColumnPathLink {
     /// be the self column and `concert.venue_id` would be the linked column.
     pub fn is_one_to_many(&self, database: &Database) -> bool {
         match self {
-            PhysicalColumnPathLink::Relation(RelationPhysicalColumnPathLink {
-                self_column_id,
-                ..
-            }) => self_column_id.get_column(database).is_pk,
-            PhysicalColumnPathLink::Leaf(_) => false,
+            ColumnPathLink::Relation(RelationLink { self_column_id, .. }) => {
+                self_column_id.get_column(database).is_pk
+            }
+            ColumnPathLink::Leaf(_) => false,
         }
     }
 }
@@ -134,15 +130,17 @@ impl PhysicalColumnPathLink {
 /// This information could be used to form a join between multiple tables
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PhysicalColumnPath {
-    pub path: Vec<PhysicalColumnPathLink>,
+    pub path: Vec<ColumnPathLink>,
 }
 
 impl PhysicalColumnPath {
-    pub fn new(path: Vec<PhysicalColumnPathLink>) -> Self {
+    // pub fn init()
+
+    pub fn new(path: Vec<ColumnPathLink>) -> Self {
         Self { path }
     }
 
-    pub fn split_head(&self) -> Option<(PhysicalColumnPathLink, PhysicalColumnPath)> {
+    pub fn split_head(&self) -> Option<(ColumnPathLink, PhysicalColumnPath)> {
         if self.path.is_empty() {
             None
         } else {
@@ -154,8 +152,8 @@ impl PhysicalColumnPath {
 
     pub fn leaf_column(&self) -> ColumnId {
         match self.path.last().unwrap() {
-            PhysicalColumnPathLink::Relation(_) => panic!(),
-            PhysicalColumnPathLink::Leaf(column_id) => *column_id,
+            ColumnPathLink::Relation(_) => panic!(),
+            ColumnPathLink::Leaf(column_id) => *column_id,
         }
     }
 

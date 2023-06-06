@@ -101,7 +101,7 @@ impl DeleteTransformer for Postgres {
 mod tests {
     use crate::{
         asql::{
-            column_path::PhysicalColumnPathLink,
+            column_path::ColumnPathLink,
             selection::{AliasedSelectionElement, Selection, SelectionElement},
         },
         sql::{predicate::Predicate, ExpressionBuilder, SQLParamContainer},
@@ -156,9 +156,9 @@ mod tests {
                  ..
              }| {
                 let predicate = AbstractPredicate::Eq(
-                    ColumnPath::Physical(PhysicalColumnPath::new(vec![
-                        PhysicalColumnPathLink::Leaf(concerts_name_column),
-                    ])),
+                    ColumnPath::Physical(PhysicalColumnPath::new(vec![ColumnPathLink::Leaf(
+                        concerts_name_column,
+                    )])),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 
@@ -203,11 +203,8 @@ mod tests {
              }| {
                 let predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(PhysicalColumnPath::new(vec![
-                        PhysicalColumnPathLink::relation(
-                            concerts_venue_id_column,
-                            venues_id_column,
-                        ),
-                        PhysicalColumnPathLink::Leaf(venues_name_column),
+                        ColumnPathLink::relation(concerts_venue_id_column, venues_id_column),
+                        ColumnPathLink::Leaf(venues_name_column),
                     ])),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );

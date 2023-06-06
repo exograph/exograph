@@ -13,8 +13,8 @@ use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
-    ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
-    NestedAbstractUpdate, OneToMany, PhysicalColumnPath, PhysicalColumnPathLink, Selection,
+    ColumnId, ColumnPath, ColumnPathLink, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
+    NestedAbstractUpdate, OneToMany, PhysicalColumnPath, Selection,
 };
 use futures::future::join_all;
 use postgres_model::{
@@ -93,8 +93,7 @@ fn compute_update_columns<'a>(
                 relation_id,
                 ..
             }) => {
-                let ManyToOne { self_column_id, .. } =
-                    subsystem.database.get_relation(*relation_id);
+                let ManyToOne { self_column_id, .. } = relation_id.deref(&subsystem.database);
 
                 let self_column = self_column_id.get_column(&subsystem.database);
                 let foreign_type_pk_field_name =
@@ -104,7 +103,7 @@ fn compute_update_columns<'a>(
                         Some(foreign_type_pk_arg) => {
                             let value_column =
                                 cast::literal_column(foreign_type_pk_arg, self_column);
-                            (*self_column_id, value_column.unwrap())
+                            (self_column_id, value_column.unwrap())
                         }
                         None => unreachable!("Expected pk argument"), // Validation should have caught this
                     }
@@ -139,10 +138,7 @@ async fn compute_nested_ops<'a>(
         {
             let OneToMany {
                 foreign_column_id, ..
-            } = subsystem
-                .database
-                .get_relation(relation_id.underlying)
-                .flipped();
+            } = relation_id.deref(&subsystem.database);
 
             let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
@@ -251,9 +247,9 @@ fn compute_nested_update_object_arg<'a>(
             AbstractPredicate::and(
                 acc,
                 AbstractPredicate::eq(
-                    ColumnPath::Physical(PhysicalColumnPath::new(vec![
-                        PhysicalColumnPathLink::Leaf(pk_col),
-                    ])),
+                    ColumnPath::Physical(PhysicalColumnPath::new(vec![ColumnPathLink::Leaf(
+                        pk_col,
+                    )])),
                     value,
                 ),
             )
@@ -423,9 +419,9 @@ fn compute_nested_delete_object_arg<'a>(
             AbstractPredicate::and(
                 acc,
                 AbstractPredicate::eq(
-                    ColumnPath::Physical(PhysicalColumnPath::new(vec![
-                        PhysicalColumnPathLink::Leaf(pk_col),
-                    ])),
+                    ColumnPath::Physical(PhysicalColumnPath::new(vec![ColumnPathLink::Leaf(
+                        pk_col,
+                    )])),
                     value,
                 ),
             )

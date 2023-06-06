@@ -9,9 +9,7 @@
 
 use crate::types::EntityFieldId;
 
-use exo_sql::{
-    ColumnId, Database, ManyToOneRelationId, OneToManyRelationId, PhysicalColumnPathLink,
-};
+use exo_sql::{ColumnId, ColumnPathLink, Database, ManyToOneId, OneToManyId};
 use serde::{Deserialize, Serialize};
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as
@@ -40,12 +38,12 @@ pub struct ManyToOneRelation {
     // - relation_id.foreign_pk_column_id: venues.id
     pub cardinality: RelationCardinality,
     pub foreign_pk_field_id: EntityFieldId,
-    pub relation_id: ManyToOneRelationId,
+    pub relation_id: ManyToOneId,
 }
 
 impl ManyToOneRelation {
-    pub fn column_path_link(&self, database: &Database) -> PhysicalColumnPathLink {
-        let relation = database.get_relation(self.relation_id);
+    pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
+        let relation = self.relation_id.deref(database);
         relation.column_path_link()
     }
 }
@@ -60,21 +58,21 @@ pub struct OneToManyRelation {
     // - relation_id.foreign_column_id: concerts.venue_id
     pub cardinality: RelationCardinality,
     pub foreign_field_id: EntityFieldId,
-    pub relation_id: OneToManyRelationId,
+    pub relation_id: OneToManyId,
 }
 
 impl OneToManyRelation {
-    pub fn column_path_link(&self, database: &Database) -> PhysicalColumnPathLink {
-        let relation = database.get_relation(self.relation_id.underlying).flipped();
+    pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
+        let relation = self.relation_id.deref(database);
         relation.column_path_link()
     }
 }
 
 impl PostgresRelation {
-    pub fn column_path_link(&self, database: &Database) -> PhysicalColumnPathLink {
+    pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
         match &self {
             PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
-                PhysicalColumnPathLink::Leaf(*column_id)
+                ColumnPathLink::Leaf(*column_id)
             }
             PostgresRelation::ManyToOne(relation) => relation.column_path_link(database),
             PostgresRelation::OneToMany(relation) => relation.column_path_link(database),

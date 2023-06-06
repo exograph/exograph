@@ -23,7 +23,7 @@ use core_plugin_interface::core_model::{
     types::{FieldType, Named},
 };
 
-use exo_sql::PhysicalColumnPathLink;
+use exo_sql::ColumnPathLink;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,7 +38,7 @@ pub struct OrderByParameter {
     ///   venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     ///   order_by: None
     /// ```
-    pub column_path_link: Option<PhysicalColumnPathLink>,
+    pub column_path_link: Option<ColumnPathLink>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

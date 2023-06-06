@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::{asql::column_path::PhysicalColumnPathLink, PhysicalColumnPath, TableId};
+use crate::{asql::column_path::ColumnPathLink, PhysicalColumnPath, TableId};
 
 #[derive(Debug)]
 pub struct TableDependency {
@@ -21,7 +21,7 @@ pub struct TableDependency {
 
 #[derive(Debug)]
 pub struct DependencyLink {
-    pub link: PhysicalColumnPathLink,
+    pub link: ColumnPathLink,
     pub dependency: TableDependency,
 }
 
@@ -76,10 +76,10 @@ impl TableDependency {
         // Later the key (`ColumnIdPathLink`) and values (`Vec<ColumnIdPathLink>`) will
         // be used to create `DependencyLink`s.
         let grouped = paths_list.iter().fold(
-            BTreeMap::<PhysicalColumnPathLink, Vec<PhysicalColumnPath>>::new(),
+            BTreeMap::<ColumnPathLink, Vec<PhysicalColumnPath>>::new(),
             |mut acc, paths| match &paths.split_head() {
                 Some((head, tail)) => {
-                    if let PhysicalColumnPathLink::Relation(_) = head {
+                    if let ColumnPathLink::Relation(_) = head {
                         acc.entry(head.clone()).or_default().push(tail.clone());
                     }
                     acc

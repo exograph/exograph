@@ -14,8 +14,6 @@ use crate::{ColumnId, ManyToOne, PhysicalColumn, PhysicalTable};
 use serde::{Deserialize, Serialize};
 use typed_generational_arena::{Arena, IgnoreGeneration, Index};
 
-use super::relation::ManyToOneRelationId;
-
 pub type SerializableSlab<T> = Arena<T, usize, IgnoreGeneration>;
 pub type TableId = Index<PhysicalTable, usize, IgnoreGeneration>;
 
@@ -28,10 +26,6 @@ pub struct Database {
 impl Database {
     pub fn get_table(&self, id: TableId) -> &PhysicalTable {
         &self.tables[id]
-    }
-
-    pub fn get_relation(&self, id: ManyToOneRelationId) -> &ManyToOne {
-        &self.relations[id.index]
     }
 
     pub fn get_column_ids(&self, table_id: TableId) -> Vec<ColumnId> {
@@ -73,13 +67,6 @@ impl Database {
         self.tables[table_id]
             .column_index(column_name)
             .map(|column_index| new_column_id(table_id, column_index))
-    }
-
-    pub fn get_relation_for_column(&self, column_id: ColumnId) -> Option<ManyToOneRelationId> {
-        self.relations
-            .iter()
-            .position(|relation| relation.self_column_id == column_id)
-            .map(|index| ManyToOneRelationId { index })
     }
 
     pub fn get_column_mut(&mut self, column_id: ColumnId) -> &mut PhysicalColumn {

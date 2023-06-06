@@ -46,7 +46,7 @@ pub mod database_error;
 /// Public types at the root level of this crate
 pub use asql::{
     abstract_operation::AbstractOperation,
-    column_path::{ColumnPath, PhysicalColumnPath, PhysicalColumnPathLink},
+    column_path::{ColumnPath, ColumnPathLink, PhysicalColumnPath},
     database_executor::{DatabaseExecutor, TransactionHolder},
     delete::AbstractDelete,
     insert::{AbstractInsert, ColumnValuePair, InsertionElement, InsertionRow, NestedInsertion},
@@ -68,6 +68,6 @@ pub use sql::{
     physical_column::{ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
     physical_table::PhysicalTable,
     predicate::{CaseSensitivity, ParamEquality, Predicate},
-    relation::{ManyToOne, ManyToOneRelationId, OneToMany, OneToManyRelationId},
+    relation::{ManyToOne, ManyToOneId, OneToMany, OneToManyId},
     SQLBytes, SQLParam, SQLParamContainer,
 };

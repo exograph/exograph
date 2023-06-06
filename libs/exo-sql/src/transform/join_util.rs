@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::{PhysicalColumnPathLink, RelationPhysicalColumnPathLink},
+    asql::column_path::{ColumnPathLink, RelationLink},
     sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
     transform::table_dependency::{DependencyLink, TableDependency},
     PhysicalColumnPath, TableId,
@@ -23,14 +23,14 @@ pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Tab
             Table::Physical(dependency.table_id),
             |acc, DependencyLink { link, dependency }| {
                 let join_predicate = match link {
-                    PhysicalColumnPathLink::Relation(RelationPhysicalColumnPathLink {
+                    ColumnPathLink::Relation(RelationLink {
                         self_column_id,
                         linked_column_id,
                     }) => ConcretePredicate::Eq(
                         Column::Physical(self_column_id),
                         Column::Physical(linked_column_id),
                     ),
-                    PhysicalColumnPathLink::Leaf(_) => {
+                    ColumnPathLink::Leaf(_) => {
                         panic!("Unexpected leaf in dependency link")
                     }
                 };
@@ -52,8 +52,8 @@ pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Tab
 #[cfg(test)]
 mod tests {
     use crate::{
-        asql::column_path::PhysicalColumnPathLink, sql::ExpressionBuilder,
-        transform::test_util::TestSetup, PhysicalColumnPath,
+        asql::column_path::ColumnPathLink, sql::ExpressionBuilder, transform::test_util::TestSetup,
+        PhysicalColumnPath,
     };
 
     #[test]
@@ -69,8 +69,8 @@ mod tests {
              }| {
                 // (concert.venue_id, venue.id) -> (venue.name, None)
                 let concert_venue = vec![
-                    PhysicalColumnPathLink::relation(concerts_venue_id_column, venues_id_column),
-                    PhysicalColumnPathLink::Leaf(venues_name_column),
+                    ColumnPathLink::relation(concerts_venue_id_column, venues_id_column),
+                    ColumnPathLink::Leaf(venues_name_column),
                 ];
 
                 let join =
@@ -110,38 +110,23 @@ mod tests {
              }| {
                 // (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.name, None)
                 let concert_ca_artist = vec![
-                    PhysicalColumnPathLink::relation(
-                        concerts_id_column,
-                        concert_artists_concert_id_column,
-                    ),
-                    PhysicalColumnPathLink::relation(
-                        concert_artists_artist_id_column,
-                        artists_id_column,
-                    ),
-                    PhysicalColumnPathLink::Leaf(artists_name_column),
+                    ColumnPathLink::relation(concerts_id_column, concert_artists_concert_id_column),
+                    ColumnPathLink::relation(concert_artists_artist_id_column, artists_id_column),
+                    ColumnPathLink::Leaf(artists_name_column),
                 ];
 
                 // (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.address_id, address.id) -> (address.city, None)
                 let concert_ca_artist_address = vec![
-                    PhysicalColumnPathLink::relation(
-                        concerts_id_column,
-                        concert_artists_concert_id_column,
-                    ),
-                    PhysicalColumnPathLink::relation(
-                        concert_artists_artist_id_column,
-                        artists_id_column,
-                    ),
-                    PhysicalColumnPathLink::relation(
-                        artists_address_id_column,
-                        addresses_id_column,
-                    ),
-                    PhysicalColumnPathLink::Leaf(addresses_city_column),
+                    ColumnPathLink::relation(concerts_id_column, concert_artists_concert_id_column),
+                    ColumnPathLink::relation(concert_artists_artist_id_column, artists_id_column),
+                    ColumnPathLink::relation(artists_address_id_column, addresses_id_column),
+                    ColumnPathLink::Leaf(addresses_city_column),
                 ];
 
                 // (concert.venue_id, venue.id) -> (venue.name, None)
                 let concert_venue = vec![
-                    PhysicalColumnPathLink::relation(concerts_venue_id_column, venues_id_column),
-                    PhysicalColumnPathLink::Leaf(venues_name_column),
+                    ColumnPathLink::relation(concerts_venue_id_column, venues_id_column),
+                    ColumnPathLink::Leaf(venues_name_column),
                 ];
 
                 let join = super::compute_join(

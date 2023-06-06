@@ -279,9 +279,9 @@ impl ColumnSpec {
             let column_id = database
                 .get_column_id(column.table_id, &column.name)
                 .unwrap();
-            let relation = database
-                .get_relation_for_column(column_id)
-                .map(|relation_id| database.get_relation(relation_id));
+            let relation = column_id
+                .get_mto_relation(database)
+                .map(|relation_id| relation_id.deref(database));
 
             match relation {
                 Some(ManyToOne {

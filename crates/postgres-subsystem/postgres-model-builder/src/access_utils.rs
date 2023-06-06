@@ -20,7 +20,7 @@ use core_plugin_interface::core_model_builder::{
     typechecker::Typed,
 };
 
-use exo_sql::{Database, PhysicalColumnPath, PhysicalColumnPathLink};
+use exo_sql::{ColumnPathLink, Database, PhysicalColumnPath};
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression,
     types::{base_type, EntityType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
@@ -219,10 +219,7 @@ fn compute_selection<'a>(
         field_name: &str,
         self_type_info: &'a EntityType,
         database: &Database,
-    ) -> (
-        PhysicalColumnPathLink,
-        &'a FieldType<PostgresFieldType<EntityType>>,
-    ) {
+    ) -> (ColumnPathLink, &'a FieldType<PostgresFieldType<EntityType>>) {
         let get_field = |field_name: &str| {
             self_type_info.field_by_name(field_name).unwrap_or_else(|| {
                 panic!("Field {field_name} not found while processing access rules")

@@ -220,7 +220,7 @@ mod tests {
     use core_resolver::context::Request;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::system_resolver::SystemResolver;
-    use exo_sql::PhysicalColumnPathLink;
+    use exo_sql::ColumnPathLink;
     use serde_json::{json, Value};
 
     use super::*;
@@ -315,19 +315,19 @@ mod tests {
         let dept2_id_column_id = get_column_id("dept2_id");
 
         let published_column_path = PhysicalColumnPath {
-            path: vec![PhysicalColumnPathLink::Leaf(published_column_id)],
+            path: vec![ColumnPathLink::Leaf(published_column_id)],
         };
 
         let owner_id_column_path = PhysicalColumnPath {
-            path: vec![PhysicalColumnPathLink::Leaf(owner_id_column_id)],
+            path: vec![ColumnPathLink::Leaf(owner_id_column_id)],
         };
 
         let dept1_id_column_path = PhysicalColumnPath {
-            path: vec![PhysicalColumnPathLink::Leaf(dept1_id_column_id)],
+            path: vec![ColumnPathLink::Leaf(dept1_id_column_id)],
         };
 
         let dept2_id_column_path = PhysicalColumnPath {
-            path: vec![PhysicalColumnPathLink::Leaf(dept2_id_column_id)],
+            path: vec![ColumnPathLink::Leaf(dept2_id_column_id)],
         };
 
         // Create an empty SystemResolver. Since in tests we never invoke the resolver (since we don't have @query context),

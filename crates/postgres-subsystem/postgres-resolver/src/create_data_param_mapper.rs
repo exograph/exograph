@@ -117,9 +117,8 @@ async fn map_single<'a>(
                 }
 
                 PostgresRelation::ManyToOne(ManyToOneRelation { relation_id, .. }) => {
-                    let ManyToOne { self_column_id, .. } =
-                        subsystem.database.get_relation(*relation_id);
-                    map_self_column(*self_column_id, field, field_arg, subsystem).await
+                    let ManyToOne { self_column_id, .. } = relation_id.deref(&subsystem.database);
+                    map_self_column(self_column_id, field, field_arg, subsystem).await
                 }
 
                 PostgresRelation::OneToMany(one_to_many_relation) => {
