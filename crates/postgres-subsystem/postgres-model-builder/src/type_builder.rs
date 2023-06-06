@@ -101,7 +101,7 @@ pub(crate) fn build_expanded(
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_type_set_column_refernece(c, resolved_env, building);
+            expand_type_relations(c, resolved_env, building);
         }
     }
 
@@ -218,7 +218,7 @@ fn expand_type_no_fields(
     existing_type.aggregate_query = aggregate_query;
 }
 
-fn expand_type_set_column_refernece(
+fn expand_type_relations(
     resolved_type: &ResolvedCompositeType,
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
@@ -226,53 +226,26 @@ fn expand_type_set_column_refernece(
     let table_name = &resolved_type.table_name;
     let table_id = building.database.get_table_id(table_name).unwrap();
 
-    let relations: Vec<_> = resolved_type
-        .fields
-        .iter()
-        .flat_map(|field| {
-            if field.self_column {
-                let self_column_id = building
-                    .database
-                    .get_column_id(table_id, &field.column_name)
-                    .unwrap();
-                compute_many_to_one_relation(field, self_column_id, resolved_env, building)
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    building.database.relations.extend(relations.into_iter());
-
-    let mut column_reference_type_mapping: Vec<(String, PhysicalColumnType)> = vec![];
-
     resolved_type.fields.iter().for_each(|field| {
         if field.self_column {
             let self_column_id = building
                 .database
                 .get_column_id(table_id, &field.column_name)
                 .unwrap();
-            if let Some(reference_column_type) =
-                compute_many_to_one_column_type(field, self_column_id, resolved_env, building)
+            if let Some(relation) =
+                compute_many_to_one_relation(field, self_column_id, resolved_env, building)
             {
-                column_reference_type_mapping
-                    .push((field.column_name.clone(), reference_column_type));
+                // In the earlier phase, we set the type of a many-to-one column to a placeholder value
+                // Now that we have the foreign type, we can set the type of the column to the foreign type's PK
+                let foreign_column_typ = &relation
+                    .foreign_pk_column_id
+                    .get_column(&building.database)
+                    .typ;
+                building.database.get_column_mut(self_column_id).typ = foreign_column_typ.clone();
+                building.database.relations.push(relation);
             }
         }
     });
-
-    column_reference_type_mapping
-        .into_iter()
-        .for_each(|(column_name, typ)| {
-            let mut column = building
-                .database
-                .get_table_mut(table_id)
-                .columns
-                .iter_mut()
-                .find(|column| column.name == column_name)
-                .unwrap();
-            column.typ = typ;
-        });
 }
 
 /// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can
@@ -614,7 +587,7 @@ fn create_column(
                     Some(PhysicalColumn {
                         table_id,
                         name: field.column_name.to_string(),
-                        typ: PhysicalColumnType::Boolean, // A placeholder value. Will be resolve in the next phase (see compute_reference_column_type)
+                        typ: PhysicalColumnType::Boolean, // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
                         is_pk: false,
                         is_auto_increment: false,
                         is_nullable: optional,
@@ -704,49 +677,6 @@ fn compute_many_to_one_relation(
                         self_column_id,
                         foreign_pk_column_id,
                     })
-                }
-                _ => None,
-            }
-        }
-        _ => None,
-    }
-}
-
-fn compute_many_to_one_column_type(
-    field: &ResolvedField,
-    self_column_id: ColumnId,
-    env: &ResolvedTypeEnv,
-    building: &SystemContextBuilding,
-) -> Option<PhysicalColumnType> {
-    let typ = match &field.typ {
-        FieldType::Optional(inner_typ) => inner_typ.as_ref(),
-        _ => &field.typ,
-    };
-    match typ {
-        FieldType::Plain(ResolvedFieldType { type_name, .. }) => {
-            let field_type = env.get_by_key(type_name).unwrap();
-            match field_type {
-                ResolvedType::Composite(ct) => {
-                    // Column from the current table (but of the type of the pk column of the other table)
-                    // and it refers to the pk column in the other table.
-
-                    let foreign_pk_field = ct.pk_field().unwrap();
-                    let foreign_table_id = building.database.get_table_id(&ct.table_name).unwrap();
-                    let foreign_pk_column_id = building
-                        .database
-                        .get_pk_column_id(foreign_table_id)
-                        .unwrap();
-
-                    Some(PhysicalColumnType::ManyToOne(
-                        ManyToOne {
-                            self_column_id,
-                            foreign_pk_column_id,
-                        },
-                        Box::new(determine_column_type(
-                            &foreign_pk_field.typ.deref(env).as_primitive(),
-                            field,
-                        )),
-                    ))
                 }
                 _ => None,
             }

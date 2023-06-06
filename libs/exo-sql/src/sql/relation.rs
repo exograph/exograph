@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{ColumnId, Database, PhysicalColumnPathLink};
+use crate::{ColumnId, PhysicalColumnPathLink};
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct OneToMany {
@@ -41,26 +41,4 @@ pub struct ManyToOneRelationId {
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct OneToManyRelationId {
     pub underlying: ManyToOneRelationId,
-}
-
-impl ManyToOneRelationId {
-    pub fn column_path_link(&self, database: &Database) -> PhysicalColumnPathLink {
-        let ManyToOne {
-            self_column_id,
-            foreign_pk_column_id,
-        } = database.get_relation(*self);
-
-        PhysicalColumnPathLink::relation(*self_column_id, *foreign_pk_column_id)
-    }
-}
-
-impl OneToManyRelationId {
-    pub fn column_path_link(&self, database: &Database) -> PhysicalColumnPathLink {
-        let ManyToOne {
-            self_column_id,
-            foreign_pk_column_id,
-        } = database.get_relation(self.underlying);
-
-        PhysicalColumnPathLink::relation(*foreign_pk_column_id, *self_column_id)
-    }
 }

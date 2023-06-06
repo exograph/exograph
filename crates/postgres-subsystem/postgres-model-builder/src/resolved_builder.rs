@@ -212,13 +212,6 @@ impl ResolvedType {
         }
     }
 
-    pub fn as_primitive(&self) -> PrimitiveType {
-        match &self {
-            ResolvedType::Primitive(p) => p.clone(),
-            _ => panic!("Not a primitive: {self:?}"),
-        }
-    }
-
     // useful for relation creation
     pub fn as_composite(&self) -> &ResolvedCompositeType {
         match &self {

@@ -10,8 +10,7 @@
 use std::fmt::Write;
 
 use crate::database_error::DatabaseError;
-use crate::sql::relation::ManyToOne;
-use crate::{ColumnId, Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
+use crate::{Database, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType};
 
 use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
@@ -276,9 +275,37 @@ impl ColumnSpec {
     }
 
     pub(crate) fn from_physical(column: PhysicalColumn, database: &Database) -> ColumnSpec {
+        let typ = {
+            let column_id = database
+                .get_column_id(column.table_id, &column.name)
+                .unwrap();
+            let relation = database
+                .get_relation_for_column(column_id)
+                .map(|relation_id| database.get_relation(relation_id));
+
+            match relation {
+                Some(ManyToOne {
+                    foreign_pk_column_id,
+                    ..
+                }) => {
+                    let foreign_pk_column = foreign_pk_column_id.get_column(database);
+                    let foreign_table = database.get_table(foreign_pk_column.table_id);
+
+                    ColumnTypeSpec::ColumnReference {
+                        foreign_table_name: foreign_table.name.clone(),
+                        foreign_pk_column_name: foreign_pk_column.name.clone(),
+                        foreign_pk_type: Box::new(ColumnTypeSpec::from_physical(
+                            foreign_pk_column.typ.clone(),
+                        )),
+                    }
+                }
+                None => ColumnTypeSpec::from_physical(column.typ),
+            }
+        };
+
         ColumnSpec {
             name: column.name,
-            typ: ColumnTypeSpec::from_physical(column.typ, database),
+            typ,
             is_pk: column.is_pk,
             is_auto_increment: column.is_auto_increment,
             is_nullable: column.is_nullable,
@@ -424,41 +451,14 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Array { typ } => PhysicalColumnType::Array {
                 typ: Box::new(typ.to_database_type()),
             },
-            ColumnTypeSpec::ColumnReference { .. } => {
-                // Since we don't have `Database`, we can't compute the column_id
-                // so we just use a placeholder value, which will be replaced later (see `to_database_reference_type`)
-                PhysicalColumnType::Boolean
-            }
+            ColumnTypeSpec::ColumnReference {
+                foreign_pk_type, ..
+            } => foreign_pk_type.to_database_type(),
             ColumnTypeSpec::Float { bits } => PhysicalColumnType::Float { bits: *bits },
             ColumnTypeSpec::Numeric { precision, scale } => PhysicalColumnType::Numeric {
                 precision: *precision,
                 scale: *scale,
             },
-        }
-    }
-
-    pub fn to_database_reference_type(
-        &self,
-        self_column_id: ColumnId,
-        database: &Database,
-    ) -> Option<PhysicalColumnType> {
-        if let ColumnTypeSpec::ColumnReference {
-            foreign_table_name,
-            foreign_pk_type,
-            ..
-        } = self
-        {
-            let foreign_table_id = database.get_table_id(foreign_table_name).unwrap();
-            let foreign_pk_column_id = database.get_pk_column_id(foreign_table_id).unwrap();
-            Some(PhysicalColumnType::ManyToOne(
-                ManyToOne {
-                    self_column_id,
-                    foreign_pk_column_id,
-                },
-                Box::new(foreign_pk_type.to_database_type()),
-            ))
-        } else {
-            None
         }
     }
 
@@ -720,7 +720,7 @@ impl ColumnTypeSpec {
         }
     }
 
-    pub fn from_physical(typ: PhysicalColumnType, database: &Database) -> ColumnTypeSpec {
+    pub fn from_physical(typ: PhysicalColumnType) -> ColumnTypeSpec {
         match typ {
             PhysicalColumnType::Int { bits } => ColumnTypeSpec::Int { bits },
             PhysicalColumnType::String { max_length } => ColumnTypeSpec::String { max_length },
@@ -738,30 +738,8 @@ impl ColumnTypeSpec {
             PhysicalColumnType::Blob => ColumnTypeSpec::Blob,
             PhysicalColumnType::Uuid => ColumnTypeSpec::Uuid,
             PhysicalColumnType::Array { typ } => ColumnTypeSpec::Array {
-                typ: Box::new(ColumnTypeSpec::from_physical(*typ, database)),
+                typ: Box::new(ColumnTypeSpec::from_physical(*typ)),
             },
-            PhysicalColumnType::ManyToOne(
-                ManyToOne {
-                    foreign_pk_column_id,
-                    ..
-                },
-                foreign_pk_type,
-            ) => {
-                let foreign_table_name = database
-                    .get_table(foreign_pk_column_id.table_id)
-                    .name
-                    .clone();
-                let foreign_pk_column_name = foreign_pk_column_id.get_column(database).name.clone();
-
-                ColumnTypeSpec::ColumnReference {
-                    foreign_table_name,
-                    foreign_pk_column_name,
-                    foreign_pk_type: Box::new(ColumnTypeSpec::from_physical(
-                        *foreign_pk_type,
-                        database,
-                    )),
-                }
-            }
             PhysicalColumnType::Float { bits } => ColumnTypeSpec::Float { bits },
             PhysicalColumnType::Numeric { precision, scale } => {
                 ColumnTypeSpec::Numeric { precision, scale }

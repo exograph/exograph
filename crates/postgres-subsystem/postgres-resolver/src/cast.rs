@@ -111,11 +111,6 @@ fn cast_number(
                 "Number literals cannot be specified for decimal fields".into(),
             ));
         }
-        PhysicalColumnType::ManyToOne(_, foreign_pk_type) => {
-            // TODO assumes that `id` columns are always integers
-            cast_number(number, foreign_pk_type)?
-        }
-        // TODO: Expand for other number types such as float
         _ => {
             return Err(CastError::Generic(
                 "Unexpected destination_type for number value".into(),
@@ -255,8 +250,6 @@ fn cast_string(
         }
 
         PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
-
-        PhysicalColumnType::ManyToOne(_, foreign_pk_type) => cast_string(string, foreign_pk_type)?,
 
         _ => SQLParamContainer::new(string.to_owned()),
     };

@@ -9,7 +9,7 @@
 
 use std::fmt::{Debug, Formatter};
 
-use crate::{ColumnId, ManyToOne, PhysicalTable};
+use crate::{ColumnId, ManyToOne, PhysicalColumn, PhysicalTable};
 
 use serde::{Deserialize, Serialize};
 use typed_generational_arena::{Arena, IgnoreGeneration, Index};
@@ -80,6 +80,11 @@ impl Database {
             .iter()
             .position(|relation| relation.self_column_id == column_id)
             .map(|index| ManyToOneRelationId { index })
+    }
+
+    pub fn get_column_mut(&mut self, column_id: ColumnId) -> &mut PhysicalColumn {
+        let table = self.get_table_mut(column_id.table_id);
+        &mut table.columns[column_id.column_index]
     }
 }
 
