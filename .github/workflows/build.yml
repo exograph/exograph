@@ -55,7 +55,7 @@ jobs:
           key: ${{ matrix.target }}
       - name: Build
         run: |
-          cargo build --target ${{ matrix.target }} --release ${{ matrix.cross_flag }} ${{ matrix.vendor_openssl_flag }}
+          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release ${{ matrix.cross_flag }} ${{ matrix.vendor_openssl_flag }}
           mkdir -p dist
           cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
           cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
