@@ -20,7 +20,7 @@ jsonwebtoken.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 cookie = "0.16"
-tokio.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
 elsa = "1.8.1"
 
 tracing.workspace = true

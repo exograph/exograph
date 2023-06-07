@@ -27,6 +27,7 @@ const SSL_VERIFY_PARAM: &str = "EXO_SSL_VERIFY"; // boolean (default: true)
 thread_local! {
     pub static LOCAL_URL: RefCell<Option<String>> = RefCell::new(None);
     pub static LOCAL_CONNECTION_POOL_SIZE: RefCell<Option<usize>> = RefCell::new(None);
+    pub static LOCAL_CHECK_CONNECTION_ON_STARTUP: RefCell<Option<bool>> = RefCell::new(None);
 }
 
 pub struct DatabaseClient {
@@ -41,7 +42,7 @@ struct SslConfig {
 
 impl<'a> DatabaseClient {
     // pool_size_override useful when we want to explicitly control the pool size (for example, to 1, when importing database schema)
-    pub fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
+    pub async fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
         let url = LOCAL_URL
             .with(|f| f.borrow().clone())
             .or_else(|| env::var(URL_PARAM).ok())
@@ -62,21 +63,25 @@ impl<'a> DatabaseClient {
                 .unwrap_or(10)
         });
 
-        let check_connection = env::var(CHECK_CONNECTION_ON_STARTUP)
-            .ok()
-            .map(|pool_str| pool_str.parse::<bool>().unwrap())
+        let check_connection = LOCAL_CHECK_CONNECTION_ON_STARTUP
+            .with(|f| *f.borrow())
+            .or_else(|| {
+                env::var(CHECK_CONNECTION_ON_STARTUP)
+                    .ok()
+                    .map(|check| check.parse::<bool>().expect("Should be true or false"))
+            })
             .unwrap_or(true);
 
-        Self::from_helper(pool_size, check_connection, &url, user, password)
+        Self::from_helper(pool_size, check_connection, &url, user, password).await
     }
 
-    pub fn from_db_url(url: &str) -> Result<Self, DatabaseError> {
-        Self::from_helper(1, true, url, None, None)
+    pub async fn from_db_url(url: &str) -> Result<Self, DatabaseError> {
+        Self::from_helper(1, true, url, None, None).await
     }
 
-    fn from_helper(
+    async fn from_helper(
         pool_size: usize,
-        _check_connection: bool,
+        check_connection: bool,
         url: &str,
         user: Option<String>,
         password: Option<String>,
@@ -98,7 +103,7 @@ impl<'a> DatabaseClient {
         }
 
         if config.get_user().is_none() {
-            return Err(DatabaseError::Config("Database user must be specified through as a part of EXO_POSTGRES_URL or through EXO_POSTGRES_USER".into()));
+            return Err(DatabaseError::Config("Database user must be specified as a part of EXO_POSTGRES_URL or through EXO_POSTGRES_USER".into()));
         }
 
         let manager_config = ManagerConfig {
@@ -123,13 +128,16 @@ impl<'a> DatabaseClient {
             None => Manager::from_config(config, tokio_postgres::NoTls, manager_config),
         };
 
-        let pool = Pool::builder(manager).max_size(pool_size).build().unwrap();
+        let pool = Pool::builder(manager)
+            .max_size(pool_size)
+            .build()
+            .expect("Failed to create DB pool");
 
         let db = Self { pool };
 
-        // if check_connection {
-        //     let _ = db.get_client().await?;
-        // }
+        if check_connection {
+            let _ = db.get_client().await?;
+        }
 
         Ok(db)
     }

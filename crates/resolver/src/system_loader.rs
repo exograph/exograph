@@ -30,32 +30,34 @@ thread_local! {
     pub static LOCAL_ENVIRONMENT: RefCell<Option<std::collections::HashMap<String, String>>> = RefCell::new(None);
 }
 
+pub type StaticLoaders = Vec<Box<dyn SubsystemLoader>>;
+
 pub struct SystemLoader;
 
 impl SystemLoader {
-    pub fn load(
+    pub async fn load(
         read: impl std::io::Read,
-        static_loaders: Vec<Box<dyn SubsystemLoader>>,
+        static_loaders: StaticLoaders,
     ) -> Result<SystemResolver, SystemLoadingError> {
         let serialized_system = SerializableSystem::deserialize_reader(read)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
-        Self::process(serialized_system, static_loaders)
+        Self::process(serialized_system, static_loaders).await
     }
 
-    pub fn load_from_bytes(
+    pub async fn load_from_bytes(
         bytes: Vec<u8>,
-        static_loaders: Vec<Box<dyn SubsystemLoader>>,
+        static_loaders: StaticLoaders,
     ) -> Result<SystemResolver, SystemLoadingError> {
         let serialized_system = SerializableSystem::deserialize(bytes)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
-        Self::process(serialized_system, static_loaders)
+        Self::process(serialized_system, static_loaders).await
     }
 
-    fn process(
+    async fn process(
         serialized_system: SerializableSystem,
-        mut static_loaders: Vec<Box<dyn SubsystemLoader>>,
+        mut static_loaders: StaticLoaders,
     ) -> Result<SystemResolver, SystemLoadingError> {
         let SerializableSystem {
             subsystems,
@@ -63,39 +65,45 @@ impl SystemLoader {
             mutation_interception_map,
         } = serialized_system;
 
-        // First build subsystem resolvers
-        let subsystem_resolvers: Result<Vec<_>, _> = subsystems
-            .into_iter()
-            .map(|serialized_subsystem| {
-                let subsystem_id = serialized_subsystem.id;
-                // First try to load a static loader
+        fn get_loader(
+            static_loaders: &mut StaticLoaders,
+            subsystem_id: String,
+        ) -> Result<Box<dyn SubsystemLoader>, SystemLoadingError> {
+            // First try to find a static loader
+            let static_loader = {
                 let index = static_loaders
                     .iter()
                     .position(|loader| loader.id() == subsystem_id);
 
-                let subsystem_loader = match index {
-                    Some(index) => {
-                        debug!("Using static loader for {}", subsystem_id);
-                        static_loaders.remove(index)
-                    }
-                    None => {
-                        // Then try to load a dynamic loader
-                        debug!("Using dynamic loader for {}", subsystem_id);
-                        let subsystem_library_name = format!("{subsystem_id}_resolver_dynamic");
+                index.map(|index| static_loaders.remove(index))
+            };
 
-                        core_plugin_interface::interface::load_subsystem_loader(
-                            &subsystem_library_name,
-                        )?
-                    }
-                };
+            if let Some(loader) = static_loader {
+                debug!("Using static loader for {}", subsystem_id);
+                Ok(loader)
+            } else {
+                // Otherwise try to load a dynamic loader
+                debug!("Using dynamic loader for {}", subsystem_id);
+                let subsystem_library_name = format!("{subsystem_id}_resolver_dynamic");
 
-                subsystem_loader
-                    .init(serialized_subsystem.serialized_subsystem)
-                    .map_err(SystemLoadingError::SubsystemLoadingError)
-            })
-            .collect();
+                let loader = core_plugin_interface::interface::load_subsystem_loader(
+                    &subsystem_library_name,
+                )?;
+                Ok(loader)
+            }
+        }
 
-        let mut subsystem_resolvers = subsystem_resolvers?;
+        // First build subsystem resolvers
+
+        let mut subsystem_resolvers = vec![];
+        for serialized_subsystem in subsystems {
+            let loader = get_loader(&mut static_loaders, serialized_subsystem.id)?;
+            let resolver = loader
+                .init(serialized_subsystem.serialized_subsystem)
+                .await
+                .map_err(SystemLoadingError::SubsystemLoadingError)?;
+            subsystem_resolvers.push(resolver);
+        }
 
         // Then use those resolvers to build the schema
         let schema = Schema::new_from_resolvers(&subsystem_resolvers);

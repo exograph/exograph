@@ -26,12 +26,12 @@ mod logging_tracing;
 ///
 /// # Exit codes
 /// - 1 - If the exo_ir file doesn't exist or can't be loaded.
-pub fn init() -> SystemResolver {
+pub async fn init() -> SystemResolver {
     logging_tracing::init();
 
     let exo_ir_file = get_exo_ir_file_name();
 
-    create_system_resolver_or_exit(&exo_ir_file, create_static_loaders())
+    create_system_resolver_or_exit(&exo_ir_file, create_static_loaders()).await
 }
 
 pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {

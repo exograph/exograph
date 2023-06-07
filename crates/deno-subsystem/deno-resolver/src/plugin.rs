@@ -43,12 +43,13 @@ pub type ExoDenoExecutorPool = DenoExecutorPool<
 
 pub struct DenoSubsystemLoader {}
 
+#[async_trait]
 impl SubsystemLoader for DenoSubsystemLoader {
     fn id(&self) -> &'static str {
         "deno"
     }
 
-    fn init<'a>(
+    async fn init(
         &self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {

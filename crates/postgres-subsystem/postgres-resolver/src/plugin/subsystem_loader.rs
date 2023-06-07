@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use super::PostgresSubsystemResolver;
+use async_trait::async_trait;
 use core_plugin_interface::{
     core_resolver::plugin::SubsystemResolver,
     interface::{SubsystemLoader, SubsystemLoadingError},
@@ -18,18 +19,20 @@ use postgres_model::subsystem::PostgresSubsystem;
 
 pub struct PostgresSubsystemLoader {}
 
+#[async_trait]
 impl SubsystemLoader for PostgresSubsystemLoader {
     fn id(&self) -> &'static str {
         "postgres"
     }
 
-    fn init<'a>(
+    async fn init(
         &self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
         let subsystem = PostgresSubsystem::deserialize(serialized_subsystem)?;
 
         let database_client = DatabaseClient::from_env(None)
+            .await
             .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?;
         let executor = DatabaseExecutor { database_client };
 

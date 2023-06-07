@@ -84,13 +84,14 @@ pub trait SubsystemBuilder {
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError>;
 }
 
+#[async_trait]
 pub trait SubsystemLoader {
     /// Unique string to identify the subsystem by. Should be shared with the corresponding
     /// [SubsystemBuilder].
     fn id(&self) -> &'static str;
 
     /// Loads and initializes the subsystem, producing a [SubsystemResolver].
-    fn init(
+    async fn init(
         &self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError>;
@@ -172,7 +173,7 @@ pub fn load_subsystem_builder(
 /// Loads a subsystem loader from a dynamic library.
 pub fn load_subsystem_loader(
     library_name: &str,
-) -> Result<Box<dyn SubsystemLoader>, LibraryLoadingError> {
+) -> Result<Box<dyn SubsystemLoader + Send + Sync>, LibraryLoadingError> {
     // search executable directory for library
     // TODO: we should try to load from sources LD_LIBRARY_PATH first
     let mut library_path = current_exe()?;

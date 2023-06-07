@@ -747,6 +747,10 @@ mod tests {
             "postgres://postgres:postgres@localhost:5432/exo_test",
         );
 
-        loader.init(subsystem).unwrap()
+        env::set_var("EXO_CHECK_CONNECTION_ON_STARTUP", "false");
+        loader
+            .init(subsystem)
+            .await
+            .expect("Failed to initialize postgres subsystem")
     }
 }
