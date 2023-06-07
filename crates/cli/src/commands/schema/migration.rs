@@ -125,7 +125,7 @@ impl Migration {
         db_url: Option<&str>,
         allow_destructive_changes: bool,
     ) -> Result<(), anyhow::Error> {
-        let database = open_database(db_url)?;
+        let database = open_database(db_url).await?;
         let mut client = database.get_client().await?;
         let transaction = client.transaction().await?;
         for MigrationStatement {
@@ -176,7 +176,7 @@ impl MigrationStatement {
 async fn extract_db_schema(
     db_url: Option<&str>,
 ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
-    let database = open_database(db_url)?;
+    let database = open_database(db_url).await?;
     let client = database.get_client().await?;
 
     DatabaseSpec::from_live_database(&client).await
@@ -189,7 +189,7 @@ async fn extract_model_schema(model_path: &PathBuf) -> Result<DatabaseSpec, Pars
 }
 
 pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
-    let database = open_database(db_url)?;
+    let database = open_database(db_url).await?;
     let client = database.get_client().await?;
     client
         .execute("DROP SCHEMA public CASCADE", &[])
@@ -203,11 +203,11 @@ pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
     Ok(())
 }
 
-pub fn open_database(database: Option<&str>) -> Result<DatabaseClient, DatabaseError> {
+pub async fn open_database(database: Option<&str>) -> Result<DatabaseClient, DatabaseError> {
     if let Some(database) = database {
-        Ok(DatabaseClient::from_db_url(database)?)
+        Ok(DatabaseClient::from_db_url(database).await?)
     } else {
-        Ok(DatabaseClient::from_env(Some(1))?)
+        Ok(DatabaseClient::from_env(Some(1)).await?)
     }
 }
 
@@ -693,8 +693,8 @@ mod tests {
                 module RsvpModule {
                     type Rsvp {
                         @pk id: Int = autoIncrement()
-                        @unique("email_event_id") email: String 
-                        @unique("email_event_id") event_id: Int 
+                        @unique("email_event_id") email: String
+                        @unique("email_event_id") event_id: Int
                     }
                 }
             "#,
@@ -745,7 +745,7 @@ mod tests {
                 module RsvpModule {
                     type Rsvp {
                         @pk id: Int = autoIncrement()
-                        @unique("email_event_id") email: String 
+                        @unique("email_event_id") email: String
                         event_id: Int
                     }
                 }
@@ -755,8 +755,8 @@ mod tests {
                 module RsvpModule {
                     type Rsvp {
                         @pk id: Int = autoIncrement()
-                        @unique("email_event_id") email: String 
-                        @unique("email_event_id") event_id: Int 
+                        @unique("email_event_id") email: String
+                        @unique("email_event_id") event_id: Int
                     }
                 }
             "#,
@@ -921,7 +921,7 @@ mod tests {
                         level: String
                         message: String
                     }
-                } 
+                }
             "#,
             vec![
                 (

@@ -3,6 +3,8 @@ name: Build Binaries
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - '*'
 
 jobs:
   # Build and packages all the things
@@ -53,12 +55,25 @@ jobs:
           key: ${{ matrix.target }}
       - name: Build
         run: |
-          cargo build --target ${{ matrix.target }} --release ${{ matrix.cross_flag }} ${{ matrix.vendor_openssl_flag }}
+          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release ${{ matrix.cross_flag }} ${{ matrix.vendor_openssl_flag }}
           mkdir -p dist
           cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
           cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
+      - name: Create zip of binaries
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cp LICENSE dist/
+          zip dist/exo-${{matrix.target}}.zip dist/*
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: exograph-${{ matrix.target }}
-          path: dist
+          name: exograph-${{matrix.target}}.zip
+          path: dist/exo-${{matrix.target}}.zip
+      - name: Upload zip to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/exo-${{matrix.target}}.zip
+          asset_name: exograph-${{matrix.target}}.zip
+          tag: ${{ github.ref }}

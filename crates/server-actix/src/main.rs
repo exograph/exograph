@@ -26,7 +26,7 @@ use std::{env, process::exit};
 async fn main() -> std::io::Result<()> {
     let start_time = time::SystemTime::now();
 
-    let system_resolver = web::Data::new(server_common::init());
+    let system_resolver = web::Data::new(server_common::init().await);
 
     let server_port = env::var("EXO_SERVER_PORT")
         .map(|port_str| {

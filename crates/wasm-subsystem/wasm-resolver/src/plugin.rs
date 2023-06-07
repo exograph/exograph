@@ -28,12 +28,13 @@ use wasm_model::{module::ModuleMethod, subsystem::WasmSubsystem};
 
 pub struct WasmSubsystemLoader {}
 
+#[async_trait]
 impl SubsystemLoader for WasmSubsystemLoader {
     fn id(&self) -> &'static str {
         "wasm"
     }
 
-    fn init<'a>(
+    async fn init(
         &self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {

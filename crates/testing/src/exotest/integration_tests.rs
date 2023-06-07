@@ -100,36 +100,35 @@ pub(crate) async fn run_testfile(
         let server = {
             let static_loaders = server_common::create_static_loaders();
 
-            let exo_ir_file = testfile.exo_ir_file_path(project_dir);
-            LOCAL_URL.with(|url| {
-                // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
-                url.borrow_mut().replace(format!(
-                    "{}?options=-c%20TimeZone%3DUTC%2B00",
-                    db_instance.url()
-                ));
+            let exo_ir_file = testfile.exo_ir_file_path(project_dir).display().to_string();
+            LOCAL_URL
+                .with(|url| {
+                    // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
+                    url.borrow_mut().replace(format!(
+                        "{}?options=-c%20TimeZone%3DUTC%2B00",
+                        db_instance.url()
+                    ));
 
-                LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
-                    // Otherwise we get a "too many connections" error
-                    pool_size.borrow_mut().replace(1);
+                    LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
+                        // Otherwise we get a "too many connections" error
+                        pool_size.borrow_mut().replace(1);
 
-                    LOCAL_JWT_SECRET.with(|jwt| {
-                        jwt.borrow_mut().replace(jwtsecret.clone());
+                        LOCAL_JWT_SECRET.with(|jwt| {
+                            jwt.borrow_mut().replace(jwtsecret.clone());
 
-                        LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-                            allow.borrow_mut().replace(true);
+                            LOCAL_ALLOW_INTROSPECTION.with(|allow| {
+                                allow.borrow_mut().replace(true);
 
-                            LOCAL_ENVIRONMENT.with(|env| {
-                                env.borrow_mut().replace(extra_envs.clone());
+                                LOCAL_ENVIRONMENT.with(|env| {
+                                    env.borrow_mut().replace(extra_envs.clone());
 
-                                create_system_resolver(
-                                    &exo_ir_file.display().to_string(),
-                                    static_loaders,
-                                )
+                                    create_system_resolver(&exo_ir_file, static_loaders)
+                                })
                             })
                         })
                     })
                 })
-            })?
+                .await?
         };
 
         TestfileContext {

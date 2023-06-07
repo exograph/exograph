@@ -16,7 +16,7 @@ use exo_deno::{
     deno_error::DenoError,
     Arg, DenoModule, DenoModuleSharedState, UserCode,
 };
-use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
+use exo_sql::{LOCAL_CHECK_CONNECTION_ON_STARTUP, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
 use include_dir::{include_dir, Dir};
 use resolver::{create_system_resolver, LOCAL_ALLOW_INTROSPECTION};
 use serde_json::Value;
@@ -36,25 +36,31 @@ pub(crate) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
     let log_prefix = format!("(introspection: {})\n :: ", model_path.display()).purple();
     println!("{log_prefix} Running introspection tests...");
 
+    let exo_ir_file = format!("{}/target/index.exo_ir", model_path.display()).to_string();
+
     let server = {
         let static_loaders = server_common::create_static_loaders();
 
-        LOCAL_URL.with(|url| {
-            url.borrow_mut()
-                .replace("postgres://a@dummy-value".to_string());
+        LOCAL_URL
+            .with(|url| {
+                url.borrow_mut()
+                    .replace("postgres://a@dummy-value".to_string());
 
-            LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
-                pool_size.borrow_mut().replace(1);
+                LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
+                    pool_size.borrow_mut().replace(1);
 
-                LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-                    allow.borrow_mut().replace(true);
+                    LOCAL_ALLOW_INTROSPECTION.with(|allow| {
+                        allow.borrow_mut().replace(true);
 
-                    let exo_ir_file = format!("{}/target/index.exo_ir", model_path.display());
+                        LOCAL_CHECK_CONNECTION_ON_STARTUP.with(|check_connection| {
+                            check_connection.borrow_mut().replace(false);
 
-                    create_system_resolver(&exo_ir_file, static_loaders)
+                            create_system_resolver(&exo_ir_file, static_loaders)
+                        })
+                    })
                 })
             })
-        })?
+            .await?
     };
 
     let result = check_introspection(&server).await?;
