@@ -11,9 +11,8 @@ use std::pin::Pin;
 use std::process::exit;
 use std::{fs::File, io::BufReader, path::Path};
 
-use crate::system_loader::SystemLoadingError;
+use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
-use core_plugin_interface::interface::SubsystemLoader;
 use core_resolver::QueryResponse;
 
 use super::system_loader::SystemLoader;
@@ -158,9 +157,9 @@ pub fn get_endpoint_http_path() -> String {
     std::env::var("EXO_ENDPOINT_HTTP_PATH").unwrap_or_else(|_| "/graphql".to_string())
 }
 
-pub fn create_system_resolver(
+pub async fn create_system_resolver(
     exo_ir_file: &str,
-    static_loaders: Vec<Box<dyn SubsystemLoader>>,
+    static_loaders: StaticLoaders,
 ) -> Result<SystemResolver, SystemLoadingError> {
     if !Path::new(&exo_ir_file).exists() {
         return Err(SystemLoadingError::FileNotFound(exo_ir_file.to_string()));
@@ -169,24 +168,24 @@ pub fn create_system_resolver(
         Ok(file) => {
             let exo_ir_file_buffer = BufReader::new(file);
 
-            SystemLoader::load(exo_ir_file_buffer, static_loaders)
+            SystemLoader::load(exo_ir_file_buffer, static_loaders).await
         }
         Err(e) => Err(SystemLoadingError::FileOpen(exo_ir_file.into(), e)),
     }
 }
 
-pub fn create_system_resolver_from_serialized_bytes(
+pub async fn create_system_resolver_from_serialized_bytes(
     bytes: Vec<u8>,
-    static_loaders: Vec<Box<dyn SubsystemLoader>>,
+    static_loaders: StaticLoaders,
 ) -> Result<SystemResolver, SystemLoadingError> {
-    SystemLoader::load_from_bytes(bytes, static_loaders)
+    SystemLoader::load_from_bytes(bytes, static_loaders).await
 }
 
-pub fn create_system_resolver_or_exit(
+pub async fn create_system_resolver_or_exit(
     exo_ir_file: &str,
-    static_loaders: Vec<Box<dyn SubsystemLoader>>,
+    static_loaders: StaticLoaders,
 ) -> SystemResolver {
-    match create_system_resolver(exo_ir_file, static_loaders) {
+    match create_system_resolver(exo_ir_file, static_loaders).await {
         Ok(system_resolver) => system_resolver,
         Err(error) => {
             println!("{error}");
