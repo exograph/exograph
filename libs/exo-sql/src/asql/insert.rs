@@ -25,7 +25,7 @@
 
 use super::select::AbstractSelect;
 use crate::sql::column::Column;
-use crate::{ColumnId, TableId};
+use crate::{ColumnId, OneToManyId, TableId};
 
 #[derive(Debug)]
 pub struct AbstractInsert {
@@ -61,11 +61,8 @@ impl InsertionRow {
 
 #[derive(Debug)]
 pub struct NestedInsertion {
-    /// The parent table's pk column (for example the `venues.id` table in `Venue <-> [Concert]`)
-    pub parent_pk_column_id: ColumnId,
-    /// The column in the table being inserted that refers to the the parent table (`concerts.venue_id` which refers to `venues.id`)
-    pub self_column_id: ColumnId,
-    /// The insertions to be performed on the nested table ([{title: "c1", published: true, price: 1.2}, {title: "c2", published: false, price: 2.4}]}])
+    /// The relation with the parent element (the self_pk_column_id is the parent table's pk column and the self_column_id is the column in the table being inserted that refers to the the parent table)
+    pub relation_id: OneToManyId,
     pub insertions: Vec<InsertionRow>,
 }
 

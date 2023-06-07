@@ -9,7 +9,7 @@
 
 #![cfg(test)]
 
-use crate::schema::test_helper::{int_column, pk_column, pk_reference_column, string_column};
+use crate::schema::test_helper::{pk_column, pk_reference_column, string_column};
 use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
 use crate::{ColumnId, Database, TableId};
 
@@ -47,18 +47,11 @@ impl TestSetup {
                 "concerts",
                 vec![
                     pk_column("id"),
-                    int_column("venue_id"),
+                    pk_reference_column("venue_id", "venues"),
                     string_column("name"),
                 ],
             ),
-            TableSpec::new(
-                "venues",
-                vec![
-                    pk_column("id"),
-                    string_column("name"),
-                    pk_reference_column("artist_id", "artists"),
-                ],
-            ),
+            TableSpec::new("venues", vec![pk_column("id"), string_column("name")]),
             TableSpec::new(
                 "concert_artists",
                 vec![

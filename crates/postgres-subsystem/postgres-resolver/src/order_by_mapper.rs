@@ -10,7 +10,10 @@
 use async_trait::async_trait;
 use futures::future::join_all;
 
-use crate::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper};
+use crate::{
+    column_path_util::to_column_path, postgres_execution_error::PostgresExecutionError,
+    sql_mapper::SQLMapper,
+};
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{AbstractOrderBy, Ordering, PhysicalColumnPath};
@@ -18,8 +21,6 @@ use postgres_model::{
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
     subsystem::PostgresSubsystem,
 };
-
-use crate::util::to_column_id_path;
 
 pub(crate) struct OrderByParameterInput<'a> {
     pub param: &'a OrderByParameter,
@@ -104,17 +105,16 @@ async fn order_by_pair<'a>(
     }?;
 
     let base_param_type = &subsystem.order_by_types[parameter.typ.innermost().type_id];
+
     // If this is a leaf node ({something: ASC} kind), then resolve the ordering. If not, then recurse with a new parent column path.
+    let new_column_path = to_column_path(&parent_column_path, &parameter.column_path_link);
     if matches!(base_param_type.kind, OrderByParameterTypeKind::Primitive) {
-        let new_column_path = to_column_id_path(&parent_column_path, &parameter.column_path_link)
-            .unwrap_or(PhysicalColumnPath { path: vec![] });
+        let new_column_path = new_column_path.unwrap();
         ordering(parameter_value).map(|ordering| AbstractOrderBy(vec![(new_column_path, ordering)]))
     } else {
-        let new_parent_column_path =
-            to_column_id_path(&parent_column_path, &parameter.column_path_link);
         OrderByParameterInput {
             param: parameter,
-            parent_column_path: new_parent_column_path,
+            parent_column_path: new_column_path,
         }
         .to_sql(parameter_value, subsystem, request_context)
         .await

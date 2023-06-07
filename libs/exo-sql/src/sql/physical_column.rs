@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{database_error::DatabaseError, Database, TableId};
+use crate::{database_error::DatabaseError, Database, ManyToOneId, OneToManyId, TableId};
 
 use super::{ExpressionBuilder, SQLBuilder};
 use regex::Regex;
@@ -87,10 +87,6 @@ pub enum PhysicalColumnType {
     Uuid,
     Array {
         typ: Box<PhysicalColumnType>,
-    },
-    ColumnReference {
-        ref_column_id: ColumnId,
-        ref_pk_type: Box<PhysicalColumnType>,
     },
     Float {
         bits: FloatBits,
@@ -235,15 +231,24 @@ pub struct ColumnId {
 }
 
 impl ColumnId {
-    pub fn new(table_id: TableId, column_index: usize) -> ColumnId {
-        ColumnId {
-            table_id,
-            column_index,
-        }
-    }
-
     pub fn get_column<'a>(&self, database: &'a Database) -> &'a PhysicalColumn {
         &database.get_table(self.table_id).columns[self.column_index]
+    }
+
+    /// Find the many-to-one relation for the given column. The given column must be a foreign key
+    /// column. For example, it could be the `concerts.venue_id` column (assuming [Concert] -> Venue).
+    pub fn get_mto_relation(&self, database: &Database) -> Option<ManyToOneId> {
+        database
+            .relations
+            .iter()
+            .position(|relation| &relation.self_column_id == self)
+            .map(ManyToOneId)
+    }
+
+    /// Find the one-to-many relation for the given column. The given column must be a foreign key
+    /// column. For example, it could be the `concerts.venue_id` column (assuming [Concert] -> Venue).
+    pub fn get_otm_relation(&self, database: &Database) -> Option<OneToManyId> {
+        self.get_mto_relation(database).map(OneToManyId)
     }
 }
 

@@ -23,6 +23,7 @@ pub struct PhysicalTable {
     /// The name of the table.
     pub name: String,
     /// The columns of the table.
+    // concerts.venue_id: (venues.id, "int", "venue_id_table")
     pub columns: Vec<PhysicalColumn>,
 }
 
@@ -36,14 +37,6 @@ impl std::fmt::Debug for PhysicalTable {
 }
 
 impl PhysicalTable {
-    pub fn column_index(&self, name: &str) -> Option<usize> {
-        self.columns.iter().position(|c| c.name == name)
-    }
-
-    pub fn get_pk_column_index(&self) -> Option<usize> {
-        self.columns.iter().position(|c| c.is_pk)
-    }
-
     pub fn get_pk_physical_column(&self) -> Option<&PhysicalColumn> {
         self.columns.iter().find(|column| column.is_pk)
     }
@@ -94,6 +87,14 @@ impl PhysicalTable {
             predicate,
             returning,
         }
+    }
+
+    pub(crate) fn column_index(&self, name: &str) -> Option<usize> {
+        self.columns.iter().position(|c| c.name == name)
+    }
+
+    pub(crate) fn get_pk_column_index(&self) -> Option<usize> {
+        self.columns.iter().position(|c| c.is_pk)
     }
 }
 

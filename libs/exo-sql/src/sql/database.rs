@@ -7,7 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{ColumnId, PhysicalTable};
+use std::fmt::{Debug, Formatter};
+
+use crate::{ColumnId, ManyToOne, PhysicalColumn, PhysicalTable};
 
 use serde::{Deserialize, Serialize};
 use typed_generational_arena::{Arena, IgnoreGeneration, Index};
@@ -15,9 +17,10 @@ use typed_generational_arena::{Arena, IgnoreGeneration, Index};
 pub type SerializableSlab<T> = Arena<T, usize, IgnoreGeneration>;
 pub type TableId = Index<PhysicalTable, usize, IgnoreGeneration>;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Database {
     tables: SerializableSlab<PhysicalTable>,
+    pub relations: Vec<ManyToOne>,
 }
 
 impl Database {
@@ -27,7 +30,7 @@ impl Database {
 
     pub fn get_column_ids(&self, table_id: TableId) -> Vec<ColumnId> {
         (0..self.tables[table_id].columns.len())
-            .map(|column_index| ColumnId::new(table_id, column_index))
+            .map(|column_index| new_column_id(table_id, column_index))
             .collect()
     }
 
@@ -43,7 +46,6 @@ impl Database {
         self.tables.insert(table)
     }
 
-    // TODO: Make it `pub(crate)`, since we need to resolve table names only during schema building (and not during resolution)
     pub fn get_table_id(&self, table_name: &str) -> Option<TableId> {
         self.tables.iter().find_map(|(id, table)| {
             if table.name == table_name {
@@ -54,17 +56,29 @@ impl Database {
         })
     }
 
-    pub(crate) fn get_pk_column(&self, table_id: TableId) -> Option<ColumnId> {
+    pub fn get_pk_column_id(&self, table_id: TableId) -> Option<ColumnId> {
         let table = self.get_table(table_id);
         table
             .get_pk_column_index()
-            .map(|column_index| ColumnId::new(table_id, column_index))
+            .map(|column_index| new_column_id(table_id, column_index))
     }
 
     pub fn get_column_id(&self, table_id: TableId, column_name: &str) -> Option<ColumnId> {
         self.tables[table_id]
             .column_index(column_name)
-            .map(|column_index| ColumnId::new(table_id, column_index))
+            .map(|column_index| new_column_id(table_id, column_index))
+    }
+
+    pub fn get_column_mut(&mut self, column_id: ColumnId) -> &mut PhysicalColumn {
+        let table = self.get_table_mut(column_id.table_id);
+        &mut table.columns[column_id.column_index]
+    }
+}
+
+fn new_column_id(table_id: TableId, column_index: usize) -> ColumnId {
+    ColumnId {
+        table_id,
+        column_index,
     }
 }
 
@@ -72,6 +86,21 @@ impl Default for Database {
     fn default() -> Self {
         Database {
             tables: SerializableSlab::new(),
+            relations: vec![],
         }
+    }
+}
+
+impl Debug for Database {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (id, table) in self.tables.iter() {
+            writeln!(f, "{}: {}", id.arr_idx(), table.name)?;
+            writeln!(f, "  columns: ")?;
+            for (column_id, column) in table.columns.iter().enumerate() {
+                writeln!(f, "    {}: {:?}", column_id, column)?;
+            }
+        }
+
+        Ok(())
     }
 }

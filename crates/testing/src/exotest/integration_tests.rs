@@ -152,7 +152,7 @@ pub(crate) async fn run_testfile(
 
         match result {
             OperationResult::Finished => {}
-            OperationResult::AssertFailed(_) | OperationResult::AssertPassed { .. } => {
+            OperationResult::AssertFailed(_) | OperationResult::AssertPassed => {
                 panic!("did not expect assertions in setup")
             }
         }

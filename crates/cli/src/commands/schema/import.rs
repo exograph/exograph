@@ -146,12 +146,15 @@ impl ToModel for ColumnSpec {
         };
 
         let (mut data_type, annots) = self.typ.to_model();
-        if let ColumnTypeSpec::ColumnReference { ref_table_name, .. } = &self.typ {
+        if let ColumnTypeSpec::ColumnReference {
+            foreign_table_name, ..
+        } = &self.typ
+        {
             data_type = to_model_name(&data_type);
 
             issues.push(Issue::Hint(format!(
                 "consider adding a field to `{}` of type `[{}]` to create a one-to-many relationship",
-                ref_table_name, to_model_name(&self.name),
+                foreign_table_name, to_model_name(&self.name),
             )));
         }
 

@@ -15,7 +15,7 @@ use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractInsert, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement, InsertionRow,
-    NestedInsertion,
+    ManyToOne, NestedInsertion,
 };
 use futures::future::{join_all, try_join_all};
 use postgres_model::{
@@ -112,12 +112,15 @@ async fn map_single<'a>(
 
         field_arg.map(|field_arg| async move {
             match &field.relation {
-                PostgresRelation::Pk { column_id }
-                | PostgresRelation::Scalar { column_id }
-                | PostgresRelation::ManyToOne(ManyToOneRelation {
-                    self_column_id: column_id,
-                    ..
-                }) => map_self_column(*column_id, field, field_arg, subsystem).await,
+                PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
+                    map_self_column(*column_id, field, field_arg, subsystem).await
+                }
+
+                PostgresRelation::ManyToOne(ManyToOneRelation { relation_id, .. }) => {
+                    let ManyToOne { self_column_id, .. } = relation_id.deref(&subsystem.database);
+                    map_self_column(self_column_id, field, field_arg, subsystem).await
+                }
+
                 PostgresRelation::OneToMany(one_to_many_relation) => {
                     map_foreign(
                         field,
@@ -187,10 +190,6 @@ async fn map_foreign<'a>(
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionElement, PostgresExecutionError> {
-    let foreign_column_id = one_to_many_relation.foreign_column_id;
-
-    let self_pk_column_id = one_to_many_relation.self_pk_column_id;
-
     let field_type = base_type(
         &field.typ,
         &subsystem.primitive_types,
@@ -205,8 +204,7 @@ async fn map_foreign<'a>(
     let insertion = map_argument(field_type, argument, subsystem, request_context).await?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
-        self_column_id: foreign_column_id,
-        parent_pk_column_id: self_pk_column_id,
+        relation_id: one_to_many_relation.relation_id,
         insertions: insertion,
     }))
 }

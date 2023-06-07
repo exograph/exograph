@@ -7,20 +7,22 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql::{ColumnPath, PhysicalColumnPath, PhysicalColumnPathLink};
+use exo_sql::{ColumnPathLink, PhysicalColumnPath};
 
 pub fn to_column_path(
-    parent_column_id_path: &Option<PhysicalColumnPath>,
-    next_column_id_path_link: &Option<PhysicalColumnPathLink>,
-) -> ColumnPath {
-    let mut path: Vec<_> = match parent_column_id_path {
-        Some(parent_column_id_path) => parent_column_id_path.path.clone(),
-        None => vec![],
-    };
-
-    if let Some(next_column_id_path_link) = next_column_id_path_link {
-        path.push(next_column_id_path_link.clone());
+    parent_column_path: &Option<PhysicalColumnPath>,
+    next_column_path_link: &Option<ColumnPathLink>,
+) -> Option<PhysicalColumnPath> {
+    match parent_column_path {
+        Some(parent_column_path) => match next_column_path_link {
+            Some(next_column_path_link) => {
+                let path = parent_column_path.clone();
+                Some(path.push(next_column_path_link.clone()))
+            }
+            None => Some(parent_column_path.clone()),
+        },
+        None => next_column_path_link
+            .as_ref()
+            .map(|next_column_path_link| PhysicalColumnPath::init(next_column_path_link.clone())),
     }
-
-    ColumnPath::Physical(path)
 }

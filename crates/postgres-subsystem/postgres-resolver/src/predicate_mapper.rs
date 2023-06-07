@@ -22,7 +22,7 @@ use postgres_model::{
 use crate::{
     column_path_util::to_column_path,
     sql_mapper::{extract_and_map, SQLMapper},
-    util::{get_argument_field, to_column_id_path, Arguments},
+    util::{get_argument_field, Arguments},
 };
 
 use super::{cast::cast_value, postgres_execution_error::PostgresExecutionError};
@@ -185,7 +185,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                         });
 
                         let predicates = provided_field_params.map(|(arg, parameter)| {
-                            let new_column_path = to_column_id_path(
+                            let new_column_path = to_column_path(
                                 &self.parent_column_path,
                                 &self.param.column_path_link,
                             );
@@ -259,7 +259,9 @@ fn operands<'a>(
     op_value
         .map(move |op_value| {
             (
-                to_column_path(&parent_column_path, &param.column_path_link),
+                ColumnPath::Physical(
+                    to_column_path(&parent_column_path, &param.column_path_link).unwrap(),
+                ),
                 ColumnPath::Param(op_value.unwrap()),
             )
         })

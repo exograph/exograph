@@ -8,14 +8,14 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::PhysicalColumnPathLink,
     sql::{predicate::ConcretePredicate, select::Select, table::Table},
     transform::{
         join_util,
         pg::{Postgres, SelectionLevel},
         transformer::{OrderByTransformer, PredicateTransformer},
     },
-    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, Offset, Selection, TableId,
+    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, Offset, PhysicalColumnPath,
+    Selection, TableId,
 };
 
 use super::selection_context::SelectionContext;
@@ -102,8 +102,8 @@ pub(super) fn nest_subselect(
 pub(super) fn join_info(
     base_table_id: TableId,
     predicate: &AbstractPredicate,
-    predicate_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
-    order_by_column_paths: Vec<Vec<PhysicalColumnPathLink>>,
+    predicate_column_paths: Vec<PhysicalColumnPath>,
+    order_by_column_paths: Vec<PhysicalColumnPath>,
     additional_predicate: Option<ConcretePredicate>,
     transformer: &Postgres,
     database: &Database,

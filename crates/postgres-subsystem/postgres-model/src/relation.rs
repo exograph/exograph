@@ -9,7 +9,7 @@
 
 use crate::types::EntityFieldId;
 
-use exo_sql::{ColumnId, PhysicalColumnPathLink};
+use exo_sql::{ColumnId, ColumnPathLink, Database, ManyToOneId, OneToManyId};
 use serde::{Deserialize, Serialize};
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as
@@ -34,17 +34,17 @@ pub struct ManyToOneRelation {
     // For the `Concert.venue` field (assuming [Concert] -> Venue), we will have:
     // - cardinality: Unbounded
     // - foreign_pk_field_id: Venue.id
-    // - self_column_id: concerts.venue_id
-    // - foreign_pk_column_id: venues.id
+    // - relation_id.self_column_id: concerts.venue_id
+    // - relation_id.foreign_pk_column_id: venues.id
     pub cardinality: RelationCardinality,
     pub foreign_pk_field_id: EntityFieldId,
-    pub self_column_id: ColumnId,
-    pub foreign_pk_column_id: ColumnId,
+    pub relation_id: ManyToOneId,
 }
 
 impl ManyToOneRelation {
-    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
-        PhysicalColumnPathLink::relation(self.self_column_id, self.foreign_pk_column_id)
+    pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
+        let relation = self.relation_id.deref(database);
+        relation.column_path_link()
     }
 }
 
@@ -54,34 +54,28 @@ pub struct OneToManyRelation {
     // For the `Venue.concerts` field (assuming Venue -> [Concert]), we will have:
     // - cardinality: Unbounded
     // - foreign_field_id: Concert.venue
-    // - self_pk_column_id: venues.id
-    // - foreign_column_id: concerts.venue_id
+    // - relation_id.self_pk_column_id: venues.id
+    // - relation_id.foreign_column_id: concerts.venue_id
     pub cardinality: RelationCardinality,
     pub foreign_field_id: EntityFieldId,
-
-    pub self_pk_column_id: ColumnId,
-
-    /// This is a redundant information (we can get this from foreign_field_id using
-    /// foreign_column_id.resolve(...).relation.<self-column-id>.unwrap()), since
-    /// the type of `relation` is `PostgresRelation`, so at the type level we don't know
-    /// if it's a `ManyToOne` or `OneToMany` relation and requires unwrapping.
-    pub foreign_column_id: ColumnId,
+    pub relation_id: OneToManyId,
 }
 
 impl OneToManyRelation {
-    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
-        PhysicalColumnPathLink::relation(self.self_pk_column_id, self.foreign_column_id)
+    pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
+        let relation = self.relation_id.deref(database);
+        relation.column_path_link()
     }
 }
 
 impl PostgresRelation {
-    pub fn column_path_link(&self) -> PhysicalColumnPathLink {
+    pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
         match &self {
             PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
-                PhysicalColumnPathLink::Leaf(*column_id)
+                ColumnPathLink::Leaf(*column_id)
             }
-            PostgresRelation::ManyToOne(relation) => relation.column_path_link(),
-            PostgresRelation::OneToMany(relation) => relation.column_path_link(),
+            PostgresRelation::ManyToOne(relation) => relation.column_path_link(database),
+            PostgresRelation::OneToMany(relation) => relation.column_path_link(database),
         }
     }
 }

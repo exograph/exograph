@@ -42,7 +42,7 @@ use crate::{
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::transformer::{InsertTransformer, SelectTransformer},
-    ColumnId, Database,
+    ColumnId, Database, OneToMany,
 };
 
 use super::Postgres;
@@ -167,22 +167,26 @@ impl InsertTransformer for Postgres {
             // ```
             let nested_ctes = nested_rows.into_iter().map(
                 |NestedInsertion {
-                     self_column_id,
-                     parent_pk_column_id,
+                     relation_id,
                      insertions,
                  }| {
+                    let OneToMany {
+                        self_pk_column_id,
+                        foreign_column_id,
+                    } = relation_id.deref(database);
+
                     let self_insertion_elems = insertions
                         .iter()
                         .map(|insertion| insertion.partition_self_and_nested().0)
                         .collect();
                     let (mut column_ids, mut column_values_seq) = align(self_insertion_elems);
-                    column_ids.push(*self_column_id);
+                    column_ids.push(foreign_column_id);
 
                     // To form the `(SELECT "venues"."id" FROM "venues")` part
                     column_values_seq.iter_mut().for_each(|value| {
                         let parent_reference = Column::SubSelect(Box::new(Select {
-                            table: Table::Physical(parent_pk_column_id.table_id),
-                            columns: vec![Column::Physical(*parent_pk_column_id)],
+                            table: Table::Physical(self_pk_column_id.table_id),
+                            columns: vec![Column::Physical(self_pk_column_id)],
                             predicate: ConcretePredicate::True,
                             order_by: None,
                             offset: None,
@@ -195,7 +199,7 @@ impl InsertTransformer for Postgres {
                     });
 
                     // Nested insert CTE. In the example above the `"concerts" AS ( ... )` part
-                    let relation_table = database.get_table(self_column_id.table_id);
+                    let relation_table = database.get_table(foreign_column_id.table_id);
                     let columns = column_ids
                         .iter()
                         .map(|column_id| column_id.get_column(database))

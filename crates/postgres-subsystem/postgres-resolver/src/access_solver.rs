@@ -16,7 +16,6 @@
 //! This module differs from Deno/Wasm in that it has an additional primitive expression type,
 //! `ColumnPath`, which we process into a predicate that we can pass to the database query.
 
-use crate::column_path_util;
 use async_trait::async_trait;
 use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
@@ -189,7 +188,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
 }
 
 fn to_column_path(column_id: &PhysicalColumnPath) -> ColumnPath {
-    column_path_util::to_column_path(&Some(column_id.clone()), &None)
+    ColumnPath::Physical(column_id.clone())
 }
 
 /// Converts a value to a literal column path
@@ -221,7 +220,6 @@ mod tests {
     use core_resolver::context::Request;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::system_resolver::SystemResolver;
-    use exo_sql::{ColumnId, PhysicalColumnPathLink};
     use serde_json::{json, Value};
 
     use super::*;
@@ -298,17 +296,16 @@ mod tests {
         .await
         .unwrap();
 
-        let (table_id, table) = postgres_subsystem
+        let table_id = postgres_subsystem
             .database
-            .tables()
-            .iter()
-            .find(|table| table.1.name == "articles")
+            .get_table_id("articles")
             .unwrap();
 
         let get_column_id = |column_name: &str| {
-            let column_index = table.column_index(column_name).unwrap();
-
-            ColumnId::new(table_id, column_index)
+            postgres_subsystem
+                .database
+                .get_column_id(table_id, column_name)
+                .unwrap()
         };
 
         let published_column_id = get_column_id("published");
@@ -316,21 +313,10 @@ mod tests {
         let dept1_id_column_id = get_column_id("dept1_id");
         let dept2_id_column_id = get_column_id("dept2_id");
 
-        let published_column_path = PhysicalColumnPath {
-            path: vec![PhysicalColumnPathLink::Leaf(published_column_id)],
-        };
-
-        let owner_id_column_path = PhysicalColumnPath {
-            path: vec![PhysicalColumnPathLink::Leaf(owner_id_column_id)],
-        };
-
-        let dept1_id_column_path = PhysicalColumnPath {
-            path: vec![PhysicalColumnPathLink::Leaf(dept1_id_column_id)],
-        };
-
-        let dept2_id_column_path = PhysicalColumnPath {
-            path: vec![PhysicalColumnPathLink::Leaf(dept2_id_column_id)],
-        };
+        let published_column_path = PhysicalColumnPath::leaf(published_column_id);
+        let owner_id_column_path = PhysicalColumnPath::leaf(owner_id_column_id);
+        let dept1_id_column_path = PhysicalColumnPath::leaf(dept1_id_column_id);
+        let dept2_id_column_path = PhysicalColumnPath::leaf(dept2_id_column_id);
 
         // Create an empty SystemResolver. Since in tests we never invoke the resolver (since we don't have @query context),
         // we don't need to populate it.

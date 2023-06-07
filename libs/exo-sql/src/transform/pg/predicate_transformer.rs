@@ -8,11 +8,11 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::{PhysicalColumnPathLink, RelationPhysicalColumnPathLink},
+    asql::column_path::{ColumnPathLink, RelationLink},
     sql::predicate::ConcretePredicate,
     transform::{pg::SelectionLevel, transformer::PredicateTransformer},
-    AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnId, ColumnPath,
-    Database, Selection, SelectionElement,
+    AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, Database,
+    PhysicalColumnPath, Selection, SelectionElement,
 };
 
 use super::Postgres;
@@ -130,36 +130,44 @@ fn to_subselect_predicate(
         fn form_subselect(
             path: &ColumnPath,
             other: &ColumnPath,
-            predicate_op: impl Fn(Vec<PhysicalColumnPathLink>, ColumnPath) -> AbstractPredicate,
+            predicate_op: impl Fn(PhysicalColumnPath, ColumnPath) -> AbstractPredicate,
             database: &Database,
             select_transformer: &Postgres,
         ) -> Option<ConcretePredicate> {
-            column_path_components(path).map(|(self_column_id, foreign_column_id, tail_links)| {
-                let foreign_column = foreign_column_id.get_column(database);
-                let abstract_select = AbstractSelect {
-                    table_id: self_column_id.table_id,
-                    selection: Selection::Seq(vec![AliasedSelectionElement::new(
-                        foreign_column.name.clone(),
-                        SelectionElement::Physical(foreign_column_id),
-                    )]),
-                    predicate: predicate_op(tail_links.to_vec(), other.clone()),
-                    order_by: None,
-                    offset: None,
-                    limit: None,
-                };
+            column_path_components(path).map(
+                |(
+                    RelationLink {
+                        self_column_id,
+                        foreign_column_id,
+                    },
+                    tail_links,
+                )| {
+                    let foreign_column = foreign_column_id.get_column(database);
+                    let abstract_select = AbstractSelect {
+                        table_id: self_column_id.table_id,
+                        selection: Selection::Seq(vec![AliasedSelectionElement::new(
+                            foreign_column.name.clone(),
+                            SelectionElement::Physical(foreign_column_id),
+                        )]),
+                        predicate: predicate_op(tail_links, other.clone()),
+                        order_by: None,
+                        offset: None,
+                        limit: None,
+                    };
 
-                let select = select_transformer.compute_select(
-                    &abstract_select,
-                    None,
-                    SelectionLevel::Nested,
-                    true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
-                    database,
-                );
+                    let select = select_transformer.compute_select(
+                        &abstract_select,
+                        None,
+                        SelectionLevel::Nested,
+                        true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
+                        database,
+                    );
 
-                let select_column = Column::SubSelect(Box::new(select));
+                    let select_column = Column::SubSelect(Box::new(select));
 
-                ConcretePredicate::In(Column::Physical(self_column_id), select_column)
-            })
+                    ConcretePredicate::In(Column::Physical(self_column_id), select_column)
+                },
+            )
         }
 
         form_subselect(
@@ -173,7 +181,7 @@ fn to_subselect_predicate(
             form_subselect(
                 right,
                 left,
-                |tail_links, left| predicate_op(left, ColumnPath::Physical(tail_links.to_vec())),
+                |tail_links, left| predicate_op(left, ColumnPath::Physical(tail_links)),
                 database,
                 select_transformer,
             )
@@ -271,30 +279,23 @@ fn to_subselect_predicate(
 
 fn leaf_column(column_path: &ColumnPath) -> Column {
     match column_path {
-        ColumnPath::Physical(links) => match links.last().unwrap() {
-            PhysicalColumnPathLink::Relation(_) => unreachable!(),
-            PhysicalColumnPathLink::Leaf(column_id) => Column::Physical(*column_id),
-        },
+        ColumnPath::Physical(links) => Column::Physical(links.leaf_column()),
         ColumnPath::Param(l) => Column::Param(l.clone()),
         ColumnPath::Null => Column::Null,
     }
 }
 
 /// Returns the components of a column path that are relevant for a subselect predicate.
-/// The first element of the tuple is the column in the root table, the second element is the
-/// table that the column is linked to, the third element is the column in the linked table,
-/// and the fourth element is the remaining links in the column path.
-fn column_path_components(
-    column_path: &ColumnPath,
-) -> Option<(ColumnId, ColumnId, &[PhysicalColumnPathLink])> {
+/// The first element of the tuple head link and the second element tail.
+fn column_path_components(column_path: &ColumnPath) -> Option<(RelationLink, PhysicalColumnPath)> {
     match column_path {
-        ColumnPath::Physical(links) => links.split_first().and_then(|(head, tail)| match head {
-            PhysicalColumnPathLink::Relation(RelationPhysicalColumnPathLink {
-                self_column_id,
-                linked_column_id,
-            }) => Some((*self_column_id, *linked_column_id, tail)),
-            PhysicalColumnPathLink::Leaf(_) => None,
-        }),
+        ColumnPath::Physical(links) => {
+            let (head, tail) = links.split_head();
+            match head {
+                ColumnPathLink::Relation(head_link) => Some((head_link, tail.unwrap())), // If the head is a relation, the tail must exist
+                ColumnPathLink::Leaf(_) => None,
+            }
+        }
         _ => None,
     }
 }
@@ -318,7 +319,7 @@ mod tests {
                  ..
              }| {
                 let abstract_predicate = AbstractPredicate::Eq(
-                    ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(concerts_name_column)]),
+                    ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column)),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 
@@ -389,25 +390,19 @@ mod tests {
             move |TestSetup {
                       database,
                       concerts_venue_id_column,
-                      venues_id_column,
                       venues_name_column,
                       ..
                   }| {
                 let abstract_predicate = AbstractPredicate::and(
                     AbstractPredicate::Eq(
-                        ColumnPath::Physical(vec![PhysicalColumnPathLink::Leaf(
-                            concerts_venue_id_column,
-                        )]),
+                        ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_venue_id_column)),
                         ColumnPath::Param(SQLParamContainer::new(1)),
                     ),
                     AbstractPredicate::Eq(
-                        ColumnPath::Physical(vec![
-                            PhysicalColumnPathLink::relation(
-                                concerts_venue_id_column,
-                                venues_id_column,
-                            ),
-                            PhysicalColumnPathLink::Leaf(venues_name_column),
-                        ]),
+                        ColumnPath::Physical(PhysicalColumnPath::from_columns(
+                            vec![concerts_venue_id_column, venues_name_column],
+                            &database,
+                        )),
                         ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                     ),
                 );
@@ -449,17 +444,13 @@ mod tests {
                 move |TestSetup {
                           database,
                           concerts_venue_id_column,
-                          venues_id_column,
                           venues_name_column,
                           ..
                       }| {
-                    let physical_column = ColumnPath::Physical(vec![
-                        PhysicalColumnPathLink::relation(
-                            concerts_venue_id_column,
-                            venues_id_column,
-                        ),
-                        PhysicalColumnPathLink::Leaf(venues_name_column),
-                    ]);
+                    let physical_column = ColumnPath::Physical(PhysicalColumnPath::from_columns(
+                        vec![concerts_venue_id_column, venues_name_column],
+                        &database,
+                    ));
                     let literal_column =
                         ColumnPath::Param(SQLParamContainer::new("v1".to_string()));
 
