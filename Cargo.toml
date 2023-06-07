@@ -1,3 +1,7 @@
+[workspace.package]
+version = "0.0.2"
+edition = "2021"
+
 # See https://github.com/mozilla/application-services/blob/main/Cargo.toml for the reasons why we use this structure
 [workspace]
 members = [
@@ -40,10 +44,6 @@ default-members = [
 ]
 
 resolver = "2"
-
-[workspace.package]
-version = "0.0.1"
-edition = "2021"
 
 [workspace.dependencies]
 colored = "2.0"
