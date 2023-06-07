@@ -24,7 +24,7 @@ use core_plugin_interface::core_resolver::{
 };
 use exo_sql::{
     AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, Limit, Offset,
-    SelectionCardinality, SelectionElement,
+    RelationId, SelectionCardinality, SelectionElement,
 };
 use futures::StreamExt;
 use postgres_model::{
@@ -220,14 +220,13 @@ async fn map_persistent_field<'content>(
             let foreign_type = &subsystem.entity_types[foreign_pk_field_id.entity_type_id()];
 
             let foreign_table_pk_query = &subsystem.pk_queries[foreign_type.pk_query];
-            let relation_link = relation.column_path_link(&subsystem.database);
 
             let nested_abstract_select = foreign_table_pk_query
                 .resolve_select(field, request_context, subsystem)
                 .await?;
 
             Ok(SelectionElement::SubSelect(
-                relation_link,
+                RelationId::ManyToOne(relation.relation_id),
                 nested_abstract_select,
             ))
         }
@@ -239,8 +238,6 @@ async fn map_persistent_field<'content>(
             } = relation;
 
             let foreign_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
-
-            let relation_link = relation.column_path_link(&subsystem.database);
 
             let nested_abstract_select = {
                 // Get an appropriate query based on the cardinality of the relation
@@ -261,7 +258,7 @@ async fn map_persistent_field<'content>(
             };
 
             Ok(SelectionElement::SubSelect(
-                relation_link,
+                RelationId::OneToMany(relation.relation_id),
                 nested_abstract_select,
             ))
         }
@@ -278,12 +275,10 @@ async fn map_aggregate_field<'content>(
         let OneToManyRelation {
             foreign_field_id,
             cardinality,
-            ..
+            relation_id,
         } = relation;
         // TODO: Avoid code duplication with map_persistent_field
         let foreign_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
-
-        let relation_link = relation.column_path_link(&subsystem.database);
 
         let nested_abstract_select = {
             // Aggregate is supported only for unbounded relations (i.e. not supported for one-to-one)
@@ -303,7 +298,7 @@ async fn map_aggregate_field<'content>(
         }?;
 
         Ok(SelectionElement::SubSelect(
-            relation_link,
+            RelationId::OneToMany(*relation_id),
             nested_abstract_select,
         ))
     } else {

@@ -50,3 +50,9 @@ impl OneToManyId {
         self.0.deref(database).flipped()
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum RelationId {
+    ManyToOne(ManyToOneId),
+    OneToMany(OneToManyId),
+}

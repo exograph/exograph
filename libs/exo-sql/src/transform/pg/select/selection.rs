@@ -8,15 +8,14 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::RelationLink,
     sql::{
         json_agg::JsonAgg,
         json_object::{JsonObject, JsonObjectElement},
         predicate::ConcretePredicate,
     },
     transform::pg::{Postgres, SelectionLevel},
-    AliasedSelectionElement, Column, ColumnPathLink, Database, Selection, SelectionCardinality,
-    SelectionElement,
+    AliasedSelectionElement, Column, Database, ManyToOne, OneToMany, RelationId, Selection,
+    SelectionCardinality, SelectionElement,
 };
 
 pub enum SelectionSQL {
@@ -96,17 +95,28 @@ impl SelectionElement {
                     .collect();
                 Column::JsonObject(JsonObject(elements))
             }
-            SelectionElement::SubSelect(relation, select) => {
-                let subselect_predicate = match relation {
-                    ColumnPathLink::Relation(RelationLink {
-                        self_column_id,
-                        foreign_column_id: linked_column_id,
-                    }) => Some(ConcretePredicate::Eq(
-                        Column::Physical(*self_column_id),
-                        Column::Physical(*linked_column_id),
-                    )),
-                    ColumnPathLink::Leaf(_) => None,
+            SelectionElement::SubSelect(relation_id, select) => {
+                let (self_column_id, foreign_column_id) = match relation_id {
+                    RelationId::OneToMany(relation_id) => {
+                        let OneToMany {
+                            self_pk_column_id,
+                            foreign_column_id,
+                        } = relation_id.deref(database);
+                        (self_pk_column_id, foreign_column_id)
+                    }
+                    RelationId::ManyToOne(relation_id) => {
+                        let ManyToOne {
+                            self_column_id,
+                            foreign_pk_column_id,
+                        } = relation_id.deref(database);
+                        (self_column_id, foreign_pk_column_id)
+                    }
                 };
+
+                let subselect_predicate = Some(ConcretePredicate::Eq(
+                    Column::Physical(self_column_id),
+                    Column::Physical(foreign_column_id),
+                ));
 
                 Column::SubSelect(Box::new(transformer.compute_select(
                     select,

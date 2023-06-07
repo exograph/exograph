@@ -164,7 +164,7 @@ impl Postgres {
 mod tests {
     use crate::{
         asql::{
-            column_path::{ColumnPath, ColumnPathLink, PhysicalColumnPath},
+            column_path::{ColumnPath, PhysicalColumnPath},
             predicate::AbstractPredicate,
             selection::{
                 AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement,
@@ -172,7 +172,7 @@ mod tests {
         },
         sql::{predicate::Predicate, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
-        AbstractOrderBy, Limit, Offset, Ordering,
+        AbstractOrderBy, Limit, Offset, Ordering, RelationId,
     };
 
     use super::AbstractSelect;
@@ -306,9 +306,10 @@ mod tests {
                             AliasedSelectionElement::new(
                                 "venue".to_string(),
                                 SelectionElement::SubSelect(
-                                    ColumnPathLink::relation(
-                                        concerts_venue_id_column,
-                                        venues_id_column,
+                                    RelationId::OneToMany(
+                                        concerts_venue_id_column
+                                            .get_otm_relation(&database)
+                                            .unwrap(),
                                     ),
                                     AbstractSelect {
                                         table_id: venues_table,
@@ -367,9 +368,10 @@ mod tests {
                             AliasedSelectionElement::new(
                                 "concerts".to_string(),
                                 SelectionElement::SubSelect(
-                                    ColumnPathLink::relation(
-                                        concerts_venue_id_column,
-                                        venues_id_column,
+                                    RelationId::OneToMany(
+                                        concerts_venue_id_column
+                                            .get_otm_relation(&database)
+                                            .unwrap(),
                                     ),
                                     AbstractSelect {
                                         table_id: concerts_table,
