@@ -339,7 +339,7 @@ mod tests {
                 let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
-                    r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id", 'venue', (SELECT json_build_object('id', "venues"."id") FROM "venues" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "concerts""#
+                    r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id", 'venue', (SELECT json_build_object('id', "venues"."id") FROM "venues" WHERE "venues"."id" = "concerts"."venue_id"))), '[]'::json)::text FROM "concerts""#
                 );
             },
         );
@@ -401,7 +401,7 @@ mod tests {
                 let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
-                    r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text FROM "venues""#
+                    r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" WHERE "venues"."id" = "concerts"."venue_id"))), '[]'::json)::text FROM "venues""#
                 );
             },
         );

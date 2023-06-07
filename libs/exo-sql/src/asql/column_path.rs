@@ -130,8 +130,10 @@ impl ColumnPathLink {
 /// This information could be used to form a join between multiple tables
 /// Invariant:
 /// - The path is non-empty
-/// - The last link in the path is a leaf column
 /// - For any two consecutive links: `first_link.linked_column_id.table_id == second_link.self_column_id.table_id`
+///
+/// Once fully constructed: (TODO: Make Builder a separate type so we can support this invariant properly)
+/// - The last link in the path is a leaf column (once fully constructed)
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PhysicalColumnPath(Vec<ColumnPathLink>);
 
