@@ -7,8 +7,8 @@
 
 [package]
 name = "server-aws-lambda"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 repository = "https://github.com/exograph/exograph"
 
 [target.'cfg(target_os = "linux")'.dependencies]

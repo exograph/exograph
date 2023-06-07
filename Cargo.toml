@@ -41,6 +41,10 @@ default-members = [
 
 resolver = "2"
 
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+
 [workspace.dependencies]
 colored = "2.0"
 anyhow = "1.0"
