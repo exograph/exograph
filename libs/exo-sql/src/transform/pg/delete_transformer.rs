@@ -100,10 +100,7 @@ impl DeleteTransformer for Postgres {
 #[cfg(test)]
 mod tests {
     use crate::{
-        asql::{
-            column_path::ColumnPathLink,
-            selection::{AliasedSelectionElement, Selection, SelectionElement},
-        },
+        asql::selection::{AliasedSelectionElement, Selection, SelectionElement},
         sql::{predicate::Predicate, ExpressionBuilder, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
         AbstractPredicate, AbstractSelect, ColumnPath, PhysicalColumnPath,
@@ -156,9 +153,7 @@ mod tests {
                  ..
              }| {
                 let predicate = AbstractPredicate::Eq(
-                    ColumnPath::Physical(PhysicalColumnPath::new(vec![ColumnPathLink::Leaf(
-                        concerts_name_column,
-                    )])),
+                    ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column)),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 
@@ -197,15 +192,14 @@ mod tests {
                  concerts_table,
                  concerts_id_column,
                  concerts_venue_id_column,
-                 venues_id_column,
                  venues_name_column,
                  ..
              }| {
                 let predicate = AbstractPredicate::Eq(
-                    ColumnPath::Physical(PhysicalColumnPath::new(vec![
-                        ColumnPathLink::relation(concerts_venue_id_column, venues_id_column),
-                        ColumnPathLink::Leaf(venues_name_column),
-                    ])),
+                    ColumnPath::Physical(PhysicalColumnPath::from_columns(
+                        vec![concerts_venue_id_column, venues_name_column],
+                        &database,
+                    )),
                     ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
                 );
 

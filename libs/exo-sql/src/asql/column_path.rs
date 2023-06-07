@@ -76,7 +76,7 @@ impl ColumnPathLink {
     pub fn relation(self_column_id: ColumnId, linked_column_id: ColumnId) -> Self {
         Self::Relation(RelationLink {
             self_column_id,
-            linked_column_id,
+            foreign_column_id: linked_column_id,
         })
     }
 
@@ -93,7 +93,7 @@ pub struct RelationLink {
     /// The column in the current table that is linked to the next table.
     pub self_column_id: ColumnId,
     /// The column in the next table that is linked to the current table. None implies that this is a terminal column (such as artist.name).
-    pub linked_column_id: ColumnId,
+    pub foreign_column_id: ColumnId,
 }
 
 impl PartialOrd for RelationLink {
@@ -104,8 +104,8 @@ impl PartialOrd for RelationLink {
 
 impl Ord for RelationLink {
     fn cmp(&self, other: &Self) -> Ordering {
-        (self.self_column_id, self.linked_column_id)
-            .cmp(&(other.self_column_id, other.linked_column_id))
+        (self.self_column_id, self.foreign_column_id)
+            .cmp(&(other.self_column_id, other.foreign_column_id))
     }
 }
 
@@ -128,40 +128,114 @@ impl ColumnPathLink {
 /// For example to reach concert -> concert_artist -> artist -> name,
 /// the path would be [(concert.id, concert_artist.concert_id), (concert_artists.artists_id, artist.id), (artist.name, None)]
 /// This information could be used to form a join between multiple tables
+/// Invariant:
+/// - The path is non-empty
+/// - The last link in the path is a leaf column
+/// - For any two consecutive links: `first_link.linked_column_id.table_id == second_link.self_column_id.table_id`
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct PhysicalColumnPath {
-    pub path: Vec<ColumnPathLink>,
-}
+pub struct PhysicalColumnPath(Vec<ColumnPathLink>);
 
 impl PhysicalColumnPath {
-    // pub fn init()
-
-    pub fn new(path: Vec<ColumnPathLink>) -> Self {
-        Self { path }
+    /// Initialize with a head link
+    /// Typically used along with `push` to build a path
+    pub fn init(head: ColumnPathLink) -> Self {
+        Self(vec![head])
     }
 
-    pub fn split_head(&self) -> Option<(ColumnPathLink, PhysicalColumnPath)> {
-        if self.path.is_empty() {
-            None
-        } else {
-            let mut path = self.path.clone();
-            let head = path.remove(0);
-            Some((head, PhysicalColumnPath { path }))
-        }
+    /// Construct a simple leaf column path
+    pub fn leaf(column_id: ColumnId) -> Self {
+        Self::init(ColumnPathLink::Leaf(column_id))
+    }
+
+    pub fn split_head(&self) -> (ColumnPathLink, Option<PhysicalColumnPath>) {
+        // We can assume that the path is non-empty due to the invariants
+        let mut path = self.0.clone();
+        let head = path.remove(0);
+
+        (
+            head,
+            if path.is_empty() {
+                None
+            } else {
+                Some(PhysicalColumnPath(path))
+            },
+        )
     }
 
     pub fn leaf_column(&self) -> ColumnId {
-        match self.path.last().unwrap() {
-            ColumnPathLink::Relation(_) => panic!(),
+        match self.0.last().unwrap() {
+            ColumnPathLink::Relation(_) => unreachable!("Invariant: last link must be a leaf"),
             ColumnPathLink::Leaf(column_id) => *column_id,
         }
     }
 
     pub fn has_one_to_many(&self, database: &Database) -> bool {
-        self.path.iter().any(|link| link.is_one_to_many(database))
+        self.0.iter().any(|link| link.is_one_to_many(database))
     }
 
     pub fn lead_table_id(&self) -> TableId {
-        self.path[0].self_column_id().table_id
+        self.0[0].self_column_id().table_id
+    }
+
+    pub fn push(mut self, link: ColumnPathLink) -> Self {
+        // Assert that the the last link in the path points to the same table as the new link's self table
+        // This checks for the last two invariants (see above):
+        // the last link must be a relation and its table must be the same as the new link's self table
+        assert!(
+            matches!(
+                self.0.last().unwrap(),
+                ColumnPathLink::Relation(RelationLink {
+                    foreign_column_id,
+                    ..
+                }) if foreign_column_id.table_id == link.self_column_id().table_id
+            ),
+            "Expected link to point to next table"
+        );
+
+        self.0.push(link);
+
+        self
+    }
+
+    pub fn from_columns(columns: Vec<ColumnId>, database: &Database) -> Self {
+        assert!(
+            !columns.is_empty(),
+            "Cannot create a column path from an empty list of columns"
+        );
+
+        let mut new_path = None::<PhysicalColumnPath>;
+
+        for (index, column_id) in columns.iter().enumerate() {
+            let next_column_id = columns.get(index + 1);
+
+            let link = match next_column_id {
+                Some(next_column_id) => {
+                    let next_table = next_column_id.table_id;
+
+                    if next_table == column_id.table_id {
+                        column_id
+                            .get_otm_relation(database)
+                            .unwrap()
+                            .deref(database)
+                            .column_path_link()
+                    } else {
+                        column_id
+                            .get_mto_relation(database)
+                            .unwrap()
+                            .deref(database)
+                            .column_path_link()
+                    }
+                }
+                None => ColumnPathLink::Leaf(*column_id),
+            };
+
+            new_path = match new_path {
+                Some(new_path) => Some(new_path.push(link)),
+                None => Some(PhysicalColumnPath::init(link)),
+            };
+        }
+
+        // Due to the assertion that the list of columns is non-empty, we can unwrap here
+        new_path.unwrap()
     }
 }

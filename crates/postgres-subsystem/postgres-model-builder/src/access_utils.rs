@@ -235,9 +235,9 @@ fn compute_selection<'a>(
     let path_elements = selection.path();
 
     if path_elements[0] == "self" {
-        let (_, column_path_elems, field_type) = path_elements[1..].iter().fold(
-            (self_type_info, vec![], None),
-            |(self_type_info, column_path_elems, _field_type), field_name| {
+        let (_, column_path, field_type) = path_elements[1..].iter().fold(
+            (self_type_info, None::<PhysicalColumnPath>, None),
+            |(self_type_info, column_path, _field_type), field_name| {
                 let self_type_info =
                     self_type_info.expect("Type for the access selection is not defined");
 
@@ -253,23 +253,16 @@ fn compute_selection<'a>(
                     _ => None,
                 };
 
-                (
-                    field_composite_type,
-                    column_path_elems
-                        .into_iter()
-                        .chain(vec![field_column_path])
-                        .collect(),
-                    Some(field_type),
-                )
+                let new_column_path = match column_path {
+                    Some(column_path) => Some(column_path.push(field_column_path)),
+                    None => Some(PhysicalColumnPath::init(field_column_path)),
+                };
+                (field_composite_type, new_column_path, Some(field_type))
             },
         );
 
-        PathSelection::Column(
-            PhysicalColumnPath {
-                path: column_path_elems,
-            },
-            field_type.unwrap(),
-        )
+        // TODO: Avoid this unwrap (parser should have caught expression "self" without any fields)
+        PathSelection::Column(column_path.unwrap(), field_type.unwrap())
     } else {
         let (context_selection, context_field_type) =
             get_context(&path_elements, resolved_env.contexts);

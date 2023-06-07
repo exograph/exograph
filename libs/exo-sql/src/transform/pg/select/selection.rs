@@ -100,7 +100,7 @@ impl SelectionElement {
                 let subselect_predicate = match relation {
                     ColumnPathLink::Relation(RelationLink {
                         self_column_id,
-                        linked_column_id,
+                        foreign_column_id: linked_column_id,
                     }) => Some(ConcretePredicate::Eq(
                         Column::Physical(*self_column_id),
                         Column::Physical(*linked_column_id),

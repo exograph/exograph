@@ -25,7 +25,7 @@ pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Tab
                 let join_predicate = match link {
                     ColumnPathLink::Relation(RelationLink {
                         self_column_id,
-                        linked_column_id,
+                        foreign_column_id: linked_column_id,
                     }) => ConcretePredicate::Eq(
                         Column::Physical(self_column_id),
                         Column::Physical(linked_column_id),
@@ -51,10 +51,7 @@ pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Tab
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        asql::column_path::ColumnPathLink, sql::ExpressionBuilder, transform::test_util::TestSetup,
-        PhysicalColumnPath,
-    };
+    use crate::{sql::ExpressionBuilder, transform::test_util::TestSetup, PhysicalColumnPath};
 
     #[test]
     fn single_level_join() {
@@ -63,18 +60,16 @@ mod tests {
                  database,
                  concerts_table,
                  concerts_venue_id_column,
-                 venues_id_column,
                  venues_name_column,
                  ..
              }| {
                 // (concert.venue_id, venue.id) -> (venue.name, None)
-                let concert_venue = vec![
-                    ColumnPathLink::relation(concerts_venue_id_column, venues_id_column),
-                    ColumnPathLink::Leaf(venues_name_column),
-                ];
+                let concert_venue_name_path = PhysicalColumnPath::from_columns(
+                    vec![concerts_venue_id_column, venues_name_column],
+                    &database,
+                );
 
-                let join =
-                    super::compute_join(concerts_table, &[PhysicalColumnPath::new(concert_venue)]);
+                let join = super::compute_join(concerts_table, &[concert_venue_name_path]);
 
                 assert_binding!(
                     join.to_sql(&database),
@@ -91,50 +86,52 @@ mod tests {
                  database,
                  concerts_table,
 
-                 concerts_id_column,
                  concerts_venue_id_column,
 
                  concert_artists_concert_id_column,
                  concert_artists_artist_id_column,
 
-                 artists_id_column,
                  artists_name_column,
                  artists_address_id_column,
 
-                 addresses_id_column,
                  addresses_city_column,
 
-                 venues_id_column,
                  venues_name_column,
                  ..
              }| {
                 // (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.name, None)
-                let concert_ca_artist = vec![
-                    ColumnPathLink::relation(concerts_id_column, concert_artists_concert_id_column),
-                    ColumnPathLink::relation(concert_artists_artist_id_column, artists_id_column),
-                    ColumnPathLink::Leaf(artists_name_column),
-                ];
+                let concert_ca_artist_name_path = PhysicalColumnPath::from_columns(
+                    vec![
+                        concert_artists_concert_id_column,
+                        concert_artists_artist_id_column,
+                        artists_name_column,
+                    ],
+                    &database,
+                );
 
                 // (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.address_id, address.id) -> (address.city, None)
-                let concert_ca_artist_address = vec![
-                    ColumnPathLink::relation(concerts_id_column, concert_artists_concert_id_column),
-                    ColumnPathLink::relation(concert_artists_artist_id_column, artists_id_column),
-                    ColumnPathLink::relation(artists_address_id_column, addresses_id_column),
-                    ColumnPathLink::Leaf(addresses_city_column),
-                ];
+                let concert_ca_artist_address_path = PhysicalColumnPath::from_columns(
+                    vec![
+                        concert_artists_concert_id_column,
+                        concert_artists_artist_id_column,
+                        artists_address_id_column,
+                        addresses_city_column,
+                    ],
+                    &database,
+                );
 
                 // (concert.venue_id, venue.id) -> (venue.name, None)
-                let concert_venue = vec![
-                    ColumnPathLink::relation(concerts_venue_id_column, venues_id_column),
-                    ColumnPathLink::Leaf(venues_name_column),
-                ];
+                let concert_venue_path = PhysicalColumnPath::from_columns(
+                    vec![concerts_venue_id_column, venues_name_column],
+                    &database,
+                );
 
                 let join = super::compute_join(
                     concerts_table,
                     &[
-                        PhysicalColumnPath::new(concert_ca_artist),
-                        PhysicalColumnPath::new(concert_ca_artist_address),
-                        PhysicalColumnPath::new(concert_venue),
+                        concert_ca_artist_name_path,
+                        concert_ca_artist_address_path,
+                        concert_venue_path,
                     ],
                 );
 

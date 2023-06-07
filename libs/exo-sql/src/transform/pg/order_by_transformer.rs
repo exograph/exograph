@@ -8,10 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::column_path::PhysicalColumnPath,
     sql::order::{OrderBy, OrderByElement},
     transform::transformer::OrderByTransformer,
-    AbstractOrderBy, ColumnId, ColumnPathLink,
+    AbstractOrderBy,
 };
 
 use super::Postgres;
@@ -29,15 +28,8 @@ impl OrderByTransformer for Postgres {
             order_by
                 .0
                 .iter()
-                .map(|(path, ordering)| OrderByElement::new(leaf_column(path), *ordering))
+                .map(|(path, ordering)| OrderByElement::new(path.leaf_column(), *ordering))
                 .collect(),
         )
-    }
-}
-
-fn leaf_column(column_id_path: &PhysicalColumnPath) -> ColumnId {
-    match column_id_path.path.last().unwrap() {
-        ColumnPathLink::Relation(_) => unreachable!(),
-        ColumnPathLink::Leaf(columnd_id) => *columnd_id,
     }
 }

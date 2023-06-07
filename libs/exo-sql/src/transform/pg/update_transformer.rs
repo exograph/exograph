@@ -301,7 +301,7 @@ fn delete_op<'a>(
 mod tests {
     use crate::{
         asql::{
-            column_path::{ColumnPath, ColumnPathLink},
+            column_path::ColumnPath,
             predicate::AbstractPredicate,
             select::AbstractSelect,
             selection::{AliasedSelectionElement, Selection, SelectionElement},
@@ -325,9 +325,7 @@ mod tests {
                  ..
              }| {
                 let venue_id_path =
-                    ColumnPath::Physical(PhysicalColumnPath::new(vec![ColumnPathLink::Leaf(
-                        venues_id_column,
-                    )]));
+                    ColumnPath::Physical(PhysicalColumnPath::leaf(venues_id_column));
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
@@ -383,9 +381,8 @@ mod tests {
                  ..
              }| {
                 let venue_id_path =
-                    ColumnPath::Physical(PhysicalColumnPath::new(vec![ColumnPathLink::Leaf(
-                        venues_id_column,
-                    )]));
+                    ColumnPath::Physical(PhysicalColumnPath::leaf(venues_id_column));
+
                 let literal = ColumnPath::Param(SQLParamContainer::new(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 

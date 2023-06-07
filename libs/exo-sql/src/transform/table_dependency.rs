@@ -77,16 +77,13 @@ impl TableDependency {
         // be used to create `DependencyLink`s.
         let grouped = paths_list.iter().fold(
             BTreeMap::<ColumnPathLink, Vec<PhysicalColumnPath>>::new(),
-            |mut acc, paths| match &paths.split_head() {
-                Some((head, tail)) => {
-                    if let ColumnPathLink::Relation(_) = head {
-                        acc.entry(head.clone()).or_default().push(tail.clone());
-                    }
-                    acc
+            |mut acc, paths| {
+                let (head, tail) = paths.split_head();
+
+                if let Some(tail) = tail {
+                    acc.entry(head).or_default().push(tail);
                 }
-                _ => {
-                    panic!("Invalid paths list. Must have at least one path");
-                }
+                acc
             },
         );
 
