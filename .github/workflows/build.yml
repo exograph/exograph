@@ -60,10 +60,11 @@ jobs:
           cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
           cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
       - name: Create zip of binaries
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
           cp LICENSE dist/
-          zip dist/exo-${{matrix.target}}.zip dist/*
+          cd dist/
+          7z a exo-${{matrix.target}}.zip *
+          cd ..
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
