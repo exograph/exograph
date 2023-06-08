@@ -49,21 +49,15 @@ fi
 
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 NEW_TAG="v$NEW_VERSION"
-NEW_BRANCH="release-$NEW_VERSION"
 
 echo "Bumping version to $NEW_VERSION"
-
-git checkout -b "$NEW_BRANCH"
 
 # Modify Cargo.toml to use the current version
 sed -i "s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
 
 git commit -am "Bump version to $NEW_VERSION"
 
-git push origin "$NEW_BRANCH"
+git tag $NEW_TAG
+git push origin main
+git push origin $NEW_TAG
 
-echo "Done!"
-echo "Make a PR from $NEW_BRANCH to main. Once the CI passes and merge it into main."
-echo "Then run the following commands:"
-echo "git tag $NEW_TAG"
-echo "git push origin $NEW_TAG"
