@@ -51,7 +51,7 @@ else
 	*) shell_profile=".bashrc" ;;
 	esac
 	echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
-	echo "  export PATH=\"$EXOGRAPH_INSTALL/bin:\$PATH\""
+	echo "  export PATH=\"$bin_dir:\$PATH\""
 	echo "Run '$exe --help' to get started"
 fi
 echo
