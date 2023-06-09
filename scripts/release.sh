@@ -58,6 +58,8 @@ git checkout -b "$NEW_BRANCH"
 # Modify Cargo.toml to use the current version
 sed -i "s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
 
+cargo build
+
 git commit -am "Bump version to $NEW_VERSION"
 
 git push origin "$NEW_BRANCH"
