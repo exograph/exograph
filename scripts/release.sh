@@ -7,20 +7,20 @@ if [ "$CURRENT_BRANCH" != "main" ]; then
   exit 1
 fi
 
-# Get the current git tag, which must be in the vX.Y.Z format
+# Get the current git tag, which must be in the vMAJOR.MINOR.PATCH format optionally followed by a -REV-HASH
 GIT_TAG=$(git describe --tags --always)
 
 # Verify that the tag is in the correct format
-if ! echo $GIT_TAG | grep -q "^v[0-9]\+\.[0-9]\+\.[0-9]\+$"; then
-  echo "Error: Git tag is not in the correct vX.Y.Z format." 1>&2
+if ! echo $GIT_TAG | grep -Eq "^v[0-9]+\.[0-9]+\.[0-9]+(\-[0-9a-z]+\-[0-9a-z]+)?$"; then
+  echo "Error: Git tag is not in the correct vX.Y.Z(-REV-HASH)? format." 1>&2
   echo "Current tag is $GIT_TAG." 1>&2
   exit 1
 fi
 
 # Extract the current major, minor, and patch version numbers
-MAJOR=$(echo $GIT_TAG | sed 's/v\([0-9]\+\)\.[0-9]\+\.[0-9]\+/\1/')
-MINOR=$(echo $GIT_TAG | sed 's/v[0-9]\+\.\([0-9]\+\)\.[0-9]\+/\1/')
-PATCH=$(echo $GIT_TAG | sed 's/v[0-9]\+\.[0-9]\+\.\([0-9]\+\)/\1/')
+MAJOR=$(echo $GIT_TAG | sed -E 's/^v([0-9]+)\.[0-9]+\.[0-9]+(\-[0-9a-z]+\-[0-9a-z]+)?$/\1/')
+MINOR=$(echo $GIT_TAG | sed -E 's/^v[0-9]+\.([0-9]+)\.[0-9]+(\-[0-9a-z]+\-[0-9a-z]+)?$/\1/')
+PATCH=$(echo $GIT_TAG | sed -E 's/^v[0-9]+\.[0-9]+\.([0-9]+)(\-[0-9a-z]+\-[0-9a-z]+)?$/\1/')
 
 echo "Current version is $MAJOR.$MINOR.$PATCH"
 
@@ -49,15 +49,21 @@ fi
 
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 NEW_TAG="v$NEW_VERSION"
+NEW_BRANCH="release-$NEW_VERSION"
 
 echo "Bumping version to $NEW_VERSION"
+
+git checkout -b "$NEW_BRANCH"
 
 # Modify Cargo.toml to use the current version
 sed -i "s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
 
 git commit -am "Bump version to $NEW_VERSION"
 
-git tag $NEW_TAG
-git push origin main
-git push origin $NEW_TAG
+git push origin "$NEW_BRANCH"
 
+echo "Done!"
+echo "Make a PR from $NEW_BRANCH to main. Once the CI passes, merge it into main."
+echo "Then run the following commands in the main branch:"
+echo "git tag $NEW_TAG"
+echo "git push origin $NEW_TAG"
