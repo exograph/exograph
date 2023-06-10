@@ -109,16 +109,22 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Download artifacts
+        id: download
         uses: actions/download-artifact@v3
         with:
           name: exograph-x86_64-unknown-linux-gnu.zip # Must match the "name" of the "Upload Artifacts" step above
           path: exograph-x86_64-unknown-linux-gnu.zip
+
+      - name: "Echo download path"
+        run: echo ${{steps.download.outputs.download-path}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./docker/Dockerfile.ci
+          build-args: |
+            DIST_ZIP_FILE=${{steps.download.outputs.download-path}}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
