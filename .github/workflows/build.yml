@@ -117,6 +117,8 @@ jobs:
 
       - name: "Echo download path"
         run: echo ${{steps.download.outputs.download-path}}
+          ls -la
+          pwd
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
