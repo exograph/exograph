@@ -7,15 +7,14 @@ RUN apt-get update
 
 
 # Create a builder image with exograph release binaries
-ARG DIST_ZIP_FILE
 FROM updated-base as builder
 
 RUN apt-get -y install curl unzip
 
 WORKDIR /usr/src
 COPY deny.toml ./deny.toml
-COPY ${DIST_ZIP_FILE} ./exograph-x86_64-unknown-linux-gnu.zip
-RUN unzip ./exograph-x86_64-unknown-linux-gnu.zip
+COPY exograph-x86_64-unknown-linux-gnu.zip .
+RUN unzip exograph-x86_64-unknown-linux-gnu.zip
 
 
 # Build the runtime image with just the binary we need for the server
