@@ -93,8 +93,6 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v3
-
       - name: Log in to the Container registry
         uses: docker/login-action@v2
         with:
@@ -114,16 +112,9 @@ jobs:
         with:
           name: exograph-x86_64-unknown-linux-gnu.zip # Must match the "name" of the "Upload Artifacts" step above
 
-      - name: "Echo download path"
-        run: |
-          echo ${{steps.download.outputs.download-path}}
-          ls -la
-          pwd
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
-          context: .
           file: ./docker/Dockerfile.ci
           build-args: |
             DIST_ZIP_FILE=${{steps.download.outputs.download-path}}/exograph-x86_64-unknown-linux-gnu.zip

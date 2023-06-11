@@ -14,11 +14,7 @@ RUN apt-get -y install curl unzip
 
 WORKDIR /usr/src
 COPY deny.toml ./deny.toml
-RUN echo "DIST_ZIP_FILE arg: ${DIST_ZIP_FILE}"
-COPY exograph-x86_64-unknown-linux-gnu.zip ./exograph-x86_64-unknown-linux-gnu.zip
-RUN ls -l
-RUN ls -l exograph-x86_64-unknown-linux-gnu.zip
-RUN ls -l ./exograph-x86_64-unknown-linux-gnu.zip
+COPY ${DIST_ZIP_FILE} ./exograph-x86_64-unknown-linux-gnu.zip
 RUN unzip ./exograph-x86_64-unknown-linux-gnu.zip
 
 
