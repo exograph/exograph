@@ -1,4 +1,3 @@
-ARG DIST_ZIP_FILE
 
 # Create a base image with the latest packages
 # We must use "debian:bullseye" (and not "debian:buster") as the base runtime image to match the libc version used while building the binaries
@@ -8,11 +7,13 @@ RUN apt-get update
 
 
 # Create a builder image with exograph release binaries
+ARG DIST_ZIP_FILE
 FROM updated-base as builder
 
 RUN apt-get -y install curl unzip
 
 WORKDIR /usr/src
+COPY deny.toml ./deny.toml
 RUN echo "DIST_ZIP_FILE arg: ${DIST_ZIP_FILE}"
 COPY exograph-x86_64-unknown-linux-gnu.zip ./exograph-x86_64-unknown-linux-gnu.zip
 RUN ls -l

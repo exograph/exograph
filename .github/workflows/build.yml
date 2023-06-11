@@ -69,19 +69,19 @@ jobs:
         run: |
           cp LICENSE dist/
           cd dist/
-          7z a exo-${{matrix.target}}.zip *
+          7z a exograph-${{matrix.target}}.zip *
           cd ..
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
           name: exograph-${{matrix.target}}.zip
-          path: dist/exo-${{matrix.target}}.zip
+          path: dist/exograph-${{matrix.target}}.zip
       - name: Upload zip to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/exo-${{matrix.target}}.zip
+          file: dist/exograph-${{matrix.target}}.zip
           asset_name: exograph-${{matrix.target}}.zip
           tag: ${{ github.ref }}
 
@@ -126,7 +126,7 @@ jobs:
           context: .
           file: ./docker/Dockerfile.ci
           build-args: |
-            DIST_ZIP_FILE=${{steps.download.outputs.download-path}}
+            DIST_ZIP_FILE=${{steps.download.outputs.download-path}}/exograph-x86_64-unknown-linux-gnu.zip
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
