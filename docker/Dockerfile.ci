@@ -14,7 +14,7 @@ RUN apt-get -y install curl unzip
 
 WORKDIR /usr/src
 #RUN curl -L -O https://github.com/exograph/exograph/releases/latest/download/exograph-x86_64-unknown-linux-gnu.zip
-COPY ${DIST_ZIP_FILE} .
+COPY /home/runner/work/exograph/exograph/exograph-x86_64-unknown-linux-gnu.zip .
 RUN unzip exograph-x86_64-unknown-linux-gnu.zip
 
 
