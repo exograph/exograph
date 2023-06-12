@@ -1,0 +1,15 @@
+# We must use "debian:bullseye" (and not "debian:buster") as the base runtime image to match the libc version used while building the binaries
+# Create a builder image with exograph release binaries
+FROM debian:bullseye as builder
+
+RUN apt-get update && apt-get -y install unzip
+
+WORKDIR /usr/src
+COPY exograph-x86_64-unknown-linux-gnu.zip ./exograph-x86_64-unknown-linux-gnu.zip
+RUN unzip ./exograph-x86_64-unknown-linux-gnu.zip
+
+
+# Build the runtime image with just the binary we need for the server
+FROM debian:bullseye as exo-server
+
+COPY --from=builder /usr/src/exo-server /usr/local/bin/exo-server
