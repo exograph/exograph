@@ -86,6 +86,8 @@ jobs:
   build-and-push-docker:
     needs: build-artifacts
     runs-on: ubuntu-20.04
+    if: startsWith(github.ref, 'refs/tags/') # Only build and push Docker images for tags
+
     permissions:
       contents: read
       packages: write
