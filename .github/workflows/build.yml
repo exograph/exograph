@@ -5,9 +5,7 @@ on:
     branches: ["main"]
     tags:
       - "*"
-  pull_request: # temporary to test the PR (remove before merging)
-    branches:
-      - "main"
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -20,30 +18,30 @@ jobs:
       matrix:
         # For these target platforms
         include:
-          # - os: macos-11
-          #   deps-script: brew install protobuf
-          #   target: x86_64-apple-darwin
-          #   cross_flag: ""
-          #   vendor_openssl_flag: "--features vendored-openssl"
-          #   bin_extension: ""
-          # - os: macos-11
-          #   deps-script: brew install protobuf
-          #   target: aarch64-apple-darwin
-          #   cross_flag: "--features cross"
-          #   vendor_openssl_flag: "--features vendored-openssl"
-          #   bin_extension: ""
+          - os: macos-11
+            deps-script: brew install protobuf
+            target: x86_64-apple-darwin
+            cross_flag: ""
+            vendor_openssl_flag: "--features vendored-openssl"
+            bin_extension: ""
+          - os: macos-11
+            deps-script: brew install protobuf
+            target: aarch64-apple-darwin
+            cross_flag: "--features cross"
+            vendor_openssl_flag: "--features vendored-openssl"
+            bin_extension: ""
           - os: ubuntu-20.04
             deps-script: sudo apt-get install -y protobuf-compiler
             target: x86_64-unknown-linux-gnu
             cross_flag: ""
             vendor_openssl_flag: "--features vendored-openssl"
             bin_extension: ""
-          # - os: windows-2019
-          #   deps-script: choco install protoc
-          #   target: x86_64-pc-windows-msvc
-          #   cross_flag: ""
-          #   vendor_openssl_flag: "--features vendored-openssl"
-          #   bin_extension: ".exe"
+          - os: windows-2019
+            deps-script: choco install protoc
+            target: x86_64-pc-windows-msvc
+            cross_flag: ""
+            vendor_openssl_flag: "--features vendored-openssl"
+            bin_extension: ".exe"
 
     runs-on: ${{ matrix.os }}
     steps:
