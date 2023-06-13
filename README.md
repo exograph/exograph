@@ -1,8 +1,8 @@
 <a href="https://exograph.dev">
   <p align="center">
     <picture width=80%>
-      <source media="(prefers-color-scheme: dark)" srcset="logo-dark.svg">
-      <source media="(prefers-color-scheme: light)" srcset="logo-light.svg">
+      <source media="(prefers-color-scheme: dark)" srcset="logo-dark.png">
+      <source media="(prefers-color-scheme: light)" srcset="logo-light.png">
       <img alt="Exograph" src="logo-light.svg">
     </picture>
   </p>
