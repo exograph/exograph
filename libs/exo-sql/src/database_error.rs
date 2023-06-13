@@ -23,8 +23,11 @@ pub enum DatabaseError {
     #[error("Delegate: {0}")]
     Delegate(#[from] tokio_postgres::Error),
 
+    #[error("Unable to load native certificates: {0}")]
+    NativeCerts(#[from] std::io::Error),
+
     #[error("SSL: {0}")]
-    Ssl(#[from] openssl::error::ErrorStack),
+    Ssl(#[from] rustls::Error),
 
     #[error("Pool: {0}")]
     Pool(#[from] deadpool_postgres::PoolError),

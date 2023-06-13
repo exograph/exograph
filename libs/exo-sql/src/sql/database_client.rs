@@ -7,11 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{cell::RefCell, env};
+use std::{cell::RefCell, env, fs::File, io::BufReader};
 
 use deadpool_postgres::{Client, Manager, ManagerConfig, Pool, RecyclingMethod};
-use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use postgres_openssl::MakeTlsConnector;
+use rustls::{Certificate, RootCertStore};
+use rustls_native_certs::load_native_certs;
 use tokio_postgres::{config::SslMode, Config};
 
 use crate::database_error::DatabaseError;
@@ -21,7 +21,6 @@ const USER_PARAM: &str = "EXO_POSTGRES_USER";
 const PASSWORD_PARAM: &str = "EXO_POSTGRES_PASSWORD";
 const CONNECTION_POOL_SIZE_PARAM: &str = "EXO_CONNECTION_POOL_SIZE";
 const CHECK_CONNECTION_ON_STARTUP: &str = "EXO_CHECK_CONNECTION_ON_STARTUP";
-const SSL_VERIFY_PARAM: &str = "EXO_SSL_VERIFY"; // boolean (default: true)
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
@@ -36,8 +35,7 @@ pub struct DatabaseClient {
 
 struct SslConfig {
     mode: SslMode,
-    verify_mode: SslVerifyMode,
-    cert_path: Option<String>,
+    root_cert_path: Option<String>,
 }
 
 impl<'a> DatabaseClient {
@@ -113,17 +111,47 @@ impl<'a> DatabaseClient {
         let manager = match ssl_config {
             Some(SslConfig {
                 mode,
-                verify_mode,
-                cert_path,
+                root_cert_path: cert_path,
             }) => {
                 config.ssl_mode(mode);
-                let mut builder = SslConnector::builder(SslMethod::tls())?;
-                builder.set_verify(verify_mode);
-                if let Some(ssl_root_cert) = cert_path {
-                    builder.set_ca_file(&ssl_root_cert)?;
-                }
-                let connector = MakeTlsConnector::new(builder.build());
-                Manager::from_config(config, connector, manager_config)
+
+                let tls = {
+                    let mut root_store = RootCertStore::empty();
+
+                    // If the cert path is provided, use it. Otherwise, use the native certs.
+                    match cert_path {
+                        Some(cert_path) => {
+                            let cert_file = File::open(&cert_path).map_err(|e| {
+                                DatabaseError::Config(format!(
+                                    "Failed to open certificate file '{}': {}",
+                                    cert_path, e
+                                ))
+                            })?;
+                            let mut buf = BufReader::new(cert_file);
+                            rustls_pemfile::certs(&mut buf)
+                                .map_err(|_| DatabaseError::Config("Invalid certificate".into()))?
+                                .into_iter()
+                                .for_each(|cert| {
+                                    root_store
+                                        .add(&Certificate(cert))
+                                        .expect("Failed to add certificate");
+                                });
+                        }
+                        None => {
+                            for cert in load_native_certs()? {
+                                root_store.add(&Certificate(cert.0))?;
+                            }
+                        }
+                    }
+
+                    let config = rustls::ClientConfig::builder()
+                        .with_safe_defaults()
+                        .with_root_certificates(root_store)
+                        .with_no_client_auth();
+                    tokio_postgres_rustls::MakeRustlsConnect::new(config)
+                };
+
+                Manager::from_config(config, tls, manager_config)
             }
             None => Manager::from_config(config, tokio_postgres::NoTls, manager_config),
         };
@@ -157,7 +185,7 @@ impl<'a> DatabaseClient {
         // Remove parameters from the url that typical postgres URL includes (for example, with YugabyteDB),
         // but the tokio-rust-postgres driver doesn't support yet.
         // Instead capture those parameters and use them later in the connection/ssl config.
-        let query = url.query_pairs().filter(|(name, value)| {
+        let query_pairs = url.query_pairs().filter(|(name, value)| {
             if name == "ssl" {
                 ssl_param_string = Some(value.to_string());
                 false
@@ -173,7 +201,10 @@ impl<'a> DatabaseClient {
         });
 
         let mut cleaned_url = url.clone();
-        cleaned_url.query_pairs_mut().clear().extend_pairs(query);
+        cleaned_url
+            .query_pairs_mut()
+            .clear()
+            .extend_pairs(query_pairs);
 
         // We need to replace '+' (encoded from a space character) with '%20' since the tokio-rust-postgres driver doesn't seem to support
         // the encoding that uses '+' for a space.
@@ -211,27 +242,12 @@ impl<'a> DatabaseClient {
             }
         }
 
-        let ssl_verify = env::var(SSL_VERIFY_PARAM)
-            .ok()
-            .map(|env_str| match env_str.parse::<bool>() {
-                Ok(b) => Ok(b),
-                Err(_) => Err(DatabaseError::Config(format!(
-                    "Invalid {SSL_VERIFY_PARAM} value: {env_str}. It must be set to 'true' or 'false'",
-                ))),
-            })
-            .unwrap_or(Ok(true))?;
-
         let ssl_config = if ssl_mode == SslMode::Disable {
             None
         } else {
             Some(SslConfig {
                 mode: ssl_mode,
-                verify_mode: if ssl_verify {
-                    SslVerifyMode::PEER
-                } else {
-                    SslVerifyMode::NONE
-                },
-                cert_path: ssl_root_cert_string,
+                root_cert_path: ssl_root_cert_string,
             })
         };
 
