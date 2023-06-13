@@ -1,6 +1,6 @@
 <a href="https://exograph.dev">
   <p align="center">
-    <picture>
+    <picture width=80%>
       <source media="(prefers-color-scheme: dark)" srcset="logo-dark.svg">
       <source media="(prefers-color-scheme: light)" srcset="logo-light.svg">
       <img alt="Exograph" src="logo-light.svg">
@@ -37,28 +37,42 @@ Follow the instructions in [Exograph VSCode Extension repo](https://github.com/e
 
 Build the `exo` and `exo-server` binaries:
 
-```
+```sh
 cargo build
 ```
 
 To create a production build:
 
-```
+```sh
 cargo build --release
 ```
 
 By default, cargo will build the `exo-server` binary with statically linked plugins. If you want to build a binary that dynamically links these plugins, you can use the `--no-default-features` flag:
 
-```
+```sh
 cargo build --no-default-features
 ```
 
 You can also selectively enable static linking for either Postgres or Deno:
 
-```
+```sh
 cargo build --no-default-features --features static-postgres-resolver
 cargo build --no-default-features --features static-deno-resolver
 cargo build --no-default-features --features static-wasm-resolver
+```
+
+## Running tests
+
+### Unit tests
+
+```sh
+cargo build && cargo test
+```
+
+### Integration tests
+
+```sh
+cargo build && EXO_RUN_INTROSPECTION_TESTS=true cargo run --bin exo test integration-tests
 ```
 
 ## Testing the setup
@@ -72,55 +86,33 @@ cargo run --bin exo yolo
 
 ### Dev mode
 
-1. Switch to a Exograph project directory (e.g. `integration-tests/basic-model-no-auth`)
+1. Switch to an example Exograph project directory (such as `integration-tests/basic-model-no-auth`)
 
 ```sh
 cd integration-tests/basic-model-no-auth
 ```
 
-2. Create a test database
+2. Create a test database and update its schema
 
 ```sh
 createdb concerts-db
-```
-
-3. Update the schema
-
-```sh
 cargo run --bin exo schema create | psql concerts-db
 ```
 
-4. Start the server
+3. Start the server
 
 ```sh
-EXO_JWT_SECRET="abcd" EXO_CORS_DOMAINS="*" EXO_POSTGRES_URL=postgresql://localhost:5432/concerts-db EXO_POSTGRES_USER=$USER cargo run --bin exo dev
+EXO_JWT_SECRET="abcd" EXO_POSTGRES_URL=postgresql://localhost:5432/concerts-db EXO_POSTGRES_USER=$USER cargo run --bin exo dev
 ```
 
-During development, it is nicer to use `cargo watch` and let compilation and restart happen automatically with any source changes. You may also set `EXO_INTROSPECTION=true` to allow GraphQL introspection queries.
+During development, it is nicer to use `cargo watch` and let compilation and restart the server automatically with any source changes.
 
 ```sh
-EXO_JWT_SECRET="abcd" EXO_CORS_DOMAINS="*" EXO_POSTGRES_URL=postgresql://localhost:5432/concerts-db EXO_POSTGRES_USER=$USER EXO_INTROSPECTION=true cargo watch -cx "run --bin exo dev"
+EXO_JWT_SECRET="abcd" EXO_POSTGRES_URL=postgresql://localhost:5432/concerts-db EXO_POSTGRES_USER=$USER cargo watch -cx "run --bin exo dev"
 ```
 
-When introspection is on, an interactive page is served at `/playground` by default; this is adjustable through the environment variable `EXO_PLAYGROUND_HTTP_PATH`. The GraphQL endpoint accepts requests at `/graphql` by default; this is also adjustable through the environment variable `EXO_ENDPOINT_HTTP_PATH`.
+Please see [CLI Reference](https://exograph.dev/docs/cli-reference/environment) for options such as setting playground and endpoint paths.
 
-**Note**
-If you change the tree-sitter grammar source file, `cargo watch` doesn't seem to pick up the change, so you need to run the non-watch version.
+## Logging, tracing, and telemetry
 
-5. Run unit tests
-
-```sh
-cargo build && cargo test
-```
-
-6. Run integration tests
-
-```sh
-cargo build && EXO_RUN_INTROSPECTION_TESTS=true cargo run --bin exo test integration-tests
-```
-
-## Logging, telemetry and tracing
-
-The code is instrumented using the [tracing](https://crates.io/crates/tracing) framework and will output log events to the console by default. The log level can be configured by setting the `EXO_LOG` variable which behaves identically to `RUST_LOG`. It defaults to `info` but can be set to other standard log levels such as `debug` (which will also show logging from libraries such as `tokio-postgres`). More [sophisticated settings](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/struct.EnvFilter.html) can also be used to tune the output for specific crates and modules.
-
-For more details, including how to set up OpenTelemetry, see the [Exograph telemetry documentation](https://exograph.dev/docs/production/telemetry).
+The code is instrumented using the [tracing](https://crates.io/crates/tracing) framework and will output log events to the console by default. For more details, including setting logging levels and using OpenTelemetry, see the [Exograph telemetry documentation](https://exograph.dev/docs/production/telemetry).
