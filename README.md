@@ -1,3 +1,13 @@
+<a href="https://exograph.dev">
+  <p align="center">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="logo-dark.svg">
+      <source media="(prefers-color-scheme: light)" srcset="logo-light.svg">
+      <img alt="Exograph" src="logo-light.svg">
+    </picture>
+  </p>
+</a>
+
 [Exograph](https://exograph.dev) is a declarative way to create flexible, secure, and performant backends that provide GraphQL query and mutation APIs. Exograph lets you focus on your domain model and business logic, freeing you to pursue more creative work on your application. Furthermore, it offers tooling to support all stages of the development lifecycle, from development to deployment to maintenance.
 
 # Installation
