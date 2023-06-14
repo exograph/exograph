@@ -1,4 +1,4 @@
-export async function bypass() {
+export function bypass() {
 	return 30;
 }
 

@@ -1,15 +1,15 @@
-import type { Operation } from "./exograph.d.ts"
+import type { Operation } from 'https://deno.land/x/exograph@v0.0.5/index.ts';
 
 interface OperationParams {
 	name: string
 	query: string
 }
 
-export async function serve(intArg: number, stringArg: string): Promise<OperationParams | null> {
+export function serve(_intArg: number, _stringArg: string): OperationParams | null {
 	return null;
 }
 
-export async function captureParams(operation: Operation) {
+export function captureParams(operation: Operation) {
 	return {
 		name: operation.name(),
 		query: JSON.stringify(operation.query())

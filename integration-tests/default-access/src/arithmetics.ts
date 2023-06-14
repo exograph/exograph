@@ -8,35 +8,35 @@ interface DivisionResultFullAccess {
 	remainder: number
 }
 
-export async function divideFullAccess(a: number, b: number): Promise<DivisionResultNoAccess> {
+export function divideFullAccess(a: number, b: number): DivisionResultNoAccess {
 	return {
 		quotient: Math.floor(a / b),
 		remainder: a % b
 	}
 }
 
-export async function divideFullAccessMutation(a: number, b: number): Promise<DivisionResultNoAccess> {
+export function divideFullAccessMutation(a: number, b: number): DivisionResultNoAccess {
 	return {
 		quotient: Math.floor(a / b),
 		remainder: a % b
 	}
 }
 
-export async function divideNoAccess(a: number, b: number): Promise<DivisionResultFullAccess> {
+export function divideNoAccess(a: number, b: number): DivisionResultFullAccess {
 	return {
 		quotient: Math.floor(a / b),
 		remainder: a % b
 	}
 }
 
-export async function divideNoAccessMutation(a: number, b: number): Promise<DivisionResultFullAccess> {
+export function divideNoAccessMutation(a: number, b: number): DivisionResultFullAccess {
 	return {
 		quotient: Math.floor(a / b),
 		remainder: a % b
 	}
 }
 
-export async function divide(a: number, b: number): Promise<DivisionResultFullAccess> {
+export function divide(a: number, b: number): DivisionResultFullAccess {
 	return {
 		quotient: Math.floor(a / b),
 		remainder: a % b

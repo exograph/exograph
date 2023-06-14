@@ -1,6 +1,8 @@
+// import { ExographError } from "https://deno.land/x/exograph@v0.0.5/index.ts";
+
 export async function registerUser(exograph: any, username: string, email: string): Promise<boolean> {
     // first query
-    let result = await exograph.executeQuery(`
+    const result = await exograph.executeQuery(`
         mutation($username: String!) {
             user: createUser(data: {
                 username: $username
@@ -28,5 +30,4 @@ export async function registerUser(exograph: any, username: string, email: strin
 
     // as the user's request failed, all changes should be rolled back from the database at this point
 
-    return true;
 }

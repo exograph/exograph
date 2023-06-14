@@ -20,9 +20,6 @@ use core_plugin_interface::core_model_builder::{
     typechecker::Typed,
 };
 
-// Temporary. Eventually, we will have a published artifact (at https://deno.land/x/exograph@<version>) that contains this code.
-static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
-
 /// Generates a module skeleton based on module definitions in the exo file so that users can have a good starting point.
 ///
 /// # Example:
@@ -43,7 +40,7 @@ static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 ///
 /// The generated code will look like this:
 /// ```typescript
-/// import { Exograph } from './exograph.d.ts'
+/// import type { Exograph } from 'https://deno.land/x/exograph@v0.0.5/index.ts';
 ///
 /// import { AuthContext } from './contexts.d.ts'
 ///
@@ -69,7 +66,6 @@ static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 ///     throw new Error('not implemented');
 /// }
 /// ```
-/// We also generate a exograph.d.ts file that contains the Exograph interface.
 ///
 pub fn generate_module_skeleton(
     module: &AstModule<Typed>,
@@ -92,14 +88,6 @@ pub fn generate_module_skeleton(
 
     // Make sure the directory exists in case the path provides is "new_dir/new_file.ts" and the "new_dir" doesn't exist.
     std::fs::create_dir_all(out_file_dir)?;
-
-    // Generated a typescript definition file even for Javascript, so that user can know
-    // the expected interface and IDEs can assist with code completion (if they use jsdoc, for).
-    let exograph_d_path = out_file_dir.join("exograph.d.ts");
-    if !exograph_d_path.exists() {
-        let mut exograph_d_file = File::create(&exograph_d_path)?;
-        exograph_d_file.write_all(EXOGRAPH_D_TEMPLATE_TS.as_bytes())?;
-    }
 
     // Generate context definitions (even if the target is a Javascript file to help with code completion)
     // Context definitions are generated in the same directory as the module code, since the types in it
@@ -163,9 +151,11 @@ fn generate_exograph_imports(
         return Ok(());
     }
 
+    let package_version = env!("CARGO_PKG_VERSION");
+
     writeln!(
         file,
-        "import type {{ {imports} }} from './exograph.d.ts';\n"
+        "import type {{ {imports} }} from 'https://deno.land/x/exograph@v{package_version}/index.ts';\n"
     )?;
 
     Ok(())
