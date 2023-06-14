@@ -1,4 +1,4 @@
-import type { ExographPriv } from 'https://deno.land/x/exograph@v0.0.5/index.ts';
+import type { ExographPriv } from '../generated/exograph.d.ts';
 
 const existingRsvpQuery = `
   query rsvps($email: String) {

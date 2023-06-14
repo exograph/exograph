@@ -1,5 +1,5 @@
-import type { Exograph, ExographPriv } from 'https://deno.land/x/exograph@v0.0.5/index.ts';
-// import { ExographError } from "https://deno.land/x/exograph@v0.0.5/index.ts";
+import type { Exograph, ExographPriv } from '../generated/exograph.d.ts';
+// import { ExographError } from "../generated/exograph.d.ts";
 
 export async function callThrowExographError(exograph: Exograph): Promise<number> {
 	const result = await exograph.executeQuery(

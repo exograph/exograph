@@ -89,6 +89,8 @@ pub fn generate_module_skeleton(
     // Make sure the directory exists in case the path provides is "new_dir/new_file.ts" and the "new_dir" doesn't exist.
     std::fs::create_dir_all(out_file_dir)?;
 
+    generate_exograph_d_ts()?;
+
     // Generate context definitions (even if the target is a Javascript file to help with code completion)
     // Context definitions are generated in the same directory as the module code, since the types in it
     // are independent of the module code.
@@ -151,11 +153,9 @@ fn generate_exograph_imports(
         return Ok(());
     }
 
-    let package_version = env!("CARGO_PKG_VERSION");
-
     writeln!(
         file,
-        "import type {{ {imports} }} from 'https://deno.land/x/exograph@v{package_version}/index.ts';\n"
+        "import type {{ {imports} }} from '../generated/exograph.d.ts';\n"
     )?;
 
     Ok(())
@@ -251,6 +251,24 @@ fn is_context_type(argument: &AstArgument<Typed>, base_system: &BaseModelSystem)
         .contexts
         .get_by_key(&argument.typ.name())
         .is_some()
+}
+
+/// Generate a exograph.d.ts, which exports everything from the type definition file from https://deno.land/x/exograph.
+/// This level of indirection helps to avoid changing user code with each version of exograph.
+fn generate_exograph_d_ts() -> Result<(), ModelBuildingError> {
+    let generated_dir = PathBuf::from("generated");
+    create_dir_all(&generated_dir)?;
+
+    let file_path = generated_dir.join("exograph.d.ts");
+
+    let package_version = env!("CARGO_PKG_VERSION");
+    let mut file = std::fs::File::create(file_path)?;
+    file.write_all(
+        format!("export * from 'https://deno.land/x/exograph@v{package_version}/index.ts';")
+            .as_bytes(),
+    )?;
+
+    Ok(())
 }
 
 fn generate_context_definitions(base_system: &BaseModelSystem) -> Result<(), ModelBuildingError> {

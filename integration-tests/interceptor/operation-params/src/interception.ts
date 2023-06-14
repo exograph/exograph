@@ -1,4 +1,4 @@
-import type { Operation } from 'https://deno.land/x/exograph@v0.0.5/index.ts';
+import type { Operation } from '../generated/exograph.d.ts';
 
 interface OperationParams {
 	name: string

@@ -134,7 +134,7 @@ fn process_script(
             Module::Json(j) => module_sources.push((j.specifier.clone(), j.source.to_string())),
             o => {
                 return Err(ModelBuildingError::Generic(format!(
-                    "Unsuported module type in Deno graph: {}",
+                    "Unsupported module type in Deno graph: {}",
                     o.specifier()
                 )))
             }

@@ -1,4 +1,4 @@
-import type { Exograph } from 'https://deno.land/x/exograph@v0.0.5/index.ts';
+import type { Exograph } from '../generated/exograph.d.ts';
 
 interface AuthContext {
     secretHeader: string,

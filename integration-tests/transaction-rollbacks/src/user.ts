@@ -1,4 +1,4 @@
-// import { ExographError } from "https://deno.land/x/exograph@v0.0.5/index.ts";
+// import { ExographError } from "../generated/exograph.d.ts";
 
 export async function registerUser(exograph: any, username: string, email: string): Promise<boolean> {
     // first query
