@@ -111,7 +111,7 @@ pub fn generate_module_skeleton(
 
     // Types (defined in `module`) matter only if the target is a typescript file.
     if is_typescript {
-        generate_exograph_imports(module, &mut file)?;
+        generate_exograph_imports(module, &mut file, out_file_dir)?;
         generate_context_imports(module, base_system, &mut file, out_file_dir)?;
 
         for module_type in module.types.iter() {
@@ -145,16 +145,24 @@ pub fn generate_module_skeleton(
 fn generate_exograph_imports(
     module: &AstModule<Typed>,
     file: &mut File,
+    out_file_dir: &Path,
 ) -> Result<(), ModelBuildingError> {
+    fn is_exograph_type(argument: &AstArgument<Typed>) -> bool {
+        let exograph_type_names = ["Exograph", "ExographPriv", "Operation", "ExographError"];
+        exograph_type_names.contains(&argument.typ.name().as_str())
+    }
+
     let imports = import_types(module, &is_exograph_type);
 
     if imports.is_empty() {
         return Ok(());
     }
 
+    let relative_path = generated_dir_path(out_file_dir)?;
+
     writeln!(
         file,
-        "import type {{ {imports} }} from '../generated/exograph.d.ts';\n"
+        "import type {{ {imports} }} from '{relative_path}generated/exograph.d.ts';\n"
     )?;
 
     Ok(())
@@ -166,6 +174,30 @@ fn generate_context_imports(
     file: &mut File,
     out_file_dir: &Path,
 ) -> Result<(), ModelBuildingError> {
+    fn is_context_type(argument: &AstArgument<Typed>, base_system: &BaseModelSystem) -> bool {
+        base_system
+            .contexts
+            .get_by_key(&argument.typ.name())
+            .is_some()
+    }
+
+    let imports = import_types(module, &|arg| is_context_type(arg, base_system));
+
+    if imports.is_empty() {
+        return Ok(());
+    }
+
+    let relative_path = generated_dir_path(out_file_dir)?;
+
+    writeln!(
+        file,
+        "import type {{ {imports} }} from '{relative_path}generated/contexts.d.ts';\n"
+    )?;
+
+    Ok(())
+}
+
+fn generated_dir_path(out_file_dir: &Path) -> Result<String, ModelBuildingError> {
     // Exograph projects have a src/index.exo file
     fn is_exoproject(dir: &Path) -> bool {
         fn directory_contains(dir: &Path, name: &str, is_dir: bool) -> bool {
@@ -186,12 +218,6 @@ fn generate_context_imports(
         }
     }
 
-    let imports = import_types(module, &|arg| is_context_type(arg, base_system));
-
-    if imports.is_empty() {
-        return Ok(());
-    }
-
     // Find out how many levels up we need to go to get to the root of the project
     // Then, we can generate a relative path to the generated/contexts.d.ts file
     let mut relative_depth = 0;
@@ -201,14 +227,7 @@ fn generate_context_imports(
         current_dir = current_dir.parent().unwrap().to_path_buf();
     }
 
-    let relative_path = "../".repeat(relative_depth);
-
-    writeln!(
-        file,
-        "import type {{ {imports} }} from '{relative_path}generated/contexts.d.ts';\n"
-    )?;
-
-    Ok(())
+    Ok("../".repeat(relative_depth))
 }
 
 /// Collect all types used in the module matching the given selection criteria.
@@ -238,18 +257,6 @@ fn import_types(
     types_used.sort(); // Sort to make the output deterministic
 
     types_used.join(", ")
-}
-
-fn is_exograph_type(argument: &AstArgument<Typed>) -> bool {
-    let exograph_type_names = ["Exograph", "ExographPriv", "Operation", "ExographError"];
-    exograph_type_names.contains(&argument.typ.name().as_str())
-}
-
-fn is_context_type(argument: &AstArgument<Typed>, base_system: &BaseModelSystem) -> bool {
-    base_system
-        .contexts
-        .get_by_key(&argument.typ.name())
-        .is_some()
 }
 
 /// Generate a exograph.d.ts, which exports everything from the type definition file from https://deno.land/x/exograph.
