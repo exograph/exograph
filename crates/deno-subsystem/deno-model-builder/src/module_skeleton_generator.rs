@@ -40,7 +40,7 @@ use core_plugin_interface::core_model_builder::{
 ///
 /// The generated code will look like this:
 /// ```typescript
-/// import type { Exograph } from 'https://deno.land/x/exograph@v0.0.5/index.ts';
+/// import type { Exograph } from '../generated/exograph.d.ts';
 ///
 /// import { AuthContext } from './contexts.d.ts'
 ///
@@ -57,7 +57,7 @@ use core_plugin_interface::core_model_builder::{
 /// }
 /// ```
 ///
-/// We add `async` to indicate that the function may be async, but users can remove it if they want.
+/// We add `async` to indicate that the function may be async, but users may remove it if they want.
 ///
 /// If the `@deno("todo.js") was specified, the generated code will look like this:
 /// ```javascript
@@ -66,7 +66,6 @@ use core_plugin_interface::core_model_builder::{
 ///     throw new Error('not implemented');
 /// }
 /// ```
-///
 pub fn generate_module_skeleton(
     module: &AstModule<Typed>,
     base_system: &BaseModelSystem,
