@@ -1,4 +1,4 @@
-@deno("expection.ts")
+@deno("exception.ts")
 module ExceptionModule {
     @access(true)
     export query callThrowExographError(@inject exograph: Exograph): Int

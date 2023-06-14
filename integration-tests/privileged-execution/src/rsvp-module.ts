@@ -1,3 +1,5 @@
+import type { ExographPriv } from '../generated/exograph.d.ts';
+
 const existingRsvpQuery = `
   query rsvps($email: String) {
     rsvps(where: {email: {eq: $email}}) {
@@ -42,7 +44,7 @@ interface RsvpConfirmation {
 // Perform an upsert operation. In real world app, this would also send a confirmation email etc.
 export async function processRsvp(email: string, count: number, exograph: ExographPriv): Promise<RsvpConfirmation> {
   // Just to test that we can make non-privileged calls through a ExographPriv instance
-  let nonPrivQuery = await exograph.executeQuery('query { __type(name: "Rsvp") { name } }');
+  const _nonPrivQuery = await exograph.executeQuery('query { __type(name: "Rsvp") { name } }');
 
   const existing = await exograph.executeQueryPriv(existingRsvpQuery, {
     email,
@@ -62,7 +64,8 @@ export async function processRsvp(email: string, count: number, exograph: Exogra
     } else {
       return existingRsvp;
     }
-  };
+  }
+
   console.log(`No existing RSVP for ${email}`);
 
   return (await exograph.executeQueryPriv(createRsvpMutation, {

@@ -3,7 +3,7 @@ interface Info {
 	title: string
 }
 
-export async function getInfo(): Promise<Info> {
+export function getInfo(): Promise<Info> {
 	// TODO
 	throw new Error('not implemented');
 }

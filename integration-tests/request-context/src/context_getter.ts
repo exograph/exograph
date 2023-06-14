@@ -1,5 +1,3 @@
-import "./exograph.d.ts";
-
 interface AuthContext {
     role: string,
     secretHeader: string,

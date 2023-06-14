@@ -1,6 +1,6 @@
-import "./exograph.d.ts"
+import type { Exograph } from '../generated/exograph.d.ts';
 
-export function getCookie(exograph: Exograph): boolean {
+export async function getCookie(exograph: Exograph): Promise<boolean> {
 	exograph.setCookie({
 		name: "session_id",
 		value: "abcde"

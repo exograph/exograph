@@ -20,9 +20,6 @@ use core_plugin_interface::core_model_builder::{
     typechecker::Typed,
 };
 
-// Temporary. Eventually, we will have a published artifact (at https://deno.land/x/exograph@<version>) that contains this code.
-static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
-
 /// Generates a module skeleton based on module definitions in the exo file so that users can have a good starting point.
 ///
 /// # Example:
@@ -43,7 +40,7 @@ static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 ///
 /// The generated code will look like this:
 /// ```typescript
-/// import { Exograph } from './exograph.d.ts'
+/// import type { Exograph } from '../generated/exograph.d.ts';
 ///
 /// import { AuthContext } from './contexts.d.ts'
 ///
@@ -60,7 +57,7 @@ static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 /// }
 /// ```
 ///
-/// We add `async` to indicate that the function may be async, but users can remove it if they want.
+/// We add `async` to indicate that the function may be async, but users may remove it if they want.
 ///
 /// If the `@deno("todo.js") was specified, the generated code will look like this:
 /// ```javascript
@@ -69,8 +66,6 @@ static EXOGRAPH_D_TEMPLATE_TS: &str = include_str!("exograph.d.template.ts");
 ///     throw new Error('not implemented');
 /// }
 /// ```
-/// We also generate a exograph.d.ts file that contains the Exograph interface.
-///
 pub fn generate_module_skeleton(
     module: &AstModule<Typed>,
     base_system: &BaseModelSystem,
@@ -93,13 +88,7 @@ pub fn generate_module_skeleton(
     // Make sure the directory exists in case the path provides is "new_dir/new_file.ts" and the "new_dir" doesn't exist.
     std::fs::create_dir_all(out_file_dir)?;
 
-    // Generated a typescript definition file even for Javascript, so that user can know
-    // the expected interface and IDEs can assist with code completion (if they use jsdoc, for).
-    let exograph_d_path = out_file_dir.join("exograph.d.ts");
-    if !exograph_d_path.exists() {
-        let mut exograph_d_file = File::create(&exograph_d_path)?;
-        exograph_d_file.write_all(EXOGRAPH_D_TEMPLATE_TS.as_bytes())?;
-    }
+    generate_exograph_d_ts()?;
 
     // Generate context definitions (even if the target is a Javascript file to help with code completion)
     // Context definitions are generated in the same directory as the module code, since the types in it
@@ -122,7 +111,7 @@ pub fn generate_module_skeleton(
 
     // Types (defined in `module`) matter only if the target is a typescript file.
     if is_typescript {
-        generate_exograph_imports(module, &mut file)?;
+        generate_exograph_imports(module, &mut file, out_file_dir)?;
         generate_context_imports(module, base_system, &mut file, out_file_dir)?;
 
         for module_type in module.types.iter() {
@@ -156,16 +145,24 @@ pub fn generate_module_skeleton(
 fn generate_exograph_imports(
     module: &AstModule<Typed>,
     file: &mut File,
+    out_file_dir: &Path,
 ) -> Result<(), ModelBuildingError> {
+    fn is_exograph_type(argument: &AstArgument<Typed>) -> bool {
+        let exograph_type_names = ["Exograph", "ExographPriv", "Operation", "ExographError"];
+        exograph_type_names.contains(&argument.typ.name().as_str())
+    }
+
     let imports = import_types(module, &is_exograph_type);
 
     if imports.is_empty() {
         return Ok(());
     }
 
+    let relative_path = generated_dir_path(out_file_dir)?;
+
     writeln!(
         file,
-        "import type {{ {imports} }} from './exograph.d.ts';\n"
+        "import type {{ {imports} }} from '{relative_path}generated/exograph.d.ts';\n"
     )?;
 
     Ok(())
@@ -177,6 +174,30 @@ fn generate_context_imports(
     file: &mut File,
     out_file_dir: &Path,
 ) -> Result<(), ModelBuildingError> {
+    fn is_context_type(argument: &AstArgument<Typed>, base_system: &BaseModelSystem) -> bool {
+        base_system
+            .contexts
+            .get_by_key(&argument.typ.name())
+            .is_some()
+    }
+
+    let imports = import_types(module, &|arg| is_context_type(arg, base_system));
+
+    if imports.is_empty() {
+        return Ok(());
+    }
+
+    let relative_path = generated_dir_path(out_file_dir)?;
+
+    writeln!(
+        file,
+        "import type {{ {imports} }} from '{relative_path}generated/contexts.d.ts';\n"
+    )?;
+
+    Ok(())
+}
+
+fn generated_dir_path(out_file_dir: &Path) -> Result<String, ModelBuildingError> {
     // Exograph projects have a src/index.exo file
     fn is_exoproject(dir: &Path) -> bool {
         fn directory_contains(dir: &Path, name: &str, is_dir: bool) -> bool {
@@ -197,12 +218,6 @@ fn generate_context_imports(
         }
     }
 
-    let imports = import_types(module, &|arg| is_context_type(arg, base_system));
-
-    if imports.is_empty() {
-        return Ok(());
-    }
-
     // Find out how many levels up we need to go to get to the root of the project
     // Then, we can generate a relative path to the generated/contexts.d.ts file
     let mut relative_depth = 0;
@@ -212,14 +227,7 @@ fn generate_context_imports(
         current_dir = current_dir.parent().unwrap().to_path_buf();
     }
 
-    let relative_path = "../".repeat(relative_depth);
-
-    writeln!(
-        file,
-        "import type {{ {imports} }} from '{relative_path}generated/contexts.d.ts';\n"
-    )?;
-
-    Ok(())
+    Ok("../".repeat(relative_depth))
 }
 
 /// Collect all types used in the module matching the given selection criteria.
@@ -251,16 +259,22 @@ fn import_types(
     types_used.join(", ")
 }
 
-fn is_exograph_type(argument: &AstArgument<Typed>) -> bool {
-    let exograph_type_names = ["Exograph", "ExographPriv", "Operation", "ExographError"];
-    exograph_type_names.contains(&argument.typ.name().as_str())
-}
+/// Generate a exograph.d.ts, which exports everything from the type definition file from https://deno.land/x/exograph.
+/// This level of indirection helps to avoid changing user code with each version of exograph.
+fn generate_exograph_d_ts() -> Result<(), ModelBuildingError> {
+    let generated_dir = PathBuf::from("generated");
+    create_dir_all(&generated_dir)?;
 
-fn is_context_type(argument: &AstArgument<Typed>, base_system: &BaseModelSystem) -> bool {
-    base_system
-        .contexts
-        .get_by_key(&argument.typ.name())
-        .is_some()
+    let file_path = generated_dir.join("exograph.d.ts");
+
+    let package_version = env!("CARGO_PKG_VERSION");
+    let mut file = std::fs::File::create(file_path)?;
+    file.write_all(
+        format!("export * from 'https://deno.land/x/exograph@v{package_version}/index.ts';")
+            .as_bytes(),
+    )?;
+
+    Ok(())
 }
 
 fn generate_context_definitions(base_system: &BaseModelSystem) -> Result<(), ModelBuildingError> {

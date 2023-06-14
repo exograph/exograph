@@ -3,7 +3,7 @@ interface Info {
 	title: string
 }
 
-export async function getInfo(): Promise<Info> {
+export function getInfo(): Info {
 	return {
 		id: 1,
 		title: 'Test'

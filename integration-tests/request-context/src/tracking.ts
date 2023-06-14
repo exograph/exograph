@@ -1,4 +1,4 @@
-import "./exograph.d.ts"
+import type { Exograph } from '../generated/exograph.d.ts';
 
 interface AuthContext {
     secretHeader: string,

@@ -1,6 +1,5 @@
-import type { Exograph } from './exograph.d.ts';
-
-import type { ICaptchaValidatorContext } from './contexts.d.ts';
+import type { Exograph } from '../generated/exograph.d.ts';
+import type { ICaptchaValidatorContext } from '../generated/contexts.d.ts';
 
 interface CaptchaChallenge {
     uuid: string,

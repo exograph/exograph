@@ -1,4 +1,4 @@
-# Ignore autocreated exograph.d.ts and contexts.d.ts.
-# We need such an arrangement until we have exograph.d.ts  distributed over some repository that can be imported into users source code
-exograph.d.ts
+# Ignore autocreated contexts.d.ts.
 contexts.d.ts
+exograph.d.ts
+
