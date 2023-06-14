@@ -55,22 +55,18 @@ jobs:
           deps-script: sudo apt-get install -y protobuf-compiler
           target: x86_64-unknown-linux-gnu
           cross_flag: ""
-          vendor_openssl_flag: ""
         - os: macos-11
           deps-script: brew install protobuf
           target: x86_64-apple-darwin
           cross_flag: ""
-          vendor_openssl_flag: ""
         - os: macos-11
           deps-script: brew install protobuf
           target: aarch64-apple-darwin
           cross_flag: "--features cross"
-          vendor_openssl_flag: "--features vendored-openssl"
         - os: windows-2019
           deps-script: choco install protoc
           target: x86_64-pc-windows-msvc
           cross_flag: ""
-          vendor_openssl_flag: "--features vendored-openssl"
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -96,12 +92,12 @@ jobs:
           key: ${{ matrix.target }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build
-        run: cargo build --target ${{ matrix.target }} ${{ matrix.cross_flag }} ${{ matrix.vendor_openssl_flag }}
+        run: cargo build --target ${{ matrix.target }} ${{ matrix.cross_flag }} 
       - name: Run tests
         if: ${{ matrix.cross_flag == '' }}
         env:
           RUST_BACKTRACE: 1
-        run: cargo test --workspace --target ${{ matrix.target }} ${{ matrix.cross_flag }} ${{ matrix.vendor_openssl_flag }}
+        run: cargo test --workspace --target ${{ matrix.target }} ${{ matrix.cross_flag }} 
       - name: Run integration tests
         if: ${{ matrix.cross_flag == '' }}
         env:

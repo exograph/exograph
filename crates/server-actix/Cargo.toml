@@ -14,7 +14,6 @@ default = [
 static-postgres-resolver = ["server-common/static-postgres-resolver"]
 static-deno-resolver = ["server-common/static-deno-resolver"]
 static-wasm-resolver = ["server-common/static-wasm-resolver"]
-vendored-openssl = ["openssl", "openssl/vendored"]
 
 [dependencies]
 async-trait.workspace = true
@@ -33,7 +32,6 @@ resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 
-openssl = { version = "0.10.50", optional = true }
 
 [[bin]]
 name = "exo-server"
