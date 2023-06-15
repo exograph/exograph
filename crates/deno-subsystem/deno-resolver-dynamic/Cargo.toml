@@ -8,6 +8,9 @@ publish = false
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 deno-resolver = { path = "../deno-resolver" }
 
+[features]
+cross = ["deno-resolver/cross"]
+
 [dev-dependencies]
 
 [lib]

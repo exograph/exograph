@@ -13,6 +13,7 @@ default = [
   "static-deno-resolver",
   "static-wasm-resolver",
 ]
+cross = ["exo-deno/cross"]
 
 [dependencies]
 anyhow.workspace = true
@@ -44,6 +45,7 @@ core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 server-common = { path = "../server-common" }
 futures.workspace = true
 crossbeam-channel = "0.5.8"
+
 
 [dev-dependencies]
 insta = { workspace = true, features = ["yaml"] }

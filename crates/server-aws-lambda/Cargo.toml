@@ -38,6 +38,7 @@ default = [
   "static-deno-resolver",
   "static-wasm-resolver",
 ]
+cross = ["server-common/cross"]
 
 [[bin]]
 name = "bootstrap"

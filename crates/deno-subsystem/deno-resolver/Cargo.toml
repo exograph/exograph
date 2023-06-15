@@ -25,6 +25,8 @@ exo-deno = { path = "../../../libs/exo-deno" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 deno-model = { path = "../deno-model" }
 
+[features]
+cross = ["exo-deno/cross"]
 
 [dev-dependencies]
 tokio.workspace = true

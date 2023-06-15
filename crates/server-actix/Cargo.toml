@@ -15,6 +15,8 @@ static-postgres-resolver = ["server-common/static-postgres-resolver"]
 static-deno-resolver = ["server-common/static-deno-resolver"]
 static-wasm-resolver = ["server-common/static-wasm-resolver"]
 
+cross = ["server-common/cross"]
+
 [dependencies]
 async-trait.workspace = true
 actix-web = { version = "4.1.0", default-features = false, features = [
@@ -31,7 +33,6 @@ tracing-actix-web = "0.6.0"
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
-
 
 [[bin]]
 name = "exo-server"

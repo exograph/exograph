@@ -32,6 +32,7 @@ wasm-resolver = { path = "../wasm-subsystem/wasm-resolver", optional = true }
 static-postgres-resolver = ["postgres-resolver"]
 static-deno-resolver = ["deno-resolver"]
 static-wasm-resolver = ["wasm-resolver"]
+cross = ["deno-resolver/cross"]
 
 [lib]
 doctest = false
