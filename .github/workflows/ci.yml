@@ -8,21 +8,12 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
-  check-skip:
-    runs-on: ubuntu-latest
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-      - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5.3.0
-        with:
-          cancel_others: "true"
-
   lint:
-    needs: check-skip
-    if: ${{ needs.check-skip.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-
     runs-on: ubuntu-latest
 
     steps:
@@ -43,9 +34,6 @@ jobs:
         args: --all-targets --all-features -- -D warnings --no-deps
 
   test:
-    needs: check-skip
-    if: ${{ needs.check-skip.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-
     strategy:
       fail-fast: false
       matrix:
