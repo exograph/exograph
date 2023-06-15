@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     tags:
       - "*"
+  pull_request: # Temporary to test the "cross" feauture without merging
 
 env:
   REGISTRY: ghcr.io

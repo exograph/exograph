@@ -9,6 +9,7 @@ name = "exo"
 path = "src/main.rs"
 
 [features]
+cross = ["testing/cross"]
 
 [dependencies]
 colored.workspace = true
