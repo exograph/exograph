@@ -1736,7 +1736,7 @@ dependencies = [
 [[package]]
 name = "deno"
 version = "1.31.2"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "async-trait",
  "atty",
@@ -1899,7 +1899,7 @@ dependencies = [
 [[package]]
 name = "deno_broadcast_channel"
 version = "0.86.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "async-trait",
  "deno_core",
@@ -1910,7 +1910,7 @@ dependencies = [
 [[package]]
 name = "deno_cache"
 version = "0.24.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "async-trait",
  "deno_core",
@@ -1923,7 +1923,7 @@ dependencies = [
 [[package]]
 name = "deno_console"
 version = "0.92.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
 ]
@@ -1931,7 +1931,7 @@ dependencies = [
 [[package]]
 name = "deno_core"
 version = "0.174.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1955,7 +1955,7 @@ dependencies = [
 [[package]]
 name = "deno_crypto"
 version = "0.106.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "aes 0.8.2",
  "aes-gcm",
@@ -1991,7 +1991,7 @@ dependencies = [
 [[package]]
 name = "deno_fetch"
 version = "0.116.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "bytes",
  "data-url",
@@ -2009,7 +2009,7 @@ dependencies = [
 [[package]]
 name = "deno_ffi"
 version = "0.79.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "dlopen",
@@ -2025,7 +2025,7 @@ dependencies = [
 [[package]]
 name = "deno_flash"
 version = "0.28.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "deno_tls",
@@ -2045,7 +2045,7 @@ dependencies = [
 [[package]]
 name = "deno_fs"
 version = "0.2.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "deno_crypto",
@@ -2084,7 +2084,7 @@ dependencies = [
 [[package]]
 name = "deno_http"
 version = "0.87.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "async-compression",
  "base64 0.13.1",
@@ -2109,7 +2109,7 @@ dependencies = [
 [[package]]
 name = "deno_io"
 version = "0.2.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "nix 0.24.2",
@@ -2121,7 +2121,7 @@ dependencies = [
 [[package]]
 name = "deno_lockfile"
 version = "0.8.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "anyhow",
  "ring",
@@ -2132,7 +2132,7 @@ dependencies = [
 [[package]]
 name = "deno_napi"
 version = "0.22.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "libloading",
@@ -2141,7 +2141,7 @@ dependencies = [
 [[package]]
 name = "deno_net"
 version = "0.84.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "deno_tls",
@@ -2156,7 +2156,7 @@ dependencies = [
 [[package]]
 name = "deno_node"
 version = "0.29.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "digest 0.10.6",
@@ -2181,7 +2181,7 @@ dependencies = [
 [[package]]
 name = "deno_ops"
 version = "0.52.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "once_cell",
  "pmutil",
@@ -2195,7 +2195,7 @@ dependencies = [
 [[package]]
 name = "deno_runtime"
 version = "0.100.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "atty",
  "console_static_text",
@@ -2250,7 +2250,7 @@ dependencies = [
 [[package]]
 name = "deno_tls"
 version = "0.79.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "once_cell",
@@ -2265,7 +2265,7 @@ dependencies = [
 [[package]]
 name = "deno_url"
 version = "0.92.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "serde",
@@ -2276,7 +2276,7 @@ dependencies = [
 [[package]]
 name = "deno_web"
 version = "0.123.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "async-trait",
  "base64-simd",
@@ -2291,7 +2291,7 @@ dependencies = [
 [[package]]
 name = "deno_webgpu"
 version = "0.93.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "serde",
@@ -2303,7 +2303,7 @@ dependencies = [
 [[package]]
 name = "deno_webidl"
 version = "0.92.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
 ]
@@ -2311,7 +2311,7 @@ dependencies = [
 [[package]]
 name = "deno_websocket"
 version = "0.97.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "deno_tls",
@@ -2326,7 +2326,7 @@ dependencies = [
 [[package]]
 name = "deno_webstorage"
 version = "0.87.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "deno_core",
  "deno_web",
@@ -4280,7 +4280,7 @@ dependencies = [
 [[package]]
 name = "napi_sym"
 version = "0.22.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "proc-macro2 1.0.56",
  "quote 1.0.27",
@@ -6034,7 +6034,7 @@ dependencies = [
 [[package]]
 name = "serde_v8"
 version = "0.85.0"
-source = "git+https://github.com/exograph/deno.git?branch=patched#61c8ed124732508e6335620c56743b77911c9cfc"
+source = "git+https://github.com/exograph/deno.git?branch=patched#89d076c17004955a5afdc61c99af3fe47fcd4131"
 dependencies = [
  "bytes",
  "derive_more",
@@ -7701,7 +7701,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "rand",
  "static_assertions",
 ]

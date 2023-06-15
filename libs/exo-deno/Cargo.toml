@@ -11,6 +11,7 @@ doctest = false
 default = []
 typescript-loader = ["dep:deno_ast"]
 cross = ["deno_runtime/dont_create_runtime_snapshot"]
+not_cross = ["deno_runtime/include_js_files_for_snapshotting"]
 
 [dependencies]
 thiserror.workspace = true
