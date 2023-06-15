@@ -84,6 +84,8 @@ cd integration-tests/basic-model-no-auth
 cargo run --bin exo yolo
 ```
 
+You will see URLs for the GraphQL playground and GraphQL endpoint. You can use the playground to run queries and mutations against the endpoint.
+
 ### Dev mode
 
 1. Switch to an example Exograph project directory (such as `integration-tests/basic-model-no-auth`)
@@ -111,7 +113,7 @@ During development, it is nicer to use `cargo watch` and let compilation and res
 EXO_JWT_SECRET="abcd" EXO_POSTGRES_URL=postgresql://localhost:5432/concerts-db EXO_POSTGRES_USER=$USER cargo watch -cx "run --bin exo dev"
 ```
 
-Please see [CLI Reference](https://exograph.dev/docs/cli-reference/environment) for options such as setting playground and endpoint paths.
+Please see [CLI Reference](https://exograph.dev/docs/cli-reference/environment) for options such as setting paths for the GraphQL playground and query endpoint.
 
 ## Logging, tracing, and telemetry
 
