@@ -39,6 +39,7 @@ use opentelemetry_otlp::WithExportConfig;
 use std::str::FromStr;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
 
+const EXO_LOG: &str = "EXO_LOG";
 /// Initialize the tracing subscriber.
 ///
 /// Creates a `tracing_subscriber::fmt` layer by default and adds a `tracing_opentelemetry`
@@ -50,7 +51,7 @@ pub(super) fn init() {
         create_otlp_tracer().map(|t| tracing_opentelemetry::layer().with_tracer(t));
     let filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::WARN.into())
-        .with_env_var("EXO_LOG")
+        .with_env_var(EXO_LOG)
         .from_env_lossy();
 
     tracing_subscriber::registry()

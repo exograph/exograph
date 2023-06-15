@@ -14,6 +14,10 @@ use clap::{ArgMatches, Command};
 use colored::Colorize;
 use std::{path::PathBuf, sync::atomic::Ordering};
 
+use crate::commands::util::{
+    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_JWT_SECRET, EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL,
+    EXO_POSTGRES_USER,
+};
 use crate::{
     commands::{
         schema::migration::{self, Migration},
@@ -72,12 +76,12 @@ async fn run_server(
     db: &(dyn EphemeralDatabase + Send + Sync),
 ) -> Result<()> {
     // set envs for server
-    std::env::set_var("EXO_POSTGRES_URL", db.url());
-    std::env::remove_var("EXO_POSTGRES_USER");
-    std::env::remove_var("EXO_POSTGRES_PASSWORD");
-    std::env::set_var("EXO_INTROSPECTION", "true");
-    std::env::set_var("EXO_JWT_SECRET", jwt_secret);
-    std::env::set_var("EXO_CORS_DOMAINS", "*");
+    std::env::set_var(EXO_POSTGRES_URL, db.url());
+    std::env::remove_var(EXO_POSTGRES_USER);
+    std::env::remove_var(EXO_POSTGRES_PASSWORD);
+    std::env::set_var(EXO_INTROSPECTION, "true");
+    std::env::set_var(EXO_JWT_SECRET, jwt_secret);
+    std::env::set_var(EXO_CORS_DOMAINS, "*");
 
     println!("JWT secret is {}", &jwt_secret.cyan());
     println!("Postgres URL is {}", &db.url().cyan());
@@ -111,7 +115,7 @@ async fn run_server(
                 println!("Pausing for manual repair");
                 println!(
                     "You can get the migrations by running: {}{}{}",
-                    "EXO_POSTGRES_URL=".cyan(),
+                    format!("{EXO_POSTGRES_URL}=").cyan(),
                     db.url().cyan(),
                     " exo schema migration".cyan()
                 );

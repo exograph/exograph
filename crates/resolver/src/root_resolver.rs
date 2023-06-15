@@ -26,6 +26,9 @@ pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
 use futures::Stream;
 
+const EXO_PLAYGROUND_HTTP_PATH: &str = "EXO_PLAYGROUND_HTTP_PATH";
+const EXO_ENDPOINT_HTTP_PATH: &str = "EXO_ENDPOINT_HTTP_PATH";
+
 #[instrument(
     name = "resolver::resolve_in_memory"
     skip(system_resolver, request_context)
@@ -150,11 +153,11 @@ pub async fn resolve<'a, E: 'static>(
 }
 
 pub fn get_playground_http_path() -> String {
-    std::env::var("EXO_PLAYGROUND_HTTP_PATH").unwrap_or_else(|_| "/playground".to_string())
+    std::env::var(EXO_PLAYGROUND_HTTP_PATH).unwrap_or_else(|_| "/playground".to_string())
 }
 
 pub fn get_endpoint_http_path() -> String {
-    std::env::var("EXO_ENDPOINT_HTTP_PATH").unwrap_or_else(|_| "/graphql".to_string())
+    std::env::var(EXO_ENDPOINT_HTTP_PATH).unwrap_or_else(|_| "/graphql".to_string())
 }
 
 pub async fn create_system_resolver(

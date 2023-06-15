@@ -21,6 +21,9 @@ use std::path::Path;
 use std::time;
 use std::{env, process::exit};
 
+const EXO_CORS_DOMAINS: &str = "EXO_CORS_DOMAINS";
+const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
+
 /// Run the server in production mode with a compiled exo_ir file
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -28,7 +31,7 @@ async fn main() -> std::io::Result<()> {
 
     let system_resolver = web::Data::new(server_common::init().await);
 
-    let server_port = env::var("EXO_SERVER_PORT")
+    let server_port = env::var(EXO_SERVER_PORT)
         .map(|port_str| {
             port_str
                 .parse::<u32>()
@@ -133,7 +136,7 @@ async fn playground(req: HttpRequest, resolver: web::Data<SystemResolver>) -> im
 }
 
 fn cors_from_env() -> Cors {
-    match env::var("EXO_CORS_DOMAINS").ok() {
+    match env::var(EXO_CORS_DOMAINS).ok() {
         Some(domains) => {
             let domains_list = domains.split(',');
 
