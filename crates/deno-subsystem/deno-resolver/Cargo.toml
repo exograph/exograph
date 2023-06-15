@@ -27,6 +27,7 @@ deno-model = { path = "../deno-model" }
 
 [features]
 cross = ["exo-deno/cross"]
+not_cross = ["exo-deno/not_cross"]
 
 [dev-dependencies]
 tokio.workspace = true

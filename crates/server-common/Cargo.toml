@@ -33,6 +33,7 @@ static-postgres-resolver = ["postgres-resolver"]
 static-deno-resolver = ["deno-resolver"]
 static-wasm-resolver = ["wasm-resolver"]
 cross = ["deno-resolver/cross"]
+not_cross = ["deno-resolver/not_cross"]
 
 [lib]
 doctest = false

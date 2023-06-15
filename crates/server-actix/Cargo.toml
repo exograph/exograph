@@ -16,6 +16,7 @@ static-deno-resolver = ["server-common/static-deno-resolver"]
 static-wasm-resolver = ["server-common/static-wasm-resolver"]
 
 cross = ["server-common/cross"]
+not_cross = ["server-common/not_cross"]
 
 [dependencies]
 async-trait.workspace = true

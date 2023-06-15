@@ -10,6 +10,7 @@ deno-resolver = { path = "../deno-resolver" }
 
 [features]
 cross = ["deno-resolver/cross"]
+not_cross = ["deno-resolver/not_cross"]
 
 [dev-dependencies]
 
