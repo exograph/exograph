@@ -22,13 +22,13 @@ COPY --from=builder /usr/src/exo-server /usr/local/bin/exo-server
 
 ENV TZ=Etc/UTC
 ENV APP_USER=exo
-ENV APP=/usr/src/app
+ENV APP_DIR=/usr/src/app
 
 ### Create a non-root user to run the server
 RUN groupadd $APP_USER \
   && useradd -g $APP_USER $APP_USER \
-  && mkdir -p ${APP}
-RUN chown -R $APP_USER:$APP_USER ${APP}
+  && mkdir -p ${APP_DIR}
+RUN chown -R $APP_USER:$APP_USER ${APP_DIR}
 USER $APP_USER
 
-WORKDIR ${APP}
+WORKDIR ${APP_DIR}
