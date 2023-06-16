@@ -103,7 +103,6 @@ jobs:
           cargo build -p server-aws-lambda --target x86_64-unknown-linux-gnu --release 
           mkdir -p dist
           cp target/x86_64-unknown-linux-gnu/release/bootstrap bootstrap
-          - name: Upload Artifacts
       - name: Create zip of binaries
         run: |
           cp LICENSE dist/
