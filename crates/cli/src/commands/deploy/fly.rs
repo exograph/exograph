@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use std::{
-    fs::{create_dir_all, File},
+    fs::File,
     io::{BufRead, Write},
     path::{Path, PathBuf},
 };
@@ -86,25 +86,16 @@ impl CommandDefinition for FlyCommandDefinition {
 
         let image_tag = format!("{}:{}", app_name, version);
 
-        build(false).await?;
+        build(false).await?; // Build the exo_ir file
 
-        let fly_dir = PathBuf::from("target/fly");
+        let current_dir = std::env::current_dir()?;
 
-        create_dir_all(&fly_dir)?;
+        create_fly_toml(&current_dir, &app_name, &image_tag, &env_file, &envs)?;
 
-        create_fly_toml(&fly_dir, &app_name, &image_tag, &env_file, &envs)?;
-
-        create_dockerfile(&fly_dir, use_fly_db)?;
+        create_dockerfile(&current_dir, use_fly_db)?;
 
         let docker_build_output = std::process::Command::new("docker")
-            .args([
-                "build",
-                "-t",
-                &image_tag,
-                "-f",
-                "target/fly/Dockerfile",
-                ".",
-            ])
+            .args(["build", "-t", &image_tag, "-f", "Dockerfile.fly", "."])
             .current_dir(".")
             .output()
             .map_err(|err| {
@@ -129,7 +120,6 @@ impl CommandDefinition for FlyCommandDefinition {
                 .blue()
                 .italic()
         );
-        println!("{}", format!("\tcd {}", fly_dir.display()).blue());
         println!("{}", format!("\tfly apps create {}", app_name).blue());
         println!(
             "{}{}",
@@ -152,7 +142,7 @@ impl CommandDefinition for FlyCommandDefinition {
             let db_name = &app_name.to_snake_case(); // this is how fly.io names the db
             println!(
                 "{}{}{}",
-                format!("\t(cd ../.. && exo schema create) | psql postgres://{db_name}:",).blue(),
+                format!("\texo schema create | psql postgres://{db_name}:",).blue(),
                 "<APP_DATABASE_PASSWORD>".yellow(),
                 format!("@localhost:54321/{db_name}").blue(),
             );
@@ -164,7 +154,7 @@ impl CommandDefinition for FlyCommandDefinition {
             );
             println!(
                 "{}{}",
-                "\t(cd ../.. && exo schema create) | psql ".blue(),
+                "\texo schema create | psql ".blue(),
                 "<your-postgres-url>".yellow()
             );
         }
@@ -172,12 +162,13 @@ impl CommandDefinition for FlyCommandDefinition {
         println!("{}", "\tfly deploy --local-only".blue());
 
         println!(
-            "{}",
-            "\nTo deploy a new version of an existing app, run:"
+            "{} '{}'{}",
+            "\nTo deploy a new version of an existing app (you must provide the '--version' argument to point to the next version), update 'image' in fly.toml to "
                 .green()
-                .italic()
+                .italic(),
+            image_tag.yellow(),
+            " and run:".green().italic()
         );
-        println!("{}", format!("\tcd {}", fly_dir.display()).green());
         println!("{}", "\tfly deploy --local-only".green());
 
         Ok(())
@@ -188,6 +179,17 @@ static FLY_TOML: &str = include_str!("../templates/fly.toml");
 static DOCKERFILE: &str = include_str!("../templates/Dockerfile.fly");
 
 fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
+    let dockerfile_path = fly_dir.join("Dockerfile.fly");
+
+    if dockerfile_path.exists() {
+        println!(
+            "{}",
+            "Dockerfile already exists. To regenerate, remove the existing file. Skipping..."
+                .purple()
+        );
+        return Ok(());
+    }
+
     let extra_env = if use_fly_db {
         "EXO_POSTGRES_URL=${DATABASE_URL}"
     } else {
@@ -195,8 +197,14 @@ fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
     };
     let dockerfile_content = DOCKERFILE.replace("<<<EXTRA_ENV>>>", extra_env);
 
-    let mut dockerfile = File::create(fly_dir.join("Dockerfile"))?;
+    let mut dockerfile = File::create(dockerfile_path)?;
     dockerfile.write_all(dockerfile_content.as_bytes())?;
+
+    println!(
+        "{}",
+        "Created Dockerfile.fly file. You can edit this file to customize the deployment such as installing additional dependencies."
+            .green()
+    );
 
     Ok(())
 }
@@ -211,6 +219,17 @@ fn create_fly_toml(
     env_file: &Option<PathBuf>,
     envs: &Option<Vec<String>>,
 ) -> Result<()> {
+    let fly_toml_file_path = fly_dir.join("fly.toml");
+
+    if fly_toml_file_path.exists() {
+        println!(
+            "{}",
+            "fly.toml file already exists. To regenerate, remove the existing file. Skipping..."
+                .purple()
+        );
+        return Ok(());
+    }
+
     let fly_toml_content = FLY_TOML.replace("<<<APP_NAME>>>", app_name);
     let fly_toml_content = fly_toml_content.replace("<<<IMAGE_NAME>>>", image_tag);
 
@@ -236,9 +255,15 @@ fn create_fly_toml(
         accumulate_env(&mut accumulated_env, env)?;
     }
 
-    let mut fly_toml_file = File::create(fly_dir.join("fly.toml"))?;
+    let mut fly_toml_file = File::create(fly_toml_file_path)?;
     let fly_toml_content = fly_toml_content.replace("<<<ENV_VARS>>>", &accumulated_env);
     fly_toml_file.write_all(fly_toml_content.as_bytes())?;
+
+    println!(
+        "{}",
+        "Created fly.toml file. You can edit this file to customize the deployment such as setting the deployment region."
+            .green()
+    );
 
     Ok(())
 }
