@@ -1,6 +1,7 @@
-# We must use "debian:bullseye" (and not "debian:buster") as the base runtime image to match the libc version used while building the binaries
-# Create a builder image with exograph release binaries
-FROM debian:bullseye as builder
+# We must use "debian:bullseye*" (and not "debian:buster") as the base runtime image to match the libc version used while building the binaries
+
+## Create a builder image with exograph release binaries
+FROM debian:bullseye-slim as builder
 
 RUN apt-get update && apt-get -y install unzip
 
@@ -9,7 +10,25 @@ COPY exograph-x86_64-unknown-linux-gnu.zip ./exograph-x86_64-unknown-linux-gnu.z
 RUN unzip ./exograph-x86_64-unknown-linux-gnu.zip
 
 
-# Build the runtime image with just the binary we need for the server
-FROM debian:bullseye as exo-server
+## Build the runtime image with just the binary we need for the server
+FROM debian:bullseye-slim as exo-server
+
+### Install ca-certificates and tzdata (needed to establish TLS connections and set the timezone)
+RUN apt-get update \
+  && apt-get install -y ca-certificates tzdata \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/src/exo-server /usr/local/bin/exo-server
+
+ENV TZ=Etc/UTC
+ENV APP_USER=exo
+ENV APP=/usr/src/app
+
+### Create a non-root user to run the server
+RUN groupadd $APP_USER \
+  && useradd -g $APP_USER $APP_USER \
+  && mkdir -p ${APP}
+RUN chown -R $APP_USER:$APP_USER ${APP}
+USER $APP_USER
+
+WORKDIR ${APP}
