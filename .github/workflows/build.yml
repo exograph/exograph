@@ -5,7 +5,6 @@ on:
     branches: ["main"]
     tags:
       - "*"
-  pull_request: # Temporary to test without merging
 
 env:
   REGISTRY: ghcr.io
@@ -83,8 +82,7 @@ jobs:
   build-and-push-docker:
     needs: build-artifacts
     runs-on: ubuntu-20.04
-    # Temporary to test without merging
-    # if: startsWith(github.ref, 'refs/tags/') # Only build and push Docker images for tags 
+    if: startsWith(github.ref, 'refs/tags/') # Only build and push Docker images for tags
 
     permissions:
       contents: read
