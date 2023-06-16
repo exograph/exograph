@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     tags:
       - "*"
+  pull_request: # Temporary to test without merging
 
 env:
   REGISTRY: ghcr.io
@@ -79,6 +80,51 @@ jobs:
           asset_name: exograph-${{matrix.target}}.zip
           tag: ${{ github.ref }}
 
+  build-aws-lambda:
+    runs-on: ubuntu-20.04
+    env:
+      ARCH: aws-lambda-linux-2-x86_64
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install deps
+        run: sudo apt-get install -y protobuf-compiler
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Add Rust target
+        run: rustup target add x86_64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2.3.0
+        with:
+          key: x86_64-unknown-linux-gnu
+      - name: Build
+        run: |
+          cargo build -p server-aws-lambda --target x86_64-unknown-linux-gnu --release 
+          mkdir -p dist
+          cp target/x86_64-unknown-linux-gnu/release/bootstrap bootstrap
+          - name: Upload Artifacts
+      - name: Create zip of binaries
+        run: |
+          cp LICENSE dist/
+          cd dist/
+          7z a exograph-$ARCH.zip *
+          cd ..
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: exograph-$ARCH.zip
+          path: dist/exograph-$ARCH.zip
+      - name: Upload zip to release
+        #if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/exograph-$ARCH.zip
+          asset_name: exograph-$ARCH.zip
+          tag: ${{ github.ref }}          
+
+          
   build-and-push-docker:
     needs: build-artifacts
     runs-on: ubuntu-20.04
