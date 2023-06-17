@@ -13,72 +13,72 @@ env:
 
 jobs:
   # Build and packages all the things
-  build-artifacts:
-    strategy:
-      fail-fast: false
-      matrix:
-        # For these target platforms
-        include:
-          - os: macos-11
-            deps-script: brew install protobuf
-            target: x86_64-apple-darwin
-            cross_flag: "--features not_cross"
-            bin_extension: ""
-          - os: macos-11
-            deps-script: brew install protobuf
-            target: aarch64-apple-darwin
-            cross_flag: "--features cross"
-            bin_extension: ""
-          - os: ubuntu-20.04
-            deps-script: sudo apt-get install -y protobuf-compiler
-            target: x86_64-unknown-linux-gnu
-            cross_flag: "--features not_cross"
-            bin_extension: ""
-          - os: windows-2019
-            deps-script: choco install protoc
-            target: x86_64-pc-windows-msvc
-            cross_flag: "--features not_cross"
-            bin_extension: ".exe"
+  # build-artifacts:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       # For these target platforms
+  #       include:
+  #         - os: macos-11
+  #           deps-script: brew install protobuf
+  #           target: x86_64-apple-darwin
+  #           cross_flag: "--features not_cross"
+  #           bin_extension: ""
+  #         - os: macos-11
+  #           deps-script: brew install protobuf
+  #           target: aarch64-apple-darwin
+  #           cross_flag: "--features cross"
+  #           bin_extension: ""
+  #         - os: ubuntu-20.04
+  #           deps-script: sudo apt-get install -y protobuf-compiler
+  #           target: x86_64-unknown-linux-gnu
+  #           cross_flag: "--features not_cross"
+  #           bin_extension: ""
+  #         - os: windows-2019
+  #           deps-script: choco install protoc
+  #           target: x86_64-pc-windows-msvc
+  #           cross_flag: "--features not_cross"
+  #           bin_extension: ".exe"
 
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install deps
-        run: ${{ matrix.deps-script }}
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - name: Add Rust target
-        run: rustup target add ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2.3.0
-        with:
-          key: ${{ matrix.target }}
-      - name: Build
-        run: |
-          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release ${{ matrix.cross_flag }} 
-          mkdir -p dist
-          cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
-          cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
-      - name: Create zip of binaries
-        run: |
-          cp LICENSE dist/
-          cd dist/
-          7z a exograph-${{matrix.target}}.zip *
-          cd ..
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: exograph-${{matrix.target}}.zip
-          path: dist/exograph-${{matrix.target}}.zip
-      - name: Upload zip to release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/exograph-${{matrix.target}}.zip
-          asset_name: exograph-${{matrix.target}}.zip
-          tag: ${{ github.ref }}
+  #   runs-on: ${{ matrix.os }}
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Install deps
+  #       run: ${{ matrix.deps-script }}
+  #     - name: Setup Node
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 16
+  #     - name: Add Rust target
+  #       run: rustup target add ${{ matrix.target }}
+  #     - uses: Swatinem/rust-cache@v2.3.0
+  #       with:
+  #         key: ${{ matrix.target }}
+  #     - name: Build
+  #       run: |
+  #         cargo build -p cli -p server-actix --target ${{ matrix.target }} --release ${{ matrix.cross_flag }} 
+  #         mkdir -p dist
+  #         cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
+  #         cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
+  #     - name: Create zip of binaries
+  #       run: |
+  #         cp LICENSE dist/
+  #         cd dist/
+  #         7z a exograph-${{matrix.target}}.zip *
+  #         cd ..
+  #     - name: Upload Artifacts
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         name: exograph-${{matrix.target}}.zip
+  #         path: dist/exograph-${{matrix.target}}.zip
+  #     - name: Upload zip to release
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       uses: svenstaro/upload-release-action@v2
+  #       with:
+  #         repo_token: ${{ secrets.GITHUB_TOKEN }}
+  #         file: dist/exograph-${{matrix.target}}.zip
+  #         asset_name: exograph-${{matrix.target}}.zip
+  #         tag: ${{ github.ref }}
 
   build-aws-lambda:
     runs-on: ubuntu-20.04
@@ -100,8 +100,8 @@ jobs:
           # and since it doesn't install rustup, it doesn't respect rust-toolchain.toml settings)
           curl https://sh.rustup.rs -sSf | sh -s -- -y
           ls -al /root
-          ls -al /github/home
-          PATH="/github/home/bin:/github/home:$PATH"
+          ls -al /github/home/.cargo
+          PATH="/github/home/.cargo/bin:/github/home:$PATH"
 
       - uses: actions/checkout@v3
       - name: Setup Node
