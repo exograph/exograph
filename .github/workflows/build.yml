@@ -82,6 +82,7 @@ jobs:
 
   build-aws-lambda:
     runs-on: ubuntu-20.04
+    container: amazonlinux:2
     env:
       ARCH: aws-lambda-linux-2-x86_64
 
