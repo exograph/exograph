@@ -94,13 +94,12 @@ jobs:
           # Install protoc (the yum install version is 2.x, which is too old for grpc needed by opentelemetry)
           curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
           unzip protoc-3.15.8-linux-x86_64.zip -d /root/.local
-          PATH="/root/.local/bin:$PATH"
+          echo "/root/.local/bin" >> $GITHUB_PATH
 
           # Need to install Rust manually (not through yum, which is a bit older version 
           # and since it doesn't install rustup, it doesn't respect rust-toolchain.toml settings)
           curl https://sh.rustup.rs -sSf | sh -s -- -y
-          ls -al /github/home/.cargo/bin
-          PATH="/github/home/.cargo/bin:$PATH"
+          echo "/github/home/.cargo/bin" >> $GITHUB_PATH
 
       - uses: actions/checkout@v3
       - name: Setup Node
