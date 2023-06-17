@@ -107,20 +107,20 @@ jobs:
         run: |
           cp LICENSE dist/
           cd dist/
-          7z a exograph-$ARCH.zip *
+          7z a exograph-${{ env.ARCH }}.zip *
           cd ..
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: exograph-$ARCH.zip
-          path: dist/exograph-$ARCH.zip
+          name: exograph-${{ env.ARCH }}.zip
+          path: dist/exograph-${{ env.ARCH }}.zip
       - name: Upload zip to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/exograph-$ARCH.zip
-          asset_name: exograph-$ARCH.zip
+          file: dist/exograph-${{ env.ARCH }}.zip
+          asset_name: exograph-${{ env.ARCH }}.zip
           tag: ${{ github.ref }}          
 
           
