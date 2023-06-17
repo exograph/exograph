@@ -96,8 +96,6 @@ jobs:
           PATH="/root/.local/bin:$PATH"
 
       - uses: actions/checkout@v3
-      - name: Install deps
-        run: sudo apt-get install -y protobuf-compiler
       - name: Setup Node
         uses: actions/setup-node@v3
         with:

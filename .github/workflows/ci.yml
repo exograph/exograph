@@ -3,7 +3,7 @@ name: Exograph CI
 on:
   push:
     branches: [ "main" ]
-  pull_request:
+  #pull_request: Temporary disabled until we figure out AWS lambda building
 
 env:
   CARGO_TERM_COLOR: always
