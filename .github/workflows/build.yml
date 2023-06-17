@@ -99,9 +99,8 @@ jobs:
           # Need to install Rust manually (not through yum, which is a bit older version 
           # and since it doesn't install rustup, it doesn't respect rust-toolchain.toml settings)
           curl https://sh.rustup.rs -sSf | sh -s -- -y
-          ls -l /root/.cargo/bin
-          ls -l /github/home
-          PATH="/root/.cargo/bin:/github/home:$PATH"
+          ls -l /github/home/bin
+          PATH="/github/home/bin:/github/home:$PATH"
 
       - uses: actions/checkout@v3
       - name: Setup Node
