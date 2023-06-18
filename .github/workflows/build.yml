@@ -89,7 +89,7 @@ jobs:
     steps:
       - name: Install packages for building
         run: |
-          yum install -y tar gzip unzip gcc make
+          yum install -y tar gzip zip unzip gcc make
           
           # Install protoc (the yum install version is 2.x, which is too old for grpc needed by opentelemetry)
           curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
