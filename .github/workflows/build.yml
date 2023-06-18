@@ -5,7 +5,6 @@ on:
     branches: ["main"]
     tags:
       - "*"
-  pull_request: # Temporary to test without merging
 
 env:
   REGISTRY: ghcr.io
@@ -13,72 +12,72 @@ env:
 
 jobs:
   # Build and packages all the things
-  # build-artifacts:
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       # For these target platforms
-  #       include:
-  #         - os: macos-11
-  #           deps-script: brew install protobuf
-  #           target: x86_64-apple-darwin
-  #           cross_flag: "--features not_cross"
-  #           bin_extension: ""
-  #         - os: macos-11
-  #           deps-script: brew install protobuf
-  #           target: aarch64-apple-darwin
-  #           cross_flag: "--features cross"
-  #           bin_extension: ""
-  #         - os: ubuntu-20.04
-  #           deps-script: sudo apt-get install -y protobuf-compiler
-  #           target: x86_64-unknown-linux-gnu
-  #           cross_flag: "--features not_cross"
-  #           bin_extension: ""
-  #         - os: windows-2019
-  #           deps-script: choco install protoc
-  #           target: x86_64-pc-windows-msvc
-  #           cross_flag: "--features not_cross"
-  #           bin_extension: ".exe"
+  build-artifacts:
+    strategy:
+      fail-fast: false
+      matrix:
+        # For these target platforms
+        include:
+          - os: macos-11
+            deps-script: brew install protobuf
+            target: x86_64-apple-darwin
+            cross_flag: "--features not_cross"
+            bin_extension: ""
+          - os: macos-11
+            deps-script: brew install protobuf
+            target: aarch64-apple-darwin
+            cross_flag: "--features cross"
+            bin_extension: ""
+          - os: ubuntu-20.04
+            deps-script: sudo apt-get install -y protobuf-compiler
+            target: x86_64-unknown-linux-gnu
+            cross_flag: "--features not_cross"
+            bin_extension: ""
+          - os: windows-2019
+            deps-script: choco install protoc
+            target: x86_64-pc-windows-msvc
+            cross_flag: "--features not_cross"
+            bin_extension: ".exe"
 
-  #   runs-on: ${{ matrix.os }}
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Install deps
-  #       run: ${{ matrix.deps-script }}
-  #     - name: Setup Node
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 16
-  #     - name: Add Rust target
-  #       run: rustup target add ${{ matrix.target }}
-  #     - uses: Swatinem/rust-cache@v2.3.0
-  #       with:
-  #         key: ${{ matrix.target }}
-  #     - name: Build
-  #       run: |
-  #         cargo build -p cli -p server-actix --target ${{ matrix.target }} --release ${{ matrix.cross_flag }} 
-  #         mkdir -p dist
-  #         cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
-  #         cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
-  #     - name: Create zip of binaries
-  #       run: |
-  #         cp LICENSE dist/
-  #         cd dist/
-  #         7z a exograph-${{matrix.target}}.zip *
-  #         cd ..
-  #     - name: Upload Artifacts
-  #       uses: actions/upload-artifact@v2
-  #       with:
-  #         name: exograph-${{matrix.target}}.zip
-  #         path: dist/exograph-${{matrix.target}}.zip
-  #     - name: Upload zip to release
-  #       if: startsWith(github.ref, 'refs/tags/')
-  #       uses: svenstaro/upload-release-action@v2
-  #       with:
-  #         repo_token: ${{ secrets.GITHUB_TOKEN }}
-  #         file: dist/exograph-${{matrix.target}}.zip
-  #         asset_name: exograph-${{matrix.target}}.zip
-  #         tag: ${{ github.ref }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install deps
+        run: ${{ matrix.deps-script }}
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2.3.0
+        with:
+          key: ${{ matrix.target }}
+      - name: Build
+        run: |
+          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release ${{ matrix.cross_flag }} 
+          mkdir -p dist
+          cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
+          cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
+      - name: Create zip of binaries
+        run: |
+          cp LICENSE dist/
+          cd dist/
+          7z a exograph-${{matrix.target}}.zip *
+          cd ..
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: exograph-${{matrix.target}}.zip
+          path: dist/exograph-${{matrix.target}}.zip
+      - name: Upload zip to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/exograph-${{matrix.target}}.zip
+          asset_name: exograph-${{matrix.target}}.zip
+          tag: ${{ github.ref }}
 
   build-aws-lambda:
     runs-on: ubuntu-20.04
@@ -90,13 +89,13 @@ jobs:
       - name: Install packages for building
         run: |
           yum install -y tar gzip zip unzip gcc make
-          
+
           # Install protoc (the yum install version is 2.x, which is too old for grpc needed by opentelemetry)
           curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
           unzip protoc-3.15.8-linux-x86_64.zip -d /root/.local
           echo "/root/.local/bin" >> $GITHUB_PATH
 
-          # Need to install Rust manually (not through yum, which is a bit older version 
+          # Need to install Rust manually (not through yum, which is a bit older version
           # and since it doesn't install rustup, it doesn't respect rust-toolchain.toml settings)
           curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none --profile minimal -y
           echo "/github/home/.cargo/bin" >> $GITHUB_PATH
@@ -113,7 +112,7 @@ jobs:
           key: x86_64-unknown-linux-gnu
       - name: Build
         run: |
-          cargo build -p server-aws-lambda --target x86_64-unknown-linux-gnu --release 
+          cargo build -p server-aws-lambda --target x86_64-unknown-linux-gnu --release
           mkdir -p dist
           cp target/x86_64-unknown-linux-gnu/release/bootstrap dist/
       - name: Create zip of binaries
@@ -134,45 +133,45 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: dist/exograph-${{ env.ARCH }}.zip
           asset_name: exograph-${{ env.ARCH }}.zip
-          tag: ${{ github.ref }}          
+          tag: ${{ github.ref }}
 
-          
-  # build-and-push-docker:
-  #   needs: build-artifacts
-  #   runs-on: ubuntu-20.04
-  #   if: startsWith(github.ref, 'refs/tags/') # Only build and push Docker images for tags
 
-  #   permissions:
-  #     contents: read
-  #     packages: write
+  build-and-push-docker:
+    needs: build-artifacts
+    runs-on: ubuntu-20.04
+    if: startsWith(github.ref, 'refs/tags/') # Only build and push Docker images for tags
 
-  #   steps:
-  #     - uses: actions/checkout@v3
+    permissions:
+      contents: read
+      packages: write
 
-  #     - name: Log in to the Container registry
-  #       uses: docker/login-action@v2
-  #       with:
-  #         registry: ${{ env.REGISTRY }}
-  #         username: ${{ github.actor }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
 
-  #     - name: Extract metadata (tags, labels) for Docker
-  #       id: meta
-  #       uses: docker/metadata-action@v4
-  #       with:
-  #         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-  #     - name: Download artifacts
-  #       id: download
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: exograph-x86_64-unknown-linux-gnu.zip # Must match the "name" of the "Upload Artifacts" step above
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-  #     - name: Build and push Docker image
-  #       uses: docker/build-push-action@v4
-  #       with:
-  #         context: .
-  #         file: ./docker/Dockerfile.ci
-  #         push: true
-  #         tags: ${{ steps.meta.outputs.tags }}
-  #         labels: ${{ steps.meta.outputs.labels }}
+      - name: Download artifacts
+        id: download
+        uses: actions/download-artifact@v3
+        with:
+          name: exograph-x86_64-unknown-linux-gnu.zip # Must match the "name" of the "Upload Artifacts" step above
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./docker/Dockerfile.ci
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
