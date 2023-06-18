@@ -79,6 +79,63 @@ jobs:
           asset_name: exograph-${{matrix.target}}.zip
           tag: ${{ github.ref }}
 
+  build-aws-lambda:
+    runs-on: ubuntu-20.04
+    container: amazonlinux:2
+    env:
+      ARCH: aws-lambda-linux-2-x86_64
+
+    steps:
+      - name: Install packages for building
+        run: |
+          yum install -y tar gzip zip unzip gcc make
+
+          # Install protoc (the yum install version is 2.x, which is too old for grpc needed by opentelemetry)
+          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
+          unzip protoc-3.15.8-linux-x86_64.zip -d /root/.local
+          echo "/root/.local/bin" >> $GITHUB_PATH
+
+          # Need to install Rust manually (not through yum, which is a bit older version
+          # and since it doesn't install rustup, it doesn't respect rust-toolchain.toml settings)
+          curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none --profile minimal -y
+          echo "/github/home/.cargo/bin" >> $GITHUB_PATH
+
+      - uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Add Rust target
+        run: rustup target add x86_64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2.3.0
+        with:
+          key: ${{ env.ARCH }}
+      - name: Build
+        run: |
+          cargo build -p server-aws-lambda --target x86_64-unknown-linux-gnu --release
+          mkdir -p dist
+          cp target/x86_64-unknown-linux-gnu/release/bootstrap dist/
+      - name: Create zip of binaries
+        run: |
+          cp LICENSE dist/
+          cd dist/
+          zip exograph-${{ env.ARCH }}.zip *
+          cd ..
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: exograph-${{ env.ARCH }}.zip
+          path: dist/exograph-${{ env.ARCH }}.zip
+      - name: Upload zip to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/exograph-${{ env.ARCH }}.zip
+          asset_name: exograph-${{ env.ARCH }}.zip
+          tag: ${{ github.ref }}
+
+
   build-and-push-docker:
     needs: build-artifacts
     runs-on: ubuntu-20.04
