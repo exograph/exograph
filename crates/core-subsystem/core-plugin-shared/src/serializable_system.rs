@@ -84,7 +84,7 @@ impl SystemSerializer for SerializableSystem {
         }
         {
             // Check the file prefix
-            let mut prefix: [u8; PREFIX_TAG_LEN] = [0; PREFIX_TAG_LEN];
+            let mut prefix = [0_u8; PREFIX_TAG_LEN];
             reader
                 .read_exact(&mut prefix)
                 .map_err(|e| error("Failed to read exograph prefix", Some(e)))?;
@@ -94,19 +94,18 @@ impl SystemSerializer for SerializableSystem {
             }
         }
         let header_len = {
-            let mut header_len: [u8; 8] = [0; 8];
+            let mut header_len = [0_u8; 8];
             reader
                 .read_exact(&mut header_len)
                 .map_err(|e| error("Failed to read exograph header size", Some(e)))?;
             usize::from_le_bytes(header_len)
         };
         // Check the header
-        let mut remaining = Vec::with_capacity(10000);
-        let _ = reader
-            .read_to_end(&mut remaining)
-            .map_err(|e| error("Failed to read to remainder of file", Some(e)))?;
-        let (header, system) = remaining.split_at(header_len);
-        let header: Header = bincode::deserialize(header).map_err(|e| {
+        let mut header_bytes = vec![0_u8; header_len];
+        reader
+            .read_exact(&mut header_bytes)
+            .map_err(|e| error("Failed to read the exo_ir file header", Some(e)))?;
+        let header: Header = bincode::deserialize(&header_bytes).map_err(|e| {
             error(
                 &format!("Failed to deserialize the exo_ir file header: {0}", e),
                 None,
@@ -117,7 +116,7 @@ impl SystemSerializer for SerializableSystem {
             .check_header(header)
             .map_err(|e| error(&e, None))?;
 
-        bincode::deserialize(system).map_err(ModelSerializationError::Deserialize)
+        bincode::deserialize_from(reader).map_err(ModelSerializationError::Deserialize)
     }
 }
 
