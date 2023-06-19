@@ -31,7 +31,7 @@ pub struct JwtAuthenticator {
     secret: String, // Shared secret for HS algorithms, public key for RSA/ES
 }
 
-const JWT_SECRET_PARAM: &str = "EXO_JWT_SECRET";
+const EXO_JWT_SECRET: &str = "EXO_JWT_SECRET";
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
@@ -45,7 +45,7 @@ impl JwtAuthenticator {
                 local_jwt_secret
                     .borrow()
                     .clone()
-                    .or_else(|| env::var(JWT_SECRET_PARAM).ok())
+                    .or_else(|| env::var(EXO_JWT_SECRET).ok())
             })
             .map(Self::new)
     }
@@ -106,7 +106,7 @@ impl JwtAuthenticator {
                     JwtAuthenticationError::Unknown => ContextParsingError::Malformed,
                 })?
         } else {
-            warn!("{JWT_SECRET_PARAM} is not set, not parsing JWT tokens");
+            warn!("{EXO_JWT_SECRET} is not set, not parsing JWT tokens");
             serde_json::Value::Null
         };
 

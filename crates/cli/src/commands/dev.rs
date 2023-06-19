@@ -19,7 +19,7 @@ use crate::{
     commands::{
         command::{default_model_file, ensure_exo_project_dir},
         schema::{migration::Migration, verify::VerificationErrors},
-        util::wait_for_enter,
+        util::{wait_for_enter, EXO_CORS_DOMAINS, EXO_INTROSPECTION},
     },
     util::watcher,
 };
@@ -46,8 +46,8 @@ impl CommandDefinition for DevCommandDefinition {
             "Starting server in development mode...".purple().bold()
         );
         // In the serve mode, which is meant for development, always enable introspection and use relaxed CORS
-        std::env::set_var("EXO_INTROSPECTION", "true");
-        std::env::set_var("EXO_CORS_DOMAINS", "*");
+        std::env::set_var(EXO_INTROSPECTION, "true");
+        std::env::set_var(EXO_CORS_DOMAINS, "*");
 
         const MIGRATE: &str = "Attempt migration";
         const CONTINUE: &str = "Continue with old schema";

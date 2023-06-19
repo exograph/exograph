@@ -34,6 +34,9 @@ pub type StaticLoaders = Vec<Box<dyn SubsystemLoader>>;
 
 pub struct SystemLoader;
 
+pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
+const EXO_MAX_SELECTION_DEPTH: &str = "EXO_MAX_SELECTION_DEPTH";
+
 impl SystemLoader {
     pub async fn load(
         read: impl std::io::Read,
@@ -151,12 +154,12 @@ pub fn allow_introspection() -> Result<bool, SystemLoadingError> {
     LOCAL_ALLOW_INTROSPECTION.with(|f| {
         f.borrow()
             .map(Ok)
-            .unwrap_or_else(|| match std::env::var("EXO_INTROSPECTION").ok() {
+            .unwrap_or_else(|| match std::env::var(EXO_INTROSPECTION).ok() {
                 Some(e) => match e.parse::<bool>() {
                     Ok(v) => Ok(v),
-                    Err(_) => Err(SystemLoadingError::Config(
-                        "EXO_INTROSPECTION env var must be set to either true or false".into(),
-                    )),
+                    Err(_) => Err(SystemLoadingError::Config(format!(
+                        "{EXO_INTROSPECTION} env var must be set to either true or false"
+                    ))),
                 },
                 None => Ok(false),
             })
@@ -174,15 +177,15 @@ pub fn query_depth_limits() -> Result<(usize, usize), SystemLoadingError> {
         .with(|f| {
             f.borrow()
                 .as_ref()
-                .and_then(|env| env.get("EXO_MAX_SELECTION_DEPTH").cloned())
+                .and_then(|env| env.get(EXO_MAX_SELECTION_DEPTH).cloned())
         })
-        .or_else(|| std::env::var("EXO_MAX_SELECTION_DEPTH").ok())
+        .or_else(|| std::env::var(EXO_MAX_SELECTION_DEPTH).ok())
     {
         Some(e) => match e.parse::<usize>() {
             Ok(v) => Ok(v),
-            Err(_) => Err(SystemLoadingError::Config(
-                "EXO_MAX_SELECTION_DEPTH env var must be set to a positive integer".into(),
-            )),
+            Err(_) => Err(SystemLoadingError::Config(format!(
+                "{EXO_MAX_SELECTION_DEPTH} env var must be set to a positive integer"
+            ))),
         },
         None => Ok(DEFAULT_QUERY_DEPTH),
     }?;

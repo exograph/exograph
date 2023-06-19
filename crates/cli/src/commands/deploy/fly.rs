@@ -22,6 +22,7 @@ use heck::ToSnakeCase;
 use crate::commands::{
     build::build,
     command::{get, get_required, CommandDefinition},
+    util::EXO_POSTGRES_URL,
 };
 
 pub(super) struct FlyCommandDefinition {}
@@ -191,11 +192,11 @@ fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
     }
 
     let extra_env = if use_fly_db {
-        "EXO_POSTGRES_URL=${DATABASE_URL}"
+        format!("{EXO_POSTGRES_URL}=${{DATABASE_URL}}")
     } else {
-        ""
+        "".into()
     };
-    let dockerfile_content = DOCKERFILE.replace("<<<EXTRA_ENV>>>", extra_env);
+    let dockerfile_content = DOCKERFILE.replace("<<<EXTRA_ENV>>>", &extra_env);
 
     let mut dockerfile = File::create(dockerfile_path)?;
     dockerfile.write_all(dockerfile_content.as_bytes())?;

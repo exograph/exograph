@@ -14,6 +14,8 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 
+const EXO_RUN_INTROSPECTION_TESTS: &str = "EXO_RUN_INTROSPECTION_TESTS";
+
 pub struct TestCommandDefinition {}
 
 #[async_trait]
@@ -41,12 +43,12 @@ impl CommandDefinition for TestCommandDefinition {
         let dir: PathBuf = get_required(matches, "dir")?;
         let pattern: Option<String> = get(matches, "pattern"); // glob pattern indicating tests to be executed
 
-        let run_introspection_tests: bool = match std::env::var("EXO_RUN_INTROSPECTION_TESTS") {
+        let run_introspection_tests: bool = match std::env::var(EXO_RUN_INTROSPECTION_TESTS) {
             Ok(e) => match e.to_lowercase().as_str() {
                 "true" | "1" => Ok(true), // The standard convention for boolean env vars is to accept "1" as true, as well
                 "false" => Ok(false),
                 _ => Err(anyhow!(
-                    "EXO_RUN_INTROSPECTION_TESTS env var must be set to a boolean or 1",
+                    "{EXO_RUN_INTROSPECTION_TESTS} env var must be set to a boolean or 1",
                 )),
             },
             Err(_) => Ok(false),

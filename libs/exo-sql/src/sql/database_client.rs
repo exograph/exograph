@@ -16,11 +16,11 @@ use tokio_postgres::{config::SslMode, Config};
 
 use crate::database_error::DatabaseError;
 
-const URL_PARAM: &str = "EXO_POSTGRES_URL";
-const USER_PARAM: &str = "EXO_POSTGRES_USER";
-const PASSWORD_PARAM: &str = "EXO_POSTGRES_PASSWORD";
-const CONNECTION_POOL_SIZE_PARAM: &str = "EXO_CONNECTION_POOL_SIZE";
-const CHECK_CONNECTION_ON_STARTUP: &str = "EXO_CHECK_CONNECTION_ON_STARTUP";
+const EXO_POSTGRES_URL: &str = "EXO_POSTGRES_URL";
+const EXO_POSTGRES_USER: &str = "EXO_POSTGRES_USER";
+const EXO_POSTGRES_PASSWORD: &str = "EXO_POSTGRES_PASSWORD";
+const EXO_CONNECTION_POOL_SIZE: &str = "EXO_CONNECTION_POOL_SIZE";
+const EXO_CHECK_CONNECTION_ON_STARTUP: &str = "EXO_CHECK_CONNECTION_ON_STARTUP";
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
@@ -43,18 +43,18 @@ impl<'a> DatabaseClient {
     pub async fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
         let url = LOCAL_URL
             .with(|f| f.borrow().clone())
-            .or_else(|| env::var(URL_PARAM).ok())
+            .or_else(|| env::var(EXO_POSTGRES_URL).ok())
             .ok_or(DatabaseError::Config(format!(
-                "Env {URL_PARAM} must be provided"
+                "Env {EXO_POSTGRES_URL} must be provided"
             )))?;
 
-        let user = env::var(USER_PARAM).ok();
-        let password = env::var(PASSWORD_PARAM).ok();
+        let user = env::var(EXO_POSTGRES_USER).ok();
+        let password = env::var(EXO_POSTGRES_PASSWORD).ok();
         let pool_size = pool_size_override.unwrap_or_else(|| {
             LOCAL_CONNECTION_POOL_SIZE
                 .with(|f| *f.borrow())
                 .or_else(|| {
-                    env::var(CONNECTION_POOL_SIZE_PARAM)
+                    env::var(EXO_CONNECTION_POOL_SIZE)
                         .ok()
                         .map(|pool_str| pool_str.parse::<usize>().unwrap())
                 })
@@ -64,7 +64,7 @@ impl<'a> DatabaseClient {
         let check_connection = LOCAL_CHECK_CONNECTION_ON_STARTUP
             .with(|f| *f.borrow())
             .or_else(|| {
-                env::var(CHECK_CONNECTION_ON_STARTUP)
+                env::var(EXO_CHECK_CONNECTION_ON_STARTUP)
                     .ok()
                     .map(|check| check.parse::<bool>().expect("Should be true or false"))
             })

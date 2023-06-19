@@ -11,6 +11,15 @@ use std::io::stdin;
 
 use rand::Rng;
 
+pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
+pub const EXO_CORS_DOMAINS: &str = "EXO_CORS_DOMAINS";
+pub const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
+
+pub const EXO_POSTGRES_URL: &str = "EXO_POSTGRES_URL";
+pub const EXO_POSTGRES_USER: &str = "EXO_POSTGRES_USER";
+pub const EXO_POSTGRES_PASSWORD: &str = "EXO_POSTGRES_PASSWORD";
+pub const EXO_JWT_SECRET: &str = "EXO_JWT_SECRET";
+
 pub(super) fn generate_random_string() -> String {
     rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
