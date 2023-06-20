@@ -1,0 +1,5 @@
+@deno("sha.ts")
+module Sha {
+  @access(true)
+  query computeSha512(value: String): String
+}
