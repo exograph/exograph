@@ -41,6 +41,7 @@ use crate::deno_error::DenoDiagnosticError;
 use crate::deno_error::DenoError;
 use crate::deno_error::DenoInternalError;
 use crate::deno_executor_pool::DenoScriptDefn;
+use crate::deno_executor_pool::ResolvedModule;
 
 use super::embedded_module_loader::EmbeddedModuleLoader;
 
@@ -131,23 +132,24 @@ impl DenoModule {
         .into_bytes();
 
         let main_module_specifier = "file:///main.js".to_string();
+        let main_specifier_parsed = ModuleSpecifier::parse(&main_module_specifier)?;
         let module_loader = Rc::new(EmbeddedModuleLoader {
             source_code_map: {
                 let mut map: DenoScriptDefn = match &user_code {
                     UserCode::LoadFromFs(_) => {
                         vec![(
-                            ModuleSpecifier::parse("file:///main.js")?,
-                            (source_code, ModuleType::JavaScript),
+                            main_specifier_parsed.clone(),
+                            ResolvedModule::Module(source_code, ModuleType::JavaScript),
                         )]
                     }
                     UserCode::LoadFromMemory { script, .. } => {
                         let mut out = vec![(
-                            ModuleSpecifier::parse("file:///main.js")?,
-                            (source_code, ModuleType::JavaScript),
+                            main_specifier_parsed.clone(),
+                            ResolvedModule::Module(source_code, ModuleType::JavaScript),
                         )];
 
-                        for (specifier, (source, typ)) in script {
-                            out.push((specifier.clone(), (source.clone(), *typ)));
+                        for (specifier, resolved) in script {
+                            out.push((specifier.clone(), resolved.clone()));
                         }
 
                         out
@@ -161,7 +163,7 @@ impl DenoModule {
                     for (url, source) in extra_sources {
                         map.insert(
                             ModuleSpecifier::parse(url)?,
-                            (source.into_bytes(), ModuleType::JavaScript),
+                            ResolvedModule::Module(source.into_bytes(), ModuleType::JavaScript),
                         );
                     }
                 }

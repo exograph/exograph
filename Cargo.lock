@@ -1823,6 +1823,7 @@ dependencies = [
  "deno_ast",
  "deno_core",
  "deno_graph",
+ "exo-deno",
  "futures",
  "subsystem-model-builder-util",
  "tokio",

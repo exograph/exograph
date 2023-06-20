@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use anyhow::{anyhow, Result};
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
+    deno_executor_pool::ResolvedModule,
     Arg, DenoModule, DenoModuleSharedState, UserCode,
 };
 
@@ -50,7 +51,7 @@ pub async fn dynamic_assert_using_deno(
             path: "file:///internal/assert.js".to_owned(),
             script: vec![(
                 Url::parse("file:///internal/assert.js").unwrap(),
-                (script.into(), ModuleType::JavaScript),
+                ResolvedModule::Module(script.into(), ModuleType::JavaScript),
             )]
             .into_iter()
             .collect(),
@@ -105,7 +106,7 @@ pub async fn evaluate_using_deno(
             path: "file:///internal/assert.js".to_owned(),
             script: vec![(
                 Url::parse("file:///internal/assert.js").unwrap(),
-                (script.into(), ModuleType::JavaScript),
+                ResolvedModule::Module(script.into(), ModuleType::JavaScript),
             )]
             .into_iter()
             .collect(),
