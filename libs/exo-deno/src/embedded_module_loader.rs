@@ -23,6 +23,7 @@ use std::sync::Arc;
 use include_dir::Dir;
 
 use crate::deno_executor_pool::DenoScriptDefn;
+use crate::deno_executor_pool::ResolvedModule;
 
 /// A module loader that allows loading source code from memory for the given module specifier;
 /// otherwise, loading it from an FsModuleLoader
@@ -49,24 +50,34 @@ impl ModuleLoader for EmbeddedModuleLoader {
         maybe_referrer: Option<ModuleSpecifier>,
         is_dynamic: bool,
     ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
+        let borrowed_map = self.source_code_map.borrow();
+        let mut resolved = borrowed_map.get(module_specifier);
+        let mut final_specifier = module_specifier.clone();
+        while let Some(ResolvedModule::Redirect(to)) = resolved {
+            resolved = borrowed_map.get(to);
+            final_specifier = to.clone();
+        }
+
         // do we have the module source in-memory?
-        if let Some(script) = self.source_code_map.borrow().get(module_specifier) {
-            // return copy of module source in memory
-
-            let (script, module_type) = script.clone();
-            let module_specifier = module_specifier.clone();
-            async move {
-                Ok(ModuleSource {
-                    code: script.into(),
-                    module_url_specified: module_specifier.to_string(),
-                    module_url_found: module_specifier.to_string(),
-                    module_type,
-                })
+        if let Some(script) = resolved {
+            if let ResolvedModule::Module(script, module_type) = script.clone() {
+                let module_specifier = module_specifier.clone();
+                async move {
+                    Ok(ModuleSource {
+                        code: script.into(),
+                        module_url_specified: module_specifier.to_string(),
+                        module_url_found: final_specifier.to_string(),
+                        module_type,
+                    })
+                }
+                .boxed_local()
+            } else {
+                panic!()
             }
-            .boxed_local()
         } else {
-            // we will have to load it ourselves
+            drop(borrowed_map);
 
+            // we will have to load it ourselves
             let source_code_map = self.source_code_map.clone();
             let module_specifier = module_specifier.clone();
 
@@ -87,9 +98,22 @@ impl ModuleLoader for EmbeddedModuleLoader {
 
                 // cache result for later
                 let mut map = source_code_map.borrow_mut();
+                let final_specifier =
+                    ModuleSpecifier::parse(&module_source.module_url_found).unwrap();
+
+                if module_specifier != final_specifier {
+                    map.insert(
+                        module_specifier,
+                        ResolvedModule::Redirect(final_specifier.clone()),
+                    );
+                }
+
                 map.insert(
-                    module_specifier,
-                    (module_source.code.clone().into(), module_source.module_type),
+                    final_specifier,
+                    ResolvedModule::Module(
+                        module_source.code.clone().into(),
+                        module_source.module_type,
+                    ),
                 );
 
                 Ok(module_source)

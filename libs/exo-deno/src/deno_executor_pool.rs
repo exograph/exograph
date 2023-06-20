@@ -9,7 +9,8 @@
 
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
-use deno_core::{Extension, ModuleSpecifier, ModuleType};
+use deno_core::{url::Url, Extension, ModuleType};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex;
 
@@ -26,8 +27,14 @@ use std::fmt::Debug;
 type DenoActorPoolMap<C, M, R> = HashMap<String, DenoActorPool<C, M, R>>;
 type DenoActorPool<C, M, R> = Vec<DenoActor<C, M, R>>;
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ResolvedModule {
+    Module(Vec<u8>, ModuleType),
+    Redirect(Url),
+}
+
 /// Serialized type for modules loaded during the build phase
-pub type DenoScriptDefn = HashMap<ModuleSpecifier, (Vec<u8>, ModuleType)>;
+pub type DenoScriptDefn = HashMap<Url, ResolvedModule>;
 
 pub struct DenoExecutorConfig<C> {
     user_agent_name: &'static str,
@@ -211,6 +218,7 @@ impl<
 mod tests {
     use super::*;
     use crate::deno_module::{Arg, DenoModuleSharedState};
+    use deno_core::ModuleSpecifier;
     use serde_json::Value;
 
     use futures::future::join_all;
@@ -235,7 +243,7 @@ mod tests {
                 module_path,
                 vec![(
                     ModuleSpecifier::parse(module_path).unwrap(),
-                    (module_script.to_vec(), ModuleType::JavaScript),
+                    ResolvedModule::Module(module_script.to_vec(), ModuleType::JavaScript),
                 )]
                 .into_iter()
                 .collect(),
@@ -279,7 +287,7 @@ mod tests {
                 script_path,
                 vec![(
                     ModuleSpecifier::parse(script_path).unwrap(),
-                    (script.to_vec(), ModuleType::JavaScript),
+                    ResolvedModule::Module(script.to_vec(), ModuleType::JavaScript),
                 )]
                 .into_iter()
                 .collect(),

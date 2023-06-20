@@ -14,6 +14,7 @@ use core_resolver::{context::RequestContext, system_resolver::SystemResolver, Op
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,
+    deno_executor_pool::ResolvedModule,
     Arg, DenoModule, DenoModuleSharedState, UserCode,
 };
 use exo_sql::{LOCAL_CHECK_CONNECTION_ON_STARTUP, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
@@ -86,7 +87,7 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
             path: "file://internal/introspection_tests.js".to_owned(),
             script: vec![(
                 Url::parse("file://internal/introspection_tests.js").unwrap(),
-                (script.into(), ModuleType::JavaScript),
+                ResolvedModule::Module(script.into(), ModuleType::JavaScript),
             )]
             .into_iter()
             .collect(),

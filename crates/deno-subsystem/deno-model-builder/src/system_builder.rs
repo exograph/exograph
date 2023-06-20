@@ -21,13 +21,13 @@ use core_plugin_interface::{
 
 use deno::{CliOptions, Flags, ProcState};
 use deno_ast::{MediaType, ParseParams, SourceTextInfo};
-use deno_core::ModuleType;
-use deno_graph::{Module, ModuleSpecifier};
+use deno_graph::{Module, ModuleEntryRef, WalkOptions};
 use deno_model::{
     interceptor::Interceptor,
     operation::{DenoMutation, DenoQuery},
     subsystem::DenoSubsystem,
 };
+use exo_deno::deno_executor_pool::ResolvedModule;
 use url::Url;
 
 use crate::module_skeleton_generator;
@@ -114,8 +114,7 @@ fn process_script(
     .unwrap();
 
     let mut cache = ps.create_graph_loader();
-    let absolute_module_path = std::fs::canonicalize(module_fs_path).unwrap();
-    let root = Url::from_file_path(absolute_module_path.clone()).unwrap();
+    let root = Url::from_file_path(std::fs::canonicalize(module_fs_path).unwrap()).unwrap();
     let root_clone = root.clone();
     let graph = std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -127,60 +126,77 @@ fn process_script(
     .join()
     .unwrap()?;
 
-    let mut module_sources = vec![];
-    for module in graph.modules() {
-        match module {
-            Module::Esm(e) => module_sources.push((e.specifier.clone(), e.source.to_string())),
-            Module::Json(j) => module_sources.push((j.specifier.clone(), j.source.to_string())),
-            o => {
+    let mut modules = HashMap::new();
+    for (specifier, maybe_module) in graph.walk(
+        &graph.roots,
+        WalkOptions {
+            follow_dynamic: true,
+            follow_type_only: false,
+            check_js: true,
+        },
+    ) {
+        match maybe_module {
+            ModuleEntryRef::Module(m) => {
+                let module_source = match m {
+                    Module::Esm(e) => e.source.to_string(),
+                    Module::Json(j) => j.source.to_string(),
+                    o => {
+                        return Err(ModelBuildingError::Generic(format!(
+                            "Unexpected module type {o:?} in Deno graph",
+                        )))
+                    }
+                };
+
+                let media_type = MediaType::from(specifier);
+
+                // from Deno examples
+                let (module_type, should_transpile) = match media_type {
+                    MediaType::JavaScript | MediaType::Mjs | MediaType::Cjs => {
+                        (deno_core::ModuleType::JavaScript, false)
+                    }
+                    MediaType::Jsx => (deno_core::ModuleType::JavaScript, true),
+                    MediaType::TypeScript
+                    | MediaType::Mts
+                    | MediaType::Cts
+                    | MediaType::Dts
+                    | MediaType::Dmts
+                    | MediaType::Dcts
+                    | MediaType::Tsx => (deno_core::ModuleType::JavaScript, true),
+                    MediaType::Json => (deno_core::ModuleType::Json, false),
+                    _ => panic!("Unknown media type {:?}", media_type),
+                };
+
+                let transpiled = if should_transpile {
+                    let parsed = deno_ast::parse_module(ParseParams {
+                        specifier: specifier.to_string(),
+                        text_info: SourceTextInfo::from_string(module_source),
+                        media_type,
+                        capture_tokens: false,
+                        scope_analysis: false,
+                        maybe_syntax: None,
+                    })
+                    .unwrap();
+                    parsed.transpile(&Default::default()).unwrap().text
+                } else {
+                    module_source
+                };
+
+                modules.insert(
+                    specifier,
+                    ResolvedModule::Module(transpiled.as_bytes().to_vec(), module_type),
+                )
+            }
+            ModuleEntryRef::Redirect(to) => {
+                modules.insert(specifier, ResolvedModule::Redirect(to.clone()))
+            }
+            ModuleEntryRef::Err(e) => {
                 return Err(ModelBuildingError::Generic(format!(
-                    "Unsupported module type in Deno graph: {}",
-                    o.specifier()
+                    "Error in Deno graph: {:?}",
+                    e
                 )))
             }
-        }
+        };
     }
-
-    let modules: HashMap<ModuleSpecifier, (Vec<u8>, ModuleType)> = module_sources
-        .into_iter()
-        .map(|(specifier, content)| {
-            let media_type = MediaType::from(&specifier);
-
-            // from Deno examples
-            let (module_type, should_transpile) = match MediaType::from(&absolute_module_path) {
-                MediaType::JavaScript | MediaType::Mjs | MediaType::Cjs => {
-                    (deno_core::ModuleType::JavaScript, false)
-                }
-                MediaType::Jsx => (deno_core::ModuleType::JavaScript, true),
-                MediaType::TypeScript
-                | MediaType::Mts
-                | MediaType::Cts
-                | MediaType::Dts
-                | MediaType::Dmts
-                | MediaType::Dcts
-                | MediaType::Tsx => (deno_core::ModuleType::JavaScript, true),
-                MediaType::Json => (deno_core::ModuleType::Json, false),
-                _ => panic!("Unknown media type {:?}", media_type),
-            };
-
-            let transpiled = if should_transpile {
-                let parsed = deno_ast::parse_module(ParseParams {
-                    specifier: specifier.to_string(),
-                    text_info: SourceTextInfo::from_string(content),
-                    media_type,
-                    capture_tokens: false,
-                    scope_analysis: false,
-                    maybe_syntax: None,
-                })
-                .unwrap();
-                parsed.transpile(&Default::default()).unwrap().text
-            } else {
-                content
-            };
-
-            (specifier, (transpiled.as_bytes().to_vec(), module_type))
-        })
-        .collect();
 
     Ok((root.to_string(), bincode::serialize(&modules).unwrap()))
 }
