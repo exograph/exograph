@@ -62,10 +62,7 @@ cargo build
 
 git commit -am "Bump version to $NEW_VERSION"
 
-git push origin "$NEW_BRANCH"
+git tag $NEW_TAG
+git push --atomic origin "$NEW_BRANCH" $NEW_TAG
 
 echo "Done!"
-echo "Make a PR from $NEW_BRANCH to main. Once the CI passes, merge it into main."
-echo "Then run the following commands in the main branch:"
-echo "git tag $NEW_TAG"
-echo "git push origin $NEW_TAG"
