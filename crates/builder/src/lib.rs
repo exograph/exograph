@@ -141,6 +141,11 @@ fn emit_diagnostics(err: &ParserError, codemap: &CodeMap) {
         ParserError::ModelBuildingError(ModelBuildingError::Diagnosis(diagnostics)) => {
             emitter.emit(diagnostics);
         }
+        ParserError::ModelBuildingError(ModelBuildingError::ExternalResourceParsing(e)) => {
+            // This is an error in a JavaScript/TypeScript file, so we
+            // have emit it directly to stderr (can't use the emitter, which is tied to exo sources)
+            eprintln!("{}", e)
+        }
         _ => {}
     }
 }

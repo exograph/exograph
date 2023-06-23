@@ -190,10 +190,9 @@ fn process_script(
                 modules.insert(specifier, ResolvedModule::Redirect(to.clone()))
             }
             ModuleEntryRef::Err(e) => {
-                return Err(ModelBuildingError::Generic(format!(
-                    "Error in Deno graph: {:?}",
-                    e
-                )))
+                return Err(ModelBuildingError::ExternalResourceParsing(
+                    e.to_string_with_range(),
+                ))
             }
         };
     }
