@@ -1,5 +1,6 @@
 [package]
 name = "cli"
+publish = false
 version.workspace = true
 edition.workspace = true
 repository = "https://github.com/exograph/exograph"
