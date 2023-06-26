@@ -14,10 +14,10 @@ accepted = [
     "Zlib",
 ]
 private = { ignore = true }
-workarounds = [
-    "ring",
-    "webpki",
-]
+workarounds = ["ring"]
 
 [webpki]
+accepted = ["ISC", "BSD-3-Clause", "NOASSERTION"]
+
+[rustls-webpki]
 accepted = ["ISC", "BSD-3-Clause", "NOASSERTION"]
