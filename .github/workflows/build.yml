@@ -62,7 +62,13 @@ jobs:
         env:
           RUST_BACKTRACE: 1
           EXO_RUN_INTROSPECTION_TESTS: true
-        run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            echo "$PGBIN" >> $GITHUB_PATH
+          else
+            echo "$(pg_config --bindir)" >> $GITHUB_PATH
+          fi
+          target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
       - name: Create zip of binaries
         run: |
           mkdir -p dist
