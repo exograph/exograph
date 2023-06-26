@@ -61,7 +61,7 @@ jobs:
         if: ${{ matrix.cross_flag == '--features not_cross' }}
         env:
           RUST_BACKTRACE: 1
-        run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-test
+        run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
       - name: Create zip of binaries
         run: |
           mkdir -p dist
