@@ -57,18 +57,20 @@ jobs:
       - name: Build
         run: |
           cargo build -p cli -p server-actix --target ${{ matrix.target }} --release ${{ matrix.cross_flag }}
-      - name: Test
-        if: ${{ matrix.cross_flag == '--features not_cross' }}
-        env:
-          RUST_BACKTRACE: 1
-          EXO_RUN_INTROSPECTION_TESTS: true
+      - name: Add Postgres to PATH
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
             echo "$PGBIN" >> $GITHUB_PATH
           else
             echo "$(pg_config --bindir)" >> $GITHUB_PATH
           fi
-          target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
+        shell: bash
+      - name: Test
+        if: ${{ matrix.cross_flag == '--features not_cross' }}
+        env:
+          RUST_BACKTRACE: 1
+          EXO_RUN_INTROSPECTION_TESTS: true
+        run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
       - name: Create zip of binaries
         run: |
           mkdir -p dist
