@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     tags:
       - "*"
+  pull_request: # Temporary to test without merging
 
 env:
   REGISTRY: ghcr.io
@@ -55,12 +56,17 @@ jobs:
           key: ${{ matrix.target }}
       - name: Build
         run: |
-          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release ${{ matrix.cross_flag }} 
+          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release ${{ matrix.cross_flag }}
+      - name: Test
+        if: ${{ matrix.cross_flag == '--features not_cross' }}
+        env:
+          RUST_BACKTRACE: 1
+        run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-test
+      - name: Create zip of binaries
+        run: |
           mkdir -p dist
           cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
           cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
-      - name: Create zip of binaries
-        run: |
           cp LICENSE dist/
           cd dist/
           7z a exograph-${{matrix.target}}.zip *
@@ -134,7 +140,6 @@ jobs:
           file: dist/exograph-${{ env.ARCH }}.zip
           asset_name: exograph-${{ env.ARCH }}.zip
           tag: ${{ github.ref }}
-
 
   build-and-push-docker:
     needs: build-artifacts
