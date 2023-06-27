@@ -8,7 +8,7 @@ if [ "$CURRENT_BRANCH" != "main" ]; then
 fi
 
 # Get the current git tag, which must be in the vMAJOR.MINOR.PATCH format optionally followed by a -REV-HASH
-GIT_TAG=$(git describe --tags --always)
+GIT_TAG=$(git describe --tags $(git rev-list --tags --max-count=1) --match 'v*[0-9].*[0-9].*[0-9]')
 
 # Verify that the tag is in the correct format
 if ! echo $GIT_TAG | grep -Eq "^v[0-9]+\.[0-9]+\.[0-9]+(\-[0-9a-z]+\-[0-9a-z]+)?$"; then
