@@ -145,6 +145,8 @@ impl SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use exo_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
     use super::*;
@@ -237,23 +239,128 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn access_false() {
+        let src = r#"
+        @postgres
+        module TodoModule {
+            @access(false)
+            type Todo {
+                @pk id: Int = autoIncrement()
+                title: String
+            }
+        }
+        "#;
+
+        let system = create_system(src).await;
+        assert!(system.mutations.is_empty());
+        let mutation_type_names = get_mutation_type_names(&system);
+        assert!(!mutation_type_names.contains("TodoUpdateInput"));
+        assert!(!mutation_type_names.contains("TodoCreationInput"));
+    }
+    #[tokio::test]
+    async fn access_false_mutation() {
+        let src = r#"
+        @postgres
+        module TodoModule {
+            @access(query=true, mutation=false)
+            type Todo {
+                @pk id: Int = autoIncrement()
+                title: String
+            }
+        }
+        "#;
+
+        let system = create_system(src).await;
+        assert!(system.mutations.is_empty());
+        let mutation_type_names = get_mutation_type_names(&system);
+        assert!(!mutation_type_names.contains("TodoUpdateInput"));
+        assert!(!mutation_type_names.contains("TodoCreationInput"));
+    }
+
+    #[tokio::test]
+    async fn access_false_create_mutation() {
+        let src = r#"
+        @postgres
+        module TodoModule {
+            @access(query=true, mutation=true, create=false)
+            type Todo {
+                @pk id: Int = autoIncrement()
+                title: String
+            }
+        }
+        "#;
+
+        let system = create_system(src).await;
+        assert!(system.mutations.get_by_key("createTodo").is_none());
+        assert!(system.mutations.get_by_key("createTodos").is_none());
+        let mutation_type_names = get_mutation_type_names(&system);
+        assert!(!mutation_type_names.contains("TodoCreationInput"));
+    }
+
+    #[tokio::test]
+    async fn access_false_delete_mutation() {
+        let src = r#"
+        @postgres
+        module TodoModule {
+            @access(query=true, mutation=true, delete=false)
+            type Todo {
+                @pk id: Int = autoIncrement()
+                title: String
+            }
+        }
+        "#;
+
+        let system = create_system(src).await;
+        assert!(system.mutations.get_by_key("deleteTodo").is_none());
+        assert!(system.mutations.get_by_key("deleteTodos").is_none());
+    }
+
+    #[tokio::test]
+    async fn access_false_update_mutation() {
+        let src = r#"
+        @postgres
+        module TodoModule {
+            @access(query=true, mutation=true, update=false)
+            type Todo {
+                @pk id: Int = autoIncrement()
+                title: String
+            }
+        }
+        "#;
+
+        let system = create_system(src).await;
+        assert!(system.mutations.get_by_key("updateTodo").is_none());
+        assert!(system.mutations.get_by_key("updateTodos").is_none());
+        let mutation_type_names = get_mutation_type_names(&system);
+        assert!(!mutation_type_names.contains("TodoUpdateInput"));
+    }
+
+    fn get_mutation_type_names(system: &PostgresSubsystem) -> HashSet<String> {
+        system
+            .mutation_types
+            .iter()
+            .map(|(_, t)| t.name.clone())
+            .collect::<HashSet<String>>()
+    }
+
+    #[tokio::test]
     async fn type_hint_annotations() {
         let src = r#"
             @postgres
             module LogModule {
                 @table("logs")
                 type Log {
-                  @dbtype("bigint") @pk id: Int = autoIncrement() 
+                  @dbtype("bigint") @pk id: Int = autoIncrement()
                   @bits16 nonce: Int
                   @bits64 hash: Int
                   @singlePrecision float: Float
                   @doublePrecision double: Float
-                  @precision(4) latitude: Decimal 
-                  @precision(5) @scale(2) longitude: Decimal 
-                  @range(min=0, max=32770) weird: Int 
+                  @precision(4) latitude: Decimal
+                  @precision(5) @scale(2) longitude: Decimal
+                  @range(min=0, max=32770) weird: Int
                   @maxLength(15) prefix: String
                   log: String
-                  @precision(6) granular: Instant 
+                  @precision(6) granular: Instant
                 }
             }
         "#;
