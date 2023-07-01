@@ -15,10 +15,25 @@ use serde::{Deserialize, Serialize};
 /// Access specification for a model
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Access {
-    pub creation: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    pub creation: AccessPredicateExpression<InputAccessPrimitiveExpression>,
     pub read: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
-    pub update: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    pub update: UpdateAccessExpression,
     pub delete: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateAccessExpression {
+    pub input: AccessPredicateExpression<InputAccessPrimitiveExpression>,
+    pub existing: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+}
+
+impl UpdateAccessExpression {
+    pub const fn restrictive() -> Self {
+        Self {
+            input: AccessPredicateExpression::BooleanLiteral(false),
+            existing: AccessPredicateExpression::BooleanLiteral(false),
+        }
+    }
 }
 
 impl Access {
@@ -26,7 +41,7 @@ impl Access {
         Self {
             creation: AccessPredicateExpression::BooleanLiteral(false),
             read: AccessPredicateExpression::BooleanLiteral(false),
-            update: AccessPredicateExpression::BooleanLiteral(false),
+            update: UpdateAccessExpression::restrictive(),
             delete: AccessPredicateExpression::BooleanLiteral(false),
         }
     }
@@ -39,6 +54,16 @@ impl Access {
 pub enum DatabaseAccessPrimitiveExpression {
     ContextSelection(ContextSelection), // for example, AuthContext.role
     Column(PhysicalColumnPath),         // for example, self.id
+    StringLiteral(String),              // for example, "ADMIN"
+    BooleanLiteral(bool),               // for example, true
+    NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
+}
+
+/// Primtivie expressions that can express data input access control rules.
+#[derive(Serialize, Deserialize, Debug)]
+pub enum InputAccessPrimitiveExpression {
+    ContextSelection(ContextSelection), // for example, AuthContext.role
+    Path(Vec<String>),                  // for example, self.id (to be interpreted as a JSON path)
     StringLiteral(String),              // for example, "ADMIN"
     BooleanLiteral(bool),               // for example, true
     NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)

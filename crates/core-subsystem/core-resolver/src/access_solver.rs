@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use core_model::access::{AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp};
 
-use crate::context::RequestContext;
+use crate::{context::RequestContext, value::Val};
 
 /// Access predicate that can be logically combined with other predicates.
 pub trait AccessPredicate<'a>:
@@ -46,14 +46,17 @@ where
     async fn solve(
         &'a self,
         request_context: &'a RequestContext<'a>,
+        input_context: Option<&'a Val>, // User provided context (such as input to a mutation)
         expr: &'a AccessPredicateExpression<PrimExpr>,
     ) -> Res {
         match expr {
             AccessPredicateExpression::LogicalOp(op) => {
-                self.solve_logical_op(request_context, op).await
+                self.solve_logical_op(request_context, input_context, op)
+                    .await
             }
             AccessPredicateExpression::RelationalOp(op) => {
-                self.solve_relational_op(request_context, op).await
+                self.solve_relational_op(request_context, input_context, op)
+                    .await
             }
             AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
         }
@@ -67,6 +70,7 @@ where
     async fn solve_relational_op(
         &'a self,
         request_context: &'a RequestContext<'a>,
+        input_context: Option<&'a Val>,
         op: &'a AccessRelationalOp<PrimExpr>,
     ) -> Res;
 
@@ -74,22 +78,24 @@ where
     async fn solve_logical_op(
         &'a self,
         request_context: &'a RequestContext<'a>,
+        input_context: Option<&'a Val>,
         op: &'a AccessLogicalExpression<PrimExpr>,
     ) -> Res {
         match op {
             AccessLogicalExpression::Not(underlying) => {
-                let underlying_predicate = self.solve(request_context, underlying).await;
+                let underlying_predicate =
+                    self.solve(request_context, input_context, underlying).await;
                 underlying_predicate.not()
             }
             AccessLogicalExpression::And(left, right) => {
-                let left_predicate = self.solve(request_context, left).await;
-                let right_predicate = self.solve(request_context, right).await;
+                let left_predicate = self.solve(request_context, input_context, left).await;
+                let right_predicate = self.solve(request_context, input_context, right).await;
 
                 left_predicate.and(right_predicate)
             }
             AccessLogicalExpression::Or(left, right) => {
-                let left_predicate = self.solve(request_context, left).await;
-                let right_predicate = self.solve(request_context, right).await;
+                let left_predicate = self.solve(request_context, input_context, left).await;
+                let right_predicate = self.solve(request_context, input_context, right).await;
 
                 left_predicate.or(right_predicate)
             }

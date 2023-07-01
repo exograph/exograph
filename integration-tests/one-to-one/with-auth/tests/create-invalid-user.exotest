@@ -1,5 +1,5 @@
 stages:
-  # User is trying to create a membership for themselves (currently, we don't allow if the access rule for creation evaluates to a residue (i.e. not to TRUE))
+# User is trying to create a membership for themselves
   - operation: |
       mutation {
         createMembership(data: {kind: "individual", user: {id: 1}}) {
@@ -18,11 +18,16 @@ stages:
       }
     response: |
       {
-        "errors": [
-          {
-            "message": "Not authorized"
+        "data": {
+          "createMembership": {
+            "id": 5,
+            "kind": "individual",
+            "user": {
+              "id": 1,
+              "name": "u1"
+            }
           }
-        ]
+        }
       }
   # Ensure that the earlier mutation didn't work
   - operation: |
@@ -75,7 +80,15 @@ stages:
                 "id": 5,
                 "name": "u5"
               }
-            }
+            },
+            {
+              "id": 5,
+              "kind": "individual",
+              "user": {
+                "id": 1,
+                "name": "u1"
+              }
+            }            
           ]
         }
       }

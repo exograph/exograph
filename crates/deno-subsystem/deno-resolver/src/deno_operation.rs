@@ -62,14 +62,14 @@ impl<'a> DenoOperation<'a> {
         let type_level_access = match &return_type.kind {
             ModuleTypeKind::Primitive => true,
             ModuleTypeKind::Composite(ModuleCompositeType { access, .. }) => subsystem
-                .solve(self.request_context, &access.value)
+                .solve(self.request_context, None, &access.value)
                 .await
                 .0
                 .into(),
         };
 
         let method_level_access = subsystem
-            .solve(self.request_context, &self.method.access.value)
+            .solve(self.request_context, None, &self.method.access.value)
             .await
             .0;
 

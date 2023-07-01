@@ -31,7 +31,7 @@ use exo_sql::{
 };
 
 use postgres_model::{
-    access::Access,
+    access::{Access, UpdateAccessExpression},
     aggregate::{AggregateField, AggregateFieldType},
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{
@@ -432,10 +432,23 @@ pub fn compute_access_composite_types(
         )
     };
 
+    let access_json_expr = |expr: &AstExpr<Typed>| {
+        access_utils::compute_input_predicate_expression(
+            expr,
+            Some(self_type_info),
+            resolved_env,
+            &building.primitive_types,
+            &building.entity_types,
+        )
+    };
+
     Ok(Access {
-        creation: access_expr(&resolved.creation)?,
+        creation: access_json_expr(&resolved.creation)?,
         read: access_expr(&resolved.read)?,
-        update: access_expr(&resolved.update)?,
+        update: UpdateAccessExpression {
+            input: access_json_expr(&resolved.update)?,
+            existing: access_expr(&resolved.update)?,
+        },
         delete: access_expr(&resolved.delete)?,
     })
 }

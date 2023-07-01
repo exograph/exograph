@@ -60,6 +60,7 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
     async fn solve_relational_op(
         &'a self,
         request_context: &'a RequestContext<'a>,
+        _input_context: Option<&'a Val>,
         op: &'a AccessRelationalOp<ModuleAccessPrimitiveExpression>,
     ) -> ModuleAccessPredicateWrapper {
         /// A primitive expression that has been reduced to a JSON value or an unresolved context

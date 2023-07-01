@@ -22,11 +22,14 @@ use core_plugin_interface::{
     core_model::context_type::ContextSelection,
     core_resolver::{
         access_solver::AccessPredicate, access_solver::AccessSolver, context::RequestContext,
-        context_extractor::ContextExtractor, value::Val,
+        context_extractor::ContextExtractor, number_cmp::NumberWrapper, value::Val,
     },
 };
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
-use postgres_model::{access::DatabaseAccessPrimitiveExpression, subsystem::PostgresSubsystem};
+use postgres_model::{
+    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
+    subsystem::PostgresSubsystem,
+};
 
 // Only to get around the orphan rule while implementing AccessSolver
 pub struct AbstractPredicateWrapper(pub AbstractPredicate);
@@ -62,6 +65,13 @@ pub enum SolvedPrimitiveExpression<'a> {
     UnresolvedContext(&'a ContextSelection), // For example, AuthContext.role for an anonymous user
 }
 
+#[derive(Debug)]
+pub enum SolvedJsonPrimitiveExpression<'a> {
+    Value(Val),
+    Path(Vec<String>),
+    UnresolvedContext(&'a ContextSelection), // For example, AuthContext.role for an anonymous user
+}
+
 #[async_trait]
 impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWrapper>
     for PostgresSubsystem
@@ -69,6 +79,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     async fn solve_relational_op(
         &'a self,
         request_context: &'a RequestContext<'a>,
+        _input_context: Option<&'a Val>,
         op: &'a AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
     ) -> AbstractPredicateWrapper {
         async fn reduce_primitive_expression<'a>(
@@ -185,6 +196,190 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
             ),
         })
     }
+}
+
+#[async_trait]
+impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapper>
+    for PostgresSubsystem
+{
+    async fn solve_relational_op(
+        &'a self,
+        request_context: &'a RequestContext<'a>,
+        input_context: Option<&'a Val>,
+        op: &'a AccessRelationalOp<InputAccessPrimitiveExpression>,
+    ) -> AbstractPredicateWrapper {
+        async fn reduce_primitive_expression<'a>(
+            solver: &PostgresSubsystem,
+            request_context: &'a RequestContext<'a>,
+            expr: &'a InputAccessPrimitiveExpression,
+        ) -> SolvedJsonPrimitiveExpression<'a> {
+            match expr {
+                InputAccessPrimitiveExpression::ContextSelection(selection) => solver
+                    .extract_context_selection(request_context, selection)
+                    .await
+                    .unwrap()
+                    .map(|v| SolvedJsonPrimitiveExpression::Value(v.clone()))
+                    .unwrap_or(SolvedJsonPrimitiveExpression::UnresolvedContext(selection)),
+                InputAccessPrimitiveExpression::Path(path) => {
+                    SolvedJsonPrimitiveExpression::Path(path.clone())
+                }
+                InputAccessPrimitiveExpression::StringLiteral(value) => {
+                    SolvedJsonPrimitiveExpression::Value(Val::String(value.clone()))
+                }
+                InputAccessPrimitiveExpression::BooleanLiteral(value) => {
+                    SolvedJsonPrimitiveExpression::Value(Val::Bool(*value))
+                }
+                InputAccessPrimitiveExpression::NumberLiteral(value) => {
+                    SolvedJsonPrimitiveExpression::Value(Val::Number((*value).into()))
+                }
+            }
+        }
+
+        let (left, right) = op.sides();
+        let left = reduce_primitive_expression(self, request_context, left).await;
+        let right = reduce_primitive_expression(self, request_context, right).await;
+
+        type ValuePredicateFn = fn(&Val, &Val) -> bool;
+
+        let helper = |unresolved_context_predicate: AbstractPredicate,
+                      value_predicate: ValuePredicateFn|
+         -> AbstractPredicate {
+            match (left, right) {
+                (SolvedJsonPrimitiveExpression::UnresolvedContext(_), _)
+                | (_, SolvedJsonPrimitiveExpression::UnresolvedContext(_)) => {
+                    unresolved_context_predicate
+                }
+
+                (
+                    SolvedJsonPrimitiveExpression::Path(left_path),
+                    SolvedJsonPrimitiveExpression::Path(right_path),
+                ) => match_paths(&left_path, &right_path, input_context, value_predicate).into(),
+
+                (
+                    SolvedJsonPrimitiveExpression::Value(left_value),
+                    SolvedJsonPrimitiveExpression::Value(right_value),
+                ) => value_predicate(&left_value, &right_value).into(),
+
+                // The next two need to be handled separately, since we need to pass the left side
+                // and right side to the predicate in the correct order. For example, `age > 18` is
+                // different from `18 > age`.
+                (
+                    SolvedJsonPrimitiveExpression::Value(left_value),
+                    SolvedJsonPrimitiveExpression::Path(right_path),
+                ) => {
+                    let right_value = resolve_value(input_context.unwrap(), &right_path);
+                    // If the user didn't provide a value, we evalute to true. Since the purpose of
+                    // an input predicate is to enforce an invariant, if the user didn't provide a
+                    // value, the original value will remain unchanged thus keeping the invariant
+                    // intact.
+                    match right_value {
+                        Some(right_value) => value_predicate(&left_value, right_value).into(),
+                        None => AbstractPredicate::True,
+                    }
+                }
+
+                (
+                    SolvedJsonPrimitiveExpression::Path(left_path),
+                    SolvedJsonPrimitiveExpression::Value(right_value),
+                ) => {
+                    let left_value = resolve_value(input_context.unwrap(), &left_path);
+                    // See above
+                    match left_value {
+                        Some(left_value) => value_predicate(left_value, &right_value).into(),
+                        None => AbstractPredicate::True,
+                    }
+                }
+            }
+        };
+
+        AbstractPredicateWrapper(match op {
+            AccessRelationalOp::Eq(..) => helper(AbstractPredicate::False, eq_values),
+            AccessRelationalOp::Neq(_, _) => helper(
+                // If a context is undefined, declare the expression as a match. For example,
+                // `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
+                AbstractPredicate::True,
+                neq_values,
+            ),
+            AccessRelationalOp::Lt(_, _) => helper(AbstractPredicate::False, lt_values),
+            AccessRelationalOp::Lte(_, _) => helper(AbstractPredicate::False, lte_values),
+            AccessRelationalOp::Gt(_, _) => helper(AbstractPredicate::False, gt_values),
+            AccessRelationalOp::Gte(_, _) => helper(AbstractPredicate::False, gte_values),
+            AccessRelationalOp::In(..) => helper(AbstractPredicate::False, in_values),
+        })
+    }
+}
+
+fn match_paths<'a>(
+    left_path: &'a Vec<String>,
+    right_path: &'a Vec<String>,
+    input_context: Option<&'a Val>,
+    match_values: fn(&Val, &Val) -> bool,
+) -> bool {
+    let left_value = resolve_value(input_context.unwrap(), left_path).unwrap();
+    let right_value = resolve_value(input_context.unwrap(), right_path).unwrap();
+    match_values(left_value, right_value)
+}
+
+fn eq_values(left_value: &Val, right_value: &Val) -> bool {
+    match (left_value, right_value) {
+        (Val::Number(left_number), Val::Number(right_number)) => {
+            // We have a more general implementation of `PartialEq` for `Val` that accounts for
+            // different number types. So, we use that implementaiton here instead of using just `==`
+            NumberWrapper(left_number.clone()).partial_cmp(&NumberWrapper(right_number.clone()))
+                == Some(std::cmp::Ordering::Equal)
+        }
+        _ => left_value == right_value,
+    }
+}
+
+fn neq_values(left_value: &Val, right_value: &Val) -> bool {
+    !eq_values(left_value, right_value)
+}
+
+fn in_values(left_value: &Val, right_value: &Val) -> bool {
+    match right_value {
+        Val::List(values) => values.contains(left_value),
+        _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
+    }
+}
+
+fn lt_values(left_value: &Val, right_value: &Val) -> bool {
+    match (left_value, right_value) {
+        (Val::Number(left_number), Val::Number(right_number)) => {
+            NumberWrapper(left_number.clone()) < NumberWrapper(right_number.clone())
+        }
+        _ => unreachable!("The operands of `<` operator must be numbers"),
+    }
+}
+
+fn lte_values(left_value: &Val, right_value: &Val) -> bool {
+    match (left_value, right_value) {
+        (Val::Number(left_number), Val::Number(right_number)) => {
+            NumberWrapper(left_number.clone()) <= NumberWrapper(right_number.clone())
+        }
+        _ => unreachable!("The operands of `<=` operator must be numbers"),
+    }
+}
+
+fn gt_values(left_value: &Val, right_value: &Val) -> bool {
+    !lte_values(left_value, right_value)
+}
+
+fn gte_values(left_value: &Val, right_value: &Val) -> bool {
+    !lt_values(left_value, right_value)
+}
+
+fn resolve_value<'a>(val: &'a Val, path: &'a Vec<String>) -> Option<&'a Val> {
+    let mut current = val;
+    for part in path {
+        match current {
+            Val::Object(map) => {
+                current = map.get(part)?;
+            }
+            _ => return None,
+        }
+    }
+    Some(current)
 }
 
 fn to_column_path(column_id: &PhysicalColumnPath) -> ColumnPath {
@@ -385,7 +580,7 @@ mod tests {
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
     ) -> AbstractPredicate {
-        subsystem.solve(request_context, expr).await.0
+        subsystem.solve(request_context, None, expr).await.0
     }
 
     type CompareFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;
