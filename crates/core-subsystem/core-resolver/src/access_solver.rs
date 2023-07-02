@@ -8,9 +8,15 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
-use core_model::access::{AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp};
+use core_model::{
+    access::{
+        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+        CommonAccessPrimitiveExpression,
+    },
+    context_type::ContextSelection,
+};
 
-use crate::{context::RequestContext, value::Val};
+use crate::{context::RequestContext, context_extractor::ContextExtractor, value::Val};
 
 /// Access predicate that can be logically combined with other predicates.
 pub trait AccessPredicate<'a>:
@@ -99,6 +105,41 @@ where
 
                 left_predicate.or(right_predicate)
             }
+        }
+    }
+}
+
+/// A primitive expression that has been reduced to a JSON value or an unresolved context
+#[derive(Debug)]
+pub enum SolvedCommonPrimitiveExpression<'a> {
+    Value(Val),
+    /// A context field that could not be resolved. For example, `AuthContext.role` for an anonymous user.
+    /// We process unresolved context when performing relational operations.
+    UnresolvedContext(&'a ContextSelection),
+}
+
+pub async fn reduce_common_primitive_expression<'a>(
+    context_extractor: &(impl ContextExtractor + Send + Sync),
+    request_context: &'a RequestContext<'a>,
+    expr: &'a CommonAccessPrimitiveExpression,
+) -> SolvedCommonPrimitiveExpression<'a> {
+    match expr {
+        CommonAccessPrimitiveExpression::ContextSelection(selection) => context_extractor
+            .extract_context_selection(request_context, selection)
+            .await
+            .unwrap()
+            .map(|v| SolvedCommonPrimitiveExpression::Value(v.clone()))
+            .unwrap_or(SolvedCommonPrimitiveExpression::UnresolvedContext(
+                selection,
+            )),
+        CommonAccessPrimitiveExpression::StringLiteral(value) => {
+            SolvedCommonPrimitiveExpression::Value(Val::String(value.clone()))
+        }
+        CommonAccessPrimitiveExpression::BooleanLiteral(value) => {
+            SolvedCommonPrimitiveExpression::Value(Val::Bool(*value))
+        }
+        CommonAccessPrimitiveExpression::NumberLiteral(value) => {
+            SolvedCommonPrimitiveExpression::Value(Val::Number((*value).into()))
         }
     }
 }

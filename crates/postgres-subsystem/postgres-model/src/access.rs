@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
-use core_plugin_interface::core_model::context_type::ContextSelection;
+use core_plugin_interface::core_model::access::CommonAccessPrimitiveExpression;
 use exo_sql::PhysicalColumnPath;
 use serde::{Deserialize, Serialize};
 
@@ -52,19 +52,13 @@ impl Access {
 /// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DatabaseAccessPrimitiveExpression {
-    ContextSelection(ContextSelection), // for example, AuthContext.role
-    Column(PhysicalColumnPath),         // for example, self.id
-    StringLiteral(String),              // for example, "ADMIN"
-    BooleanLiteral(bool),               // for example, true
-    NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
+    Column(PhysicalColumnPath), // Colun path, for example self.user.id
+    Common(CommonAccessPrimitiveExpression), // expression shared by all access expressions
 }
 
 /// Primtivie expressions that can express data input access control rules.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum InputAccessPrimitiveExpression {
-    ContextSelection(ContextSelection), // for example, AuthContext.role
-    Path(Vec<String>),                  // for example, self.id (to be interpreted as a JSON path)
-    StringLiteral(String),              // for example, "ADMIN"
-    BooleanLiteral(bool),               // for example, true
-    NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
+    Path(Vec<String>),                       // JSON path, for example self.user.id
+    Common(CommonAccessPrimitiveExpression), // expression shared by all access expressions
 }

@@ -8,7 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_model::{
-    access::{AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp},
+    access::{
+        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+        CommonAccessPrimitiveExpression,
+    },
     context_type::{get_context, ContextFieldType, ContextSelection},
     mapped_arena::MappedArena,
     primitive_type::PrimitiveType,
@@ -69,10 +72,14 @@ pub fn compute_input_predicate_expression(
                         // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
                         Ok(AccessPredicateExpression::RelationalOp(
                             AccessRelationalOp::Eq(
-                                Box::new(InputAccessPrimitiveExpression::ContextSelection(
-                                    context_selection,
+                                Box::new(InputAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::ContextSelection(
+                                        context_selection,
+                                    ),
                                 )),
-                                Box::new(InputAccessPrimitiveExpression::BooleanLiteral(true)),
+                                Box::new(InputAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::BooleanLiteral(true),
+                                )),
                             ),
                         ))
                     } else {
@@ -152,7 +159,9 @@ pub fn compute_predicate_expression(
                         Ok(AccessPredicateExpression::RelationalOp(
                             AccessRelationalOp::Eq(
                                 Box::new(DatabaseAccessPrimitiveExpression::Column(column_path)),
-                                Box::new(DatabaseAccessPrimitiveExpression::BooleanLiteral(true)),
+                                Box::new(DatabaseAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::BooleanLiteral(true),
+                                )),
                             ),
                         ))
                     } else {
@@ -167,10 +176,14 @@ pub fn compute_predicate_expression(
                         // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
                         Ok(AccessPredicateExpression::RelationalOp(
                             AccessRelationalOp::Eq(
-                                Box::new(DatabaseAccessPrimitiveExpression::ContextSelection(
-                                    context_selection,
+                                Box::new(DatabaseAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::ContextSelection(
+                                        context_selection,
+                                    ),
                                 )),
-                                Box::new(DatabaseAccessPrimitiveExpression::BooleanLiteral(true)),
+                                Box::new(DatabaseAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::BooleanLiteral(true),
+                                )),
                             ),
                         ))
                     } else {
@@ -236,20 +249,20 @@ fn compute_primitive_db_expr(
                 DatabasePathSelection::Column(column_path, _) => {
                     DatabaseAccessPrimitiveExpression::Column(column_path)
                 }
-                DatabasePathSelection::Context(c, _) => {
-                    DatabaseAccessPrimitiveExpression::ContextSelection(c)
-                }
+                DatabasePathSelection::Context(c, _) => DatabaseAccessPrimitiveExpression::Common(
+                    CommonAccessPrimitiveExpression::ContextSelection(c),
+                ),
             }
         }
-        AstExpr::StringLiteral(value, _) => {
-            DatabaseAccessPrimitiveExpression::StringLiteral(value.clone())
-        }
-        AstExpr::BooleanLiteral(value, _) => {
-            DatabaseAccessPrimitiveExpression::BooleanLiteral(*value)
-        }
-        AstExpr::NumberLiteral(value, _) => {
-            DatabaseAccessPrimitiveExpression::NumberLiteral(*value)
-        }
+        AstExpr::StringLiteral(value, _) => DatabaseAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::StringLiteral(value.clone()),
+        ),
+        AstExpr::BooleanLiteral(value, _) => DatabaseAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::BooleanLiteral(*value),
+        ),
+        AstExpr::NumberLiteral(value, _) => DatabaseAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::NumberLiteral(*value),
+        ),
         AstExpr::StringList(_, _) => panic!("Access expressions do not support lists yet"),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
@@ -273,16 +286,20 @@ fn compute_primitive_json_expr(
                 subsystem_entity_types,
             ) {
                 JsonPathSelection::Path(path, _) => InputAccessPrimitiveExpression::Path(path),
-                JsonPathSelection::Context(c, _) => {
-                    InputAccessPrimitiveExpression::ContextSelection(c)
-                }
+                JsonPathSelection::Context(c, _) => InputAccessPrimitiveExpression::Common(
+                    CommonAccessPrimitiveExpression::ContextSelection(c),
+                ),
             }
         }
-        AstExpr::StringLiteral(value, _) => {
-            InputAccessPrimitiveExpression::StringLiteral(value.clone())
-        }
-        AstExpr::BooleanLiteral(value, _) => InputAccessPrimitiveExpression::BooleanLiteral(*value),
-        AstExpr::NumberLiteral(value, _) => InputAccessPrimitiveExpression::NumberLiteral(*value),
+        AstExpr::StringLiteral(value, _) => InputAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::StringLiteral(value.clone()),
+        ),
+        AstExpr::BooleanLiteral(value, _) => InputAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::BooleanLiteral(*value),
+        ),
+        AstExpr::NumberLiteral(value, _) => InputAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::NumberLiteral(*value),
+        ),
         AstExpr::StringList(_, _) => panic!("Access expressions do not support lists yet"),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions

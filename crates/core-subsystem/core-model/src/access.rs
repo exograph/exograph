@@ -28,6 +28,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::context_type::ContextSelection;
+
 /// An expression that can be evaluated to a subsystem-specific predicate such as Deno's
 /// `ModuleAccessPredicate` and Postgres' `AbstractPredicate`.
 ///
@@ -93,4 +95,12 @@ where
             AccessRelationalOp::In(left, right) => (left, right),
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum CommonAccessPrimitiveExpression {
+    ContextSelection(ContextSelection), // for example, AuthContext.role
+    StringLiteral(String),              // for example, "ADMIN"
+    BooleanLiteral(bool),               // for example, true
+    NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
 }

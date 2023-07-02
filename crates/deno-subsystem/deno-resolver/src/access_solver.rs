@@ -13,11 +13,12 @@ use async_trait::async_trait;
 
 use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
-    core_model::context_type::ContextSelection,
     core_resolver::{
-        access_solver::{AccessPredicate, AccessSolver},
+        access_solver::{
+            reduce_common_primitive_expression, AccessPredicate, AccessSolver,
+            SolvedCommonPrimitiveExpression,
+        },
         context::RequestContext,
-        context_extractor::ContextExtractor,
         value::Val,
     },
 };
@@ -63,35 +64,14 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
         _input_context: Option<&'a Val>,
         op: &'a AccessRelationalOp<ModuleAccessPrimitiveExpression>,
     ) -> ModuleAccessPredicateWrapper {
-        /// A primitive expression that has been reduced to a JSON value or an unresolved context
-        #[derive(Debug)]
-        enum SolvedPrimitiveExpression<'a> {
-            Value(Val),
-            /// A context field that could not be resolved. For example, `AuthContext.role` for an anonymous user.
-            /// We process unresolved context when performing relational operations.
-            UnresolvedContext(&'a ContextSelection),
-        }
-
         async fn reduce_primitive_expression<'a>(
             solver: &DenoSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a ModuleAccessPrimitiveExpression,
-        ) -> SolvedPrimitiveExpression<'a> {
+        ) -> SolvedCommonPrimitiveExpression<'a> {
             match expr {
-                ModuleAccessPrimitiveExpression::ContextSelection(selection) => solver
-                    .extract_context_selection(request_context, selection)
-                    .await
-                    .unwrap()
-                    .map(|v| SolvedPrimitiveExpression::Value(v.clone()))
-                    .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
-                ModuleAccessPrimitiveExpression::StringLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Val::String(value.clone()))
-                }
-                ModuleAccessPrimitiveExpression::BooleanLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Val::Bool(*value))
-                }
-                ModuleAccessPrimitiveExpression::NumberLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Val::Number((*value).into()))
+                ModuleAccessPrimitiveExpression::Common(common_expr) => {
+                    reduce_common_primitive_expression(solver, request_context, common_expr).await
                 }
             }
         }
@@ -108,13 +88,13 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
                       value_predicate: ValuePredicateFn<'a>|
          -> ModuleAccessPredicate {
             match (left, right) {
-                (SolvedPrimitiveExpression::UnresolvedContext(_), _)
-                | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => {
+                (SolvedCommonPrimitiveExpression::UnresolvedContext(_), _)
+                | (_, SolvedCommonPrimitiveExpression::UnresolvedContext(_)) => {
                     unresolved_context_predicate
                 }
                 (
-                    SolvedPrimitiveExpression::Value(left_value),
-                    SolvedPrimitiveExpression::Value(right_value),
+                    SolvedCommonPrimitiveExpression::Value(left_value),
+                    SolvedCommonPrimitiveExpression::Value(right_value),
                 ) => value_predicate(left_value, right_value),
             }
         };

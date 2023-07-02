@@ -19,10 +19,10 @@
 use async_trait::async_trait;
 use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
-    core_model::context_type::ContextSelection,
     core_resolver::{
-        access_solver::AccessPredicate, access_solver::AccessSolver, context::RequestContext,
-        context_extractor::ContextExtractor, number_cmp::NumberWrapper, value::Val,
+        access_solver::reduce_common_primitive_expression, access_solver::AccessPredicate,
+        access_solver::AccessSolver, access_solver::SolvedCommonPrimitiveExpression,
+        context::RequestContext, number_cmp::NumberWrapper, value::Val,
     },
 };
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
@@ -60,16 +60,14 @@ impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper {
 
 #[derive(Debug)]
 pub enum SolvedPrimitiveExpression<'a> {
-    Value(Val),
+    Common(SolvedCommonPrimitiveExpression<'a>),
     Column(PhysicalColumnPath),
-    UnresolvedContext(&'a ContextSelection), // For example, AuthContext.role for an anonymous user
 }
 
 #[derive(Debug)]
 pub enum SolvedJsonPrimitiveExpression<'a> {
-    Value(Val),
+    Common(SolvedCommonPrimitiveExpression<'a>),
     Path(Vec<String>),
-    UnresolvedContext(&'a ContextSelection), // For example, AuthContext.role for an anonymous user
 }
 
 #[async_trait]
@@ -88,23 +86,13 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
             expr: &'a DatabaseAccessPrimitiveExpression,
         ) -> SolvedPrimitiveExpression<'a> {
             match expr {
-                DatabaseAccessPrimitiveExpression::ContextSelection(selection) => solver
-                    .extract_context_selection(request_context, selection)
-                    .await
-                    .unwrap()
-                    .map(|v| SolvedPrimitiveExpression::Value(v.clone()))
-                    .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
+                DatabaseAccessPrimitiveExpression::Common(expr) => {
+                    SolvedPrimitiveExpression::Common(
+                        reduce_common_primitive_expression(solver, request_context, expr).await,
+                    )
+                }
                 DatabaseAccessPrimitiveExpression::Column(column_path) => {
                     SolvedPrimitiveExpression::Column(column_path.clone())
-                }
-                DatabaseAccessPrimitiveExpression::StringLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Val::String(value.clone()))
-                }
-                DatabaseAccessPrimitiveExpression::BooleanLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Val::Bool(*value))
-                }
-                DatabaseAccessPrimitiveExpression::NumberLiteral(value) => {
-                    SolvedPrimitiveExpression::Value(Val::Number((*value).into()))
                 }
             }
         }
@@ -121,10 +109,18 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                       value_predicate: ValuePredicateFn|
          -> AbstractPredicate {
             match (left, right) {
-                (SolvedPrimitiveExpression::UnresolvedContext(_), _)
-                | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => {
-                    unresolved_context_predicate
-                }
+                (
+                    SolvedPrimitiveExpression::Common(
+                        SolvedCommonPrimitiveExpression::UnresolvedContext(_),
+                    ),
+                    _,
+                )
+                | (
+                    _,
+                    SolvedPrimitiveExpression::Common(
+                        SolvedCommonPrimitiveExpression::UnresolvedContext(_),
+                    ),
+                ) => unresolved_context_predicate,
 
                 (
                     SolvedPrimitiveExpression::Column(left_col),
@@ -132,21 +128,29 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 ) => column_predicate(to_column_path(&left_col), to_column_path(&right_col)),
 
                 (
-                    SolvedPrimitiveExpression::Value(left_value),
-                    SolvedPrimitiveExpression::Value(right_value),
+                    SolvedPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
+                        left_value,
+                    )),
+                    SolvedPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
+                        right_value,
+                    )),
                 ) => value_predicate(left_value, right_value),
 
                 // The next two need to be handled separately, since we need to pass the left side
                 // and right side to the predicate in the correct order. For example, `age > 18` is
                 // different from `18 > age`.
                 (
-                    SolvedPrimitiveExpression::Value(value),
+                    SolvedPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
+                        value,
+                    )),
                     SolvedPrimitiveExpression::Column(column),
                 ) => column_predicate(literal_column(value), to_column_path(&column)),
 
                 (
                     SolvedPrimitiveExpression::Column(column),
-                    SolvedPrimitiveExpression::Value(value),
+                    SolvedPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
+                        value,
+                    )),
                 ) => column_predicate(to_column_path(&column), literal_column(value)),
             }
         };
@@ -214,23 +218,13 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
             expr: &'a InputAccessPrimitiveExpression,
         ) -> SolvedJsonPrimitiveExpression<'a> {
             match expr {
-                InputAccessPrimitiveExpression::ContextSelection(selection) => solver
-                    .extract_context_selection(request_context, selection)
-                    .await
-                    .unwrap()
-                    .map(|v| SolvedJsonPrimitiveExpression::Value(v.clone()))
-                    .unwrap_or(SolvedJsonPrimitiveExpression::UnresolvedContext(selection)),
+                InputAccessPrimitiveExpression::Common(expr) => {
+                    SolvedJsonPrimitiveExpression::Common(
+                        reduce_common_primitive_expression(solver, request_context, expr).await,
+                    )
+                }
                 InputAccessPrimitiveExpression::Path(path) => {
                     SolvedJsonPrimitiveExpression::Path(path.clone())
-                }
-                InputAccessPrimitiveExpression::StringLiteral(value) => {
-                    SolvedJsonPrimitiveExpression::Value(Val::String(value.clone()))
-                }
-                InputAccessPrimitiveExpression::BooleanLiteral(value) => {
-                    SolvedJsonPrimitiveExpression::Value(Val::Bool(*value))
-                }
-                InputAccessPrimitiveExpression::NumberLiteral(value) => {
-                    SolvedJsonPrimitiveExpression::Value(Val::Number((*value).into()))
                 }
             }
         }
@@ -245,10 +239,18 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
                       value_predicate: ValuePredicateFn|
          -> AbstractPredicate {
             match (left, right) {
-                (SolvedJsonPrimitiveExpression::UnresolvedContext(_), _)
-                | (_, SolvedJsonPrimitiveExpression::UnresolvedContext(_)) => {
-                    unresolved_context_predicate
-                }
+                (
+                    SolvedJsonPrimitiveExpression::Common(
+                        SolvedCommonPrimitiveExpression::UnresolvedContext(_),
+                    ),
+                    _,
+                )
+                | (
+                    _,
+                    SolvedJsonPrimitiveExpression::Common(
+                        SolvedCommonPrimitiveExpression::UnresolvedContext(_),
+                    ),
+                ) => unresolved_context_predicate,
 
                 (
                     SolvedJsonPrimitiveExpression::Path(left_path),
@@ -256,15 +258,21 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
                 ) => match_paths(&left_path, &right_path, input_context, value_predicate).into(),
 
                 (
-                    SolvedJsonPrimitiveExpression::Value(left_value),
-                    SolvedJsonPrimitiveExpression::Value(right_value),
+                    SolvedJsonPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
+                        left_value,
+                    )),
+                    SolvedJsonPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
+                        right_value,
+                    )),
                 ) => value_predicate(&left_value, &right_value).into(),
 
                 // The next two need to be handled separately, since we need to pass the left side
                 // and right side to the predicate in the correct order. For example, `age > 18` is
                 // different from `18 > age`.
                 (
-                    SolvedJsonPrimitiveExpression::Value(left_value),
+                    SolvedJsonPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
+                        left_value,
+                    )),
                     SolvedJsonPrimitiveExpression::Path(right_path),
                 ) => {
                     let right_value = resolve_value(input_context.unwrap(), &right_path);
@@ -280,7 +288,9 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
 
                 (
                     SolvedJsonPrimitiveExpression::Path(left_path),
-                    SolvedJsonPrimitiveExpression::Value(right_value),
+                    SolvedJsonPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
+                        right_value,
+                    )),
                 ) => {
                     let left_value = resolve_value(input_context.unwrap(), &left_path);
                     // See above
@@ -408,7 +418,12 @@ mod tests {
     use std::collections::HashMap;
 
     use core_plugin_interface::{
-        core_model::access::{AccessLogicalExpression, AccessPredicateExpression},
+        core_model::{
+            access::{
+                AccessLogicalExpression, AccessPredicateExpression, CommonAccessPrimitiveExpression,
+            },
+            context_type::ContextSelection,
+        },
         interception::InterceptionMap,
     };
 
@@ -548,8 +563,8 @@ mod tests {
     }
 
     fn context_selection_expr(head: &str, tail: &str) -> Box<DatabaseAccessPrimitiveExpression> {
-        Box::new(DatabaseAccessPrimitiveExpression::ContextSelection(
-            context_selection(head, tail),
+        Box::new(DatabaseAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::ContextSelection(context_selection(head, tail)),
         ))
     }
 
@@ -558,10 +573,12 @@ mod tests {
         context_selection: ContextSelection,
     ) -> AccessPredicateExpression<DatabaseAccessPrimitiveExpression> {
         AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-            Box::new(DatabaseAccessPrimitiveExpression::ContextSelection(
-                context_selection,
+            Box::new(DatabaseAccessPrimitiveExpression::Common(
+                CommonAccessPrimitiveExpression::ContextSelection(context_selection),
             )),
-            Box::new(DatabaseAccessPrimitiveExpression::BooleanLiteral(true)),
+            Box::new(DatabaseAccessPrimitiveExpression::Common(
+                CommonAccessPrimitiveExpression::BooleanLiteral(true),
+            )),
         ))
     }
 
@@ -571,7 +588,9 @@ mod tests {
     ) -> AccessPredicateExpression<DatabaseAccessPrimitiveExpression> {
         AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             Box::new(DatabaseAccessPrimitiveExpression::Column(column_path)),
-            Box::new(DatabaseAccessPrimitiveExpression::BooleanLiteral(true)),
+            Box::new(DatabaseAccessPrimitiveExpression::Common(
+                CommonAccessPrimitiveExpression::BooleanLiteral(true),
+            )),
         ))
     }
 
@@ -1086,8 +1105,8 @@ mod tests {
 
         let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             context_selection_expr("AccessContext", "role"),
-            Box::new(DatabaseAccessPrimitiveExpression::StringLiteral(
-                "ROLE_ADMIN".to_owned(),
+            Box::new(DatabaseAccessPrimitiveExpression::Common(
+                CommonAccessPrimitiveExpression::StringLiteral("ROLE_ADMIN".to_owned()),
             )),
         ));
 
@@ -1115,8 +1134,8 @@ mod tests {
         let test_ae = {
             let admin_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
                 context_selection_expr("AccessContext", "role"),
-                Box::new(DatabaseAccessPrimitiveExpression::StringLiteral(
-                    "ROLE_ADMIN".to_owned(),
+                Box::new(DatabaseAccessPrimitiveExpression::Common(
+                    CommonAccessPrimitiveExpression::StringLiteral("ROLE_ADMIN".to_owned()),
                 )),
             ));
             let user_access = boolean_column_selection(published_column_path.clone());
@@ -1196,16 +1215,16 @@ mod tests {
 
         let admin_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             context_selection_expr("AccessContext", "role"),
-            Box::new(DatabaseAccessPrimitiveExpression::StringLiteral(
-                "ROLE_ADMIN".to_owned(),
+            Box::new(DatabaseAccessPrimitiveExpression::Common(
+                CommonAccessPrimitiveExpression::StringLiteral("ROLE_ADMIN".to_owned()),
             )),
         ));
 
         let user_access = {
             let role_rule = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
                 context_selection_expr("AccessContext", "role"),
-                Box::new(DatabaseAccessPrimitiveExpression::StringLiteral(
-                    "ROLE_USER".to_owned(),
+                Box::new(DatabaseAccessPrimitiveExpression::Common(
+                    CommonAccessPrimitiveExpression::StringLiteral("ROLE_USER".to_owned()),
                 )),
             ));
 
@@ -1213,7 +1232,9 @@ mod tests {
                 Box::new(DatabaseAccessPrimitiveExpression::Column(
                     published_column_path.clone(),
                 )),
-                Box::new(DatabaseAccessPrimitiveExpression::BooleanLiteral(true)),
+                Box::new(DatabaseAccessPrimitiveExpression::Common(
+                    CommonAccessPrimitiveExpression::BooleanLiteral(true),
+                )),
             ));
 
             AccessPredicateExpression::LogicalOp(AccessLogicalExpression::And(
