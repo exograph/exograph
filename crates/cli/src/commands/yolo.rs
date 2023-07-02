@@ -15,8 +15,8 @@ use colored::Colorize;
 use std::{path::PathBuf, sync::atomic::Ordering};
 
 use crate::commands::util::{
-    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_JWT_SECRET, EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL,
-    EXO_POSTGRES_USER,
+    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, EXO_JWT_SECRET,
+    EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER,
 };
 use crate::{
     commands::{
@@ -80,6 +80,8 @@ async fn run_server(
     std::env::remove_var(EXO_POSTGRES_USER);
     std::env::remove_var(EXO_POSTGRES_PASSWORD);
     std::env::set_var(EXO_INTROSPECTION, "true");
+    std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
+
     std::env::set_var(EXO_JWT_SECRET, jwt_secret);
     std::env::set_var(EXO_CORS_DOMAINS, "*");
 
