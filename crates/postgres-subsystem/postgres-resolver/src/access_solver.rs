@@ -20,9 +20,13 @@ use async_trait::async_trait;
 use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
     core_resolver::{
-        access_solver::reduce_common_primitive_expression, access_solver::AccessPredicate,
-        access_solver::AccessSolver, access_solver::SolvedCommonPrimitiveExpression,
-        context::RequestContext, number_cmp::NumberWrapper, value::Val,
+        access_solver::{
+            eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
+            reduce_common_primitive_expression, AccessPredicate, AccessSolver,
+            SolvedCommonPrimitiveExpression,
+        },
+        context::RequestContext,
+        value::Val,
     },
 };
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
@@ -328,55 +332,6 @@ fn match_paths<'a>(
     let left_value = resolve_value(input_context.unwrap(), left_path).unwrap();
     let right_value = resolve_value(input_context.unwrap(), right_path).unwrap();
     match_values(left_value, right_value)
-}
-
-fn eq_values(left_value: &Val, right_value: &Val) -> bool {
-    match (left_value, right_value) {
-        (Val::Number(left_number), Val::Number(right_number)) => {
-            // We have a more general implementation of `PartialEq` for `Val` that accounts for
-            // different number types. So, we use that implementaiton here instead of using just `==`
-            NumberWrapper(left_number.clone()).partial_cmp(&NumberWrapper(right_number.clone()))
-                == Some(std::cmp::Ordering::Equal)
-        }
-        _ => left_value == right_value,
-    }
-}
-
-fn neq_values(left_value: &Val, right_value: &Val) -> bool {
-    !eq_values(left_value, right_value)
-}
-
-fn in_values(left_value: &Val, right_value: &Val) -> bool {
-    match right_value {
-        Val::List(values) => values.contains(left_value),
-        _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
-    }
-}
-
-fn lt_values(left_value: &Val, right_value: &Val) -> bool {
-    match (left_value, right_value) {
-        (Val::Number(left_number), Val::Number(right_number)) => {
-            NumberWrapper(left_number.clone()) < NumberWrapper(right_number.clone())
-        }
-        _ => unreachable!("The operands of `<` operator must be numbers"),
-    }
-}
-
-fn lte_values(left_value: &Val, right_value: &Val) -> bool {
-    match (left_value, right_value) {
-        (Val::Number(left_number), Val::Number(right_number)) => {
-            NumberWrapper(left_number.clone()) <= NumberWrapper(right_number.clone())
-        }
-        _ => unreachable!("The operands of `<=` operator must be numbers"),
-    }
-}
-
-fn gt_values(left_value: &Val, right_value: &Val) -> bool {
-    !lte_values(left_value, right_value)
-}
-
-fn gte_values(left_value: &Val, right_value: &Val) -> bool {
-    !lt_values(left_value, right_value)
 }
 
 fn resolve_value<'a>(val: &'a Val, path: &'a Vec<String>) -> Option<&'a Val> {

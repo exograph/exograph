@@ -16,7 +16,10 @@ use core_model::{
     context_type::ContextSelection,
 };
 
-use crate::{context::RequestContext, context_extractor::ContextExtractor, value::Val};
+use crate::{
+    context::RequestContext, context_extractor::ContextExtractor, number_cmp::NumberWrapper,
+    value::Val,
+};
 
 /// Access predicate that can be logically combined with other predicates.
 pub trait AccessPredicate<'a>:
@@ -142,4 +145,53 @@ pub async fn reduce_common_primitive_expression<'a>(
             SolvedCommonPrimitiveExpression::Value(Val::Number((*value).into()))
         }
     }
+}
+
+pub fn eq_values(left_value: &Val, right_value: &Val) -> bool {
+    match (left_value, right_value) {
+        (Val::Number(left_number), Val::Number(right_number)) => {
+            // We have a more general implementation of `PartialEq` for `Val` that accounts for
+            // different number types. So, we use that implementaiton here instead of using just `==`
+            NumberWrapper(left_number.clone()).partial_cmp(&NumberWrapper(right_number.clone()))
+                == Some(std::cmp::Ordering::Equal)
+        }
+        _ => left_value == right_value,
+    }
+}
+
+pub fn neq_values(left_value: &Val, right_value: &Val) -> bool {
+    !eq_values(left_value, right_value)
+}
+
+pub fn in_values(left_value: &Val, right_value: &Val) -> bool {
+    match right_value {
+        Val::List(values) => values.contains(left_value),
+        _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
+    }
+}
+
+pub fn lt_values(left_value: &Val, right_value: &Val) -> bool {
+    match (left_value, right_value) {
+        (Val::Number(left_number), Val::Number(right_number)) => {
+            NumberWrapper(left_number.clone()) < NumberWrapper(right_number.clone())
+        }
+        _ => unreachable!("The operands of `<` operator must be numbers"),
+    }
+}
+
+pub fn lte_values(left_value: &Val, right_value: &Val) -> bool {
+    match (left_value, right_value) {
+        (Val::Number(left_number), Val::Number(right_number)) => {
+            NumberWrapper(left_number.clone()) <= NumberWrapper(right_number.clone())
+        }
+        _ => unreachable!("The operands of `<=` operator must be numbers"),
+    }
+}
+
+pub fn gt_values(left_value: &Val, right_value: &Val) -> bool {
+    !lte_values(left_value, right_value)
+}
+
+pub fn gte_values(left_value: &Val, right_value: &Val) -> bool {
+    !lt_values(left_value, right_value)
 }
