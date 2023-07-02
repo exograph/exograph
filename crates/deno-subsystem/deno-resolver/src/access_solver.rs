@@ -15,6 +15,7 @@ use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
     core_resolver::{
         access_solver::{
+            eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
             reduce_common_primitive_expression, AccessPredicate, AccessSolver,
             SolvedCommonPrimitiveExpression,
         },
@@ -81,41 +82,38 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
         let right = reduce_primitive_expression(self, request_context, right).await;
 
         /// Compare two JSON values
-        type ValuePredicateFn<'a> = fn(Val, Val) -> ModuleAccessPredicate;
+        type ValuePredicateFn = fn(&Val, &Val) -> bool;
 
         // A helper to reduce code duplication in the match below
-        let helper = |unresolved_context_predicate: ModuleAccessPredicate,
-                      value_predicate: ValuePredicateFn<'a>|
-         -> ModuleAccessPredicate {
-            match (left, right) {
-                (SolvedCommonPrimitiveExpression::UnresolvedContext(_), _)
-                | (_, SolvedCommonPrimitiveExpression::UnresolvedContext(_)) => {
-                    unresolved_context_predicate
+        let helper =
+            |unresolved_context_predicate: bool, value_predicate: ValuePredicateFn| -> bool {
+                match (left, right) {
+                    (SolvedCommonPrimitiveExpression::UnresolvedContext(_), _)
+                    | (_, SolvedCommonPrimitiveExpression::UnresolvedContext(_)) => {
+                        unresolved_context_predicate
+                    }
+                    (
+                        SolvedCommonPrimitiveExpression::Value(left_value),
+                        SolvedCommonPrimitiveExpression::Value(right_value),
+                    ) => value_predicate(&left_value, &right_value),
                 }
-                (
-                    SolvedCommonPrimitiveExpression::Value(left_value),
-                    SolvedCommonPrimitiveExpression::Value(right_value),
-                ) => value_predicate(left_value, right_value),
-            }
-        };
+            };
 
-        // Currently, we don't support expressions such as <, >, <=, >=, but we can easily add them later
-        ModuleAccessPredicateWrapper(match op {
-            AccessRelationalOp::Eq(..) => helper(ModuleAccessPredicate::False, |val1, val2| {
-                (val1 == val2).into()
-            }),
-            AccessRelationalOp::Neq(_, _) => helper(
-                ModuleAccessPredicate::True, // If a context is undefined, declare the expression as a match. For example, `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
-                |val1, val2| (val1 != val2).into(),
-            ),
-            AccessRelationalOp::In(..) => helper(
-                ModuleAccessPredicate::False,
-                |left_value, right_value| match right_value {
-                    Val::List(values) => values.contains(&left_value).into(),
-                    _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
-                },
-            ),
-            _ => todo!("Unsupported relational operator"),
-        })
+        ModuleAccessPredicateWrapper(
+            match op {
+                AccessRelationalOp::Eq(..) => helper(false, eq_values),
+                AccessRelationalOp::Neq(_, _) => helper(
+                    // If a context is undefined, declare the expression as a match. For example,
+                    // `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
+                    true, neq_values,
+                ),
+                AccessRelationalOp::Lt(_, _) => helper(false, lt_values), // TODO: See issue #611
+                AccessRelationalOp::Lte(_, _) => helper(false, lte_values),
+                AccessRelationalOp::Gt(_, _) => helper(false, gt_values),
+                AccessRelationalOp::Gte(_, _) => helper(false, gte_values),
+                AccessRelationalOp::In(..) => helper(false, in_values),
+            }
+            .into(),
+        )
     }
 }
