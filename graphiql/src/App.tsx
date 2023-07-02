@@ -64,11 +64,25 @@ function App() {
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
     null
   );
+  const networkErrorCount = useRef(0);
 
   async function fetchAndSetSchema() {
     let schema = await fetchSchema(fetcher);
-    setSchema(schema);
-    if (enableSchemaLiveUpdate && schema !== "NetworkError") {
+
+    // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
+    if (networkErrorCount.current >= 3) {
+      setSchema("NetworkError");
+      return;
+    } else if (schema === "NetworkError") {
+      // let the old schema stay in place
+      networkErrorCount.current += 1;
+    } else {
+      // Reset the counter when there is no network error
+      networkErrorCount.current = 0;
+      setSchema(schema);
+    }
+
+    if (enableSchemaLiveUpdate) {
       // Schedule another fetch in 2 seconds only if there was no network error while fetching the schema
       setTimeout(fetchAndSetSchema, 2000);
     }
@@ -90,7 +104,7 @@ function App() {
       overlay = <EmptySchema />;
     } else if (schema === "InvalidSchema") {
       overlay = <InvalidSchema />;
-    } else {
+    } else if (networkErrorCount.current >= 3) {
       overlay = <NetworkError />;
     }
   } else {
