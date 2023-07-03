@@ -1,0 +1,28 @@
+operation: |
+  query {
+    concerts(where: {and: [{mainVenue: {id: {eq: 1}}}, {alternateVenue: {id: {eq: 2}}}]}) {
+      id
+      mainVenue {
+        id
+      }
+      alternateVenue {
+        id
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "concerts": [
+        {
+          "id": 1,
+          "mainVenue": {
+            "id": 1
+          },
+          "alternateVenue": {
+            "id": 2
+          }
+        }
+      ]
+    }
+  }
