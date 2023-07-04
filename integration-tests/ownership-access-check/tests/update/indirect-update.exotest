@@ -28,15 +28,7 @@ stages:
             {
               "id": 1,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             },
             {
               "id": 2,
@@ -54,41 +46,17 @@ stages:
             {
               "id": 3,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             },
             {
               "id": 4,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             },
             {
               "id": 5,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             }
           ]
         }

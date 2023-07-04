@@ -1,0 +1,345 @@
+operation: |
+  query {
+    mainVenueASC_then_altVenueASC: concerts(orderBy: [{mainVenue: { id: ASC }}, {altVenue: { id: ASC }}]) {
+      id
+      title
+      mainVenue {
+        id
+      }
+      altVenue {
+        id
+      }
+    }
+    mainVenueASC_then_altVenueDESC: concerts(orderBy: [{mainVenue: { id: ASC }}, {altVenue: { id: DESC }}]) {
+      id
+      title
+      mainVenue {
+        id
+      }
+      altVenue {
+        id
+      }
+    }
+    mainVenueDESC_then_altVenueASC: concerts(orderBy: [{mainVenue: { id: DESC }}, {altVenue: { id: ASC }}]) {
+      id
+      title
+      mainVenue {
+        id
+      }
+      altVenue {
+        id
+      }
+    }
+    mainVenueDESC_then_altVenueDESC: concerts(orderBy: [{mainVenue: { id: DESC }}, {altVenue: { id: DESC }}]) {
+      id
+      title
+      mainVenue {
+        id
+      }
+      altVenue {
+        id
+      }
+    }
+
+    altVenueASC_then_mainVenueASC: concerts(orderBy: [{altVenue: { id: ASC }}, {mainVenue: { id: ASC }}]) {
+      id
+      title
+      mainVenue {
+        id
+      }
+      altVenue {
+        id
+      }
+    }
+    altVenueASC_then_mainVenueDESC: concerts(orderBy: [{altVenue: { id: ASC }}, {mainVenue: { id: DESC }}]) {
+      id
+      title
+      mainVenue {
+        id
+      }
+      altVenue {
+        id
+      }
+    }
+    altVenueDESC_then_mainVenueASC: concerts(orderBy: [{altVenue: { id: DESC }}, {mainVenue: { id: ASC }}]) {
+      id
+      title
+      mainVenue {
+        id
+      }
+      altVenue {
+        id
+      }
+    }
+    altVenueDESC_then_mainVenueDESC: concerts(orderBy: [{altVenue: { id: DESC }}, {mainVenue: { id: DESC }}]) {
+      id
+      title
+      mainVenue {
+        id
+      }
+      altVenue {
+        id
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "mainVenueASC_then_altVenueASC": [
+        {
+          "id": 1,
+          "title": "C1",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        },
+        {
+          "id": 3,
+          "title": "C3",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        },
+        {
+          "id": 2,
+          "title": "C2",
+          "mainVenue": {
+            "id": 3
+          },
+          "altVenue": {
+            "id": 4
+          }
+        }
+      ],
+      "altVenueASC_then_mainVenueASC": [
+        {
+          "id": 1,
+          "title": "C1",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        },
+        {
+          "id": 3,
+          "title": "C3",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        },
+        {
+          "id": 2,
+          "title": "C2",
+          "mainVenue": {
+            "id": 3
+          },
+          "altVenue": {
+            "id": 4
+          }
+        }
+      ],
+      "mainVenueASC_then_altVenueDESC": [
+        {
+          "id": 3,
+          "title": "C3",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        },
+        {
+          "id": 1,
+          "title": "C1",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        },
+        {
+          "id": 2,
+          "title": "C2",
+          "mainVenue": {
+            "id": 3
+          },
+          "altVenue": {
+            "id": 4
+          }
+        }
+      ],
+      "altVenueASC_then_mainVenueDESC": [
+        {
+          "id": 1,
+          "title": "C1",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        },
+        {
+          "id": 3,
+          "title": "C3",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        },
+        {
+          "id": 2,
+          "title": "C2",
+          "mainVenue": {
+            "id": 3
+          },
+          "altVenue": {
+            "id": 4
+          }
+        }
+      ],
+      "altVenueDESC_then_mainVenueDESC": [
+        {
+          "id": 2,
+          "title": "C2",
+          "mainVenue": {
+            "id": 3
+          },
+          "altVenue": {
+            "id": 4
+          }
+        },
+        {
+          "id": 3,
+          "title": "C3",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        },
+        {
+          "id": 1,
+          "title": "C1",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        }
+      ],
+      "altVenueDESC_then_mainVenueASC": [
+        {
+          "id": 2,
+          "title": "C2",
+          "mainVenue": {
+            "id": 3
+          },
+          "altVenue": {
+            "id": 4
+          }
+        },
+        {
+          "id": 3,
+          "title": "C3",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        },
+        {
+          "id": 1,
+          "title": "C1",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        }
+      ],
+      "mainVenueDESC_then_altVenueASC": [
+        {
+          "id": 2,
+          "title": "C2",
+          "mainVenue": {
+            "id": 3
+          },
+          "altVenue": {
+            "id": 4
+          }
+        },
+        {
+          "id": 1,
+          "title": "C1",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        },
+        {
+          "id": 3,
+          "title": "C3",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        }
+      ],
+      "mainVenueDESC_then_altVenueDESC": [
+        {
+          "id": 2,
+          "title": "C2",
+          "mainVenue": {
+            "id": 3
+          },
+          "altVenue": {
+            "id": 4
+          }
+        },
+        {
+          "id": 3,
+          "title": "C3",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        },
+        {
+          "id": 1,
+          "title": "C1",
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        }
+      ]
+    }
+  }

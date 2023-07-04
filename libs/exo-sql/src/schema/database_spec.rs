@@ -102,6 +102,7 @@ impl DatabaseSpec {
                             Some(ManyToOne {
                                 self_column_id,
                                 foreign_pk_column_id,
+                                foreign_table_alias: Some(column.name.clone()),
                             })
                         }
                         _ => None,

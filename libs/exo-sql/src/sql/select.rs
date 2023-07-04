@@ -106,13 +106,13 @@ mod tests {
         let name_col_id = database.get_column_id(table_id, "name").unwrap();
 
         let json_col = Column::JsonObject(JsonObject(vec![
-            JsonObjectElement::new("namex".to_string(), Column::Physical(name_col_id)),
-            JsonObjectElement::new("agex".to_string(), Column::Physical(age_col_id)),
+            JsonObjectElement::new("namex".to_string(), Column::physical(name_col_id, None)),
+            JsonObjectElement::new("agex".to_string(), Column::physical(age_col_id, None)),
         ]));
-        let table = Table::Physical(table_id);
+        let table = Table::physical(table_id, None);
         let selected_table = Select {
             table,
-            columns: vec![Column::Physical(age_col2_id), json_col],
+            columns: vec![Column::physical(age_col2_id, None), json_col],
             predicate: ConcretePredicate::True,
             order_by: None,
             limit: None,

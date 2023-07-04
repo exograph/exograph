@@ -185,8 +185,8 @@ impl InsertTransformer for Postgres {
                     // To form the `(SELECT "venues"."id" FROM "venues")` part
                     column_values_seq.iter_mut().for_each(|value| {
                         let parent_reference = Column::SubSelect(Box::new(Select {
-                            table: Table::Physical(self_pk_column_id.table_id),
-                            columns: vec![Column::Physical(self_pk_column_id)],
+                            table: Table::physical(self_pk_column_id.table_id, None),
+                            columns: vec![Column::physical(self_pk_column_id, None)],
                             predicate: ConcretePredicate::True,
                             order_by: None,
                             offset: None,

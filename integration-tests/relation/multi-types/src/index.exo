@@ -5,7 +5,7 @@ module ConcertDatabase {
     @pk id: Int = autoIncrement()
     title: String
     @column("main_venue") mainVenue: Venue
-    @column("alternative_venue") alternateVenue: Venue?
+    @column("alt_venue") altVenue: Venue?
   }
 
   @access(true)
@@ -13,6 +13,6 @@ module ConcertDatabase {
     @pk id: Int = autoIncrement()
     name: String
     @column("main_venue") mainConcerts: Set<Concert>?
-    @column("alternative_venue") alternateConcerts: Set<Concert>?
+    @column("alt_venue") altConcerts: Set<Concert>?
   }
 }

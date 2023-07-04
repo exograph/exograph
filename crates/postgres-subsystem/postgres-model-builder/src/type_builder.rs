@@ -676,6 +676,7 @@ fn compute_many_to_one_relation(
                     Some(ManyToOne {
                         self_column_id,
                         foreign_pk_column_id,
+                        foreign_table_alias: Some(field.name.clone()),
                     })
                 }
                 _ => None,

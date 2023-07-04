@@ -73,10 +73,15 @@ pub enum ColumnPathLink {
 }
 
 impl ColumnPathLink {
-    pub fn relation(self_column_id: ColumnId, linked_column_id: ColumnId) -> Self {
+    pub fn relation(
+        self_column_id: ColumnId,
+        linked_column_id: ColumnId,
+        linked_table_alias: Option<String>,
+    ) -> Self {
         Self::Relation(RelationLink {
             self_column_id,
             foreign_column_id: linked_column_id,
+            linked_table_alias,
         })
     }
 
@@ -94,6 +99,11 @@ pub struct RelationLink {
     pub self_column_id: ColumnId,
     /// The column in the next table that is linked to the current table. None implies that this is a terminal column (such as artist.name).
     pub foreign_column_id: ColumnId,
+    /// Alias that could be used when joining the table, etc. Useful when multiple columns in the self table refers to the same linked column
+    /// For example, if "concerts" has "main_venue_id" and "alternative_venue_id" (both link to the venues.id column), we can set linked_table_alias
+    /// to "main_venue_id_table" and "alternative_venue_id_table" respectively. Then we can join the venues table twice with different aliases.
+    /// The alias name should not matter as long as it is unique within the self table
+    pub linked_table_alias: Option<String>,
 }
 
 impl PartialOrd for RelationLink {
@@ -239,5 +249,25 @@ impl PhysicalColumnPath {
 
         // Due to the assertion that the list of columns is non-empty, we can unwrap here
         new_path.unwrap()
+    }
+
+    /// Alias to be used for the last table in the path
+    ///
+    /// The computed alias is useful to avoid name collision when joining the same table multiple
+    /// times. For example, if `concerts` has two columns that link to `venue`, we can create
+    /// alias for them such as `main_venue` and `alternative_venue`.
+    pub fn alias(&self) -> Option<String> {
+        self.0.iter().fold(None, |acc, link| match link {
+            ColumnPathLink::Relation(RelationLink {
+                linked_table_alias, ..
+            }) => match linked_table_alias {
+                Some(linked_table_alias) => match acc {
+                    Some(acc) => Some(format!("{}_{}", acc, linked_table_alias)),
+                    None => Some(linked_table_alias.clone()),
+                },
+                None => acc,
+            },
+            ColumnPathLink::Leaf(_) => acc,
+        })
     }
 }

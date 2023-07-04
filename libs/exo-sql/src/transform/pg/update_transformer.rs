@@ -84,10 +84,11 @@ impl UpdateTransformer for Postgres {
         // If there are nested updates, select only the primary key columns, so that we can use that as the proxy
         // column in the nested updates added to the transaction script.
         let return_col = if !abstract_update.nested_updates.is_empty() {
-            Column::Physical(
+            Column::physical(
                 database
                     .get_pk_column_id(abstract_update.table_id)
                     .expect("No primary key column"),
+                None,
             )
         } else {
             Column::Star(None)

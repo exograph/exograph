@@ -71,20 +71,22 @@ mod tests {
         let venue_physical_table_id = database.get_table_id("venues").unwrap();
 
         let join_predicate = ConcretePredicate::Eq(
-            Column::Physical(
+            Column::physical(
                 database
                     .get_column_id(concert_physical_table_id, "venue_id")
                     .unwrap(),
+                None,
             ),
-            Column::Physical(
+            Column::physical(
                 database
                     .get_column_id(venue_physical_table_id, "id")
                     .unwrap(),
+                None,
             ),
         );
 
-        let concert_table = Table::Physical(concert_physical_table_id);
-        let venue_table = Table::Physical(venue_physical_table_id);
+        let concert_table = Table::physical(concert_physical_table_id, None);
+        let venue_table = Table::physical(venue_physical_table_id, None);
         let join = LeftJoin::new(concert_table, venue_table, join_predicate);
 
         let mut builder = SQLBuilder::new();

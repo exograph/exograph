@@ -1,11 +1,11 @@
 operation: |
   query {
-    concerts(where: {and: [{mainVenue: {id: {eq: 1}}}, {alternateVenue: {id: {eq: 2}}}]}) {
+    concerts(where: {and: [{mainVenue: {id: {eq: 1}}}, {altVenue: {id: {eq: 2}}}]}) {
       id
       mainVenue {
         id
       }
-      alternateVenue {
+      altVenue {
         id
       }
     }
@@ -19,7 +19,7 @@ response: |
           "mainVenue": {
             "id": 1
           },
-          "alternateVenue": {
+          "altVenue": {
             "id": 2
           }
         }
