@@ -74,10 +74,10 @@ impl ExpressionBuilder for Column {
             } => {
                 let column = column_id.get_column(database);
                 match table_alias {
-                    Some(table_alias) => {
+                    Some(table_alias) if table_alias != &column.get_table_name(database) => {
                         builder.push_column(table_alias, &column.name);
                     }
-                    None => column.build(database, builder),
+                    _ => column.build(database, builder),
                 }
             }
             Column::Function {

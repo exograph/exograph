@@ -44,8 +44,10 @@ impl ExpressionBuilder for Table {
                 builder.push_identifier(&physical_table.name);
 
                 if let Some(alias) = alias {
-                    builder.push_str(" AS ");
-                    builder.push_identifier(alias);
+                    if &physical_table.name != alias {
+                        builder.push_str(" AS ");
+                        builder.push_identifier(alias);
+                    }
                 }
             }
             Table::Join(join) => join.build(database, builder),
