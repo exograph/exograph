@@ -1,0 +1,25 @@
+operation: |
+    mutation {
+      venue1: createVenue(data: { name: "Venue 1" }) {
+          id
+      }
+      venue2: createVenue(data: { name: "Venue 2" }) {
+          id
+      }
+      venue3: createVenue(data: { name: "Venue 3" }) {
+          id
+      }
+      venue4: createVenue(data: { name: "Venue 4" }) {
+          id
+      }
+      c1: createConcert(data: { mainVenue: {id: 1}, altVenue: {id: 2} title: "C1" }) {
+          id
+      }
+      c2: createConcert(data: { mainVenue: {id: 3}, altVenue: {id: 4} title: "C2" }) {
+          id
+      }
+      c3: createConcert(data: { mainVenue: {id: 1}, altVenue: {id: 3} title: "C3" }) {
+          id
+      }
+    }
+    

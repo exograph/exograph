@@ -27,7 +27,10 @@ use super::{
 #[derive(Debug, PartialEq)]
 pub enum Column {
     /// An actual physical column in a table
-    Physical(ColumnId),
+    Physical {
+        column_id: ColumnId,
+        table_alias: Option<String>,
+    },
     /// A literal value such as a string or number e.g. 'Sam'. This will be mapped to a placeholder
     /// to avoid SQL injection.
     Param(SQLParamContainer),
@@ -53,12 +56,29 @@ pub enum Column {
     },
 }
 
+impl Column {
+    pub fn physical(column_id: ColumnId, table_alias: Option<String>) -> Self {
+        Self::Physical {
+            column_id,
+            table_alias,
+        }
+    }
+}
+
 impl ExpressionBuilder for Column {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         match self {
-            Column::Physical(column_id) => {
+            Column::Physical {
+                column_id,
+                table_alias,
+            } => {
                 let column = column_id.get_column(database);
-                column.build(database, builder)
+                match table_alias {
+                    Some(table_alias) if table_alias != &column.get_table_name(database) => {
+                        builder.push_column(table_alias, &column.name);
+                    }
+                    _ => column.build(database, builder),
+                }
             }
             Column::Function {
                 function_name,

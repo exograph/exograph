@@ -8,15 +8,16 @@ pub struct OneToMany {
     pub foreign_column_id: ColumnId,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ManyToOne {
     pub self_column_id: ColumnId,
     pub foreign_pk_column_id: ColumnId,
+    pub foreign_table_alias: Option<String>,
 }
 
 impl OneToMany {
     pub fn column_path_link(&self) -> ColumnPathLink {
-        ColumnPathLink::relation(self.self_pk_column_id, self.foreign_column_id)
+        ColumnPathLink::relation(self.self_pk_column_id, self.foreign_column_id, None)
     }
 }
 
@@ -29,7 +30,11 @@ impl ManyToOne {
     }
 
     pub fn column_path_link(&self) -> ColumnPathLink {
-        ColumnPathLink::relation(self.self_column_id, self.foreign_pk_column_id)
+        ColumnPathLink::relation(
+            self.self_column_id,
+            self.foreign_pk_column_id,
+            self.foreign_table_alias.clone(),
+        )
     }
 }
 
@@ -38,7 +43,7 @@ pub struct ManyToOneId(pub(crate) usize);
 
 impl ManyToOneId {
     pub fn deref(&self, database: &Database) -> ManyToOne {
-        database.relations[self.0]
+        database.relations[self.0].clone()
     }
 }
 

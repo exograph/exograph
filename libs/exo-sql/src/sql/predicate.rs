@@ -303,7 +303,7 @@ mod tests {
         let people_table_id = database.get_table_id("people").unwrap();
         let age_column_id = database.get_column_id(people_table_id, "age").unwrap();
 
-        let age_col = Column::Physical(age_column_id);
+        let age_col = Column::physical(age_column_id, None);
         let age_value_col = Column::Param(SQLParamContainer::new(5));
 
         let predicate = Predicate::Eq(age_col, age_value_col);
@@ -327,8 +327,10 @@ mod tests {
         let name_value_col = Column::Param(SQLParamContainer::new("foo"));
         let age_value_col = Column::Param(SQLParamContainer::new(5));
 
-        let name_predicate = ConcretePredicate::Eq(Column::Physical(name_col_id), name_value_col);
-        let age_predicate = ConcretePredicate::Eq(Column::Physical(age_col_id), age_value_col);
+        let name_predicate =
+            ConcretePredicate::Eq(Column::physical(name_col_id, None), name_value_col);
+        let age_predicate =
+            ConcretePredicate::Eq(Column::physical(age_col_id, None), age_value_col);
 
         let predicate = ConcretePredicate::And(Box::new(name_predicate), Box::new(age_predicate));
 
@@ -353,7 +355,7 @@ mod tests {
         let title_col_id = database.get_column_id(table_id, "title").unwrap();
 
         fn title_test_data(title_col_id: ColumnId) -> (Column, Column) {
-            let title_col = Column::Physical(title_col_id);
+            let title_col = Column::physical(title_col_id, None);
             let title_value_col = Column::Param(SQLParamContainer::new("utawaku"));
 
             (title_col, title_value_col)
@@ -415,7 +417,7 @@ mod tests {
         let json_col_id = database.get_column_id(table_id, "data").unwrap();
 
         fn json_test_data(json_col_id: ColumnId) -> (Column, Arc<serde_json::Value>, Column) {
-            let json_col = Column::Physical(json_col_id);
+            let json_col = Column::physical(json_col_id, None);
 
             let json_value: serde_json::Value = serde_json::from_str(
                 r#"

@@ -74,7 +74,7 @@ impl Selection {
 impl SelectionElement {
     pub fn to_sql(&self, transformer: &Postgres, database: &Database) -> Column {
         match self {
-            SelectionElement::Physical(column_id) => Column::Physical(*column_id),
+            SelectionElement::Physical(column_id) => Column::physical(*column_id, None),
             SelectionElement::Function {
                 function_name,
                 column_id,
@@ -108,14 +108,15 @@ impl SelectionElement {
                         let ManyToOne {
                             self_column_id,
                             foreign_pk_column_id,
+                            ..
                         } = relation_id.deref(database);
                         (self_column_id, foreign_pk_column_id)
                     }
                 };
 
                 let subselect_predicate = Some(ConcretePredicate::Eq(
-                    Column::Physical(self_column_id),
-                    Column::Physical(foreign_column_id),
+                    Column::physical(self_column_id, None),
+                    Column::physical(foreign_column_id, None),
                 ));
 
                 Column::SubSelect(Box::new(transformer.compute_select(

@@ -99,9 +99,26 @@ impl DatabaseSpec {
                             let foreign_pk_column_id = database
                                 .get_column_id(foreign_table_id, foreign_pk_column_name)
                                 .unwrap();
+                            // Roughly match the behavior in type_builder.rs, where we set up the
+                            // alias to the pluralized field name, which in typical setup matches
+                            // the table name.
+
+                            // TODO: Make unit tests compare statements semantically, not lexically
+                            // so setting up aliases consistently is same as not setting them up in
+                            // case aliases are unnecessary.
+                            let foreign_table_alias = Some(if column.name.ends_with("_id") {
+                                let base_name = &column.name[..column.name.len() - 3];
+                                let plural_suffix =
+                                    if base_name.ends_with('s') { "es" } else { "s" };
+                                format!("{base_name}{plural_suffix}")
+                            } else {
+                                column.name.clone()
+                            });
+
                             Some(ManyToOne {
                                 self_column_id,
                                 foreign_pk_column_id,
+                                foreign_table_alias,
                             })
                         }
                         _ => None,

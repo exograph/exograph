@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    aggregate_type_builder::aggregate_type_name, resolved_builder::ResolvedFieldTypeHelper,
-    shallow::Shallow,
+    aggregate_type_builder::aggregate_type_name, naming::ToPlural,
+    resolved_builder::ResolvedFieldTypeHelper, shallow::Shallow,
 };
 
 use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::ResolvedFieldType};
@@ -30,6 +30,7 @@ use exo_sql::{
     TableId,
 };
 
+use heck::ToSnakeCase;
 use postgres_model::{
     access::{Access, UpdateAccessExpression},
     aggregate::{AggregateField, AggregateFieldType},
@@ -686,9 +687,12 @@ fn compute_many_to_one_relation(
                         .get_pk_column_id(foreign_table_id)
                         .unwrap();
 
+                    let field_alias = field.name.to_snake_case().to_plural();
+
                     Some(ManyToOne {
                         self_column_id,
                         foreign_pk_column_id,
+                        foreign_table_alias: Some(field_alias),
                     })
                 }
                 _ => None,

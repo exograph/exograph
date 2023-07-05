@@ -50,7 +50,7 @@ impl ExpressionBuilder for JsonObjectElement {
         builder.push_str(&self.key);
         builder.push_str("', ");
 
-        if let Column::Physical(column_id) = self.value {
+        if let Column::Physical { column_id, .. } = self.value {
             let PhysicalColumn { typ, .. } = column_id.get_column(database);
             match &typ {
                 // encode blob fields in JSON objects as base64

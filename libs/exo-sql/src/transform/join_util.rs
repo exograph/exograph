@@ -20,15 +20,19 @@ pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Tab
     /// Recursively build the join tree.
     fn from_dependency(dependency: TableDependency) -> Table {
         dependency.dependencies.into_iter().fold(
-            Table::Physical(dependency.table_id),
+            Table::physical(dependency.table_id, None),
             |acc, DependencyLink { link, dependency }| {
-                let join_predicate = match link {
+                let (join_predicate, linked_table_alias) = match link {
                     ColumnPathLink::Relation(RelationLink {
                         self_column_id,
                         foreign_column_id: linked_column_id,
-                    }) => ConcretePredicate::Eq(
-                        Column::Physical(self_column_id),
-                        Column::Physical(linked_column_id),
+                        linked_table_alias,
+                    }) => (
+                        ConcretePredicate::Eq(
+                            Column::physical(self_column_id, None),
+                            Column::physical(linked_column_id, linked_table_alias.clone()),
+                        ),
+                        linked_table_alias,
                     ),
                     ColumnPathLink::Leaf(_) => {
                         panic!("Unexpected leaf in dependency link")
@@ -36,6 +40,13 @@ pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Tab
                 };
 
                 let join_table_query = from_dependency(dependency);
+
+                let join_table_query = match join_table_query {
+                    Table::Physical { table_id, .. } => {
+                        Table::physical(table_id, linked_table_alias)
+                    }
+                    _ => join_table_query,
+                };
 
                 Table::Join(LeftJoin::new(acc, join_table_query, join_predicate))
             },

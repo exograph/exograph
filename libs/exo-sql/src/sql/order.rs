@@ -17,22 +17,30 @@ pub enum Ordering {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct OrderByElement(pub ColumnId, pub Ordering);
+pub struct OrderByElement(pub ColumnId, pub Ordering, pub Option<String>);
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct OrderBy(pub Vec<OrderByElement>);
 
 impl OrderByElement {
-    pub fn new(column_id: ColumnId, ordering: Ordering) -> Self {
-        Self(column_id, ordering)
+    pub fn new(column_id: ColumnId, ordering: Ordering, table_alias: Option<String>) -> Self {
+        Self(column_id, ordering, table_alias)
     }
 }
 
 impl ExpressionBuilder for OrderByElement {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         let column = self.0.get_column(database);
-        column.build(database, builder);
+        match self.2 {
+            Some(ref table_alias) => {
+                builder.push_column(table_alias, &column.name);
+            }
+            None => {
+                column.build(database, builder);
+            }
+        }
         builder.push_space();
+
         if self.1 == Ordering::Asc {
             builder.push_str("ASC");
         } else {
@@ -66,7 +74,7 @@ mod test {
 
         let age_col = database.get_column_id(people_table_id, "age").unwrap();
 
-        let order_by = OrderBy(vec![OrderByElement::new(age_col, Ordering::Desc)]);
+        let order_by = OrderBy(vec![OrderByElement::new(age_col, Ordering::Desc, None)]);
 
         assert_binding!(
             order_by.to_sql(&database),
@@ -89,8 +97,8 @@ mod test {
 
         {
             let order_by = OrderBy(vec![
-                OrderByElement::new(name_col, Ordering::Asc),
-                OrderByElement::new(age_col, Ordering::Desc),
+                OrderByElement::new(name_col, Ordering::Asc, None),
+                OrderByElement::new(age_col, Ordering::Desc, None),
             ]);
 
             assert_binding!(
@@ -102,8 +110,8 @@ mod test {
         // Reverse the order and it should be reflected in the statement
         {
             let order_by = OrderBy(vec![
-                OrderByElement::new(age_col, Ordering::Desc),
-                OrderByElement::new(name_col, Ordering::Asc),
+                OrderByElement::new(age_col, Ordering::Desc, None),
+                OrderByElement::new(name_col, Ordering::Asc, None),
             ]);
 
             assert_binding!(

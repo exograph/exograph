@@ -28,7 +28,10 @@ impl OrderByTransformer for Postgres {
             order_by
                 .0
                 .iter()
-                .map(|(path, ordering)| OrderByElement::new(path.leaf_column(), *ordering))
+                .map(|(path, ordering)| {
+                    let (column_id, table_alias) = (path.leaf_column(), path.alias());
+                    OrderByElement::new(column_id, *ordering, table_alias)
+                })
                 .collect(),
         )
     }

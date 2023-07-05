@@ -139,6 +139,7 @@ fn to_subselect_predicate(
                     RelationLink {
                         self_column_id,
                         foreign_column_id,
+                        ..
                     },
                     tail_links,
                 )| {
@@ -165,7 +166,7 @@ fn to_subselect_predicate(
 
                     let select_column = Column::SubSelect(Box::new(select));
 
-                    ConcretePredicate::In(Column::Physical(self_column_id), select_column)
+                    ConcretePredicate::In(Column::physical(self_column_id, None), select_column)
                 },
             )
         }
@@ -279,7 +280,7 @@ fn to_subselect_predicate(
 
 fn leaf_column(column_path: &ColumnPath) -> Column {
     match column_path {
-        ColumnPath::Physical(links) => Column::Physical(links.leaf_column()),
+        ColumnPath::Physical(links) => Column::physical(links.leaf_column(), links.alias()),
         ColumnPath::Param(l) => Column::Param(l.clone()),
         ColumnPath::Null => Column::Null,
     }
