@@ -57,7 +57,10 @@ impl Builder for UpdateMutationBuilder {
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
         fn update_access_is_false(entity_type: &EntityType) -> bool {
             matches!(
-                entity_type.access.update,
+                entity_type.access.update.input,
+                AccessPredicateExpression::BooleanLiteral(false)
+            ) || matches!(
+                entity_type.access.update.existing,
                 AccessPredicateExpression::BooleanLiteral(false)
             )
         }
