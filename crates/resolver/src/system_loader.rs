@@ -35,6 +35,8 @@ pub type StaticLoaders = Vec<Box<dyn SubsystemLoader>>;
 pub struct SystemLoader;
 
 pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
+pub const EXO_INTROSPECTION_LIVE_UPDATE: &str = "EXO_INTROSPECTION_LIVE_UPDATE";
+
 const EXO_MAX_SELECTION_DEPTH: &str = "EXO_MAX_SELECTION_DEPTH";
 
 impl SystemLoader {
@@ -167,7 +169,7 @@ pub fn allow_introspection() -> Result<bool, SystemLoadingError> {
 }
 
 /// Returns the maximum depth of a selection set for normal queries and introspection queries. We
-/// hard-code the introspection query depth to 15 to accomodate the query invoked by GraphQL
+/// hard-code the introspection query depth to 15 to accommodate the query invoked by GraphQL
 /// Playground
 pub fn query_depth_limits() -> Result<(usize, usize), SystemLoadingError> {
     const DEFAULT_QUERY_DEPTH: usize = 5;

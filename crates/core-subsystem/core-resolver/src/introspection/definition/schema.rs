@@ -87,27 +87,27 @@ impl Schema {
     ) -> Schema {
         let mut type_definitions = type_definitions;
 
-        // Ideally, we should surround it with `if !queries.is_empty() {` (like we do for mutations next)
-        // but GraphQL spec requires a `Query` type to be present in the schema.
-        // https://spec.graphql.org/June2018/#sec-Root-Operation-Types
-        // "The query root operation type must be provided and must be an Object type."
-        // So we always add a `Query` type to the schema. This means introspection will fail
-        // if there are no queries. See https://github.com/exograph/exograph/issues/480
+        // GraphQL spec requires a `Query` type to be present in the schema. Per
+        // https://spec.graphql.org/June2018/#sec-Root-Operation-Types: "The query root operation
+        // type must be provided and must be an Object type." However, we may not have any queries
+        // (for example, with an empty model). Introspection will fail in such cases. We handle in
+        // our playground by detecting this situation printing a message.
         //
-        // Even though we resolve __type and __schema fields for the Query
-        // type, GraphQL spec doesn't allow them to be exposed as an
-        // ordinary field. Therefore, we have to treat them specially (see
-        // SelectionSetValidator::validate_field)
-        type_definitions.push(TypeDefinition {
-            extend: false,
-            description: None,
-            name: default_positioned_name(QUERY_ROOT_TYPENAME),
-            directives: vec![],
-            kind: TypeKind::Object(ObjectType {
-                implements: vec![],
-                fields: queries.into_iter().map(default_positioned).collect(),
-            }),
-        });
+        // Even though we resolve __type and __schema fields for the Query type, GraphQL spec
+        // doesn't allow them to be exposed as an ordinary field. Therefore, we have to treat them
+        // specially (see SelectionSetValidator::validate_field)
+        if !queries.is_empty() {
+            type_definitions.push(TypeDefinition {
+                extend: false,
+                description: None,
+                name: default_positioned_name(QUERY_ROOT_TYPENAME),
+                directives: vec![],
+                kind: TypeKind::Object(ObjectType {
+                    implements: vec![],
+                    fields: queries.into_iter().map(default_positioned).collect(),
+                }),
+            });
+        }
 
         if !mutations.is_empty() {
             type_definitions.push(TypeDefinition {

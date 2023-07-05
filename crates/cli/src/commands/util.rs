@@ -12,6 +12,8 @@ use std::io::stdin;
 use rand::Rng;
 
 pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
+pub const EXO_INTROSPECTION_LIVE_UPDATE: &str = "EXO_INTROSPECTION_LIVE_UPDATE";
+
 pub const EXO_CORS_DOMAINS: &str = "EXO_CORS_DOMAINS";
 pub const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
 
