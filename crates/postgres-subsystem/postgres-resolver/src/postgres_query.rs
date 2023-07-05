@@ -104,6 +104,7 @@ async fn compute_select<'content>(
         &SQLOperationKind::Retrieve,
         subsystem,
         request_context,
+        None,
     )
     .await?;
 

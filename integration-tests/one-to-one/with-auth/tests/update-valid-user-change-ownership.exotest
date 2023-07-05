@@ -1,6 +1,5 @@
 stages:
-  # User 2 trying to update own membership to point to another user. Here the change will happen, but since the calling user
-  # is not an admin (or not the new owner), the returned result cannot be seen by the calling user.
+  # User 2 trying to update own membership to point to another user, so this should fail.
   - operation: |
       mutation {
         updateMembership(id: 1, data: {kind: "free", user: {id: 1}}) {
@@ -19,41 +18,13 @@ stages:
       }
     response: |
       {
-        "data": {
-          "updateMembership": null
-        }
-      }
-  # Now the new owner tries to query the membership. This should work.      
-  - operation: |
-      query {
-        membership(id: 1) {
-          id
-          kind
-          user {
-            id
-            name
+        "errors": [
+          {
+            "message": "Not authorized"
           }
-        }
+        ]
       }
-    auth: |
-      {
-        "sub": 1,
-        "role": "USER"
-      }
-    response: |
-      {
-        "data": {
-          "membership": {
-            "id": 1,
-            "kind": "free",
-            "user": {
-              "id": 1,
-              "name": "u1"
-            }
-          }
-        }
-      }
-  # Check to make sure that membership 1 points to user 1 now
+  # Check to make sure that the earlier mutation didn't work
   - operation: |
       query {
         memberships(orderBy: {id: ASC}) {
@@ -76,10 +47,10 @@ stages:
           "memberships": [
             {
               "id": 1,
-              "kind": "free",
+              "kind": "individual",
               "user": {
-                "id": 1,
-                "name": "u1"
+                "id": 2,
+                "name": "u2"
               }
             },
             {

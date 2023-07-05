@@ -105,11 +105,14 @@ async fn create_operation<'content>(
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractInsert, PostgresExecutionError> {
+    let data_arg = find_arg(&field.arguments, &data_param.name);
+
     let access_predicate = check_access(
         return_type,
         &SQLOperationKind::Create,
         subsystem,
         request_context,
+        data_arg,
     )
     .await?;
 
@@ -120,7 +123,7 @@ async fn create_operation<'content>(
         return Err(PostgresExecutionError::Authorization);
     }
 
-    match find_arg(&field.arguments, &data_param.name) {
+    match data_arg {
         Some(argument) => {
             InsertOperation {
                 data_param,
@@ -151,6 +154,7 @@ async fn delete_operation<'content>(
         &SQLOperationKind::Delete,
         subsystem,
         request_context,
+        None,
     )
     .await?;
 
@@ -179,11 +183,13 @@ async fn update_operation<'content>(
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractUpdate, PostgresExecutionError> {
+    let data_arg = find_arg(&field.arguments, &data_param.name);
     let access_predicate = check_access(
         return_type,
         &SQLOperationKind::Update,
         subsystem,
         request_context,
+        data_arg,
     )
     .await?;
 
@@ -196,7 +202,7 @@ async fn update_operation<'content>(
     .await?;
     let predicate = Predicate::and(access_predicate, predicate);
 
-    match find_arg(&field.arguments, &data_param.name) {
+    match data_arg {
         Some(argument) => {
             UpdateOperation {
                 data_param,

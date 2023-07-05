@@ -15,12 +15,7 @@ module DocumentModule {
   
   // Admin can do anything
   // User can only query/mutate their own documents
-  @access(
-    query = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id, 
-    create = AuthContext.role == "ADMIN" || AuthContext.role == "USER",
-    update = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id,
-    delete = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id
-  )
+  @access(AuthContext.role == "ADMIN" || AuthContext.id == self.user.id)
   type Document {
     @pk id: Int = autoIncrement()
     content: String

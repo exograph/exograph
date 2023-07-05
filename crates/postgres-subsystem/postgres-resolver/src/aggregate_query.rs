@@ -41,6 +41,7 @@ impl OperationSelectionResolver for AggregateQuery {
             &SQLOperationKind::Retrieve,
             subsystem,
             request_context,
+            None,
         )
         .await?;
 

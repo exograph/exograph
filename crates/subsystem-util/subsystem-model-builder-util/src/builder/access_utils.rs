@@ -8,7 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use core_model::{
-    access::{AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp},
+    access::{
+        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+        CommonAccessPrimitiveExpression,
+    },
     context_type::{get_context, ContextFieldType, ContextSelection},
     primitive_type::PrimitiveType,
 };
@@ -37,10 +40,14 @@ pub fn compute_predicate_expression(
                     // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
                     Ok(AccessPredicateExpression::RelationalOp(
                         AccessRelationalOp::Eq(
-                            Box::new(ModuleAccessPrimitiveExpression::ContextSelection(
-                                context_selection,
+                            Box::new(ModuleAccessPrimitiveExpression::Common(
+                                CommonAccessPrimitiveExpression::ContextSelection(
+                                    context_selection,
+                                ),
                             )),
-                            Box::new(ModuleAccessPrimitiveExpression::BooleanLiteral(true)),
+                            Box::new(ModuleAccessPrimitiveExpression::Common(
+                                CommonAccessPrimitiveExpression::BooleanLiteral(true),
+                            )),
                         ),
                     ))
                 } else {
@@ -103,15 +110,19 @@ fn compute_primitive_expr(
 ) -> ModuleAccessPrimitiveExpression {
     match expr {
         AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
-            PathSelection::Context(c, _) => ModuleAccessPrimitiveExpression::ContextSelection(c),
+            PathSelection::Context(c, _) => ModuleAccessPrimitiveExpression::Common(
+                CommonAccessPrimitiveExpression::ContextSelection(c),
+            ),
         },
-        AstExpr::StringLiteral(value, _) => {
-            ModuleAccessPrimitiveExpression::StringLiteral(value.clone())
-        }
-        AstExpr::BooleanLiteral(value, _) => {
-            ModuleAccessPrimitiveExpression::BooleanLiteral(*value)
-        }
-        AstExpr::NumberLiteral(value, _) => ModuleAccessPrimitiveExpression::NumberLiteral(*value),
+        AstExpr::StringLiteral(value, _) => ModuleAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::StringLiteral(value.clone()),
+        ),
+        AstExpr::BooleanLiteral(value, _) => ModuleAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::BooleanLiteral(*value),
+        ),
+        AstExpr::NumberLiteral(value, _) => ModuleAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::NumberLiteral(*value),
+        ),
         AstExpr::StringList(_, _) => panic!("Module access expressions do not support lists yet"),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions

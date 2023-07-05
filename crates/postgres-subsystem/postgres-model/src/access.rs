@@ -8,17 +8,32 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
-use core_plugin_interface::core_model::context_type::ContextSelection;
+use core_plugin_interface::core_model::access::CommonAccessPrimitiveExpression;
 use exo_sql::PhysicalColumnPath;
 use serde::{Deserialize, Serialize};
 
 /// Access specification for a model
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Access {
-    pub creation: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    pub creation: AccessPredicateExpression<InputAccessPrimitiveExpression>,
     pub read: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
-    pub update: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    pub update: UpdateAccessExpression,
     pub delete: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateAccessExpression {
+    pub input: AccessPredicateExpression<InputAccessPrimitiveExpression>,
+    pub existing: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+}
+
+impl UpdateAccessExpression {
+    pub const fn restrictive() -> Self {
+        Self {
+            input: AccessPredicateExpression::BooleanLiteral(false),
+            existing: AccessPredicateExpression::BooleanLiteral(false),
+        }
+    }
 }
 
 impl Access {
@@ -26,7 +41,7 @@ impl Access {
         Self {
             creation: AccessPredicateExpression::BooleanLiteral(false),
             read: AccessPredicateExpression::BooleanLiteral(false),
-            update: AccessPredicateExpression::BooleanLiteral(false),
+            update: UpdateAccessExpression::restrictive(),
             delete: AccessPredicateExpression::BooleanLiteral(false),
         }
     }
@@ -37,9 +52,13 @@ impl Access {
 /// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DatabaseAccessPrimitiveExpression {
-    ContextSelection(ContextSelection), // for example, AuthContext.role
-    Column(PhysicalColumnPath),         // for example, self.id
-    StringLiteral(String),              // for example, "ADMIN"
-    BooleanLiteral(bool),               // for example, true
-    NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
+    Column(PhysicalColumnPath), // Column path, for example self.user.id
+    Common(CommonAccessPrimitiveExpression), // expression shared by all access expressions
+}
+
+/// Primitive expressions that can express data input access control rules.
+#[derive(Serialize, Deserialize, Debug)]
+pub enum InputAccessPrimitiveExpression {
+    Path(Vec<String>),                       // JSON path, for example self.user.id
+    Common(CommonAccessPrimitiveExpression), // expression shared by all access expressions
 }
