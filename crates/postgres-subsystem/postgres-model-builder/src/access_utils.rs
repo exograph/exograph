@@ -112,7 +112,7 @@ pub fn compute_input_predicate_expression(
                     subsystem_entity_types,
                 )
             };
-            compute_relatinal_op(op, primitive_expr)
+            compute_relational_op(op, primitive_expr)
         }
         AstExpr::BooleanLiteral(value, _) => Ok(AccessPredicateExpression::BooleanLiteral(*value)),
         AstExpr::StringLiteral(_, _) => Err(ModelBuildingError::Generic(
@@ -218,7 +218,7 @@ pub fn compute_predicate_expression(
                     database,
                 )
             };
-            compute_relatinal_op(op, predicate_expr)
+            compute_relational_op(op, predicate_expr)
         }
         AstExpr::BooleanLiteral(value, _) => Ok(AccessPredicateExpression::BooleanLiteral(*value)),
 
@@ -331,7 +331,7 @@ fn compute_logical_op<PrimExpr: Send + Sync>(
     })
 }
 
-fn compute_relatinal_op<PrimExpr: Send + Sync>(
+fn compute_relational_op<PrimExpr: Send + Sync>(
     op: &RelationalOp<Typed>,
     primitive_expr: impl Fn(&AstExpr<Typed>) -> PrimExpr,
 ) -> Result<AccessPredicateExpression<PrimExpr>, ModelBuildingError> {

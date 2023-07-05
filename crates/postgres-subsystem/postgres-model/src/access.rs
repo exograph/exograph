@@ -52,11 +52,11 @@ impl Access {
 /// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DatabaseAccessPrimitiveExpression {
-    Column(PhysicalColumnPath), // Colun path, for example self.user.id
+    Column(PhysicalColumnPath), // Column path, for example self.user.id
     Common(CommonAccessPrimitiveExpression), // expression shared by all access expressions
 }
 
-/// Primtivie expressions that can express data input access control rules.
+/// Primitive expressions that can express data input access control rules.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum InputAccessPrimitiveExpression {
     Path(Vec<String>),                       // JSON path, for example self.user.id
