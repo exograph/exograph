@@ -9,9 +9,13 @@
 
 //! Build update mutation types `<Type>UpdateInput`, `update<Type>`, and `update<Type>s`
 
-use core_plugin_interface::core_model::{
-    mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
+use core_plugin_interface::{
+    core_model::{
+        access::AccessPredicateExpression,
+        mapped_arena::{MappedArena, SerializableSlabIndex},
+        types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
+    },
+    core_model_builder::ast::ast_types::AstExpr,
 };
 use postgres_model::{
     mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
@@ -41,6 +45,9 @@ impl Builder for UpdateMutationBuilder {
         types: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
         // TODO: This implementation is the same for CreateMutationBuilder. Fix it when we refactor non-mutations builders
+        if let AstExpr::BooleanLiteral(false, _) = resolved_composite_type.access.update {
+            return vec![];
+        }
         let mut field_types = self.data_param_field_type_names(resolved_composite_type, types);
         field_types.push(Self::data_param_type_name(resolved_composite_type));
         field_types
@@ -48,21 +55,31 @@ impl Builder for UpdateMutationBuilder {
 
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+        fn update_access_is_false(entity_type: &EntityType) -> bool {
+            matches!(
+                entity_type.access.update,
+                AccessPredicateExpression::BooleanLiteral(false)
+            )
+        }
         for (_, entity_type) in building.entity_types.iter() {
-            for (existing_id, expanded_type) in self.expanded_data_type(
-                entity_type,
-                resolved_env,
-                building,
-                Some(entity_type),
-                None,
-            ) {
-                building.mutation_types[existing_id] = expanded_type;
+            if !update_access_is_false(entity_type) {
+                for (existing_id, expanded_type) in self.expanded_data_type(
+                    entity_type,
+                    resolved_env,
+                    building,
+                    Some(entity_type),
+                    None,
+                ) {
+                    building.mutation_types[existing_id] = expanded_type;
+                }
             }
         }
 
         for (entity_type_id, entity_type) in building.entity_types.iter() {
-            for mutation in self.build_mutations(entity_type_id, entity_type, building) {
-                building.mutations.add(&mutation.name.to_owned(), mutation);
+            if !update_access_is_false(entity_type) {
+                for mutation in self.build_mutations(entity_type_id, entity_type, building) {
+                    building.mutations.add(&mutation.name.to_owned(), mutation);
+                }
             }
         }
     }
