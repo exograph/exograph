@@ -9,11 +9,16 @@ stages:
       {
         "errors": [
           {
-            "message": "Not authorized"
+            "message": "Field 'createConcert' is not valid for type 'Mutation'",
+            "locations": [
+               {
+                 "line": 2,
+                 "column": 3
+               }
+             ]
           }
         ]
       }
-  
   - operation: |
       mutation {
         updateConcert(id: 1, data: {title: "Foo"}) {
@@ -24,7 +29,13 @@ stages:
       {
         "errors": [
           {
-            "message": "Not authorized"
+            "message": "Field 'updateConcert' is not valid for type 'Mutation'",
+            "locations": [
+               {
+                 "line": 2,
+                 "column": 3
+               }
+             ]
           }
         ]
       }
@@ -39,7 +50,13 @@ stages:
       {
         "errors": [
           {
-            "message": "Not authorized"
+            "message": "Field 'deleteConcert' is not valid for type 'Mutation'",
+            "locations": [
+               {
+                 "line": 2,
+                 "column": 3
+               }
+             ]
           }
         ]
       }

@@ -11,6 +11,7 @@
 //! the create mutations (`delete<Type>`, and `delete<Type>s`)
 
 use core_plugin_interface::core_model::{
+    access::AccessPredicateExpression,
     mapped_arena::MappedArena,
     types::{BaseOperationReturnType, OperationReturnType},
 };
@@ -46,8 +47,10 @@ impl Builder for DeleteMutationBuilder {
         building: &mut SystemContextBuilding,
     ) {
         // Since there are no special input types for deletion, no expansion is needed
-
         for (entity_type_id, entity_type) in building.entity_types.iter() {
+            if let AccessPredicateExpression::BooleanLiteral(false) = entity_type.access.delete {
+                continue;
+            }
             for mutation in self.build_mutations(entity_type_id, entity_type, building) {
                 building.mutations.add(&mutation.name.to_owned(), mutation);
             }
