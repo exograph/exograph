@@ -9,16 +9,18 @@
 
 mod exotest;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context, Error, Result};
 use colored::Colorize;
 
 use exo_sql::testing::db::{EphemeralDatabaseLauncher, EphemeralDatabaseServer};
 use exotest::integration_tests::{build_exo_ir_file, run_testfile};
 use exotest::loader::load_project_dir;
+use futures::FutureExt;
 use std::cmp::min;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::exotest::common::TestResult;
 use crate::exotest::introspection_tests::run_introspection_test;
 use crate::exotest::loader::ProjectTests;
 
@@ -82,20 +84,32 @@ pub fn run(
                     let runtime = tokio::runtime::Runtime::new().unwrap();
                     let local = tokio::task::LocalSet::new();
                     local.block_on(&runtime, async move {
+                        fn report_panic() -> Result<TestResult, Error> {
+                            Err(anyhow::anyhow!("Panic during test run!"))
+                        }
+
                         if run_introspection_tests {
-                            tx.send(run_introspection_test(&model_path).await)
+                            let result =
+                                std::panic::AssertUnwindSafe(run_introspection_test(&model_path))
+                                    .catch_unwind()
+                                    .await;
+                            tx.send(result.unwrap_or_else(|_| report_panic()))
                                 .map_err(|_| ())
                                 .unwrap();
                         };
 
                         for test in tests.iter() {
-                            let result = run_testfile(
+                            let result = std::panic::AssertUnwindSafe(run_testfile(
                                 test,
                                 &model_path,
                                 ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
-                            )
+                            ))
+                            .catch_unwind()
                             .await;
-                            tx.send(result).map_err(|_| ()).unwrap();
+
+                            tx.send(result.unwrap_or_else(|_| report_panic()))
+                                .map_err(|_| ())
+                                .unwrap();
                         }
                     })
                 }
