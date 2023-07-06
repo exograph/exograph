@@ -81,7 +81,11 @@ pub fn run(
         tasks
             .send(Box::new(move || match build_exo_ir_file(&model_path) {
                 Ok(()) => {
-                    let runtime = tokio::runtime::Runtime::new().unwrap();
+                    let runtime = tokio::runtime::Builder::new_multi_thread()
+                        .worker_threads(2)
+                        .enable_all()
+                        .build()
+                        .unwrap();
                     let local = tokio::task::LocalSet::new();
                     local.block_on(&runtime, async move {
                         fn report_panic() -> Result<TestResult, Error> {
