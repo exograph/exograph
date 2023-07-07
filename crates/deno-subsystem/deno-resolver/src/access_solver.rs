@@ -59,10 +59,10 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
     for DenoSubsystem
 {
     async fn solve_relational_op(
-        &'a self,
-        request_context: &'a RequestContext<'a>,
+        &self,
+        request_context: &RequestContext<'a>,
         _input_context: Option<&'a Val>,
-        op: &'a AccessRelationalOp<ModuleAccessPrimitiveExpression>,
+        op: &AccessRelationalOp<ModuleAccessPrimitiveExpression>,
     ) -> Option<ModuleAccessPredicateWrapper> {
         async fn reduce_primitive_expression<'a>(
             solver: &DenoSubsystem,

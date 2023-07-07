@@ -78,10 +78,10 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     for PostgresSubsystem
 {
     async fn solve_relational_op(
-        &'a self,
-        request_context: &'a RequestContext<'a>,
+        &self,
+        request_context: &RequestContext<'a>,
         _input_context: Option<&'a Val>,
-        op: &'a AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
+        op: &AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
     ) -> Option<AbstractPredicateWrapper> {
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresSubsystem,
@@ -203,10 +203,10 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
     for PostgresSubsystem
 {
     async fn solve_relational_op(
-        &'a self,
-        request_context: &'a RequestContext<'a>,
+        &self,
+        request_context: &RequestContext<'a>,
         input_context: Option<&'a Val>,
-        op: &'a AccessRelationalOp<InputAccessPrimitiveExpression>,
+        op: &AccessRelationalOp<InputAccessPrimitiveExpression>,
     ) -> Option<AbstractPredicateWrapper> {
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresSubsystem,

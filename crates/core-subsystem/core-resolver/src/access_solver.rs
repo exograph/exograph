@@ -50,10 +50,10 @@ where
     /// source as well as return a "Not authorized" error when possible (instead of an empty/null
     /// result).
     async fn solve(
-        &'a self,
-        request_context: &'a RequestContext<'a>,
+        &self,
+        request_context: &RequestContext<'a>,
         input_context: Option<&'a Val>, // User provided context (such as input to a mutation)
-        expr: &'a AccessPredicateExpression<PrimExpr>,
+        expr: &AccessPredicateExpression<PrimExpr>,
     ) -> Option<Res> {
         match expr {
             AccessPredicateExpression::LogicalOp(op) => {
@@ -74,18 +74,18 @@ where
     /// For example, a database subsystem produce a relational expression comparing two columns
     /// such as `column_a < column_b`.
     async fn solve_relational_op(
-        &'a self,
-        request_context: &'a RequestContext<'a>,
+        &self,
+        request_context: &RequestContext<'a>,
         input_context: Option<&'a Val>,
-        op: &'a AccessRelationalOp<PrimExpr>,
+        op: &AccessRelationalOp<PrimExpr>,
     ) -> Option<Res>;
 
     /// Solve logical operations such as `not`, `and`, `or`.
     async fn solve_logical_op(
-        &'a self,
-        request_context: &'a RequestContext<'a>,
+        &self,
+        request_context: &RequestContext<'a>,
         input_context: Option<&'a Val>,
-        op: &'a AccessLogicalExpression<PrimExpr>,
+        op: &AccessLogicalExpression<PrimExpr>,
     ) -> Option<Res> {
         match op {
             AccessLogicalExpression::Not(underlying) => {
@@ -125,7 +125,7 @@ where
 
 pub async fn reduce_common_primitive_expression<'a>(
     context_extractor: &(impl ContextExtractor + Send + Sync),
-    request_context: &'a RequestContext<'a>,
+    request_context: &RequestContext<'a>,
     expr: &'a CommonAccessPrimitiveExpression,
 ) -> Option<Val> {
     match expr {
