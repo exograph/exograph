@@ -17,7 +17,6 @@ use core_plugin_interface::{
         access_solver::{
             eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
             reduce_common_primitive_expression, AccessPredicate, AccessSolver,
-            SolvedCommonPrimitiveExpression,
         },
         context::RequestContext,
         value::Val,
@@ -64,12 +63,12 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
         request_context: &'a RequestContext<'a>,
         _input_context: Option<&'a Val>,
         op: &'a AccessRelationalOp<ModuleAccessPrimitiveExpression>,
-    ) -> ModuleAccessPredicateWrapper {
+    ) -> Option<ModuleAccessPredicateWrapper> {
         async fn reduce_primitive_expression<'a>(
             solver: &DenoSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a ModuleAccessPrimitiveExpression,
-        ) -> SolvedCommonPrimitiveExpression<'a> {
+        ) -> Option<Val> {
             match expr {
                 ModuleAccessPrimitiveExpression::Common(common_expr) => {
                     reduce_common_primitive_expression(solver, request_context, common_expr).await
@@ -78,42 +77,23 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
         }
 
         let (left, right) = op.sides();
-        let left = reduce_primitive_expression(self, request_context, left).await;
-        let right = reduce_primitive_expression(self, request_context, right).await;
+        let left_value = reduce_primitive_expression(self, request_context, left).await;
+        let right_value = reduce_primitive_expression(self, request_context, right).await;
 
-        /// Compare two JSON values
-        type ValuePredicateFn = fn(&Val, &Val) -> bool;
-
-        // A helper to reduce code duplication in the match below
-        let helper =
-            |unresolved_context_predicate: bool, value_predicate: ValuePredicateFn| -> bool {
-                match (left, right) {
-                    (SolvedCommonPrimitiveExpression::UnresolvedContext(_), _)
-                    | (_, SolvedCommonPrimitiveExpression::UnresolvedContext(_)) => {
-                        unresolved_context_predicate
-                    }
-                    (
-                        SolvedCommonPrimitiveExpression::Value(left_value),
-                        SolvedCommonPrimitiveExpression::Value(right_value),
-                    ) => value_predicate(&left_value, &right_value),
+        match (left_value, right_value) {
+            (None, _) | (_, None) => None,
+            (Some(ref left_value), Some(ref right_value)) => Some(ModuleAccessPredicateWrapper(
+                match op {
+                    AccessRelationalOp::Eq(..) => eq_values(left_value, right_value),
+                    AccessRelationalOp::Neq(_, _) => neq_values(left_value, right_value),
+                    AccessRelationalOp::Lt(_, _) => lt_values(left_value, right_value),
+                    AccessRelationalOp::Lte(_, _) => lte_values(left_value, right_value),
+                    AccessRelationalOp::Gt(_, _) => gt_values(left_value, right_value),
+                    AccessRelationalOp::Gte(_, _) => gte_values(left_value, right_value),
+                    AccessRelationalOp::In(..) => in_values(left_value, right_value),
                 }
-            };
-
-        ModuleAccessPredicateWrapper(
-            match op {
-                AccessRelationalOp::Eq(..) => helper(false, eq_values),
-                AccessRelationalOp::Neq(_, _) => helper(
-                    // If a context is undefined, declare the expression as a match. For example,
-                    // `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
-                    true, neq_values,
-                ),
-                AccessRelationalOp::Lt(_, _) => helper(false, lt_values), // TODO: See issue #611
-                AccessRelationalOp::Lte(_, _) => helper(false, lte_values),
-                AccessRelationalOp::Gt(_, _) => helper(false, gt_values),
-                AccessRelationalOp::Gte(_, _) => helper(false, gte_values),
-                AccessRelationalOp::In(..) => helper(false, in_values),
-            }
-            .into(),
-        )
+                .into(),
+            )),
+        }
     }
 }

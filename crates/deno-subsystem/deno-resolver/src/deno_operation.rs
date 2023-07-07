@@ -64,14 +64,15 @@ impl<'a> DenoOperation<'a> {
             ModuleTypeKind::Composite(ModuleCompositeType { access, .. }) => subsystem
                 .solve(self.request_context, None, &access.value)
                 .await
-                .0
-                .into(),
+                .map(|r| matches!(r.0, ModuleAccessPredicate::True))
+                .unwrap_or(false),
         };
 
         let method_level_access = subsystem
             .solve(self.request_context, None, &self.method.access.value)
             .await
-            .0;
+            .map(|r| r.0)
+            .unwrap_or(ModuleAccessPredicate::False);
 
         let method_level_access = method_level_access;
 

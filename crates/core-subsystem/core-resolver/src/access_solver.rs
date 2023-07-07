@@ -8,12 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
-use core_model::{
-    access::{
-        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
-        CommonAccessPrimitiveExpression,
-    },
-    context_type::ContextSelection,
+use core_model::access::{
+    AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+    CommonAccessPrimitiveExpression,
 };
 
 use crate::{
@@ -57,7 +54,7 @@ where
         request_context: &'a RequestContext<'a>,
         input_context: Option<&'a Val>, // User provided context (such as input to a mutation)
         expr: &'a AccessPredicateExpression<PrimExpr>,
-    ) -> Res {
+    ) -> Option<Res> {
         match expr {
             AccessPredicateExpression::LogicalOp(op) => {
                 self.solve_logical_op(request_context, input_context, op)
@@ -67,7 +64,7 @@ where
                 self.solve_relational_op(request_context, input_context, op)
                     .await
             }
-            AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
+            AccessPredicateExpression::BooleanLiteral(value) => Some((*value).into()),
         }
     }
 
@@ -81,7 +78,7 @@ where
         request_context: &'a RequestContext<'a>,
         input_context: Option<&'a Val>,
         op: &'a AccessRelationalOp<PrimExpr>,
-    ) -> Res;
+    ) -> Option<Res>;
 
     /// Solve logical operations such as `not`, `and`, `or`.
     async fn solve_logical_op(
@@ -89,61 +86,57 @@ where
         request_context: &'a RequestContext<'a>,
         input_context: Option<&'a Val>,
         op: &'a AccessLogicalExpression<PrimExpr>,
-    ) -> Res {
+    ) -> Option<Res> {
         match op {
             AccessLogicalExpression::Not(underlying) => {
                 let underlying_predicate =
                     self.solve(request_context, input_context, underlying).await;
-                underlying_predicate.not()
+                underlying_predicate.map(|p| p.not())
             }
             AccessLogicalExpression::And(left, right) => {
                 let left_predicate = self.solve(request_context, input_context, left).await;
                 let right_predicate = self.solve(request_context, input_context, right).await;
 
-                left_predicate.and(right_predicate)
+                match (left_predicate, right_predicate) {
+                    (Some(left_predicate), Some(right_predicate)) => {
+                        Some(left_predicate.and(right_predicate))
+                    }
+                    _ => None,
+                }
             }
             AccessLogicalExpression::Or(left, right) => {
                 let left_predicate = self.solve(request_context, input_context, left).await;
                 let right_predicate = self.solve(request_context, input_context, right).await;
 
-                left_predicate.or(right_predicate)
+                match (left_predicate, right_predicate) {
+                    (Some(left_predicate), Some(right_predicate)) => {
+                        Some(left_predicate.or(right_predicate))
+                    }
+                    (Some(left_predicate), None) => Some(left_predicate),
+                    (None, Some(right_predicate)) => Some(right_predicate),
+                    (None, None) => None,
+                }
             }
         }
     }
 }
 
 /// A primitive expression that has been reduced to a JSON value or an unresolved context
-#[derive(Debug)]
-pub enum SolvedCommonPrimitiveExpression<'a> {
-    Value(Val),
-    /// A context field that could not be resolved. For example, `AuthContext.role` for an anonymous user.
-    /// We process unresolved context when performing relational operations.
-    UnresolvedContext(&'a ContextSelection),
-}
 
 pub async fn reduce_common_primitive_expression<'a>(
     context_extractor: &(impl ContextExtractor + Send + Sync),
     request_context: &'a RequestContext<'a>,
     expr: &'a CommonAccessPrimitiveExpression,
-) -> SolvedCommonPrimitiveExpression<'a> {
+) -> Option<Val> {
     match expr {
         CommonAccessPrimitiveExpression::ContextSelection(selection) => context_extractor
             .extract_context_selection(request_context, selection)
             .await
             .unwrap()
-            .map(|v| SolvedCommonPrimitiveExpression::Value(v.clone()))
-            .unwrap_or(SolvedCommonPrimitiveExpression::UnresolvedContext(
-                selection,
-            )),
-        CommonAccessPrimitiveExpression::StringLiteral(value) => {
-            SolvedCommonPrimitiveExpression::Value(Val::String(value.clone()))
-        }
-        CommonAccessPrimitiveExpression::BooleanLiteral(value) => {
-            SolvedCommonPrimitiveExpression::Value(Val::Bool(*value))
-        }
-        CommonAccessPrimitiveExpression::NumberLiteral(value) => {
-            SolvedCommonPrimitiveExpression::Value(Val::Number((*value).into()))
-        }
+            .cloned(),
+        CommonAccessPrimitiveExpression::StringLiteral(value) => Some(Val::String(value.clone())),
+        CommonAccessPrimitiveExpression::BooleanLiteral(value) => Some(Val::Bool(*value)),
+        CommonAccessPrimitiveExpression::NumberLiteral(value) => Some(Val::Number((*value).into())),
     }
 }
 
