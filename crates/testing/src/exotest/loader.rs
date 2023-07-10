@@ -45,6 +45,7 @@ pub struct ProjectTests {
 #[derive(Debug, Clone)]
 pub struct ParsedTestfile {
     testfile_path: PathBuf,
+    pub retries: usize,
     pub init_operations: Vec<TestfileOperation>,
     pub extra_envs: HashMap<String, String>, // extra envvars to set for the entire testfile
     pub test_operation_stages: Vec<TestfileOperation>,
@@ -91,6 +92,8 @@ pub struct TestfileStage {
 #[derive(Deserialize, Debug)]
 pub struct TestfileCommon {
     pub exofile: Option<String>,
+    #[serde(default)]
+    pub retries: usize,
     pub envs: Option<HashMap<String, String>>,
 }
 
@@ -297,8 +300,11 @@ Error as a multistage test: {}
         })
         .collect::<Result<Vec<_>>>()?;
 
+    assert!(common.retries <= 5, "The maximum number of retries is 5");
+
     Ok(ParsedTestfile {
         testfile_path: testfile_path.to_path_buf(),
+        retries: common.retries,
         extra_envs: common.envs.unwrap_or_default(),
         init_operations: init_ops,
         test_operation_stages: test_operation_sequence,
