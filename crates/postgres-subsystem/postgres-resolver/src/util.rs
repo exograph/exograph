@@ -81,13 +81,11 @@ async fn check_create_access<'a>(
     request_context: &'a RequestContext<'a>,
     input_context: Option<&'a Val>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
-    let access = subsystem
+    Ok(subsystem
         .solve(request_context, input_context, expr)
         .await
         .map(|predicate| predicate.0)
-        .unwrap_or(AbstractPredicate::False);
-
-    Ok(access)
+        .unwrap_or(AbstractPredicate::False))
 }
 
 async fn check_retrieve_access<'a>(
