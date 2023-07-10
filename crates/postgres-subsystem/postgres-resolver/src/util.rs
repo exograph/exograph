@@ -84,7 +84,8 @@ async fn check_create_access<'a>(
     Ok(subsystem
         .solve(request_context, input_context, expr)
         .await
-        .0)
+        .map(|predicate| predicate.0)
+        .unwrap_or(AbstractPredicate::False))
 }
 
 async fn check_retrieve_access<'a>(
@@ -92,7 +93,11 @@ async fn check_retrieve_access<'a>(
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
-    Ok(subsystem.solve(request_context, None, expr).await.0)
+    Ok(subsystem
+        .solve(request_context, None, expr)
+        .await
+        .map(|p| p.0)
+        .unwrap_or(AbstractPredicate::False))
 }
 
 async fn check_update_access<'a>(
@@ -105,7 +110,8 @@ async fn check_update_access<'a>(
     let input_predicate = subsystem
         .solve(request_context, input_context, &expr.input)
         .await
-        .0;
+        .map(|p| p.0)
+        .unwrap_or(AbstractPredicate::False);
 
     // Input predicate cannot have a residue (i.e. it must fully evaluated to true or false)
     if input_predicate != AbstractPredicate::True {
@@ -117,7 +123,8 @@ async fn check_update_access<'a>(
     Ok(subsystem
         .solve(request_context, None, &expr.existing)
         .await
-        .0)
+        .map(|p| p.0)
+        .unwrap_or(AbstractPredicate::False))
 }
 
 async fn check_delete_access<'a>(
@@ -125,7 +132,11 @@ async fn check_delete_access<'a>(
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
-    Ok(subsystem.solve(request_context, None, expr).await.0)
+    Ok(subsystem
+        .solve(request_context, None, expr)
+        .await
+        .map(|p| p.0)
+        .unwrap_or(AbstractPredicate::False))
 }
 
 pub fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Val> {
