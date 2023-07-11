@@ -14,8 +14,8 @@ use crate::{
         pg::{Postgres, SelectionLevel},
         transformer::{OrderByTransformer, PredicateTransformer},
     },
-    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, Offset, PhysicalColumnPath,
-    Selection, TableId,
+    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, ManyToOne, Offset, OneToMany,
+    PhysicalColumnPath, RelationId, Selection, TableId,
 };
 
 use super::selection_context::SelectionContext;
@@ -100,7 +100,7 @@ pub(super) fn join_info(
     predicate: &AbstractPredicate,
     predicate_column_paths: Vec<PhysicalColumnPath>,
     order_by_column_paths: Vec<PhysicalColumnPath>,
-    additional_predicate: Option<ConcretePredicate>,
+    selection_level: &SelectionLevel,
     transformer: &Postgres,
     database: &Database,
 ) -> (Table, ConcretePredicate) {
@@ -111,11 +111,47 @@ pub(super) fn join_info(
 
     let join = join_util::compute_join(base_table_id, &columns_paths);
     let predicate = transformer.to_predicate(predicate, true, database);
+    let additional_predicate = compute_relation_predicate(selection_level, database);
 
-    let predicate = ConcretePredicate::and(
-        predicate,
-        additional_predicate.unwrap_or(ConcretePredicate::True),
-    );
+    let predicate = ConcretePredicate::and(predicate, additional_predicate);
 
     (join, predicate)
+}
+
+pub fn compute_relation_predicate(
+    selection_level: &SelectionLevel,
+    database: &Database,
+) -> ConcretePredicate {
+    let subselect_relation = match selection_level {
+        SelectionLevel::TopLevel => None,
+        SelectionLevel::Nested(relation_ids) => relation_ids.last().copied(),
+    };
+
+    subselect_relation
+        .map(|relation_id| {
+            let (self_column_id, foreign_column_id) = match relation_id {
+                RelationId::OneToMany(relation_id) => {
+                    let OneToMany {
+                        self_pk_column_id,
+                        foreign_column_id,
+                    } = relation_id.deref(database);
+
+                    (self_pk_column_id, foreign_column_id)
+                }
+                RelationId::ManyToOne(relation_id) => {
+                    let ManyToOne {
+                        self_column_id,
+                        foreign_pk_column_id,
+                        ..
+                    } = relation_id.deref(database);
+                    (self_column_id, foreign_pk_column_id)
+                }
+            };
+
+            ConcretePredicate::Eq(
+                Column::physical(self_column_id, None),
+                Column::physical(foreign_column_id, None),
+            )
+        })
+        .unwrap_or(ConcretePredicate::True)
 }

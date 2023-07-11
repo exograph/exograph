@@ -97,10 +97,9 @@ impl SelectionStrategy for PlainJoinStrategy {
     fn to_select(&self, selection_context: SelectionContext<'_>, database: &Database) -> Select {
         let SelectionContext {
             abstract_select,
-            additional_predicate,
+            selection_level,
             predicate_column_paths,
             order_by_column_paths,
-            selection_level,
             transformer,
             ..
         } = selection_context;
@@ -110,7 +109,7 @@ impl SelectionStrategy for PlainJoinStrategy {
             &abstract_select.predicate,
             predicate_column_paths,
             order_by_column_paths,
-            additional_predicate,
+            selection_level,
             transformer,
             database,
         );

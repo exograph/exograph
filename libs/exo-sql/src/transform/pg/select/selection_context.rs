@@ -8,7 +8,6 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    sql::predicate::ConcretePredicate,
     transform::pg::{Postgres, SelectionLevel},
     AbstractSelect, ColumnPath, Database, PhysicalColumnPath,
 };
@@ -20,7 +19,6 @@ pub(crate) struct SelectionContext<'c> {
     pub has_a_one_to_many_predicate: bool,
     pub predicate_column_paths: Vec<PhysicalColumnPath>,
     pub order_by_column_paths: Vec<PhysicalColumnPath>,
-    pub additional_predicate: Option<ConcretePredicate>,
     pub selection_level: &'c SelectionLevel,
     pub allow_duplicate_rows: bool,
     pub transformer: &'c Postgres,
@@ -30,7 +28,6 @@ impl<'c> SelectionContext<'c> {
     pub fn new(
         database: &Database,
         abstract_select: &'c AbstractSelect,
-        additional_predicate: Option<ConcretePredicate>,
         selection_level: &'c SelectionLevel,
         allow_duplicate_rows: bool,
         transformer: &'c Postgres,
@@ -71,7 +68,6 @@ impl<'c> SelectionContext<'c> {
             has_a_one_to_many_predicate,
             predicate_column_paths,
             order_by_column_paths,
-            additional_predicate,
             selection_level,
             allow_duplicate_rows,
             transformer,

@@ -12,13 +12,12 @@ use tracing::instrument;
 use crate::{
     asql::select::AbstractSelect,
     sql::{
-        predicate::ConcretePredicate,
         select::Select,
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
     transform::{pg::SelectionLevel, transformer::SelectTransformer},
-    Column, Database, ManyToOne, OneToMany, RelationId,
+    Database,
 };
 
 use super::{
@@ -140,40 +139,9 @@ impl Postgres {
         allow_duplicate_rows: bool,
         database: &Database,
     ) -> Select {
-        let subselect_relation = match selection_level {
-            SelectionLevel::TopLevel => None,
-            SelectionLevel::Nested(relation_ids) => relation_ids.last().copied(),
-        };
-        let additional_predicate = subselect_relation.map(|relation_id| {
-            let (self_column_id, foreign_column_id) = match relation_id {
-                RelationId::OneToMany(relation_id) => {
-                    let OneToMany {
-                        self_pk_column_id,
-                        foreign_column_id,
-                    } = relation_id.deref(database);
-
-                    (self_pk_column_id, foreign_column_id)
-                }
-                RelationId::ManyToOne(relation_id) => {
-                    let ManyToOne {
-                        self_column_id,
-                        foreign_pk_column_id,
-                        ..
-                    } = relation_id.deref(database);
-                    (self_column_id, foreign_pk_column_id)
-                }
-            };
-
-            ConcretePredicate::Eq(
-                Column::physical(self_column_id, None),
-                Column::physical(foreign_column_id, None),
-            )
-        });
-
         let selection_context = SelectionContext::new(
             database,
             abstract_select,
-            additional_predicate,
             selection_level,
             allow_duplicate_rows,
             self,

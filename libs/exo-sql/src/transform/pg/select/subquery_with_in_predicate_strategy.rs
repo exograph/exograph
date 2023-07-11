@@ -15,7 +15,9 @@ use crate::{
 
 use super::{
     selection_context::SelectionContext,
-    selection_strategy::{compute_inner_select, nest_subselect, SelectionStrategy},
+    selection_strategy::{
+        compute_inner_select, compute_relation_predicate, nest_subselect, SelectionStrategy,
+    },
 };
 
 /// Strategy that uses a subquery with an `IN` predicate to filter the rows of the table.
@@ -118,9 +120,8 @@ impl SelectionStrategy for SubqueryWithInPredicateStrategy {
     fn to_select(&self, selection_context: SelectionContext<'_>, database: &Database) -> Select {
         let SelectionContext {
             abstract_select,
-            additional_predicate,
-            order_by_column_paths,
             selection_level,
+            order_by_column_paths,
             transformer,
             ..
         } = selection_context;
@@ -130,14 +131,13 @@ impl SelectionStrategy for SubqueryWithInPredicateStrategy {
         // essential to be able to refer to columns in related field in the order by clause.
         let table = join_util::compute_join(abstract_select.table_id, &order_by_column_paths);
 
+        let additional_predicate = compute_relation_predicate(selection_level, database);
+
         // We don't use the the columns specified in the abstract predicate to form the join (we use
         // only order-by), so we let the predicate transformer know that it should not assume that
         // all tables are joined.
         let predicate = transformer.to_predicate(&abstract_select.predicate, false, database);
-        let predicate = ConcretePredicate::and(
-            predicate,
-            additional_predicate.unwrap_or(ConcretePredicate::True),
-        );
+        let predicate = ConcretePredicate::and(predicate, additional_predicate);
 
         let inner_select = compute_inner_select(
             table,

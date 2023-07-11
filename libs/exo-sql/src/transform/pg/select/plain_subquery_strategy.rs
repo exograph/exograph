@@ -71,7 +71,6 @@ impl SelectionStrategy for PlainSubqueryStrategy {
     fn to_select(&self, selection_context: SelectionContext<'_>, database: &Database) -> Select {
         let SelectionContext {
             abstract_select,
-            additional_predicate,
             selection_level,
             predicate_column_paths,
             order_by_column_paths,
@@ -84,7 +83,7 @@ impl SelectionStrategy for PlainSubqueryStrategy {
             &abstract_select.predicate,
             predicate_column_paths,
             order_by_column_paths,
-            additional_predicate,
+            selection_level,
             transformer,
             database,
         );
