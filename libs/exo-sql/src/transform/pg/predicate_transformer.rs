@@ -158,8 +158,7 @@ fn to_subselect_predicate(
 
                     let select = select_transformer.compute_select(
                         &abstract_select,
-                        None,
-                        SelectionLevel::Nested,
+                        &SelectionLevel::TopLevel,
                         true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
                         database,
                     );

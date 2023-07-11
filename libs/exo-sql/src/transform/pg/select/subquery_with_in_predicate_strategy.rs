@@ -115,11 +115,7 @@ impl SelectionStrategy for SubqueryWithInPredicateStrategy {
         true
     }
 
-    fn to_select<'a>(
-        &self,
-        selection_context: SelectionContext<'_, 'a>,
-        database: &'a Database,
-    ) -> Select {
+    fn to_select(&self, selection_context: SelectionContext<'_>, database: &Database) -> Select {
         let SelectionContext {
             abstract_select,
             additional_predicate,

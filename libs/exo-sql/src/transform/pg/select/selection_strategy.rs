@@ -38,11 +38,7 @@ pub(crate) trait SelectionStrategy {
     fn suitable(&self, selection_context: &SelectionContext) -> bool;
 
     /// Computes the SQL query for the given selection context. If a strategy
-    fn to_select<'a>(
-        &self,
-        selection_context: SelectionContext<'_, 'a>,
-        database: &'a Database,
-    ) -> Select;
+    fn to_select(&self, selection_context: SelectionContext<'_>, database: &Database) -> Select;
 }
 
 /// Compute an inner select that picks up all the columns from the given table, and applies the
@@ -76,12 +72,12 @@ pub(super) fn compute_inner_select(
 pub(super) fn nest_subselect(
     inner_select: Select,
     selection: &Selection,
-    selection_level: SelectionLevel,
+    selection_level: &SelectionLevel,
     alias: &str,
     transformer: &Postgres,
     database: &Database,
 ) -> Select {
-    let selection_aggregate = selection.selection_aggregate(transformer, database);
+    let selection_aggregate = selection.selection_aggregate(selection_level, transformer, database);
 
     Select {
         table: Table::SubSelect {
@@ -94,7 +90,7 @@ pub(super) fn nest_subselect(
         offset: None,
         limit: None,
         group_by: None,
-        top_level_selection: selection_level == SelectionLevel::TopLevel,
+        top_level_selection: selection_level.is_top_level(),
     }
 }
 

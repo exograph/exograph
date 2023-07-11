@@ -7,11 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{
-    sql::select::Select,
-    transform::{pg::SelectionLevel, transformer::OrderByTransformer},
-    Database, Selection,
-};
+use crate::{sql::select::Select, transform::transformer::OrderByTransformer, Database, Selection};
 
 use super::{
     selection_context::SelectionContext,
@@ -98,11 +94,7 @@ impl SelectionStrategy for PlainJoinStrategy {
         }
     }
 
-    fn to_select<'a>(
-        &self,
-        selection_context: SelectionContext<'_, 'a>,
-        database: &'a Database,
-    ) -> Select {
+    fn to_select(&self, selection_context: SelectionContext<'_>, database: &Database) -> Select {
         let SelectionContext {
             abstract_select,
             additional_predicate,
@@ -123,9 +115,10 @@ impl SelectionStrategy for PlainJoinStrategy {
             database,
         );
 
-        let selection_aggregate = abstract_select
-            .selection
-            .selection_aggregate(transformer, database);
+        let selection_aggregate =
+            abstract_select
+                .selection
+                .selection_aggregate(selection_level, transformer, database);
 
         Select {
             table: join,
@@ -138,7 +131,7 @@ impl SelectionStrategy for PlainJoinStrategy {
             offset: abstract_select.offset.clone(),
             limit: abstract_select.limit.clone(),
             group_by: None,
-            top_level_selection: selection_level == SelectionLevel::TopLevel,
+            top_level_selection: selection_level.is_top_level(),
         }
     }
 }

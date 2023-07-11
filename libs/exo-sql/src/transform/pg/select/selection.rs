@@ -11,11 +11,9 @@ use crate::{
     sql::{
         json_agg::JsonAgg,
         json_object::{JsonObject, JsonObjectElement},
-        predicate::ConcretePredicate,
     },
     transform::pg::{Postgres, SelectionLevel},
-    AliasedSelectionElement, Column, Database, ManyToOne, OneToMany, RelationId, Selection,
-    SelectionCardinality, SelectionElement,
+    AliasedSelectionElement, Column, Database, Selection, SelectionCardinality, SelectionElement,
 };
 
 pub enum SelectionSQL {
@@ -24,7 +22,12 @@ pub enum SelectionSQL {
 }
 
 impl Selection {
-    pub fn to_sql(&self, select_transformer: &Postgres, database: &Database) -> SelectionSQL {
+    pub fn to_sql(
+        &self,
+        selection_level: &SelectionLevel,
+        select_transformer: &Postgres,
+        database: &Database,
+    ) -> SelectionSQL {
         match self {
             Selection::Seq(seq) => SelectionSQL::Seq(
                 seq.iter()
@@ -32,7 +35,9 @@ impl Selection {
                         |AliasedSelectionElement {
                              alias: _alias,
                              column,
-                         }| column.to_sql(select_transformer, database),
+                         }| {
+                            column.to_sql(selection_level, select_transformer, database)
+                        },
                     )
                     .collect(),
             ),
@@ -42,7 +47,7 @@ impl Selection {
                     .map(|AliasedSelectionElement { alias, column }| {
                         JsonObjectElement::new(
                             alias.clone(),
-                            column.to_sql(select_transformer, database),
+                            column.to_sql(selection_level, select_transformer, database),
                         )
                     })
                     .collect();
@@ -61,10 +66,11 @@ impl Selection {
 
     pub fn selection_aggregate(
         &self,
+        selection_level: &SelectionLevel,
         select_transformer: &Postgres,
         database: &Database,
     ) -> Vec<Column> {
-        match self.to_sql(select_transformer, database) {
+        match self.to_sql(selection_level, select_transformer, database) {
             SelectionSQL::Single(elem) => vec![elem],
             SelectionSQL::Seq(elems) => elems,
         }
@@ -72,7 +78,12 @@ impl Selection {
 }
 
 impl SelectionElement {
-    pub fn to_sql(&self, transformer: &Postgres, database: &Database) -> Column {
+    pub fn to_sql(
+        &self,
+        selection_level: &SelectionLevel,
+        transformer: &Postgres,
+        database: &Database,
+    ) -> Column {
         match self {
             SelectionElement::Physical(column_id) => Column::physical(*column_id, None),
             SelectionElement::Function {
@@ -89,40 +100,17 @@ impl SelectionElement {
                     .map(|(alias, column)| {
                         JsonObjectElement::new(
                             alias.to_owned(),
-                            column.to_sql(transformer, database),
+                            column.to_sql(selection_level, transformer, database),
                         )
                     })
                     .collect();
                 Column::JsonObject(JsonObject(elements))
             }
             SelectionElement::SubSelect(relation_id, select) => {
-                let (self_column_id, foreign_column_id) = match relation_id {
-                    RelationId::OneToMany(relation_id) => {
-                        let OneToMany {
-                            self_pk_column_id,
-                            foreign_column_id,
-                        } = relation_id.deref(database);
-                        (self_pk_column_id, foreign_column_id)
-                    }
-                    RelationId::ManyToOne(relation_id) => {
-                        let ManyToOne {
-                            self_column_id,
-                            foreign_pk_column_id,
-                            ..
-                        } = relation_id.deref(database);
-                        (self_column_id, foreign_pk_column_id)
-                    }
-                };
-
-                let subselect_predicate = Some(ConcretePredicate::Eq(
-                    Column::physical(self_column_id, None),
-                    Column::physical(foreign_column_id, None),
-                ));
-
+                let new_selection_level = selection_level.with_relation_id(*relation_id);
                 Column::SubSelect(Box::new(transformer.compute_select(
                     select,
-                    subselect_predicate,
-                    SelectionLevel::Nested,
+                    &new_selection_level,
                     false,
                     database,
                 )))

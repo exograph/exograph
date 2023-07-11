@@ -32,10 +32,10 @@ impl<'s> SelectionStrategyChain<'s> {
 
     /// Find the first strategy that is suitable for the given selection context, and return a
     /// `Select` object that can be used to generate the SQL query.
-    pub fn to_select<'a>(
+    pub fn to_select(
         &self,
-        selection_context: SelectionContext<'_, 'a>,
-        database: &'a Database,
+        selection_context: SelectionContext<'_>,
+        database: &Database,
     ) -> Option<Select> {
         let strategy = self
             .strategies
