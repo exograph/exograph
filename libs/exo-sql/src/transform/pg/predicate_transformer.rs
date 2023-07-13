@@ -15,7 +15,7 @@ use crate::{
     PhysicalColumnPath, Selection, SelectionElement,
 };
 
-use super::Postgres;
+use super::{make_alias, Postgres};
 
 impl PredicateTransformer for Postgres {
     /// Transform an abstract predicate into a concrete predicate
@@ -27,13 +27,14 @@ impl PredicateTransformer for Postgres {
     fn to_predicate(
         &self,
         predicate: &AbstractPredicate,
+        selection_level: &SelectionLevel,
         tables_supplied: bool,
         database: &Database,
     ) -> ConcretePredicate {
         if tables_supplied {
-            to_join_predicate(predicate)
+            to_join_predicate(predicate, selection_level, database)
         } else {
-            to_subselect_predicate(self, predicate, database)
+            to_subselect_predicate(self, predicate, selection_level, database)
         }
     }
 }
@@ -42,52 +43,84 @@ impl PredicateTransformer for Postgres {
 ///
 /// The predicate generated will look like "concerts.price = $1 AND venues.name = $2". It assumes
 /// that the join would have brought in "concerts" and "venues" through a join.
-fn to_join_predicate(predicate: &AbstractPredicate) -> ConcretePredicate {
+fn to_join_predicate(
+    predicate: &AbstractPredicate,
+    selection_level: &SelectionLevel,
+    database: &Database,
+) -> ConcretePredicate {
+    let alias_prefix = selection_level.alias(database);
     match predicate {
         AbstractPredicate::True => ConcretePredicate::True,
         AbstractPredicate::False => ConcretePredicate::False,
 
-        AbstractPredicate::Eq(l, r) => ConcretePredicate::eq(leaf_column(l), leaf_column(r)),
-        AbstractPredicate::Neq(l, r) => ConcretePredicate::neq(leaf_column(l), leaf_column(r)),
-        AbstractPredicate::Lt(l, r) => ConcretePredicate::Lt(leaf_column(l), leaf_column(r)),
-        AbstractPredicate::Lte(l, r) => ConcretePredicate::Lte(leaf_column(l), leaf_column(r)),
-        AbstractPredicate::Gt(l, r) => ConcretePredicate::Gt(leaf_column(l), leaf_column(r)),
-        AbstractPredicate::Gte(l, r) => ConcretePredicate::Gte(leaf_column(l), leaf_column(r)),
-        AbstractPredicate::In(l, r) => ConcretePredicate::In(leaf_column(l), leaf_column(r)),
-
-        AbstractPredicate::StringLike(l, r, cs) => {
-            ConcretePredicate::StringLike(leaf_column(l), leaf_column(r), *cs)
+        AbstractPredicate::Eq(l, r) => {
+            ConcretePredicate::eq(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
         }
-        AbstractPredicate::StringStartsWith(l, r) => {
-            ConcretePredicate::StringStartsWith(leaf_column(l), leaf_column(r))
+        AbstractPredicate::Neq(l, r) => {
+            ConcretePredicate::neq(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
         }
-        AbstractPredicate::StringEndsWith(l, r) => {
-            ConcretePredicate::StringEndsWith(leaf_column(l), leaf_column(r))
+        AbstractPredicate::Lt(l, r) => {
+            ConcretePredicate::Lt(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
         }
-
-        AbstractPredicate::JsonContains(l, r) => {
-            ConcretePredicate::JsonContains(leaf_column(l), leaf_column(r))
+        AbstractPredicate::Lte(l, r) => {
+            ConcretePredicate::Lte(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
         }
-        AbstractPredicate::JsonContainedBy(l, r) => {
-            ConcretePredicate::JsonContainedBy(leaf_column(l), leaf_column(r))
+        AbstractPredicate::Gt(l, r) => {
+            ConcretePredicate::Gt(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
         }
-        AbstractPredicate::JsonMatchKey(l, r) => {
-            ConcretePredicate::JsonMatchKey(leaf_column(l), leaf_column(r))
+        AbstractPredicate::Gte(l, r) => {
+            ConcretePredicate::Gte(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
         }
-        AbstractPredicate::JsonMatchAnyKey(l, r) => {
-            ConcretePredicate::JsonMatchAnyKey(leaf_column(l), leaf_column(r))
-        }
-        AbstractPredicate::JsonMatchAllKeys(l, r) => {
-            ConcretePredicate::JsonMatchAllKeys(leaf_column(l), leaf_column(r))
+        AbstractPredicate::In(l, r) => {
+            ConcretePredicate::In(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
         }
 
-        AbstractPredicate::And(l, r) => {
-            ConcretePredicate::and(to_join_predicate(l), to_join_predicate(r))
+        AbstractPredicate::StringLike(l, r, cs) => ConcretePredicate::StringLike(
+            leaf_column(l, &alias_prefix),
+            leaf_column(r, &alias_prefix),
+            *cs,
+        ),
+        AbstractPredicate::StringStartsWith(l, r) => ConcretePredicate::StringStartsWith(
+            leaf_column(l, &alias_prefix),
+            leaf_column(r, &alias_prefix),
+        ),
+        AbstractPredicate::StringEndsWith(l, r) => ConcretePredicate::StringEndsWith(
+            leaf_column(l, &alias_prefix),
+            leaf_column(r, &alias_prefix),
+        ),
+
+        AbstractPredicate::JsonContains(l, r) => ConcretePredicate::JsonContains(
+            leaf_column(l, &alias_prefix),
+            leaf_column(r, &alias_prefix),
+        ),
+        AbstractPredicate::JsonContainedBy(l, r) => ConcretePredicate::JsonContainedBy(
+            leaf_column(l, &alias_prefix),
+            leaf_column(r, &alias_prefix),
+        ),
+        AbstractPredicate::JsonMatchKey(l, r) => ConcretePredicate::JsonMatchKey(
+            leaf_column(l, &alias_prefix),
+            leaf_column(r, &alias_prefix),
+        ),
+        AbstractPredicate::JsonMatchAnyKey(l, r) => ConcretePredicate::JsonMatchAnyKey(
+            leaf_column(l, &alias_prefix),
+            leaf_column(r, &alias_prefix),
+        ),
+        AbstractPredicate::JsonMatchAllKeys(l, r) => ConcretePredicate::JsonMatchAllKeys(
+            leaf_column(l, &alias_prefix),
+            leaf_column(r, &alias_prefix),
+        ),
+
+        AbstractPredicate::And(l, r) => ConcretePredicate::and(
+            to_join_predicate(l, selection_level, database),
+            to_join_predicate(r, selection_level, database),
+        ),
+        AbstractPredicate::Or(l, r) => ConcretePredicate::or(
+            to_join_predicate(l, selection_level, database),
+            to_join_predicate(r, selection_level, database),
+        ),
+        AbstractPredicate::Not(p) => {
+            ConcretePredicate::Not(Box::new(to_join_predicate(p, selection_level, database)))
         }
-        AbstractPredicate::Or(l, r) => {
-            ConcretePredicate::or(to_join_predicate(l), to_join_predicate(r))
-        }
-        AbstractPredicate::Not(p) => ConcretePredicate::Not(Box::new(to_join_predicate(p))),
     }
 }
 
@@ -118,6 +151,7 @@ fn to_join_predicate(predicate: &AbstractPredicate) -> ConcretePredicate {
 fn to_subselect_predicate(
     transformer: &Postgres,
     predicate: &AbstractPredicate,
+    selection_level: &SelectionLevel,
     database: &Database,
 ) -> ConcretePredicate {
     fn binary_operator(
@@ -263,23 +297,30 @@ fn to_subselect_predicate(
             transformer,
         ),
         AbstractPredicate::And(p1, p2) => Some(ConcretePredicate::and(
-            to_subselect_predicate(transformer, p1, database),
-            to_subselect_predicate(transformer, p2, database),
+            to_subselect_predicate(transformer, p1, selection_level, database),
+            to_subselect_predicate(transformer, p2, selection_level, database),
         )),
         AbstractPredicate::Or(p1, p2) => Some(ConcretePredicate::or(
-            to_subselect_predicate(transformer, p1, database),
-            to_subselect_predicate(transformer, p2, database),
+            to_subselect_predicate(transformer, p1, selection_level, database),
+            to_subselect_predicate(transformer, p2, selection_level, database),
         )),
         AbstractPredicate::Not(p) => Some(ConcretePredicate::Not(Box::new(
-            to_subselect_predicate(transformer, p, database),
+            to_subselect_predicate(transformer, p, selection_level, database),
         ))),
     }
-    .unwrap_or(to_join_predicate(predicate)) // fallback to join predicate
+    .unwrap_or(to_join_predicate(predicate, selection_level, database)) // fallback to join predicate
 }
 
-fn leaf_column(column_path: &ColumnPath) -> Column {
+fn leaf_column(column_path: &ColumnPath, alias_prefix: &Option<String>) -> Column {
     match column_path {
-        ColumnPath::Physical(links) => Column::physical(links.leaf_column(), links.alias()),
+        ColumnPath::Physical(links) => {
+            let links_alias = links.alias();
+            let alias = match alias_prefix {
+                Some(ref prefix) => links_alias.as_ref().map(|alias| make_alias(prefix, alias)),
+                _ => links_alias,
+            };
+            Column::physical(links.leaf_column(), alias)
+        }
         ColumnPath::Param(l) => Column::Param(l.clone()),
         ColumnPath::Null => Column::Null,
     }
@@ -324,7 +365,12 @@ mod tests {
                 );
 
                 {
-                    let predicate = Postgres {}.to_predicate(&abstract_predicate, true, &database);
+                    let predicate = Postgres {}.to_predicate(
+                        &abstract_predicate,
+                        &SelectionLevel::TopLevel,
+                        true,
+                        &database,
+                    );
                     assert_binding!(
                         predicate.to_sql(&database),
                         r#""concerts"."name" = $1"#,
@@ -333,7 +379,12 @@ mod tests {
                 }
 
                 {
-                    let predicate = Postgres {}.to_predicate(&abstract_predicate, false, &database);
+                    let predicate = Postgres {}.to_predicate(
+                        &abstract_predicate,
+                        &SelectionLevel::TopLevel,
+                        false,
+                        &database,
+                    );
                     assert_binding!(
                         predicate.to_sql(&database),
                         r#""concerts"."name" = $1"#,
@@ -408,7 +459,12 @@ mod tests {
                 );
 
                 {
-                    let predicate = Postgres {}.to_predicate(&abstract_predicate, true, &database);
+                    let predicate = Postgres {}.to_predicate(
+                        &abstract_predicate,
+                        &SelectionLevel::TopLevel,
+                        true,
+                        &database,
+                    );
 
                     assert_binding!(
                         predicate.to_sql(&database),
@@ -419,7 +475,12 @@ mod tests {
                 }
 
                 {
-                    let predicate = Postgres {}.to_predicate(&abstract_predicate, false, &database);
+                    let predicate = Postgres {}.to_predicate(
+                        &abstract_predicate,
+                        &SelectionLevel::TopLevel,
+                        false,
+                        &database,
+                    );
 
                     assert_binding!(
                         predicate.to_sql(&database),
@@ -467,8 +528,12 @@ mod tests {
                     };
 
                     {
-                        let predicate =
-                            Postgres {}.to_predicate(&abstract_predicate, true, &database);
+                        let predicate = Postgres {}.to_predicate(
+                            &abstract_predicate,
+                            &SelectionLevel::TopLevel,
+                            true,
+                            &database,
+                        );
                         assert_binding!(
                             predicate.to_sql(&database),
                             predicate_stmt,
@@ -477,8 +542,12 @@ mod tests {
                     }
 
                     {
-                        let predicate =
-                            Postgres {}.to_predicate(&abstract_predicate, false, &database);
+                        let predicate = Postgres {}.to_predicate(
+                            &abstract_predicate,
+                            &SelectionLevel::TopLevel,
+                            false,
+                            &database,
+                        );
                         let stmt = format!(
                             r#""concerts"."venue_id" IN (SELECT "venues"."id" FROM "venues" WHERE {predicate_stmt})"#
                         );

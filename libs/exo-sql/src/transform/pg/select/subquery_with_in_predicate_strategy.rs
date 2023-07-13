@@ -129,14 +129,20 @@ impl SelectionStrategy for SubqueryWithInPredicateStrategy {
         // Use only order by columns to form the join, since the predicate part is already taken
         // care by the `to_subselect_predicate` call above. The use of `order_by_column_paths` is
         // essential to be able to refer to columns in related field in the order by clause.
-        let table = join_util::compute_join(abstract_select.table_id, &order_by_column_paths);
+        let table = join_util::compute_join(
+            abstract_select.table_id,
+            &order_by_column_paths,
+            selection_level,
+            database,
+        );
 
-        let additional_predicate = compute_relation_predicate(selection_level, database);
+        let additional_predicate = compute_relation_predicate(selection_level, false, database);
 
         // We don't use the the columns specified in the abstract predicate to form the join (we use
         // only order-by), so we let the predicate transformer know that it should not assume that
         // all tables are joined.
-        let predicate = transformer.to_predicate(&abstract_select.predicate, false, database);
+        let predicate =
+            transformer.to_predicate(&abstract_select.predicate, selection_level, false, database);
         let predicate = ConcretePredicate::and(predicate, additional_predicate);
 
         let inner_select = compute_inner_select(

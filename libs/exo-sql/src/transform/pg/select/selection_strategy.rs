@@ -11,7 +11,7 @@ use crate::{
     sql::{predicate::ConcretePredicate, select::Select, table::Table},
     transform::{
         join_util,
-        pg::{Postgres, SelectionLevel},
+        pg::{make_alias, Postgres, SelectionLevel},
         transformer::{OrderByTransformer, PredicateTransformer},
     },
     AbstractOrderBy, AbstractPredicate, Column, Database, Limit, ManyToOne, Offset, OneToMany,
@@ -109,17 +109,34 @@ pub(super) fn join_info(
         .chain(order_by_column_paths.into_iter())
         .collect();
 
-    let join = join_util::compute_join(base_table_id, &columns_paths);
-    let predicate = transformer.to_predicate(predicate, true, database);
-    let additional_predicate = compute_relation_predicate(selection_level, database);
+    let join = join_util::compute_join(base_table_id, &columns_paths, selection_level, database);
+    let predicate_selection_level_override = match join {
+        Table::Join(_) => None,
+        _ => match selection_level {
+            SelectionLevel::TopLevel => None,
+            SelectionLevel::Nested(relation_ids) => relation_ids
+                .last()
+                .map(|relation| SelectionLevel::Nested(vec![*relation])),
+        },
+    };
+    let predicate_selection_level = predicate_selection_level_override
+        .as_ref()
+        .unwrap_or(selection_level);
+    let predicate = transformer.to_predicate(predicate, predicate_selection_level, true, database);
+    let relation_predicate = compute_relation_predicate(
+        predicate_selection_level,
+        matches!(join, Table::Join(_)),
+        database,
+    );
 
-    let predicate = ConcretePredicate::and(predicate, additional_predicate);
+    let predicate = ConcretePredicate::and(predicate, relation_predicate);
 
     (join, predicate)
 }
 
 pub fn compute_relation_predicate(
     selection_level: &SelectionLevel,
+    use_alias: bool,
     database: &Database,
 ) -> ConcretePredicate {
     let subselect_relation = match selection_level {
@@ -148,8 +165,18 @@ pub fn compute_relation_predicate(
                 }
             };
 
+            let alias = if use_alias {
+                let alias_prefix = selection_level.alias(database);
+                alias_prefix.map(|ref alias_prefix| {
+                    let self_table = database.get_table(self_column_id.table_id);
+                    make_alias(&self_table.name, alias_prefix)
+                })
+            } else {
+                None
+            };
+
             ConcretePredicate::Eq(
-                Column::physical(self_column_id, None),
+                Column::physical(self_column_id, alias),
                 Column::physical(foreign_column_id, None),
             )
         })

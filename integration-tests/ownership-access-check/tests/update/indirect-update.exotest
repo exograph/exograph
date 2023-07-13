@@ -28,15 +28,7 @@ stages:
             {
               "id": 1,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             },
             {
               "id": 2,
@@ -54,54 +46,39 @@ stages:
             {
               "id": 3,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             },
             {
               "id": 4,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             },
             {
               "id": 5,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             }
           ]
         }
       }
+
   # Ensure that the earlier mutation did work
   - operation: |
       query {
-        documents(orderBy: {id: ASC}) {
+        allDocs: documents(orderBy: {id: ASC}) {
           id
           content
           user {
             id
             name
+          }
+        }
+        allUsers: users(orderBy: {id: ASC}) {
+          id
+          name
+          documents {
+            id
+            content
           }
         }
       }
@@ -112,7 +89,54 @@ stages:
     response: |
       {
         "data": {
-          "documents": [
+          "allUsers": [
+            {
+              "id": 1,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 3,
+                  "content": "content3"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 2,
+                  "content": "content2"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 4,
+                  "content": "content4"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 5,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 1,
+                  "content": "indirect-update"
+                }
+              ]
+            }
+          ],
+          "allDocs": [
             {
               "id": 1,
               "content": "indirect-update",

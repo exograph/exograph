@@ -21,7 +21,7 @@ use crate::{
     Database,
 };
 
-use super::Postgres;
+use super::{Postgres, SelectionLevel};
 
 impl DeleteTransformer for Postgres {
     #[instrument(
@@ -63,7 +63,12 @@ impl DeleteTransformer for Postgres {
         // ```
         // We need a subselect because the target of a DELETE statement must be a physical table,
         // not a join.
-        let predicate = self.to_predicate(&abstract_delete.predicate, false, database);
+        let predicate = self.to_predicate(
+            &abstract_delete.predicate,
+            &SelectionLevel::TopLevel,
+            false,
+            database,
+        );
 
         // The root delete operation returning all columns of the table being deleted. This will be
         // later used as a CTE.

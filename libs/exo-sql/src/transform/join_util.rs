@@ -10,17 +10,41 @@
 use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
     sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
-    transform::table_dependency::{DependencyLink, TableDependency},
-    PhysicalColumnPath, TableId,
+    transform::{
+        pg::make_alias,
+        table_dependency::{DependencyLink, TableDependency},
+    },
+    Database, PhysicalColumnPath, TableId,
 };
+
+use super::pg::SelectionLevel;
 
 /// Compute the join needed to access the leaf columns of a list of column paths. Will return a
 /// `Table::Physical` if there are no dependencies to join otherwise a `Table::Join`.
-pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Table {
+pub fn compute_join(
+    table_id: TableId,
+    paths_list: &[PhysicalColumnPath],
+    selection_level: &SelectionLevel,
+    database: &Database,
+) -> Table {
+    let selection_level_alias = selection_level.alias(database);
+
     /// Recursively build the join tree.
-    fn from_dependency(dependency: TableDependency) -> Table {
+    fn from_dependency(
+        dependency: TableDependency,
+        selection_level_alias: Option<String>,
+        database: &Database,
+        top_level: bool,
+    ) -> Table {
+        let alias = selection_level_alias.as_ref().map(|context_name| {
+            make_alias(&database.get_table(dependency.table_id).name, context_name)
+        });
+
+        let init_table =
+            { Table::physical(dependency.table_id, if top_level { None } else { alias }) };
+
         dependency.dependencies.into_iter().fold(
-            Table::physical(dependency.table_id, None),
+            init_table,
             |acc, DependencyLink { link, dependency }| {
                 let (join_predicate, linked_table_alias) = match link {
                     ColumnPathLink::Relation(RelationLink {
@@ -39,12 +63,20 @@ pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Tab
                     }
                 };
 
-                let join_table_query = from_dependency(dependency);
+                let join_table_query =
+                    from_dependency(dependency, selection_level_alias.clone(), database, false);
 
                 let join_table_query = match join_table_query {
-                    Table::Physical { table_id, .. } => {
-                        Table::physical(table_id, linked_table_alias)
-                    }
+                    Table::Physical { table_id, .. } => Table::physical(
+                        table_id,
+                        match (linked_table_alias, &selection_level_alias) {
+                            (Some(linked_table_alias), Some(selection_level_alias)) => {
+                                Some(make_alias(&linked_table_alias, selection_level_alias))
+                            }
+                            (Some(linked_table_alias), None) => Some(linked_table_alias),
+                            (None, _) => None,
+                        },
+                    ),
                     _ => join_table_query,
                 };
 
@@ -57,12 +89,16 @@ pub fn compute_join(table_id: TableId, paths_list: &[PhysicalColumnPath]) -> Tab
         table_id,
         dependencies: vec![],
     });
-    from_dependency(table_tree)
+    from_dependency(table_tree, selection_level_alias, database, true)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{sql::ExpressionBuilder, transform::test_util::TestSetup, PhysicalColumnPath};
+    use crate::{
+        sql::ExpressionBuilder,
+        transform::{pg::SelectionLevel, test_util::TestSetup},
+        PhysicalColumnPath,
+    };
 
     #[test]
     fn single_level_join() {
@@ -80,7 +116,12 @@ mod tests {
                     &database,
                 );
 
-                let join = super::compute_join(concerts_table, &[concert_venue_name_path]);
+                let join = super::compute_join(
+                    concerts_table,
+                    &[concert_venue_name_path],
+                    &SelectionLevel::TopLevel,
+                    &database,
+                );
 
                 assert_binding!(
                     join.to_sql(&database),
@@ -144,6 +185,8 @@ mod tests {
                         concert_ca_artist_address_path,
                         concert_venue_path,
                     ],
+                    &SelectionLevel::TopLevel,
+                    &database,
                 );
 
                 assert_binding!(

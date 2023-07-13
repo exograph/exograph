@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::RelationId;
+use crate::{Database, RelationId};
 
 pub mod delete_transformer;
 mod insert_transformer;
@@ -43,4 +43,29 @@ impl SelectionLevel {
             }
         }
     }
+
+    pub fn alias(&self, database: &Database) -> Option<String> {
+        match self {
+            SelectionLevel::TopLevel => None,
+            SelectionLevel::Nested(relation_ids) => Some(
+                relation_ids
+                    .iter()
+                    .map(|r| {
+                        let foreign_table_id = match r {
+                            RelationId::ManyToOne(r) => r.deref(database).self_column_id.table_id,
+                            RelationId::OneToMany(r) => {
+                                r.deref(database).self_pk_column_id.table_id
+                            }
+                        };
+                        database.get_table(foreign_table_id).name.clone()
+                    })
+                    .collect::<Vec<_>>()
+                    .join("$"),
+            ),
+        }
+    }
+}
+
+pub fn make_alias(name: &str, context_name: &str) -> String {
+    format!("{}${}", context_name, name)
 }
