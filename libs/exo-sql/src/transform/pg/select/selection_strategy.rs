@@ -166,11 +166,10 @@ pub fn compute_relation_predicate(
             };
 
             let alias = if use_alias {
-                let alias_prefix = selection_level.alias(database);
-                alias_prefix.map(|ref alias_prefix| {
-                    let self_table = database.get_table(self_column_id.table_id);
-                    make_alias(&self_table.name, alias_prefix)
-                })
+                Some(make_alias(
+                    &database.get_table(self_column_id.table_id).name,
+                    &selection_level.alias(database),
+                ))
             } else {
                 None
             };

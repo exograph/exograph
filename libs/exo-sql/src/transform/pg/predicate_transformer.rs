@@ -48,67 +48,62 @@ fn to_join_predicate(
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> ConcretePredicate {
-    let alias_prefix = selection_level.alias(database);
+    let selection_level_alias = selection_level.alias(database);
+
+    let compute_leaf_column =
+        |column_path: &ColumnPath| leaf_column(column_path, &selection_level_alias);
+
     match predicate {
         AbstractPredicate::True => ConcretePredicate::True,
         AbstractPredicate::False => ConcretePredicate::False,
 
         AbstractPredicate::Eq(l, r) => {
-            ConcretePredicate::eq(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
+            ConcretePredicate::eq(compute_leaf_column(l), compute_leaf_column(r))
         }
         AbstractPredicate::Neq(l, r) => {
-            ConcretePredicate::neq(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
+            ConcretePredicate::neq(compute_leaf_column(l), compute_leaf_column(r))
         }
         AbstractPredicate::Lt(l, r) => {
-            ConcretePredicate::Lt(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
+            ConcretePredicate::Lt(compute_leaf_column(l), compute_leaf_column(r))
         }
         AbstractPredicate::Lte(l, r) => {
-            ConcretePredicate::Lte(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
+            ConcretePredicate::Lte(compute_leaf_column(l), compute_leaf_column(r))
         }
         AbstractPredicate::Gt(l, r) => {
-            ConcretePredicate::Gt(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
+            ConcretePredicate::Gt(compute_leaf_column(l), compute_leaf_column(r))
         }
         AbstractPredicate::Gte(l, r) => {
-            ConcretePredicate::Gte(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
+            ConcretePredicate::Gte(compute_leaf_column(l), compute_leaf_column(r))
         }
         AbstractPredicate::In(l, r) => {
-            ConcretePredicate::In(leaf_column(l, &alias_prefix), leaf_column(r, &alias_prefix))
+            ConcretePredicate::In(compute_leaf_column(l), compute_leaf_column(r))
         }
 
-        AbstractPredicate::StringLike(l, r, cs) => ConcretePredicate::StringLike(
-            leaf_column(l, &alias_prefix),
-            leaf_column(r, &alias_prefix),
-            *cs,
-        ),
-        AbstractPredicate::StringStartsWith(l, r) => ConcretePredicate::StringStartsWith(
-            leaf_column(l, &alias_prefix),
-            leaf_column(r, &alias_prefix),
-        ),
-        AbstractPredicate::StringEndsWith(l, r) => ConcretePredicate::StringEndsWith(
-            leaf_column(l, &alias_prefix),
-            leaf_column(r, &alias_prefix),
-        ),
+        AbstractPredicate::StringLike(l, r, cs) => {
+            ConcretePredicate::StringLike(compute_leaf_column(l), compute_leaf_column(r), *cs)
+        }
+        AbstractPredicate::StringStartsWith(l, r) => {
+            ConcretePredicate::StringStartsWith(compute_leaf_column(l), compute_leaf_column(r))
+        }
+        AbstractPredicate::StringEndsWith(l, r) => {
+            ConcretePredicate::StringEndsWith(compute_leaf_column(l), compute_leaf_column(r))
+        }
 
-        AbstractPredicate::JsonContains(l, r) => ConcretePredicate::JsonContains(
-            leaf_column(l, &alias_prefix),
-            leaf_column(r, &alias_prefix),
-        ),
-        AbstractPredicate::JsonContainedBy(l, r) => ConcretePredicate::JsonContainedBy(
-            leaf_column(l, &alias_prefix),
-            leaf_column(r, &alias_prefix),
-        ),
-        AbstractPredicate::JsonMatchKey(l, r) => ConcretePredicate::JsonMatchKey(
-            leaf_column(l, &alias_prefix),
-            leaf_column(r, &alias_prefix),
-        ),
-        AbstractPredicate::JsonMatchAnyKey(l, r) => ConcretePredicate::JsonMatchAnyKey(
-            leaf_column(l, &alias_prefix),
-            leaf_column(r, &alias_prefix),
-        ),
-        AbstractPredicate::JsonMatchAllKeys(l, r) => ConcretePredicate::JsonMatchAllKeys(
-            leaf_column(l, &alias_prefix),
-            leaf_column(r, &alias_prefix),
-        ),
+        AbstractPredicate::JsonContains(l, r) => {
+            ConcretePredicate::JsonContains(compute_leaf_column(l), compute_leaf_column(r))
+        }
+        AbstractPredicate::JsonContainedBy(l, r) => {
+            ConcretePredicate::JsonContainedBy(compute_leaf_column(l), compute_leaf_column(r))
+        }
+        AbstractPredicate::JsonMatchKey(l, r) => {
+            ConcretePredicate::JsonMatchKey(compute_leaf_column(l), compute_leaf_column(r))
+        }
+        AbstractPredicate::JsonMatchAnyKey(l, r) => {
+            ConcretePredicate::JsonMatchAnyKey(compute_leaf_column(l), compute_leaf_column(r))
+        }
+        AbstractPredicate::JsonMatchAllKeys(l, r) => {
+            ConcretePredicate::JsonMatchAllKeys(compute_leaf_column(l), compute_leaf_column(r))
+        }
 
         AbstractPredicate::And(l, r) => ConcretePredicate::and(
             to_join_predicate(l, selection_level, database),
@@ -311,14 +306,12 @@ fn to_subselect_predicate(
     .unwrap_or(to_join_predicate(predicate, selection_level, database)) // fallback to join predicate
 }
 
-fn leaf_column(column_path: &ColumnPath, alias_prefix: &Option<String>) -> Column {
+fn leaf_column(column_path: &ColumnPath, selection_level_alias: &Option<String>) -> Column {
     match column_path {
         ColumnPath::Physical(links) => {
-            let links_alias = links.alias();
-            let alias = match alias_prefix {
-                Some(ref prefix) => links_alias.as_ref().map(|alias| make_alias(prefix, alias)),
-                _ => links_alias,
-            };
+            let alias = links
+                .alias()
+                .map(|ref links_alias| make_alias(links_alias, selection_level_alias));
             Column::physical(links.leaf_column(), alias)
         }
         ColumnPath::Param(l) => Column::Param(l.clone()),

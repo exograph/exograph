@@ -27,21 +27,24 @@ pub fn compute_join(
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> Table {
-    let selection_level_alias = selection_level.alias(database);
-
     /// Recursively build the join tree.
     fn from_dependency(
         dependency: TableDependency,
-        selection_level_alias: Option<String>,
+        selection_level_alias: &Option<String>,
         database: &Database,
         top_level: bool,
     ) -> Table {
-        let alias = selection_level_alias.as_ref().map(|context_name| {
-            make_alias(&database.get_table(dependency.table_id).name, context_name)
-        });
+        let alias = make_alias(
+            &database.get_table(dependency.table_id).name,
+            selection_level_alias,
+        );
 
-        let init_table =
-            { Table::physical(dependency.table_id, if top_level { None } else { alias }) };
+        let init_table = {
+            Table::physical(
+                dependency.table_id,
+                if top_level { None } else { Some(alias) },
+            )
+        };
 
         dependency.dependencies.into_iter().fold(
             init_table,
@@ -64,18 +67,14 @@ pub fn compute_join(
                 };
 
                 let join_table_query =
-                    from_dependency(dependency, selection_level_alias.clone(), database, false);
+                    from_dependency(dependency, selection_level_alias, database, false);
 
                 let join_table_query = match join_table_query {
                     Table::Physical { table_id, .. } => Table::physical(
                         table_id,
-                        match (linked_table_alias, &selection_level_alias) {
-                            (Some(linked_table_alias), Some(selection_level_alias)) => {
-                                Some(make_alias(&linked_table_alias, selection_level_alias))
-                            }
-                            (Some(linked_table_alias), None) => Some(linked_table_alias),
-                            (None, _) => None,
-                        },
+                        linked_table_alias.map(|linked_table_alias| {
+                            make_alias(&linked_table_alias, selection_level_alias)
+                        }),
                     ),
                     _ => join_table_query,
                 };
@@ -89,7 +88,7 @@ pub fn compute_join(
         table_id,
         dependencies: vec![],
     });
-    from_dependency(table_tree, selection_level_alias, database, true)
+    from_dependency(table_tree, &selection_level.alias(database), database, true)
 }
 
 #[cfg(test)]

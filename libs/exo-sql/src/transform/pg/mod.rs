@@ -47,25 +47,29 @@ impl SelectionLevel {
     pub fn alias(&self, database: &Database) -> Option<String> {
         match self {
             SelectionLevel::TopLevel => None,
-            SelectionLevel::Nested(relation_ids) => Some(
-                relation_ids
-                    .iter()
-                    .map(|r| {
-                        let foreign_table_id = match r {
-                            RelationId::ManyToOne(r) => r.deref(database).self_column_id.table_id,
-                            RelationId::OneToMany(r) => {
-                                r.deref(database).self_pk_column_id.table_id
-                            }
-                        };
-                        database.get_table(foreign_table_id).name.clone()
-                    })
-                    .collect::<Vec<_>>()
-                    .join("$"),
-            ),
+            SelectionLevel::Nested(relation_ids) => {
+                Some(relation_ids.iter().fold(String::new(), |acc, relation_id| {
+                    let foreign_table_id = match relation_id {
+                        RelationId::ManyToOne(r) => r.deref(database).self_column_id.table_id,
+                        RelationId::OneToMany(r) => r.deref(database).self_pk_column_id.table_id,
+                    };
+                    let name = &database.get_table(foreign_table_id).name;
+                    join_alias_components(&acc, name)
+                }))
+            }
         }
     }
 }
 
-pub fn make_alias(name: &str, context_name: &str) -> String {
-    format!("{}${}", context_name, name)
+const ALIAS_SEPARATOR: &str = "$";
+
+pub fn make_alias(name: &str, context_name: &Option<String>) -> String {
+    match context_name {
+        Some(ref context_name) => join_alias_components(context_name, name),
+        None => name.to_owned(),
+    }
+}
+
+fn join_alias_components(context_name: &str, name: &str) -> String {
+    format!("{context_name}{ALIAS_SEPARATOR}{name}")
 }
