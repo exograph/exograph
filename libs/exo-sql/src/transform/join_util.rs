@@ -10,10 +10,7 @@
 use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
     sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
-    transform::{
-        pg::selection_level::make_alias,
-        table_dependency::{DependencyLink, TableDependency},
-    },
+    transform::table_dependency::{DependencyLink, TableDependency},
     Database, PhysicalColumnPath, TableId,
 };
 
@@ -30,13 +27,13 @@ pub fn compute_join(
     /// Recursively build the join tree.
     fn from_dependency(
         dependency: TableDependency,
-        selection_level_alias: &Option<String>,
+        selection_level: &SelectionLevel,
         database: &Database,
         top_level: bool,
     ) -> Table {
-        let alias = make_alias(
-            &database.get_table(dependency.table_id).name,
-            selection_level_alias,
+        let alias = selection_level.alias(
+            database.get_table(dependency.table_id).name.clone(),
+            database,
         );
 
         // We don't use the alias for the top level table in predicate either, so match the behavior here
@@ -68,13 +65,13 @@ pub fn compute_join(
                 };
 
                 let join_table_query =
-                    from_dependency(dependency, selection_level_alias, database, false);
+                    from_dependency(dependency, selection_level, database, false);
 
                 let join_table_query = match join_table_query {
                     Table::Physical { table_id, .. } => Table::physical(
                         table_id,
                         linked_table_alias.map(|linked_table_alias| {
-                            make_alias(&linked_table_alias, selection_level_alias)
+                            selection_level.alias(linked_table_alias, database)
                         }),
                     ),
                     _ => join_table_query,
@@ -89,7 +86,7 @@ pub fn compute_join(
         table_id,
         dependencies: vec![],
     });
-    from_dependency(table_tree, &selection_level.alias(database), database, true)
+    from_dependency(table_tree, selection_level, database, true)
 }
 
 #[cfg(test)]

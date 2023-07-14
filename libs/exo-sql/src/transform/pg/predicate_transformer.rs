@@ -15,7 +15,7 @@ use crate::{
     PhysicalColumnPath, Selection, SelectionElement,
 };
 
-use super::{selection_level::make_alias, Postgres};
+use super::Postgres;
 
 impl PredicateTransformer for Postgres {
     fn to_predicate(
@@ -42,10 +42,8 @@ fn to_join_predicate(
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> ConcretePredicate {
-    let selection_level_alias = selection_level.alias(database);
-
     let compute_leaf_column =
-        |column_path: &ColumnPath| leaf_column(column_path, &selection_level_alias);
+        |column_path: &ColumnPath| leaf_column(column_path, selection_level, database);
 
     match predicate {
         AbstractPredicate::True => ConcretePredicate::True,
@@ -300,12 +298,16 @@ fn to_subselect_predicate(
     .unwrap_or(to_join_predicate(predicate, selection_level, database)) // fallback to join predicate
 }
 
-fn leaf_column(column_path: &ColumnPath, selection_level_alias: &Option<String>) -> Column {
+fn leaf_column(
+    column_path: &ColumnPath,
+    selection_level: &SelectionLevel,
+    database: &Database,
+) -> Column {
     match column_path {
         ColumnPath::Physical(links) => {
             let alias = links
                 .alias()
-                .map(|ref links_alias| make_alias(links_alias, selection_level_alias));
+                .map(|links_alias| selection_level.alias(links_alias, database));
             Column::physical(links.leaf_column(), alias)
         }
         ColumnPath::Param(l) => Column::Param(l.clone()),

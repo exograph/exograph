@@ -11,10 +11,7 @@ use crate::{
     sql::{predicate::ConcretePredicate, select::Select, table::Table},
     transform::{
         join_util,
-        pg::{
-            selection_level::{make_alias, SelectionLevel},
-            Postgres,
-        },
+        pg::{selection_level::SelectionLevel, Postgres},
         transformer::{OrderByTransformer, PredicateTransformer},
     },
     AbstractOrderBy, AbstractPredicate, Column, Database, Limit, ManyToOne, Offset, OneToMany,
@@ -171,9 +168,9 @@ pub(super) fn compute_relation_predicate(
             };
 
             let alias = if use_alias {
-                Some(make_alias(
-                    &database.get_table(self_column_id.table_id).name,
-                    &selection_level.alias(database),
+                Some(selection_level.alias(
+                    database.get_table(self_column_id.table_id).name.clone(),
+                    database,
                 ))
             } else {
                 None

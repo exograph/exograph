@@ -1,14 +1,17 @@
 use crate::{Database, RelationId};
 
+/// Selection level represents the level of a subselection in a query.
 #[derive(Debug, Clone)]
 pub enum SelectionLevel {
     /// Top level selection
     TopLevel,
     /// Nested sub selection, which each element representing the relation between parent and child selection
-    /// For example, if we have a query like: `concerts { venue { .. }}`, the selection level for the venue
-    /// selection will be `Nested(vec![RelationId::ManyToOne(<venues.id, concerts.venue_id>)])`.
+    /// For example, if we have a query like: `users { documents { .. }}`, the selection level for the documents
+    /// selection will be `Nested(vec![RelationId::ManyToOne(<documents.user_id, users.id>)])`.
     Nested(Vec<RelationId>),
 }
+
+const ALIAS_SEPARATOR: &str = "$";
 
 impl SelectionLevel {
     pub(super) fn is_top_level(&self) -> bool {
@@ -33,32 +36,20 @@ impl SelectionLevel {
         }
     }
 
-    pub(crate) fn alias(&self, database: &Database) -> Option<String> {
+    /// Compute a suitable alias for this selection level
+    pub(crate) fn alias(&self, name: String, database: &Database) -> String {
         match self {
-            SelectionLevel::TopLevel => None,
+            SelectionLevel::TopLevel => name,
             SelectionLevel::Nested(relation_ids) => {
-                Some(relation_ids.iter().fold(String::new(), |acc, relation_id| {
+                relation_ids.iter().rev().fold(name, |acc, relation_id| {
                     let foreign_table_id = match relation_id {
                         RelationId::ManyToOne(r) => r.deref(database).self_column_id.table_id,
                         RelationId::OneToMany(r) => r.deref(database).self_pk_column_id.table_id,
                     };
-                    let name = &database.get_table(foreign_table_id).name;
-                    join_alias_components(&acc, name)
-                }))
+                    let table_name = &database.get_table(foreign_table_id).name;
+                    format!("{table_name}{ALIAS_SEPARATOR}{acc}")
+                })
             }
         }
     }
-}
-
-const ALIAS_SEPARATOR: &str = "$";
-
-pub(crate) fn make_alias(name: &str, context_name: &Option<String>) -> String {
-    match context_name {
-        Some(ref context_name) => join_alias_components(context_name, name),
-        None => name.to_owned(),
-    }
-}
-
-fn join_alias_components(context_name: &str, name: &str) -> String {
-    format!("{context_name}{ALIAS_SEPARATOR}{name}")
 }
