@@ -23,7 +23,6 @@ use core_plugin_interface::{
         access_solver::{
             eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
             reduce_common_primitive_expression, AccessPredicate, AccessSolver,
-            SolvedCommonPrimitiveExpression,
         },
         context::RequestContext,
         value::Val,
@@ -63,14 +62,14 @@ impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper {
 }
 
 #[derive(Debug)]
-pub enum SolvedPrimitiveExpression<'a> {
-    Common(SolvedCommonPrimitiveExpression<'a>),
+pub enum SolvedPrimitiveExpression {
+    Common(Option<Val>),
     Column(PhysicalColumnPath),
 }
 
 #[derive(Debug)]
-pub enum SolvedJsonPrimitiveExpression<'a> {
-    Common(SolvedCommonPrimitiveExpression<'a>),
+pub enum SolvedJsonPrimitiveExpression {
+    Common(Option<Val>),
     Path(Vec<String>),
 }
 
@@ -79,24 +78,24 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     for PostgresSubsystem
 {
     async fn solve_relational_op(
-        &'a self,
-        request_context: &'a RequestContext<'a>,
+        &self,
+        request_context: &RequestContext<'a>,
         _input_context: Option<&'a Val>,
-        op: &'a AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
-    ) -> AbstractPredicateWrapper {
+        op: &AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
+    ) -> Option<AbstractPredicateWrapper> {
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a DatabaseAccessPrimitiveExpression,
-        ) -> SolvedPrimitiveExpression<'a> {
+        ) -> Option<SolvedPrimitiveExpression> {
             match expr {
                 DatabaseAccessPrimitiveExpression::Common(expr) => {
-                    SolvedPrimitiveExpression::Common(
-                        reduce_common_primitive_expression(solver, request_context, expr).await,
-                    )
+                    let primitive_expr =
+                        reduce_common_primitive_expression(solver, request_context, expr).await;
+                    Some(SolvedPrimitiveExpression::Common(primitive_expr))
                 }
                 DatabaseAccessPrimitiveExpression::Column(column_path) => {
-                    SolvedPrimitiveExpression::Column(column_path.clone())
+                    Some(SolvedPrimitiveExpression::Column(column_path.clone()))
                 }
             }
         }
@@ -105,112 +104,97 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         let left = reduce_primitive_expression(self, request_context, left).await;
         let right = reduce_primitive_expression(self, request_context, right).await;
 
+        let (left, right) = match (left, right) {
+            (Some(left), Some(right)) => (left, right),
+            _ => return None, // If either side is None, we can't produce a predicate
+        };
+
         type ColumnPredicateFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;
         type ValuePredicateFn = fn(Val, Val) -> AbstractPredicate;
 
-        let helper = |unresolved_context_predicate: AbstractPredicate,
-                      column_predicate: ColumnPredicateFn,
+        let helper = |column_predicate: ColumnPredicateFn,
                       value_predicate: ValuePredicateFn|
-         -> AbstractPredicate {
+         -> Option<AbstractPredicate> {
             match (left, right) {
-                (
-                    SolvedPrimitiveExpression::Common(
-                        SolvedCommonPrimitiveExpression::UnresolvedContext(_),
-                    ),
-                    _,
-                )
-                | (
-                    _,
-                    SolvedPrimitiveExpression::Common(
-                        SolvedCommonPrimitiveExpression::UnresolvedContext(_),
-                    ),
-                ) => unresolved_context_predicate,
+                (SolvedPrimitiveExpression::Common(None), _)
+                | (_, SolvedPrimitiveExpression::Common(None)) => None,
 
                 (
                     SolvedPrimitiveExpression::Column(left_col),
                     SolvedPrimitiveExpression::Column(right_col),
-                ) => column_predicate(to_column_path(&left_col), to_column_path(&right_col)),
+                ) => Some(column_predicate(
+                    to_column_path(&left_col),
+                    to_column_path(&right_col),
+                )),
 
                 (
-                    SolvedPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
-                        left_value,
-                    )),
-                    SolvedPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
-                        right_value,
-                    )),
-                ) => value_predicate(left_value, right_value),
+                    SolvedPrimitiveExpression::Common(Some(left_value)),
+                    SolvedPrimitiveExpression::Common(Some(right_value)),
+                ) => Some(value_predicate(left_value, right_value)),
 
                 // The next two need to be handled separately, since we need to pass the left side
                 // and right side to the predicate in the correct order. For example, `age > 18` is
                 // different from `18 > age`.
                 (
-                    SolvedPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
-                        value,
-                    )),
+                    SolvedPrimitiveExpression::Common(Some(value)),
                     SolvedPrimitiveExpression::Column(column),
-                ) => column_predicate(literal_column(value), to_column_path(&column)),
+                ) => Some(column_predicate(
+                    literal_column(value),
+                    to_column_path(&column),
+                )),
 
                 (
                     SolvedPrimitiveExpression::Column(column),
-                    SolvedPrimitiveExpression::Common(SolvedCommonPrimitiveExpression::Value(
-                        value,
-                    )),
-                ) => column_predicate(to_column_path(&column), literal_column(value)),
+                    SolvedPrimitiveExpression::Common(Some(value)),
+                ) => Some(column_predicate(
+                    to_column_path(&column),
+                    literal_column(value),
+                )),
             }
         };
 
-        AbstractPredicateWrapper(match op {
-            AccessRelationalOp::Eq(..) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::eq,
-                |left_value, right_value| eq_values(&left_value, &right_value).into(),
-            ),
-            AccessRelationalOp::Neq(_, _) => helper(
-                // If a context is undefined, declare the expression as a match. For example,
-                // `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
-                AbstractPredicate::True,
-                AbstractPredicate::neq,
-                |left_value, right_value| neq_values(&left_value, &right_value).into(),
-            ),
+        match op {
+            AccessRelationalOp::Eq(..) => {
+                helper(AbstractPredicate::eq, |left_value, right_value| {
+                    eq_values(&left_value, &right_value).into()
+                })
+            }
+            AccessRelationalOp::Neq(_, _) => {
+                helper(AbstractPredicate::neq, |left_value, right_value| {
+                    neq_values(&left_value, &right_value).into()
+                })
+            }
             // For the next four, we could better optimize cases where values are comparable, but
             // for now, we generate a predicate and let database handle it
-            AccessRelationalOp::Lt(_, _) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::Lt,
-                |left_value, right_value| {
+            AccessRelationalOp::Lt(_, _) => {
+                helper(AbstractPredicate::Lt, |left_value, right_value| {
                     AbstractPredicate::Lt(literal_column(left_value), literal_column(right_value))
-                },
-            ),
-            AccessRelationalOp::Lte(_, _) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::Lte,
-                |left_value, right_value| {
+                })
+            }
+            AccessRelationalOp::Lte(_, _) => {
+                helper(AbstractPredicate::Lte, |left_value, right_value| {
                     AbstractPredicate::Lte(literal_column(left_value), literal_column(right_value))
-                },
-            ),
-            AccessRelationalOp::Gt(_, _) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::Gt,
-                |left_value, right_value| {
+                })
+            }
+            AccessRelationalOp::Gt(_, _) => {
+                helper(AbstractPredicate::Gt, |left_value, right_value| {
                     AbstractPredicate::Gt(literal_column(left_value), literal_column(right_value))
-                },
-            ),
-            AccessRelationalOp::Gte(_, _) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::Gte,
-                |left_value, right_value| {
+                })
+            }
+            AccessRelationalOp::Gte(_, _) => {
+                helper(AbstractPredicate::Gte, |left_value, right_value| {
                     AbstractPredicate::Gte(literal_column(left_value), literal_column(right_value))
-                },
-            ),
+                })
+            }
             AccessRelationalOp::In(..) => helper(
-                AbstractPredicate::False,
                 AbstractPredicate::In,
                 |left_value, right_value| match right_value {
                     Val::List(values) => values.contains(&left_value).into(),
                     _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
                 },
             ),
-        })
+        }
+        .map(AbstractPredicateWrapper)
     }
 }
 
@@ -219,24 +203,24 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
     for PostgresSubsystem
 {
     async fn solve_relational_op(
-        &'a self,
-        request_context: &'a RequestContext<'a>,
+        &self,
+        request_context: &RequestContext<'a>,
         input_context: Option<&'a Val>,
-        op: &'a AccessRelationalOp<InputAccessPrimitiveExpression>,
-    ) -> AbstractPredicateWrapper {
+        op: &AccessRelationalOp<InputAccessPrimitiveExpression>,
+    ) -> Option<AbstractPredicateWrapper> {
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a InputAccessPrimitiveExpression,
-        ) -> SolvedJsonPrimitiveExpression<'a> {
+        ) -> Option<SolvedJsonPrimitiveExpression> {
             match expr {
                 InputAccessPrimitiveExpression::Common(expr) => {
-                    SolvedJsonPrimitiveExpression::Common(
-                        reduce_common_primitive_expression(solver, request_context, expr).await,
-                    )
+                    let primitive_expr =
+                        reduce_common_primitive_expression(solver, request_context, expr).await;
+                    Some(SolvedJsonPrimitiveExpression::Common(primitive_expr))
                 }
                 InputAccessPrimitiveExpression::Path(path) => {
-                    SolvedJsonPrimitiveExpression::Path(path.clone())
+                    Some(SolvedJsonPrimitiveExpression::Path(path.clone()))
                 }
             }
         }
@@ -245,90 +229,75 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
         let left = reduce_primitive_expression(self, request_context, left).await;
         let right = reduce_primitive_expression(self, request_context, right).await;
 
+        let (left, right) = match (left, right) {
+            (Some(left), Some(right)) => (left, right),
+            _ => return None, // If either side is None, we can't produce a predicate
+        };
+
         type ValuePredicateFn = fn(&Val, &Val) -> bool;
 
-        let helper =
-            |unresolved_context_predicate: bool, value_predicate: ValuePredicateFn| -> bool {
-                match (left, right) {
-                    (
-                        SolvedJsonPrimitiveExpression::Common(
-                            SolvedCommonPrimitiveExpression::UnresolvedContext(_),
-                        ),
-                        _,
-                    )
-                    | (
-                        _,
-                        SolvedJsonPrimitiveExpression::Common(
-                            SolvedCommonPrimitiveExpression::UnresolvedContext(_),
-                        ),
-                    ) => unresolved_context_predicate,
+        let helper = |value_predicate: ValuePredicateFn| -> Option<bool> {
+            match (left, right) {
+                (SolvedJsonPrimitiveExpression::Common(None), _)
+                | (_, SolvedJsonPrimitiveExpression::Common(None)) => None,
 
-                    (
-                        SolvedJsonPrimitiveExpression::Path(left_path),
-                        SolvedJsonPrimitiveExpression::Path(right_path),
-                    ) => match_paths(&left_path, &right_path, input_context, value_predicate),
+                (
+                    SolvedJsonPrimitiveExpression::Path(left_path),
+                    SolvedJsonPrimitiveExpression::Path(right_path),
+                ) => Some(match_paths(
+                    &left_path,
+                    &right_path,
+                    input_context,
+                    value_predicate,
+                )),
 
-                    (
-                        SolvedJsonPrimitiveExpression::Common(
-                            SolvedCommonPrimitiveExpression::Value(left_value),
-                        ),
-                        SolvedJsonPrimitiveExpression::Common(
-                            SolvedCommonPrimitiveExpression::Value(right_value),
-                        ),
-                    ) => value_predicate(&left_value, &right_value),
+                (
+                    SolvedJsonPrimitiveExpression::Common(Some(left_value)),
+                    SolvedJsonPrimitiveExpression::Common(Some(right_value)),
+                ) => Some(value_predicate(&left_value, &right_value)),
 
-                    // The next two need to be handled separately, since we need to pass the left side
-                    // and right side to the predicate in the correct order. For example, `age > 18` is
-                    // different from `18 > age`.
-                    (
-                        SolvedJsonPrimitiveExpression::Common(
-                            SolvedCommonPrimitiveExpression::Value(left_value),
-                        ),
-                        SolvedJsonPrimitiveExpression::Path(right_path),
-                    ) => {
-                        let right_value = resolve_value(input_context.unwrap(), &right_path);
-                        // If the user didn't provide a value, we evalute to true. Since the purpose of
-                        // an input predicate is to enforce an invariant, if the user didn't provide a
-                        // value, the original value will remain unchanged thus keeping the invariant
-                        // intact.
-                        match right_value {
-                            Some(right_value) => value_predicate(&left_value, right_value),
-                            None => true,
-                        }
-                    }
-
-                    (
-                        SolvedJsonPrimitiveExpression::Path(left_path),
-                        SolvedJsonPrimitiveExpression::Common(
-                            SolvedCommonPrimitiveExpression::Value(right_value),
-                        ),
-                    ) => {
-                        let left_value = resolve_value(input_context.unwrap(), &left_path);
-                        // See above
-                        match left_value {
-                            Some(left_value) => value_predicate(left_value, &right_value),
-                            None => true,
-                        }
+                // The next two need to be handled separately, since we need to pass the left side
+                // and right side to the predicate in the correct order. For example, `age > 18` is
+                // different from `18 > age`.
+                (
+                    SolvedJsonPrimitiveExpression::Common(Some(left_value)),
+                    SolvedJsonPrimitiveExpression::Path(right_path),
+                ) => {
+                    let right_value = resolve_value(input_context.unwrap(), &right_path);
+                    // If the user didn't provide a value, we evalute to true. Since the purpose of
+                    // an input predicate is to enforce an invariant, if the user didn't provide a
+                    // value, the original value will remain unchanged thus keeping the invariant
+                    // intact.
+                    match right_value {
+                        Some(right_value) => Some(value_predicate(&left_value, right_value)),
+                        None => Some(true),
                     }
                 }
-            };
 
-        AbstractPredicateWrapper(
-            match op {
-                AccessRelationalOp::Eq(..) => helper(false, eq_values),
-                AccessRelationalOp::Neq(_, _) => helper(
-                    // If a context is undefined, declare the expression as a match. For example,
-                    // `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
-                    true, neq_values,
-                ),
-                AccessRelationalOp::Lt(_, _) => helper(false, lt_values), // TODO: See issue #611
-                AccessRelationalOp::Lte(_, _) => helper(false, lte_values),
-                AccessRelationalOp::Gt(_, _) => helper(false, gt_values),
-                AccessRelationalOp::Gte(_, _) => helper(false, gte_values),
-                AccessRelationalOp::In(..) => helper(false, in_values),
+                (
+                    SolvedJsonPrimitiveExpression::Path(left_path),
+                    SolvedJsonPrimitiveExpression::Common(Some(right_value)),
+                ) => {
+                    let left_value = resolve_value(input_context.unwrap(), &left_path);
+                    // See above
+                    match left_value {
+                        Some(left_value) => Some(value_predicate(left_value, &right_value)),
+                        None => Some(true),
+                    }
+                }
             }
-            .into(),
-        )
+        };
+
+        match op {
+            AccessRelationalOp::Eq(..) => helper(eq_values),
+            AccessRelationalOp::Neq(_, _) => helper(neq_values),
+            AccessRelationalOp::Lt(_, _) => helper(lt_values),
+            AccessRelationalOp::Lte(_, _) => helper(lte_values),
+            AccessRelationalOp::Gt(_, _) => helper(gt_values),
+            AccessRelationalOp::Gte(_, _) => helper(gte_values),
+            AccessRelationalOp::In(..) => helper(in_values),
+        }
+        .map(|p| AbstractPredicateWrapper(p.into()))
     }
 }
 
@@ -563,7 +532,11 @@ mod tests {
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
     ) -> AbstractPredicate {
-        subsystem.solve(request_context, None, expr).await.0
+        subsystem
+            .solve(request_context, None, expr)
+            .await
+            .map(|p| p.0)
+            .unwrap_or(AbstractPredicate::False)
     }
 
     type CompareFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;
@@ -752,7 +725,7 @@ mod tests {
             AccessRelationalOp::Neq,
             |_, _| AbstractPredicate::False,
             |_, _| AbstractPredicate::True,
-            AbstractPredicate::True,
+            AbstractPredicate::False,
             AbstractPredicate::Neq,
             AbstractPredicate::Neq,
         )
@@ -1273,12 +1246,12 @@ mod tests {
         let test_system = test_system().await;
         let TestSystem {
             system,
-            published_column_path: published_column_id,
+            published_column_path,
             test_system_resolver,
             ..
         } = &test_system;
 
-        let test_ae = boolean_column_selection(published_column_id.clone());
+        let test_ae = boolean_column_selection(published_column_path.clone());
 
         let context = test_request_context(Value::Null, test_system_resolver); // irrelevant context content
         let solved_predicate = solve_access(&test_ae, &context, system).await;
@@ -1315,6 +1288,135 @@ mod tests {
         let context = test_request_context(Value::Null, test_system_resolver); // context not provided, so we should assume that the user is not an admin
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
+    }
+
+    #[tokio::test]
+    async fn missing_context_independent_expressions() {
+        let test_system = test_system().await;
+        let TestSystem {
+            system,
+            owner_id_column_path,
+            test_system_resolver,
+            ..
+        } = &test_system;
+
+        let context = test_request_context(Value::Null, test_system_resolver); // undefined context
+
+        fn negate(
+            expr: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+        ) -> AccessPredicateExpression<DatabaseAccessPrimitiveExpression> {
+            AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(Box::new(expr)))
+        }
+
+        // If the context is not provided, any relational operation using that context should be
+        // considered false. Also, their complement should also be considered false.
+
+        // Create a test matrix of relational operators and expressions to test the following axes:
+        // - Binary operators
+        // - Left expression with column, literal, and context
+        // - Right expression with column, literal, and context
+        // - Negation of the above
+        for op in [
+            AccessRelationalOp::Eq,
+            AccessRelationalOp::Neq,
+            AccessRelationalOp::Lt,
+            AccessRelationalOp::Lte,
+            AccessRelationalOp::Gt,
+            AccessRelationalOp::Gte,
+        ] {
+            // We test with both a column and a literal on the other side of the relational operator
+            let column_expr_fn =
+                &|| DatabaseAccessPrimitiveExpression::Column(owner_id_column_path.clone());
+            let literal_expr_fn = &|| {
+                DatabaseAccessPrimitiveExpression::Common(
+                    CommonAccessPrimitiveExpression::NumberLiteral(1),
+                )
+            };
+            let non_context_expr_fns: Vec<&dyn Fn() -> DatabaseAccessPrimitiveExpression> =
+                vec![column_expr_fn, literal_expr_fn];
+
+            for non_context_expr_fn in non_context_expr_fns {
+                let context_exp_fn = || context_selection_expr("AccessContext", "user_id");
+
+                // Context on the left side
+                {
+                    let base_expr_fn = || {
+                        AccessPredicateExpression::RelationalOp(op(
+                            Box::new(non_context_expr_fn()),
+                            context_exp_fn(),
+                        ))
+                    };
+
+                    let solved_predicate = solve_access(&base_expr_fn(), &context, system).await;
+                    assert_eq!(solved_predicate, AbstractPredicate::False);
+
+                    let solved_predicate =
+                        solve_access(&negate(base_expr_fn()), &context, system).await;
+                    assert_eq!(solved_predicate, AbstractPredicate::False);
+                }
+
+                // Context on the right side
+                {
+                    let base_expr_fn = || {
+                        AccessPredicateExpression::RelationalOp(op(
+                            context_exp_fn(),
+                            Box::new(non_context_expr_fn()),
+                        ))
+                    };
+
+                    let solved_predicate = solve_access(&base_expr_fn(), &context, system).await;
+                    assert_eq!(solved_predicate, AbstractPredicate::False);
+
+                    let solved_predicate =
+                        solve_access(&negate(base_expr_fn()), &context, system).await;
+                    assert_eq!(solved_predicate, AbstractPredicate::False);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn missing_context_expressions_with_an_or() {
+        let test_system = test_system().await;
+        let TestSystem {
+            system,
+            owner_id_column_path,
+            test_system_resolver,
+            ..
+        } = &test_system;
+
+        let context = test_request_context(Value::Null, test_system_resolver); // undefined context
+
+        // Context isn't provided, however, `<missing-context-expression || true` should still evaluate to true
+        let test_aes = vec![
+            AccessRelationalOp::Eq,
+            AccessRelationalOp::Neq,
+            AccessRelationalOp::Lt,
+            AccessRelationalOp::Lte,
+            AccessRelationalOp::Gt,
+            AccessRelationalOp::Gte,
+        ]
+        .into_iter()
+        .map(|op| {
+            let base_expr_fn = || {
+                AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Or(
+                    Box::new(AccessPredicateExpression::RelationalOp(op(
+                        context_selection_expr("AccessContext", "user_id"),
+                        Box::new(DatabaseAccessPrimitiveExpression::Column(
+                            owner_id_column_path.clone(),
+                        )),
+                    ))),
+                    Box::new(AccessPredicateExpression::BooleanLiteral(true)),
+                ))
+            };
+            base_expr_fn()
+        })
+        .collect::<Vec<_>>();
+
+        for test_ae in test_aes {
+            let solved_predicate = solve_access(&test_ae, &context, system).await;
+            assert_eq!(solved_predicate, AbstractPredicate::True);
+        }
     }
 
     fn test_request_context(

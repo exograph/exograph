@@ -19,6 +19,7 @@ use futures::FutureExt;
 use std::cmp::min;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::exotest::common::TestResult;
 use crate::exotest::introspection_tests::run_introspection_test;
@@ -103,17 +104,35 @@ pub fn run(
                         };
 
                         for test in tests.iter() {
-                            let result = std::panic::AssertUnwindSafe(run_testfile(
-                                test,
-                                &model_path,
-                                ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
-                            ))
-                            .catch_unwind()
-                            .await;
+                            let mut retries = test.retries;
+                            let mut pause = 1000;
+                            loop {
+                                let result = std::panic::AssertUnwindSafe(run_testfile(
+                                    test,
+                                    &model_path,
+                                    ephemeral_server.as_ref().as_ref()
+                                        as &dyn EphemeralDatabaseServer,
+                                ))
+                                .catch_unwind()
+                                .await;
 
-                            tx.send(result.unwrap_or_else(|_| report_panic()))
-                                .map_err(|_| ())
-                                .unwrap();
+                                if result.is_err() {
+                                    // Don't retry after a panic
+                                    retries = 0;
+                                }
+
+                                let result = result.unwrap_or_else(|_| report_panic());
+                                let test_succeeded = result.as_ref().map(|t| t.is_success()).unwrap_or_else(|_| false);
+
+                                if retries == 0 || test_succeeded {
+                                    tx.send(result).map_err(|_| ()).unwrap();
+                                    break;
+                                }
+                                println!("Test with configured retries failed. Waiting for {pause} ms before retrying");
+                                tokio::time::sleep(Duration::from_millis(pause)).await;
+                                pause *= 2;
+                                retries -= 1;
+                            }
                         }
                     })
                 }
