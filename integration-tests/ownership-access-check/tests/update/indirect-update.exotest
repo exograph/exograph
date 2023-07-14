@@ -3,7 +3,7 @@ stages:
   - operation: |
       mutation {
         # Update all documents through user, but implicitly only if the user owns them
-        # Note that in this example (in practice, unrealistically, but appropriate for testing) there is no access control for the User type
+        # Note that in this example (in practice, unrealistically, but appropriate for testing) `User` has `@access(true)`
         updateUsers(where: {id: {gt: 0}}, data: {name: "updated-user2", documents: {update: {id: 1, content: "indirect-update"}}}) { 
           id
           name
