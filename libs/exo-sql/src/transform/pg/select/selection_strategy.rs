@@ -125,8 +125,11 @@ pub(super) fn join_info(
         .unwrap_or(selection_level);
 
     let predicate = transformer.to_predicate(predicate, predicate_selection_level, true, database);
-    let relation_predicate =
-        compute_relation_predicate(selection_level, matches!(join, Table::Join(_)), database);
+    let relation_predicate = compute_relation_predicate(
+        predicate_selection_level,
+        matches!(join, Table::Join(_)),
+        database,
+    );
 
     let predicate = ConcretePredicate::and(predicate, relation_predicate);
 

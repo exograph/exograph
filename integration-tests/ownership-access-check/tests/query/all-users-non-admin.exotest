@@ -1,9 +1,9 @@
 operation: |
   query {
-    users { 
+    users(orderBy: {id: ASC}) { 
       id
       name
-      documents {
+      documents(orderBy: {id: ASC}) {
         id
         content
       }
