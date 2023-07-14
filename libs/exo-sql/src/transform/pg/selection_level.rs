@@ -1,13 +1,56 @@
 use crate::{Database, RelationId};
 
-/// Selection level represents the level of a subselection in a query.
+/// Representation of the level of a subselection in a query.
+///
+/// This serve two purposes:
+/// - Passing an attribute to [crate::select::Select] to indicate if it is a top-level computaiton
+///   (which, in turn, forces `::text` cast for the result)
+/// - Computing the alias of a selection (explained below)
+///
+/// We need aliasing to consider the selection level inside subqueries. For example, consider the
+/// following GraphQL query:
+///
+/// ```graphql
+/// users {
+///    id
+///    name
+///    documents(where: {user: {id: {eq: 2}}}) {
+///      id
+///      content
+///    }
+/// }
+/// ```
+///
+/// Here when forming the SQL, we want to user an alias when referring to the "users" table inside
+/// the subquery for "documents" (note "users$users" below):
+///
+/// ```sql
+/// SELECT COALESCE(json_agg(json_build_object(
+///   'id', "users"."id",
+///   'name', "users"."name",
+///   'documents', (SELECT COALESCE(json_agg(json_build_object(
+///     'id', "documents"."id",
+///     'content', "documents"."content")), '[]'::json)
+///       FROM "documents" LEFT JOIN "users" AS "users$users" ON "documents"."user_id" = "users"."id"
+///         WHERE ("users$users"."id" = $1 AND "users$users"."id" = "documents"."user_id")))), '[]'::json)::text FROM "users"
+/// ```
+///
+/// We manage aliasing by keeping track of the selection level in the [SelectionLevel::Nested]
+/// variant, which is a vector of [RelationId]s, each representing the relation between the parent
+/// and child selection. For example, in the above GraphQL query, the selection level for documents
+/// will be `Nested(vec![RelationId::ManyToOne(<documents.user_id, users.id>)])`. Then we pick the
+/// name of the self table of each relation in the vector to form the alias. For example, in the
+/// above case, we pick the name of the "users" table to form the alias "users$user".
+///
+/// Notes:
+/// - We use `$` as the separator to avoid conflicts with other table names.
+/// - We could use other aliasing such as just the level number or even a mapping from the vector to
+///   an arbitrary (but unique) name, but that would be less readable when debugging.
 #[derive(Debug, Clone)]
 pub enum SelectionLevel {
     /// Top level selection
     TopLevel,
     /// Nested sub selection, which each element representing the relation between parent and child selection
-    /// For example, if we have a query like: `users { documents { .. }}`, the selection level for the documents
-    /// selection will be `Nested(vec![RelationId::ManyToOne(<documents.user_id, users.id>)])`.
     Nested(Vec<RelationId>),
 }
 
