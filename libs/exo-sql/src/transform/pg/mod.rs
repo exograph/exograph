@@ -44,6 +44,13 @@ impl SelectionLevel {
         }
     }
 
+    pub fn tail_relation_id(&self) -> Option<&RelationId> {
+        match self {
+            SelectionLevel::TopLevel => None,
+            SelectionLevel::Nested(relation_ids) => relation_ids.last(),
+        }
+    }
+
     pub fn alias(&self, database: &Database) -> Option<String> {
         match self {
             SelectionLevel::TopLevel => None,

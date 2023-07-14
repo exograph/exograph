@@ -18,12 +18,6 @@ use crate::{
 use super::{make_alias, Postgres};
 
 impl PredicateTransformer for Postgres {
-    /// Transform an abstract predicate into a concrete predicate
-    ///
-    /// # Arguments
-    /// * `predicate` - The predicate to transform
-    /// * `tables_supplied` - Whether the tables are already in context. If they are, the predicate can simply use the table.column syntax.
-    ///                       If they are not, the predicate will need to bring in the tables being referred to.
     fn to_predicate(
         &self,
         predicate: &AbstractPredicate,

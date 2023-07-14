@@ -110,31 +110,30 @@ pub(super) fn join_info(
         .collect();
 
     let join = join_util::compute_join(base_table_id, &columns_paths, selection_level, database);
+
+    // If `compute_join` resulted in a join, we need to pass the selection level unchanged, so that
+    // aliasing can be in sync with the join. Otherwise, we need to pass just the tail relation id
+    // so that relation predicates can be applied.
     let predicate_selection_level_override = match join {
         Table::Join(_) => None,
-        _ => match selection_level {
-            SelectionLevel::TopLevel => None,
-            SelectionLevel::Nested(relation_ids) => relation_ids
-                .last()
-                .map(|relation| SelectionLevel::Nested(vec![*relation])),
-        },
+        _ => selection_level
+            .tail_relation_id()
+            .map(|relation_id| SelectionLevel::Nested(vec![*relation_id])),
     };
     let predicate_selection_level = predicate_selection_level_override
         .as_ref()
         .unwrap_or(selection_level);
+
     let predicate = transformer.to_predicate(predicate, predicate_selection_level, true, database);
-    let relation_predicate = compute_relation_predicate(
-        predicate_selection_level,
-        matches!(join, Table::Join(_)),
-        database,
-    );
+    let relation_predicate =
+        compute_relation_predicate(selection_level, matches!(join, Table::Join(_)), database);
 
     let predicate = ConcretePredicate::and(predicate, relation_predicate);
 
     (join, predicate)
 }
 
-pub fn compute_relation_predicate(
+pub(super) fn compute_relation_predicate(
     selection_level: &SelectionLevel,
     use_alias: bool,
     database: &Database,

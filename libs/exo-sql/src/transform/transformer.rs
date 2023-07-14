@@ -94,6 +94,14 @@ pub trait UpdateTransformer {
 }
 
 pub trait PredicateTransformer {
+    /// Transform an abstract predicate into a concrete predicate
+    ///
+    /// # Arguments
+    /// * `predicate` - The predicate to transform
+    /// * `selection_level` - The selection level of that led to this predicate (through subselects)
+    /// * `tables_supplied` - Whether the tables are already in context. If they are, the predicate can simply use the table.column syntax.
+    ///                       If they are not, the predicate will need to bring in the tables being referred to.
+    /// * `database` - The database
     fn to_predicate(
         &self,
         predicate: &AbstractPredicate,
