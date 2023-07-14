@@ -10,12 +10,12 @@
 use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
     sql::predicate::ConcretePredicate,
-    transform::{pg::SelectionLevel, transformer::PredicateTransformer},
+    transform::{pg::selection_level::SelectionLevel, transformer::PredicateTransformer},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, Database,
     PhysicalColumnPath, Selection, SelectionElement,
 };
 
-use super::{make_alias, Postgres};
+use super::{selection_level::make_alias, Postgres};
 
 impl PredicateTransformer for Postgres {
     fn to_predicate(

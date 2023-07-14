@@ -1,6 +1,6 @@
 operation: |
   query {
-    users_with_doc_1: users(where: {documents: {id: {eq: 1}}}, orderBy: {id: ASC}) { 
+    users_with_doc_1: users(where: {documents: {id: {eq: 1}}}, orderBy: {id: ASC}) {
       id
       name
       documents(orderBy: {id: ASC}) {
@@ -9,7 +9,7 @@ operation: |
       }
     }
     # This users doesn't own doc 3, so the user who holds the doc will be returned, but not the doc (`User` has `@access(true)`)
-    users_with_doc_3: users(where: {documents: {id: {eq: 3}}}, orderBy: {id: ASC}) { 
+    users_with_doc_3: users(where: {documents: {id: {eq: 3}}}, orderBy: {id: ASC}) {
       id
       name
       documents(orderBy: {id: ASC}) {
@@ -17,14 +17,14 @@ operation: |
         content
       }
     }
-    all_users_with_docs: users(orderBy: {id: ASC}) { 
+    all_users_with_docs: users(orderBy: {id: ASC}) {
       id
       name
       documents(where: {id: {gt: 0}}, orderBy: {id: ASC}) {
         id
         content
       }
-    }    
+    }
   }
 auth: |
   {

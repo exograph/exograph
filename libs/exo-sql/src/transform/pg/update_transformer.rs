@@ -49,7 +49,7 @@ use crate::{
     ColumnId, Database,
 };
 
-use super::{Postgres, SelectionLevel};
+use super::{selection_level::SelectionLevel, Postgres};
 
 impl UpdateTransformer for Postgres {
     /// Transform an abstract update into a transaction script.

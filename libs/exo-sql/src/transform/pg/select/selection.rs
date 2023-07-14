@@ -12,7 +12,7 @@ use crate::{
         json_agg::JsonAgg,
         json_object::{JsonObject, JsonObjectElement},
     },
-    transform::pg::{Postgres, SelectionLevel},
+    transform::pg::{selection_level::SelectionLevel, Postgres},
     AliasedSelectionElement, Column, Database, Selection, SelectionCardinality, SelectionElement,
 };
 

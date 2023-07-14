@@ -21,7 +21,7 @@ use crate::{
     Database,
 };
 
-use super::{Postgres, SelectionLevel};
+use super::{selection_level::SelectionLevel, Postgres};
 
 impl DeleteTransformer for Postgres {
     #[instrument(

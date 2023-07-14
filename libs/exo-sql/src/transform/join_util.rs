@@ -11,13 +11,13 @@ use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
     sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
     transform::{
-        pg::make_alias,
+        pg::selection_level::make_alias,
         table_dependency::{DependencyLink, TableDependency},
     },
     Database, PhysicalColumnPath, TableId,
 };
 
-use super::pg::SelectionLevel;
+use super::pg::selection_level::SelectionLevel;
 
 /// Compute the join needed to access the leaf columns of a list of column paths. Will return a
 /// `Table::Physical` if there are no dependencies to join otherwise a `Table::Join`.
@@ -39,6 +39,7 @@ pub fn compute_join(
             selection_level_alias,
         );
 
+        // We don't use the alias for the top level table in predicate either, so match the behavior here
         let init_table = {
             Table::physical(
                 dependency.table_id,
@@ -95,7 +96,7 @@ pub fn compute_join(
 mod tests {
     use crate::{
         sql::ExpressionBuilder,
-        transform::{pg::SelectionLevel, test_util::TestSetup},
+        transform::{pg::selection_level::SelectionLevel, test_util::TestSetup},
         PhysicalColumnPath,
     };
 

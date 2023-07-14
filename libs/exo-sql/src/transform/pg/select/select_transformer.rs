@@ -16,7 +16,7 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{pg::SelectionLevel, transformer::SelectTransformer},
+    transform::{pg::selection_level::SelectionLevel, transformer::SelectTransformer},
     Database,
 };
 

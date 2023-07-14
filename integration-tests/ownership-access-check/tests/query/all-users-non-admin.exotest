@@ -1,6 +1,6 @@
 operation: |
   query {
-    users(orderBy: {id: ASC}) { 
+    users(orderBy: {id: ASC}) {
       id
       name
       documents(orderBy: {id: ASC}) {

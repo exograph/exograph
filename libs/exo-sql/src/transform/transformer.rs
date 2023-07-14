@@ -19,7 +19,7 @@ use crate::{
     AbstractOrderBy, AbstractPredicate, Database,
 };
 
-use super::pg::{Postgres, SelectionLevel};
+use super::pg::{selection_level::SelectionLevel, Postgres};
 
 /// Transform an abstract operation into a transaction script
 pub trait OperationTransformer {

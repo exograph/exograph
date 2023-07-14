@@ -8,14 +8,14 @@ operation: |
         content
       }
     }
-    all_users_with_docs: users(orderBy: {id: ASC}) { 
+    all_users_with_docs: users(orderBy: {id: ASC}) {
       id
       name
       documents(where: {id: {gt: 0}}, orderBy: {id: ASC}) {
         id
         content
       }
-    }    
+    }
   }
 auth: |
   {

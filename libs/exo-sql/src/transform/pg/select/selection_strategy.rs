@@ -11,7 +11,10 @@ use crate::{
     sql::{predicate::ConcretePredicate, select::Select, table::Table},
     transform::{
         join_util,
-        pg::{make_alias, Postgres, SelectionLevel},
+        pg::{
+            selection_level::{make_alias, SelectionLevel},
+            Postgres,
+        },
         transformer::{OrderByTransformer, PredicateTransformer},
     },
     AbstractOrderBy, AbstractPredicate, Column, Database, Limit, ManyToOne, Offset, OneToMany,

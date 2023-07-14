@@ -1,7 +1,7 @@
 # Query with a user that can only see his own documents (user 2 owns documents 1 and 2)
 operation: |
   query {
-    documents { 
+    documents {
       id
       content
       user {

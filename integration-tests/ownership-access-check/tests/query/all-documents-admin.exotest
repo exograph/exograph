@@ -1,6 +1,6 @@
 operation: |
   query {
-    documents { 
+    documents {
       id
       content
       user {
