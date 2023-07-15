@@ -399,6 +399,77 @@ mod tests {
     }
 
     #[test]
+    fn nested_one_to_many_with_predicate() {
+        // venues { concert(where: {venue: {id: {eq: 2}}} )}
+        TestSetup::with_setup(
+            |TestSetup {
+                 database,
+                 concerts_table,
+                 venues_table,
+                 concerts_id_column,
+                 venues_id_column,
+                 concerts_venue_id_column,
+                 ..
+             }| {
+                let aselect = AbstractSelect {
+                    table_id: venues_table,
+                    selection: Selection::Json(
+                        vec![
+                            AliasedSelectionElement::new(
+                                "id".to_string(),
+                                SelectionElement::Physical(venues_id_column),
+                            ),
+                            AliasedSelectionElement::new(
+                                "concerts".to_string(),
+                                SelectionElement::SubSelect(
+                                    RelationId::OneToMany(
+                                        concerts_venue_id_column
+                                            .get_otm_relation(&database)
+                                            .unwrap(),
+                                    ),
+                                    AbstractSelect {
+                                        table_id: concerts_table,
+                                        selection: Selection::Json(
+                                            vec![AliasedSelectionElement::new(
+                                                "id".to_string(),
+                                                SelectionElement::Physical(concerts_id_column),
+                                            )],
+                                            SelectionCardinality::Many,
+                                        ),
+                                        predicate: AbstractPredicate::Eq(
+                                            // concert.venue.id = 1
+                                            ColumnPath::Physical(PhysicalColumnPath::from_columns(
+                                                vec![concerts_venue_id_column, venues_id_column],
+                                                &database,
+                                            )),
+                                            ColumnPath::Param(SQLParamContainer::new(1)),
+                                        ),
+                                        order_by: None,
+                                        offset: None,
+                                        limit: None,
+                                    },
+                                ),
+                            ),
+                        ],
+                        SelectionCardinality::Many,
+                    ),
+                    predicate: Predicate::True,
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                };
+
+                let select = Postgres {}.to_select(&aselect, &database);
+                assert_binding!(
+                    select.to_sql(&database),
+                    r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" LEFT JOIN "venues" AS "venues$venues" ON "concerts"."venue_id" = "venues"."id" WHERE ("venues$venues"."id" = $1 AND "venues$venues"."id" = "concerts"."venue_id")))), '[]'::json)::text FROM "venues""#,
+                    1
+                );
+            },
+        );
+    }
+
+    #[test]
     fn nested_predicate() {
         TestSetup::with_setup(
             |TestSetup {
