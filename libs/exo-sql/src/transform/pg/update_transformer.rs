@@ -46,7 +46,7 @@ use crate::{
         update::TemplateUpdate,
     },
     transform::transformer::{PredicateTransformer, SelectTransformer, UpdateTransformer},
-    ColumnId, Database, Predicate,
+    ColumnId, Database, PhysicalColumn, Predicate,
 };
 
 use super::{selection_level::SelectionLevel, Postgres};
@@ -190,13 +190,6 @@ fn update_op<'a>(
     predicate_transformer: &impl PredicateTransformer,
     database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
-    let column_id_values: Vec<(ColumnId, ProxyColumn)> = nested_update
-        .update
-        .column_values
-        .iter()
-        .map(|(col, val)| (*col, ProxyColumn::Concrete(val.into())))
-        .collect();
-
     let relation_predicate = Predicate::Eq(
         ProxyColumn::Concrete(
             Column::Physical {
@@ -214,8 +207,10 @@ fn update_op<'a>(
         },
     );
 
-    let column_values = column_id_values
-        .into_iter()
+    let column_values: Vec<(&PhysicalColumn, &Column)> = nested_update
+        .update
+        .column_values
+        .iter()
         .map(|(col_id, col)| (col_id.get_column(database), col))
         .collect();
 

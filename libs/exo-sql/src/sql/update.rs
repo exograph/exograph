@@ -85,7 +85,7 @@ pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: ConcretePredicate,
     pub relation_predicate: Predicate<ProxyColumn<'a>>,
-    pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
+    pub column_values: Vec<(&'a PhysicalColumn, &'a Column)>,
     pub returning: Vec<Column>,
 }
 
@@ -106,15 +106,7 @@ impl<'a> TemplateUpdate<'a> {
                     .column_values
                     .iter()
                     .map(|(physical_col, col)| {
-                        let resolved_col = match col {
-                            ProxyColumn::Concrete(col) => col.as_ref().into(),
-                            ProxyColumn::Template { col_index, step_id } => {
-                                MaybeOwned::Owned(Column::Param(SQLParamContainer::new(
-                                    transaction_context
-                                        .resolve_value(*step_id, row_index, *col_index),
-                                )))
-                            }
-                        };
+                        let resolved_col = (*col).into();
                         (*physical_col, resolved_col)
                     })
                     .collect();
