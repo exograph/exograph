@@ -1,6 +1,6 @@
 operation: |
     query {
-        venues(where: {concerts: {id: {lt: 100}}}) { # Essentially, all venues, but with a nested where clause
+        venues(where: {concerts: {id: {lt: 100}}}) @unordered { # Essentially, all venues, but with a nested where clause
             id
             name
             published
@@ -12,16 +12,16 @@ response: |
       "data": {
         "venues": [
           {
-            "id": 1,
-            "name": "Venue1",
-            "published": true,
-            "latitude": 37.7749
-          },
-          {
             "id": 2,
             "name": "Venue2",
             "published": false,
             "latitude": 35.6762
+          },
+          {
+            "id": 1,
+            "name": "Venue1",
+            "published": true,
+            "latitude": 37.7749
           }
         ]
       }
