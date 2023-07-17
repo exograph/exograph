@@ -40,6 +40,13 @@ stages:
                   "user": {
                     "id": 2
                   }
+                },
+                {
+                  "id": 1,
+                  "content": "indirect-update",
+                  "user": {
+                    "id": 2
+                  }
                 }
               ]
             },
@@ -89,59 +96,12 @@ stages:
     response: |
       {
         "data": {
-          "allUsers": [
-            {
-              "id": 1,
-              "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 3,
-                  "content": "content3"
-                }
-              ]
-            },
-            {
-              "id": 2,
-              "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2"
-                }
-              ]
-            },
-            {
-              "id": 3,
-              "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 4,
-                  "content": "content4"
-                }
-              ]
-            },
-            {
-              "id": 4,
-              "name": "updated-user2",
-              "documents": []
-            },
-            {
-              "id": 5,
-              "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 1,
-                  "content": "indirect-update"
-                }
-              ]
-            }
-          ],
           "allDocs": [
             {
               "id": 1,
               "content": "indirect-update",
               "user": {
-                "id": 5,
+                "id": 2,
                 "name": "updated-user2"
               }
             },
@@ -168,6 +128,52 @@ stages:
                 "id": 3,
                 "name": "updated-user2"
               }
+            }
+          ],
+          "allUsers": [
+            {
+              "id": 1,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 3,
+                  "content": "content3"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 2,
+                  "content": "content2"
+                },
+                {
+                  "id": 1,
+                  "content": "indirect-update"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 4,
+                  "content": "content4"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 5,
+              "name": "updated-user2",
+              "documents": []
             }
           ]
         }

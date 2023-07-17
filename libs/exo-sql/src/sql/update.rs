@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::{Database, PhysicalTable};
+use crate::{Database, PhysicalTable, Predicate};
 
 use super::{
     column::{Column, ProxyColumn},
@@ -26,6 +26,9 @@ pub struct Update<'a> {
     pub table: &'a PhysicalTable,
     /// The predicate to filter rows to update.
     pub predicate: MaybeOwned<'a, ConcretePredicate>,
+    // Any additional predicate to filter rows to update.
+    // TODO: Figure out a way to combine this with predicate (currently can't due to how we require combining predicates to take ownership of the constituent predicates)
+    pub additional_predicate: Option<ConcretePredicate>,
     /// The columns to update and their values.
     pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column>)>,
     /// The columns to return.
@@ -60,6 +63,16 @@ impl<'a> ExpressionBuilder for Update<'a> {
             self.predicate.build(database, builder);
         }
 
+        if let Some(additional_predicate) = &self.additional_predicate {
+            // If we have a predicate, we need to add an `AND` before the additional predicate, else we need to add a `WHERE`
+            if self.predicate.as_ref() != &ConcretePredicate::True {
+                builder.push_str(" AND ");
+            } else {
+                builder.push_str(" WHERE ");
+            }
+            additional_predicate.build(database, builder);
+        }
+
         if !self.returning.is_empty() {
             builder.push_str(" RETURNING ");
             builder.push_elems(database, &self.returning, ", ");
@@ -71,6 +84,7 @@ impl<'a> ExpressionBuilder for Update<'a> {
 pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: ConcretePredicate,
+    pub relation_predicate: Predicate<ProxyColumn<'a>>,
     pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
     pub returning: Vec<Column>,
 }
@@ -104,9 +118,54 @@ impl<'a> TemplateUpdate<'a> {
                         (*physical_col, resolved_col)
                     })
                     .collect();
+
+                let relation_predicate = match &self.relation_predicate {
+                    Predicate::Eq(l, r) => {
+                        let l = match l {
+                            ProxyColumn::Concrete(col) => match col.as_ref() {
+                                Column::Physical {
+                                    column_id,
+                                    table_alias,
+                                } => Column::Physical {
+                                    column_id: *column_id,
+                                    table_alias: table_alias.clone(),
+                                },
+                                _ => unimplemented!(),
+                            },
+                            ProxyColumn::Template { col_index, step_id } => {
+                                Column::Param(SQLParamContainer::new(
+                                    transaction_context
+                                        .resolve_value(*step_id, row_index, *col_index),
+                                ))
+                            }
+                        };
+                        let r = match r {
+                            ProxyColumn::Concrete(col) => match col.as_ref() {
+                                Column::Physical {
+                                    column_id,
+                                    table_alias,
+                                } => Column::Physical {
+                                    column_id: *column_id,
+                                    table_alias: table_alias.clone(),
+                                },
+                                _ => unimplemented!(),
+                            },
+                            ProxyColumn::Template { col_index, step_id } => {
+                                Column::Param(SQLParamContainer::new(
+                                    transaction_context
+                                        .resolve_value(*step_id, row_index, *col_index),
+                                ))
+                            }
+                        };
+                        ConcretePredicate::eq(l, r)
+                    }
+                    _ => unimplemented!(),
+                };
+
                 Update {
                     table: self.table,
                     predicate: (&self.predicate).into(),
+                    additional_predicate: Some(relation_predicate),
                     column_values: resolved_column_values,
                     returning: self.returning.iter().map(|col| col.into()).collect(),
                 }

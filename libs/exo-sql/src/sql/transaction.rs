@@ -31,7 +31,7 @@ pub struct TransactionContext {
     results: Vec<TransactionStepResult>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TransactionStepId(pub usize);
 
 impl TransactionContext {
@@ -53,14 +53,14 @@ impl<'a> TransactionScript<'a> {
         skip(self, tx)
         )]
     pub async fn execute(
-        &self,
+        self,
         database: &Database,
         tx: &mut Transaction<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
         let mut transaction_context = TransactionContext { results: vec![] };
 
         // Execute each step in the transaction and store the result in the transaction_context
-        for step in self.steps.iter() {
+        for step in self.steps.into_iter() {
             let result = step.execute(database, tx, &transaction_context).await?;
             transaction_context.results.push(result)
         }
@@ -94,7 +94,7 @@ impl<'a> TransactionStep<'a> {
         skip(self, client, transaction_context)
         )]
     pub async fn execute(
-        &self,
+        self,
         database: &Database,
         client: &mut impl GenericClient,
         transaction_context: &TransactionContext,
@@ -104,17 +104,21 @@ impl<'a> TransactionStep<'a> {
             Self::Template(step) => {
                 let concrete = step.resolve(transaction_context);
 
-                match concrete.as_slice() {
-                    [init @ .., last] => {
-                        // Execute all but the last step
-                        for substep in init {
-                            substep.execute(database, client).await?;
-                        }
+                let mut res: Result<TransactionStepResult, DatabaseError> = Ok(vec![]);
+
+                let substep_count = concrete.len();
+
+                for (index, substep) in concrete.into_iter().enumerate() {
+                    if index == substep_count - 1 {
                         // Execute the last step and return the result
-                        last.execute(database, client).await
+                        res = substep.execute(database, client).await;
+                    } else {
+                        // Execute all but the last step
+                        substep.execute(database, client).await?;
                     }
-                    _ => Ok(vec![]),
                 }
+
+                res
             }
         }
     }
@@ -139,7 +143,7 @@ impl<'a> ConcreteTransactionStep<'a> {
             )
         )]
     pub async fn execute(
-        &'a self,
+        self,
         database: &Database,
         client: &mut impl GenericClient,
     ) -> Result<TransactionStepResult, DatabaseError> {

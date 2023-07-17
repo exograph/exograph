@@ -46,7 +46,7 @@ use crate::{
         update::TemplateUpdate,
     },
     transform::transformer::{PredicateTransformer, SelectTransformer, UpdateTransformer},
-    ColumnId, Database,
+    ColumnId, Database, Predicate,
 };
 
 use super::{selection_level::SelectionLevel, Postgres};
@@ -190,14 +190,21 @@ fn update_op<'a>(
     predicate_transformer: &impl PredicateTransformer,
     database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
-    let mut column_id_values: Vec<(ColumnId, ProxyColumn)> = nested_update
+    let column_id_values: Vec<(ColumnId, ProxyColumn)> = nested_update
         .update
         .column_values
         .iter()
         .map(|(col, val)| (*col, ProxyColumn::Concrete(val.into())))
         .collect();
-    column_id_values.push((
-        nested_update.relation_column_id,
+
+    let relation_predicate = Predicate::Eq(
+        ProxyColumn::Concrete(
+            Column::Physical {
+                column_id: nested_update.nesting_relation.foreign_column_id,
+                table_alias: None,
+            }
+            .into(),
+        ),
         ProxyColumn::Template {
             // The column index is always 0 because we want to get the only column in the row
             // such as `UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING
@@ -205,7 +212,7 @@ fn update_op<'a>(
             col_index: 0,
             step_id: parent_step_id,
         },
-    ));
+    );
 
     let column_values = column_id_values
         .into_iter()
@@ -220,6 +227,7 @@ fn update_op<'a>(
             false,
             database,
         ),
+        relation_predicate,
         column_values,
         returning: vec![],
     })
@@ -398,7 +406,10 @@ mod tests {
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
-                    relation_column_id: concerts_venue_id_column,
+                    nesting_relation: concerts_venue_id_column
+                        .get_otm_relation(&database)
+                        .unwrap()
+                        .deref(&database),
                     update: AbstractUpdate {
                         table_id: concerts_table,
                         predicate: Predicate::True,

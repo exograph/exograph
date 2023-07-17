@@ -85,6 +85,7 @@ impl PhysicalTable {
                 .map(|(pc, col)| (pc, col.into()))
                 .collect(),
             predicate,
+            additional_predicate: None,
             returning,
         }
     }

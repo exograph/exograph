@@ -44,7 +44,7 @@
 //! user-provided predicates (id = 100 for update and id =  110 for delete). TODO: Should we
 //! fail if the the combined predicate does not match any rows?
 
-use crate::{sql::column::Column, ColumnId, TableId};
+use crate::{sql::column::Column, ColumnId, OneToMany, TableId};
 
 use super::{
     delete::AbstractDelete, insert::AbstractInsert, predicate::AbstractPredicate,
@@ -81,7 +81,7 @@ pub struct AbstractUpdate {
 #[derive(Debug)]
 pub struct NestedAbstractUpdate {
     /// The column that refers to the foreign table. In our example, this would be `concert_artist.concert_id` (which refers to `concert.id`)
-    pub relation_column_id: ColumnId,
+    pub nesting_relation: OneToMany,
     /// The update to apply to the nested table
     pub update: AbstractUpdate,
 }
