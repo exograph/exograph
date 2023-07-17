@@ -80,7 +80,7 @@ pub struct AbstractUpdate {
 /// In our example, the `update: [{id: 100, artist: {id: 10}, rank: 2}, {id: 101, artist: {id: 10}, role: "accompanying"}]` part
 #[derive(Debug)]
 pub struct NestedAbstractUpdate {
-    /// The column that refers to the foreign table. In our example, this would be `concert_artist.concert_id` (which refers to `concert.id`)
+    /// The relation with the parent table. In our example, this would be `OneToMany { self_pk_column_id: concert.id, foreign_column_id: concert_artist.concert_id}`
     pub nesting_relation: OneToMany,
     /// The update to apply to the nested table
     pub update: AbstractUpdate,
@@ -98,8 +98,8 @@ pub struct NestedAbstractInsert {
 /// In our example, the `delete: [{id: 110}]` part
 #[derive(Debug)]
 pub struct NestedAbstractDelete {
-    /// Same as `NestedAbstractUpdate::relation_column_id`
-    pub relation_column_id: ColumnId,
+    /// Same as `NestedAbstractUpdate::nesting_relation`
+    pub nesting_relation: OneToMany,
     /// The delete to apply to the nested table
     pub delete: AbstractDelete,
 }

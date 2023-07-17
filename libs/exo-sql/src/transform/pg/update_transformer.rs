@@ -46,7 +46,7 @@ use crate::{
         update::TemplateUpdate,
     },
     transform::transformer::{PredicateTransformer, SelectTransformer, UpdateTransformer},
-    ColumnId, Database, PhysicalColumn, Predicate,
+    ColumnId, Database, PhysicalColumn,
 };
 
 use super::{selection_level::SelectionLevel, Postgres};
@@ -126,7 +126,7 @@ impl UpdateTransformer for Postgres {
                 .for_each(|nested_update| {
                     // Create a template update operation and bind it to the root step
                     let update_op = TemplateTransactionStep {
-                        operation: update_op(nested_update, root_step_id, self, database),
+                        operation: update_op(nested_update, self, database),
                         prev_step_id: root_step_id,
                     };
 
@@ -150,7 +150,7 @@ impl UpdateTransformer for Postgres {
                 .iter()
                 .for_each(|nested_delete| {
                     let delete_op = TemplateTransactionStep {
-                        operation: delete_op(nested_delete, root_step_id, self, database),
+                        operation: delete_op(nested_delete, self, database),
                         prev_step_id: root_step_id,
                     };
 
@@ -186,27 +186,9 @@ impl UpdateTransformer for Postgres {
 
 fn update_op<'a>(
     nested_update: &'a NestedAbstractUpdate,
-    parent_step_id: TransactionStepId,
     predicate_transformer: &impl PredicateTransformer,
     database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
-    let relation_predicate = Predicate::Eq(
-        ProxyColumn::Concrete(
-            Column::Physical {
-                column_id: nested_update.nesting_relation.foreign_column_id,
-                table_alias: None,
-            }
-            .into(),
-        ),
-        ProxyColumn::Template {
-            // The column index is always 0 because we want to get the only column in the row
-            // such as `UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING
-            // "concerts"."id"`
-            col_index: 0,
-            step_id: parent_step_id,
-        },
-    );
-
     let column_values: Vec<(&PhysicalColumn, &Column)> = nested_update
         .update
         .column_values
@@ -222,7 +204,7 @@ fn update_op<'a>(
             false,
             database,
         ),
-        relation_predicate,
+        nesting_relation: nested_update.nesting_relation,
         column_values,
         returning: vec![],
     })
@@ -277,26 +259,9 @@ fn insert_op<'a>(
 
 fn delete_op<'a>(
     nested_delete: &'a NestedAbstractDelete,
-    _parent_step_id: TransactionStepId,
     predicate_transformer: &impl PredicateTransformer,
     database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
-    // TODO: We need TemplatePredicate here, because we need to use the proxy column in the nested delete
-    // let predicate = Predicate::and(
-    //     nested_delete
-    //         .delete
-    //         .predicate
-    //         .map(|p| p.predicate())
-    //         .unwrap_or_else(|| Predicate::True),
-    //     Predicate::Eq(
-    //         Box::new(nested_delete.relation.column.into()),
-    //         Box::new(ProxyColumn::Template {
-    //             col_index: 0,
-    //             step_id: parent_step_id,
-    //         }),
-    //     ),
-    // );
-
     let predicate = predicate_transformer.to_predicate(
         &nested_delete.delete.predicate,
         &SelectionLevel::TopLevel,
@@ -307,6 +272,7 @@ fn delete_op<'a>(
     TemplateSQLOperation::Delete(TemplateDelete {
         table: database.get_table(nested_delete.delete.table_id),
         predicate,
+        nesting_relation: nested_delete.nesting_relation,
         returning: vec![],
     })
 }

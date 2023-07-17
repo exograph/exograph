@@ -68,9 +68,11 @@ impl<'a> TemplateSQLOperation<'a> {
                 .into_iter()
                 .map(SQLOperation::Update)
                 .collect(),
-            TemplateSQLOperation::Delete(delete) => {
-                vec![SQLOperation::Delete(delete.resolve())]
-            }
+            TemplateSQLOperation::Delete(delete) => delete
+                .resolve(prev_step_id, transaction_context)
+                .into_iter()
+                .map(SQLOperation::Delete)
+                .collect(),
         }
     }
 }

@@ -65,6 +65,7 @@ impl PhysicalTable {
         Delete {
             table: self,
             predicate: predicate.into(),
+            additional_predicate: None,
             returning: returning.into_iter().map(|col| col.into()).collect(),
         }
     }

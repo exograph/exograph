@@ -424,7 +424,7 @@ fn compute_nested_delete_object_arg<'a>(
     let table_id = field_mutation_type.table_id;
 
     NestedAbstractDelete {
-        relation_column_id: nesting_relation.foreign_column_id,
+        nesting_relation: *nesting_relation,
         delete: AbstractDelete {
             table_id,
             predicate,

@@ -9,10 +9,10 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::{Database, PhysicalTable, Predicate};
+use crate::{Database, OneToMany, PhysicalTable};
 
 use super::{
-    column::{Column, ProxyColumn},
+    column::Column,
     physical_column::PhysicalColumn,
     predicate::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
@@ -84,7 +84,7 @@ impl<'a> ExpressionBuilder for Update<'a> {
 pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: ConcretePredicate,
-    pub relation_predicate: Predicate<ProxyColumn<'a>>,
+    pub nesting_relation: OneToMany,
     pub column_values: Vec<(&'a PhysicalColumn, &'a Column)>,
     pub returning: Vec<Column>,
 }
@@ -111,48 +111,17 @@ impl<'a> TemplateUpdate<'a> {
                     })
                     .collect();
 
-                let relation_predicate = match &self.relation_predicate {
-                    Predicate::Eq(l, r) => {
-                        let l = match l {
-                            ProxyColumn::Concrete(col) => match col.as_ref() {
-                                Column::Physical {
-                                    column_id,
-                                    table_alias,
-                                } => Column::Physical {
-                                    column_id: *column_id,
-                                    table_alias: table_alias.clone(),
-                                },
-                                _ => unimplemented!(),
-                            },
-                            ProxyColumn::Template { col_index, step_id } => {
-                                Column::Param(SQLParamContainer::new(
-                                    transaction_context
-                                        .resolve_value(*step_id, row_index, *col_index),
-                                ))
-                            }
-                        };
-                        let r = match r {
-                            ProxyColumn::Concrete(col) => match col.as_ref() {
-                                Column::Physical {
-                                    column_id,
-                                    table_alias,
-                                } => Column::Physical {
-                                    column_id: *column_id,
-                                    table_alias: table_alias.clone(),
-                                },
-                                _ => unimplemented!(),
-                            },
-                            ProxyColumn::Template { col_index, step_id } => {
-                                Column::Param(SQLParamContainer::new(
-                                    transaction_context
-                                        .resolve_value(*step_id, row_index, *col_index),
-                                ))
-                            }
-                        };
-                        ConcretePredicate::eq(l, r)
-                    }
-                    _ => unimplemented!(),
-                };
+                let relation_predicate = ConcretePredicate::Eq(
+                    Column::Physical {
+                        column_id: self.nesting_relation.foreign_column_id,
+                        table_alias: None,
+                    },
+                    Column::Param(SQLParamContainer::new(transaction_context.resolve_value(
+                        prev_step_id,
+                        row_index,
+                        0,
+                    ))),
+                );
 
                 Update {
                     table: self.table,
