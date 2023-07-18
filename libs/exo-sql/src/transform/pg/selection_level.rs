@@ -2,8 +2,8 @@ use crate::{Database, RelationId};
 
 /// Representation of the level of a subselection in a query.
 ///
-/// This serve two purposes:
-/// - Passing an attribute to [crate::select::Select] to indicate if it is a top-level computaiton
+/// This serves two purposes:
+/// - Passing an attribute to [crate::select::Select] to indicate if it is a top-level computation
 ///   (which, in turn, forces `::text` cast for the result)
 /// - Computing the alias of a selection (explained below)
 ///
