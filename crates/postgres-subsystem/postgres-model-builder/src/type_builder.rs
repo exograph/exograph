@@ -212,7 +212,7 @@ fn expand_type_no_fields(
         .unwrap();
 
     let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
-    let mut existing_type = &mut building.entity_types[existing_type_id];
+    let existing_type = &mut building.entity_types[existing_type_id];
     existing_type.table_id = table_id;
     existing_type.pk_query = pk_query;
     existing_type.collection_query = collection_query;
@@ -287,7 +287,7 @@ fn expand_type_fields(
         })
         .collect();
 
-    let mut existing_type = &mut building.entity_types[existing_type_id];
+    let existing_type = &mut building.entity_types[existing_type_id];
     existing_type.fields = entity_fields;
     existing_type.agg_fields = agg_fields;
 }
@@ -409,7 +409,7 @@ fn expand_type_access(
         building,
     )?;
 
-    let mut existing_type = &mut building.entity_types[existing_type_id];
+    let existing_type = &mut building.entity_types[existing_type_id];
 
     existing_type.access = expr;
 
