@@ -62,7 +62,7 @@ futures = "0.3"
 heck = "0.4.0"
 include_dir = "0.7.2"
 indexmap = "1.9.3"
-insta = "1.29.0"
+insta = { version = "1.31.0", features = ["redactions"] }
 jsonwebtoken = "8.1.1"
 lazy_static = "1.4.0"
 maybe-owned = "0.3.4"

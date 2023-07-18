@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, Result};
 use exo_deno::{
@@ -38,8 +38,10 @@ pub async fn dynamic_assert_using_deno(
     actual: serde_json::Value,
     prelude: &str,
     testvariables: &HashMap<String, serde_json::Value>,
+    unordeded_selections: &HashSet<Vec<String>>,
 ) -> Result<()> {
     let testvariables_json = serde_json::to_value(testvariables)?;
+    let unordeded_selections_json = serde_json::to_value(unordeded_selections)?;
 
     // first substitute expected variables
     let script = ASSERT_JS.to_owned();
@@ -73,7 +75,11 @@ pub async fn dynamic_assert_using_deno(
     let _ = deno_module
         .execute_function(
             "test",
-            vec![Arg::Serde(actual.clone()), Arg::Serde(testvariables_json)],
+            vec![
+                Arg::Serde(actual.clone()),
+                Arg::Serde(testvariables_json),
+                Arg::Serde(unordeded_selections_json),
+            ],
         )
         .await
         .map_err(|e| {
@@ -131,6 +137,8 @@ pub async fn evaluate_using_deno(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{HashMap, HashSet};
+
     use crate::exotest::assertion::evaluate_using_deno;
 
     use super::dynamic_assert_using_deno;
@@ -169,9 +177,15 @@ mod tests {
         .into_iter()
         .collect();
 
-        dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables)
-            .await
-            .unwrap();
+        dynamic_assert_using_deno(
+            expected,
+            actual_payload(),
+            "",
+            &testvariables,
+            &HashSet::new(),
+        )
+        .await
+        .unwrap();
     }
 
     #[tokio::test]
@@ -214,15 +228,21 @@ mod tests {
             }
         "#;
 
-        let testvariables = vec![].into_iter().collect();
+        let testvariables = HashMap::new();
 
-        let err = dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables)
-            .await
-            .unwrap_err();
+        let err = dynamic_assert_using_deno(
+            expected,
+            actual_payload(),
+            "",
+            &testvariables,
+            &HashSet::new(),
+        )
+        .await
+        .unwrap_err();
 
         assert!(err
             .to_string()
-            .starts_with("assert failed: expected biz on key c, got qux"));
+            .starts_with("assert failed: expected biz on key 'data.c', got qux"));
     }
 
     #[tokio::test]
@@ -237,15 +257,21 @@ mod tests {
             }
         "#;
 
-        let testvariables = vec![].into_iter().collect();
+        let testvariables = HashMap::new();
 
-        let err = dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables)
-            .await
-            .unwrap_err();
+        let err = dynamic_assert_using_deno(
+            expected,
+            actual_payload(),
+            "",
+            &testvariables,
+            &HashSet::new(),
+        )
+        .await
+        .unwrap_err();
 
         assert!(err
             .to_string()
-            .starts_with("assert function failed for field c!"));
+            .starts_with("assert function failed for field 'data.c'!"));
     }
 
     #[tokio::test]
@@ -266,10 +292,94 @@ mod tests {
             }
         "#;
 
-        let testvariables = vec![].into_iter().collect();
+        let testvariables = HashMap::new();
 
-        dynamic_assert_using_deno(expected, actual_payload(), prelude, &testvariables)
-            .await
-            .unwrap();
+        dynamic_assert_using_deno(
+            expected,
+            actual_payload(),
+            prelude,
+            &testvariables,
+            &HashSet::new(),
+        )
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn unordered_assert() {
+        let expected = r#"
+            {
+                "data": {
+                    "products": [
+                        {
+                            "id": 1,
+                            "name": "foo"
+                        },
+                        {
+                            "id": 2,
+                            "name": "bar"
+                        },
+                        {
+                            "id": 3,
+                            "name": "baz"
+                        }
+                    ]
+                }
+            }
+        "#;
+
+        let actual = r#"
+            {
+                "data": {
+                    "products": [
+                        {
+                            "id": 2,
+                            "name": "bar"
+                        },
+                        {
+                            "id": 3,
+                            "name": "baz"
+                        },                        
+                        {
+                            "id": 1,
+                            "name": "foo"
+                        }
+                    ]
+                }
+            }
+        "#;
+
+        let testvariables = HashMap::new();
+
+        // success case
+        dynamic_assert_using_deno(
+            expected,
+            serde_json::from_str(actual).unwrap(),
+            "",
+            &testvariables,
+            &vec![vec!["data".to_string(), "products".to_string()]]
+                .into_iter()
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        // failure cases (non-matching selections)
+        for unordered_selection in vec![
+            vec![].into_iter().collect(),
+            vec!["data".to_string()].into_iter().collect(),
+            vec!["products".to_string()].into_iter().collect(),
+            vec!["id".to_string()].into_iter().collect(),
+        ] {
+            let result = dynamic_assert_using_deno(
+                expected,
+                serde_json::from_str(actual).unwrap(),
+                "",
+                &testvariables,
+                &vec![unordered_selection].into_iter().collect(),
+            )
+            .await;
+            assert!(matches!(result, Err(_)));
+        }
     }
 }

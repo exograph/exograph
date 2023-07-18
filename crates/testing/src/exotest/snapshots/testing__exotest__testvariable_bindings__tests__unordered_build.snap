@@ -1,0 +1,18 @@
+---
+source: crates/testing/src/exotest/testvariable_bindings.rs
+expression: metadata
+---
+bindings: {}
+unordered_paths:
+  - - data
+    - getOrders
+  - - data
+    - getOrders
+    - items_enforced_order
+    - sizes
+  - - data
+    - getOrders
+    - items_unenforced_order
+  - - data
+    - getProducts
+

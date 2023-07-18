@@ -1,14 +1,15 @@
 ---
-source: test/src/exotest/testvariable_bindings.rs
-expression: bindings
-
+source: crates/testing/src/exotest/testvariable_bindings.rs
+expression: metadata
 ---
-createLog_id:
-  - data
-  - createLog
-  - id
-log1_ids:
-  - data
-  - log1
-  - id
+bindings:
+  createLog_id:
+    - data
+    - createLog
+    - id
+  log1_ids:
+    - data
+    - log1
+    - id
+unordered_paths: []
 
