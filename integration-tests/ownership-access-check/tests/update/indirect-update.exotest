@@ -65,7 +65,7 @@ stages:
   # Ensure that the earlier mutation did work
   - operation: |
       query {
-        allDocs: documents(orderBy: {id: ASC}) {
+        allDocs: documents @unordered {
           id
           content
           user {
@@ -73,7 +73,7 @@ stages:
             name
           }
         }
-        allUsers: users(orderBy: {id: ASC}) {
+        allUsers: users @unordered {
           id
           name
           documents {
