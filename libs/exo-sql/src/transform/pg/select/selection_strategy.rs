@@ -11,11 +11,11 @@ use crate::{
     sql::{predicate::ConcretePredicate, select::Select, table::Table},
     transform::{
         join_util,
-        pg::{Postgres, SelectionLevel},
+        pg::{selection_level::SelectionLevel, Postgres},
         transformer::{OrderByTransformer, PredicateTransformer},
     },
-    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, Offset, PhysicalColumnPath,
-    Selection, TableId,
+    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, ManyToOne, Offset, OneToMany,
+    PhysicalColumnPath, RelationId, Selection, TableId,
 };
 
 use super::selection_context::SelectionContext;
@@ -38,11 +38,7 @@ pub(crate) trait SelectionStrategy {
     fn suitable(&self, selection_context: &SelectionContext) -> bool;
 
     /// Computes the SQL query for the given selection context. If a strategy
-    fn to_select<'a>(
-        &self,
-        selection_context: SelectionContext<'_, 'a>,
-        database: &'a Database,
-    ) -> Select;
+    fn to_select(&self, selection_context: SelectionContext<'_>, database: &Database) -> Select;
 }
 
 /// Compute an inner select that picks up all the columns from the given table, and applies the
@@ -76,12 +72,12 @@ pub(super) fn compute_inner_select(
 pub(super) fn nest_subselect(
     inner_select: Select,
     selection: &Selection,
-    selection_level: SelectionLevel,
+    selection_level: &SelectionLevel,
     alias: &str,
     transformer: &Postgres,
     database: &Database,
 ) -> Select {
-    let selection_aggregate = selection.selection_aggregate(transformer, database);
+    let selection_aggregate = selection.selection_aggregate(selection_level, transformer, database);
 
     Select {
         table: Table::SubSelect {
@@ -94,7 +90,7 @@ pub(super) fn nest_subselect(
         offset: None,
         limit: None,
         group_by: None,
-        top_level_selection: selection_level == SelectionLevel::TopLevel,
+        top_level_selection: selection_level.is_top_level(),
     }
 }
 
@@ -104,7 +100,7 @@ pub(super) fn join_info(
     predicate: &AbstractPredicate,
     predicate_column_paths: Vec<PhysicalColumnPath>,
     order_by_column_paths: Vec<PhysicalColumnPath>,
-    additional_predicate: Option<ConcretePredicate>,
+    selection_level: &SelectionLevel,
     transformer: &Postgres,
     database: &Database,
 ) -> (Table, ConcretePredicate) {
@@ -113,13 +109,77 @@ pub(super) fn join_info(
         .chain(order_by_column_paths.into_iter())
         .collect();
 
-    let join = join_util::compute_join(base_table_id, &columns_paths);
-    let predicate = transformer.to_predicate(predicate, true, database);
+    let join = join_util::compute_join(base_table_id, &columns_paths, selection_level, database);
 
-    let predicate = ConcretePredicate::and(
-        predicate,
-        additional_predicate.unwrap_or(ConcretePredicate::True),
+    // If `compute_join` resulted in a join, we need to pass the selection level unchanged, so that
+    // aliasing can be in sync with the join. Otherwise, we need to pass just the tail relation id
+    // so that relation predicates can be applied.
+    let predicate_selection_level_override = match join {
+        Table::Join(_) => None,
+        _ => selection_level
+            .tail_relation_id()
+            .map(|relation_id| SelectionLevel::Nested(vec![*relation_id])),
+    };
+    let predicate_selection_level = predicate_selection_level_override
+        .as_ref()
+        .unwrap_or(selection_level);
+
+    let predicate = transformer.to_predicate(predicate, predicate_selection_level, true, database);
+    let relation_predicate = compute_relation_predicate(
+        predicate_selection_level,
+        matches!(join, Table::Join(_)),
+        database,
     );
 
+    let predicate = ConcretePredicate::and(predicate, relation_predicate);
+
     (join, predicate)
+}
+
+pub(super) fn compute_relation_predicate(
+    selection_level: &SelectionLevel,
+    use_alias: bool,
+    database: &Database,
+) -> ConcretePredicate {
+    let subselect_relation = match selection_level {
+        SelectionLevel::TopLevel => None,
+        SelectionLevel::Nested(relation_ids) => relation_ids.last().copied(),
+    };
+
+    subselect_relation
+        .map(|relation_id| {
+            let (self_column_id, foreign_column_id) = match relation_id {
+                RelationId::OneToMany(relation_id) => {
+                    let OneToMany {
+                        self_pk_column_id,
+                        foreign_column_id,
+                    } = relation_id.deref(database);
+
+                    (self_pk_column_id, foreign_column_id)
+                }
+                RelationId::ManyToOne(relation_id) => {
+                    let ManyToOne {
+                        self_column_id,
+                        foreign_pk_column_id,
+                        ..
+                    } = relation_id.deref(database);
+                    (self_column_id, foreign_pk_column_id)
+                }
+            };
+
+            let alias = if use_alias {
+                Some(selection_level.alias(
+                    database.get_table(self_column_id.table_id).name.clone(),
+                    database,
+                ))
+            } else {
+                None
+            };
+
+            ConcretePredicate::Eq(
+                Column::physical(self_column_id, alias),
+                Column::physical(foreign_column_id, None),
+            )
+        })
+        .unwrap_or(ConcretePredicate::True)
 }

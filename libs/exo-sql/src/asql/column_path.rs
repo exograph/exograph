@@ -209,6 +209,7 @@ impl PhysicalColumnPath {
         self
     }
 
+    #[cfg(test)]
     pub fn from_columns(columns: Vec<ColumnId>, database: &Database) -> Self {
         assert!(
             !columns.is_empty(),

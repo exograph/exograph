@@ -3,7 +3,7 @@ stages:
   - operation: |
       mutation {
         # Update all documents through user, but implicitly only if the user owns them
-        # Note that in this example (in practice, unrealistically, but appropriate for testing) there is no access control for the User type
+        # Note that in this example (in practice, unrealistically, but appropriate for testing) `User` has `@access(true)`
         updateUsers(where: {id: {gt: 0}}, data: {name: "updated-user2", documents: {update: {id: 1, content: "indirect-update"}}}) { 
           id
           name
@@ -28,15 +28,7 @@ stages:
             {
               "id": 1,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             },
             {
               "id": 2,
@@ -54,54 +46,39 @@ stages:
             {
               "id": 3,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             },
             {
               "id": 4,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             },
             {
               "id": 5,
               "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                }
-              ]
+              "documents": []
             }
           ]
         }
       }
+
   # Ensure that the earlier mutation did work
   - operation: |
       query {
-        documents(orderBy: {id: ASC}) {
+        allDocs: documents @unordered {
           id
           content
           user {
             id
             name
+          }
+        }
+        allUsers: users @unordered {
+          id
+          name
+          documents {
+            id
+            content
           }
         }
       }
@@ -112,7 +89,54 @@ stages:
     response: |
       {
         "data": {
-          "documents": [
+          "allUsers": [
+            {
+              "id": 1,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 3,
+                  "content": "content3"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 2,
+                  "content": "content2"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 4,
+                  "content": "content4"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 5,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 1,
+                  "content": "indirect-update"
+                }
+              ]
+            }
+          ],
+          "allDocs": [
             {
               "id": 1,
               "content": "indirect-update",

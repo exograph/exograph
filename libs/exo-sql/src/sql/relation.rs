@@ -12,6 +12,9 @@ pub struct OneToMany {
 pub struct ManyToOne {
     pub self_column_id: ColumnId,
     pub foreign_pk_column_id: ColumnId,
+    /// A name that may be used to alias the foreign table. This is useful when
+    /// multiple columns in a table refer to the same foreign table. For example,
+    /// `concerts` may have a `main_venue_id` and a `alt_venue_id`.
     pub foreign_table_alias: Option<String>,
 }
 
@@ -38,6 +41,7 @@ impl ManyToOne {
     }
 }
 
+/// Many to one id, which is an index into the `Database.relations` vector
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ManyToOneId(pub(crate) usize);
 
@@ -47,6 +51,7 @@ impl ManyToOneId {
     }
 }
 
+/// One to many id, which refers to its corresponding many to one id (`Database` keeps track of only the many to one id)
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct OneToManyId(pub(crate) ManyToOneId);
 

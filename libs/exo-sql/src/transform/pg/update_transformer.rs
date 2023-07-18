@@ -49,7 +49,7 @@ use crate::{
     ColumnId, Database,
 };
 
-use super::Postgres;
+use super::{selection_level::SelectionLevel, Postgres};
 
 impl UpdateTransformer for Postgres {
     /// Transform an abstract update into a transaction script.
@@ -75,7 +75,12 @@ impl UpdateTransformer for Postgres {
             .map(|(c, v)| (*c, v.into()))
             .collect();
 
-        let predicate = self.to_predicate(&abstract_update.predicate, false, database);
+        let predicate = self.to_predicate(
+            &abstract_update.predicate,
+            &SelectionLevel::TopLevel,
+            false,
+            database,
+        );
 
         let select = self.to_select(&abstract_update.selection, database);
 
@@ -211,6 +216,7 @@ fn update_op<'a>(
         table: database.get_table(nested_update.update.table_id),
         predicate: predicate_transformer.to_predicate(
             &nested_update.update.predicate,
+            &SelectionLevel::TopLevel,
             false,
             database,
         ),
@@ -288,8 +294,12 @@ fn delete_op<'a>(
     //     ),
     // );
 
-    let predicate =
-        predicate_transformer.to_predicate(&nested_delete.delete.predicate, false, database);
+    let predicate = predicate_transformer.to_predicate(
+        &nested_delete.delete.predicate,
+        &SelectionLevel::TopLevel,
+        false,
+        database,
+    );
 
     TemplateSQLOperation::Delete(TemplateDelete {
         table: database.get_table(nested_delete.delete.table_id),

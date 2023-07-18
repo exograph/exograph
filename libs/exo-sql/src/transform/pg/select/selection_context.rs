@@ -8,31 +8,27 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    sql::predicate::ConcretePredicate,
-    transform::pg::{Postgres, SelectionLevel},
+    transform::pg::{selection_level::SelectionLevel, Postgres},
     AbstractSelect, ColumnPath, Database, PhysicalColumnPath,
 };
 
 /// A context for the selection transformation to avoid repeating the same work
 /// by each strategy.
-pub(crate) struct SelectionContext<'c, 'a> {
-    pub database: &'a Database,
+pub(crate) struct SelectionContext<'c> {
     pub abstract_select: &'c AbstractSelect,
     pub has_a_one_to_many_predicate: bool,
     pub predicate_column_paths: Vec<PhysicalColumnPath>,
     pub order_by_column_paths: Vec<PhysicalColumnPath>,
-    pub additional_predicate: Option<ConcretePredicate>,
-    pub selection_level: SelectionLevel,
+    pub selection_level: &'c SelectionLevel,
     pub allow_duplicate_rows: bool,
     pub transformer: &'c Postgres,
 }
 
-impl<'c, 'a> SelectionContext<'c, 'a> {
+impl<'c> SelectionContext<'c> {
     pub fn new(
-        database: &'a Database,
+        database: &Database,
         abstract_select: &'c AbstractSelect,
-        additional_predicate: Option<ConcretePredicate>,
-        selection_level: SelectionLevel,
+        selection_level: &'c SelectionLevel,
         allow_duplicate_rows: bool,
         transformer: &'c Postgres,
     ) -> Self {
@@ -68,12 +64,10 @@ impl<'c, 'a> SelectionContext<'c, 'a> {
             .any(|path| path.has_one_to_many(database));
 
         Self {
-            database,
             abstract_select,
             has_a_one_to_many_predicate,
             predicate_column_paths,
             order_by_column_paths,
-            additional_predicate,
             selection_level,
             allow_duplicate_rows,
             transformer,

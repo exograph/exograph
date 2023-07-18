@@ -7,17 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod delete_transformer;
+mod delete_transformer;
 mod insert_transformer;
 mod order_by_transformer;
 mod predicate_transformer;
 mod select;
 mod update_transformer;
 
-pub struct Postgres {}
+pub mod selection_level;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SelectionLevel {
-    TopLevel,
-    Nested,
-}
+pub struct Postgres {}

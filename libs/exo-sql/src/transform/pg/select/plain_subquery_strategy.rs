@@ -68,15 +68,9 @@ impl SelectionStrategy for PlainSubqueryStrategy {
         !selection_context.has_a_one_to_many_predicate || selection_context.allow_duplicate_rows
     }
 
-    fn to_select(
-        &self,
-        selection_context: SelectionContext<'_, '_>,
-        _database: &Database,
-    ) -> Select {
+    fn to_select(&self, selection_context: SelectionContext<'_>, database: &Database) -> Select {
         let SelectionContext {
-            database,
             abstract_select,
-            additional_predicate,
             selection_level,
             predicate_column_paths,
             order_by_column_paths,
@@ -89,7 +83,7 @@ impl SelectionStrategy for PlainSubqueryStrategy {
             &abstract_select.predicate,
             predicate_column_paths,
             order_by_column_paths,
-            additional_predicate,
+            selection_level,
             transformer,
             database,
         );
