@@ -10,8 +10,8 @@ buildType="$1" # "release" or "debug"
 # TODO: Resolve the openssl issues and then "RUNTIME_IMAGE=debian:buster-slim"
 
 ## DEFAULTS ##
-BUILD_IMAGE=rust:1.70.0-buster # image to build Exograph with
-RUNTIME_IMAGE=rust:1.70.0-slim-buster # image to use when actually running Exograph
+BUILD_IMAGE=rust:1.71.0-buster # image to build Exograph with
+RUNTIME_IMAGE=rust:1.71.0-slim-buster # image to use when actually running Exograph
 DEPENDENCY_STYLE=deb # how to install or setup dependencies
 TAG_SUFFIX="" # docker tag suffix
 

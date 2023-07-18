@@ -102,7 +102,7 @@ fn expand_pk_query(
     database: &Database,
 ) {
     let operation_name = entity_type.pk_query();
-    let mut existing_query = &mut pk_queries.get_by_key_mut(&operation_name).unwrap();
+    let existing_query = &mut pk_queries.get_by_key_mut(&operation_name).unwrap();
     existing_query.parameters.predicate_param =
         pk_predicate_param(entity_type, predicate_types, database);
 }
@@ -163,7 +163,7 @@ fn expand_collection_query(
     let limit_param = limit_param(primitive_types);
     let offset_param = offset_param(primitive_types);
 
-    let mut existing_query = &mut collection_queries.get_by_key_mut(&operation_name).unwrap();
+    let existing_query = &mut collection_queries.get_by_key_mut(&operation_name).unwrap();
 
     existing_query.parameters.predicate_param = predicate_param;
     existing_query.parameters.order_by_param = order_by_param;
@@ -196,7 +196,7 @@ fn expand_aggregate_query(
 
     let predicate_param = collection_predicate_param(entity_type, predicate_types);
 
-    let mut existing_query = &mut aggregate_queries.get_by_key_mut(&operation_name).unwrap();
+    let existing_query = &mut aggregate_queries.get_by_key_mut(&operation_name).unwrap();
     existing_query.parameters.predicate_param = predicate_param;
 }
 

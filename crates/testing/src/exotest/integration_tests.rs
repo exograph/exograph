@@ -247,7 +247,7 @@ async fn run_operation(
     match gql {
         TestfileOperation::GqlDocument {
             document,
-            testvariable_bindings,
+            operations_metadata,
             variables,
             expected_payload,
             auth,
@@ -276,6 +276,8 @@ async fn run_operation(
             let query = Regex::new(r"@bind\(.*\)")?
                 .replace_all(document, "")
                 .to_string();
+            // similarly, remove @unordered directives
+            let query = query.replace("@unordered", "");
 
             let mut request = MemoryRequest::new(ctx.cookies.clone());
 
@@ -334,10 +336,11 @@ async fn run_operation(
 
             // resolve testvariables from the result of our current operation
             // and extend our collection with them
-            let resolved_variables_keys = testvariable_bindings.keys().cloned();
-            let resolved_variables_values = testvariable_bindings
+            let resolved_variables_keys = operations_metadata.bindings.keys().cloned();
+            let resolved_variables_values = operations_metadata
+                .bindings
                 .keys()
-                .map(|name| resolve_testvariable(name, &body, testvariable_bindings))
+                .map(|name| resolve_testvariable(name, &body, &operations_metadata.bindings))
                 .collect::<Result<Vec<_>>>()?
                 .into_iter();
             let resolved_variables: HashMap<_, _> = resolved_variables_keys
@@ -353,6 +356,7 @@ async fn run_operation(
                         body,
                         &deno_prelude,
                         &ctx.testvariables,
+                        &operations_metadata.unordered_paths,
                     )
                     .await
                     {
