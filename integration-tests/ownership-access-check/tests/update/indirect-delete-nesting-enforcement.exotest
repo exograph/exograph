@@ -2,7 +2,7 @@ stages:
   # Since document 3 isn't in the hierarchy of user 2, it should not be deleted
   - operation: |
       mutation {
-        updateUser(id: 2, data: {name: "updated-user2", documents: {delete: {id: 3}}}) { 
+        updateUser(id: 2, data: {name: "updated-user2", documents: {delete: {id: 3}}}) {
           id
           name
           documents {

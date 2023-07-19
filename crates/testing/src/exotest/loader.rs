@@ -19,8 +19,9 @@ use wildmatch::WildMatch;
 use anyhow::{bail, Context, Result};
 use async_graphql_parser::parse_query;
 
-use super::testvariable_bindings::build_testvariable_bindings;
-use super::testvariable_bindings::TestvariableBindings;
+use crate::exotest::testvariable_bindings::OperationsMetadata;
+
+use super::testvariable_bindings::build_operations_metadata;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
@@ -28,7 +29,7 @@ pub enum TestfileOperation {
     Sql(String),
     GqlDocument {
         document: String,
-        testvariable_bindings: TestvariableBindings,
+        operations_metadata: OperationsMetadata,
         variables: Option<String>,        // stringified
         expected_payload: Option<String>, // stringified
         deno_prelude: Option<String>,
@@ -279,18 +280,18 @@ Error as a multistage test: {}
     let test_operation_sequence = stages
         .into_iter()
         .map(|stage| {
-            let testvariable_bindings = parse_query(&stage.operation)
-                .map(|gql_document| build_testvariable_bindings(&gql_document))
+            let operations_metadata = parse_query(&stage.operation)
+                .map(|gql_document| build_operations_metadata(&gql_document))
                 .unwrap_or_else(|_| {
                     eprintln!(
                         "Invalid GraphQL document; defaulting test variables binding to empty"
                     );
-                    HashMap::new()
+                    OperationsMetadata::default()
                 });
 
             Ok(TestfileOperation::GqlDocument {
                 document: stage.operation,
-                testvariable_bindings,
+                operations_metadata,
                 auth: stage.auth.map(from_json).transpose()?,
                 variables: stage.variable,
                 expected_payload: stage.response,
@@ -330,7 +331,7 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
 
             Ok(TestfileOperation::GqlDocument {
                 document: deserialized_initfile.operation.clone(),
-                testvariable_bindings: build_testvariable_bindings(&gql_document),
+                operations_metadata: build_operations_metadata(&gql_document),
                 auth: deserialized_initfile.auth.map(from_json).transpose()?,
                 variables: deserialized_initfile.variable,
                 headers: deserialized_initfile.headers,

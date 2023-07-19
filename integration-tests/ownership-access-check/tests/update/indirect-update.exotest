@@ -72,7 +72,7 @@ stages:
   # Ensure that the earlier mutation did work
   - operation: |
       query {
-        allDocs: documents(orderBy: {id: ASC}) {
+        documents @unordered {
           id
           content
           user {
@@ -80,14 +80,14 @@ stages:
             name
           }
         }
-        allUsers: users(orderBy: {id: ASC}) {
+        users @unordered {
           id
           name
-          documents {
+          documents @unordered {
             id
             content
           }
-        }
+        }        
       }
     auth: |
       {
@@ -96,7 +96,7 @@ stages:
     response: |
       {
         "data": {
-          "allDocs": [
+          "documents": [
             {
               "id": 1,
               "content": "indirect-update",
@@ -130,7 +130,7 @@ stages:
               }
             }
           ],
-          "allUsers": [
+          "users": [
             {
               "id": 1,
               "name": "updated-user2",
@@ -146,12 +146,12 @@ stages:
               "name": "updated-user2",
               "documents": [
                 {
-                  "id": 2,
-                  "content": "content2"
-                },
-                {
                   "id": 1,
                   "content": "indirect-update"
+                },
+                {
+                  "id": 2,
+                  "content": "content2"
                 }
               ]
             },

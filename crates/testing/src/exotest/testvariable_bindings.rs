@@ -15,10 +15,37 @@ use async_graphql_parser::{
     Positioned,
 };
 use async_graphql_value::{Name, Value};
+use serde::Serialize;
 
-pub type TestvariableBindings = HashMap<String, TestvariablePath>;
-type TestvariablePath = Vec<TestvariablePathElements>;
-type TestvariablePathElements = String;
+pub type TestvariableBindings = HashMap<String, SelectionPath>;
+type SelectionPath = Vec<String>;
+type SelectionElement = String;
+
+/// Meta-information about the operation defined in the test.
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct OperationsMetadata {
+    /// Bindings defined using the `@bind` directive.
+    pub bindings: TestvariableBindings,
+    /// Path whose order shouldn't be considered while asserting (based on the `@unordered` directive)
+    pub unordered_paths: HashSet<SelectionPath>,
+}
+
+impl OperationsMetadata {
+    pub fn combine(elems: Vec<OperationsMetadata>) -> Self {
+        let mut res = OperationsMetadata::default();
+
+        for elem in elems {
+            res.extend(elem);
+        }
+
+        res
+    }
+
+    pub fn extend(&mut self, other: Self) {
+        self.bindings.extend(other.bindings);
+        self.unordered_paths.extend(other.unordered_paths);
+    }
+}
 
 // Generate test variable bindings from a GraphQL document
 //
@@ -49,7 +76,7 @@ type TestvariablePathElements = String;
 //
 // This function generates variable bindings from GraphQL fields marked with the @bind directive.
 // See unit tests for usage.
-pub fn build_testvariable_bindings(document: &ExecutableDocument) -> TestvariableBindings {
+pub fn build_operations_metadata(document: &ExecutableDocument) -> OperationsMetadata {
     match &document.operations {
         DocumentOperations::Single(operation) => {
             let selection_set = &operation.node.selection_set.node;
@@ -60,32 +87,34 @@ pub fn build_testvariable_bindings(document: &ExecutableDocument) -> Testvariabl
                 HashSet::new(),
             )
         }
-        DocumentOperations::Multiple(operations) => operations
-            .iter()
-            .flat_map(|(name, operation)| {
-                let selection_set = &operation.node.selection_set.node;
-                process_selection_set(
-                    selection_set,
-                    vec!["data".to_owned(), name.to_string()],
-                    &document.fragments,
-                    HashSet::new(),
-                )
-            })
-            .collect(),
+        DocumentOperations::Multiple(operations) => OperationsMetadata::combine(
+            operations
+                .iter()
+                .map(|(name, operation)| {
+                    let selection_set = &operation.node.selection_set.node;
+                    process_selection_set(
+                        selection_set,
+                        vec!["data".to_owned(), name.to_string()],
+                        &document.fragments,
+                        HashSet::new(),
+                    )
+                })
+                .collect(),
+        ),
     }
 }
 
 fn process_selection_set(
     selection_set: &SelectionSet,
-    current_path: Vec<TestvariablePathElements>,
+    current_path: Vec<SelectionElement>,
     fragments: &HashMap<Name, Positioned<FragmentDefinition>>,
     fragment_trail: HashSet<String>,
-) -> TestvariableBindings {
-    selection_set
+) -> OperationsMetadata {
+    let metadatas = selection_set
         .items
         .iter()
         .map(|p| &p.node)
-        .flat_map(|selection| {
+        .map(|selection| {
             match selection {
                 Selection::Field(field) => {
                     let field = &field.node;
@@ -96,7 +125,7 @@ fn process_selection_set(
                     let mut new_path = current_path.clone();
                     new_path.push(field_name);
 
-                    let mut bindings = HashMap::new();
+                    let mut operations_metadata = OperationsMetadata::default();
 
                     if let Some(bind_directive) = field
                         .directives
@@ -120,18 +149,27 @@ fn process_selection_set(
                             })
                             .expect("No name provided for @bind directive");
 
-                        bindings.insert(binding_name.clone(), new_path.clone());
+                        operations_metadata
+                            .bindings
+                            .insert(binding_name.clone(), new_path.clone());
                     }
 
-                    // continue building bindings for our selection tree
-                    bindings.extend(process_selection_set(
+                    if field
+                        .directives
+                        .iter()
+                        .any(|p| p.node.name.node.as_str() == "unordered")
+                    {
+                        operations_metadata.unordered_paths.insert(new_path.clone());
+                    }
+                    // continue building metadata for our selection tree
+                    operations_metadata.extend(process_selection_set(
                         selection_set,
                         new_path.clone(),
                         fragments,
                         fragment_trail.clone(),
                     ));
 
-                    bindings
+                    operations_metadata
                 }
 
                 Selection::FragmentSpread(fragment_spread) => {
@@ -173,7 +211,9 @@ fn process_selection_set(
                 }
             }
         })
-        .collect::<HashMap<_, _>>()
+        .collect::<Vec<_>>();
+
+    OperationsMetadata::combine(metadatas)
 }
 
 // Resolve the value of a test variable from `response` using its name and the set of variable bindings.
@@ -232,9 +272,11 @@ pub fn resolve_testvariable(
 
 #[cfg(test)]
 mod tests {
-    use super::{build_testvariable_bindings, resolve_testvariable};
+    use insta::Settings;
 
-    const GQL: &str = r#"
+    use super::{build_operations_metadata, resolve_testvariable};
+
+    const TEST_QUERY_WITH_BINDINGS: &str = r#"
         query {
             createLog(data: {}) {
                 id @bind(name: "createLog_id")
@@ -246,20 +288,64 @@ mod tests {
         }    
     "#;
 
+    const TEST_QUERY_WITH_UNORDERED: &str = r#"
+        query {
+            getProducts @unordered {
+                id
+                name
+            }
+                
+            getOrders @unordered {
+                id
+                name
+                items_enforced_order: items {
+                    id
+                    name
+                    sizes @unordered {
+                        id
+                        name
+                    }
+                }
+                items_unenforced_order: items @unordered {
+                    id
+                    name
+                    sizes {
+                        id
+                        name
+                    }
+                }
+            }
+        }    
+    "#;
+
     #[test]
     fn test_bindings_build() {
-        let document = async_graphql_parser::parse_query(GQL).unwrap();
-        let bindings = build_testvariable_bindings(&document);
+        let document = async_graphql_parser::parse_query(TEST_QUERY_WITH_BINDINGS).unwrap();
+        let metadata = build_operations_metadata(&document);
 
         insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(bindings);
+            insta::assert_yaml_snapshot!(metadata);
+        });
+    }
+
+    #[test]
+    fn test_unordered_build() {
+        let document = async_graphql_parser::parse_query(TEST_QUERY_WITH_UNORDERED).unwrap();
+        let metadata = build_operations_metadata(&document);
+
+        let mut settings = Settings::new();
+        settings.set_sort_maps(true);
+        settings.sort_selector(".unordered_paths"); // sort the unordered_paths set
+
+        settings.bind(|| {
+            insta::assert_yaml_snapshot!(metadata);
         });
     }
 
     #[test]
     fn test_resolution() {
-        let document = async_graphql_parser::parse_query(GQL).unwrap();
-        let bindings = build_testvariable_bindings(&document);
+        let document = async_graphql_parser::parse_query(TEST_QUERY_WITH_BINDINGS).unwrap();
+        let metadata = build_operations_metadata(&document);
         let response = serde_json::from_str(
             r#"
             {
@@ -279,10 +365,9 @@ mod tests {
         )
         .unwrap();
 
-        let create_log_id = resolve_testvariable("createLog_id", &response, &bindings).unwrap();
-        let log1_ids = resolve_testvariable("log1_ids", &response, &bindings).unwrap();
-
-        println!("{log1_ids:#?}");
+        let create_log_id =
+            resolve_testvariable("createLog_id", &response, &metadata.bindings).unwrap();
+        let log1_ids = resolve_testvariable("log1_ids", &response, &metadata.bindings).unwrap();
 
         assert_eq!(create_log_id, 1);
         assert_eq!(log1_ids, serde_json::to_value(vec![2, 3, 4]).unwrap());

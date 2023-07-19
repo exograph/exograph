@@ -8,6 +8,14 @@ operation: |
         content
       }
     }
+    users_no_order_by: users @unordered {
+      id
+      name
+      documents @unordered {
+        id
+        content
+      }
+    }
   }
 auth: |
   {
@@ -56,6 +64,46 @@ response: |
           "documents": [
           ]
         }
-      ]
+      ],
+      "users_no_order_by": [
+        {
+          "id": 1,
+          "name": "u1",
+          "documents": [
+          ]
+        },
+        {
+          "id": 2,
+          "name": "u2",
+          "documents": [
+            {
+              "id": 1,
+              "content": "content1",
+            },
+            {
+              "id": 2,
+              "content": "content2",
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "name": "u3",
+          "documents": [
+          ]
+        },
+        {
+          "id": 4,
+          "name": "u4",
+          "documents": [
+          ]
+        },
+        {
+          "id": 5,
+          "name": "u5",
+          "documents": [
+          ]
+        }
+      ]      
     }
   }

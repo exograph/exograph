@@ -1,6 +1,6 @@
 operation: |
   query {
-    documents {
+    documents @unordered {
       id
       content
       user {
