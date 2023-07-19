@@ -136,9 +136,7 @@ async fn compute_nested_ops<'a>(
     for field in arg_type.fields.iter() {
         if let PostgresRelation::OneToMany(OneToManyRelation { relation_id, .. }) = &field.relation
         {
-            let OneToMany {
-                foreign_column_id, ..
-            } = relation_id.deref(&subsystem.database);
+            let nested_relation = &relation_id.deref(&subsystem.database);
 
             let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
@@ -152,7 +150,7 @@ async fn compute_nested_ops<'a>(
                 nested_updates.extend(compute_nested_update(
                     arg_type,
                     argument,
-                    foreign_column_id,
+                    nested_relation,
                     subsystem,
                 ));
 
@@ -160,7 +158,7 @@ async fn compute_nested_ops<'a>(
                     compute_nested_inserts(
                         arg_type,
                         argument,
-                        foreign_column_id,
+                        nested_relation,
                         subsystem,
                         request_context,
                     )
@@ -170,7 +168,7 @@ async fn compute_nested_ops<'a>(
                 nested_deletes.extend(compute_nested_delete(
                     arg_type,
                     argument,
-                    foreign_column_id,
+                    nested_relation,
                     subsystem,
                 ));
             }
@@ -184,7 +182,7 @@ async fn compute_nested_ops<'a>(
 fn compute_nested_update<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
-    foreign_column_id: ColumnId,
+    nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
 ) -> Vec<NestedAbstractUpdate> {
     let (update_arg, field_entity_type) =
@@ -196,7 +194,7 @@ fn compute_nested_update<'a>(
                 vec![compute_nested_update_object_arg(
                     field_entity_type,
                     arg,
-                    foreign_column_id,
+                    nesting_relation,
                     subsystem,
                 )]
             }
@@ -206,7 +204,7 @@ fn compute_nested_update<'a>(
                     compute_nested_update_object_arg(
                         field_entity_type,
                         arg,
-                        foreign_column_id,
+                        nesting_relation,
                         subsystem,
                     )
                 })
@@ -221,7 +219,7 @@ fn compute_nested_update<'a>(
 fn compute_nested_update_object_arg<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
-    nested_reference_col: ColumnId,
+    nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
 ) -> NestedAbstractUpdate {
     assert!(matches!(argument, Val::Object(..)));
@@ -254,7 +252,7 @@ fn compute_nested_update_object_arg<'a>(
         });
 
     NestedAbstractUpdate {
-        relation_column_id: nested_reference_col,
+        nesting_relation: *nesting_relation,
         update: AbstractUpdate {
             table_id,
             predicate,
@@ -278,14 +276,14 @@ fn compute_nested_update_object_arg<'a>(
 async fn compute_nested_inserts<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
-    foreign_column_id: ColumnId,
+    nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Vec<NestedAbstractInsert> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
-        foreign_column_id: ColumnId,
+        nesting_relation: &OneToMany,
         subsystem: &'a PostgresSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
@@ -300,7 +298,7 @@ async fn compute_nested_inserts<'a>(
         .await?;
 
         Ok(NestedAbstractInsert {
-            relation_column_id: foreign_column_id,
+            relation_column_id: nesting_relation.foreign_column_id,
             insert: AbstractInsert {
                 table_id,
                 rows,
@@ -324,7 +322,7 @@ async fn compute_nested_inserts<'a>(
             Val::Object(..) => vec![create_nested(
                 field_entity_type,
                 create_arg,
-                foreign_column_id,
+                nesting_relation,
                 subsystem,
                 request_context,
             )
@@ -335,7 +333,7 @@ async fn compute_nested_inserts<'a>(
                     create_nested(
                         field_entity_type,
                         arg,
-                        foreign_column_id,
+                        nesting_relation,
                         subsystem,
                         request_context,
                     )
@@ -353,7 +351,7 @@ async fn compute_nested_inserts<'a>(
 fn compute_nested_delete<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
-    foreign_column_id: ColumnId,
+    nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
 ) -> Vec<NestedAbstractDelete> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
@@ -368,7 +366,7 @@ fn compute_nested_delete<'a>(
                 vec![compute_nested_delete_object_arg(
                     field_entity_type,
                     arg,
-                    foreign_column_id,
+                    nesting_relation,
                     subsystem,
                 )]
             }
@@ -378,7 +376,7 @@ fn compute_nested_delete<'a>(
                     compute_nested_delete_object_arg(
                         field_entity_type,
                         arg,
-                        foreign_column_id,
+                        nesting_relation,
                         subsystem,
                     )
                 })
@@ -393,7 +391,7 @@ fn compute_nested_delete<'a>(
 fn compute_nested_delete_object_arg<'a>(
     field_mutation_type: &'a MutationType,
     argument: &'a Val,
-    nested_reference_col: ColumnId,
+    nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
 ) -> NestedAbstractDelete {
     assert!(matches!(argument, Val::Object(..)));
@@ -426,7 +424,7 @@ fn compute_nested_delete_object_arg<'a>(
     let table_id = field_mutation_type.table_id;
 
     NestedAbstractDelete {
-        relation_column_id: nested_reference_col,
+        nesting_relation: *nesting_relation,
         delete: AbstractDelete {
             table_id,
             predicate,

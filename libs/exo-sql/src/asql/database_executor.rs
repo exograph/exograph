@@ -40,7 +40,7 @@ impl DatabaseExecutor {
         let transaction_script = database_kind.to_transaction_script(database, operation);
 
         tx_holder
-            .with_tx(database, &self.database_client, &transaction_script)
+            .with_tx(database, &self.database_client, transaction_script)
             .await
     }
 }
@@ -90,7 +90,7 @@ impl TransactionHolder {
         &mut self,
         database: &Database,
         client: &DatabaseClient,
-        work: &TransactionScript<'_>,
+        work: TransactionScript<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
         if self.finalized.load(std::sync::atomic::Ordering::SeqCst) {
             return Err(DatabaseError::Transaction(

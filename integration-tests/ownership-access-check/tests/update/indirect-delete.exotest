@@ -1,10 +1,8 @@
 stages:
-  # User updates only their own documents (user 2 owns document 1 and 2)
+  # User deletes only their own documents (user 2 owns document 1 and 2)
   - operation: |
       mutation {
-        # Update all documents through user, but implicitly only if the user owns them
-        # Note that in this example (in practice, unrealistically, but appropriate for testing) `User` has `@access(true)`
-        updateUsers(where: {id: {gt: 0}}, data: {name: "updated-user2", documents: {update: {id: 1, content: "indirect-update"}}}) { 
+        updateUsers(where: {id: {gt: 0}}, data: {name: "updated-user2", documents: {delete: {id: 1}}}) { 
           id
           name
           documents {
@@ -40,13 +38,6 @@ stages:
                   "user": {
                     "id": 2
                   }
-                },
-                {
-                  "id": 1,
-                  "content": "indirect-update",
-                  "user": {
-                    "id": 2
-                  }
                 }
               ]
             },
@@ -72,7 +63,7 @@ stages:
   # Ensure that the earlier mutation did work
   - operation: |
       query {
-        documents @unordered {
+        allDocs: documents(orderBy: {id: ASC}) {
           id
           content
           user {
@@ -80,14 +71,14 @@ stages:
             name
           }
         }
-        users @unordered {
+        allUsers: users(orderBy: {id: ASC}) {
           id
           name
-          documents @unordered {
+          documents {
             id
             content
           }
-        }        
+        }
       }
     auth: |
       {
@@ -96,15 +87,7 @@ stages:
     response: |
       {
         "data": {
-          "documents": [
-            {
-              "id": 1,
-              "content": "indirect-update",
-              "user": {
-                "id": 2,
-                "name": "updated-user2"
-              }
-            },
+          "allDocs": [
             {
               "id": 2,
               "content": "content2",
@@ -130,7 +113,7 @@ stages:
               }
             }
           ],
-          "users": [
+          "allUsers": [
             {
               "id": 1,
               "name": "updated-user2",
@@ -145,10 +128,6 @@ stages:
               "id": 2,
               "name": "updated-user2",
               "documents": [
-                {
-                  "id": 1,
-                  "content": "indirect-update"
-                },
                 {
                   "id": 2,
                   "content": "content2"

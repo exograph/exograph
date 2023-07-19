@@ -9,10 +9,10 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::{Database, PhysicalTable};
+use crate::{Database, OneToMany, PhysicalTable};
 
 use super::{
-    column::{Column, ProxyColumn},
+    column::Column,
     physical_column::PhysicalColumn,
     predicate::ConcretePredicate,
     transaction::{TransactionContext, TransactionStepId},
@@ -26,6 +26,9 @@ pub struct Update<'a> {
     pub table: &'a PhysicalTable,
     /// The predicate to filter rows to update.
     pub predicate: MaybeOwned<'a, ConcretePredicate>,
+    // Any additional predicate to filter rows to update.
+    // TODO: Figure out a way to combine this with predicate (currently can't due to how we require combining predicates to take ownership of the constituent predicates)
+    pub additional_predicate: Option<ConcretePredicate>,
     /// The columns to update and their values.
     pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column>)>,
     /// The columns to return.
@@ -60,6 +63,16 @@ impl<'a> ExpressionBuilder for Update<'a> {
             self.predicate.build(database, builder);
         }
 
+        if let Some(additional_predicate) = &self.additional_predicate {
+            // If we have a predicate, we need to add an `AND` before the additional predicate, else we need to add a `WHERE`
+            if self.predicate.as_ref() != &ConcretePredicate::True {
+                builder.push_str(" AND ");
+            } else {
+                builder.push_str(" WHERE ");
+            }
+            additional_predicate.build(database, builder);
+        }
+
         if !self.returning.is_empty() {
             builder.push_str(" RETURNING ");
             builder.push_elems(database, &self.returning, ", ");
@@ -71,7 +84,8 @@ impl<'a> ExpressionBuilder for Update<'a> {
 pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: ConcretePredicate,
-    pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
+    pub nesting_relation: OneToMany,
+    pub column_values: Vec<(&'a PhysicalColumn, &'a Column)>,
     pub returning: Vec<Column>,
 }
 
@@ -92,21 +106,27 @@ impl<'a> TemplateUpdate<'a> {
                     .column_values
                     .iter()
                     .map(|(physical_col, col)| {
-                        let resolved_col = match col {
-                            ProxyColumn::Concrete(col) => col.as_ref().into(),
-                            ProxyColumn::Template { col_index, step_id } => {
-                                MaybeOwned::Owned(Column::Param(SQLParamContainer::new(
-                                    transaction_context
-                                        .resolve_value(*step_id, row_index, *col_index),
-                                )))
-                            }
-                        };
+                        let resolved_col = (*col).into();
                         (*physical_col, resolved_col)
                     })
                     .collect();
+
+                let relation_predicate = ConcretePredicate::Eq(
+                    Column::Physical {
+                        column_id: self.nesting_relation.foreign_column_id,
+                        table_alias: None,
+                    },
+                    Column::Param(SQLParamContainer::new(transaction_context.resolve_value(
+                        prev_step_id,
+                        row_index,
+                        0,
+                    ))),
+                );
+
                 Update {
                     table: self.table,
                     predicate: (&self.predicate).into(),
+                    additional_predicate: Some(relation_predicate),
                     column_values: resolved_column_values,
                     returning: self.returning.iter().map(|col| col.into()).collect(),
                 }

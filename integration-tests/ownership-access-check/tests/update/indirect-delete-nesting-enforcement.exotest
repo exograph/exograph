@@ -1,10 +1,8 @@
 stages:
-  # User updates only their own documents (user 2 owns document 1 and 2)
+  # Since document 3 isn't in the hierarchy of user 2, it should not be deleted
   - operation: |
       mutation {
-        # Update all documents through user, but implicitly only if the user owns them
-        # Note that in this example (in practice, unrealistically, but appropriate for testing) `User` has `@access(true)`
-        updateUsers(where: {id: {gt: 0}}, data: {name: "updated-user2", documents: {update: {id: 1, content: "indirect-update"}}}) { 
+        updateUser(id: 2, data: {name: "updated-user2", documents: {delete: {id: 3}}}) {
           id
           name
           documents {
@@ -24,55 +22,33 @@ stages:
     response: |
       {
         "data": {
-          "updateUsers": [
-            {
-              "id": 1,
-              "name": "updated-user2",
-              "documents": []
-            },
-            {
-              "id": 2,
-              "name": "updated-user2",
-              "documents": [
-                {
-                  "id": 2,
-                  "content": "content2",
-                  "user": {
-                    "id": 2
-                  }
-                },
-                {
-                  "id": 1,
-                  "content": "indirect-update",
-                  "user": {
-                    "id": 2
-                  }
+          "updateUser": {
+            "id": 2,
+            "name": "updated-user2",
+            "documents": [
+              {
+                "id": 1,
+                "content": "content1",
+                "user": {
+                  "id": 2
                 }
-              ]
-            },
-            {
-              "id": 3,
-              "name": "updated-user2",
-              "documents": []
-            },
-            {
-              "id": 4,
-              "name": "updated-user2",
-              "documents": []
-            },
-            {
-              "id": 5,
-              "name": "updated-user2",
-              "documents": []
-            }
-          ]
+              },
+              {
+                "id": 2,
+                "content": "content2",
+                "user": {
+                  "id": 2
+                }
+              }
+            ]
+          }
         }
       }
 
   # Ensure that the earlier mutation did work
   - operation: |
       query {
-        documents @unordered {
+        allDocs: documents(orderBy: {id: ASC}) {
           id
           content
           user {
@@ -80,14 +56,14 @@ stages:
             name
           }
         }
-        users @unordered {
+        allUsers: users(orderBy: {id: ASC}) {
           id
           name
-          documents @unordered {
+          documents {
             id
             content
           }
-        }        
+        }
       }
     auth: |
       {
@@ -96,10 +72,10 @@ stages:
     response: |
       {
         "data": {
-          "documents": [
+          "allDocs": [
             {
               "id": 1,
-              "content": "indirect-update",
+              "content": "content1",
               "user": {
                 "id": 2,
                 "name": "updated-user2"
@@ -118,7 +94,7 @@ stages:
               "content": "content3",
               "user": {
                 "id": 1,
-                "name": "updated-user2"
+                "name": "u1"
               }
             },
             {
@@ -126,14 +102,14 @@ stages:
               "content": "content4",
               "user": {
                 "id": 3,
-                "name": "updated-user2"
+                "name": "u3"
               }
             }
           ],
-          "users": [
+          "allUsers": [
             {
               "id": 1,
-              "name": "updated-user2",
+              "name": "u1",
               "documents": [
                 {
                   "id": 3,
@@ -147,7 +123,7 @@ stages:
               "documents": [
                 {
                   "id": 1,
-                  "content": "indirect-update"
+                  "content": "content1"
                 },
                 {
                   "id": 2,
@@ -157,7 +133,7 @@ stages:
             },
             {
               "id": 3,
-              "name": "updated-user2",
+              "name": "u3",
               "documents": [
                 {
                   "id": 4,
@@ -167,12 +143,12 @@ stages:
             },
             {
               "id": 4,
-              "name": "updated-user2",
+              "name": "u4",
               "documents": []
             },
             {
               "id": 5,
-              "name": "updated-user2",
+              "name": "u5",
               "documents": []
             }
           ]
