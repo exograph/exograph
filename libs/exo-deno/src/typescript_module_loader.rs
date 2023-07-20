@@ -62,11 +62,11 @@ impl ModuleLoader for TypescriptLoader {
                 }
             }
 
-            pub fn into_bytes(self) -> Result<Box<[u8]>, AnyError> {
+            pub fn into_bytes(self) -> Result<Vec<u8>, AnyError> {
                 match self {
-                    Code::Slice(slice) => Ok(Box::from(slice)),
-                    Code::Vec(vec) => Ok(Box::from(vec)),
-                    Code::String(s) => Ok(s.into_bytes().into_boxed_slice()),
+                    Code::Slice(slice) => Ok(slice.into()),
+                    Code::Vec(vec) => Ok(vec),
+                    Code::String(s) => Ok(s.into_bytes()),
                 }
             }
         }
@@ -74,7 +74,7 @@ impl ModuleLoader for TypescriptLoader {
         let module_specifier = module_specifier.clone();
         let embedded_dirs = self.embedded_dirs.clone();
 
-        // adapted from https://github.com/denoland/deno/blob/94d369ebc65a55bd9fbf378a765c8ed88a4efe2c/core/examples/ts_module_loader.rs
+        // adapted from https://github.com/denoland/deno/blob/v1.32.0/core/examples/ts_module_loader.rs
         async move {
             let (source, media_type): (Code, MediaType) = match module_specifier.scheme() {
                 "http" | "https" => {
@@ -87,7 +87,7 @@ impl ModuleLoader for TypescriptLoader {
                         bail!("Failed to fetch {}: {}", module_specifier, res.reason())
                     }
 
-                    (Code::Vec(writer), MediaType::from(&path))
+                    (Code::Vec(writer), MediaType::from_path(&path))
                 }
 
                 "file" => {
@@ -102,7 +102,7 @@ impl ModuleLoader for TypescriptLoader {
                         )
                     })?;
 
-                    (code, MediaType::from(&path))
+                    (code, MediaType::from_path(&path))
                 }
 
                 "embedded" => {
@@ -123,7 +123,7 @@ impl ModuleLoader for TypescriptLoader {
                             anyhow!("Could not get embedded contents of {}", path.display())
                         })?;
 
-                    (code, MediaType::from(&path))
+                    (code, MediaType::from_path(&path))
                 }
 
                 scheme => bail!("Unknown protocol scheme {}", scheme),
@@ -160,7 +160,7 @@ impl ModuleLoader for TypescriptLoader {
             };
 
             let module = ModuleSource {
-                code: source.into_bytes()?,
+                code: source.into_bytes()?.into(),
                 module_type,
                 module_url_specified: module_specifier.to_string(),
                 module_url_found: module_specifier.to_string(),

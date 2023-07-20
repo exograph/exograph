@@ -164,11 +164,8 @@ impl ToModel for ColumnSpec {
 
         WithIssues {
             value: format!(
-                "{}: {}{}{}",
-                self.name,
-                data_type + &annots,
-                autoinc_str,
-                pk_str,
+                "{}: {}{}{}{}",
+                self.name, data_type, &annots, autoinc_str, pk_str,
             ),
             issues: Vec::new(),
         }

@@ -117,17 +117,21 @@ pub fn exo_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
     fn create_extensions() -> Vec<Extension> {
         // we provide a set of Exograph functionality through custom Deno ops,
         // create a Deno extension that provides these ops
-        let ext = Extension::builder("exograph")
-            .ops(vec![
-                super::exograph_ops::op_exograph_execute_query::decl(),
-                super::exograph_ops::op_exograph_execute_query_priv::decl(),
-                super::exograph_ops::op_exograph_add_header::decl(),
-                super::exograph_ops::op_operation_name::decl(),
-                super::exograph_ops::op_operation_query::decl(),
-                super::exograph_ops::op_operation_proceed::decl(),
-            ])
-            .build();
-        vec![ext]
+        deno_core::extension!(
+            exograph,
+            ops = [
+                super::exograph_ops::op_exograph_execute_query,
+                super::exograph_ops::op_exograph_execute_query_priv,
+                super::exograph_ops::op_exograph_add_header,
+                super::exograph_ops::op_operation_name,
+                super::exograph_ops::op_operation_query,
+                super::exograph_ops::op_operation_proceed,
+            ],
+            customizer = |ext: &mut deno_core::ExtensionBuilder| {
+                ext.force_op_registration();
+            }
+        );
+        vec![exograph::init_ops()]
     }
 
     DenoExecutorConfig::new(

@@ -17,11 +17,10 @@ async-trait.workspace = true
 anyhow.workspace = true
 futures = "0.3"
 
-# we use a patched version of Deno that exposes the CLI internals as a library
-deno = { git = "https://github.com/exograph/deno.git", branch = "patched", default-features = false }
+deno.workspace = true
 deno_core.workspace = true
-deno_ast = { version = "0.24.0", features = ["transpiling"] }
-deno_graph = "0.44.3"
+deno_ast = { workspace = true, features = ["transpiling"] }
+deno_graph.workspace = true
 
 [dev-dependencies]
 
