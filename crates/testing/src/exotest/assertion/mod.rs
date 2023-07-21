@@ -242,7 +242,7 @@ mod tests {
 
         assert!(err
             .to_string()
-            .starts_with("assert failed: expected biz on key 'data.c', got qux"));
+            .starts_with("assertion failed at 'data.c': expected biz, got qux"));
     }
 
     #[tokio::test]
@@ -271,7 +271,7 @@ mod tests {
 
         assert!(err
             .to_string()
-            .starts_with("assert function failed for field 'data.c'!"));
+            .starts_with("assertion failed at 'data.c': assert function failed actual"));
     }
 
     #[tokio::test]
