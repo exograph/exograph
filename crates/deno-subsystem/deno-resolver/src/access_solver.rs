@@ -16,7 +16,7 @@ use core_plugin_interface::{
     core_resolver::{
         access_solver::{
             eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-            reduce_common_primitive_expression, AccessPredicate, AccessSolver,
+            reduce_common_primitive_expression, AccessPredicate, AccessSolver, AccessSolverError,
         },
         context::RequestContext,
         value::Val,
@@ -63,24 +63,24 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
         request_context: &RequestContext<'a>,
         _input_context: Option<&'a Val>,
         op: &AccessRelationalOp<ModuleAccessPrimitiveExpression>,
-    ) -> Option<ModuleAccessPredicateWrapper> {
+    ) -> Result<Option<ModuleAccessPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(
             solver: &DenoSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a ModuleAccessPrimitiveExpression,
-        ) -> Option<Val> {
-            match expr {
+        ) -> Result<Option<Val>, AccessSolverError> {
+            Ok(match expr {
                 ModuleAccessPrimitiveExpression::Common(common_expr) => {
-                    reduce_common_primitive_expression(solver, request_context, common_expr).await
+                    reduce_common_primitive_expression(solver, request_context, common_expr).await?
                 }
-            }
+            })
         }
 
         let (left, right) = op.sides();
-        let left_value = reduce_primitive_expression(self, request_context, left).await;
-        let right_value = reduce_primitive_expression(self, request_context, right).await;
+        let left_value = reduce_primitive_expression(self, request_context, left).await?;
+        let right_value = reduce_primitive_expression(self, request_context, right).await?;
 
-        match (left_value, right_value) {
+        Ok(match (left_value, right_value) {
             (None, _) | (_, None) => None,
             (Some(ref left_value), Some(ref right_value)) => Some(ModuleAccessPredicateWrapper(
                 match op {
@@ -94,6 +94,6 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
                 }
                 .into(),
             )),
-        }
+        })
     }
 }

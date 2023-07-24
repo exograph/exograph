@@ -7,7 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::core_resolver::context::ContextParsingError;
+use core_plugin_interface::core_resolver::{
+    access_solver::AccessSolverError, context::ContextParsingError,
+};
 use thiserror::Error;
 use tracing::error;
 
@@ -63,6 +65,15 @@ impl PostgresExecutionError {
         }
     }
 }
+
+impl From<AccessSolverError> for PostgresExecutionError {
+    fn from(error: AccessSolverError) -> Self {
+        match error {
+            AccessSolverError::ContextExtraction(_) => PostgresExecutionError::Authorization,
+        }
+    }
+}
+
 pub(crate) trait WithContext {
     fn with_context(self, context: String) -> Self;
 }

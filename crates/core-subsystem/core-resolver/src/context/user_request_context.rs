@@ -117,7 +117,7 @@ impl<'a> UserRequestContext<'a> {
 
         Ok(parsed_context
             .extract_context_field(key, request_context, self.request)
-            .await
+            .await?
             .map(Val::from))
     }
 }

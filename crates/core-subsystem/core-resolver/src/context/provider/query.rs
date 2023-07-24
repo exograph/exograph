@@ -11,7 +11,7 @@ use async_trait::async_trait;
 
 use crate::context::parsed_context::ParsedContext;
 use crate::context::request::Request;
-use crate::context::RequestContext;
+use crate::context::{ContextParsingError, RequestContext};
 use crate::system_resolver::SystemResolver;
 use crate::OperationsPayload;
 
@@ -36,7 +36,7 @@ impl ParsedContext for QueryExtractor<'_> {
         key: &str,
         request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
-    ) -> Option<serde_json::Value> {
+    ) -> Result<Option<serde_json::Value>, ContextParsingError> {
         let query = format!("query {{ {} }}", key.to_owned());
 
         let result = self
@@ -50,16 +50,24 @@ impl ParsedContext for QueryExtractor<'_> {
                 request_context,
             )
             .await
-            .ok()?;
+            .map_err(|e| ContextParsingError::Generic(e.to_string()))?;
 
-        let (_, query_result) = result.iter().find(|(k, _)| k == key).unwrap_or_else(|| {
-            panic!("Could not find {key} in results while processing @query context")
-        });
+        let matching_result = result.iter().find(|(k, _)| k == key);
 
-        Some(
-            query_result.body.to_json().expect(
-                "Could not convert query result into JSON during @query context processing",
-            ),
-        )
+        match matching_result {
+            Some((_, matching_result)) => {
+                let json_result = matching_result.body.to_json().map_err(|_| {
+                    ContextParsingError::Generic(
+                        "Could not convert query result into JSON during @query context processing"
+                            .to_string(),
+                    )
+                })?;
+
+                Ok(Some(json_result))
+            }
+            None => Err(ContextParsingError::Generic(format!(
+                "Could not find {key} in results while processing @query context"
+            ))),
+        }
     }
 }

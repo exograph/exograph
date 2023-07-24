@@ -61,9 +61,10 @@ impl ParsedContext for ParsedCookieContext {
         key: &str,
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
-    ) -> Option<Value> {
-        self.cookies
+    ) -> Result<Option<Value>, ContextParsingError> {
+        Ok(self
+            .cookies
             .get(key)
-            .map(|c| (*c.value()).to_string().into())
+            .map(|c| (*c.value()).to_string().into()))
     }
 }

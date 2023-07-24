@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use super::{request::Request, RequestContext};
+use super::{request::Request, ContextParsingError, RequestContext};
 
 // Represents a parsed context
 //
@@ -28,7 +28,7 @@ pub trait ParsedContext {
         key: &str,
         request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
-    ) -> Option<Value>;
+    ) -> Result<Option<Value>, ContextParsingError>;
 }
 pub type BoxedParsedContext<'a> = Box<dyn ParsedContext + 'a + Send + Sync>;
 
@@ -49,7 +49,7 @@ impl ParsedContext for TestRequestContext {
         key: &str,
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
-    ) -> Option<Value> {
-        self.test_values.get(key).cloned()
+    ) -> Result<Option<Value>, ContextParsingError> {
+        Ok(self.test_values.get(key).cloned())
     }
 }

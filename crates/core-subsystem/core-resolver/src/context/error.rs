@@ -28,4 +28,7 @@ pub enum ContextParsingError {
 
     #[error("Field not found: `{0}`")]
     FieldNotFound(String),
+
+    #[error("{0}")]
+    Generic(String),
 }

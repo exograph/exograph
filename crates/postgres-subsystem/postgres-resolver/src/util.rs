@@ -83,7 +83,7 @@ async fn check_create_access<'a>(
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     Ok(subsystem
         .solve(request_context, input_context, expr)
-        .await
+        .await?
         .map(|predicate| predicate.0)
         .unwrap_or(AbstractPredicate::False))
 }
@@ -95,7 +95,7 @@ async fn check_retrieve_access<'a>(
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     Ok(subsystem
         .solve(request_context, None, expr)
-        .await
+        .await?
         .map(|p| p.0)
         .unwrap_or(AbstractPredicate::False))
 }
@@ -109,7 +109,7 @@ async fn check_update_access<'a>(
     // First check the input predicate (i.e. the "data" parameter matches the access predicate)
     let input_predicate = subsystem
         .solve(request_context, input_context, &expr.input)
-        .await
+        .await?
         .map(|p| p.0)
         .unwrap_or(AbstractPredicate::False);
 
@@ -122,7 +122,7 @@ async fn check_update_access<'a>(
     // Now compute the database access predicate (the "where" clause to the update statement)
     Ok(subsystem
         .solve(request_context, None, &expr.existing)
-        .await
+        .await?
         .map(|p| p.0)
         .unwrap_or(AbstractPredicate::False))
 }
@@ -134,7 +134,7 @@ async fn check_delete_access<'a>(
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     Ok(subsystem
         .solve(request_context, None, expr)
-        .await
+        .await?
         .map(|p| p.0)
         .unwrap_or(AbstractPredicate::False))
 }

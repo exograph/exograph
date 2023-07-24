@@ -10,7 +10,9 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::context::{parsed_context::ParsedContext, request::Request, RequestContext};
+use crate::context::{
+    parsed_context::ParsedContext, request::Request, ContextParsingError, RequestContext,
+};
 
 pub struct IpExtractor;
 
@@ -25,7 +27,7 @@ impl ParsedContext for IpExtractor {
         _key: &str,
         _request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
-    ) -> Option<Value> {
-        request.get_ip().map(|ip| ip.to_string().into())
+    ) -> Result<Option<Value>, ContextParsingError> {
+        Ok(request.get_ip().map(|ip| ip.to_string().into()))
     }
 }
