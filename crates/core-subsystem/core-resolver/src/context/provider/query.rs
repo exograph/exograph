@@ -9,7 +9,7 @@
 
 use async_trait::async_trait;
 
-use crate::context::parsed_context::ParsedContext;
+use crate::context::parsed_context::ContextExtractor;
 use crate::context::request::Request;
 use crate::context::{ContextParsingError, RequestContext};
 use crate::system_resolver::SystemResolver;
@@ -26,7 +26,7 @@ impl<'a> QueryExtractor<'a> {
 }
 
 #[async_trait]
-impl ParsedContext for QueryExtractor<'_> {
+impl ContextExtractor for QueryExtractor<'_> {
     fn annotation_name(&self) -> &str {
         "query"
     }

@@ -11,13 +11,13 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::context::{
-    parsed_context::ParsedContext, request::Request, ContextParsingError, RequestContext,
+    parsed_context::ContextExtractor, request::Request, ContextParsingError, RequestContext,
 };
 
 pub struct IpExtractor;
 
 #[async_trait]
-impl ParsedContext for IpExtractor {
+impl ContextExtractor for IpExtractor {
     fn annotation_name(&self) -> &str {
         "clientIp"
     }

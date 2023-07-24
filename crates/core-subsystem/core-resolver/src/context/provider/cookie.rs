@@ -15,7 +15,7 @@ use serde_json::Value;
 use tokio::sync::OnceCell;
 
 use crate::context::{
-    error::ContextParsingError, parsed_context::ParsedContext, request::Request, RequestContext,
+    error::ContextParsingError, parsed_context::ContextExtractor, request::Request, RequestContext,
 };
 
 pub struct CookieExtractor {
@@ -52,7 +52,7 @@ impl CookieExtractor {
 }
 
 #[async_trait]
-impl ParsedContext for CookieExtractor {
+impl ContextExtractor for CookieExtractor {
     fn annotation_name(&self) -> &str {
         "cookie"
     }

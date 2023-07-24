@@ -15,9 +15,10 @@ use exo_sql::TransactionHolder;
 
 use crate::{system_resolver::SystemResolver, value::Val};
 
+use super::provider::jwt::JwtExtractor;
 use super::provider::{
     cookie::CookieExtractor, environment::EnvironmentContextExtractor, header::HeaderExtractor,
-    ip::IpExtractor, jwt::JwtAuthenticator, query::QueryExtractor,
+    ip::IpExtractor, query::QueryExtractor,
 };
 use super::{
     error::ContextParsingError, parsed_context::BoxedParsedContext, request::Request,
@@ -50,7 +51,7 @@ impl<'a> UserRequestContext<'a> {
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
             Box::new(CookieExtractor::new()),
-            JwtAuthenticator::parse_context(system_resolver.jwt_authenticator.as_ref(), request)?,
+            Box::new(JwtExtractor::new(system_resolver.jwt_authenticator.clone())), // JwtAuthenticator::parse_context(system_resolver.jwt_authenticator.as_ref(), request)?,
         ];
 
         Ok(UserRequestContext {

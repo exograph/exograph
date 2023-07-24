@@ -14,19 +14,59 @@ use async_trait::async_trait;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
 use serde_json::Value;
+use tokio::sync::OnceCell;
 use tracing::warn;
 
 use crate::context::error::ContextParsingError;
-use crate::context::parsed_context::{BoxedParsedContext, ParsedContext};
+use crate::context::parsed_context::ContextExtractor;
 use crate::context::request::Request;
 use crate::context::RequestContext;
 
-pub enum JwtAuthenticationError {
-    ExpiredToken,
-    TamperedToken,
-    Unknown,
+pub struct JwtExtractor {
+    jwt_authenticator: Option<JwtAuthenticator>,
+    extracted_claims: OnceCell<Value>,
 }
 
+impl JwtExtractor {
+    pub fn new(jwt_authenticator: Option<JwtAuthenticator>) -> Self {
+        Self {
+            jwt_authenticator,
+            extracted_claims: OnceCell::new(),
+        }
+    }
+
+    fn extract_authentication(&self, request: &dyn Request) -> Result<Value, ContextParsingError> {
+        if let Some(jwt_authenticator) = &self.jwt_authenticator {
+            jwt_authenticator.extract_authentication(request)
+        } else {
+            warn!("{EXO_JWT_SECRET} is not set, not parsing JWT tokens");
+            Ok(serde_json::Value::Null)
+        }
+    }
+}
+
+#[async_trait]
+impl ContextExtractor for JwtExtractor {
+    fn annotation_name(&self) -> &str {
+        "jwt"
+    }
+
+    async fn extract_context_field<'r>(
+        &self,
+        key: &str,
+        _request_context: &RequestContext,
+        request: &(dyn Request + Send + Sync),
+    ) -> Result<Option<Value>, ContextParsingError> {
+        Ok(self
+            .extracted_claims
+            .get_or_try_init(|| futures::future::ready(self.extract_authentication(request)))
+            .await?
+            .get(key)
+            .cloned())
+    }
+}
+
+#[derive(Clone)]
 pub struct JwtAuthenticator {
     secret: String, // Shared secret for HS algorithms, public key for RSA/ES
 }
@@ -66,10 +106,7 @@ impl JwtAuthenticator {
     /// Extract authentication form the "Authorization" header with a bearer token
     /// The claim is deserialized into an opaque json `Value`, which will be eventually mapped
     /// to the declared user context model
-    pub fn extract_authentication(
-        &self,
-        request: &dyn Request,
-    ) -> Result<Value, JwtAuthenticationError> {
+    fn extract_authentication(&self, request: &dyn Request) -> Result<Value, ContextParsingError> {
         let jwt_token = request
             .get_header("Authorization")
             .and_then(|auth_token| auth_token.strip_prefix("Bearer ").map(|t| t.to_owned()));
@@ -79,9 +116,10 @@ impl JwtAuthenticator {
                 .validate_jwt(&jwt_token)
                 .map(|v| v.claims)
                 .map_err(|err| match &err.kind() {
-                    ErrorKind::InvalidSignature => JwtAuthenticationError::TamperedToken,
-                    ErrorKind::ExpiredSignature => JwtAuthenticationError::ExpiredToken,
-                    _ => JwtAuthenticationError::Unknown,
+                    ErrorKind::InvalidSignature | ErrorKind::ExpiredSignature => {
+                        ContextParsingError::Unauthorized
+                    }
+                    _ => ContextParsingError::Malformed,
                 }),
             None => {
                 // Either the "Authorization" header was absent or the next token wasn't "Bearer"
@@ -90,46 +128,5 @@ impl JwtAuthenticator {
                 Ok(serde_json::Value::Null)
             }
         }
-    }
-
-    pub fn parse_context<'a>(
-        me: Option<&Self>,
-        request: &'a dyn Request,
-    ) -> Result<BoxedParsedContext<'a>, ContextParsingError> {
-        let jwt_claims = if let Some(jwt_authenticator) = me {
-            jwt_authenticator
-                .extract_authentication(request)
-                .map_err(|e| match e {
-                    JwtAuthenticationError::ExpiredToken
-                    | JwtAuthenticationError::TamperedToken => ContextParsingError::Unauthorized,
-
-                    JwtAuthenticationError::Unknown => ContextParsingError::Malformed,
-                })?
-        } else {
-            warn!("{EXO_JWT_SECRET} is not set, not parsing JWT tokens");
-            serde_json::Value::Null
-        };
-
-        Ok(Box::new(ParsedJwtContext { jwt_claims }))
-    }
-}
-
-pub struct ParsedJwtContext {
-    jwt_claims: Value,
-}
-
-#[async_trait]
-impl ParsedContext for ParsedJwtContext {
-    fn annotation_name(&self) -> &str {
-        "jwt"
-    }
-
-    async fn extract_context_field<'r>(
-        &self,
-        key: &str,
-        _request_context: &RequestContext,
-        _request: &(dyn Request + Send + Sync),
-    ) -> Result<Option<Value>, ContextParsingError> {
-        Ok(self.jwt_claims.get(key).cloned())
     }
 }

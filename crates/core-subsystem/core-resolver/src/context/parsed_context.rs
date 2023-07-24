@@ -12,12 +12,11 @@ use serde_json::Value;
 
 use super::{request::Request, ContextParsingError, RequestContext};
 
-// Represents a parsed context
-//
-// Provides methods to extract context fields out of a given struct
-// This trait should be implemented on objects that represent a particular source of parsed context fields
+/// Extractor for a particular context field
+///
+/// This trait should be implemented on objects that represent a particular source of parsed context fields
 #[async_trait]
-pub trait ParsedContext {
+pub trait ContextExtractor {
     // what annotation does this extractor provide values for?
     // e.g. "jwt", "header", etc.
     fn annotation_name(&self) -> &str;
@@ -30,7 +29,7 @@ pub trait ParsedContext {
         request: &(dyn Request + Send + Sync),
     ) -> Result<Option<Value>, ContextParsingError>;
 }
-pub type BoxedParsedContext<'a> = Box<dyn ParsedContext + 'a + Send + Sync>;
+pub type BoxedParsedContext<'a> = Box<dyn ContextExtractor + 'a + Send + Sync>;
 
 #[cfg(feature = "test-context")]
 pub struct TestRequestContext {
@@ -39,7 +38,7 @@ pub struct TestRequestContext {
 
 #[cfg(feature = "test-context")]
 #[async_trait]
-impl ParsedContext for TestRequestContext {
+impl ContextExtractor for TestRequestContext {
     fn annotation_name(&self) -> &str {
         "test"
     }

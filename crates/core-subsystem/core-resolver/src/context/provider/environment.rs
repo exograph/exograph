@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::context::{
-    parsed_context::ParsedContext, request::Request, ContextParsingError, RequestContext,
+    parsed_context::ContextExtractor, request::Request, ContextParsingError, RequestContext,
 };
 
 pub struct EnvironmentContextExtractor<'a> {
@@ -21,7 +21,7 @@ pub struct EnvironmentContextExtractor<'a> {
 }
 
 #[async_trait]
-impl<'a> ParsedContext for EnvironmentContextExtractor<'a> {
+impl<'a> ContextExtractor for EnvironmentContextExtractor<'a> {
     fn annotation_name(&self) -> &str {
         "env"
     }
