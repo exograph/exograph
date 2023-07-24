@@ -210,7 +210,7 @@ impl<'a> DatabaseClient {
         // the encoding that uses '+' for a space.
         let url = cleaned_url.as_str().replace('+', "%20");
 
-        let mut ssl_mode = SslMode::Disable;
+        let mut ssl_mode = SslMode::Prefer;
 
         // See: https://jdbc.postgresql.org/documentation/head/ssl-client.html
         // 1. "ssl" parameter is a quick way to specify SSL mode. If it is true, then it has the same effect as setting "sslmode" to "verify-full".
@@ -219,7 +219,7 @@ impl<'a> DatabaseClient {
             let ssl_param_parsed = ssl_param.as_str().parse();
             match ssl_param_parsed {
                 Ok(true) => ssl_mode = SslMode::Require,
-                Ok(false) => ssl_mode = SslMode::Disable,
+                Ok(false) => ssl_mode = SslMode::Prefer,
                 _ => {
                     return Err(DatabaseError::Config(format!(
                         "Invalid 'ssl' parameter value {ssl_param}. Must be a 'true' or 'false'",
