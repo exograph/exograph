@@ -35,7 +35,7 @@ impl ParsedContext for QueryExtractor<'_> {
         &self,
         key: &str,
         request_context: &'r RequestContext<'r>,
-        _request: &'r (dyn Request + Send + Sync),
+        _request: &(dyn Request + Send + Sync),
     ) -> Result<Option<serde_json::Value>, ContextParsingError> {
         let query = format!("query {{ {} }}", key.to_owned());
 

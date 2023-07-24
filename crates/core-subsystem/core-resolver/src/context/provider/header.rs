@@ -26,7 +26,7 @@ impl ParsedContext for HeaderExtractor {
         &self,
         key: &str,
         _request_context: &'r RequestContext<'r>,
-        request: &'r (dyn Request + Send + Sync),
+        request: &(dyn Request + Send + Sync),
     ) -> Result<Option<Value>, ContextParsingError> {
         Ok(request
             .get_header(&key.to_ascii_lowercase())

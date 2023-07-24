@@ -30,7 +30,7 @@ impl<'a> ParsedContext for EnvironmentContextExtractor<'a> {
         &self,
         key: &str,
         _request_context: &'r RequestContext<'r>,
-        _request: &'r (dyn Request + Send + Sync),
+        _request: &(dyn Request + Send + Sync),
     ) -> Result<Option<Value>, ContextParsingError> {
         Ok(self.env.get(key).map(|v| v.as_str().into()))
     }

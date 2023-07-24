@@ -27,7 +27,7 @@ pub trait ParsedContext {
         &self,
         key: &str,
         request_context: &'r RequestContext<'r>,
-        request: &'r (dyn Request + Send + Sync),
+        request: &(dyn Request + Send + Sync),
     ) -> Result<Option<Value>, ContextParsingError>;
 }
 pub type BoxedParsedContext<'a> = Box<dyn ParsedContext + 'a + Send + Sync>;
@@ -48,7 +48,7 @@ impl ParsedContext for TestRequestContext {
         &self,
         key: &str,
         _request_context: &'r RequestContext<'r>,
-        _request: &'r (dyn Request + Send + Sync),
+        _request: &(dyn Request + Send + Sync),
     ) -> Result<Option<Value>, ContextParsingError> {
         Ok(self.test_values.get(key).cloned())
     }

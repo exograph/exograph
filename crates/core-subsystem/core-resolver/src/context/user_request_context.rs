@@ -49,7 +49,7 @@ impl<'a> UserRequestContext<'a> {
             Box::new(QueryExtractor::new(system_resolver)),
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
-            CookieExtractor::parse_context(request)?,
+            Box::new(CookieExtractor::new()),
             JwtAuthenticator::parse_context(system_resolver.jwt_authenticator.as_ref(), request)?,
         ];
 

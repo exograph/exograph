@@ -128,7 +128,7 @@ impl ParsedContext for ParsedJwtContext {
         &self,
         key: &str,
         _request_context: &'r RequestContext<'r>,
-        _request: &'r (dyn Request + Send + Sync),
+        _request: &(dyn Request + Send + Sync),
     ) -> Result<Option<Value>, ContextParsingError> {
         Ok(self.jwt_claims.get(key).cloned())
     }

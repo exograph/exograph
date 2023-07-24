@@ -26,7 +26,7 @@ impl ParsedContext for IpExtractor {
         &self,
         _key: &str,
         _request_context: &'r RequestContext<'r>,
-        request: &'r (dyn Request + Send + Sync),
+        request: &(dyn Request + Send + Sync),
     ) -> Result<Option<Value>, ContextParsingError> {
         Ok(request.get_ip().map(|ip| ip.to_string().into()))
     }
