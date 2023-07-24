@@ -25,7 +25,7 @@ impl ParsedContext for HeaderExtractor {
     async fn extract_context_field<'r>(
         &self,
         key: &str,
-        _request_context: &'r RequestContext<'r>,
+        _request_context: &RequestContext,
         request: &(dyn Request + Send + Sync),
     ) -> Result<Option<Value>, ContextParsingError> {
         Ok(request
