@@ -9,6 +9,14 @@
 
 "%%PRELUDE%%"
 
+class AssertionError extends Error {
+    constructor(message, path, unorderedField = false) {
+        super(message);
+        this.path = path;
+        this.unorderedField = unorderedField;
+    }
+}
+
 export async function evaluate(testvariables) {
     var $ = testvariables;
 
@@ -25,29 +33,37 @@ export async function test(actualPayload, testvariables, unorderedSelections) {
     // substituted in from Rust
     const expectedPayload = "%%JSON%%";
 
-    await assert_equals(expectedPayload, actualPayload, [], unorderedSelections);
+    try {
+        await assertEquals(expectedPayload, actualPayload, [], unorderedSelections);
+    } catch (e) {
+        if (e instanceof AssertionError) {
+            throw new ExographError(`assertion failed at '${e.path.join(".")}': ${e.message}`);
+        } else {
+            throw e;
+        }
+    }
 }
 
-async function assert_equals(expected, actual, path, unorderedSelections) {
+async function assertEquals(expected, actual, path, unorderedSelections) {
     switch (typeof (expected)) {
         case "object": {
             if (Array.isArray(expected)) {
-                await assert_array_equal(expected, actual, path, unorderedSelections);
+                await assertArrayEqual(expected, actual, path, unorderedSelections);
             } else {
                 // recursively verify that all key/values in expectedResponse are present in actualValue
                 for (const key in expected) {
                     const expectedValue = expected[key];
                     const actualValue = actual[key];
 
-                    const new_path = [...path, key];
+                    const newPath = [...path, key];
 
-                    await assert_equals(expectedValue, actualValue, new_path, unorderedSelections);
+                    await assertEquals(expectedValue, actualValue, newPath, unorderedSelections);
                 }
 
                 // recursively verify that no extraneous key/values are present in actualValue
                 for (const key in actual) {
                     if (expected[key] === undefined) {
-                        throw new ExographError("unexpected key " + key.toString() + " in actual response " + " at " + path_to_string(path))
+                        throw new AssertionError(`unexpected key ${key} in actual response`, path)
                     }
                 }
             }
@@ -58,7 +74,7 @@ async function assert_equals(expected, actual, path, unorderedSelections) {
             let result = expected(actual);
 
             if (result === undefined) {
-                throw new ExographError("assertion function for field " + path_to_string(path) + " did not return a value, cannot check")
+                throw new AssertionError("assertion function did not return a value, cannot check", path)
             }
 
             // if this function is a Promise, resolve the promise before asserting
@@ -66,76 +82,77 @@ async function assert_equals(expected, actual, path, unorderedSelections) {
                 result = await result;
             }
 
-            // assert true
             if (result === false) {
-                throw new ExographError("assert function failed for field " + path_to_string(path) + "!\nactual: " + JSON.stringify(actual))
+                throw new AssertionError(`assert function failed actual: ${JSON.stringify(actual)}`, path)
             }
             break;
         }
         default: {
             if (expected !== actual) {
-                throw new ExographError("assert failed: expected " + expected + " on key " + path_to_string(path) + ", got " + actual)
+                throw new AssertionError(`expected ${expected}, got ${actual}`, path)
             }
             break;
         }
     }
 }
 
-async function assert_array_equal(expected, actual, path, unorderedSelections) {
+async function assertArrayEqual(expected, actual, path, unorderedSelections) {
     if (expected.length !== actual.length) {
-        throw new ExographError("assert failed: expected array length " + expected.length + ", got " + actual.length)
+        throw new AssertionError(`expected array length ${expected.length}, got ${actual.length}`, path);
     }
-    const unordered = array_contains_path(unorderedSelections, path);
+    const unordered = arrayContainsPath(unorderedSelections, path);
 
     if (unordered) {
-        await assert_equal_unordeded(expected, actual, path, unorderedSelections);
+        await assertEqualUnordeded(expected, actual, path, unorderedSelections);
     } else {
         // We still assert one by one, since at a lower level we may have unordered arrays
         for (let i = 0; i < expected.length; i++) {
-            const expected_item = expected[i];
-            const actual_item = actual[i];
-            await assert_equals(expected_item, actual_item, path, unorderedSelections);
+            const expectedItem = expected[i];
+            const actualItem = actual[i];
+            await assertEquals(expectedItem, actualItem, path, unorderedSelections);
         }
     }
 }
 
-async function assert_equal_unordeded(expected, actual, path, unorderedSelections) {
+async function assertEqualUnordeded(expected, actual, path, unorderedSelections) {
     if (expected.length !== actual.length) {
-        throw new ExographError("assert failed: expected array length " + expected.length + ", got " + actual.length)
+        throw new AssertionError(`expected array length ${expected.length}, got ${actual.length}`, path);
     }
 
     if (expected.length !== 0) {
-        const expected_item = expected.pop();
+        const expectedItem = expected.pop();
 
-        let match = false;
         for (let i = 0; i < actual.length; i++) {
-            const actual_item = actual[i];
+            const actualItem = actual[i];
 
             try {
-                await assert_equals(expected_item, actual_item, path, unorderedSelections);
+                await assertEquals(expectedItem, actualItem, path, unorderedSelections);
                 // An element matched, remove it from the actual array
                 actual.splice(i, 1);
-                match = true;
                 break;
             } catch (e) {
-                if (e instanceof ExographError) {
-                    // ignore (we might find a match later)
+                if (e instanceof AssertionError) {
+                    if (e.path.length !== path.length && e.unorderedField) {
+                        // There was an error at a deeper level for a nested unordered array, so report this root cause
+                        throw e;
+                    }
+                    // ignore (we might find a match at a later index)
                 } else {
                     throw e;
                 }
             }
         }
 
-        if (match) {
+        if (expected.length === actual.length) { // if we had a match, we would have removed the matching item from the array, thus making the lengths same
             // Test the remaining items in the array
-            await assert_equal_unordeded(expected, actual, path, unorderedSelections);
+            await assertEqualUnordeded(expected, actual, path, unorderedSelections);
         } else {
-            throw new ExographError("assert failed: could not find a match for " + JSON.stringify(expected_item) + " at " + path_to_string(path)) + " in the actual array";
+            throw new AssertionError(`could not find ${JSON.stringify(expectedItem)} in the actual array`, path, true);
         }
     }
 }
 
-function array_contains_path(paths, path) {
+function arrayContainsPath(paths, path) {
     for (const item of paths) {
         if (item.length !== path.length) {
             continue;
@@ -155,9 +172,4 @@ function array_contains_path(paths, path) {
     }
 
     return false;
-}
-
-// Nicer path for printing (e.g. 'a.b.c')
-function path_to_string(path) {
-    return "'" + path.join(".") + "'";
 }
