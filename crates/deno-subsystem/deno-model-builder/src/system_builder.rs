@@ -147,7 +147,7 @@ fn process_script(
                     }
                 };
 
-                let media_type = MediaType::from(specifier);
+                let media_type = MediaType::from_specifier(specifier);
 
                 // from Deno examples
                 let (module_type, should_transpile) = match media_type {

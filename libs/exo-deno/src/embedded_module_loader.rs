@@ -111,7 +111,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 map.insert(
                     final_specifier,
                     ResolvedModule::Module(
-                        module_source.code.clone().into(),
+                        module_source.code.as_bytes().into(),
                         module_source.module_type,
                     ),
                 );

@@ -87,14 +87,14 @@ pub struct DenoModule {
 /// * `extra_sources` - A Vec of (URL, code) pairs to include in the source map.
 ///                     As the source map is the first thing queried during module resolution, this is useful for overriding
 ///                     scripts at certain paths with your own version.
-///                     
+///
 impl DenoModule {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         user_code: UserCode,
         user_agent_name: &str,
         shims: Vec<(&str, &[&str])>,
-        additional_code: Vec<&str>,
+        additional_code: Vec<&'static str>,
         extensions: Vec<Extension>,
         shared_state: DenoModuleSharedState,
         explicit_error_class_name: Option<&'static str>,
@@ -216,7 +216,6 @@ impl DenoModule {
             cache_storage_dir: None,
             should_wait_for_inspector_session: false,
             startup_snapshot: None,
-            leak_isolate: false,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
@@ -228,7 +227,7 @@ impl DenoModule {
         worker.execute_main_module(&main_module).await?;
 
         additional_code.iter().for_each(|code| {
-            worker.execute_script("", code).unwrap();
+            worker.execute_script("", code.to_string()).unwrap();
         });
 
         worker.run_event_loop(false).await?;
@@ -267,14 +266,14 @@ impl DenoModule {
         let func_value_string = format!("mod.{function_name}");
 
         let func_value = runtime
-            .execute_script("", &func_value_string)
+            .execute_script("", func_value_string)
             .map_err(DenoInternalError::Any)?;
 
         let shim_objects: HashMap<_, _> = {
             let shim_objects_vals: Vec<_> = self
                 .shim_object_names
                 .iter()
-                .map(|name| runtime.execute_script("", name))
+                .map(|name| runtime.execute_script("", name.clone()))
                 .collect::<Result<_, _>>()
                 .map_err(DenoInternalError::Any)?;
             self.shim_object_names
@@ -630,6 +629,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_sync_ops() {
+        deno_core::extension!(
+            test,
+            ops = [rust_impl],
+            customizer = |ext: &mut deno_core::ExtensionBuilder| {
+                ext.force_op_registration();
+            }
+        );
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
                 Path::new("src")
@@ -640,9 +646,7 @@ mod tests {
             "deno_module",
             vec![],
             vec![],
-            vec![Extension::builder("test")
-                .ops(vec![rust_impl::decl()])
-                .build()],
+            vec![test::init_ops()],
             DenoModuleSharedState::default(),
             None,
             None,
@@ -663,6 +667,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_async_ops() {
+        deno_core::extension!(
+            test,
+            ops = [async_rust_impl],
+            customizer = |ext: &mut deno_core::ExtensionBuilder| {
+                ext.force_op_registration();
+            }
+        );
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
                 Path::new("src")
@@ -673,9 +684,7 @@ mod tests {
             "deno_module",
             vec![],
             vec![],
-            vec![Extension::builder("test")
-                .ops(vec![async_rust_impl::decl()])
-                .build()],
+            vec![test::init_ops()],
             DenoModuleSharedState::default(),
             None,
             None,
