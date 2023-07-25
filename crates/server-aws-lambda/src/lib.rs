@@ -12,7 +12,7 @@
 mod request;
 
 use core_resolver::{
-    context::{ContextParsingError, RequestContext},
+    context::{ContextExtractionError, RequestContext},
     system_resolver::SystemResolver,
     OperationsPayload,
 };
