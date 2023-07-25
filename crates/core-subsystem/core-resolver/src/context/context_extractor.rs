@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use super::{request::Request, ContextParsingError, RequestContext};
+use super::{request::Request, ContextExtractionError, RequestContext};
 
 /// Extractor for a particular context field
 ///
@@ -22,14 +22,14 @@ pub trait ContextExtractor {
     fn annotation_name(&self) -> &str;
 
     // extract a context field from this struct
-    async fn extract_context_field<'r>(
+    async fn extract_context_field(
         &self,
         key: &str,
         request_context: &RequestContext,
         request: &(dyn Request + Send + Sync),
-    ) -> Result<Option<Value>, ContextParsingError>;
+    ) -> Result<Option<Value>, ContextExtractionError>;
 }
-pub type BoxedParsedContext<'a> = Box<dyn ContextExtractor + 'a + Send + Sync>;
+pub type BoxedContextExtractor<'a> = Box<dyn ContextExtractor + 'a + Send + Sync>;
 
 #[cfg(feature = "test-context")]
 pub struct TestRequestContext {
@@ -43,12 +43,12 @@ impl ContextExtractor for TestRequestContext {
         "test"
     }
 
-    async fn extract_context_field<'r>(
+    async fn extract_context_field(
         &self,
         key: &str,
         _request_context: &RequestContext,
         _request: &(dyn Request + Send + Sync),
-    ) -> Result<Option<Value>, ContextParsingError> {
+    ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self.test_values.get(key).cloned())
     }
 }

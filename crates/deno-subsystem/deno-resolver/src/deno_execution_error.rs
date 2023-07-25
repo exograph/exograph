@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_resolver::{
-    access_solver::AccessSolverError, context::ContextParsingError,
+    access_solver::AccessSolverError, context::ContextExtractionError,
     plugin::SubsystemResolutionError, system_resolver::SystemResolutionError,
 };
 use thiserror::Error;
@@ -30,7 +30,7 @@ pub enum DenoExecutionError {
     Generic(String),
 
     #[error("{0}")]
-    ContextExtraction(#[from] ContextParsingError),
+    ContextExtraction(#[from] ContextExtractionError),
 }
 
 impl DenoExecutionError {

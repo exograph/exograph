@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::context::{
-    parsed_context::ContextExtractor, request::Request, ContextParsingError, RequestContext,
+    context_extractor::ContextExtractor, request::Request, ContextExtractionError, RequestContext,
 };
 
 pub struct EnvironmentContextExtractor<'a> {
@@ -26,12 +26,12 @@ impl<'a> ContextExtractor for EnvironmentContextExtractor<'a> {
         "env"
     }
 
-    async fn extract_context_field<'r>(
+    async fn extract_context_field(
         &self,
         key: &str,
         _request_context: &RequestContext,
         _request: &(dyn Request + Send + Sync),
-    ) -> Result<Option<Value>, ContextParsingError> {
+    ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self.env.get(key).map(|v| v.as_str().into()))
     }
 }

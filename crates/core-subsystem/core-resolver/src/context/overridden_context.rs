@@ -12,7 +12,7 @@ use serde_json::Value;
 
 use crate::value::Val;
 
-use super::{ContextParsingError, RequestContext};
+use super::{ContextExtractionError, RequestContext};
 
 pub struct OverriddenContext<'a> {
     pub base_context: &'a RequestContext<'a>,
@@ -35,8 +35,8 @@ impl<'a> OverriddenContext<'a> {
         source_annotation: &str,
         source_annotation_key: &Option<&str>,
         field_name: &str,
-        coerce_value: &(impl Fn(Val) -> Result<Val, ContextParsingError> + std::marker::Sync),
-    ) -> Result<Option<&'a Val>, ContextParsingError> {
+        coerce_value: &(impl Fn(Val) -> Result<Val, ContextExtractionError> + std::marker::Sync),
+    ) -> Result<Option<&'a Val>, ContextExtractionError> {
         let cache_key = (context_type_name.to_owned(), field_name.to_owned());
 
         let cached_value: Option<&Option<Val>> = self.context_cache.get(&cache_key);

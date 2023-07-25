@@ -12,8 +12,9 @@ use async_recursion::async_recursion;
 use crate::{system_resolver::SystemResolver, value::Val};
 
 use super::{
-    error::ContextParsingError, overridden_context::OverriddenContext,
-    parsed_context::BoxedParsedContext, request::Request, user_request_context::UserRequestContext,
+    context_extractor::BoxedContextExtractor, error::ContextExtractionError,
+    overridden_context::OverriddenContext, request::Request,
+    user_request_context::UserRequestContext,
 };
 
 use serde_json::Value;
@@ -29,9 +30,9 @@ pub enum RequestContext<'a> {
 impl<'a> RequestContext<'a> {
     pub fn new(
         request: &'a (dyn Request + Send + Sync),
-        parsed_contexts: Vec<BoxedParsedContext<'a>>,
+        parsed_contexts: Vec<BoxedContextExtractor<'a>>,
         system_resolver: &'a SystemResolver,
-    ) -> Result<RequestContext<'a>, ContextParsingError> {
+    ) -> Result<RequestContext<'a>, ContextExtractionError> {
         Ok(RequestContext::User(UserRequestContext::new(
             request,
             parsed_contexts,
@@ -59,8 +60,8 @@ impl<'a> RequestContext<'a> {
         source_annotation: &str,
         source_annotation_key: &Option<&str>,
         field_name: &str,
-        coerce_value: &(impl Fn(Val) -> Result<Val, ContextParsingError> + std::marker::Sync),
-    ) -> Result<Option<&'a Val>, ContextParsingError> {
+        coerce_value: &(impl Fn(Val) -> Result<Val, ContextExtractionError> + std::marker::Sync),
+    ) -> Result<Option<&'a Val>, ContextExtractionError> {
         match self {
             RequestContext::User(user_request_context) => {
                 user_request_context

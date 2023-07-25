@@ -9,9 +9,9 @@
 
 use async_trait::async_trait;
 
-use crate::context::parsed_context::ContextExtractor;
+use crate::context::context_extractor::ContextExtractor;
 use crate::context::request::Request;
-use crate::context::{ContextParsingError, RequestContext};
+use crate::context::{ContextExtractionError, RequestContext};
 use crate::system_resolver::SystemResolver;
 use crate::OperationsPayload;
 
@@ -31,12 +31,12 @@ impl ContextExtractor for QueryExtractor<'_> {
         "query"
     }
 
-    async fn extract_context_field<'r>(
+    async fn extract_context_field(
         &self,
         key: &str,
         request_context: &RequestContext,
         _request: &(dyn Request + Send + Sync),
-    ) -> Result<Option<serde_json::Value>, ContextParsingError> {
+    ) -> Result<Option<serde_json::Value>, ContextExtractionError> {
         let query = format!("query {{ {} }}", key.to_owned());
 
         let result = self
@@ -50,14 +50,14 @@ impl ContextExtractor for QueryExtractor<'_> {
                 request_context,
             )
             .await
-            .map_err(|e| ContextParsingError::Generic(e.to_string()))?;
+            .map_err(|e| ContextExtractionError::Generic(e.to_string()))?;
 
         let matching_result = result.iter().find(|(k, _)| k == key);
 
         match matching_result {
             Some((_, matching_result)) => {
                 let json_result = matching_result.body.to_json().map_err(|_| {
-                    ContextParsingError::Generic(
+                    ContextExtractionError::Generic(
                         "Could not convert query result into JSON during @query context processing"
                             .to_string(),
                     )
@@ -65,7 +65,7 @@ impl ContextExtractor for QueryExtractor<'_> {
 
                 Ok(Some(json_result))
             }
-            None => Err(ContextParsingError::Generic(format!(
+            None => Err(ContextExtractionError::Generic(format!(
                 "Could not find {key} in results while processing @query context"
             ))),
         }

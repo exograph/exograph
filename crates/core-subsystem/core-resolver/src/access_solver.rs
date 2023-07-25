@@ -15,7 +15,7 @@ use core_model::access::{
 use thiserror::Error;
 
 use crate::{
-    context::{ContextParsingError, RequestContext},
+    context::{ContextExtractionError, RequestContext},
     context_extractor::ContextExtractor,
     number_cmp::NumberWrapper,
     value::Val,
@@ -32,7 +32,7 @@ pub trait AccessPredicate<'a>:
 #[derive(Error, Debug)]
 pub enum AccessSolverError {
     #[error("{0}")]
-    ContextExtraction(#[from] ContextParsingError),
+    ContextExtraction(#[from] ContextExtractionError),
 }
 
 /// Solve access control logic.

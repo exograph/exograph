@@ -15,7 +15,8 @@ use serde_json::Value;
 use tokio::sync::OnceCell;
 
 use crate::context::{
-    error::ContextParsingError, parsed_context::ContextExtractor, request::Request, RequestContext,
+    context_extractor::ContextExtractor, error::ContextExtractionError, request::Request,
+    RequestContext,
 };
 
 pub struct CookieExtractor {
@@ -32,7 +33,7 @@ impl CookieExtractor {
 
     pub fn extract_cookies(
         request: &dyn Request,
-    ) -> Result<HashMap<String, Value>, ContextParsingError> {
+    ) -> Result<HashMap<String, Value>, ContextExtractionError> {
         let cookie_headers = request.get_headers("cookie");
 
         let cookie_strings = cookie_headers
@@ -43,9 +44,9 @@ impl CookieExtractor {
             .map(|cookie_string: String| {
                 Cookie::parse(cookie_string)
                     .map(|cookie| (cookie.name().to_owned(), cookie.value().to_owned().into()))
-                    .map_err(|_| ContextParsingError::Malformed)
+                    .map_err(|_| ContextExtractionError::Malformed)
             })
-            .collect::<Result<Vec<(String, Value)>, ContextParsingError>>()?;
+            .collect::<Result<Vec<(String, Value)>, ContextExtractionError>>()?;
 
         Ok(cookies.into_iter().collect())
     }
@@ -57,12 +58,12 @@ impl ContextExtractor for CookieExtractor {
         "cookie"
     }
 
-    async fn extract_context_field<'r>(
+    async fn extract_context_field(
         &self,
         key: &str,
         _request_context: &RequestContext,
         request: &(dyn Request + Send + Sync),
-    ) -> Result<Option<Value>, ContextParsingError> {
+    ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self
             .extracted_cookies
             .get_or_try_init(|| futures::future::ready(Self::extract_cookies(request)))

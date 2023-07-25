@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_resolver::{
-    access_solver::AccessSolverError, context::ContextParsingError,
+    access_solver::AccessSolverError, context::ContextExtractionError,
 };
 use thiserror::Error;
 use tracing::error;
@@ -45,7 +45,7 @@ pub enum PostgresExecutionError {
     MissingArgument(String),
 
     #[error("{0}")]
-    ContextExtraction(#[from] ContextParsingError),
+    ContextExtraction(#[from] ContextExtractionError),
 }
 
 impl PostgresExecutionError {
