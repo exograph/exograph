@@ -14,19 +14,36 @@ use core_resolver::system_resolver::SystemResolver;
 
 use resolver::{allow_introspection, get_endpoint_http_path, get_playground_http_path, graphiql};
 use server_actix::resolve;
+use thiserror::Error;
 use tracing_actix_web::TracingLogger;
 
+use std::env;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::time;
-use std::{env, process::exit};
 
 const EXO_CORS_DOMAINS: &str = "EXO_CORS_DOMAINS";
 const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
 
+#[derive(Error)]
+enum ServerError {
+    #[error("Port {0} is already in use. Check if there is another process running at that port.")]
+    PortInUse(u32),
+    #[error("{0}")]
+    Io(#[from] std::io::Error),
+}
+
+// A custom `Debug` implementation for `ServerError` (that delegate to the `Display` impl), so that
+// we don't print the default `Debug` implementation's message when the server exits.
+impl std::fmt::Debug for ServerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
 /// Run the server in production mode with a compiled exo_ir file
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(), ServerError> {
     let start_time = time::SystemTime::now();
 
     let system_resolver = web::Data::new(server_common::init().await);
@@ -82,16 +99,13 @@ async fn main() -> std::io::Result<()> {
             println!("- Endpoint hosted at:");
             print_all_addrs(get_endpoint_http_path());
 
-            server.run().await
+            Ok(server.run().await?)
         }
-        Err(e) => {
-            if e.kind() == ErrorKind::AddrInUse {
-                eprintln!("Error: Port {server_port} is already in use. Check if there is another process running at that port.");
-            } else {
-                eprintln!("Error: Failed to start server: {e}");
-            }
-            exit(1);
-        }
+        Err(e) => Err(if e.kind() == ErrorKind::AddrInUse {
+            ServerError::PortInUse(server_port)
+        } else {
+            ServerError::Io(e)
+        }),
     }
 }
 
