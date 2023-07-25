@@ -98,8 +98,8 @@ pub async fn resolve(
 
         Err(err) => {
             let response = match err {
-                ContextParsingError::Unauthorized => error_msg("Unauthorized", 401),
-                ContextParsingError::Malformed => error_msg("Malformed header", 400),
+                ContextExtractionError::Unauthorized => error_msg("Unauthorized", 401),
+                ContextExtractionError::Malformed => error_msg("Malformed header", 400),
                 _ => error_msg("Unknown error", 401),
             };
 
