@@ -44,7 +44,7 @@ impl ModuleLoader for TypescriptLoader {
     fn load(
         &self,
         module_specifier: &ModuleSpecifier,
-        _maybe_referrer: Option<ModuleSpecifier>,
+        _maybe_referrer: Option<&ModuleSpecifier>,
         _is_dyn_import: bool,
     ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
         enum Code<'a> {
@@ -61,21 +61,16 @@ impl ModuleLoader for TypescriptLoader {
                     Code::String(s) => Ok(s.to_string()),
                 }
             }
-
-            pub fn into_bytes(self) -> Result<Vec<u8>, AnyError> {
-                match self {
-                    Code::Slice(slice) => Ok(slice.into()),
-                    Code::Vec(vec) => Ok(vec),
-                    Code::String(s) => Ok(s.into_bytes()),
-                }
-            }
         }
 
         let module_specifier = module_specifier.clone();
         let embedded_dirs = self.embedded_dirs.clone();
 
-        // adapted from https://github.com/denoland/deno/blob/v1.32.0/core/examples/ts_module_loader.rs
-        async move {
+        // adapted from https://github.com/denoland/deno/blob/v1.32.4/core/examples/ts_module_loader.rs
+        fn load(
+            module_specifier: ModuleSpecifier,
+            embedded_dirs: HashMap<String, &Dir>,
+        ) -> Result<ModuleSource, AnyError> {
             let (source, media_type): (Code, MediaType) = match module_specifier.scheme() {
                 "http" | "https" => {
                     let path = PathBuf::from(module_specifier.path());
@@ -159,15 +154,12 @@ impl ModuleLoader for TypescriptLoader {
                 source
             };
 
-            let module = ModuleSource {
-                code: source.into_bytes()?.into(),
-                module_type,
-                module_url_specified: module_specifier.to_string(),
-                module_url_found: module_specifier.to_string(),
-            };
+            let module =
+                ModuleSource::new(module_type, source.to_string()?.into(), &module_specifier);
 
             Ok(module)
         }
-        .boxed_local()
+
+        futures::future::ready(load(module_specifier, embedded_dirs)).boxed_local()
     }
 }

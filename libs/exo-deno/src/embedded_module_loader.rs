@@ -47,7 +47,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
     fn load(
         &self,
         module_specifier: &ModuleSpecifier,
-        maybe_referrer: Option<ModuleSpecifier>,
+        maybe_referrer: Option<&ModuleSpecifier>,
         is_dynamic: bool,
     ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
         let borrowed_map = self.source_code_map.borrow();
@@ -59,18 +59,17 @@ impl ModuleLoader for EmbeddedModuleLoader {
         }
 
         // do we have the module source in-memory?
+        let module_specifier = module_specifier.clone();
+
         if let Some(script) = resolved {
             if let ResolvedModule::Module(script, module_type) = script.clone() {
-                let module_specifier = module_specifier.clone();
-                async move {
-                    Ok(ModuleSource {
-                        code: script.into(),
-                        module_url_specified: module_specifier.to_string(),
-                        module_url_found: final_specifier.to_string(),
-                        module_type,
-                    })
-                }
-                .boxed_local()
+                let module_source = ModuleSource::new_with_redirect(
+                    module_type,
+                    script.into(),
+                    &module_specifier,
+                    &final_specifier,
+                );
+                async move { Ok(module_source) }.boxed_local()
             } else {
                 panic!()
             }
@@ -84,6 +83,8 @@ impl ModuleLoader for EmbeddedModuleLoader {
             #[cfg(feature = "typescript-loader")]
             let embedded_dirs = self.embedded_dirs.clone();
 
+            let maybe_referrer = maybe_referrer.cloned();
+
             async move {
                 #[cfg(feature = "typescript-loader")]
                 let loader = crate::typescript_module_loader::TypescriptLoader { embedded_dirs };
@@ -93,25 +94,16 @@ impl ModuleLoader for EmbeddedModuleLoader {
 
                 // use the configured loader to load the script from an external source
                 let module_source = loader
-                    .load(&module_specifier, maybe_referrer, is_dynamic)
+                    .load(&module_specifier, maybe_referrer.as_ref(), is_dynamic)
                     .await?;
 
                 // cache result for later
                 let mut map = source_code_map.borrow_mut();
-                let final_specifier =
-                    ModuleSpecifier::parse(&module_source.module_url_found).unwrap();
-
-                if module_specifier != final_specifier {
-                    map.insert(
-                        module_specifier,
-                        ResolvedModule::Redirect(final_specifier.clone()),
-                    );
-                }
 
                 map.insert(
-                    final_specifier,
+                    module_specifier,
                     ResolvedModule::Module(
-                        module_source.code.as_bytes().into(),
+                        module_source.code.as_str().to_string(),
                         module_source.module_type,
                     ),
                 );

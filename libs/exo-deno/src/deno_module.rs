@@ -128,8 +128,7 @@ impl DenoModule {
 
         let source_code = format!(
             "import * as mod from '{user_module_path}'; globalThis.mod = mod; {shim_source_code}"
-        )
-        .into_bytes();
+        );
 
         let main_module_specifier = "file:///main.js".to_string();
         let main_specifier_parsed = ModuleSpecifier::parse(&main_module_specifier)?;
@@ -163,7 +162,7 @@ impl DenoModule {
                     for (url, source) in extra_sources {
                         map.insert(
                             ModuleSpecifier::parse(url)?,
-                            ResolvedModule::Module(source.into_bytes(), ModuleType::JavaScript),
+                            ResolvedModule::Module(source, ModuleType::JavaScript),
                         );
                     }
                 }
@@ -227,7 +226,9 @@ impl DenoModule {
         worker.execute_main_module(&main_module).await?;
 
         additional_code.iter().for_each(|code| {
-            worker.execute_script("", code.to_string()).unwrap();
+            worker
+                .execute_script("", deno_core::FastString::from_static(code))
+                .unwrap();
         });
 
         worker.run_event_loop(false).await?;
@@ -263,17 +264,15 @@ impl DenoModule {
         let worker = &mut self.worker;
         let runtime = &mut worker.js_runtime;
 
-        let func_value_string = format!("mod.{function_name}");
-
         let func_value = runtime
-            .execute_script("", func_value_string)
+            .execute_script("", format!("mod.{function_name}").into())
             .map_err(DenoInternalError::Any)?;
 
         let shim_objects: HashMap<_, _> = {
             let shim_objects_vals: Vec<_> = self
                 .shim_object_names
                 .iter()
-                .map(|name| runtime.execute_script("", name.clone()))
+                .map(|name| runtime.execute_script("", name.clone().into()))
                 .collect::<Result<_, _>>()
                 .map_err(DenoInternalError::Any)?;
             self.shim_object_names

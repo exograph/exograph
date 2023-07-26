@@ -27,7 +27,7 @@ http_req  = {version="0.9.1", default-features = false, features = ["rust-tls"]}
 futures.workspace = true
 lazy_static.workspace = true
 serde = { workspace = true, features = ["derive"] }
-serde_v8 = "0.90.0"
+serde_v8 = "0.92.0"
 serde_json.workspace = true
 tracing.workspace = true
 include_dir.workspace = true

@@ -98,7 +98,7 @@ fn process_script(
     // `BoxFuture`, which has the `Send` requirement.
     let ps = std::thread::spawn(|| {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(ProcState::from_options(Arc::new(
+        rt.block_on(ProcState::from_cli_options(Arc::new(
             CliOptions::new(
                 Flags::default(),
                 std::env::current_dir().unwrap(),
@@ -113,15 +113,18 @@ fn process_script(
     .join()
     .unwrap();
 
-    let mut cache = ps.create_graph_loader();
+    let mut cache = ps.module_graph_builder.create_graph_loader();
     let root = Url::from_file_path(std::fs::canonicalize(module_fs_path).unwrap()).unwrap();
     let root_clone = root.clone();
     let graph = std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(ps.create_graph_with_loader(vec![root_clone], &mut cache))
-            .map_err(|e| {
-                ModelBuildingError::Generic(format!("While trying to create Deno graph: {:?}", e))
-            })
+        rt.block_on(
+            ps.module_graph_builder
+                .create_graph_with_loader(vec![root_clone], &mut cache),
+        )
+        .map_err(|e| {
+            ModelBuildingError::Generic(format!("While trying to create Deno graph: {:?}", e))
+        })
     })
     .join()
     .unwrap()?;
@@ -181,10 +184,7 @@ fn process_script(
                     module_source
                 };
 
-                modules.insert(
-                    specifier,
-                    ResolvedModule::Module(transpiled.as_bytes().to_vec(), module_type),
-                )
+                modules.insert(specifier, ResolvedModule::Module(transpiled, module_type))
             }
             ModuleEntryRef::Redirect(to) => {
                 modules.insert(specifier, ResolvedModule::Redirect(to.clone()))
