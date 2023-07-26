@@ -15,19 +15,20 @@ use exo_sql::TransactionHolder;
 
 use crate::{system_resolver::SystemResolver, value::Val};
 
+use super::provider::jwt::JwtExtractor;
 use super::provider::{
     cookie::CookieExtractor, environment::EnvironmentContextExtractor, header::HeaderExtractor,
-    ip::IpExtractor, jwt::JwtAuthenticator, query::QueryExtractor,
+    ip::IpExtractor, query::QueryExtractor,
 };
 use super::{
-    error::ContextParsingError, parsed_context::BoxedParsedContext, request::Request,
+    context_extractor::BoxedContextExtractor, error::ContextExtractionError, request::Request,
     RequestContext,
 };
 
 /// Represent a request context extracted for a particular request
 pub struct UserRequestContext<'a> {
     // maps from an annotation to a parsed context
-    parsed_context_map: HashMap<String, BoxedParsedContext<'a>>,
+    parsed_context_map: HashMap<String, BoxedContextExtractor<'a>>,
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
     request: &'a (dyn Request + Send + Sync),
     // cache of context values so that we compute them only once per request
@@ -38,19 +39,19 @@ impl<'a> UserRequestContext<'a> {
     // Constructs a UserRequestContext from a vector of parsed contexts and a request.
     pub fn new(
         request: &'a (dyn Request + Send + Sync),
-        parsed_contexts: Vec<BoxedParsedContext<'a>>,
+        parsed_contexts: Vec<BoxedContextExtractor<'a>>,
         system_resolver: &'a SystemResolver,
-    ) -> Result<UserRequestContext<'a>, ContextParsingError> {
+    ) -> Result<UserRequestContext<'a>, ContextExtractionError> {
         // a list of backend-agnostic contexts to also include
-        let generic_contexts: Vec<BoxedParsedContext> = vec![
+        let generic_contexts: Vec<BoxedContextExtractor> = vec![
             Box::new(EnvironmentContextExtractor {
                 env: &system_resolver.env,
             }),
             Box::new(QueryExtractor::new(system_resolver)),
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
-            CookieExtractor::parse_context(request)?,
-            JwtAuthenticator::parse_context(system_resolver.jwt_authenticator.as_ref(), request)?,
+            Box::new(CookieExtractor::new()),
+            Box::new(JwtExtractor::new(system_resolver.jwt_authenticator.clone())),
         ];
 
         Ok(UserRequestContext {
@@ -71,9 +72,9 @@ impl<'a> UserRequestContext<'a> {
         &'a self,
         annotation: &str,
         key: &str,
-        coerce_value: &impl Fn(Val) -> Result<Val, ContextParsingError>,
+        coerce_value: &impl Fn(Val) -> Result<Val, ContextExtractionError>,
         request_context: &RequestContext<'a>,
-    ) -> Result<Option<&'a Val>, ContextParsingError> {
+    ) -> Result<Option<&'a Val>, ContextExtractionError> {
         // Check to see if there is a cached value for this field
         // If there is, return it. Otherwise, compute it, cache it, and return it.
 
@@ -109,15 +110,15 @@ impl<'a> UserRequestContext<'a> {
         annotation: &str,
         key: &str,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<Option<Val>, ContextParsingError> {
+    ) -> Result<Option<Val>, ContextExtractionError> {
         let parsed_context = self
             .parsed_context_map
             .get(annotation)
-            .ok_or_else(|| ContextParsingError::SourceNotFound(annotation.into()))?;
+            .ok_or_else(|| ContextExtractionError::SourceNotFound(annotation.into()))?;
 
         Ok(parsed_context
             .extract_context_field(key, request_context, self.request)
-            .await
+            .await?
             .map(Val::from))
     }
 }

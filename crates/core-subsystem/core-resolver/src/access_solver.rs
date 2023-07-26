@@ -12,9 +12,12 @@ use core_model::access::{
     AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
     CommonAccessPrimitiveExpression,
 };
+use thiserror::Error;
 
 use crate::{
-    context::RequestContext, context_extractor::ContextExtractor, number_cmp::NumberWrapper,
+    context::{ContextExtractionError, RequestContext},
+    context_extractor::ContextExtractor,
+    number_cmp::NumberWrapper,
     value::Val,
 };
 
@@ -24,6 +27,12 @@ pub trait AccessPredicate<'a>:
 {
     fn and(self, other: Self) -> Self;
     fn or(self, other: Self) -> Self;
+}
+
+#[derive(Error, Debug)]
+pub enum AccessSolverError {
+    #[error("{0}")]
+    ContextExtraction(#[from] ContextExtractionError),
 }
 
 /// Solve access control logic.
@@ -54,7 +63,7 @@ where
         request_context: &RequestContext<'a>,
         input_context: Option<&'a Val>, // User provided context (such as input to a mutation)
         expr: &AccessPredicateExpression<PrimExpr>,
-    ) -> Option<Res> {
+    ) -> Result<Option<Res>, AccessSolverError> {
         match expr {
             AccessPredicateExpression::LogicalOp(op) => {
                 self.solve_logical_op(request_context, input_context, op)
@@ -64,7 +73,7 @@ where
                 self.solve_relational_op(request_context, input_context, op)
                     .await
             }
-            AccessPredicateExpression::BooleanLiteral(value) => Some((*value).into()),
+            AccessPredicateExpression::BooleanLiteral(value) => Ok(Some((*value).into())),
         }
     }
 
@@ -78,7 +87,7 @@ where
         request_context: &RequestContext<'a>,
         input_context: Option<&'a Val>,
         op: &AccessRelationalOp<PrimExpr>,
-    ) -> Option<Res>;
+    ) -> Result<Option<Res>, AccessSolverError>;
 
     /// Solve logical operations such as `not`, `and`, `or`.
     async fn solve_logical_op(
@@ -86,16 +95,17 @@ where
         request_context: &RequestContext<'a>,
         input_context: Option<&'a Val>,
         op: &AccessLogicalExpression<PrimExpr>,
-    ) -> Option<Res> {
-        match op {
+    ) -> Result<Option<Res>, AccessSolverError> {
+        Ok(match op {
             AccessLogicalExpression::Not(underlying) => {
-                let underlying_predicate =
-                    self.solve(request_context, input_context, underlying).await;
+                let underlying_predicate = self
+                    .solve(request_context, input_context, underlying)
+                    .await?;
                 underlying_predicate.map(|p| p.not())
             }
             AccessLogicalExpression::And(left, right) => {
-                let left_predicate = self.solve(request_context, input_context, left).await;
-                let right_predicate = self.solve(request_context, input_context, right).await;
+                let left_predicate = self.solve(request_context, input_context, left).await?;
+                let right_predicate = self.solve(request_context, input_context, right).await?;
 
                 match (left_predicate, right_predicate) {
                     (Some(left_predicate), Some(right_predicate)) => {
@@ -105,8 +115,8 @@ where
                 }
             }
             AccessLogicalExpression::Or(left, right) => {
-                let left_predicate = self.solve(request_context, input_context, left).await;
-                let right_predicate = self.solve(request_context, input_context, right).await;
+                let left_predicate = self.solve(request_context, input_context, left).await?;
+                let right_predicate = self.solve(request_context, input_context, right).await?;
 
                 match (left_predicate, right_predicate) {
                     (Some(left_predicate), Some(right_predicate)) => {
@@ -117,7 +127,7 @@ where
                     (None, None) => None,
                 }
             }
-        }
+        })
     }
 }
 
@@ -127,24 +137,23 @@ pub async fn reduce_common_primitive_expression<'a>(
     context_extractor: &(impl ContextExtractor + Send + Sync),
     request_context: &RequestContext<'a>,
     expr: &'a CommonAccessPrimitiveExpression,
-) -> Option<Val> {
-    match expr {
+) -> Result<Option<Val>, AccessSolverError> {
+    Ok(match expr {
         CommonAccessPrimitiveExpression::ContextSelection(selection) => context_extractor
             .extract_context_selection(request_context, selection)
-            .await
-            .unwrap()
+            .await?
             .cloned(),
         CommonAccessPrimitiveExpression::StringLiteral(value) => Some(Val::String(value.clone())),
         CommonAccessPrimitiveExpression::BooleanLiteral(value) => Some(Val::Bool(*value)),
         CommonAccessPrimitiveExpression::NumberLiteral(value) => Some(Val::Number((*value).into())),
-    }
+    })
 }
 
 pub fn eq_values(left_value: &Val, right_value: &Val) -> bool {
     match (left_value, right_value) {
         (Val::Number(left_number), Val::Number(right_number)) => {
             // We have a more general implementation of `PartialEq` for `Val` that accounts for
-            // different number types. So, we use that implementaiton here instead of using just `==`
+            // different number types. So, we use that implementation here instead of using just `==`
             NumberWrapper(left_number.clone()).partial_cmp(&NumberWrapper(right_number.clone()))
                 == Some(std::cmp::Ordering::Equal)
         }

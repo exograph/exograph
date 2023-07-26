@@ -9,9 +9,9 @@
 
 use async_trait::async_trait;
 
-use crate::context::parsed_context::ParsedContext;
+use crate::context::context_extractor::ContextExtractor;
 use crate::context::request::Request;
-use crate::context::RequestContext;
+use crate::context::{ContextExtractionError, RequestContext};
 use crate::system_resolver::SystemResolver;
 use crate::OperationsPayload;
 
@@ -26,17 +26,17 @@ impl<'a> QueryExtractor<'a> {
 }
 
 #[async_trait]
-impl ParsedContext for QueryExtractor<'_> {
+impl ContextExtractor for QueryExtractor<'_> {
     fn annotation_name(&self) -> &str {
         "query"
     }
 
-    async fn extract_context_field<'r>(
+    async fn extract_context_field(
         &self,
         key: &str,
-        request_context: &'r RequestContext<'r>,
-        _request: &'r (dyn Request + Send + Sync),
-    ) -> Option<serde_json::Value> {
+        request_context: &RequestContext,
+        _request: &(dyn Request + Send + Sync),
+    ) -> Result<Option<serde_json::Value>, ContextExtractionError> {
         let query = format!("query {{ {} }}", key.to_owned());
 
         let result = self
@@ -50,16 +50,24 @@ impl ParsedContext for QueryExtractor<'_> {
                 request_context,
             )
             .await
-            .ok()?;
+            .map_err(|e| ContextExtractionError::Generic(e.to_string()))?;
 
-        let (_, query_result) = result.iter().find(|(k, _)| k == key).unwrap_or_else(|| {
-            panic!("Could not find {key} in results while processing @query context")
-        });
+        let matching_result = result.iter().find(|(k, _)| k == key);
 
-        Some(
-            query_result.body.to_json().expect(
-                "Could not convert query result into JSON during @query context processing",
-            ),
-        )
+        match matching_result {
+            Some((_, matching_result)) => {
+                let json_result = matching_result.body.to_json().map_err(|_| {
+                    ContextExtractionError::Generic(
+                        "Could not convert query result into JSON during @query context processing"
+                            .to_string(),
+                    )
+                })?;
+
+                Ok(Some(json_result))
+            }
+            None => Err(ContextExtractionError::Generic(format!(
+                "Could not find {key} in results while processing @query context"
+            ))),
+        }
     }
 }

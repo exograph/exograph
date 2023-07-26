@@ -22,7 +22,7 @@ use core_plugin_interface::{
     core_resolver::{
         access_solver::{
             eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-            reduce_common_primitive_expression, AccessPredicate, AccessSolver,
+            reduce_common_primitive_expression, AccessPredicate, AccessSolver, AccessSolverError,
         },
         context::RequestContext,
         value::Val,
@@ -82,31 +82,31 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         request_context: &RequestContext<'a>,
         _input_context: Option<&'a Val>,
         op: &AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
-    ) -> Option<AbstractPredicateWrapper> {
+    ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a DatabaseAccessPrimitiveExpression,
-        ) -> Option<SolvedPrimitiveExpression> {
-            match expr {
+        ) -> Result<Option<SolvedPrimitiveExpression>, AccessSolverError> {
+            Ok(match expr {
                 DatabaseAccessPrimitiveExpression::Common(expr) => {
                     let primitive_expr =
-                        reduce_common_primitive_expression(solver, request_context, expr).await;
+                        reduce_common_primitive_expression(solver, request_context, expr).await?;
                     Some(SolvedPrimitiveExpression::Common(primitive_expr))
                 }
                 DatabaseAccessPrimitiveExpression::Column(column_path) => {
                     Some(SolvedPrimitiveExpression::Column(column_path.clone()))
                 }
-            }
+            })
         }
 
         let (left, right) = op.sides();
-        let left = reduce_primitive_expression(self, request_context, left).await;
-        let right = reduce_primitive_expression(self, request_context, right).await;
+        let left = reduce_primitive_expression(self, request_context, left).await?;
+        let right = reduce_primitive_expression(self, request_context, right).await?;
 
         let (left, right) = match (left, right) {
             (Some(left), Some(right)) => (left, right),
-            _ => return None, // If either side is None, we can't produce a predicate
+            _ => return Ok(None), // If either side is None, we can't produce a predicate
         };
 
         type ColumnPredicateFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;
@@ -153,7 +153,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
             }
         };
 
-        match op {
+        Ok(match op {
             AccessRelationalOp::Eq(..) => {
                 helper(AbstractPredicate::eq, |left_value, right_value| {
                     eq_values(&left_value, &right_value).into()
@@ -194,7 +194,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 },
             ),
         }
-        .map(AbstractPredicateWrapper)
+        .map(AbstractPredicateWrapper))
     }
 }
 
@@ -207,31 +207,31 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
         request_context: &RequestContext<'a>,
         input_context: Option<&'a Val>,
         op: &AccessRelationalOp<InputAccessPrimitiveExpression>,
-    ) -> Option<AbstractPredicateWrapper> {
+    ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a InputAccessPrimitiveExpression,
-        ) -> Option<SolvedJsonPrimitiveExpression> {
-            match expr {
+        ) -> Result<Option<SolvedJsonPrimitiveExpression>, AccessSolverError> {
+            Ok(match expr {
                 InputAccessPrimitiveExpression::Common(expr) => {
                     let primitive_expr =
-                        reduce_common_primitive_expression(solver, request_context, expr).await;
+                        reduce_common_primitive_expression(solver, request_context, expr).await?;
                     Some(SolvedJsonPrimitiveExpression::Common(primitive_expr))
                 }
                 InputAccessPrimitiveExpression::Path(path) => {
                     Some(SolvedJsonPrimitiveExpression::Path(path.clone()))
                 }
-            }
+            })
         }
 
         let (left, right) = op.sides();
-        let left = reduce_primitive_expression(self, request_context, left).await;
-        let right = reduce_primitive_expression(self, request_context, right).await;
+        let left = reduce_primitive_expression(self, request_context, left).await?;
+        let right = reduce_primitive_expression(self, request_context, right).await?;
 
         let (left, right) = match (left, right) {
             (Some(left), Some(right)) => (left, right),
-            _ => return None, // If either side is None, we can't produce a predicate
+            _ => return Ok(None), // If either side is None, we can't produce a predicate
         };
 
         type ValuePredicateFn = fn(&Val, &Val) -> bool;
@@ -264,7 +264,7 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
                     SolvedJsonPrimitiveExpression::Path(right_path),
                 ) => {
                     let right_value = resolve_value(input_context.unwrap(), &right_path);
-                    // If the user didn't provide a value, we evalute to true. Since the purpose of
+                    // If the user didn't provide a value, we evaluate to true. Since the purpose of
                     // an input predicate is to enforce an invariant, if the user didn't provide a
                     // value, the original value will remain unchanged thus keeping the invariant
                     // intact.
@@ -288,7 +288,7 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
             }
         };
 
-        match op {
+        Ok(match op {
             AccessRelationalOp::Eq(..) => helper(eq_values),
             AccessRelationalOp::Neq(_, _) => helper(neq_values),
             AccessRelationalOp::Lt(_, _) => helper(lt_values),
@@ -297,7 +297,7 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
             AccessRelationalOp::Gte(_, _) => helper(gte_values),
             AccessRelationalOp::In(..) => helper(in_values),
         }
-        .map(|p| AbstractPredicateWrapper(p.into()))
+        .map(|p| AbstractPredicateWrapper(p.into())))
     }
 }
 
@@ -535,6 +535,7 @@ mod tests {
         subsystem
             .solve(request_context, None, expr)
             .await
+            .unwrap()
             .map(|p| p.0)
             .unwrap_or(AbstractPredicate::False)
     }

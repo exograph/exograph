@@ -10,7 +10,7 @@
 use indexmap::IndexMap;
 
 use core_plugin_interface::core_resolver::{
-    access_solver::AccessSolver,
+    access_solver::{AccessSolver, AccessSolverError},
     context::RequestContext,
     context_extractor::ContextExtractor,
     exograph_execute_query,
@@ -46,7 +46,7 @@ pub struct DenoOperation<'a> {
 
 impl<'a> DenoOperation<'a> {
     pub async fn execute(&self) -> Result<QueryResponse, DenoExecutionError> {
-        let access_predicate = self.compute_module_access_predicate().await;
+        let access_predicate = self.compute_module_access_predicate().await?;
 
         if !access_predicate {
             return Err(DenoExecutionError::Authorization);
@@ -55,7 +55,7 @@ impl<'a> DenoOperation<'a> {
         self.resolve_deno().await
     }
 
-    async fn compute_module_access_predicate(&self) -> bool {
+    async fn compute_module_access_predicate(&self) -> Result<bool, AccessSolverError> {
         let subsystem = &self.subsystem();
         let return_type = self.method.return_type.typ(&subsystem.module_types);
 
@@ -63,22 +63,22 @@ impl<'a> DenoOperation<'a> {
             ModuleTypeKind::Primitive => true,
             ModuleTypeKind::Composite(ModuleCompositeType { access, .. }) => subsystem
                 .solve(self.request_context, None, &access.value)
-                .await
+                .await?
                 .map(|r| matches!(r.0, ModuleAccessPredicate::True))
                 .unwrap_or(false),
         };
 
         let method_level_access = subsystem
             .solve(self.request_context, None, &self.method.access.value)
-            .await
+            .await?
             .map(|r| r.0)
             .unwrap_or(ModuleAccessPredicate::False);
 
         let method_level_access = method_level_access;
 
         // deny if either access check fails
-        !(matches!(type_level_access, false)
-            || matches!(method_level_access, ModuleAccessPredicate::False))
+        Ok(!(matches!(type_level_access, false)
+            || matches!(method_level_access, ModuleAccessPredicate::False)))
     }
 
     async fn resolve_deno(&self) -> Result<QueryResponse, DenoExecutionError> {

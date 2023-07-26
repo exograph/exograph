@@ -10,27 +10,26 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use super::{request::Request, RequestContext};
+use super::{request::Request, ContextExtractionError, RequestContext};
 
-// Represents a parsed context
-//
-// Provides methods to extract context fields out of a given struct
-// This trait should be implemented on objects that represent a particular source of parsed context fields
+/// Extractor for a particular context field
+///
+/// This trait should be implemented on objects that represent a particular source of parsed context fields
 #[async_trait]
-pub trait ParsedContext {
+pub trait ContextExtractor {
     // what annotation does this extractor provide values for?
     // e.g. "jwt", "header", etc.
     fn annotation_name(&self) -> &str;
 
     // extract a context field from this struct
-    async fn extract_context_field<'r>(
+    async fn extract_context_field(
         &self,
         key: &str,
-        request_context: &'r RequestContext<'r>,
-        request: &'r (dyn Request + Send + Sync),
-    ) -> Option<Value>;
+        request_context: &RequestContext,
+        request: &(dyn Request + Send + Sync),
+    ) -> Result<Option<Value>, ContextExtractionError>;
 }
-pub type BoxedParsedContext<'a> = Box<dyn ParsedContext + 'a + Send + Sync>;
+pub type BoxedContextExtractor<'a> = Box<dyn ContextExtractor + 'a + Send + Sync>;
 
 #[cfg(feature = "test-context")]
 pub struct TestRequestContext {
@@ -39,17 +38,17 @@ pub struct TestRequestContext {
 
 #[cfg(feature = "test-context")]
 #[async_trait]
-impl ParsedContext for TestRequestContext {
+impl ContextExtractor for TestRequestContext {
     fn annotation_name(&self) -> &str {
         "test"
     }
 
-    async fn extract_context_field<'r>(
+    async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &'r RequestContext<'r>,
-        _request: &'r (dyn Request + Send + Sync),
-    ) -> Option<Value> {
-        self.test_values.get(key).cloned()
+        _request_context: &RequestContext,
+        _request: &(dyn Request + Send + Sync),
+    ) -> Result<Option<Value>, ContextExtractionError> {
+        Ok(self.test_values.get(key).cloned())
     }
 }

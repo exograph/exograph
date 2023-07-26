@@ -10,7 +10,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum ContextParsingError {
+pub enum ContextExtractionError {
     #[error("Could not find source `{0}`")]
     SourceNotFound(String),
 
@@ -28,4 +28,7 @@ pub enum ContextParsingError {
 
     #[error("Field not found: `{0}`")]
     FieldNotFound(String),
+
+    #[error("{0}")]
+    Generic(String),
 }

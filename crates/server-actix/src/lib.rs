@@ -12,7 +12,7 @@ mod request;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
-use core_resolver::context::{ContextParsingError, RequestContext};
+use core_resolver::context::{ContextExtractionError, RequestContext};
 use core_resolver::system_resolver::SystemResolver;
 use core_resolver::OperationsPayload;
 use request::ActixRequest;
@@ -61,10 +61,10 @@ pub async fn resolve(
 
         Err(err) => {
             let (message, mut base_response) = match err {
-                ContextParsingError::Unauthorized => {
+                ContextExtractionError::Unauthorized => {
                     (error_msg!("Unauthorized"), HttpResponse::Unauthorized())
                 }
-                ContextParsingError::Malformed => {
+                ContextExtractionError::Malformed => {
                     (error_msg!("Malformed header"), HttpResponse::BadRequest())
                 }
                 _ => (error_msg!("Unknown error"), HttpResponse::Unauthorized()),

@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_resolver::{
-    context::ContextParsingError, plugin::SubsystemResolutionError,
-    system_resolver::SystemResolutionError,
+    access_solver::AccessSolverError, context::ContextExtractionError,
+    plugin::SubsystemResolutionError, system_resolver::SystemResolutionError,
 };
 use thiserror::Error;
 
@@ -30,7 +30,7 @@ pub enum DenoExecutionError {
     Generic(String),
 
     #[error("{0}")]
-    ContextExtraction(#[from] ContextParsingError),
+    ContextExtraction(#[from] ContextExtractionError),
 }
 
 impl DenoExecutionError {
@@ -66,6 +66,14 @@ impl DenoExecutionError {
                     .downcast_ref::<SystemResolutionError>()
                     .map(|error| error.user_error_message()),
             },
+        }
+    }
+}
+
+impl From<AccessSolverError> for DenoExecutionError {
+    fn from(error: AccessSolverError) -> Self {
+        match error {
+            AccessSolverError::ContextExtraction(_) => DenoExecutionError::Authorization,
         }
     }
 }

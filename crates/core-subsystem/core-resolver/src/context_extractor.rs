@@ -19,7 +19,7 @@ use core_model::{
 use futures::StreamExt;
 
 use crate::{
-    context::{ContextParsingError, RequestContext},
+    context::{ContextExtractionError, RequestContext},
     value::Val,
 };
 
@@ -54,7 +54,7 @@ pub trait ContextExtractor {
         &self,
         request_context: &RequestContext,
         context_type_name: &str,
-    ) -> Result<Option<Val>, ContextParsingError> {
+    ) -> Result<Option<Val>, ContextExtractionError> {
         let context_type = self.context_type(context_type_name);
         let field_values: HashMap<_, _> = futures::stream::iter(context_type.fields.iter())
             .then(|context_field| async {
@@ -85,14 +85,14 @@ pub trait ContextExtractor {
         &self,
         request_context: &'a RequestContext<'a>,
         context_selection: &ContextSelection,
-    ) -> Result<Option<&'a Val>, ContextParsingError> {
+    ) -> Result<Option<&'a Val>, ContextExtractionError> {
         let context_type = self.context_type(&context_selection.context_name);
         let context_field = context_type
             .fields
             .iter()
             .find(|f| f.name == context_selection.path.0)
             .ok_or_else(|| {
-                ContextParsingError::FieldNotFound(context_selection.path.0.to_string())
+                ContextExtractionError::FieldNotFound(context_selection.path.0.to_string())
             })?;
 
         extract_context_field(request_context, context_type, context_field).await
@@ -103,10 +103,10 @@ async fn extract_context_field<'a>(
     request_context: &'a RequestContext<'a>,
     context_type: &ContextType,
     context_field: &ContextField,
-) -> Result<Option<&'a Val>, ContextParsingError> {
+) -> Result<Option<&'a Val>, ContextExtractionError> {
     let typ = &context_field.typ;
 
-    let coerce_fn = |value: Val| -> Result<Val, ContextParsingError> { coerce(value, typ) };
+    let coerce_fn = |value: Val| -> Result<Val, ContextExtractionError> { coerce(value, typ) };
 
     let raw_val = request_context
         .extract_context_field(
@@ -121,7 +121,7 @@ async fn extract_context_field<'a>(
     Ok(raw_val)
 }
 
-fn coerce(value: Val, typ: &ContextFieldType) -> Result<Val, ContextParsingError> {
+fn coerce(value: Val, typ: &ContextFieldType) -> Result<Val, ContextExtractionError> {
     match (value, typ) {
         (Val::List(elem), ContextFieldType::List(typ)) => {
             let coerced = elem
@@ -134,7 +134,7 @@ fn coerce(value: Val, typ: &ContextFieldType) -> Result<Val, ContextParsingError
     }
 }
 
-fn coerce_primitive(value: Val, typ: &PrimitiveType) -> Result<Val, ContextParsingError> {
+fn coerce_primitive(value: Val, typ: &PrimitiveType) -> Result<Val, ContextExtractionError> {
     match (value, typ) {
         (value @ Val::String(_), PrimitiveType::String) => Ok(value),
         (value @ Val::Number(_), PrimitiveType::Int) => Ok(value),
@@ -145,31 +145,29 @@ fn coerce_primitive(value: Val, typ: &PrimitiveType) -> Result<Val, ContextParsi
             PrimitiveType::Int => str
                 .parse::<i64>()
                 .map(|i| Val::Number(i.into()))
-                .map_err(|_| ContextParsingError::TypeMismatch {
+                .map_err(|_| ContextExtractionError::TypeMismatch {
                     expected: typ.name(),
                     actual: str,
                 }),
             PrimitiveType::Float => str
                 .parse::<f64>()
                 .map(|f| Val::Number(serde_json::Number::from_f64(f).unwrap()))
-                .map_err(|_| ContextParsingError::TypeMismatch {
+                .map_err(|_| ContextExtractionError::TypeMismatch {
                     expected: typ.name(),
                     actual: str,
                 }),
-            PrimitiveType::Boolean => {
-                str.parse::<bool>()
-                    .map(Val::Bool)
-                    .map_err(|_| ContextParsingError::TypeMismatch {
-                        expected: typ.name(),
-                        actual: str,
-                    })
-            }
-            _ => Err(ContextParsingError::TypeMismatch {
+            PrimitiveType::Boolean => str.parse::<bool>().map(Val::Bool).map_err(|_| {
+                ContextExtractionError::TypeMismatch {
+                    expected: typ.name(),
+                    actual: str,
+                }
+            }),
+            _ => Err(ContextExtractionError::TypeMismatch {
                 expected: typ.name(),
                 actual: str,
             }),
         },
-        (value, _) => Err(ContextParsingError::TypeMismatch {
+        (value, _) => Err(ContextExtractionError::TypeMismatch {
             expected: typ.name(),
             actual: value.to_string(),
         }),
