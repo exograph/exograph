@@ -51,7 +51,7 @@ impl<'a> UserRequestContext<'a> {
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
             Box::new(CookieExtractor::new()),
-            Box::new(JwtExtractor::new(system_resolver.jwt_authenticator.clone())), // JwtAuthenticator::parse_context(system_resolver.jwt_authenticator.as_ref(), request)?,
+            Box::new(JwtExtractor::new(system_resolver.jwt_authenticator.clone())),
         ];
 
         Ok(UserRequestContext {
