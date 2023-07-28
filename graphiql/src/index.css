@@ -23,6 +23,10 @@ body {
   width: 125px
 }
 
+.graphiql-editor-tools-tabs > .active {
+  font-weight: bold;
+}
+
 .overlay {
   position: fixed;
   display: block;

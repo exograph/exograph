@@ -15,6 +15,7 @@ import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
 
 import "graphiql/graphiql.min.css";
+import { authPlugin } from "./authPlugin";
 
 export const useBrowserTheme = () => {
   const mql = useRef(window.matchMedia("(prefers-color-scheme: dark)")).current;
@@ -38,14 +39,15 @@ export const useBrowserTheme = () => {
 
 function Logo() {
   const graphiqlTheme = useTheme().theme;
+  // Fallback to the browser's theme if GraphiQL's theme is set to "System" (which will name `graphiqlTheme` as null)
+  // If the user switches theme in the browser, the logo will be updated accordingly
   const browserTheme = useBrowserTheme();
+
+  const effectiveTheme = graphiqlTheme || browserTheme;
 
   // Currently, switching mode in GraphiQL doesn't update the logo, but this will get fixed
   // when https://github.com/graphql/graphiql/pull/2971 is merged.
-  const logo =
-    graphiqlTheme === "dark" || browserTheme === "dark"
-      ? "logo-dark.svg"
-      : "logo-light.svg";
+  const logo = effectiveTheme === "dark" ? "logo-dark.svg" : "logo-light.svg";
 
   return (
     <a href="https://exograph.dev" target="_blank" rel="noreferrer">
@@ -67,7 +69,7 @@ function App() {
   const networkErrorCount = useRef(0);
 
   async function fetchAndSetSchema() {
-    let schema = await fetchSchema(fetcher);
+    const schema = await fetchSchema(fetcher);
 
     // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
     if (networkErrorCount.current >= 3) {
@@ -121,18 +123,64 @@ function App() {
 }
 
 function Core(props: { schema: GraphQLSchema | null }) {
+  const [headers, setHeaders] = useState("");
+  const [jwtToken, setJwtToken] = useState<string | null>(null);
+
+  const lastGoodJwtToken = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (jwtToken) {
+      lastGoodJwtToken.current = jwtToken;
+    }
+  }, [jwtToken]);
+
+  const headersString = computeHeadersString(
+    headers,
+    jwtToken,
+    lastGoodJwtToken.current
+  );
+
   return (
     <GraphiQL
       fetcher={fetcher}
       defaultEditorToolsVisibility={true}
       isHeadersEditorEnabled={true}
       schema={props.schema}
+      headers={headersString}
+      onEditHeaders={setHeaders}
+      plugins={[authPlugin(setJwtToken)]}
     >
       <GraphiQL.Logo>
         <Logo />
       </GraphiQL.Logo>
     </GraphiQL>
   );
+}
+
+function computeHeadersString(
+  originalHeaders: string,
+  token: string | null,
+  lastGoodJwtToken: string | null
+): string {
+  try {
+    const headersJson = originalHeaders ? JSON.parse(originalHeaders) : {};
+    if (token) {
+      headersJson["Authorization"] = `Bearer ${token}`;
+    } else if (
+      lastGoodJwtToken === headersJson["Authorization"].replace("Bearer ", "")
+    ) {
+      // If the token is empty and the earlier token is the same one we previously set, we remove the Authorization header
+      delete headersJson["Authorization"];
+    }
+    // If the headersJson is empty, we return an empty string to avoid GraphiQL to display {} in the
+    // headers editor
+    return Object.entries(headersJson).length
+      ? JSON.stringify(headersJson, null, 2)
+      : "";
+  } catch (e) {
+    // If the headers are not valid JSON, we don't process to add the token
+    return originalHeaders;
+  }
 }
 
 function ErrorMessage(props: {
