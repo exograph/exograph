@@ -55,15 +55,15 @@ impl Builder for UpdateMutationBuilder {
 
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-        fn update_access_is_false(entity_type: &EntityType) -> bool {
+        let update_access_is_false = |entity_type: &EntityType| -> bool {
             matches!(
-                entity_type.access.update.input,
+                building.input_access_expressions[entity_type.access.update.input],
                 AccessPredicateExpression::BooleanLiteral(false)
             ) || matches!(
-                entity_type.access.update.existing,
+                building.database_access_expressions[entity_type.access.update.database],
                 AccessPredicateExpression::BooleanLiteral(false)
             )
-        }
+        };
         for (_, entity_type) in building.entity_types.iter() {
             if !update_access_is_false(entity_type) {
                 for (existing_id, expanded_type) in self.expanded_data_type(

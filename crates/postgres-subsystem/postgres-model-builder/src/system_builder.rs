@@ -8,7 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::{
-    core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
+    core_model::{
+        access::AccessPredicateExpression,
+        mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
+    },
     core_model_builder::{
         builder::system_builder::BaseModelSystem, error::ModelBuildingError,
         typechecker::typ::TypecheckedSystem,
@@ -16,6 +19,7 @@ use core_plugin_interface::{
 };
 
 use postgres_model::{
+    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     aggregate::AggregateType,
     mutation::PostgresMutation,
     order::OrderByParameterType,
@@ -64,6 +68,9 @@ pub fn build(
             database: building.database,
             mutation_types: building.mutation_types.values(),
             mutations: building.mutations,
+
+            input_access_expressions: building.input_access_expressions,
+            database_access_expressions: building.database_access_expressions,
         }
     };
 
@@ -118,7 +125,7 @@ fn build_expanded(
     Ok(())
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SystemContextBuilding {
     pub primitive_types: MappedArena<PostgresPrimitiveType>,
     pub entity_types: MappedArena<EntityType>,
@@ -134,7 +141,39 @@ pub struct SystemContextBuilding {
 
     pub mutation_types: MappedArena<MutationType>,
     pub mutations: MappedArena<PostgresMutation>,
+
+    pub input_access_expressions:
+        SerializableSlab<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
+    pub database_access_expressions:
+        SerializableSlab<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+
     pub database: Database,
+}
+
+impl Default for SystemContextBuilding {
+    fn default() -> Self {
+        Self {
+            primitive_types: MappedArena::default(),
+            entity_types: MappedArena::default(),
+
+            aggregate_types: MappedArena::default(),
+
+            order_by_types: MappedArena::default(),
+            predicate_types: MappedArena::default(),
+
+            pk_queries: MappedArena::default(),
+            collection_queries: MappedArena::default(),
+            aggregate_queries: MappedArena::default(),
+
+            mutation_types: MappedArena::default(),
+            mutations: MappedArena::default(),
+
+            input_access_expressions: SerializableSlab::new(),
+            database_access_expressions: SerializableSlab::new(),
+
+            database: Database::default(),
+        }
+    }
 }
 
 impl SystemContextBuilding {

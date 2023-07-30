@@ -157,7 +157,7 @@ fn create_shallow_type(
                 pk_query: SerializableSlabIndex::shallow(),
                 collection_query: SerializableSlabIndex::shallow(),
                 aggregate_query: SerializableSlabIndex::shallow(),
-                access: Access::restrictive(),
+                access: restrictive_access(),
             };
 
             building.entity_types.add(&resolved_type.name(), typ);
@@ -404,7 +404,7 @@ fn expand_type_access(
 
     let expr = compute_access_composite_types(
         &resolved_type.access,
-        &building.entity_types[existing_type_id],
+        existing_type_id,
         resolved_env,
         building,
     )?;
@@ -418,29 +418,32 @@ fn expand_type_access(
 
 pub fn compute_access_composite_types(
     resolved: &ResolvedAccess,
-    self_type_info: &EntityType,
+    self_type_info: SerializableSlabIndex<EntityType>,
     resolved_env: &ResolvedTypeEnv,
-    building: &SystemContextBuilding,
+    building: &mut SystemContextBuilding,
 ) -> Result<Access, ModelBuildingError> {
-    let access_expr = |expr: &AstExpr<Typed>| {
-        access_utils::compute_predicate_expression(
+    let self_type_info = &building.entity_types[self_type_info];
+    let mut access_expr = |expr: &AstExpr<Typed>| {
+        let expr = access_utils::compute_predicate_expression(
             expr,
             Some(self_type_info),
             resolved_env,
             &building.primitive_types,
             &building.entity_types,
             &building.database,
-        )
+        );
+        expr.map(|expr| building.database_access_expressions.insert(expr))
     };
 
-    let access_json_expr = |expr: &AstExpr<Typed>| {
-        access_utils::compute_input_predicate_expression(
+    let mut access_json_expr = |expr: &AstExpr<Typed>| {
+        let expr = access_utils::compute_input_predicate_expression(
             expr,
             Some(self_type_info),
             resolved_env,
             &building.primitive_types,
             &building.entity_types,
-        )
+        );
+        expr.map(|expr| building.input_access_expressions.insert(expr))
     };
 
     Ok(Access {
@@ -448,7 +451,7 @@ pub fn compute_access_composite_types(
         read: access_expr(&resolved.read)?,
         update: UpdateAccessExpression {
             input: access_json_expr(&resolved.update)?,
-            existing: access_expr(&resolved.update)?,
+            database: access_expr(&resolved.update)?,
         },
         delete: access_expr(&resolved.delete)?,
     })
@@ -1060,4 +1063,16 @@ fn compute_one_to_many_relation(
         foreign_pk_field_id,
         relation_id,
     })
+}
+
+fn restrictive_access() -> Access {
+    Access {
+        creation: SerializableSlabIndex::shallow(),
+        read: SerializableSlabIndex::shallow(),
+        update: UpdateAccessExpression {
+            input: SerializableSlabIndex::shallow(),
+            database: SerializableSlabIndex::shallow(),
+        },
+        delete: SerializableSlabIndex::shallow(),
+    }
 }
