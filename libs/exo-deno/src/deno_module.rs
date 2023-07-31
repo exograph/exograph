@@ -200,6 +200,7 @@ impl DenoModule {
             maybe_inspector_server: None,
             should_break_on_first_statement: false,
             module_loader,
+            node_fs: None,
             get_error_class_fn: Some(&get_error_class_name),
             origin_storage_dir: None,
             blob_store: shared_state.blob_store,
