@@ -37,13 +37,13 @@ pub trait SubsystemResolver: Sync {
     /// Shim method for `resolve`
     async fn resolve_cdylib<'a>(
         &'a self,
-        handle: Handle,
+        _handle: Handle,
         operation: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
-        let _guard = handle.enter();
+        // let _guard = handle.enter();
         self.resolve(operation, operation_type, request_context, system_resolver)
             .await
     }
@@ -51,13 +51,13 @@ pub trait SubsystemResolver: Sync {
     /// Shim method for `invoke_interceptor`
     async fn invoke_interceptor_cdylib<'a>(
         &'a self,
-        handle: Handle,
+        _handle: Handle,
         interceptor_index: InterceptorIndex,
         intercepted_operation: &'a InterceptedOperation,
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
-        let _guard = handle.enter();
+        // let _guard = handle.enter();
         self.invoke_interceptor(
             interceptor_index,
             intercepted_operation,
