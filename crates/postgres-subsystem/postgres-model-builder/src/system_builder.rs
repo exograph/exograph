@@ -69,8 +69,8 @@ pub fn build(
             mutation_types: building.mutation_types.values(),
             mutations: building.mutations,
 
-            input_access_expressions: building.input_access_expressions,
-            database_access_expressions: building.database_access_expressions,
+            input_access_expressions: building.input_access_expressions.elems,
+            database_access_expressions: building.database_access_expressions.elems,
         }
     };
 
@@ -125,7 +125,7 @@ fn build_expanded(
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SystemContextBuilding {
     pub primitive_types: MappedArena<PostgresPrimitiveType>,
     pub entity_types: MappedArena<EntityType>,
@@ -142,37 +142,53 @@ pub struct SystemContextBuilding {
     pub mutation_types: MappedArena<MutationType>,
     pub mutations: MappedArena<PostgresMutation>,
 
-    pub input_access_expressions:
-        SerializableSlab<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
-    pub database_access_expressions:
-        SerializableSlab<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+    pub input_access_expressions: AccessExpressionsBuilding<InputAccessPrimitiveExpression>,
+    pub database_access_expressions: AccessExpressionsBuilding<DatabaseAccessPrimitiveExpression>,
 
     pub database: Database,
 }
 
-impl Default for SystemContextBuilding {
+/// Structrue to keep track of access expressions arena and a special index for the oft-used restrictive access.
+/// By keeping track of the restrictive access index, we avoid creating multiple index for the same `False` expression.
+#[derive(Debug)]
+pub struct AccessExpressionsBuilding<T: Send + Sync> {
+    elems: SerializableSlab<AccessPredicateExpression<T>>,
+    restrictive_access_index: SerializableSlabIndex<AccessPredicateExpression<T>>,
+}
+
+impl<T: Send + Sync> AccessExpressionsBuilding<T> {
+    pub fn insert(
+        &mut self,
+        elem: AccessPredicateExpression<T>,
+    ) -> SerializableSlabIndex<AccessPredicateExpression<T>> {
+        self.elems.insert(elem)
+    }
+
+    pub fn restricted_access_index(&self) -> SerializableSlabIndex<AccessPredicateExpression<T>> {
+        self.restrictive_access_index
+    }
+}
+
+impl<T: Send + Sync> Default for AccessExpressionsBuilding<T> {
     fn default() -> Self {
+        let mut elems = SerializableSlab::new();
+        // Insert a default restrictive access expression and keep around its index
+        let restrictive_access_index =
+            elems.insert(AccessPredicateExpression::BooleanLiteral(false));
         Self {
-            primitive_types: MappedArena::default(),
-            entity_types: MappedArena::default(),
-
-            aggregate_types: MappedArena::default(),
-
-            order_by_types: MappedArena::default(),
-            predicate_types: MappedArena::default(),
-
-            pk_queries: MappedArena::default(),
-            collection_queries: MappedArena::default(),
-            aggregate_queries: MappedArena::default(),
-
-            mutation_types: MappedArena::default(),
-            mutations: MappedArena::default(),
-
-            input_access_expressions: SerializableSlab::new(),
-            database_access_expressions: SerializableSlab::new(),
-
-            database: Database::default(),
+            elems,
+            restrictive_access_index,
         }
+    }
+}
+
+impl<T: Send + Sync> core::ops::Index<SerializableSlabIndex<AccessPredicateExpression<T>>>
+    for AccessExpressionsBuilding<T>
+{
+    type Output = AccessPredicateExpression<T>;
+
+    fn index(&self, index: SerializableSlabIndex<AccessPredicateExpression<T>>) -> &Self::Output {
+        &self.elems[index]
     }
 }
 

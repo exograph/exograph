@@ -107,18 +107,12 @@ values:
             default_value: ~
         table_name: entitys
         access:
-          creation:
-            BooleanLiteral:
-              - false
-          read:
-            BooleanLiteral:
-              - false
-          update:
-            BooleanLiteral:
-              - false
-          delete:
-            BooleanLiteral:
-              - false
+          default: ~
+          query: ~
+          mutation: ~
+          creation: ~
+          update: ~
+          delete: ~
 map:
   Blob:
     index: 10

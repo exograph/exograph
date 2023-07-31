@@ -17,6 +17,7 @@ use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::Reso
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_plugin_interface::{
     core_model::{
+        access::AccessPredicateExpression,
         context_type::{get_context, ContextType},
         mapped_arena::{MappedArena, SerializableSlabIndex},
         primitive_type::PrimitiveType,
@@ -32,7 +33,10 @@ use exo_sql::{
 
 use heck::ToSnakeCase;
 use postgres_model::{
-    access::{Access, UpdateAccessExpression},
+    access::{
+        Access, DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
+        UpdateAccessExpression,
+    },
     aggregate::{AggregateField, AggregateFieldType},
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{
@@ -416,44 +420,111 @@ fn expand_type_access(
     Ok(())
 }
 
+/// Compute access expression for database access.
+///
+/// Goes over the chain of the expressions and maps the first non-optiona expression to a database access expression.
+fn compute_database_access_expr(
+    ast_exprs: &[&Option<AstExpr<Typed>>],
+    entity_id: SerializableSlabIndex<EntityType>,
+    resolved_env: &ResolvedTypeEnv,
+    building: &mut SystemContextBuilding,
+) -> Result<
+    SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+    ModelBuildingError,
+> {
+    let entity = &building.entity_types[entity_id];
+
+    let expr = ast_exprs
+        .iter()
+        .find_map(|ast_expr| {
+            ast_expr.as_ref().map(|ast_expr| {
+                access_utils::compute_predicate_expression(
+                    ast_expr,
+                    entity,
+                    resolved_env,
+                    &building.primitive_types,
+                    &building.entity_types,
+                    &building.database,
+                )
+            })
+        })
+        .transpose()?;
+
+    Ok(match expr {
+        Some(AccessPredicateExpression::BooleanLiteral(false)) | None => building
+            .database_access_expressions
+            .restricted_access_index(),
+        Some(expr) => building.database_access_expressions.insert(expr),
+    })
+}
+
+fn compute_input_access_expr(
+    ast_exprs: &[&Option<AstExpr<Typed>>],
+    entity_id: SerializableSlabIndex<EntityType>,
+    resolved_env: &ResolvedTypeEnv,
+    building: &mut SystemContextBuilding,
+) -> Result<
+    SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
+    ModelBuildingError,
+> {
+    let entity = &building.entity_types[entity_id];
+
+    let expr = ast_exprs
+        .iter()
+        .find_map(|ast_expr| {
+            ast_expr.as_ref().map(|ast_expr| {
+                access_utils::compute_input_predicate_expression(
+                    ast_expr,
+                    entity,
+                    resolved_env,
+                    &building.primitive_types,
+                    &building.entity_types,
+                )
+            })
+        })
+        .transpose()?;
+
+    Ok(match expr {
+        Some(AccessPredicateExpression::BooleanLiteral(false)) | None => {
+            building.input_access_expressions.restricted_access_index()
+        }
+        Some(expr) => building.input_access_expressions.insert(expr),
+    })
+}
+
 pub fn compute_access_composite_types(
     resolved: &ResolvedAccess,
-    self_type_info: SerializableSlabIndex<EntityType>,
+    entity_id: SerializableSlabIndex<EntityType>,
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<Access, ModelBuildingError> {
-    let self_type_info = &building.entity_types[self_type_info];
-    let mut access_expr = |expr: &AstExpr<Typed>| {
-        let expr = access_utils::compute_predicate_expression(
-            expr,
-            Some(self_type_info),
-            resolved_env,
-            &building.primitive_types,
-            &building.entity_types,
-            &building.database,
-        );
-        expr.map(|expr| building.database_access_expressions.insert(expr))
+    let mut compute_input_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
+        compute_input_access_expr(ast_exprs, entity_id, resolved_env, building)
     };
 
-    let mut access_json_expr = |expr: &AstExpr<Typed>| {
-        let expr = access_utils::compute_input_predicate_expression(
-            expr,
-            Some(self_type_info),
-            resolved_env,
-            &building.primitive_types,
-            &building.entity_types,
-        );
-        expr.map(|expr| building.input_access_expressions.insert(expr))
+    let creation_input_access =
+        compute_input_access_expr(&[&resolved.creation, &resolved.mutation, &resolved.default])?;
+    let update_input_access =
+        compute_input_access_expr(&[&resolved.update, &resolved.mutation, &resolved.default])?;
+
+    let mut compute_database_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
+        compute_database_access_expr(ast_exprs, entity_id, resolved_env, building)
     };
+
+    let query_access = compute_database_access_expr(&[&resolved.query, &resolved.default])?;
+    let update_database_access =
+        compute_database_access_expr(&[&resolved.update, &resolved.mutation, &resolved.default])?;
+    let delete_access =
+        compute_database_access_expr(&[&resolved.delete, &resolved.mutation, &resolved.default])?;
 
     Ok(Access {
-        creation: access_json_expr(&resolved.creation)?,
-        read: access_expr(&resolved.read)?,
+        read: query_access,
+        creation: creation_input_access,
         update: UpdateAccessExpression {
-            input: access_json_expr(&resolved.update)?,
-            database: access_expr(&resolved.update)?,
+            input: update_input_access,
+            database: update_database_access,
         },
-        delete: access_expr(&resolved.delete)?,
+        delete: delete_access,
     })
 }
 

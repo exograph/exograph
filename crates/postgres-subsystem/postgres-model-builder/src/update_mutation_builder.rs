@@ -9,13 +9,10 @@
 
 //! Build update mutation types `<Type>UpdateInput`, `update<Type>`, and `update<Type>s`
 
-use core_plugin_interface::{
-    core_model::{
-        access::AccessPredicateExpression,
-        mapped_arena::{MappedArena, SerializableSlabIndex},
-        types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
-    },
-    core_model_builder::ast::ast_types::AstExpr,
+use core_plugin_interface::core_model::{
+    access::AccessPredicateExpression,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 use postgres_model::{
     mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
@@ -45,7 +42,7 @@ impl Builder for UpdateMutationBuilder {
         types: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
         // TODO: This implementation is the same for CreateMutationBuilder. Fix it when we refactor non-mutations builders
-        if let AstExpr::BooleanLiteral(false, _) = resolved_composite_type.access.update {
+        if !resolved_composite_type.access.update_allowed() {
             return vec![];
         }
         let mut field_types = self.data_param_field_type_names(resolved_composite_type, types);

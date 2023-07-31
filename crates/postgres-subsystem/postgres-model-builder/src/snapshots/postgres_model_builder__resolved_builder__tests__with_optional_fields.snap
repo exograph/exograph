@@ -87,18 +87,12 @@ values:
             default_value: ~
         table_name: concerts
         access:
-          creation:
-            BooleanLiteral:
-              - false
-          read:
-            BooleanLiteral:
-              - false
-          update:
-            BooleanLiteral:
-              - false
-          delete:
-            BooleanLiteral:
-              - false
+          default: ~
+          query: ~
+          mutation: ~
+          creation: ~
+          update: ~
+          delete: ~
   - - ~
     - Composite:
         name: Venue
@@ -153,18 +147,12 @@ values:
             default_value: ~
         table_name: venues
         access:
-          creation:
-            BooleanLiteral:
-              - false
-          read:
-            BooleanLiteral:
-              - false
-          update:
-            BooleanLiteral:
-              - false
-          delete:
-            BooleanLiteral:
-              - false
+          default: ~
+          query: ~
+          mutation: ~
+          creation: ~
+          update: ~
+          delete: ~
   - ~
   - ~
   - ~

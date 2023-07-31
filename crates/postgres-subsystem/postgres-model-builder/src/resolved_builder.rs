@@ -934,8 +934,6 @@ mod tests {
     use builder::{load_subsystem_builders, parser, typechecker};
     use std::fs::File;
 
-    // FIXME: separate out unit tests into respective plugins
-
     #[test]
     fn with_annotations() {
         let src = r#"

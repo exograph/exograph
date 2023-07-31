@@ -10,13 +10,10 @@
 //! Build mutation input types associated with creation (`<Type>CreationInput`) and
 //! the create mutations (`create<Type>`, and `create<Type>s`)
 
-use core_plugin_interface::{
-    core_model::{
-        access::AccessPredicateExpression,
-        mapped_arena::MappedArena,
-        types::{BaseOperationReturnType, FieldType, OperationReturnType},
-    },
-    core_model_builder::ast::ast_types::AstExpr,
+use core_plugin_interface::core_model::{
+    access::AccessPredicateExpression,
+    mapped_arena::MappedArena,
+    types::{BaseOperationReturnType, FieldType, OperationReturnType},
 };
 
 use postgres_model::{
@@ -43,7 +40,7 @@ impl Builder for CreateMutationBuilder {
         resolved_composite_type: &ResolvedCompositeType,
         types: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
-        if let AstExpr::BooleanLiteral(false, _) = resolved_composite_type.access.creation {
+        if !resolved_composite_type.access.creation_allowed() {
             return vec![];
         }
         let mut field_types = self.data_param_field_type_names(resolved_composite_type, types);
