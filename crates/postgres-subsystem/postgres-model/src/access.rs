@@ -7,44 +7,27 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::core_model::access::AccessPredicateExpression;
-use core_plugin_interface::core_model::access::CommonAccessPrimitiveExpression;
+use core_plugin_interface::core_model::{
+    access::{AccessPredicateExpression, CommonAccessPrimitiveExpression},
+    mapped_arena::SerializableSlabIndex,
+};
 use exo_sql::PhysicalColumnPath;
 use serde::{Deserialize, Serialize};
 
 /// Access specification for a model
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Access {
-    pub creation: AccessPredicateExpression<InputAccessPrimitiveExpression>,
-    pub read: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    pub creation: SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
+    pub read: SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
     pub update: UpdateAccessExpression,
-    pub delete: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    pub delete: SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateAccessExpression {
-    pub input: AccessPredicateExpression<InputAccessPrimitiveExpression>,
-    pub existing: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
-}
-
-impl UpdateAccessExpression {
-    pub const fn restrictive() -> Self {
-        Self {
-            input: AccessPredicateExpression::BooleanLiteral(false),
-            existing: AccessPredicateExpression::BooleanLiteral(false),
-        }
-    }
-}
-
-impl Access {
-    pub const fn restrictive() -> Self {
-        Self {
-            creation: AccessPredicateExpression::BooleanLiteral(false),
-            read: AccessPredicateExpression::BooleanLiteral(false),
-            update: UpdateAccessExpression::restrictive(),
-            delete: AccessPredicateExpression::BooleanLiteral(false),
-        }
-    }
+    pub input: SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
+    pub database:
+        SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
 }
 
 /// Primitive expression (that doesn't contain any other expressions).

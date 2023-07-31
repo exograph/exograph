@@ -49,7 +49,7 @@ enum JsonPathSelection<'a> {
 
 pub fn compute_input_predicate_expression(
     expr: &AstExpr<Typed>,
-    self_type_info: Option<&EntityType>,
+    self_type_info: &EntityType,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -129,7 +129,7 @@ pub fn compute_input_predicate_expression(
 
 pub fn compute_predicate_expression(
     expr: &AstExpr<Typed>,
-    self_type_info: Option<&EntityType>,
+    self_type_info: &EntityType,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -230,7 +230,7 @@ pub fn compute_predicate_expression(
 
 fn compute_primitive_db_expr(
     expr: &AstExpr<Typed>,
-    self_type_info: Option<&EntityType>,
+    self_type_info: &EntityType,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -271,7 +271,7 @@ fn compute_primitive_db_expr(
 
 fn compute_primitive_json_expr(
     expr: &AstExpr<Typed>,
-    self_type_info: Option<&EntityType>,
+    self_type_info: &EntityType,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -355,7 +355,7 @@ fn compute_relational_op<PrimExpr: Send + Sync>(
 
 fn compute_column_selection<'a>(
     selection: &FieldSelection<Typed>,
-    self_type_info: Option<&'a EntityType>,
+    self_type_info: &'a EntityType,
     resolved_env: &'a ResolvedTypeEnv<'a>,
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &'a MappedArena<EntityType>,
@@ -382,7 +382,7 @@ fn compute_column_selection<'a>(
 
     if path_elements[0] == "self" {
         let (_, column_path, field_type) = path_elements[1..].iter().fold(
-            (self_type_info, None::<PhysicalColumnPath>, None),
+            (Some(self_type_info), None::<PhysicalColumnPath>, None),
             |(self_type_info, column_path, _field_type), field_name| {
                 let self_type_info =
                     self_type_info.expect("Type for the access selection is not defined");
@@ -418,7 +418,7 @@ fn compute_column_selection<'a>(
 
 fn compute_json_selection<'a>(
     selection: &FieldSelection<Typed>,
-    self_type_info: Option<&'a EntityType>,
+    self_type_info: &'a EntityType,
     resolved_env: &'a ResolvedTypeEnv<'a>,
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &'a MappedArena<EntityType>,
@@ -436,7 +436,7 @@ fn compute_json_selection<'a>(
 
     if path_elements[0] == "self" {
         let (_, json_path, field_type) = path_elements[1..].iter().fold(
-            (self_type_info, Vec::new(), None),
+            (Some(self_type_info), Vec::new(), None),
             |(self_type_info, json_path, _field_type), field_name| {
                 let self_type_info =
                     self_type_info.expect("Type for the access selection is not defined");

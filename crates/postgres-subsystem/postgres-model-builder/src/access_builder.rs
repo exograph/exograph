@@ -7,7 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use codemap::{CodeMap, Span};
 use serde::{Deserialize, Serialize};
 
 use core_plugin_interface::core_model_builder::{
@@ -15,73 +14,74 @@ use core_plugin_interface::core_model_builder::{
     typechecker::Typed,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct ResolvedAccess {
-    pub creation: AstExpr<Typed>,
-    pub read: AstExpr<Typed>,
-    pub update: AstExpr<Typed>,
-    pub delete: AstExpr<Typed>,
+    pub default: Option<AstExpr<Typed>>,
+
+    pub query: Option<AstExpr<Typed>>,
+
+    pub mutation: Option<AstExpr<Typed>>,
+    pub creation: Option<AstExpr<Typed>>,
+    pub update: Option<AstExpr<Typed>>,
+    pub delete: Option<AstExpr<Typed>>,
 }
 
 impl ResolvedAccess {
-    fn restrictive() -> Self {
-        ResolvedAccess {
-            creation: AstExpr::BooleanLiteral(false, null_span()),
-            read: AstExpr::BooleanLiteral(false, null_span()),
-            update: AstExpr::BooleanLiteral(false, null_span()),
-            delete: AstExpr::BooleanLiteral(false, null_span()),
-        }
-    }
-}
+    // The annotation parameter hierarchy is:
+    // value -> query
+    //       -> mutation -> create
+    //                   -> update
+    //                   -> delete
+    // Any lower node in the hierarchy get a priority over its parent.
 
-fn null_span() -> Span {
-    let mut codemap = CodeMap::new();
-    let file = codemap.add_file("".to_string(), "".to_string());
-    file.span
+    pub fn creation_allowed(&self) -> bool {
+        !matches!(
+            self.creation
+                .as_ref()
+                .or(self.mutation.as_ref())
+                .or(self.default.as_ref()),
+            None | Some(AstExpr::BooleanLiteral(false, _))
+        )
+    }
+
+    pub fn update_allowed(&self) -> bool {
+        !matches!(
+            self.update
+                .as_ref()
+                .or(self.mutation.as_ref())
+                .or(self.default.as_ref()),
+            None | Some(AstExpr::BooleanLiteral(false, _))
+        )
+    }
 }
 
 pub fn build_access(
     access_annotation_params: Option<&AstAnnotationParams<Typed>>,
 ) -> ResolvedAccess {
     match access_annotation_params {
-        Some(p) => {
-            let restrictive = AstExpr::BooleanLiteral(false, null_span());
+        Some(p) => match p {
+            AstAnnotationParams::Single(default, _) => ResolvedAccess {
+                default: Some(default.clone()),
+                ..Default::default()
+            },
+            AstAnnotationParams::Map(m, _) => {
+                let query = m.get("query").cloned();
+                let mutation = m.get("mutation").cloned();
+                let creation = m.get("create").cloned();
+                let update = m.get("update").cloned();
+                let delete = m.get("delete").cloned();
 
-            // The annotation parameter hierarchy is:
-            // value -> query
-            //       -> mutation -> create
-            //                   -> update
-            //                   -> delete
-            // Any lower node in the hierarchy get a priority over its parent.
-
-            let (creation, read, update, delete) = match p {
-                AstAnnotationParams::Single(default, _) => (default, default, default, default),
-                AstAnnotationParams::Map(m, _) => {
-                    let query = m.get("query");
-                    let mutation = m.get("mutation");
-                    let create = m.get("create");
-                    let update = m.get("update");
-                    let delete = m.get("delete");
-
-                    let default_mutation = mutation.unwrap_or(&restrictive);
-
-                    (
-                        create.unwrap_or(default_mutation),
-                        query.unwrap_or(&restrictive),
-                        update.unwrap_or(default_mutation),
-                        delete.unwrap_or(default_mutation),
-                    )
+                ResolvedAccess {
+                    default: None,
+                    query,
+                    mutation,
+                    creation,
+                    update,
+                    delete,
                 }
-                _ => panic!(),
-            };
-
-            ResolvedAccess {
-                creation: creation.clone(),
-                read: read.clone(),
-                update: update.clone(),
-                delete: delete.clone(),
             }
-        }
-        None => ResolvedAccess::restrictive(),
+            _ => panic!(),
+        },
+        None => ResolvedAccess::default(),
     }
 }

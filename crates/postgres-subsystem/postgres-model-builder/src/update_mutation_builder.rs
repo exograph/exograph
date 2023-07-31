@@ -9,13 +9,10 @@
 
 //! Build update mutation types `<Type>UpdateInput`, `update<Type>`, and `update<Type>s`
 
-use core_plugin_interface::{
-    core_model::{
-        access::AccessPredicateExpression,
-        mapped_arena::{MappedArena, SerializableSlabIndex},
-        types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
-    },
-    core_model_builder::ast::ast_types::AstExpr,
+use core_plugin_interface::core_model::{
+    access::AccessPredicateExpression,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
 };
 use postgres_model::{
     mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
@@ -45,7 +42,7 @@ impl Builder for UpdateMutationBuilder {
         types: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
         // TODO: This implementation is the same for CreateMutationBuilder. Fix it when we refactor non-mutations builders
-        if let AstExpr::BooleanLiteral(false, _) = resolved_composite_type.access.update {
+        if !resolved_composite_type.access.update_allowed() {
             return vec![];
         }
         let mut field_types = self.data_param_field_type_names(resolved_composite_type, types);
@@ -55,15 +52,15 @@ impl Builder for UpdateMutationBuilder {
 
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-        fn update_access_is_false(entity_type: &EntityType) -> bool {
+        let update_access_is_false = |entity_type: &EntityType| -> bool {
             matches!(
-                entity_type.access.update.input,
+                building.input_access_expressions[entity_type.access.update.input],
                 AccessPredicateExpression::BooleanLiteral(false)
             ) || matches!(
-                entity_type.access.update.existing,
+                building.database_access_expressions[entity_type.access.update.database],
                 AccessPredicateExpression::BooleanLiteral(false)
             )
-        }
+        };
         for (_, entity_type) in building.entity_types.iter() {
             if !update_access_is_false(entity_type) {
                 for (existing_id, expanded_type) in self.expanded_data_type(

@@ -42,7 +42,7 @@ pub(crate) async fn check_access<'a>(
         match kind {
             SQLOperationKind::Create => {
                 check_create_access(
-                    &return_type.access.creation,
+                    &subsystem.input_access_expressions[return_type.access.creation],
                     subsystem,
                     request_context,
                     input_context,
@@ -50,7 +50,12 @@ pub(crate) async fn check_access<'a>(
                 .await?
             }
             SQLOperationKind::Retrieve => {
-                check_retrieve_access(&return_type.access.read, subsystem, request_context).await?
+                check_retrieve_access(
+                    &subsystem.database_access_expressions[return_type.access.read],
+                    subsystem,
+                    request_context,
+                )
+                .await?
             }
             SQLOperationKind::Update => {
                 check_update_access(
@@ -62,7 +67,12 @@ pub(crate) async fn check_access<'a>(
                 .await?
             }
             SQLOperationKind::Delete => {
-                check_delete_access(&return_type.access.delete, subsystem, request_context).await?
+                check_delete_access(
+                    &subsystem.database_access_expressions[return_type.access.delete],
+                    subsystem,
+                    request_context,
+                )
+                .await?
             }
         }
     };
@@ -108,7 +118,11 @@ async fn check_update_access<'a>(
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     // First check the input predicate (i.e. the "data" parameter matches the access predicate)
     let input_predicate = subsystem
-        .solve(request_context, input_context, &expr.input)
+        .solve(
+            request_context,
+            input_context,
+            &subsystem.input_access_expressions[expr.input],
+        )
         .await?
         .map(|p| p.0)
         .unwrap_or(AbstractPredicate::False);
@@ -121,7 +135,11 @@ async fn check_update_access<'a>(
 
     // Now compute the database access predicate (the "where" clause to the update statement)
     Ok(subsystem
-        .solve(request_context, None, &expr.existing)
+        .solve(
+            request_context,
+            None,
+            &subsystem.database_access_expressions[expr.database],
+        )
         .await?
         .map(|p| p.0)
         .unwrap_or(AbstractPredicate::False))

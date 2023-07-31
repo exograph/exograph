@@ -16,12 +16,14 @@ use super::{
     query::PkQuery,
 };
 use crate::{
+    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     aggregate::AggregateType,
     query::{AggregateQuery, CollectionQuery},
     types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 use core_plugin_interface::{
     core_model::{
+        access::AccessPredicateExpression,
         context_type::{ContextContainer, ContextType},
         mapped_arena::{MappedArena, SerializableSlab},
         type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
@@ -51,6 +53,11 @@ pub struct PostgresSubsystem {
     // mutation related
     pub mutation_types: SerializableSlab<MutationType>, // create, update, delete input types such as `PersonUpdateInput`
     pub mutations: MappedArena<PostgresMutation>,
+
+    pub input_access_expressions:
+        SerializableSlab<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
+    pub database_access_expressions:
+        SerializableSlab<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
 
     pub database: Database,
 }
@@ -130,6 +137,10 @@ impl Default for PostgresSubsystem {
             aggregate_queries: MappedArena::default(),
             mutation_types: SerializableSlab::new(),
             mutations: MappedArena::default(),
+
+            input_access_expressions: SerializableSlab::new(),
+            database_access_expressions: SerializableSlab::new(),
+
             database: Database::default(),
         }
     }

@@ -74,7 +74,7 @@ values:
             default_value: ~
         table_name: concerts
         access:
-          creation:
+          default:
             LogicalOp:
               Or:
                 - RelationalOp:
@@ -105,99 +105,11 @@ values:
                           index: 0
                           generation: ~
                 - Primitive: Boolean
-          read:
-            LogicalOp:
-              Or:
-                - RelationalOp:
-                    Eq:
-                      - FieldSelection:
-                          Select:
-                            - Single:
-                                - - AuthContext
-                                - Reference:
-                                    index: 15
-                                    generation: ~
-                            - - role
-                            - Reference:
-                                index: 4
-                                generation: ~
-                      - StringLiteral:
-                          - ROLE_ADMIN
-                      - Primitive: Boolean
-                - FieldSelection:
-                    Select:
-                      - Single:
-                          - - self
-                          - Reference:
-                              index: 16
-                              generation: ~
-                      - - public
-                      - Reference:
-                          index: 0
-                          generation: ~
-                - Primitive: Boolean
-          update:
-            LogicalOp:
-              Or:
-                - RelationalOp:
-                    Eq:
-                      - FieldSelection:
-                          Select:
-                            - Single:
-                                - - AuthContext
-                                - Reference:
-                                    index: 15
-                                    generation: ~
-                            - - role
-                            - Reference:
-                                index: 4
-                                generation: ~
-                      - StringLiteral:
-                          - ROLE_ADMIN
-                      - Primitive: Boolean
-                - FieldSelection:
-                    Select:
-                      - Single:
-                          - - self
-                          - Reference:
-                              index: 16
-                              generation: ~
-                      - - public
-                      - Reference:
-                          index: 0
-                          generation: ~
-                - Primitive: Boolean
-          delete:
-            LogicalOp:
-              Or:
-                - RelationalOp:
-                    Eq:
-                      - FieldSelection:
-                          Select:
-                            - Single:
-                                - - AuthContext
-                                - Reference:
-                                    index: 15
-                                    generation: ~
-                            - - role
-                            - Reference:
-                                index: 4
-                                generation: ~
-                      - StringLiteral:
-                          - ROLE_ADMIN
-                      - Primitive: Boolean
-                - FieldSelection:
-                    Select:
-                      - Single:
-                          - - self
-                          - Reference:
-                              index: 16
-                              generation: ~
-                      - - public
-                      - Reference:
-                          index: 0
-                          generation: ~
-                - Primitive: Boolean
+          query: ~
+          mutation: ~
+          creation: ~
+          update: ~
+          delete: ~
 map:
   Blob:
     index: 10

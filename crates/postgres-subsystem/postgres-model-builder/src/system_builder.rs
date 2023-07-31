@@ -8,7 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::{
-    core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
+    core_model::{
+        access::AccessPredicateExpression,
+        mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
+    },
     core_model_builder::{
         builder::system_builder::BaseModelSystem, error::ModelBuildingError,
         typechecker::typ::TypecheckedSystem,
@@ -16,6 +19,7 @@ use core_plugin_interface::{
 };
 
 use postgres_model::{
+    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     aggregate::AggregateType,
     mutation::PostgresMutation,
     order::OrderByParameterType,
@@ -64,6 +68,9 @@ pub fn build(
             database: building.database,
             mutation_types: building.mutation_types.values(),
             mutations: building.mutations,
+
+            input_access_expressions: building.input_access_expressions.elems,
+            database_access_expressions: building.database_access_expressions.elems,
         }
     };
 
@@ -134,7 +141,55 @@ pub struct SystemContextBuilding {
 
     pub mutation_types: MappedArena<MutationType>,
     pub mutations: MappedArena<PostgresMutation>,
+
+    pub input_access_expressions: AccessExpressionsBuilding<InputAccessPrimitiveExpression>,
+    pub database_access_expressions: AccessExpressionsBuilding<DatabaseAccessPrimitiveExpression>,
+
     pub database: Database,
+}
+
+/// Structure to keep track of access expressions arena and a special index for the oft-used restrictive access.
+/// By keeping track of the restrictive access index, we avoid creating multiple indices for the same `False` expression.
+#[derive(Debug)]
+pub struct AccessExpressionsBuilding<T: Send + Sync> {
+    elems: SerializableSlab<AccessPredicateExpression<T>>,
+    restrictive_access_index: SerializableSlabIndex<AccessPredicateExpression<T>>,
+}
+
+impl<T: Send + Sync> AccessExpressionsBuilding<T> {
+    pub fn insert(
+        &mut self,
+        elem: AccessPredicateExpression<T>,
+    ) -> SerializableSlabIndex<AccessPredicateExpression<T>> {
+        self.elems.insert(elem)
+    }
+
+    pub fn restricted_access_index(&self) -> SerializableSlabIndex<AccessPredicateExpression<T>> {
+        self.restrictive_access_index
+    }
+}
+
+impl<T: Send + Sync> Default for AccessExpressionsBuilding<T> {
+    fn default() -> Self {
+        let mut elems = SerializableSlab::new();
+        // Insert a default restrictive access expression and keep around its index
+        let restrictive_access_index =
+            elems.insert(AccessPredicateExpression::BooleanLiteral(false));
+        Self {
+            elems,
+            restrictive_access_index,
+        }
+    }
+}
+
+impl<T: Send + Sync> core::ops::Index<SerializableSlabIndex<AccessPredicateExpression<T>>>
+    for AccessExpressionsBuilding<T>
+{
+    type Output = AccessPredicateExpression<T>;
+
+    fn index(&self, index: SerializableSlabIndex<AccessPredicateExpression<T>>) -> &Self::Output {
+        &self.elems[index]
+    }
 }
 
 impl SystemContextBuilding {
