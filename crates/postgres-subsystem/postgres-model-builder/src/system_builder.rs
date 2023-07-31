@@ -148,8 +148,8 @@ pub struct SystemContextBuilding {
     pub database: Database,
 }
 
-/// Structrue to keep track of access expressions arena and a special index for the oft-used restrictive access.
-/// By keeping track of the restrictive access index, we avoid creating multiple index for the same `False` expression.
+/// Structure to keep track of access expressions arena and a special index for the oft-used restrictive access.
+/// By keeping track of the restrictive access index, we avoid creating multiple indices for the same `False` expression.
 #[derive(Debug)]
 pub struct AccessExpressionsBuilding<T: Send + Sync> {
     elems: SerializableSlab<AccessPredicateExpression<T>>,

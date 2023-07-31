@@ -422,7 +422,7 @@ fn expand_type_access(
 
 /// Compute access expression for database access.
 ///
-/// Goes over the chain of the expressions and maps the first non-optiona expression to a database access expression.
+/// Goes over the chain of the expressions and maps the first non-optional expression to a database access expression.
 fn compute_database_access_expr(
     ast_exprs: &[&Option<AstExpr<Typed>>],
     entity_id: SerializableSlabIndex<EntityType>,
