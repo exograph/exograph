@@ -53,7 +53,7 @@ pub async fn dynamic_assert_using_deno(
             path: "file:///internal/assert.js".to_owned(),
             script: vec![(
                 Url::parse("file:///internal/assert.js").unwrap(),
-                ResolvedModule::Module(script.into(), ModuleType::JavaScript),
+                ResolvedModule::Module(script, ModuleType::JavaScript),
             )]
             .into_iter()
             .collect(),
@@ -112,7 +112,7 @@ pub async fn evaluate_using_deno(
             path: "file:///internal/assert.js".to_owned(),
             script: vec![(
                 Url::parse("file:///internal/assert.js").unwrap(),
-                ResolvedModule::Module(script.into(), ModuleType::JavaScript),
+                ResolvedModule::Module(script, ModuleType::JavaScript),
             )]
             .into_iter()
             .collect(),
@@ -152,7 +152,7 @@ mod tests {
                     "b": ["foo", "bar"],
                     "c": "qux"
                 }
-            } 
+            }
         "#,
         )
         .unwrap()
@@ -163,7 +163,7 @@ mod tests {
         let expected = r#"
             {
                 "data": {
-                    "a": 1, 
+                    "a": 1,
                     "b": $.b,
                     "c": RegExp.prototype.test.bind(/q.*/g)
                 }
@@ -193,9 +193,9 @@ mod tests {
         let payload = r#"
             {
                 "data": {
-                    "a": 1, 
+                    "a": 1,
                     "b": $.b,
-                    "c": function () { return "this function should disappear since it is not JSON"; } 
+                    "c": function () { return "this function should disappear since it is not JSON"; }
                 }
             }
         "#;
@@ -221,9 +221,9 @@ mod tests {
         let expected = r#"
             {
                 "data": {
-                    "a": 1, 
+                    "a": 1,
                     "b": ["foo", "bar"],
-                    "c": "biz" 
+                    "c": "biz"
                 }
             }
         "#;
@@ -250,9 +250,9 @@ mod tests {
         let expected = r#"
             {
                 "data": {
-                    "a": 1, 
+                    "a": 1,
                     "b": ["foo", "bar"],
-                    "c": ((actual) => { return false; }) 
+                    "c": ((actual) => { return false; })
                 }
             }
         "#;
@@ -285,7 +285,7 @@ mod tests {
         let expected = r#"
             {
                 "data": {
-                    "a": 1, 
+                    "a": 1,
                     "b": ["foo", "bar"],
                     "c": async function(actual) { return await someAsyncOp(); }
                 }
@@ -339,7 +339,7 @@ mod tests {
                         {
                             "id": 3,
                             "name": "baz"
-                        },                        
+                        },
                         {
                             "id": 1,
                             "name": "foo"

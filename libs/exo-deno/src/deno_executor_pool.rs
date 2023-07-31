@@ -29,7 +29,7 @@ type DenoActorPool<C, M, R> = Vec<DenoActor<C, M, R>>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ResolvedModule {
-    Module(Vec<u8>, ModuleType),
+    Module(String, ModuleType),
     Redirect(Url),
 }
 
@@ -226,7 +226,7 @@ mod tests {
     #[tokio::test]
     async fn test_actor_executor() {
         let module_path = "file://test_js/direct.js";
-        let module_script = include_bytes!("test_js/direct.js");
+        let module_script = include_str!("test_js/direct.js").to_string();
 
         let executor_pool = DenoExecutorPool::<(), (), ()>::new(
             "ExoDenoTest",
@@ -243,7 +243,7 @@ mod tests {
                 module_path,
                 vec![(
                     ModuleSpecifier::parse(module_path).unwrap(),
-                    ResolvedModule::Module(module_script.to_vec(), ModuleType::JavaScript),
+                    ResolvedModule::Module(module_script, ModuleType::JavaScript),
                 )]
                 .into_iter()
                 .collect(),
@@ -260,7 +260,7 @@ mod tests {
     #[tokio::test]
     async fn test_actor_executor_concurrent() {
         let module_path = "file://test_js/direct.js";
-        let module_script = include_bytes!("test_js/direct.js");
+        let module_script = include_str!("test_js/direct.js").to_string();
 
         let executor_pool = DenoExecutorPool::new(
             "ExoDenoTest",
@@ -279,7 +279,7 @@ mod tests {
         async fn execute_function(
             pool: &DenoExecutorPool<(), (), ()>,
             script_path: &str,
-            script: &[u8],
+            script: String,
             method_name: &str,
             arguments: Vec<Arg>,
         ) -> Result<Value, DenoError> {
@@ -287,7 +287,7 @@ mod tests {
                 script_path,
                 vec![(
                     ModuleSpecifier::parse(script_path).unwrap(),
-                    ResolvedModule::Module(script.to_vec(), ModuleType::JavaScript),
+                    ResolvedModule::Module(script, ModuleType::JavaScript),
                 )]
                 .into_iter()
                 .collect(),
@@ -303,7 +303,7 @@ mod tests {
             let handle = execute_function(
                 &executor_pool,
                 module_path,
-                module_script,
+                module_script.clone(),
                 "addAndDouble",
                 vec![
                     Arg::Serde(Value::Number(4.into())),
