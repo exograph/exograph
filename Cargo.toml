@@ -57,11 +57,12 @@ bytes = "1"
 chrono = { version = "0.4.22", default-features = false, features = ["clock"] }
 codemap = "0.1.3"
 codemap-diagnostic = "0.1.1"
-deno = { git = "https://github.com/exograph/deno.git", branch = "patched_1_32_5", default-features = false  }
-deno_ast = "0.25.0"
-deno_core = { git = "https://github.com/exograph/deno.git", branch = "patched_1_32_5" }
-deno_graph = "=0.47.1"
-deno_runtime = { git = "https://github.com/exograph/deno.git", branch = "patched_1_32_5" }
+deno = { git = "https://github.com/exograph/deno.git", branch = "patched_1_33_1", default-features = false  }
+deno_ast = "0.26.0"
+deno_core = { git = "https://github.com/exograph/deno.git", branch = "patched_1_33_1" }
+deno_graph = "=0.48.1"
+deno_runtime = { git = "https://github.com/exograph/deno.git", branch = "patched_1_33_1" }
+serde_v8 = { git = "https://github.com/exograph/deno.git", branch = "patched_1_33_1" }
 futures = "0.3"
 heck = "0.4.0"
 include_dir = "0.7.2"
