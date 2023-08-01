@@ -126,19 +126,7 @@ function Core(props: { schema: GraphQLSchema | null }) {
   const [headers, setHeaders] = useState("");
   const [jwtToken, setJwtToken] = useState<string | null>(null);
 
-  const lastGoodJwtToken = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (jwtToken) {
-      lastGoodJwtToken.current = jwtToken;
-    }
-  }, [jwtToken]);
-
-  const headersString = computeHeadersString(
-    headers,
-    jwtToken,
-    lastGoodJwtToken.current
-  );
+  const headersString = computeHeadersString(headers, jwtToken);
 
   return (
     <GraphiQL
@@ -159,19 +147,15 @@ function Core(props: { schema: GraphQLSchema | null }) {
 
 function computeHeadersString(
   originalHeaders: string,
-  token: string | null,
-  lastGoodJwtToken: string | null
+  token: string | null
 ): string {
+  if (!token) {
+    return originalHeaders;
+  }
+
   try {
     const headersJson = originalHeaders ? JSON.parse(originalHeaders) : {};
-    if (token) {
-      headersJson["Authorization"] = `Bearer ${token}`;
-    } else if (
-      lastGoodJwtToken === headersJson["Authorization"].replace("Bearer ", "")
-    ) {
-      // If the token is empty and the earlier token is the same one we previously set, we remove the Authorization header
-      delete headersJson["Authorization"];
-    }
+    headersJson["Authorization"] = `Bearer ${token}`;
     // If the headersJson is empty, we return an empty string to avoid GraphiQL to display {} in the
     // headers editor
     return Object.entries(headersJson).length

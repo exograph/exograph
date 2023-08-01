@@ -87,15 +87,27 @@ const codeMirrorStyle = {
 
 function AuthPanel({ onTokenChange }: AuthPanelProps) {
   const [payload, setPayload] = useState(defaultPayload);
-  const [payloadError, setPayloadError] = useState("");
+  const [payloadError, setPayloadError] = useState<string | undefined>(
+    undefined
+  );
   const [secret, setSecret] = useState("");
 
   useEffect(() => {
+    try {
+      JSON.parse(payload);
+      setPayloadError(undefined);
+    } catch (e) {
+      setPayloadError((e as Error).message);
+      return;
+    }
+  }, [payload]);
+
+  const updateAuthorizationToken = () => {
     const updateJwt = async () => {
       try {
         const payloadJson = JSON.parse(payload);
         const token = await createJwtToken(payloadJson, secret);
-        setPayloadError("");
+        setPayloadError(undefined);
         onTokenChange(token);
       } catch (e) {
         setPayloadError((e as Error).message);
@@ -104,12 +116,11 @@ function AuthPanel({ onTokenChange }: AuthPanelProps) {
     };
 
     updateJwt();
-  }, [payload, secret, onTokenChange]);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div className="graphiql-doc-explorer-title">Authentication Manager</div>
-
       <div style={labelStyle}>Secret</div>
       <CodeMirror
         style={codeMirrorStyle}
@@ -125,7 +136,6 @@ function AuthPanel({ onTokenChange }: AuthPanelProps) {
         theme={exoTheme}
         onChange={setSecret}
       />
-
       <div style={labelStyle}>Payload</div>
       <CodeMirror
         style={codeMirrorStyle}
@@ -145,7 +155,19 @@ function AuthPanel({ onTokenChange }: AuthPanelProps) {
         theme={exoTheme}
         onChange={setPayload}
       />
-      <div style={{ color: "brown", fontSize: "0.9rem" }}>{payloadError}</div>
+      {
+        <div style={{ color: "brown", fontSize: "0.9rem", height: "3rem" }}>
+          {payloadError}
+        </div>
+      }
+      <button
+        className="graphiql-button"
+        style={{ marginTop: "1rem" }}
+        onClick={updateAuthorizationToken}
+        disabled={payloadError || !secret || !payload ? true : false}
+      >
+        Update Authorization Token
+      </button>
       <div
         style={{ fontSize: "0.9rem", alignSelf: "flex-end", marginTop: "auto" }}
       >
