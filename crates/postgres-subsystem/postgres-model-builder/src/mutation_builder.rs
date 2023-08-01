@@ -381,11 +381,7 @@ pub trait DataParamBuilder<D> {
             MutationType {
                 name: existing_type_name,
                 fields: input_type_fields,
-                table_id: building
-                    .entity_types
-                    .get_by_key(&entity_type.name)
-                    .unwrap()
-                    .table_id,
+                entity_id: building.entity_types.get_id(&entity_type.name).unwrap(),
             },
         ));
 
@@ -415,7 +411,7 @@ pub trait DataParamBuilder<D> {
             .get_by_key(&existing_type_name)
             .unwrap_or_else(|| panic!("Could not find type {existing_type_name} to expand"));
 
-        if existing.table_id == SerializableSlabIndex::shallow() {
+        if existing.entity_id == SerializableSlabIndex::shallow() {
             // If not already expanded
             self.expanded_data_type(
                 field_type,

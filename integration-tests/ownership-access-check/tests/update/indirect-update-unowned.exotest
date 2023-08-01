@@ -1,0 +1,180 @@
+stages:
+  # User can updates only their own documents (user 2 owns document 1 and 2)
+  - operation: |
+      mutation {
+        # Update all documents through user, but implicitly only if the user owns them
+        # Since user 2 does not own document 3, it should not be updated due to access control rules
+        updateUsers(where: {id: {gt: 0}}, data: {name: "updated-user2", documents: {update: {id: 3, content: "indirect-update"}}}) { 
+          id
+          name
+          documents @unordered {
+            id
+            content
+            user {
+              id
+            }
+          }
+        }
+      }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "data": {
+          "updateUsers": [
+            {
+              "id": 1,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 2,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 1,
+                  "content": "content1",
+                  "user": {
+                    "id": 2
+                  }
+                },
+                {
+                  "id": 2,
+                  "content": "content2",
+                  "user": {
+                    "id": 2
+                  }
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 4,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 5,
+              "name": "updated-user2",
+              "documents": []
+            }
+          ]
+        }
+      }
+
+  # Ensure that the earlier mutation didn't change data
+  - operation: |
+      query {
+        allDocs: documents @unordered {
+          id
+          content
+          user {
+            id
+            name
+          }
+        }
+        allUsers: users @unordered {
+          id
+          name
+          documents @unordered {
+            id
+            content
+          }
+        }
+      }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "allDocs": [
+            {
+              "id": 1,
+              "content": "content1",
+              "user": {
+                "id": 2,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 2,
+              "content": "content2",
+              "user": {
+                "id": 2,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 3,
+              "content": "content3",
+              "user": {
+                "id": 1,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 4,
+              "content": "content4",
+              "user": {
+                "id": 3,
+                "name": "updated-user2"
+              }
+            }
+          ],
+          "allUsers": [
+            {
+              "id": 1,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 3,
+                  "content": "content3"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 1,
+                  "content": "content1"
+                },
+                {
+                  "id": 2,
+                  "content": "content2"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 4,
+                  "content": "content4"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 5,
+              "name": "updated-user2",
+              "documents": []
+            }
+          ]
+        }
+      }

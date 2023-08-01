@@ -107,22 +107,6 @@ async fn create_operation<'content>(
 ) -> Result<AbstractInsert, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
 
-    let access_predicate = check_access(
-        return_type,
-        &SQLOperationKind::Create,
-        subsystem,
-        request_context,
-        data_arg,
-    )
-    .await?;
-
-    // For creation, the access predicate must be `True` (i.e. it must not have any residual
-    // conditions) The `False` case is already handled by the check_access function (by rejecting
-    // the request)
-    if access_predicate != Predicate::True {
-        return Err(PostgresExecutionError::Authorization);
-    }
-
     match data_arg {
         Some(argument) => {
             InsertOperation {
@@ -150,7 +134,7 @@ async fn delete_operation<'content>(
     let (table_id, _, _) = return_type_info(return_type, subsystem);
 
     let access_predicate = check_access(
-        return_type,
+        return_type.typ(&subsystem.entity_types),
         &SQLOperationKind::Delete,
         subsystem,
         request_context,
@@ -158,14 +142,14 @@ async fn delete_operation<'content>(
     )
     .await?;
 
-    let predicate = compute_predicate(
+    let arg_predicate = compute_predicate(
         predicate_param,
         &field.arguments,
         subsystem,
         request_context,
     )
     .await?;
-    let predicate = Predicate::and(access_predicate, predicate);
+    let predicate = Predicate::and(access_predicate, arg_predicate);
 
     Ok(AbstractDelete {
         table_id,
@@ -185,7 +169,7 @@ async fn update_operation<'content>(
 ) -> Result<AbstractUpdate, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
     let access_predicate = check_access(
-        return_type,
+        return_type.typ(&subsystem.entity_types),
         &SQLOperationKind::Update,
         subsystem,
         request_context,
@@ -193,14 +177,14 @@ async fn update_operation<'content>(
     )
     .await?;
 
-    let predicate = compute_predicate(
+    let arg_predicate = compute_predicate(
         predicate_param,
         &field.arguments,
         subsystem,
         request_context,
     )
     .await?;
-    let predicate = Predicate::and(access_predicate, predicate);
+    let predicate = Predicate::and(access_predicate, arg_predicate);
 
     match data_arg {
         Some(argument) => {

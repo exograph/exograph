@@ -37,7 +37,7 @@ impl OperationSelectionResolver for AggregateQuery {
         subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
         let access_predicate = check_access(
-            &self.return_type,
+            self.return_type.typ(&subsystem.entity_types),
             &SQLOperationKind::Retrieve,
             subsystem,
             request_context,

@@ -48,7 +48,7 @@ pub trait Builder {
                 MutationType {
                     name: type_name.to_string(),
                     fields: vec![],
-                    table_id: SerializableSlabIndex::shallow(),
+                    entity_id: SerializableSlabIndex::shallow(),
                 },
             );
         }

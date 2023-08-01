@@ -19,7 +19,7 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver, context::RequestContext, value::Val,
 };
-use exo_sql::{AbstractPredicate, TableId};
+use exo_sql::{AbstractPredicate, Predicate, TableId};
 use postgres_model::{
     query::{CollectionQuery, PkQuery},
     subsystem::PostgresSubsystem,
@@ -27,27 +27,32 @@ use postgres_model::{
 
 pub type Arguments = IndexMap<String, Val>;
 
-// TODO: Allow access_predicate to have a residue that we can evaluate against data_param
-// See issue #69
 pub(crate) async fn check_access<'a>(
-    return_type: &'a OperationReturnType<EntityType>,
+    return_type: &'a EntityType,
     kind: &SQLOperationKind,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
     input_context: Option<&'a Val>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
-    let return_type = return_type.typ(&subsystem.entity_types);
-
     let access_predicate = {
         match kind {
             SQLOperationKind::Create => {
-                check_create_access(
+                let access_predicate = check_create_access(
                     &subsystem.input_access_expressions[return_type.access.creation],
                     subsystem,
                     request_context,
                     input_context,
                 )
-                .await?
+                .await?;
+
+                // For creation, the access predicate must be `True` (i.e. it must not have any residual
+                // conditions) The `False` case is already handled by the check_access function (by rejecting
+                // the request)
+                if access_predicate != Predicate::True {
+                    return Err(PostgresExecutionError::Authorization);
+                } else {
+                    access_predicate
+                }
             }
             SQLOperationKind::Retrieve => {
                 check_retrieve_access(

@@ -25,7 +25,10 @@ use postgres_model::{
     types::{base_type, EntityType, MutationType, PostgresField, PostgresType},
 };
 
-use crate::sql_mapper::SQLMapper;
+use crate::{
+    sql_mapper::{SQLMapper, SQLOperationKind},
+    util::check_access,
+};
 
 use super::{
     cast,
@@ -47,7 +50,7 @@ impl<'a> SQLMapper<'a, AbstractInsert> for InsertOperation<'a> {
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractInsert, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
-        let table_id = data_type.table_id;
+        let table_id = subsystem.entity_types[data_type.entity_id].table_id;
 
         let rows = map_argument(data_type, argument, subsystem, request_context).await?;
 
@@ -92,6 +95,15 @@ async fn map_single<'a>(
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionRow, PostgresExecutionError> {
+    check_access(
+        &subsystem.entity_types[data_type.entity_id],
+        &SQLOperationKind::Create,
+        subsystem,
+        request_context,
+        Some(argument),
+    )
+    .await?;
+
     let mapped = data_type.fields.iter().map(|field| async move {
         let field_arg = super::util::get_argument_field(argument, &field.name);
 
