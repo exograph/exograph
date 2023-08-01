@@ -23,7 +23,7 @@ body {
   width: 125px
 }
 
-.graphiql-editor-tools-tabs > .active {
+.graphiql-editor-tools > .active {
   font-weight: bold;
 }
 
