@@ -156,8 +156,7 @@ function computeHeadersString(
   try {
     const headersJson = originalHeaders ? JSON.parse(originalHeaders) : {};
     headersJson["Authorization"] = `Bearer ${token}`;
-    // If the headersJson is empty, we return an empty string to avoid GraphiQL to display {} in the
-    // headers editor
+    // If headersJson is empty, we return an empty string to avoid GraphiQL displaying `{}` in the headers editor
     return Object.entries(headersJson).length
       ? JSON.stringify(headersJson, null, 2)
       : "";
