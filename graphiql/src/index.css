@@ -23,6 +23,15 @@ body {
   width: 125px
 }
 
+.graphiql-editor-tools > .active {
+  font-weight: bold;
+}
+
+.graphiql-button:disabled, .graphiql-button:disabled:hover {
+  color: #b4a8a8;
+  cursor: not-allowed;
+}
+
 .overlay {
   position: fixed;
   display: block;

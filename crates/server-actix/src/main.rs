@@ -19,6 +19,7 @@ use tracing_actix_web::TracingLogger;
 
 use std::env;
 use std::io::ErrorKind;
+use std::net::SocketAddr;
 use std::path::Path;
 use std::time;
 
@@ -55,7 +56,7 @@ async fn main() -> Result<(), ServerError> {
                 .expect("Failed to parse EXO_SERVER_PORT")
         })
         .unwrap_or(9876);
-    let server_url = format!("0.0.0.0:{server_port}");
+    let server_url = format!("127.0.0.1:{server_port}");
 
     let resolve_path = get_endpoint_http_path();
     let playground_path = get_playground_http_path();
@@ -79,25 +80,20 @@ async fn main() -> Result<(), ServerError> {
 
     match server {
         Ok(server) => {
+            let pretty_addr = pretty_addr(&server.addrs());
             println!(
                 "Started server on {} in {:.2} ms",
-                server.addrs()[0],
+                pretty_addr,
                 start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
             );
 
-            let print_all_addrs = |suffix| {
-                for addr in server.addrs() {
-                    println!("\thttp://{addr}{suffix}");
-                }
-            };
-
             if let Ok(true) = allow_introspection() {
                 println!("- Playground hosted at:");
-                print_all_addrs(get_playground_http_path());
+                println!("\thttp://{pretty_addr}{}", get_playground_http_path());
             }
 
             println!("- Endpoint hosted at:");
-            print_all_addrs(get_endpoint_http_path());
+            println!("\thttp://{pretty_addr}{}", get_endpoint_http_path());
 
             Ok(server.run().await?)
         }
@@ -106,6 +102,17 @@ async fn main() -> Result<(), ServerError> {
         } else {
             ServerError::Io(e)
         }),
+    }
+}
+
+fn pretty_addr(addrs: &[SocketAddr]) -> String {
+    let ip4_addr = addrs.iter().find(|addr| addr.is_ipv4());
+    let ip = ip4_addr.map(|addr| addr.ip()).unwrap_or(addrs[0].ip());
+
+    if ip.is_loopback() && ip4_addr.is_some() {
+        format!("localhost:{}", addrs[0].port())
+    } else {
+        format!("{}:{}", ip, addrs[0].port())
     }
 }
 

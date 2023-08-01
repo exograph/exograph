@@ -3,19 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@graphiql/toolkit": "^0.8.4",
+    "@codemirror/lang-json": "^6.0.1",
+    "@graphiql/toolkit": "^0.9.1",
+    "@uiw/codemirror-themes": "^4.21.9",
+    "@uiw/react-codemirror": "^4.21.9",
     "cross-env": "^7.0.3",
-    "graphiql": "2.4.7",
-    "graphql-ws": "^5.13.1",
+    "graphiql": "3.0.5",
+    "graphql-ws": "^5.14.0",
+    "jose": "^4.14.4",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "typescript": "^4.9.5"
   },
   "devDependencies": {
-    "@types/react": "^18.2.8",
-    "@types/react-dom": "^18.2.4",
-    "react-scripts": "5.0.1",
-    "react-app-rewired": "^2.2.1"
+    "@types/react": "^18.2.18",
+    "@types/react-dom": "^18.2.7",
+    "react-app-rewired": "^2.2.1",
+    "react-scripts": "5.0.1"
   },
   "overrides": {
     "react": "18.2.0",
