@@ -98,7 +98,7 @@ fn process_script(
         F: std::future::Future<Output = R>,
     {
         let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_io()
+            .enable_all()
             .max_blocking_threads(32)
             .build()
             .unwrap();
