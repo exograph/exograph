@@ -14,6 +14,7 @@ use std::sync::Arc;
 use resolver::create_system_resolver_from_serialized_bytes;
 use serde_json::Value;
 use server_aws_lambda::resolve;
+use server_common::create_static_loaders;
 
 pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
     let context = lambda_runtime::Context::default();
@@ -29,7 +30,7 @@ pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
         .await
         .unwrap();
     let system_resolver = Arc::new(
-        create_system_resolver_from_serialized_bytes(model_system, vec![])
+        create_system_resolver_from_serialized_bytes(model_system, create_static_loaders())
             .await
             .unwrap(),
     );
