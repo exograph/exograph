@@ -8,13 +8,16 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
-use core_plugin_interface::core_model::types::OperationReturnType;
+use core_plugin_interface::core_model::access::AccessRelationalOp;
+use core_plugin_interface::core_model::{
+    access::AccessPredicateExpression, types::OperationReturnType,
+};
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
-    NestedAbstractUpdate, OneToMany, PhysicalColumnPath, Selection,
+    NestedAbstractInsertSet, NestedAbstractUpdate, OneToMany, PhysicalColumnPath, Selection,
 };
 use futures::StreamExt;
 use postgres_model::{
@@ -127,13 +130,13 @@ async fn compute_nested_ops<'a>(
 ) -> Result<
     (
         Vec<NestedAbstractUpdate>,
-        Vec<NestedAbstractInsert>,
+        Vec<NestedAbstractInsertSet>,
         Vec<NestedAbstractDelete>,
     ),
     PostgresExecutionError,
 > {
     let mut nested_updates = vec![];
-    let mut nested_inserts = vec![];
+    let mut nested_insert_sets = vec![];
     let mut nested_deletes = vec![];
 
     for field in arg_type.fields.iter() {
@@ -161,7 +164,7 @@ async fn compute_nested_ops<'a>(
                     .await?,
                 );
 
-                nested_inserts.extend(
+                nested_insert_sets.push(
                     compute_nested_inserts(
                         arg_type,
                         argument,
@@ -186,7 +189,7 @@ async fn compute_nested_ops<'a>(
         }
     }
 
-    Ok((nested_updates, nested_inserts, nested_deletes))
+    Ok((nested_updates, nested_insert_sets, nested_deletes))
 }
 
 // Look for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
@@ -310,7 +313,7 @@ async fn compute_nested_inserts<'a>(
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<Vec<NestedAbstractInsert>, PostgresExecutionError> {
+) -> Result<NestedAbstractInsertSet, PostgresExecutionError> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
@@ -348,7 +351,7 @@ async fn compute_nested_inserts<'a>(
     let (create_arg, field_entity_type) =
         extract_argument(argument, field_entity_type, "create", subsystem);
 
-    match create_arg {
+    let inserts = match create_arg {
         Some(create_arg) => match create_arg {
             Val::Object(..) => Ok(vec![
                 create_nested(
@@ -378,7 +381,12 @@ async fn compute_nested_inserts<'a>(
             _ => panic!("Object or list expected"),
         },
         None => Ok(vec![]),
-    }
+    }?;
+
+    Ok(NestedAbstractInsertSet::new(
+        inserts,
+        AbstractPredicate::True,
+    ))
 }
 
 async fn compute_nested_delete<'a>(
@@ -517,3 +525,34 @@ fn extract_argument<'a>(
 
     (arg, arg_type)
 }
+
+// fn compute_nested_predicate(
+//     base_expr: &AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+// ) -> AccessPredicateExpression<DatabaseAccessPrimitiveExpression> {
+//     match base_expr {
+//         AccessPredicateExpression::LogicalOp(op) => todo!(),
+//         AccessPredicateExpression::RelationalOp(op) => match op {
+//             AccessRelationalOp::Eq(l, r) => {}
+//             AccessRelationalOp::Neq(_, _) => todo!(),
+//             AccessRelationalOp::Lt(_, _) => todo!(),
+//             AccessRelationalOp::Lte(_, _) => todo!(),
+//             AccessRelationalOp::Gt(_, _) => todo!(),
+//             AccessRelationalOp::Gte(_, _) => todo!(),
+//             AccessRelationalOp::In(_, _) => todo!(),
+//         },
+//         AccessPredicateExpression::BooleanLiteral(value) => todo!(),
+//     }
+// }
+
+// fn compute_nested_prim_expr(
+//     expr: DatabaseAccessPrimitiveExpression,
+// ) -> DatabaseAccessPrimitiveExpression {
+//     match expr {
+//         DatabaseAccessPrimitiveExpression::Column(column) => {
+//             DatabaseAccessPrimitiveExpression::Column(column)
+//         }
+//         DatabaseAccessPrimitiveExpression::Common(common) => {
+//             DatabaseAccessPrimitiveExpression::Common(common)
+//         }
+//     }
+// }

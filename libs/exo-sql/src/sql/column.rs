@@ -34,6 +34,11 @@ pub enum Column {
     /// A literal value such as a string or number e.g. 'Sam'. This will be mapped to a placeholder
     /// to avoid SQL injection.
     Param(SQLParamContainer),
+    // An array parameter with a wrapping such as ANY() or ALL()
+    ArrayParam {
+        param: SQLParamContainer,
+        wrapper: ArrayParamWrapper,
+    },
     /// A JSON object. This is used to represent the result of a JSON object aggregation.
     JsonObject(JsonObject),
     /// A JSON array. This is used to represent the result of a JSON array aggregation.
@@ -54,6 +59,13 @@ pub enum Column {
         function_name: String,
         column_id: ColumnId,
     },
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ArrayParamWrapper {
+    Any,
+    All,
+    None,
 }
 
 impl Column {
@@ -91,6 +103,22 @@ impl ExpressionBuilder for Column {
                 builder.push(')');
             }
             Column::Param(value) => builder.push_param(value.param()),
+            Column::ArrayParam { param, wrapper } => {
+                let wrapper_string = match wrapper {
+                    ArrayParamWrapper::Any => "ANY",
+                    ArrayParamWrapper::All => "ALL",
+                    ArrayParamWrapper::None => "",
+                };
+
+                if wrapper_string.is_empty() {
+                    builder.push_param(param.param());
+                } else {
+                    builder.push_str(wrapper_string);
+                    builder.push('(');
+                    builder.push_param(param.param());
+                    builder.push(')');
+                }
+            }
             Column::JsonObject(obj) => {
                 obj.build(database, builder);
             }

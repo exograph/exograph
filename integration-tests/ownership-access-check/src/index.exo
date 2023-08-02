@@ -22,3 +22,32 @@ module DocumentModule {
     user: User
   }
 }
+
+// self.user.id = AuthContext.id
+// user ... where id = 2
+
+// self.user.id = self.foo
+// user.id = 17
+
+// self.user.id = AuthContext.id || self.foo
+
+// @access(self.user.id = self.user.sender_id || self.foo > 5) type Document { foo: Int, user: User }
+// self.id = self.sender_id || self.foo > 5
+// self.id = self.sender_id || undefined > 5
+// self.id = self.sender_id || undefined
+// self.id = self.sender_id
+// -> where self.id = self.sender_id
+
+// self.user.id = self.user.sender_id && self.foo > 5
+// self.id = self.sender_id && undefined > 5
+// self.id = self.sender_id && undefined
+// undefined
+
+// self.user.id = self.user.sender_id && !(self.foo > self.bar)
+// self.id = self.sender_id && !(undefined > 5)
+// self.id = self.sender_id && !(undefined)
+// self.id = self.sender_id && undefined
+// self.id = self.sender_id
+
+// @access(self.user.id = self.foo) type Document { foo: Int }
+// self.id = undefined

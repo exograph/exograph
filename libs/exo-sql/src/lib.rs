@@ -54,7 +54,10 @@ pub use asql::{
     predicate::AbstractPredicate,
     select::AbstractSelect,
     selection::{AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement},
-    update::{AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate},
+    update::{
+        AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
+        NestedAbstractUpdate,
+    },
 };
 
 pub use sql::{

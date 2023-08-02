@@ -124,6 +124,7 @@ pub struct MutationType {
     pub name: String,
     pub fields: Vec<PostgresField<MutationType>>,
     pub entity_id: SerializableSlabIndex<EntityType>,
+    // pub access: Access,
 }
 
 impl EntityType {
