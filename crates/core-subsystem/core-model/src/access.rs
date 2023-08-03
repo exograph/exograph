@@ -95,18 +95,6 @@ where
             AccessRelationalOp::In(left, right) => (left, right),
         }
     }
-
-    pub fn into_sides(self) -> (PrimExpr, PrimExpr) {
-        match self {
-            AccessRelationalOp::Eq(left, right) => (*left, *right),
-            AccessRelationalOp::Neq(left, right) => (*left, *right),
-            AccessRelationalOp::Lt(left, right) => (*left, *right),
-            AccessRelationalOp::Lte(left, right) => (*left, *right),
-            AccessRelationalOp::Gt(left, right) => (*left, *right),
-            AccessRelationalOp::Gte(left, right) => (*left, *right),
-            AccessRelationalOp::In(left, right) => (*left, *right),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

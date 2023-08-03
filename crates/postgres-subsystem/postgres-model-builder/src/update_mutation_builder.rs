@@ -9,10 +9,13 @@
 
 //! Build update mutation types `<Type>UpdateInput`, `update<Type>`, and `update<Type>s`
 
-use core_plugin_interface::core_model::{
-    access::AccessPredicateExpression,
-    mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
+use core_plugin_interface::{
+    core_model::{
+        access::AccessPredicateExpression,
+        mapped_arena::{MappedArena, SerializableSlabIndex},
+        types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
+    },
+    core_model_builder::error::ModelBuildingError,
 };
 use postgres_model::{
     mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
@@ -51,7 +54,11 @@ impl Builder for UpdateMutationBuilder {
     }
 
     /// Expand the mutation input types as well as build the mutation
-    fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+    fn build_expanded(
+        &self,
+        resolved_env: &ResolvedTypeEnv,
+        building: &mut SystemContextBuilding,
+    ) -> Result<(), ModelBuildingError> {
         let update_access_is_false = |entity_type: &EntityType| -> bool {
             matches!(
                 building.input_access_expressions.borrow()[entity_type.access.update.input],
@@ -69,7 +76,7 @@ impl Builder for UpdateMutationBuilder {
                     building,
                     Some(entity_type),
                     None,
-                ) {
+                )? {
                     building.mutation_types[existing_id] = expanded_type;
                 }
             }
@@ -82,6 +89,8 @@ impl Builder for UpdateMutationBuilder {
                 }
             }
         }
+
+        Ok(())
     }
 }
 
@@ -190,7 +199,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         container_type: Option<&EntityType>,
-    ) -> Vec<(SerializableSlabIndex<MutationType>, MutationType)> {
+    ) -> Result<Vec<(SerializableSlabIndex<MutationType>, MutationType)>, ModelBuildingError> {
         let existing_type_name =
             Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()));
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
@@ -262,7 +271,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                         building,
                         top_level_type,
                         container_type,
-                    )
+                    )?
                     .first()
                     .map(|tpe| {
                         let base_type = tpe.1.clone();
@@ -296,9 +305,9 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                 types.push(nested_type);
             }
 
-            types
+            Ok(types)
         } else {
-            vec![]
+            Ok(vec![])
         }
     }
 }

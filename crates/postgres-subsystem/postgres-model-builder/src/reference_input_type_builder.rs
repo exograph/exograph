@@ -9,7 +9,10 @@
 
 //! Build the reference input type (used to refer to an entity by its pk)
 
-use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::{
+    core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
+    core_model_builder::error::ModelBuildingError,
+};
 use postgres_model::{
     relation::PostgresRelation,
     types::{EntityType, MutationType, PostgresField},
@@ -41,12 +44,14 @@ impl Builder for ReferenceInputTypeBuilder {
         &self,
         _resolved_env: &ResolvedTypeEnv,
         building: &mut SystemContextBuilding,
-    ) {
+    ) -> Result<(), ModelBuildingError> {
         for (_, entity_type) in building.entity_types.iter() {
             for (existing_id, expanded_type) in expanded_reference_types(entity_type, building) {
                 building.mutation_types[existing_id] = expanded_type;
             }
         }
+
+        Ok(())
     }
 }
 

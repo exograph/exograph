@@ -122,7 +122,7 @@ fn build_expanded(
 
     // Finally expand queries, mutations, and module methods
     query_builder::build_expanded(building);
-    mutation_builder::build_expanded(resolved_env, building);
+    mutation_builder::build_expanded(resolved_env, building)?;
 
     Ok(())
 }
