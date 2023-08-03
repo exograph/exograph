@@ -25,7 +25,7 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named},
 };
-use exo_sql::{PhysicalTable, TableId};
+use exo_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -123,7 +123,7 @@ impl Named for EntityType {
 pub struct MutationType {
     pub name: String,
     pub fields: Vec<PostgresField<MutationType>>,
-    pub table_id: TableId,
+    pub entity_id: SerializableSlabIndex<EntityType>,
 }
 
 impl EntityType {

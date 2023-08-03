@@ -100,7 +100,7 @@ async fn compute_select<'content>(
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect, PostgresExecutionError> {
     let access_predicate = check_access(
-        return_type,
+        return_type.typ(&subsystem.entity_types),
         &SQLOperationKind::Retrieve,
         subsystem,
         request_context,

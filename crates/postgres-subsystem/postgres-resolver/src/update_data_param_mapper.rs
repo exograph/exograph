@@ -16,7 +16,7 @@ use exo_sql::{
     ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
     NestedAbstractUpdate, OneToMany, PhysicalColumnPath, Selection,
 };
-use futures::future::join_all;
+use futures::StreamExt;
 use postgres_model::{
     mutation::DataParameter,
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
@@ -25,8 +25,8 @@ use postgres_model::{
 };
 
 use crate::{
-    sql_mapper::SQLMapper,
-    util::{get_argument_field, return_type_info},
+    sql_mapper::{SQLMapper, SQLOperationKind},
+    util::{check_access, get_argument_field, return_type_info},
 };
 
 use super::{cast, postgres_execution_error::PostgresExecutionError};
@@ -52,7 +52,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate> for UpdateOperation<'a> {
         let (table_id, _, _) = return_type_info(self.return_type, subsystem);
 
         let (nested_updates, nested_inserts, nested_deletes) =
-            compute_nested_ops(data_type, argument, subsystem, request_context).await;
+            compute_nested_ops(data_type, argument, subsystem, request_context).await?;
 
         let abs_update = AbstractUpdate {
             table_id,
@@ -124,11 +124,14 @@ async fn compute_nested_ops<'a>(
     arg: &'a Val,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> (
-    Vec<NestedAbstractUpdate>,
-    Vec<NestedAbstractInsert>,
-    Vec<NestedAbstractDelete>,
-) {
+) -> Result<
+    (
+        Vec<NestedAbstractUpdate>,
+        Vec<NestedAbstractInsert>,
+        Vec<NestedAbstractDelete>,
+    ),
+    PostgresExecutionError,
+> {
     let mut nested_updates = vec![];
     let mut nested_inserts = vec![];
     let mut nested_deletes = vec![];
@@ -147,12 +150,16 @@ async fn compute_nested_ops<'a>(
             };
 
             if let Some(argument) = get_argument_field(arg, &field.name) {
-                nested_updates.extend(compute_nested_update(
-                    arg_type,
-                    argument,
-                    nested_relation,
-                    subsystem,
-                ));
+                nested_updates.extend(
+                    compute_nested_update(
+                        arg_type,
+                        argument,
+                        nested_relation,
+                        subsystem,
+                        request_context,
+                    )
+                    .await?,
+                );
 
                 nested_inserts.extend(
                     compute_nested_inserts(
@@ -162,69 +169,90 @@ async fn compute_nested_ops<'a>(
                         subsystem,
                         request_context,
                     )
-                    .await,
+                    .await?,
                 );
 
-                nested_deletes.extend(compute_nested_delete(
-                    arg_type,
-                    argument,
-                    nested_relation,
-                    subsystem,
-                ));
+                nested_deletes.extend(
+                    compute_nested_delete(
+                        arg_type,
+                        argument,
+                        nested_relation,
+                        subsystem,
+                        request_context,
+                    )
+                    .await?,
+                );
             }
         }
     }
 
-    (nested_updates, nested_inserts, nested_deletes)
+    Ok((nested_updates, nested_inserts, nested_deletes))
 }
 
 // Look for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
-fn compute_nested_update<'a>(
+async fn compute_nested_update<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
-) -> Vec<NestedAbstractUpdate> {
+    request_context: &'a RequestContext<'a>,
+) -> Result<Vec<NestedAbstractUpdate>, PostgresExecutionError> {
     let (update_arg, field_entity_type) =
         extract_argument(argument, field_entity_type, "update", subsystem);
 
     match update_arg {
         Some(update_arg) => match update_arg {
-            arg @ Val::Object(..) => {
-                vec![compute_nested_update_object_arg(
+            arg @ Val::Object(..) => Ok(vec![
+                compute_nested_update_object_arg(
                     field_entity_type,
                     arg,
                     nesting_relation,
                     subsystem,
-                )]
-            }
-            Val::List(update_arg) => update_arg
-                .iter()
-                .map(|arg| {
+                    request_context,
+                )
+                .await?,
+            ]),
+            Val::List(update_arg) => futures::stream::iter(update_arg.iter())
+                .then(|arg| async {
                     compute_nested_update_object_arg(
                         field_entity_type,
                         arg,
                         nesting_relation,
                         subsystem,
+                        request_context,
                     )
+                    .await
                 })
+                .collect::<Vec<Result<_, _>>>()
+                .await
+                .into_iter()
                 .collect(),
             _ => panic!("Object or list expected"),
         },
-        None => vec![],
+        None => Ok(vec![]),
     }
 }
 
 // Compute update step assuming that the argument is a single object (not an array)
-fn compute_nested_update_object_arg<'a>(
+async fn compute_nested_update_object_arg<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
-) -> NestedAbstractUpdate {
+    request_context: &'a RequestContext<'a>,
+) -> Result<NestedAbstractUpdate, PostgresExecutionError> {
     assert!(matches!(argument, Val::Object(..)));
 
-    let table_id = field_entity_type.table_id;
+    let access_predicate = check_access(
+        &subsystem.entity_types[field_entity_type.entity_id],
+        &SQLOperationKind::Update,
+        subsystem,
+        request_context,
+        Some(argument),
+    )
+    .await?;
+
+    let table_id = subsystem.entity_types[field_entity_type.entity_id].table_id;
 
     let nested = compute_update_columns(field_entity_type, argument, subsystem);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| {
@@ -235,23 +263,26 @@ fn compute_nested_update_object_arg<'a>(
     // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let
     // mutation be specified. Currently (while performing abstract-sql refactoring), keeping the old behavior, but
     // will revisit it https://github.com/exograph/exograph/issues/376
-    let predicate = pk_columns
-        .into_iter()
-        .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
-            let value = match value {
-                Column::Param(value) => ColumnPath::Param(value),
-                _ => panic!("Expected literal"),
-            };
-            AbstractPredicate::and(
-                acc,
-                AbstractPredicate::eq(
-                    ColumnPath::Physical(PhysicalColumnPath::leaf(pk_col)),
-                    value,
-                ),
-            )
-        });
+    let arg_predicate =
+        pk_columns
+            .into_iter()
+            .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
+                let value = match value {
+                    Column::Param(value) => ColumnPath::Param(value),
+                    _ => panic!("Expected literal"),
+                };
+                AbstractPredicate::and(
+                    acc,
+                    AbstractPredicate::eq(
+                        ColumnPath::Physical(PhysicalColumnPath::leaf(pk_col)),
+                        value,
+                    ),
+                )
+            });
 
-    NestedAbstractUpdate {
+    let predicate = AbstractPredicate::and(arg_predicate, access_predicate);
+
+    Ok(NestedAbstractUpdate {
         nesting_relation: *nesting_relation,
         update: AbstractUpdate {
             table_id,
@@ -269,7 +300,7 @@ fn compute_nested_update_object_arg<'a>(
             nested_inserts: vec![],
             nested_deletes: vec![],
         },
-    }
+    })
 }
 
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
@@ -279,7 +310,7 @@ async fn compute_nested_inserts<'a>(
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Vec<NestedAbstractInsert> {
+) -> Result<Vec<NestedAbstractInsert>, PostgresExecutionError> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
@@ -287,7 +318,7 @@ async fn compute_nested_inserts<'a>(
         subsystem: &'a PostgresSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
-        let table_id = field_entity_type.table_id;
+        let table_id = subsystem.entity_types[field_entity_type.entity_id].table_id;
 
         let rows = super::create_data_param_mapper::map_argument(
             field_entity_type,
@@ -319,17 +350,18 @@ async fn compute_nested_inserts<'a>(
 
     match create_arg {
         Some(create_arg) => match create_arg {
-            Val::Object(..) => vec![create_nested(
-                field_entity_type,
-                create_arg,
-                nesting_relation,
-                subsystem,
-                request_context,
-            )
-            .await
-            .unwrap()],
-            Val::List(create_arg) => {
-                join_all(create_arg.iter().map(|arg| async {
+            Val::Object(..) => Ok(vec![
+                create_nested(
+                    field_entity_type,
+                    create_arg,
+                    nesting_relation,
+                    subsystem,
+                    request_context,
+                )
+                .await?,
+            ]),
+            Val::List(create_arg) => futures::stream::iter(create_arg.iter())
+                .then(|arg| async {
                     create_nested(
                         field_entity_type,
                         arg,
@@ -338,22 +370,24 @@ async fn compute_nested_inserts<'a>(
                         request_context,
                     )
                     .await
-                    .unwrap()
-                }))
+                })
+                .collect::<Vec<Result<_, _>>>()
                 .await
-            }
+                .into_iter()
+                .collect(),
             _ => panic!("Object or list expected"),
         },
-        None => vec![],
+        None => Ok(vec![]),
     }
 }
 
-fn compute_nested_delete<'a>(
+async fn compute_nested_delete<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
-) -> Vec<NestedAbstractDelete> {
+    request_context: &'a RequestContext<'a>,
+) -> Result<Vec<NestedAbstractDelete>, PostgresExecutionError> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
 
@@ -361,39 +395,46 @@ fn compute_nested_delete<'a>(
         extract_argument(argument, field_entity_type, "delete", subsystem);
 
     match delete_arg {
-        Some(update_arg) => match update_arg {
-            arg @ Val::Object(..) => {
-                vec![compute_nested_delete_object_arg(
+        Some(delete_arg) => match delete_arg {
+            arg @ Val::Object(..) => Ok(vec![
+                compute_nested_delete_object_arg(
                     field_entity_type,
                     arg,
                     nesting_relation,
                     subsystem,
-                )]
-            }
-            Val::List(update_arg) => update_arg
-                .iter()
-                .map(|arg| {
+                    request_context,
+                )
+                .await?,
+            ]),
+            Val::List(delete_arg) => futures::stream::iter(delete_arg.iter())
+                .then(|arg| async {
                     compute_nested_delete_object_arg(
                         field_entity_type,
                         arg,
                         nesting_relation,
                         subsystem,
+                        request_context,
                     )
+                    .await
                 })
+                .collect::<Vec<Result<_, _>>>()
+                .await
+                .into_iter()
                 .collect(),
             _ => panic!("Object or list expected"),
         },
-        None => vec![],
+        None => Ok(vec![]),
     }
 }
 
 // Compute delete step assuming that the argument is a single object (not an array)
-fn compute_nested_delete_object_arg<'a>(
+async fn compute_nested_delete_object_arg<'a>(
     field_mutation_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
     subsystem: &'a PostgresSubsystem,
-) -> NestedAbstractDelete {
+    request_context: &'a RequestContext<'a>,
+) -> Result<NestedAbstractDelete, PostgresExecutionError> {
     assert!(matches!(argument, Val::Object(..)));
 
     let nested = compute_update_columns(field_mutation_type, argument, subsystem);
@@ -402,28 +443,40 @@ fn compute_nested_delete_object_arg<'a>(
         column.is_pk
     });
 
+    let access_predicate = check_access(
+        &subsystem.entity_types[field_mutation_type.entity_id],
+        &SQLOperationKind::Delete,
+        subsystem,
+        request_context,
+        Some(argument),
+    )
+    .await?;
+
     // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let
     // mutation be specified. Currently (while performing abstract-sql refactoring), keeping the old behavior, but
     // will revisit it https://github.com/exograph/exograph/issues/376
-    let predicate = pk_columns
-        .into_iter()
-        .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
-            let value = match value {
-                Column::Param(value) => ColumnPath::Param(value),
-                _ => panic!("Expected literal"),
-            };
-            AbstractPredicate::and(
-                acc,
-                AbstractPredicate::eq(
-                    ColumnPath::Physical(PhysicalColumnPath::leaf(pk_col)),
-                    value,
-                ),
-            )
-        });
+    let arg_predicate =
+        pk_columns
+            .into_iter()
+            .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
+                let value = match value {
+                    Column::Param(value) => ColumnPath::Param(value),
+                    _ => panic!("Expected literal"),
+                };
+                AbstractPredicate::and(
+                    acc,
+                    AbstractPredicate::eq(
+                        ColumnPath::Physical(PhysicalColumnPath::leaf(pk_col)),
+                        value,
+                    ),
+                )
+            });
 
-    let table_id = field_mutation_type.table_id;
+    let predicate = AbstractPredicate::and(arg_predicate, access_predicate);
 
-    NestedAbstractDelete {
+    let table_id = subsystem.entity_types[field_mutation_type.entity_id].table_id;
+
+    Ok(NestedAbstractDelete {
         nesting_relation: *nesting_relation,
         delete: AbstractDelete {
             table_id,
@@ -437,7 +490,7 @@ fn compute_nested_delete_object_arg<'a>(
                 limit: None,
             },
         },
-    }
+    })
 }
 
 fn extract_argument<'a>(

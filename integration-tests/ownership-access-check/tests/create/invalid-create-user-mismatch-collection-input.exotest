@@ -1,8 +1,8 @@
 stages:
-  # User cannot update a document that is not theirs
+  # User 2 is trying to create documents for user 1 as well as self
   - operation: |
       mutation {
-        updateDocument(id: 1, data: {content: "updated-content"}) {
+        createDocuments(data: [{content: "new-self-content", user: {id: 2}}, {content: "new-other-content", user: {id: 1}}]) {
           id
           content
           user {
@@ -13,16 +13,18 @@ stages:
       }
     auth: |
       {
-        "sub": 3,
+        "sub": 2,
         "role": "USER"
       }
     response: |
       {
-        "data": {
-          "updateDocument": null
-        }
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
       }
-  # Ensure that the earlier mutation did work
+  # Ensure that the earlier mutation didn't work
   - operation: |
       query {
         documents(orderBy: {id: ASC}) {

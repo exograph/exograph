@@ -1,8 +1,8 @@
 stages:
-  # User 2 is trying to create a document for user 1
+  # User 2 is trying to update a document for user 2 (who owns document 1 and 2)
   - operation: |
       mutation {
-        createDocument(data: {content: "new-content", user: {id: 1}}) {
+        updateDocument(id: 1, data: {content: "updated-content"}) {
           id
           content
           user {
@@ -13,18 +13,16 @@ stages:
       }
     auth: |
       {
-        "sub": 2,
+        "sub": 3,
         "role": "USER"
       }
     response: |
       {
-        "errors": [
-          {
-            "message": "Not authorized"
-          }
-        ]
+        "data": {
+          "updateDocument": null
+        }
       }
-  # Ensure that the earlier mutation didn't work
+  # Ensure that the earlier mutation did work
   - operation: |
       query {
         documents(orderBy: {id: ASC}) {

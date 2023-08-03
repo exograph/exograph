@@ -77,11 +77,7 @@ fn expanded_reference_types(
         MutationType {
             name: existing_type_name,
             fields: reference_type_fields,
-            table_id: building
-                .entity_types
-                .get_by_key(&entity_type.name)
-                .unwrap()
-                .table_id,
+            entity_id: building.entity_types.get_id(&entity_type.name).unwrap(),
         },
     )]
 }
