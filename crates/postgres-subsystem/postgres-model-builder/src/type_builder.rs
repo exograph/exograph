@@ -453,8 +453,12 @@ fn compute_database_access_expr(
     Ok(match expr {
         Some(AccessPredicateExpression::BooleanLiteral(false)) | None => building
             .database_access_expressions
+            .borrow()
             .restricted_access_index(),
-        Some(expr) => building.database_access_expressions.insert(expr),
+        Some(expr) => building
+            .database_access_expressions
+            .borrow_mut()
+            .insert(expr),
     })
 }
 
@@ -485,10 +489,11 @@ fn compute_input_access_expr(
         .transpose()?;
 
     Ok(match expr {
-        Some(AccessPredicateExpression::BooleanLiteral(false)) | None => {
-            building.input_access_expressions.restricted_access_index()
-        }
-        Some(expr) => building.input_access_expressions.insert(expr),
+        Some(AccessPredicateExpression::BooleanLiteral(false)) | None => building
+            .input_access_expressions
+            .borrow()
+            .restricted_access_index(),
+        Some(expr) => building.input_access_expressions.borrow_mut().insert(expr),
     })
 }
 

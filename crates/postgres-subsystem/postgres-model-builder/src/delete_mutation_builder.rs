@@ -49,7 +49,7 @@ impl Builder for DeleteMutationBuilder {
         // Since there are no special input types for deletion, no expansion is needed
         for (entity_type_id, entity_type) in building.entity_types.iter() {
             if let AccessPredicateExpression::BooleanLiteral(false) =
-                building.database_access_expressions[entity_type.access.delete]
+                building.database_access_expressions.borrow()[entity_type.access.delete]
             {
                 continue;
             }

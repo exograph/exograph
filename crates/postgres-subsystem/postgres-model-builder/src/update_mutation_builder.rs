@@ -54,10 +54,10 @@ impl Builder for UpdateMutationBuilder {
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
         let update_access_is_false = |entity_type: &EntityType| -> bool {
             matches!(
-                building.input_access_expressions[entity_type.access.update.input],
+                building.input_access_expressions.borrow()[entity_type.access.update.input],
                 AccessPredicateExpression::BooleanLiteral(false)
             ) || matches!(
-                building.database_access_expressions[entity_type.access.update.database],
+                building.database_access_expressions.borrow()[entity_type.access.update.database],
                 AccessPredicateExpression::BooleanLiteral(false)
             )
         };
@@ -236,12 +236,15 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                     }
                 })
                 .collect();
+
             let mut types = vec![(
                 existing_type_id,
                 MutationType {
                     name: existing_type_name.clone(),
                     fields,
                     entity_id: building.entity_types.get_id(&field_type.name).unwrap(),
+                    input_access: None,
+                    database_access: None,
                 },
             )];
 

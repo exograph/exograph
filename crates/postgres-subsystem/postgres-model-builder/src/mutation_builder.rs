@@ -25,6 +25,7 @@ use postgres_model::{
 };
 
 use crate::{
+    access_utils::nested_predicate,
     resolved_builder::{ResolvedField, ResolvedFieldTypeHelper},
     shallow::Shallow,
     utils::to_mutation_type,
@@ -376,12 +377,25 @@ pub trait DataParamBuilder<D> {
             Some(entity_type.name.as_str()),
             building,
         );
+
+        let field_entity_access = building.database_access_expressions.borrow()
+            [entity_type.access.update.database]
+            .clone();
+        let nested_predicate = container_type.map(|container_type| {
+            building
+                .database_access_expressions
+                .borrow_mut()
+                .insert(nested_predicate(field_entity_access, container_type))
+        });
+
         field_types.push((
             existing_type_id,
             MutationType {
                 name: existing_type_name,
                 fields: input_type_fields,
                 entity_id: building.entity_types.get_id(&entity_type.name).unwrap(),
+                input_access: None,
+                database_access: nested_predicate,
             },
         ));
 

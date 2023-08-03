@@ -9,6 +9,7 @@
 
 use super::access::Access;
 use super::relation::PostgresRelation;
+use crate::access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression};
 use crate::aggregate::AggregateField;
 use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, PkQuery};
 use crate::relation::OneToManyRelation;
@@ -16,6 +17,7 @@ use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
+use core_plugin_interface::core_model::access::AccessPredicateExpression;
 use core_plugin_interface::core_model::context_type::ContextSelection;
 use core_plugin_interface::core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
@@ -124,7 +126,11 @@ pub struct MutationType {
     pub name: String,
     pub fields: Vec<PostgresField<MutationType>>,
     pub entity_id: SerializableSlabIndex<EntityType>,
-    // pub access: Access,
+
+    pub input_access:
+        Option<SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>>,
+    pub database_access:
+        Option<SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>>,
 }
 
 impl EntityType {

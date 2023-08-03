@@ -49,6 +49,8 @@ pub trait Builder {
                     name: type_name.to_string(),
                     fields: vec![],
                     entity_id: SerializableSlabIndex::shallow(),
+                    input_access: None,
+                    database_access: None,
                 },
             );
         }

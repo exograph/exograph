@@ -8,10 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
-use core_plugin_interface::core_model::access::AccessRelationalOp;
-use core_plugin_interface::core_model::{
-    access::AccessPredicateExpression, types::OperationReturnType,
-};
+use core_plugin_interface::core_model::types::OperationReturnType;
+use core_plugin_interface::core_resolver::access_solver::AccessSolver;
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
@@ -383,10 +381,20 @@ async fn compute_nested_inserts<'a>(
         None => Ok(vec![]),
     }?;
 
-    Ok(NestedAbstractInsertSet::new(
-        inserts,
-        AbstractPredicate::True,
-    ))
+    let access_predicate = match field_entity_type.database_access {
+        Some(access_expr_index) => subsystem
+            .solve(
+                request_context,
+                None,
+                &subsystem.database_access_expressions[access_expr_index],
+            )
+            .await?
+            .map(|expr| expr.0)
+            .unwrap_or(AbstractPredicate::True),
+        None => AbstractPredicate::True,
+    };
+
+    Ok(NestedAbstractInsertSet::new(inserts, access_predicate))
 }
 
 async fn compute_nested_delete<'a>(

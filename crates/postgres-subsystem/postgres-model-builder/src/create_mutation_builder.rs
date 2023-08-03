@@ -51,7 +51,7 @@ impl Builder for CreateMutationBuilder {
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
         let creation_access_is_false = |entity_type: &EntityType| -> bool {
             matches!(
-                building.input_access_expressions[entity_type.access.creation],
+                building.input_access_expressions.borrow()[entity_type.access.creation],
                 AccessPredicateExpression::BooleanLiteral(false)
             )
         };

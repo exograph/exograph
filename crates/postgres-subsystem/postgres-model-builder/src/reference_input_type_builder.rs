@@ -78,6 +78,8 @@ fn expanded_reference_types(
             name: existing_type_name,
             fields: reference_type_fields,
             entity_id: building.entity_types.get_id(&entity_type.name).unwrap(),
+            input_access: None,
+            database_access: None,
         },
     )]
 }

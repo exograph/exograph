@@ -2,7 +2,7 @@ stages:
   - operation: |
       mutation {
         # Create a document for all users, but due to access control, will be able to create only for the auth user
-        # Simulateneously update all users name (for which the access control allow anything)
+        # Simultaneously update all users name (for which the access control allow anything)
         updateUsers(where: {id: {gt: 0}}, data: {name: "updated-user2", documents: {create: {content: "nested-create"}}}) @unordered { 
           id
           name
