@@ -21,6 +21,7 @@ thiserror.workspace = true
 async-trait.workspace = true
 deno_runtime.workspace = true
 deno_core.workspace = true
+deno_fs.workspace = true
 deno_ast = { workspace = true, features = ["transpiling"], optional = true }
 tokio.workspace = true
 http_req  = {version="0.9.1", default-features = false, features = ["rust-tls"]}

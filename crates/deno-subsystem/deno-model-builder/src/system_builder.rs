@@ -19,9 +19,9 @@ use core_plugin_interface::{
     },
 };
 
-use deno::{CliOptions, Flags, ProcState};
+use deno::{CliFactory, CliOptions, Flags};
 use deno_ast::{MediaType, ParseParams, SourceTextInfo};
-use deno_graph::{Module, ModuleEntryRef, WalkOptions};
+use deno_graph::{Module, ModuleEntryRef, ModuleGraph, WalkOptions};
 use deno_model::{
     interceptor::Interceptor,
     operation::{DenoMutation, DenoQuery},
@@ -93,43 +93,70 @@ fn process_script(
 ) -> Result<(String, Vec<u8>), ModelBuildingError> {
     module_skeleton_generator::generate_module_skeleton(module, base_system, module_fs_path)?;
 
+    fn run_local<F, R>(future: F) -> R
+    where
+        F: std::future::Future<Output = R>,
+    {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .max_blocking_threads(32)
+            .build()
+            .unwrap();
+        let local = tokio::task::LocalSet::new();
+        local.block_on(&rt, future)
+    }
+
+    let root = Url::from_file_path(std::fs::canonicalize(module_fs_path).unwrap()).unwrap();
+    let root_clone = root.clone();
+
     // TODO: Make the process_script function async. Currently, we can't because `ProcState` isn't a
     // `Send`. But to make this useful as a callback, we would make this function return a
     // `BoxFuture`, which has the `Send` requirement.
-    let ps = std::thread::spawn(|| {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(ProcState::from_cli_options(Arc::new(
-            CliOptions::new(
+    // TODO: Note that ProcState no longer exists in later versions of deno and has been replaced
+    // with CliFactory.
+    let modules = std::thread::spawn(move || {
+        let future = async move {
+            let cli_options = CliOptions::new(
                 Flags::default(),
                 std::env::current_dir().unwrap(),
                 None,
                 None,
                 None,
             )
-            .unwrap(),
-        )))
-        .unwrap()
-    })
-    .join()
-    .unwrap();
+            .unwrap();
+            let factory = CliFactory::from_cli_options(Arc::new(cli_options));
+            let module_graph_builder = factory.module_graph_builder().await.map_err(|e| {
+                ModelBuildingError::Generic(format!(
+                    "While trying to create Deno graph loader: {:?}",
+                    e
+                ))
+            })?;
+            let mut loader = module_graph_builder.create_graph_loader();
+            let graph = module_graph_builder
+                .create_graph_with_loader(vec![root_clone], &mut loader)
+                .await
+                .map_err(|e| {
+                    ModelBuildingError::Generic(format!(
+                        "While trying to create Deno graph: {:?}",
+                        e
+                    ))
+                })?;
 
-    let mut cache = ps.module_graph_builder.create_graph_loader();
-    let root = Url::from_file_path(std::fs::canonicalize(module_fs_path).unwrap()).unwrap();
-    let root_clone = root.clone();
-    let graph = std::thread::spawn(move || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(
-            ps.module_graph_builder
-                .create_graph_with_loader(vec![root_clone], &mut cache),
-        )
-        .map_err(|e| {
-            ModelBuildingError::Generic(format!("While trying to create Deno graph: {:?}", e))
-        })
+            walk_module_graph(graph)
+        };
+        run_local(future)
     })
     .join()
     .unwrap()?;
 
-    let mut modules = HashMap::new();
+    Ok((root.to_string(), bincode::serialize(&modules).unwrap()))
+}
+
+fn walk_module_graph(
+    graph: ModuleGraph,
+) -> Result<HashMap<Url, ResolvedModule>, ModelBuildingError> {
+    let mut modules: HashMap<Url, ResolvedModule> = HashMap::new();
+
     for (specifier, maybe_module) in graph.walk(
         &graph.roots,
         WalkOptions {
@@ -184,10 +211,13 @@ fn process_script(
                     module_source
                 };
 
-                modules.insert(specifier, ResolvedModule::Module(transpiled, module_type))
+                modules.insert(
+                    specifier.clone(),
+                    ResolvedModule::Module(transpiled, module_type),
+                )
             }
             ModuleEntryRef::Redirect(to) => {
-                modules.insert(specifier, ResolvedModule::Redirect(to.clone()))
+                modules.insert(specifier.clone(), ResolvedModule::Redirect(to.clone()))
             }
             ModuleEntryRef::Err(e) => {
                 return Err(ModelBuildingError::ExternalResourceParsing(
@@ -196,6 +226,5 @@ fn process_script(
             }
         };
     }
-
-    Ok((root.to_string(), bincode::serialize(&modules).unwrap()))
+    Ok(modules)
 }
