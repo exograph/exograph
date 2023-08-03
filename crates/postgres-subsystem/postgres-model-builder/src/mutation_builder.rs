@@ -30,7 +30,7 @@ use postgres_model::{
 };
 
 use crate::{
-    access_utils::nested_predicate,
+    access_utils::parent_predicate,
     resolved_builder::{ResolvedField, ResolvedFieldTypeHelper},
     shallow::Shallow,
     utils::to_mutation_type,
@@ -392,7 +392,7 @@ pub trait DataParamBuilder<D> {
             SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
         > = container_type
             .map(|container_type| {
-                let predicate = nested_predicate(field_entity_access, container_type)?;
+                let predicate = parent_predicate(field_entity_access, container_type)?;
                 Ok::<_, ModelBuildingError>(
                     building
                         .database_access_expressions

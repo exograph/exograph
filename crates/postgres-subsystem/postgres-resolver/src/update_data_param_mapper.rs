@@ -533,34 +533,3 @@ fn extract_argument<'a>(
 
     (arg, arg_type)
 }
-
-// fn compute_nested_predicate(
-//     base_expr: &AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
-// ) -> AccessPredicateExpression<DatabaseAccessPrimitiveExpression> {
-//     match base_expr {
-//         AccessPredicateExpression::LogicalOp(op) => todo!(),
-//         AccessPredicateExpression::RelationalOp(op) => match op {
-//             AccessRelationalOp::Eq(l, r) => {}
-//             AccessRelationalOp::Neq(_, _) => todo!(),
-//             AccessRelationalOp::Lt(_, _) => todo!(),
-//             AccessRelationalOp::Lte(_, _) => todo!(),
-//             AccessRelationalOp::Gt(_, _) => todo!(),
-//             AccessRelationalOp::Gte(_, _) => todo!(),
-//             AccessRelationalOp::In(_, _) => todo!(),
-//         },
-//         AccessPredicateExpression::BooleanLiteral(value) => todo!(),
-//     }
-// }
-
-// fn compute_nested_prim_expr(
-//     expr: DatabaseAccessPrimitiveExpression,
-// ) -> DatabaseAccessPrimitiveExpression {
-//     match expr {
-//         DatabaseAccessPrimitiveExpression::Column(column) => {
-//             DatabaseAccessPrimitiveExpression::Column(column)
-//         }
-//         DatabaseAccessPrimitiveExpression::Common(common) => {
-//             DatabaseAccessPrimitiveExpression::Common(common)
-//         }
-//     }
-// }
