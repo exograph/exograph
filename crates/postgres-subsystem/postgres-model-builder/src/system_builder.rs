@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::cell::RefCell;
+
 use core_plugin_interface::{
     core_model::{
         access::AccessPredicateExpression,
@@ -69,8 +71,8 @@ pub fn build(
             mutation_types: building.mutation_types.values(),
             mutations: building.mutations,
 
-            input_access_expressions: building.input_access_expressions.elems,
-            database_access_expressions: building.database_access_expressions.elems,
+            input_access_expressions: building.input_access_expressions.into_inner().elems,
+            database_access_expressions: building.database_access_expressions.into_inner().elems,
         }
     };
 
@@ -120,7 +122,7 @@ fn build_expanded(
 
     // Finally expand queries, mutations, and module methods
     query_builder::build_expanded(building);
-    mutation_builder::build_expanded(resolved_env, building);
+    mutation_builder::build_expanded(resolved_env, building)?;
 
     Ok(())
 }
@@ -142,8 +144,10 @@ pub struct SystemContextBuilding {
     pub mutation_types: MappedArena<MutationType>,
     pub mutations: MappedArena<PostgresMutation>,
 
-    pub input_access_expressions: AccessExpressionsBuilding<InputAccessPrimitiveExpression>,
-    pub database_access_expressions: AccessExpressionsBuilding<DatabaseAccessPrimitiveExpression>,
+    pub input_access_expressions:
+        RefCell<AccessExpressionsBuilding<InputAccessPrimitiveExpression>>,
+    pub database_access_expressions:
+        RefCell<AccessExpressionsBuilding<DatabaseAccessPrimitiveExpression>>,
 
     pub database: Database,
 }

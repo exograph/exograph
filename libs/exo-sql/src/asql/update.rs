@@ -69,7 +69,7 @@ pub struct AbstractUpdate {
     /// Nested updates
     pub nested_updates: Vec<NestedAbstractUpdate>,
     /// Nested inserts
-    pub nested_inserts: Vec<NestedAbstractInsert>,
+    pub nested_inserts: Vec<NestedAbstractInsertSet>,
     /// Nested deletes
     pub nested_deletes: Vec<NestedAbstractDelete>,
 
@@ -86,7 +86,49 @@ pub struct NestedAbstractUpdate {
     pub update: AbstractUpdate,
 }
 
+/// Nested inserts for the same relation and filter predicate.
 /// In our example, the `create: [{artist: {id: 30}, rank: 2, role: "main"}]` part
+#[derive(Debug)]
+pub struct NestedAbstractInsertSet {
+    pub ops: Vec<NestedAbstractInsert>,
+    /// The predicate to filter rows from the earlier operations with the parent table. Typically
+    /// useful to specify conditions stemming from access control rules.
+    pub filter_predicate: AbstractPredicate,
+}
+
+impl NestedAbstractInsertSet {
+    pub fn new(ops: Vec<NestedAbstractInsert>, root_predicate: AbstractPredicate) -> Self {
+        fn all_same<T: PartialEq + core::fmt::Debug>(items: impl Iterator<Item = T>) -> bool {
+            items.fold(None, |acc, item| match acc {
+                None => Some(item),
+                Some(prev) => {
+                    assert_eq!(prev, item);
+                    Some(prev)
+                }
+            });
+            true
+        }
+
+        assert!(
+            all_same(ops.iter().map(|op| op.relation_column_id)),
+            "All nested inserts must be for the same relation"
+        );
+        assert!(
+            all_same(ops.iter().map(|op| op.insert.table_id)),
+            "All nested inserts must be for the same table"
+        );
+
+        Self {
+            ops,
+            filter_predicate: root_predicate,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ops.is_empty()
+    }
+}
+
 #[derive(Debug)]
 pub struct NestedAbstractInsert {
     /// Same as `NestedAbstractUpdate::relation_column_id`

@@ -33,7 +33,7 @@ pub struct UpdateAccessExpression {
 /// Primitive expression (that doesn't contain any other expressions).
 /// Used as sides of `AccessRelationalExpression` to form more complex expressions
 /// such as equal and less than.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum DatabaseAccessPrimitiveExpression {
     Column(PhysicalColumnPath), // Column path, for example self.user.id
     Common(CommonAccessPrimitiveExpression), // expression shared by all access expressions

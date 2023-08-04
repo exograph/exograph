@@ -9,7 +9,10 @@
 
 //! Transforms an AstSystem into a GraphQL system
 
-use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::{
+    core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
+    core_model_builder::error::ModelBuildingError,
+};
 use postgres_model::types::MutationType;
 
 use crate::shallow::Shallow;
@@ -49,6 +52,8 @@ pub trait Builder {
                     name: type_name.to_string(),
                     fields: vec![],
                     entity_id: SerializableSlabIndex::shallow(),
+                    input_access: None,
+                    database_access: None,
                 },
             );
         }
@@ -66,5 +71,9 @@ pub trait Builder {
         }
     }
 
-    fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding);
+    fn build_expanded(
+        &self,
+        resolved_env: &ResolvedTypeEnv,
+        building: &mut SystemContextBuilding,
+    ) -> Result<(), ModelBuildingError>;
 }

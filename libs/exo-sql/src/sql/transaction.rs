@@ -7,12 +7,20 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::fmt::Debug;
+
 use tokio_postgres::{GenericClient, Row, Transaction};
 use tracing::{debug, error, instrument};
 
-use crate::{database_error::DatabaseError, sql::SQLBuilder, Database};
+use crate::{
+    database_error::DatabaseError,
+    sql::{select::Select, table::Table, SQLBuilder},
+    Column, Database, Predicate, SQLParamContainer, TableId,
+};
 
 use super::{
+    column::ArrayParamWrapper,
+    predicate::ConcretePredicate,
     sql_operation::{SQLOperation, TemplateSQLOperation},
     ExpressionBuilder, SQLValue,
 };
@@ -85,6 +93,7 @@ impl<'a> TransactionScript<'a> {
 pub enum TransactionStep<'a> {
     Concrete(ConcreteTransactionStep<'a>),
     Template(TemplateTransactionStep<'a>),
+    Filter(TemplateFilterOperation),
 }
 
 impl<'a> TransactionStep<'a> {
@@ -119,6 +128,10 @@ impl<'a> TransactionStep<'a> {
                 }
 
                 res
+            }
+            Self::Filter(step) => {
+                let concrete = step.resolve(transaction_context, database);
+                concrete.execute(database, client).await
             }
         }
     }
@@ -186,5 +199,56 @@ impl<'a> TemplateTransactionStep<'a> {
             .into_iter()
             .map(|operation| ConcreteTransactionStep { operation })
             .collect()
+    }
+}
+
+#[derive(Debug)]
+pub struct TemplateFilterOperation {
+    pub prev_step_id: TransactionStepId,
+    pub table_id: TableId,
+    pub predicate: ConcretePredicate,
+}
+
+impl TemplateFilterOperation {
+    pub fn resolve<'a>(
+        self,
+        transaction_context: &TransactionContext,
+        database: &Database,
+    ) -> ConcreteTransactionStep<'a> {
+        let rows = transaction_context.row_count(self.prev_step_id);
+
+        let pk_column_id = database
+            .get_pk_column_id(self.table_id)
+            .expect("No primary key column");
+
+        let op = ConcreteTransactionStep {
+            operation: SQLOperation::Select(Select {
+                table: Table::physical(self.table_id, None),
+                predicate: Predicate::and(
+                    Predicate::Eq(
+                        Column::physical(pk_column_id, None),
+                        Column::ArrayParam {
+                            param: SQLParamContainer::new(
+                                (0..rows)
+                                    .map(|row| {
+                                        transaction_context.resolve_value(self.prev_step_id, row, 0)
+                                    })
+                                    .collect::<Vec<_>>(),
+                            ),
+                            wrapper: ArrayParamWrapper::Any,
+                        },
+                    ),
+                    self.predicate,
+                ),
+                order_by: None,
+                offset: None,
+                limit: None,
+                top_level_selection: false,
+                columns: vec![Column::physical(pk_column_id, None)],
+                group_by: None,
+            }),
+        };
+
+        op
     }
 }

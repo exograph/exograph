@@ -10,12 +10,17 @@
 //! Build mutation input types (`<Type>CreationInput`, `<Type>UpdateInput`, `<Type>ReferenceInput`) and
 //! mutations (`create<Type>`, `update<Type>`, and `delete<Type>` as well as their plural versions)
 
-use core_plugin_interface::core_model::{
-    mapped_arena::{MappedArena, SerializableSlabIndex},
-    types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
+use core_plugin_interface::{
+    core_model::{
+        access::AccessPredicateExpression,
+        mapped_arena::{MappedArena, SerializableSlabIndex},
+        types::{BaseOperationReturnType, FieldType, Named, OperationReturnType},
+    },
+    core_model_builder::error::ModelBuildingError,
 };
 
 use postgres_model::{
+    access::DatabaseAccessPrimitiveExpression,
     mutation::{PostgresMutation, PostgresMutationParameters},
     relation::PostgresRelation,
     types::{
@@ -25,6 +30,7 @@ use postgres_model::{
 };
 
 use crate::{
+    access_utils::parent_predicate,
     resolved_builder::{ResolvedField, ResolvedFieldTypeHelper},
     shallow::Shallow,
     utils::to_mutation_type,
@@ -64,12 +70,17 @@ pub fn build_shallow(
 }
 
 /// Expand the mutation input types as well as build the mutation
-pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    ReferenceInputTypeBuilder {}.build_expanded(resolved_env, building); // Used by many...
+pub fn build_expanded(
+    resolved_env: &ResolvedTypeEnv,
+    building: &mut SystemContextBuilding,
+) -> Result<(), ModelBuildingError> {
+    ReferenceInputTypeBuilder {}.build_expanded(resolved_env, building)?; // Used by many...
 
-    CreateMutationBuilder {}.build_expanded(resolved_env, building);
-    UpdateMutationBuilder {}.build_expanded(resolved_env, building);
-    DeleteMutationBuilder {}.build_expanded(resolved_env, building);
+    CreateMutationBuilder {}.build_expanded(resolved_env, building)?;
+    UpdateMutationBuilder {}.build_expanded(resolved_env, building)?;
+    DeleteMutationBuilder {}.build_expanded(resolved_env, building)?;
+
+    Ok(())
 }
 
 pub trait MutationBuilder {
@@ -336,33 +347,30 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         container_type: Option<&EntityType>,
-    ) -> Vec<(SerializableSlabIndex<MutationType>, MutationType)> {
-        let mut field_types: Vec<_> = entity_type
-            .fields
-            .iter()
-            .flat_map(|field| {
-                let field_type = base_type(
-                    &field.typ,
-                    building.primitive_types.values_ref(),
-                    building.entity_types.values_ref(),
-                );
-                if let (PostgresType::Composite(field_type), PostgresRelation::OneToMany { .. }) =
-                    (&field_type, &field.relation)
-                {
-                    self.expand_one_to_many(
-                        entity_type,
-                        field,
-                        field_type,
-                        resolved_env,
-                        building,
-                        top_level_type,
-                        Some(entity_type),
-                    )
-                } else {
-                    vec![]
-                }
-            })
-            .collect();
+    ) -> Result<Vec<(SerializableSlabIndex<MutationType>, MutationType)>, ModelBuildingError> {
+        let mut field_types: Vec<_> = vec![];
+
+        for field in entity_type.fields.iter() {
+            let field_type = base_type(
+                &field.typ,
+                building.primitive_types.values_ref(),
+                building.entity_types.values_ref(),
+            );
+            if let (PostgresType::Composite(field_type), PostgresRelation::OneToMany { .. }) =
+                (&field_type, &field.relation)
+            {
+                let expanded = self.expand_one_to_many(
+                    entity_type,
+                    field,
+                    field_type,
+                    resolved_env,
+                    building,
+                    top_level_type,
+                    Some(entity_type),
+                )?;
+                field_types.extend(expanded);
+            }
+        }
 
         let existing_type_name = Self::data_type_name(
             entity_type.name.as_str(),
@@ -376,16 +384,36 @@ pub trait DataParamBuilder<D> {
             Some(entity_type.name.as_str()),
             building,
         );
+
+        let field_entity_access = building.database_access_expressions.borrow()
+            [entity_type.access.update.database]
+            .clone();
+        let nested_predicate: Option<
+            SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+        > = container_type
+            .map(|container_type| {
+                let predicate = parent_predicate(field_entity_access, container_type)?;
+                Ok::<_, ModelBuildingError>(
+                    building
+                        .database_access_expressions
+                        .borrow_mut()
+                        .insert(predicate),
+                )
+            })
+            .transpose()?;
+
         field_types.push((
             existing_type_id,
             MutationType {
                 name: existing_type_name,
                 fields: input_type_fields,
                 entity_id: building.entity_types.get_id(&entity_type.name).unwrap(),
+                input_access: None,
+                database_access: nested_predicate,
             },
         ));
 
-        field_types
+        Ok(field_types)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -398,7 +426,7 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         _container_type: Option<&EntityType>,
-    ) -> Vec<(SerializableSlabIndex<MutationType>, MutationType)> {
+    ) -> Result<Vec<(SerializableSlabIndex<MutationType>, MutationType)>, ModelBuildingError> {
         let new_container_type = Some(entity_type);
 
         let existing_type_name = Self::data_type_name(
@@ -421,7 +449,7 @@ pub trait DataParamBuilder<D> {
                 new_container_type,
             )
         } else {
-            vec![]
+            Ok(vec![])
         }
     }
 }

@@ -10,10 +10,13 @@
 //! Build mutation input types associated with creation (`<Type>CreationInput`) and
 //! the create mutations (`create<Type>`, and `create<Type>s`)
 
-use core_plugin_interface::core_model::{
-    access::AccessPredicateExpression,
-    mapped_arena::MappedArena,
-    types::{BaseOperationReturnType, FieldType, OperationReturnType},
+use core_plugin_interface::{
+    core_model::{
+        access::AccessPredicateExpression,
+        mapped_arena::MappedArena,
+        types::{BaseOperationReturnType, FieldType, OperationReturnType},
+    },
+    core_model_builder::error::ModelBuildingError,
 };
 
 use postgres_model::{
@@ -48,10 +51,14 @@ impl Builder for CreateMutationBuilder {
         field_types
     }
 
-    fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+    fn build_expanded(
+        &self,
+        resolved_env: &ResolvedTypeEnv,
+        building: &mut SystemContextBuilding,
+    ) -> Result<(), ModelBuildingError> {
         let creation_access_is_false = |entity_type: &EntityType| -> bool {
             matches!(
-                building.input_access_expressions[entity_type.access.creation],
+                building.input_access_expressions.borrow()[entity_type.access.creation],
                 AccessPredicateExpression::BooleanLiteral(false)
             )
         };
@@ -64,7 +71,7 @@ impl Builder for CreateMutationBuilder {
                     building,
                     Some(entity_type),
                     None,
-                ) {
+                )? {
                     building.mutation_types[existing_id] = expanded_type;
                 }
             }
@@ -82,6 +89,8 @@ impl Builder for CreateMutationBuilder {
                 }
             }
         }
+
+        Ok(())
     }
 }
 

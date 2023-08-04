@@ -1,0 +1,199 @@
+stages:
+  - operation: |
+      mutation {
+        # Create a document for all users, but due to access control, will be able to create only for the auth user
+        # Simultaneously update all users name (for which the access control allow anything)
+        updateUsers(where: {id: {gt: 0}}, data: {name: "updated-user2", documents: {create: {content: "nested-create"}}}) @unordered { 
+          id
+          name
+          documents @unordered {
+            id
+            content
+            user {
+              id
+            }
+          }
+        }
+      }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "data": {
+          "updateUsers": [
+            {
+              "id": 1,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 2,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 1,
+                  "content": "content1",
+                  "user": {
+                    "id": 2
+                  }
+                },
+                {
+                  "id": 2,
+                  "content": "content2",
+                  "user": {
+                    "id": 2
+                  }
+                },
+                {
+                  "id": 5,
+                  "content": "nested-create",
+                  "user": {
+                    "id": 2
+                  }
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 4,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 5,
+              "name": "updated-user2",
+              "documents": []
+            }
+          ]
+        }
+      }
+
+
+  # Ensure that the earlier mutation did work
+  - operation: |
+      query {
+        documents @unordered {
+          id
+          content
+          user {
+            id
+            name
+          }
+        }
+        users @unordered {
+          id
+          name
+          documents @unordered {
+            id
+            content
+          }
+        }        
+      }
+    auth: |
+      {
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "users": [
+            {
+              "id": 1,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 3,
+                  "content": "content3"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 1,
+                  "content": "content1"
+                },
+                {
+                  "id": 2,
+                  "content": "content2"
+                },
+                {
+                  "id": 5,
+                  "content": "nested-create"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "name": "updated-user2",
+              "documents": [
+                {
+                  "id": 4,
+                  "content": "content4"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "name": "updated-user2",
+              "documents": []
+            },
+            {
+              "id": 5,
+              "name": "updated-user2",
+              "documents": []
+            }
+          ],
+          "documents": [
+            {
+              "id": 1,
+              "content": "content1",
+              "user": {
+                "id": 2,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 2,
+              "content": "content2",
+              "user": {
+                "id": 2,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 3,
+              "content": "content3",
+              "user": {
+                "id": 1,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 4,
+              "content": "content4",
+              "user": {
+                "id": 3,
+                "name": "updated-user2"
+              }
+            },
+            {
+              "id": 5,
+              "content": "nested-create",
+              "user": {
+                "id": 2,
+                "name": "updated-user2"
+              }
+            }
+          ]
+        }
+      }

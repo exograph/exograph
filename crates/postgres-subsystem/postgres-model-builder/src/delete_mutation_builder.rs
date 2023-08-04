@@ -10,10 +10,13 @@
 //! Build mutation input types associated with deletion (`<Type>DeletionInput`) and
 //! the create mutations (`delete<Type>`, and `delete<Type>s`)
 
-use core_plugin_interface::core_model::{
-    access::AccessPredicateExpression,
-    mapped_arena::MappedArena,
-    types::{BaseOperationReturnType, OperationReturnType},
+use core_plugin_interface::{
+    core_model::{
+        access::AccessPredicateExpression,
+        mapped_arena::MappedArena,
+        types::{BaseOperationReturnType, OperationReturnType},
+    },
+    core_model_builder::error::ModelBuildingError,
 };
 use postgres_model::mutation::PostgresMutationParameters;
 use postgres_model::types::EntityType;
@@ -45,11 +48,11 @@ impl Builder for DeleteMutationBuilder {
         &self,
         _resolved_env: &ResolvedTypeEnv,
         building: &mut SystemContextBuilding,
-    ) {
+    ) -> Result<(), ModelBuildingError> {
         // Since there are no special input types for deletion, no expansion is needed
         for (entity_type_id, entity_type) in building.entity_types.iter() {
             if let AccessPredicateExpression::BooleanLiteral(false) =
-                building.database_access_expressions[entity_type.access.delete]
+                building.database_access_expressions.borrow()[entity_type.access.delete]
             {
                 continue;
             }
@@ -57,6 +60,8 @@ impl Builder for DeleteMutationBuilder {
                 building.mutations.add(&mutation.name.to_owned(), mutation);
             }
         }
+
+        Ok(())
     }
 }
 

@@ -1,28 +1,25 @@
 stages:
-  # User cannot update a document that is not theirs
+  # An unauthenticated user is not allowed to create documents (collection) even if they can create user
   - operation: |
       mutation {
-        deleteDocument(id: 1) {
+        createUser(data: {name: "user-anonymous", documents: [{content: "user-anonymous-document-1"}, {content: "user-anonymous-document-2"}]}) {
           id
-          content
-          user {
+          name
+          documents {
             id
-            name
+            content
           }
         }
       }
-    auth: |
-      {
-        "sub": 3,
-        "role": "USER"
-      }
     response: |
       {
-        "data": {
-          "deleteDocument": null
-        }
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
       }
-  # Ensure that the earlier mutation did work
+  # Ensure that the earlier mutation didn't work
   - operation: |
       query {
         documents(orderBy: {id: ASC}) {
