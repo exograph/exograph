@@ -1,0 +1,9 @@
+operation: |
+    mutation {
+        v1: createVenue(data: {name: "V1"}) {
+            id @bind(name: "v1id")
+        }
+        v2: createVenue(data: {name: "V2"}) {
+            id @bind(name: "v2id")
+        }        
+    }

@@ -76,6 +76,7 @@ impl Builder for UpdateMutationBuilder {
                     building,
                     Some(entity_type),
                     None,
+                    false,
                 )? {
                     building.mutation_types[existing_id] = expanded_type;
                 }
@@ -199,6 +200,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         container_type: Option<&EntityType>,
+        expanding_one_to_many: bool,
     ) -> Result<Vec<(SerializableSlabIndex<MutationType>, MutationType)>, ModelBuildingError> {
         let existing_type_name =
             Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()));
@@ -271,6 +273,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                         building,
                         top_level_type,
                         container_type,
+                        expanding_one_to_many,
                     )?
                     .first()
                     .map(|tpe| {
