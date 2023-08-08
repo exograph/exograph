@@ -1,0 +1,24 @@
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Venue {
+    @pk id: Int = autoIncrement()
+    name: String
+    concerts: Set<Concert>?
+  }
+
+  @access(true)
+  type Concert {
+    @pk id: Int = autoIncrement()
+    title: String
+    venue: Venue
+    prices: Set<Amount>?
+  }
+
+  @access(true)
+  type Amount {
+    @pk id: Int = autoIncrement()
+    value: Float
+    concert: Concert
+  }
+}

@@ -1,0 +1,112 @@
+stages:
+  - operation: |
+      mutation($venue1_id: Int!, $venue2_id: Int!) @unordered {
+        c1: createConcert(data: {title: "C1", venue: {id: $venue1_id}, prices: [{value: 10}, {value: 20}]}) {
+          id @bind("c1id")
+          prices @unordered {
+            id @bind("p1id")
+            value
+          }
+        }
+        c2: createConcert(data: {title: "C2", venue: {id: $venue2_id}, prices: [{value: 100}, {value: 200}]}) {
+          id @bind("c2id")
+          prices @unordered {
+            id @bind("p2id")
+            value
+          }
+        }
+      }
+    variable: |
+      {
+        "venue1_id": $.v1id,
+        "venue2_id": $.v2id
+      }
+    response: |
+      {
+        "data": {
+          "c2": {
+            "id": 2,
+            "prices": [
+              {
+                "id": 3,
+                "value": 100
+              },
+              {
+                "id": 4,
+                "value": 200
+              }
+            ]
+          },
+          "c1": {
+            "id": 1,
+            "prices": [
+              {
+                "id": 1,
+                "value": 10
+              },
+              {
+                "id": 2,
+                "value": 20
+              }
+            ]
+          }
+        }
+      }
+
+  - operation: |
+      mutation {
+        updateConcert(id: 1, data: {title: "C1-updated", prices: {update: {id: 1, value: 11}}}) {
+          id
+          title
+          prices @unordered {
+            id
+            value
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "updateConcert": {
+            "id": 1,
+            "title": "C1-updated",
+            "prices": [
+              {
+                "id": 1,
+                "value": 11
+              },
+              {
+                "id": 2,
+                "value": 20
+              }
+            ]
+          }
+        }
+      }
+
+  - operation: |
+      mutation {
+        updateVenue(id: 2, data: {name: "V1-updated", concerts: {update: {id: 2, title: "C2-updated"}}}) {
+          id
+          name
+          concerts @unordered {
+            id
+            title
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "updateVenue": {
+            "id": 2,
+            "name": "V1-updated",
+            "concerts": [
+              {
+                "id": 2,
+                "title": "C2-updated"
+              }
+            ]
+          }
+        }
+      }

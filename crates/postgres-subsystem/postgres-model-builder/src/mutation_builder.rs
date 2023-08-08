@@ -347,6 +347,7 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         container_type: Option<&EntityType>,
+        expanding_one_to_many: bool,
     ) -> Result<Vec<(SerializableSlabIndex<MutationType>, MutationType)>, ModelBuildingError> {
         let mut field_types: Vec<_> = vec![];
 
@@ -359,16 +360,19 @@ pub trait DataParamBuilder<D> {
             if let (PostgresType::Composite(field_type), PostgresRelation::OneToMany { .. }) =
                 (&field_type, &field.relation)
             {
-                let expanded = self.expand_one_to_many(
-                    entity_type,
-                    field,
-                    field_type,
-                    resolved_env,
-                    building,
-                    top_level_type,
-                    Some(entity_type),
-                )?;
-                field_types.extend(expanded);
+                if !expanding_one_to_many {
+                    let expanded = self.expand_one_to_many(
+                        entity_type,
+                        field,
+                        field_type,
+                        resolved_env,
+                        building,
+                        top_level_type,
+                        Some(entity_type),
+                        true,
+                    )?;
+                    field_types.extend(expanded);
+                }
             }
         }
 
@@ -426,6 +430,7 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         _container_type: Option<&EntityType>,
+        expanding_one_to_many: bool,
     ) -> Result<Vec<(SerializableSlabIndex<MutationType>, MutationType)>, ModelBuildingError> {
         let new_container_type = Some(entity_type);
 
@@ -447,6 +452,7 @@ pub trait DataParamBuilder<D> {
                 building,
                 top_level_type,
                 new_container_type,
+                expanding_one_to_many,
             )
         } else {
             Ok(vec![])

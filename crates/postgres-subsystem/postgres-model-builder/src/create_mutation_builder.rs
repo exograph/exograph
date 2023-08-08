@@ -71,6 +71,7 @@ impl Builder for CreateMutationBuilder {
                     building,
                     Some(entity_type),
                     None,
+                    false,
                 )? {
                     building.mutation_types[existing_id] = expanded_type;
                 }
