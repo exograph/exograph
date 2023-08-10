@@ -1,5 +1,5 @@
 @postgres
-module TodoDatabase {
+module ConcertDatabase {
   @access(true)
   type Venue {
     @pk id: Int = autoIncrement()

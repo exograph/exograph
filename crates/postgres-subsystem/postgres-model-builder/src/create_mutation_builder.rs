@@ -130,6 +130,10 @@ impl DataParamBuilder<DataParameter> for CreateMutationBuilder {
         false
     }
 
+    fn use_list_for_nested_one_to_many() -> bool {
+        true
+    }
+
     fn base_data_type_name(entity_type_name: &str) -> String {
         entity_type_name.creation_type()
     }
