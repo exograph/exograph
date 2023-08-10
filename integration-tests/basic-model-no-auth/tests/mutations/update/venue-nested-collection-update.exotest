@@ -1,0 +1,38 @@
+operation: |
+    mutation {
+      updateVenue(id: 1, data: {name: "V1-updated", 
+                                concerts: {update: [{ id: 1, title: "C1-updated" }, { id: 3, title: "C3-updated" }]} }) {
+        id
+        name
+        published
+        latitude
+        concerts @unordered {
+          id
+          published
+          title
+        }
+      }
+    }
+response: |
+    {
+      "data": {
+        "updateVenue": {
+          "id": 1,
+          "name": "V1-updated",
+          "published": true,
+          "latitude": 37.7749,
+          "concerts": [
+            {
+              "id": 1,
+              "published": true,
+              "title": "C1-updated"
+            },
+            {
+              "id": 3,
+              "published": true,
+              "title": "C3-updated"
+            }
+          ]
+        }
+      }
+    }

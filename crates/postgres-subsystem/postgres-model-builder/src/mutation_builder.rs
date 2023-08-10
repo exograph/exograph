@@ -163,6 +163,11 @@ pub trait DataParamBuilder<D> {
     // TODO: Revisit this after nested update mutation works
     fn mark_fields_optional() -> bool;
 
+    /// Should we use a list for nested one-to-many relations?
+    /// In case of creation, we should allow passing a list of nested objects, but for updates, we should not
+    /// since the "create", "update" and "delete" operations themselves are of the list type.
+    fn use_list_for_nested_one_to_many() -> bool;
+
     fn data_param_field_type_names(
         &self,
         resolved_composite_type: &ResolvedCompositeType,
@@ -321,7 +326,11 @@ pub trait DataParamBuilder<D> {
                     type_name: field_type_name,
                     type_id: TypeIndex::Composite(field_type_id),
                 });
-                let field_type = FieldType::List(Box::new(field_plain_type));
+                let field_type = if Self::use_list_for_nested_one_to_many() {
+                    FieldType::List(Box::new(field_plain_type))
+                } else {
+                    field_plain_type
+                };
 
                 match &container_type {
                     Some(value) if value == &field.typ.name() => None,
