@@ -7,7 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  MutableRefObject,
+} from "react";
 import GraphiQL from "graphiql";
 import { createGraphiQLFetcher } from "@graphiql/toolkit";
 import { useTheme } from "@graphiql/react";
@@ -15,7 +21,7 @@ import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
 
 import "graphiql/graphiql.min.css";
-import { authPlugin } from "./authPlugin";
+import { authPlugin, defaultPayload } from "./authPlugin";
 
 export const useBrowserTheme = () => {
   const mql = useRef(window.matchMedia("(prefers-color-scheme: dark)")).current;
@@ -122,9 +128,24 @@ function App() {
   );
 }
 
+function useFreshValue<T>(
+  initValue: T
+): [MutableRefObject<T>, (value: T) => void] {
+  const [value, setValue] = useState<T>(initValue);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
+  return [valueRef, setValue];
+}
+
 function Core(props: { schema: GraphQLSchema | null }) {
   const [headers, setHeaders] = useState("");
-  const [jwtToken, setJwtToken] = useState<string | null>(null);
+  const [jwtToken, setJwtToken] = useState<string | undefined>();
+
+  const [jwtSecret, setJwtSecret] = useFreshValue<string | undefined>(
+    undefined
+  );
+  const [payload, setPayload] = useFreshValue<string>(defaultPayload);
 
   const headersString = computeHeadersString(headers, jwtToken);
 
@@ -136,7 +157,15 @@ function Core(props: { schema: GraphQLSchema | null }) {
       schema={props.schema}
       headers={headersString}
       onEditHeaders={setHeaders}
-      plugins={[authPlugin(setJwtToken)]}
+      plugins={[
+        authPlugin(
+          () => jwtSecret.current,
+          setJwtSecret,
+          () => payload.current,
+          setPayload,
+          setJwtToken
+        ),
+      ]}
     >
       <GraphiQL.Logo>
         <Logo />
@@ -147,7 +176,7 @@ function Core(props: { schema: GraphQLSchema | null }) {
 
 function computeHeadersString(
   originalHeaders: string,
-  token: string | null
+  token: string | undefined
 ): string {
   if (!token) {
     return originalHeaders;
