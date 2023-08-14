@@ -11,13 +11,17 @@ import { tags } from "@lezer/highlight";
 
 import * as jose from "jose";
 
-const defaultPayload = `{
+export const defaultPayload = `{
   "sub": "1234567890",
   "name": "Jordan Taylor"
 }`;
 
 export function authPlugin(
-  onTokenChange: (token: string | null) => void
+  getJwtSecret: () => string | undefined,
+  onJwtSecretChange: (jwtSecret: string | undefined) => void,
+  getPayload: () => string,
+  onPayloadChange: (payload: string) => void,
+  onTokenChange: (token: string | undefined) => void
 ): GraphiQLPlugin {
   return {
     title: "Authentication Manager",
@@ -35,12 +39,28 @@ export function authPlugin(
         />
       </svg>
     ),
-    content: () => <AuthPanel onTokenChange={onTokenChange} />,
+    content: () => {
+      return (
+        <AuthPanel
+          jwtSecret={getJwtSecret()}
+          onJwtSecretChange={onJwtSecretChange}
+          payload={getPayload()}
+          onPayloadChange={onPayloadChange}
+          onTokenChange={onTokenChange}
+        />
+      );
+    },
   };
 }
 
 type AuthPanelProps = {
-  onTokenChange: (token: string | null) => void;
+  jwtSecret: string | undefined;
+  onJwtSecretChange: (jwtSecret: string | undefined) => void;
+
+  payload: string;
+  onPayloadChange: (payload: string) => void;
+
+  onTokenChange: (token: string | undefined) => void;
 };
 
 const jsonExtension = json();
@@ -85,12 +105,16 @@ const codeMirrorStyle = {
   boxShadow: "0px 0px 8px 0px hsla(var(--color-neutral), 0.2)",
 };
 
-function AuthPanel({ onTokenChange }: AuthPanelProps) {
-  const [payload, setPayload] = useState(defaultPayload);
+function AuthPanel({
+  jwtSecret,
+  onJwtSecretChange,
+  payload,
+  onPayloadChange,
+  onTokenChange,
+}: AuthPanelProps) {
   const [payloadError, setPayloadError] = useState<string | undefined>(
     undefined
   );
-  const [secret, setSecret] = useState("");
 
   useEffect(() => {
     try {
@@ -103,10 +127,14 @@ function AuthPanel({ onTokenChange }: AuthPanelProps) {
   }, [payload]);
 
   const updateAuthorizationToken = () => {
+    if (!jwtSecret) {
+      return;
+    }
+
     const updateJwt = async () => {
       try {
         const payloadJson = JSON.parse(payload);
-        const token = await createJwtToken(payloadJson, secret);
+        const token = await createJwtToken(payloadJson, jwtSecret);
         setPayloadError(undefined);
         onTokenChange(token);
       } catch (e) {
@@ -125,7 +153,7 @@ function AuthPanel({ onTokenChange }: AuthPanelProps) {
       <CodeMirror
         style={codeMirrorStyle}
         placeholder={"EXO_JWT_SECRET value"}
-        value={secret}
+        value={jwtSecret}
         basicSetup={{
           lineNumbers: false,
           foldGutter: false,
@@ -134,7 +162,7 @@ function AuthPanel({ onTokenChange }: AuthPanelProps) {
         }}
         extensions={[syntaxHighlighting(exoHighlightStyle)]}
         theme={exoTheme}
-        onChange={setSecret}
+        onChange={onJwtSecretChange}
       />
       <div style={labelStyle}>Payload</div>
       <CodeMirror
@@ -153,7 +181,7 @@ function AuthPanel({ onTokenChange }: AuthPanelProps) {
           jsonLinterExtension,
         ]}
         theme={exoTheme}
-        onChange={setPayload}
+        onChange={onPayloadChange}
       />
       {
         <div style={{ color: "brown", fontSize: "0.9rem", height: "3rem" }}>
@@ -164,15 +192,18 @@ function AuthPanel({ onTokenChange }: AuthPanelProps) {
         className="graphiql-button"
         style={{ marginTop: "1rem" }}
         onClick={updateAuthorizationToken}
-        disabled={payloadError || !secret || !payload ? true : false}
+        disabled={payloadError || !jwtSecret || !payload ? true : false}
       >
         Update Authorization Token
       </button>
       <div
-        style={{ fontSize: "0.9rem", alignSelf: "flex-end", marginTop: "auto" }}
+        style={{
+          fontSize: "0.9rem",
+          marginTop: "1rem",
+        }}
       >
-        A JWT token based on the secret and payload will be automatically added
-        as the <code>Authorization</code> header.
+        Click on the button above to have a JWT token based on the secret and
+        payload added as the <code>Authorization</code> header.
       </div>
     </div>
   );
@@ -181,7 +212,7 @@ function AuthPanel({ onTokenChange }: AuthPanelProps) {
 async function createJwtToken(
   payload: Record<string, unknown>,
   secret: string
-): Promise<string | null> {
+): Promise<string | undefined> {
   if (secret === "") {
     return "";
   }
