@@ -127,9 +127,9 @@ pub fn exo_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
                 super::exograph_ops::op_operation_query,
                 super::exograph_ops::op_operation_proceed,
             ],
-            customizer = |ext: &mut deno_core::ExtensionBuilder| {
-                ext.force_op_registration();
-            }
+            // customizer = |ext: &mut deno_core::ExtensionBuilder| {
+            //     ext.force_op_registration();
+            // }
         );
         vec![exograph::init_ops()]
     }

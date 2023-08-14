@@ -10,6 +10,7 @@
 use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
+use deno_core::serde_v8;
 use deno_core::url::Url;
 use deno_core::v8;
 use deno_core::Extension;
@@ -191,7 +192,10 @@ impl DenoModule {
                 user_agent: user_agent_name.to_string(),
                 inspect: false,
                 locale: "en".to_string(),
+                has_node_modules_dir: false,
+                maybe_binary_npm_command_name: None,
             },
+            create_params: None,
             extensions,
             unsafely_ignore_certificate_errors: None,
             root_cert_store_provider: None,
@@ -206,13 +210,11 @@ impl DenoModule {
             broadcast_channel: shared_state.broadcast_channel,
             shared_array_buffer_store: None,
             compiled_wasm_module_store: None,
-            web_worker_preload_module_cb: Arc::new(|_| todo!()),
             source_map_getter: None,
             format_js_error_fn: None,
             fs: Arc::new(deno_fs::RealFs),
             stdio: Stdio::default(),
             npm_resolver: None,
-            web_worker_pre_execute_module_cb: Arc::new(|_| todo!()),
             cache_storage_dir: None,
             should_wait_for_inspector_session: false,
             startup_snapshot: None,
@@ -409,7 +411,7 @@ impl DenoModule {
 /// give them all access to the state through Arc<>s!
 #[derive(Clone, Default)]
 pub struct DenoModuleSharedState {
-    pub blob_store: BlobStore,
+    pub blob_store: Arc<BlobStore>,
     pub broadcast_channel: InMemoryBroadcastChannel,
     // TODO
     //  shared_array_buffer_store
@@ -632,9 +634,9 @@ mod tests {
         deno_core::extension!(
             test,
             ops = [rust_impl],
-            customizer = |ext: &mut deno_core::ExtensionBuilder| {
-                ext.force_op_registration();
-            }
+            // customizer = |ext: &mut deno_core::ExtensionBuilder| {
+            //     ext.force_op_registration();
+            // }
         );
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
@@ -670,9 +672,9 @@ mod tests {
         deno_core::extension!(
             test,
             ops = [async_rust_impl],
-            customizer = |ext: &mut deno_core::ExtensionBuilder| {
-                ext.force_op_registration();
-            }
+            // customizer = |ext: &mut deno_core::ExtensionBuilder| {
+            //     ext.force_op_registration();
+            // }
         );
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
