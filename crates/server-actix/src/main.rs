@@ -29,7 +29,7 @@ const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
 #[derive(Error)]
 enum ServerError {
     #[error("Port {0} is already in use. Check if there is another process running at that port.")]
-    PortInUse(u32),
+    PortInUse(u16),
     #[error("{0}")]
     Io(#[from] std::io::Error),
 }
@@ -52,11 +52,10 @@ async fn main() -> Result<(), ServerError> {
     let server_port = env::var(EXO_SERVER_PORT)
         .map(|port_str| {
             port_str
-                .parse::<u32>()
+                .parse::<u16>()
                 .expect("Failed to parse EXO_SERVER_PORT")
         })
         .unwrap_or(9876);
-    let server_url = format!("127.0.0.1:{server_port}");
 
     let resolve_path = get_endpoint_http_path();
     let playground_path = get_playground_http_path();
@@ -75,8 +74,18 @@ async fn main() -> Result<(), ServerError> {
             .route(&resolve_path, web::post().to(resolve))
             .route(&playground_path, web::get().to(playground))
             .route(&playground_path_subpaths, web::get().to(playground))
-    })
-    .bind(&server_url);
+    });
+
+    // Bind to:
+    // - "0.0.0.0" (all interfaces; needed for production; see the recommendation in `HttpServer::bind` documentation)
+    // - "localhost" (needed for development). By binding to "localhost" we bind to both IPv4 and IPv6 loopback addresses
+    //    ([::1]:9876, 127.0.0.1:9876)
+    //
+    // Note that tools such as "@graphql-codegen/cli" are unable to connect to "localhost:<port>" if we
+    // only bind to "0.0.0.0" or even "127.0.0.1".
+    let server = server
+        .bind(("0.0.0.0", server_port)) // bind to all interfaces (needed for production)
+        .and_then(|server| server.bind(("localhost", server_port))); // bind to localhost (needed for development; for example, )
 
     match server {
         Ok(server) => {
@@ -106,13 +115,11 @@ async fn main() -> Result<(), ServerError> {
 }
 
 fn pretty_addr(addrs: &[SocketAddr]) -> String {
-    let ip4_addr = addrs.iter().find(|addr| addr.is_ipv4());
-    let ip = ip4_addr.map(|addr| addr.ip()).unwrap_or(addrs[0].ip());
+    let loopback_addr = addrs.iter().find(|addr| addr.ip().is_loopback());
 
-    if ip.is_loopback() && ip4_addr.is_some() {
-        format!("localhost:{}", addrs[0].port())
-    } else {
-        format!("{}:{}", ip, addrs[0].port())
+    match loopback_addr {
+        Some(addr) => format!("localhost:{}", addr.port()),
+        None => format!("{:?}", addrs),
     }
 }
 
