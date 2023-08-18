@@ -1,0 +1,15 @@
+operation: |
+  mutation {
+      createDepartment(data: {id: "d1", name: "Test Department"}) { # "d1" already exists, so this should fail
+          id
+          name
+      }
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Postgres operation failed"
+      }
+    ]
+  }

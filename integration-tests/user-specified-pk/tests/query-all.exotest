@@ -1,0 +1,46 @@
+operation: |
+  query {
+      departments(orderBy: {id: ASC}) {
+          id
+          name
+          products(orderBy: {id: DESC}) {
+            id
+            title
+          }
+      }
+  }
+response: |
+  {
+    "data": {
+      "departments": [
+        {
+          "id": "d1",
+          "name": "D1",
+          "products": [
+            {
+              "id": 2,
+              "title": "D1P2"
+            },
+            {
+              "id": 1,
+              "title": "D1P1"
+            }
+          ]
+        },
+        {
+          "id": "d2",
+          "name": "D2",
+          "products": [
+            {
+              "id": 4,
+              "title": "D2P2"
+            },
+            {
+              "id": 3,
+              "title": "D3P1"
+            }
+          ]
+        }
+      ]
+    }
+  }
