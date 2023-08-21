@@ -257,7 +257,7 @@ pub trait DataParamBuilder<D> {
                         dynamic_default_value: field.dynamic_default_value.clone(),
                     })
                 } else {
-                    // Make the decision to include the pk column on based on the default value for
+                    // Make the decision to include the pk column based on the default value for
                     // the PK column. We assume that if the default value is autoIncrement() or
                     // gen_uuid(), it is a system assigned field and we should not include it in the
                     // input type.
