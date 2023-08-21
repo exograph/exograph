@@ -243,10 +243,10 @@ pub trait DataParamBuilder<D> {
         let optional = Self::mark_fields_optional() || field.has_default_value;
 
         match &field.relation {
-            PostgresRelation::Pk { .. } => {
+            PostgresRelation::Pk { column_id } => {
                 if Self::data_param_role() == DataParamRole::Update {
                     // A typical way clients use update mutation is to get the data along with the id,
-                    // modify the data and send it back to the server. So we should accept the id
+                    // modify the data and send it back to the server. So we accept the id
                     // as an optional field in the update mutation.
                     // See also https://github.com/exograph/exograph/issues/601
                     Some(PostgresField {
@@ -257,8 +257,25 @@ pub trait DataParamBuilder<D> {
                         dynamic_default_value: field.dynamic_default_value.clone(),
                     })
                 } else {
-                    // TODO: Make this decision based on autoIncrement/uuid etc of the id
-                    None
+                    // Make the decision to include the pk column based on the default value for
+                    // the PK column. We assume that if the default value is autoIncrement() or
+                    // gen_uuid(), it is a system assigned field and we should not include it in the
+                    // input type.
+                    // We should revisit this after we support "readonly" fields
+                    let column = column_id.get_column(&building.database);
+                    let is_system_assigned = column.is_auto_increment
+                        || column
+                            .default_value
+                            .iter()
+                            .any(|v| v.as_str() == "gen_random_uuid()");
+
+                    (!is_system_assigned).then(|| PostgresField {
+                        name: field.name.clone(),
+                        typ: to_mutation_type(&field.typ),
+                        relation: field.relation.clone(),
+                        has_default_value: field.has_default_value,
+                        dynamic_default_value: field.dynamic_default_value.clone(),
+                    })
                 }
             }
             PostgresRelation::Scalar { .. } => Some(PostgresField {

@@ -1,0 +1,9 @@
+operation: |
+    mutation {
+        d1: createDepartment(data: {id: "d1", name: "D1", products: [{id: 1, title: "D1P1"}, {id: 2, title: "D1P2"}]}) {
+            id
+        }
+        d2: createDepartment(data: {id: "d2", name: "D2", products: [{id: 3, title: "D3P1"}, {id: 4, title: "D2P2"}]}) {
+            id
+        }
+    }

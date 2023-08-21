@@ -1,0 +1,16 @@
+@postgres
+module Product {
+  @access(true)
+  type Product {
+    @pk id: Int
+    title: String
+    department: Department
+  }
+
+  @access(true)
+  type Department {
+    @pk id: String
+    name: String
+    products: Set<Product>?
+  }
+}

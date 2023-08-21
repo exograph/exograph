@@ -1,0 +1,22 @@
+operation: |
+  mutation {
+      createProduct(data: {id: 5, title: "New Product", department: {id: "d1"}}) {
+          id
+          title
+          department {
+              id
+          }
+      }
+  }
+response: |
+  {
+    "data": {
+      "createProduct": {
+        "id": 5,
+        "title": "New Product",
+        "department": {
+          "id": "d1"
+        }
+      }
+    }
+  }
