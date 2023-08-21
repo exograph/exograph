@@ -128,7 +128,7 @@ where
 
                 if let Ok(events) = events {
                         if events.iter().map(|event| &event.path).any(|p| should_restart(p)) {
-                            println!("Change detected, rebuilding and restarting...");
+                            println!("\nChange detected, rebuilding and restarting...");
                             server = build_and_start_server().await?;
                         }
                     };

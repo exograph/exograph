@@ -32,6 +32,11 @@ use super::command::{
 use exo_sql::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
 use futures::FutureExt;
 
+enum JWTSecret {
+    Env(String),
+    Generated(String),
+}
+
 pub struct YoloCommandDefinition {}
 
 #[async_trait]
@@ -62,7 +67,10 @@ async fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
     let db_server = EphemeralDatabaseLauncher::create_server()?;
     let db = db_server.create_database("yolo")?;
 
-    let jwt_secret = super::util::generate_random_string();
+    let jwt_secret = match std::env::var(EXO_JWT_SECRET).ok() {
+        Some(s) => JWTSecret::Env(s),
+        None => JWTSecret::Generated(super::util::generate_random_string()),
+    };
 
     let prestart_callback = || run_server(model, &jwt_secret, db.as_ref()).boxed();
 
@@ -72,7 +80,7 @@ async fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
 #[async_recursion]
 async fn run_server(
     model: &PathBuf,
-    jwt_secret: &str,
+    jwt_secret: &JWTSecret,
     db: &(dyn EphemeralDatabase + Send + Sync),
 ) -> Result<()> {
     // set envs for server
@@ -82,11 +90,27 @@ async fn run_server(
     std::env::set_var(EXO_INTROSPECTION, "true");
     std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
 
-    std::env::set_var(EXO_JWT_SECRET, jwt_secret);
+    let jwt_secret_str = match jwt_secret {
+        JWTSecret::Env(s) => s.clone(),
+        JWTSecret::Generated(s) => s.clone(),
+    };
+    std::env::set_var(EXO_JWT_SECRET, jwt_secret_str);
     std::env::set_var(EXO_CORS_DOMAINS, "*");
 
-    println!("JWT secret is {}", &jwt_secret.cyan());
-    println!("Postgres URL is {}", &db.url().cyan());
+    println!("{}", "Starting server with a temporary database...".cyan());
+    println!(
+        "{}",
+        "This database will be wiped out when the server exits.".red()
+    );
+
+    println!("Postgres URL: {}", &db.url().cyan());
+
+    match jwt_secret {
+        JWTSecret::Env(_) => println!("JWT secret: {}", "Using EXO_JWT_SECRET env value".cyan()),
+        JWTSecret::Generated(s) => {
+            println!("Generated JWT secret: {}", s.cyan())
+        }
+    };
 
     // generate migrations for current database
     let migrations = Migration::from_db_and_model(None, model).await?;
