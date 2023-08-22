@@ -75,9 +75,6 @@ async fn main() -> Result<(), ServerError> {
     //
     // Note that tools such as "@graphql-codegen/cli" are unable to connect to "localhost:<port>" if we
     // only bind to "0.0.0.0" or even "127.0.0.1".
-    // let server = server
-    //     .bind(("0.0.0.0", server_port)) // bind to all interfaces (needed for production)
-    //     .and_then(|server| server.bind(("localhost", server_port))); // bind to localhost (needed for development; for example, )
     let server_host = env::var(EXO_SERVER_HOST);
 
     let server = match server_host {
