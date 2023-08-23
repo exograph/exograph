@@ -71,7 +71,7 @@ impl JwtAuthenticator {
                 &DecodingKey::from_secret(secret.as_ref()),
                 &Validation::default(),
             )?),
-            JwtAuthenticator::Endpoint(info) => Ok(info.decode_token(token).await?),
+            JwtAuthenticator::Endpoint(endpoint) => Ok(endpoint.decode_token(token).await?),
         }
     }
 
