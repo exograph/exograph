@@ -122,10 +122,16 @@ impl CommandDefinition for FlyCommandDefinition {
                 .italic()
         );
         println!("{}", format!("\tfly apps create {}", app_name).blue());
+        println!("Either of the following: ");
         println!(
             "{}{}",
             format!("\tfly secrets set --app {} EXO_JWT_SECRET=", app_name,).blue(),
             "<your-jwt-secret>".yellow()
+        );
+        println!(
+            "{}{}",
+            format!("\tfly secrets set --app {} EXO_JWKS_ENDPOINT=", app_name,).blue(),
+            "<your-jwks-url>".yellow()
         );
         if use_fly_db {
             println!(

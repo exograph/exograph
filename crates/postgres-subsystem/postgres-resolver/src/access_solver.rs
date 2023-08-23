@@ -472,7 +472,7 @@ mod tests {
                 map: HashMap::new(),
             },
             Schema::new(vec![], vec![], vec![]),
-            None,
+            None.into(),
             HashMap::new(),
             10,
             10,

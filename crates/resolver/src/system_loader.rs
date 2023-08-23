@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use std::cell::RefCell;
+use std::sync::Arc;
 
 use core_resolver::context::JwtAuthenticator;
 use introspection_resolver::IntrospectionResolver;
@@ -126,7 +127,7 @@ impl SystemLoader {
             query_interception_map,
             mutation_interception_map,
             schema,
-            JwtAuthenticator::new_from_env(),
+            Arc::new(JwtAuthenticator::new_from_env()),
             LOCAL_ENVIRONMENT.with(|f| {
                 f.borrow()
                     .clone()
