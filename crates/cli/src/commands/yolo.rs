@@ -29,11 +29,13 @@ use crate::{
 use super::command::{
     default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition,
 };
+use super::util::EXO_JWKS_ENDPOINT;
 use exo_sql::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
 use futures::FutureExt;
 
 enum JWTSecret {
-    Env(String),
+    EnvSecret(String),
+    EnvJwksEndpoint(String),
     Generated(String),
 }
 
@@ -67,10 +69,19 @@ async fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
     let db_server = EphemeralDatabaseLauncher::create_server()?;
     let db = db_server.create_database("yolo")?;
 
-    let jwt_secret = match std::env::var(EXO_JWT_SECRET).ok() {
-        Some(s) => JWTSecret::Env(s),
-        None => JWTSecret::Generated(super::util::generate_random_string()),
-    };
+    let jwt_secret = std::env::var(EXO_JWT_SECRET).ok();
+    let jwt_jwks_endpoint = std::env::var(EXO_JWKS_ENDPOINT).ok();
+
+    let jwt_secret = match (jwt_secret, jwt_jwks_endpoint) {
+        (Some(_), Some(_)) => Err(anyhow::anyhow!(
+            "Both {} and {} are set. Please unset one of them.",
+            EXO_JWT_SECRET,
+            EXO_JWKS_ENDPOINT
+        )),
+        (Some(s), None) => Ok(JWTSecret::EnvSecret(s)),
+        (None, Some(s)) => Ok(JWTSecret::EnvJwksEndpoint(s)),
+        (None, None) => Ok(JWTSecret::Generated(super::util::generate_random_string())),
+    }?;
 
     let prestart_callback = || run_server(model, &jwt_secret, db.as_ref()).boxed();
 
@@ -90,11 +101,11 @@ async fn run_server(
     std::env::set_var(EXO_INTROSPECTION, "true");
     std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
 
-    let jwt_secret_str = match jwt_secret {
-        JWTSecret::Env(s) => s.clone(),
-        JWTSecret::Generated(s) => s.clone(),
+    match jwt_secret {
+        JWTSecret::EnvSecret(s) => std::env::set_var(EXO_JWT_SECRET, s),
+        JWTSecret::Generated(s) => std::env::set_var(EXO_JWT_SECRET, s),
+        JWTSecret::EnvJwksEndpoint(s) => std::env::set_var(EXO_JWKS_ENDPOINT, s),
     };
-    std::env::set_var(EXO_JWT_SECRET, jwt_secret_str);
     std::env::set_var(EXO_CORS_DOMAINS, "*");
 
     println!("{}", "Starting server with a temporary database...".cyan());
@@ -106,7 +117,18 @@ async fn run_server(
     println!("Postgres URL: {}", &db.url().cyan());
 
     match jwt_secret {
-        JWTSecret::Env(_) => println!("JWT secret: {}", "Using EXO_JWT_SECRET env value".cyan()),
+        JWTSecret::EnvSecret(_) => {
+            println!(
+                "JWT secret: {}",
+                "Using the EXO_JWT_SECRET env value".cyan()
+            )
+        }
+        JWTSecret::EnvJwksEndpoint(_) => {
+            println!(
+                "JWKS Endpoint: {}",
+                "Using the EXO_JWKS_ENDPOINT env value".cyan()
+            )
+        }
         JWTSecret::Generated(s) => {
             println!("Generated JWT secret: {}", s.cyan())
         }

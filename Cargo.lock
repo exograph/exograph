@@ -1268,6 +1268,7 @@ dependencies = [
  "indexmap 1.9.3",
  "insta",
  "jsonwebtoken",
+ "reqwest",
  "serde",
  "serde_json",
  "thiserror",

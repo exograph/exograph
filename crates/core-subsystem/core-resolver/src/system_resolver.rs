@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use async_graphql_parser::{
     types::{ExecutableDocument, OperationType},
@@ -51,7 +51,7 @@ pub struct SystemResolver {
     query_interception_map: InterceptionMap,
     mutation_interception_map: InterceptionMap,
     schema: Schema,
-    pub jwt_authenticator: Option<JwtAuthenticator>,
+    pub jwt_authenticator: Arc<Option<JwtAuthenticator>>,
     pub env: HashMap<String, String>,
     normal_query_depth_limit: usize,
     introspection_query_depth_limit: usize,
@@ -64,7 +64,7 @@ impl SystemResolver {
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
         schema: Schema,
-        jwt_authenticator: Option<JwtAuthenticator>,
+        jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: HashMap<String, String>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,

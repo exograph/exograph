@@ -21,6 +21,7 @@ pub const EXO_POSTGRES_URL: &str = "EXO_POSTGRES_URL";
 pub const EXO_POSTGRES_USER: &str = "EXO_POSTGRES_USER";
 pub const EXO_POSTGRES_PASSWORD: &str = "EXO_POSTGRES_PASSWORD";
 pub const EXO_JWT_SECRET: &str = "EXO_JWT_SECRET";
+pub const EXO_JWKS_ENDPOINT: &str = "EXO_JWKS_ENDPOINT";
 
 pub(super) fn generate_random_string() -> String {
     rand::thread_rng()
