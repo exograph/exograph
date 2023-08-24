@@ -38,8 +38,14 @@ pub(super) enum JwtAuthenticationError {
     JwksExtractionError(#[from] JwksExtractionError),
 }
 
+#[derive(Debug, Error)]
+pub enum JwtAuthenticatorError {
+    #[error("JWT configuration error `{0}`")]
+    Configuration(String),
+}
+
 impl JwtAuthenticator {
-    pub fn new_from_env() -> Option<Self> {
+    pub fn new_from_env() -> Result<Option<Self>, JwtAuthenticatorError> {
         let secret = LOCAL_JWT_SECRET.with(|local_jwt_secret| {
             local_jwt_secret
                 .borrow()
@@ -54,13 +60,12 @@ impl JwtAuthenticator {
         });
 
         match (secret, jwks_url) {
-            (Some(secret), None) => Some(JwtAuthenticator::Secret(secret)),
-            (None, Some(jwks_url)) => Some(JwtAuthenticator::Endpoint(JwksEndpoint::new(jwks_url))),
+            (Some(secret), None) => Ok(Some(JwtAuthenticator::Secret(secret))),
+            (None, Some(jwks_url)) => Ok(Some(JwtAuthenticator::Endpoint(JwksEndpoint::new(jwks_url)))),
             (Some(_), Some(_)) => {
-                warn!("Both {EXO_JWT_SECRET} and {EXO_JWKS_ENDPOINT} are set. JWT authentication will not be enabled.");
-                None
+                Err(JwtAuthenticatorError::Configuration(format!("Both {EXO_JWT_SECRET} and {EXO_JWKS_ENDPOINT} are set. Only one of them can be set at a time")))
             }
-            (None, None) => None,
+            (None, None) => Ok(None),
         }
     }
 
@@ -76,8 +81,8 @@ impl JwtAuthenticator {
     }
 
     /// Extract authentication form the "Authorization" header with a bearer token
-    /// The claim is deserialized into an opaque json `Value`, which will be eventually mapped
-    /// to the declared user context model
+    /// The claim is deserialized into an opaque json `Value`, which will be eventually be mapped to
+    /// the declared user context model
     pub(super) async fn extract_authentication(
         &self,
         request: &(dyn Request + Send + Sync),

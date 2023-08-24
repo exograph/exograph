@@ -38,7 +38,7 @@ pub enum JwksExtractionError {
 /// avoid fetching and deserializing it for every request.
 ///
 /// Uses a read-write lock to store the JWKS, since we expect many concurrent reads and infrequent
-/// writes (only once, in fact, until we also take care of keys rotation).
+/// writes (only once, in fact, until we also take care of key rotation).
 pub struct JwksEndpoint {
     url: String,
     jwks: RwLock<Option<JwksData>>,
