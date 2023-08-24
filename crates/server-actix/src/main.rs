@@ -8,23 +8,21 @@
 // by the Apache License, Version 2.0.
 
 use actix_cors::Cors;
-use actix_web::http::header::{CacheControl, CacheDirective};
-use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
-use core_resolver::system_resolver::SystemResolver;
+use actix_web::{middleware, web, App, HttpServer};
 
-use resolver::{allow_introspection, get_endpoint_http_path, get_playground_http_path, graphiql};
-use server_actix::resolve;
+use resolver::{allow_introspection, get_endpoint_http_path, get_playground_http_path};
+use server_actix::{configure_playground, configure_resolver};
 use thiserror::Error;
 use tracing_actix_web::TracingLogger;
 
 use std::env;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
-use std::path::Path;
 use std::time;
 
 const EXO_CORS_DOMAINS: &str = "EXO_CORS_DOMAINS";
 const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
+const EXO_SERVER_HOST: &str = "EXO_SERVER_HOST";
 
 #[derive(Error)]
 enum ServerError {
@@ -57,10 +55,6 @@ async fn main() -> Result<(), ServerError> {
         })
         .unwrap_or(9876);
 
-    let resolve_path = get_endpoint_http_path();
-    let playground_path = get_playground_http_path();
-    let playground_path_subpaths = format!("{playground_path}/{{path:.*}}");
-
     let server = HttpServer::new(move || {
         let cors = cors_from_env();
 
@@ -70,10 +64,8 @@ async fn main() -> Result<(), ServerError> {
                 middleware::TrailingSlash::Trim,
             ))
             .wrap(cors)
-            .app_data(system_resolver.clone())
-            .route(&resolve_path, web::post().to(resolve))
-            .route(&playground_path, web::get().to(playground))
-            .route(&playground_path_subpaths, web::get().to(playground))
+            .configure(configure_resolver(system_resolver.clone()))
+            .configure(configure_playground)
     });
 
     // Bind to:
@@ -83,10 +75,16 @@ async fn main() -> Result<(), ServerError> {
     //
     // Note that tools such as "@graphql-codegen/cli" are unable to connect to "localhost:<port>" if we
     // only bind to "0.0.0.0" or even "127.0.0.1".
-    let server = server
-        .bind(("0.0.0.0", server_port)) // bind to all interfaces (needed for production)
-        .and_then(|server| server.bind(("localhost", server_port))); // bind to localhost (needed for development; for example, )
+    let server_host = env::var(EXO_SERVER_HOST);
 
+    let server = match server_host {
+        Ok(host) => server.bind((host, server_port)),
+        Err(_) => {
+            server
+                .bind(("0.0.0.0", server_port)) // bind to all interfaces (needed for production)
+                .and_then(|server| server.bind(("localhost", server_port))) // bind to localhost (needed for development; for example, )
+        }
+    };
     match server {
         Ok(server) => {
             let pretty_addr = pretty_addr(&server.addrs());
@@ -120,46 +118,6 @@ fn pretty_addr(addrs: &[SocketAddr]) -> String {
     match loopback_addr {
         Some(addr) => format!("localhost:{}", addr.port()),
         None => format!("{:?}", addrs),
-    }
-}
-
-async fn playground(req: HttpRequest, resolver: web::Data<SystemResolver>) -> impl Responder {
-    if !resolver.allow_introspection() {
-        return HttpResponse::Forbidden().body("Introspection is not enabled");
-    }
-
-    let asset_path = req.match_info().get("path");
-
-    // Adjust the path for "index.html" (which is requested with and empty path)
-    let index = "index.html";
-    let asset_path = asset_path
-        .map(|path| if path.is_empty() { index } else { path })
-        .unwrap_or(index);
-
-    let asset_path = Path::new(asset_path);
-    let extension = asset_path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or(""); // If no extension, set it to an empty string, to use `actix_files::file_extension_to_mime`'s default behavior
-
-    let content_type = actix_files::file_extension_to_mime(extension);
-
-    // we shouldn't cache the index page, as we substitute in the endpoint path dynamically
-    let cache_control = if index == "index.html" {
-        CacheControl(vec![CacheDirective::NoCache])
-    } else {
-        CacheControl(vec![
-            CacheDirective::Public,
-            CacheDirective::MaxAge(60 * 60 * 24 * 365), // seconds in one year
-        ])
-    };
-
-    match graphiql::get_asset_bytes(asset_path) {
-        Some(asset) => HttpResponse::Ok()
-            .content_type(content_type)
-            .insert_header(cache_control)
-            .body(asset),
-        None => HttpResponse::NotFound().body("Not found"),
     }
 }
 

@@ -9,13 +9,19 @@
 
 mod request;
 
-use actix_web::web::Bytes;
-use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
+use std::path::Path;
+
+use actix_web::{
+    http::header::{CacheControl, CacheDirective},
+    web::{self, Bytes, ServiceConfig},
+    Error, HttpRequest, HttpResponse, Responder,
+};
 
 use core_resolver::context::{ContextExtractionError, RequestContext};
 use core_resolver::system_resolver::SystemResolver;
 use core_resolver::OperationsPayload;
 use request::ActixRequest;
+use resolver::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use serde_json::Value;
 
 macro_rules! error_msg {
@@ -24,7 +30,26 @@ macro_rules! error_msg {
     };
 }
 
-pub async fn resolve(
+pub fn configure_resolver(
+    system_resolver: web::Data<SystemResolver>,
+) -> impl FnOnce(&mut ServiceConfig) {
+    let resolve_path = get_endpoint_http_path();
+
+    move |app| {
+        app.app_data(system_resolver)
+            .service(web::scope(&resolve_path).route("", web::post().to(resolve)));
+    }
+}
+
+pub fn configure_playground(cfg: &mut ServiceConfig) {
+    let playground_path = get_playground_http_path();
+    let playground_path_subpaths = format!("{playground_path}/{{path:.*}}");
+
+    cfg.route(&playground_path, web::get().to(playground))
+        .route(&playground_path_subpaths, web::get().to(playground));
+}
+
+async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
     system_resolver: web::Data<SystemResolver>,
@@ -76,5 +101,45 @@ pub async fn resolve(
                 .content_type("application/json")
                 .streaming(Box::pin(futures::stream::once(async { error_message })))
         }
+    }
+}
+
+async fn playground(req: HttpRequest, resolver: web::Data<SystemResolver>) -> impl Responder {
+    if !resolver.allow_introspection() {
+        return HttpResponse::Forbidden().body("Introspection is not enabled");
+    }
+
+    let asset_path = req.match_info().get("path");
+
+    // Adjust the path for "index.html" (which is requested with and empty path)
+    let index = "index.html";
+    let asset_path = asset_path
+        .map(|path| if path.is_empty() { index } else { path })
+        .unwrap_or(index);
+
+    let asset_path = Path::new(asset_path);
+    let extension = asset_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or(""); // If no extension, set it to an empty string, to use `actix_files::file_extension_to_mime`'s default behavior
+
+    let content_type = actix_files::file_extension_to_mime(extension);
+
+    // we shouldn't cache the index page, as we substitute in the endpoint path dynamically
+    let cache_control = if index == "index.html" {
+        CacheControl(vec![CacheDirective::NoCache])
+    } else {
+        CacheControl(vec![
+            CacheDirective::Public,
+            CacheDirective::MaxAge(60 * 60 * 24 * 365), // seconds in one year
+        ])
+    };
+
+    match graphiql::get_asset_bytes(asset_path) {
+        Some(asset) => HttpResponse::Ok()
+            .content_type(content_type)
+            .insert_header(cache_control)
+            .body(asset),
+        None => HttpResponse::NotFound().body("Not found"),
     }
 }
