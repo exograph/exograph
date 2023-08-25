@@ -45,8 +45,8 @@ pub enum AccessSolverError {
 #[async_trait]
 pub trait AccessSolver<'a, PrimExpr, Res>
 where
-    PrimExpr: Send + Sync,
-    Res: AccessPredicate<'a>,
+    PrimExpr: Send + Sync + std::fmt::Debug,
+    Res: AccessPredicate<'a> + std::fmt::Debug,
 {
     /// Solve access control logic.
     ///

@@ -1,0 +1,62 @@
+
+stages:
+  - operation: |
+        mutation($id: Int!, $title: String!) {
+          updateTodo(id: $id, data: { title: $title }) {
+            id
+            title
+            completed
+          }
+        }
+    variable: |
+      {
+        "id": 2,
+        "title": "U1-T2-updated",
+        "completed": true
+      }
+    auth: |
+      {
+          "role": "admin",
+          "sub": null
+      } 
+    response: |
+      {
+        "data": {
+          "updateTodo": {
+            "id": 2,
+            "title": "U1-T2-updated",
+            "completed": true
+          }
+        }
+      }
+         
+  - operation: |
+      query {
+        todos(orderBy: {id: ASC}) {
+          id
+          title
+          completed
+        }
+      }
+    auth: |
+      {
+          "sub": 1,
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "todos": [
+            {
+              "id": 1,
+              "title": "U1-T1",
+              "completed": false
+            },
+            {
+              "id": 2,
+              "title": "U1-T2-updated",
+              "completed": true
+            }
+          ]
+        }
+      }

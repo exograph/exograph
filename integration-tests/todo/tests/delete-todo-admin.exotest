@@ -1,0 +1,56 @@
+
+stages:
+  # First try to delete a todo with a user that owns it
+  - operation: |
+        mutation($id: Int!) {
+          deleteTodo(id: $id) {
+            id
+            title
+            completed
+          }
+        }
+    variable: |
+      {
+        "id": 2
+      }
+    auth: |
+      {
+          "role": "admin",
+          "sub": null
+      } 
+    response: |
+      {
+        "data": {
+          "deleteTodo": {
+            "id": 2,
+            "title": "U1-T2",
+            "completed": true
+          }
+        }
+      }
+   
+  - operation: |
+      query {
+        todos(orderBy: {id: ASC}) {
+          id
+          title
+          completed
+        }
+      }
+    auth: |
+      {
+          "sub": 1,
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "todos": [
+            {
+              "id": 1,
+              "title": "U1-T1",
+              "completed": false
+            }
+          ]
+        }
+      }

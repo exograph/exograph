@@ -35,6 +35,7 @@ use postgres_model::{
 };
 
 // Only to get around the orphan rule while implementing AccessSolver
+#[derive(Debug)]
 pub struct AbstractPredicateWrapper(pub AbstractPredicate);
 
 impl std::ops::Not for AbstractPredicateWrapper {
@@ -1386,37 +1387,54 @@ mod tests {
             ..
         } = &test_system;
 
-        let context = test_request_context(Value::Null, test_system_resolver); // undefined context
+        // Context isn't provided, however, `<missing-context-expression> || true` should still evaluate to true
+        let test_aes = || {
+            vec![
+                AccessRelationalOp::Eq,
+                AccessRelationalOp::Neq,
+                AccessRelationalOp::Lt,
+                AccessRelationalOp::Lte,
+                AccessRelationalOp::Gt,
+                AccessRelationalOp::Gte,
+            ]
+            .into_iter()
+            .map(|op| {
+                let base_expr_fn = || {
+                    AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Or(
+                        Box::new(AccessPredicateExpression::RelationalOp(op(
+                            context_selection_expr("AccessContext", "user_id"),
+                            Box::new(DatabaseAccessPrimitiveExpression::Column(
+                                owner_id_column_path.clone(),
+                            )),
+                        ))),
+                        Box::new(AccessPredicateExpression::BooleanLiteral(true)),
+                    ))
+                };
+                base_expr_fn()
+            })
+            .collect::<Vec<_>>()
+        };
 
-        // Context isn't provided, however, `<missing-context-expression || true` should still evaluate to true
-        let test_aes = vec![
-            AccessRelationalOp::Eq,
-            AccessRelationalOp::Neq,
-            AccessRelationalOp::Lt,
-            AccessRelationalOp::Lte,
-            AccessRelationalOp::Gt,
-            AccessRelationalOp::Gte,
-        ]
-        .into_iter()
-        .map(|op| {
-            let base_expr_fn = || {
-                AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Or(
-                    Box::new(AccessPredicateExpression::RelationalOp(op(
-                        context_selection_expr("AccessContext", "user_id"),
-                        Box::new(DatabaseAccessPrimitiveExpression::Column(
-                            owner_id_column_path.clone(),
-                        )),
-                    ))),
-                    Box::new(AccessPredicateExpression::BooleanLiteral(true)),
-                ))
-            };
-            base_expr_fn()
-        })
-        .collect::<Vec<_>>();
+        {
+            let context = test_request_context(Value::Null, test_system_resolver); // undefined context
 
-        for test_ae in test_aes {
-            let solved_predicate = solve_access(&test_ae, &context, system).await;
-            assert_eq!(solved_predicate, AbstractPredicate::True);
+            for test_ae in test_aes() {
+                let solved_predicate = solve_access(&test_ae, &context, system).await;
+                assert_eq!(solved_predicate, AbstractPredicate::True);
+            }
+        }
+
+        {
+            // Context is defined, but the value is null
+            let context = test_request_context(
+                json!({"AccessContext": {"user_id": null}}),
+                test_system_resolver,
+            );
+
+            for test_ae in test_aes() {
+                let solved_predicate = solve_access(&test_ae, &context, system).await;
+                assert_eq!(solved_predicate, AbstractPredicate::True);
+            }
         }
     }
 
