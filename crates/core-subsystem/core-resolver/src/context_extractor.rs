@@ -137,10 +137,10 @@ fn coerce(value: Val, typ: &ContextFieldType) -> Result<Val, ContextExtractionEr
 fn coerce_primitive(value: Val, typ: &PrimitiveType) -> Result<Val, ContextExtractionError> {
     match (value, typ) {
         // Special case for null values.
-        // If the context value is null, we can return it as is for any type. This allows to
-        // correctly handle expressions such as `<something> || SomeContext.role == "admin"`, and
-        // the `SomeContext.role` isn't supplied. In this case, the `SomeContext.role == "admin"`
-        // will evaluate to `false`, and the `||` operator will return the value of `<something>`.
+        // If the context value is null, we can return it as is for any type. This allows correct
+        // handling of expressions such as `<something> || SomeContext.role == "admin"` when
+        // `SomeContext.role` isn't supplied. In this case, the `SomeContext.role == "admin"` will
+        // evaluate to `false`, and the `||` operator will return the value of `<something>`.
         (value, _) if value == Val::Null => Ok(value),
         (value @ Val::String(_), PrimitiveType::String) => Ok(value),
         (value @ Val::Number(_), PrimitiveType::Int) => Ok(value),
