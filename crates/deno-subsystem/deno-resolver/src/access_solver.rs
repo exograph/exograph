@@ -28,6 +28,7 @@ use deno_model::{access::ModuleAccessPrimitiveExpression, subsystem::DenoSubsyst
 use crate::module_access_predicate::ModuleAccessPredicate;
 
 // Only to get around the orphan rule while implementing AccessSolver
+#[derive(Debug)]
 pub struct ModuleAccessPredicateWrapper(pub ModuleAccessPredicate);
 
 impl std::ops::Not for ModuleAccessPredicateWrapper {

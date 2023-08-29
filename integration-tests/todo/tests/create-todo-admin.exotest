@@ -1,0 +1,67 @@
+
+stages:
+  - operation: |
+        mutation createTodo($title: String!, $completed: Boolean!, $userId: Int!) {
+          createTodo(data: { title: $title, completed: $completed, user: {id: $userId} }) {
+            id
+            title
+            completed
+          }
+        }
+    variable: |
+      {
+        "title": "U1-T3-by-admin",
+        "completed": true,
+        "userId": 1
+      }
+    auth: |
+      {
+          "role": "admin",
+          "sub": null
+      } 
+    response: |
+      {
+        "data": {
+          "createTodo": {
+            "id": 5,
+            "title": "U1-T3-by-admin",
+            "completed": true
+          }
+        }
+      }
+      
+  - operation: |
+      query {
+        todos(orderBy: {id: ASC}) {
+          id
+          title
+          completed
+        }
+      }
+    auth: |
+      {
+          "sub": 1,
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "todos": [
+            {
+              "id": 1,
+              "title": "U1-T1",
+              "completed": false
+            },
+            {
+              "id": 2,
+              "title": "U1-T2",
+              "completed": true
+            },
+            {
+              "id": 5,
+              "title": "U1-T3-by-admin",
+              "completed": true
+            }
+          ]
+        }
+      }
