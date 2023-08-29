@@ -631,13 +631,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_sync_ops() {
-        deno_core::extension!(
-            test,
-            ops = [rust_impl],
-            // customizer = |ext: &mut deno_core::ExtensionBuilder| {
-            //     ext.force_op_registration();
-            // }
-        );
+        deno_core::extension!(test, ops = [rust_impl],);
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
                 Path::new("src")
@@ -669,13 +663,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_async_ops() {
-        deno_core::extension!(
-            test,
-            ops = [async_rust_impl],
-            // customizer = |ext: &mut deno_core::ExtensionBuilder| {
-            //     ext.force_op_registration();
-            // }
-        );
+        deno_core::extension!(test, ops = [async_rust_impl],);
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
                 Path::new("src")
