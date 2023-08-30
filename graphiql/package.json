@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@clerk/clerk-react": "^4.23.2",
     "@codemirror/lang-json": "^6.0.1",
     "@graphiql/toolkit": "^0.9.1",
     "@uiw/codemirror-themes": "^4.21.9",

@@ -7,72 +7,57 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  MutableRefObject,
-} from "react";
+import React, { useState, useRef, useContext, useMemo } from "react";
 import GraphiQL from "graphiql";
-import { createGraphiQLFetcher } from "@graphiql/toolkit";
-import { useTheme } from "@graphiql/react";
+import { Fetcher, createGraphiQLFetcher } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
-
 import "graphiql/graphiql.min.css";
-import { authPlugin, defaultPayload } from "./authPlugin";
-
-export const useBrowserTheme = () => {
-  const mql = useRef(window.matchMedia("(prefers-color-scheme: dark)")).current;
-
-  const currentTheme = useCallback(() => {
-    return mql.matches ? "dark" : "light";
-  }, [mql]);
-
-  const [theme, setTheme] = useState(currentTheme());
-
-  useEffect(() => {
-    const setCurrentTheme = () => {
-      setTheme(currentTheme());
-    };
-    mql.addEventListener("change", setCurrentTheme);
-    return () => mql.removeEventListener("change", setCurrentTheme);
-  }, [currentTheme, mql]);
-
-  return theme;
-};
-
-function Logo() {
-  const graphiqlTheme = useTheme().theme;
-  // Fallback to the browser's theme if GraphiQL's theme is set to "System" (which will name `graphiqlTheme` as null)
-  // If the user switches theme in the browser, the logo will be updated accordingly
-  const browserTheme = useBrowserTheme();
-
-  const effectiveTheme = graphiqlTheme || browserTheme;
-
-  // Currently, switching mode in GraphiQL doesn't update the logo, but this will get fixed
-  // when https://github.com/graphql/graphiql/pull/2971 is merged.
-  const logo = effectiveTheme === "dark" ? "logo-dark.svg" : "logo-light.svg";
-
-  return (
-    <a href="https://exograph.dev" target="_blank" rel="noreferrer">
-      <img src={logo} className="logo" alt="Exograph" />
-    </a>
-  );
-}
-
-const fetcher = createGraphiQLFetcher({
-  url: (window as any).exoGraphQLEndpoint,
-});
+import { AuthContext, AuthContextProvider } from "./AuthContext";
+import { Logo } from "./Logo";
+import { AuthToolbarButton } from "./auth";
 
 const enableSchemaLiveUpdate = (window as any).enableSchemaLiveUpdate;
+
+export function AppWithAuth() {
+  return (
+    <AuthContextProvider>
+      <App />
+    </AuthContextProvider>
+  );
+}
 
 function App() {
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
     null
   );
   const networkErrorCount = useRef(0);
+  const { getTokenFn } = useContext(AuthContext);
+
+  const fetcher = useMemo(() => {
+    const authHeaderFetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit | undefined
+    ) => {
+      if (getTokenFn) {
+        let authToken = await getTokenFn();
+
+        const headers = {
+          ...init?.headers,
+          Authorization: `Bearer ${authToken}`,
+        };
+        const withHeader = { ...init, headers };
+        return await window.fetch(input, withHeader);
+      } else {
+        return await window.fetch(input, init);
+      }
+    };
+
+    return createGraphiQLFetcher({
+      url: (window as any).exoGraphQLEndpoint,
+      fetch: authHeaderFetch,
+    });
+  }, [getTokenFn]);
 
   async function fetchAndSetSchema() {
     const schema = await fetchSchema(fetcher);
@@ -105,9 +90,9 @@ function App() {
 
   if (schema === null) {
     overlay = null; // Loading, but let's not show any overlay (we could consider showing with a delay to avoid a flash of the overlay)
-    core = <Core schema={null} />;
+    core = <Core schema={null} fetcher={fetcher} />;
   } else if (typeof schema == "string") {
-    core = <Core schema={null} />;
+    core = <Core schema={null} fetcher={fetcher} />;
     if (schema === "EmptySchema") {
       overlay = <EmptySchema />;
     } else if (schema === "InvalidSchema") {
@@ -117,7 +102,7 @@ function App() {
     }
   } else {
     overlay = null;
-    core = <Core schema={schema} />;
+    core = <Core schema={schema} fetcher={fetcher} />;
   }
 
   return (
@@ -128,71 +113,20 @@ function App() {
   );
 }
 
-function useFreshValue<T>(
-  initValue: T
-): [MutableRefObject<T>, (value: T) => void] {
-  const [value, setValue] = useState<T>(initValue);
-  const valueRef = useRef(value);
-  valueRef.current = value;
-
-  return [valueRef, setValue];
-}
-
-function Core(props: { schema: GraphQLSchema | null }) {
-  const [headers, setHeaders] = useState("");
-  const [jwtToken, setJwtToken] = useState<string | undefined>();
-
-  const [jwtSecret, setJwtSecret] = useFreshValue<string | undefined>(
-    undefined
-  );
-  const [payload, setPayload] = useFreshValue<string>(defaultPayload);
-
-  const headersString = computeHeadersString(headers, jwtToken);
-
+function Core(props: { schema: GraphQLSchema | null; fetcher: Fetcher }) {
   return (
     <GraphiQL
-      fetcher={fetcher}
+      fetcher={props.fetcher}
       defaultEditorToolsVisibility={true}
       isHeadersEditorEnabled={true}
       schema={props.schema}
-      headers={headersString}
-      onEditHeaders={setHeaders}
-      plugins={[
-        authPlugin(
-          () => jwtSecret.current,
-          setJwtSecret,
-          () => payload.current,
-          setPayload,
-          setJwtToken
-        ),
-      ]}
+      toolbar={{ additionalContent: <AuthToolbarButton /> }}
     >
       <GraphiQL.Logo>
         <Logo />
       </GraphiQL.Logo>
     </GraphiQL>
   );
-}
-
-function computeHeadersString(
-  originalHeaders: string,
-  token: string | undefined
-): string {
-  if (!token) {
-    return originalHeaders;
-  }
-
-  try {
-    const headersJson = originalHeaders ? JSON.parse(originalHeaders) : {};
-    headersJson["Authorization"] = `Bearer ${token}`;
-    // If headersJson is empty, we return an empty string to avoid GraphiQL displaying `{}` in the headers editor
-    return Object.entries(headersJson).length
-      ? JSON.stringify(headersJson, null, 2)
-      : "";
-  } catch (e) {
-    // If the headers are not valid JSON, we don't process to add the token
-    return originalHeaders;
-  }
 }
 
 function ErrorMessage(props: {
@@ -238,5 +172,3 @@ function NetworkError() {
 function Overlay(props: { children: React.ReactNode }) {
   return <div className="overlay">{props.children}</div>;
 }
-
-export default App;
