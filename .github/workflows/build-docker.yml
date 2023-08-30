@@ -1,0 +1,56 @@
+# Workflow for building and publishing Docker image
+
+# Triggered on release (note that the build-binaries workflow publishes in the pre-release mode).
+# This allows minimizing the time between the release (which is a manual step) and the availability of the Docker image.
+
+# Performs:
+# - Download the binaries from the release
+# - Build the Docker image
+# - Push the Docker image to the registry
+
+name: Build Docker
+
+on:
+  release:
+    types: [released]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Build and publish Docker image
+  build-docker:
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Download artifacts
+        run: |
+          curl -L -s ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}/exograph-x86_64-unknown-linux-gnu.zip --output exograph-x86_64-unknown-linux-gnu.zip
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile.ci
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
