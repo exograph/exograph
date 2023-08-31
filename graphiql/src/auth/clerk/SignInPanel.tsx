@@ -113,6 +113,7 @@ const labelStyle = {
 };
 
 const inputStyle = {
+  background: "transparent",
   borderRadius:"10px",
   marginBottom: "10px", 
   padding: "10px",

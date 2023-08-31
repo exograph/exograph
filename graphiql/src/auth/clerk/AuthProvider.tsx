@@ -1,9 +1,14 @@
-import { ClerkProvider, useAuth, useUser } from "@clerk/clerk-react";
 import { useContext, useEffect } from "react";
+
+import { ClerkProvider, useAuth, useUser } from "@clerk/clerk-react";
+import { dark } from '@clerk/themes';
+
 import { AuthContext, ClerkAuthenticatorInfo } from "../../AuthContext";
+import { useTheme } from "../../theme";
 
 export function AuthProvider(props: { children: React.ReactNode }) {
   const { authenticatorInfo } = useContext(AuthContext);
+  const theme = useTheme();
 
   const showSignIn =
     authenticatorInfo &&
@@ -12,7 +17,9 @@ export function AuthProvider(props: { children: React.ReactNode }) {
 
   if (showSignIn && authenticatorInfo.publishableKey) {
     return (
-      <ClerkProvider publishableKey={authenticatorInfo.publishableKey}>
+      <ClerkProvider 
+          publishableKey={authenticatorInfo.publishableKey} 
+          appearance={{baseTheme: theme === "dark" ? dark: undefined}}>
         <ContextInitializer>{props.children}</ContextInitializer>
       </ClerkProvider>
     );
