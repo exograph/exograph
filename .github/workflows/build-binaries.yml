@@ -106,7 +106,7 @@ jobs:
     steps:
       - name: Install packages for building
         run: |
-          yum install -y tar gzip zip unzip gcc make cmake
+          yum install -y tar gzip zip unzip gcc make cmake3
 
           # Install protoc (the yum install version is 2.x, which is too old for grpc needed by opentelemetry)
           curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
@@ -117,6 +117,8 @@ jobs:
           # and since it doesn't install rustup, it doesn't respect rust-toolchain.toml settings)
           curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none --profile minimal -y
           echo "/github/home/.cargo/bin" >> $GITHUB_PATH
+
+          ln -s /usr/bin/cmake /usr/bin/cmake3
 
       - uses: actions/checkout@v3
       - name: Setup Node
