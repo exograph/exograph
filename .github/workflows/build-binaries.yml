@@ -118,7 +118,7 @@ jobs:
           curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none --profile minimal -y
           echo "/github/home/.cargo/bin" >> $GITHUB_PATH
 
-          ln -s /usr/bin/cmake /usr/bin/cmake3
+          ln -s /usr/bin/cmake3 /usr/bin/cmake
 
       - uses: actions/checkout@v3
       - name: Setup Node
