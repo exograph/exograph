@@ -12,7 +12,7 @@ default = []
 typescript-loader = ["dep:deno_ast"]
 cross = [
   "deno_runtime/dont_create_runtime_snapshot",
-  "deno_runtime/launch_without_snapshot"
+  "deno_runtime/__runtime_js_sources",
 ]
 not_cross = ["deno_runtime/include_js_files_for_snapshotting"]
 
@@ -28,7 +28,6 @@ http_req  = {version="0.9.1", default-features = false, features = ["rust-tls"]}
 futures.workspace = true
 lazy_static.workspace = true
 serde = { workspace = true, features = ["derive"] }
-serde_v8.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 include_dir.workspace = true

@@ -133,7 +133,11 @@ fn process_script(
             })?;
             let mut loader = module_graph_builder.create_graph_loader();
             let graph = module_graph_builder
-                .create_graph_with_loader(vec![root_clone], &mut loader)
+                .create_graph_with_loader(
+                    deno_graph::GraphKind::CodeOnly,
+                    vec![root_clone],
+                    &mut loader,
+                )
                 .await
                 .map_err(|e| {
                     ModelBuildingError::Generic(format!(

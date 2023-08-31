@@ -54,7 +54,7 @@ pub enum DenoInternalError {
     #[error("{0}")]
     Any(#[from] AnyError),
     #[error("{0}")]
-    Serde(#[from] serde_v8::Error),
+    Serde(#[from] deno_core::serde_v8::Error),
     #[error("{0}")]
     DataError(#[from] DataError),
 }
