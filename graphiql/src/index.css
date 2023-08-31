@@ -23,51 +23,42 @@ body {
   width: 125px
 }
 
-.graphiql-editor-tools > .active {
+.graphiql-editor-tools>.active {
   font-weight: bold;
 }
 
-.graphiql-button:disabled, .graphiql-button:disabled:hover {
+.graphiql-button:disabled,
+.graphiql-button:disabled:hover {
   color: #b4a8a8;
   cursor: not-allowed;
 }
 
 .overlay {
-  position: fixed;
-  display: block;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.3);
   cursor: not-allowed;
-  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .error-message {
-  font-size: 2rem;
   font-family: Roboto, sans-serif;
   text-align: center;
+  color: hsl(var(--color-error));
+  background: hsla(var(--color-secondary), 0.15);
+  padding: 4rem;
+  border-radius: 1rem;
 }
 
-.error-message .error-title {
-  color: rgb(112, 27, 27);
+.error-title {
   font-size: 2rem;
-  margin-bottom: 1rem;
+  margin-bottom: 3rem;
 }
 
-.error-message .error-message {
+.error-description {
   font-size: 1.5rem;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
 }
 
-.reload-btn {
-  background-color: #fff;
-  border: 1px solid #000;
-  border-radius: 5px;
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  font-family: inherit;
-  cursor: pointer;
+.error-message .graphiql-button {
+  border: 1px solid;
 }

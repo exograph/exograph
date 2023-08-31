@@ -137,7 +137,7 @@ function ErrorMessage(props: {
   return (
     <div className="error-message">
       <div className="error-title">{props.title}</div>
-      {props.message && <div className="error-message">{props.message}</div>}
+      {props.message && <div className="error-description">{props.message}</div>}
       {props.children}
     </div>
   );
@@ -162,7 +162,7 @@ function NetworkError() {
       title="Network error"
       message="Please ensure that the server is running."
     >
-      <button className="reload-btn" onClick={() => window.location.reload()}>
+      <button className="graphiql-button reload-btn" onClick={() => window.location.reload()}>
         Reload
       </button>
     </ErrorMessage>
@@ -170,5 +170,5 @@ function NetworkError() {
 }
 
 function Overlay(props: { children: React.ReactNode }) {
-  return <div className="overlay">{props.children}</div>;
+  return <div className="overlay graphiql-dialog-overlay">{props.children}</div>;
 }
