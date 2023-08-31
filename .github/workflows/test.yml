@@ -1,0 +1,93 @@
+# Workflow to test on every pull request and push to the main branch
+# Performs:
+# - cargo fmt check
+# - cargo clippy check
+# - unit tests
+# - integration tests
+
+name: test
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install deps
+        run: sudo apt-get install -y protobuf-compiler
+      - uses: Swatinem/rust-cache@v2.3.0
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets --all-features -- -D warnings --no-deps
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # For these target platforms
+        include:
+          - os: ubuntu-20.04
+            deps-script: sudo apt-get install -y protobuf-compiler
+            target: x86_64-unknown-linux-gnu
+          - os: macos-11
+            deps-script: brew install protobuf
+            target: x86_64-apple-darwin
+          - os: windows-2019
+            deps-script: choco install protoc
+            target: x86_64-pc-windows-msvc
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install deps
+        run: ${{ matrix.deps-script }}
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Add Postgres to PATH
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            echo "$PGBIN" >> $GITHUB_PATH
+          else
+            echo "$(pg_config --bindir)" >> $GITHUB_PATH
+          fi
+        shell: bash
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2.3.0
+        with:
+          key: ${{ matrix.target }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Build
+        run: cargo build --target ${{ matrix.target }} --features not_cross
+      - name: Run tests
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo test --workspace --target ${{ matrix.target }} --features not_cross
+      - name: Run integration tests
+        env:
+          RUST_BACKTRACE: 1
+          EXO_RUN_INTROSPECTION_TESTS: true
+        run: target/${{ matrix.target }}/debug/exo test integration-tests
+        shell: bash
