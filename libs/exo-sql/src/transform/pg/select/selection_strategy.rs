@@ -106,7 +106,7 @@ pub(super) fn join_info(
 ) -> (Table, ConcretePredicate) {
     let columns_paths: Vec<_> = predicate_column_paths
         .into_iter()
-        .chain(order_by_column_paths.into_iter())
+        .chain(order_by_column_paths)
         .collect();
 
     let join = join_util::compute_join(base_table_id, &columns_paths, selection_level, database);

@@ -44,7 +44,7 @@ lazy_static! {
     static ref FOREIGN_KEY_RE: Regex =
         Regex::new(r"FOREIGN KEY \(([^)]+)\) REFERENCES ([^\(]+)\(([^)]+)\)").unwrap();
     static ref UNIQUE_RE: Regex = Regex::new(r"UNIQUE \(([^)]+)\)").unwrap();
-    static ref LIST_RE: Regex = Regex::new(r#"(\w+)"#).unwrap();
+    static ref LIST_RE: Regex = Regex::new(r"(\w+)").unwrap();
 }
 
 impl Constraints {

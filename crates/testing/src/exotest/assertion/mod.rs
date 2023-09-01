@@ -365,7 +365,7 @@ mod tests {
         .unwrap();
 
         // failure cases (non-matching selections)
-        for unordered_selection in vec![
+        for unordered_selection in [
             vec![].into_iter().collect(),
             vec!["data".to_string()].into_iter().collect(),
             vec!["products".to_string()].into_iter().collect(),
@@ -379,7 +379,7 @@ mod tests {
                 &vec![unordered_selection].into_iter().collect(),
             )
             .await;
-            assert!(matches!(result, Err(_)));
+            assert!(result.is_err());
         }
     }
 }

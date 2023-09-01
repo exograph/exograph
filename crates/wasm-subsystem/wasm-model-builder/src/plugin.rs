@@ -55,7 +55,10 @@ impl SubsystemBuilder for WasmSubsystemBuilder {
         let Some(ModelWasmSystemWithInterceptors {
             underlying: subsystem,
             interceptors,
-        }) = subsystem else { return Ok(None) };
+        }) = subsystem
+        else {
+            return Ok(None);
+        };
 
         let serialized_subsystem = subsystem
             .serialize()

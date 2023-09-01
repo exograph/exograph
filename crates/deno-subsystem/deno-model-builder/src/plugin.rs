@@ -56,7 +56,10 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
         let Some(ModelDenoSystemWithInterceptors {
             underlying: subsystem,
             interceptors,
-        }) = subsystem else { return Ok(None) };
+        }) = subsystem
+        else {
+            return Ok(None);
+        };
 
         let serialized_subsystem = subsystem
             .serialize()
