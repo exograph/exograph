@@ -57,9 +57,7 @@ impl<'a> UserRequestContext<'a> {
         Ok(UserRequestContext {
             parsed_context_map: parsed_contexts
                 .into_iter()
-                .chain(
-                    generic_contexts.into_iter(), // include agnostic contexts
-                )
+                .chain(generic_contexts) // include agnostic contexts
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),

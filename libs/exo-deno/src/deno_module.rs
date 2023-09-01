@@ -168,7 +168,7 @@ impl DenoModule {
                     }
                 }
 
-                Arc::new(RefCell::new(map))
+                Rc::new(RefCell::new(map))
             },
             embedded_dirs: embedded_script_dirs.unwrap_or_default(),
         });

@@ -18,7 +18,7 @@ use deno_core::ResolutionKind;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use include_dir::Dir;
 
@@ -31,7 +31,7 @@ use crate::deno_executor_pool::ResolvedModule;
 pub(super) struct EmbeddedModuleLoader {
     #[allow(unused)]
     pub embedded_dirs: HashMap<String, &'static Dir<'static>>,
-    pub source_code_map: Arc<RefCell<DenoScriptDefn>>,
+    pub source_code_map: Rc<RefCell<DenoScriptDefn>>,
 }
 
 impl ModuleLoader for EmbeddedModuleLoader {

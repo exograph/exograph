@@ -162,7 +162,7 @@ pub fn run(
 
     {
         let integration_test_results = rx.into_iter();
-        test_results.extend(integration_test_results.into_iter());
+        test_results.extend(integration_test_results);
     }
 
     test_results.sort_by(|a, b| {

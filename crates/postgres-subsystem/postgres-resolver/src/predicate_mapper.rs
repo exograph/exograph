@@ -91,16 +91,18 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                             get_argument_field(argument, &parameter.name),
                         )
                     })
-                    .fold(Ok(("", None)), |acc, (name, result)| {
-                        acc.and_then(|(acc_name, acc_result)| {
-                                    if acc_result.is_some() && result.is_some() {
-                                        Err(PostgresExecutionError::Validation(self.param.name.to_string(), "Cannot specify more than one logical operation on the same level".into()))
-                                    } else if acc_result.is_some() && result.is_none() {
-                                        Ok((acc_name, acc_result))
-                                    } else {
-                                        Ok((name, result))
-                                    }
-                                })
+                    .try_fold(("", None), |(acc_name, acc_result), (name, result)| {
+                        if acc_result.is_some() && result.is_some() {
+                            Err(PostgresExecutionError::Validation(
+                                self.param.name.to_string(),
+                                "Cannot specify more than one logical operation on the same level"
+                                    .into(),
+                            ))
+                        } else if acc_result.is_some() && result.is_none() {
+                            Ok((acc_name, acc_result))
+                        } else {
+                            Ok((name, result))
+                        }
                     })?;
 
                 // do we have a match?
