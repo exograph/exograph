@@ -194,7 +194,9 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
         let subsystem = crate::system_builder::build(typechecked_system, base_system)?;
-        let Some(subsystem) = subsystem else { return Ok(None)};
+        let Some(subsystem) = subsystem else {
+            return Ok(None);
+        };
 
         let serialized_subsystem = subsystem
             .serialize()
