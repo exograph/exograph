@@ -12,12 +12,9 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
+use common::env_const::{EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE};
 use std::{path::PathBuf, sync::atomic::Ordering};
 
-use crate::commands::util::{
-    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, EXO_JWT_SECRET,
-    EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER,
-};
 use crate::{
     commands::{
         schema::migration::{self, Migration},
@@ -25,11 +22,14 @@ use crate::{
     },
     util::watcher,
 };
+use common::env_const::{
+    EXO_JWT_SECRET, EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER,
+};
 
 use super::command::{
     default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition,
 };
-use super::util::EXO_JWKS_ENDPOINT;
+use common::env_const::EXO_JWKS_ENDPOINT;
 use exo_sql::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
 use futures::FutureExt;
 

@@ -29,6 +29,7 @@ tracing.workspace = true
 exo-sql = { path = "../../../libs/exo-sql" }
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
+common = { path = "../../common" }
 
 [dev-dependencies]
 insta.workspace = true

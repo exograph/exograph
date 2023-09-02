@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::env;
 
+use common::env_const::{EXO_JWKS_ENDPOINT, EXO_JWT_SECRET};
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
 use serde_json::Value;
@@ -12,9 +13,6 @@ use crate::context::error::ContextExtractionError;
 use crate::context::request::Request;
 
 use super::jwks::{JwksEndpoint, JwksExtractionError};
-
-pub(super) const EXO_JWT_SECRET: &str = "EXO_JWT_SECRET";
-pub(super) const EXO_JWKS_ENDPOINT: &str = "EXO_JWKS_ENDPOINT";
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {

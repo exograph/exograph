@@ -22,8 +22,8 @@ use heck::ToSnakeCase;
 use crate::commands::{
     build::build,
     command::{get, get_required, CommandDefinition},
-    util::EXO_POSTGRES_URL,
 };
+use common::env_const::EXO_POSTGRES_URL;
 
 pub(super) struct FlyCommandDefinition {}
 

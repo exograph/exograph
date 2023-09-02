@@ -26,6 +26,7 @@ tokio = { workspace = true, features = ["full"] }
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
+common = { path = "../common" }
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 builder = { path = "../builder" }

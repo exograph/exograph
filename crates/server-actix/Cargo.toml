@@ -36,6 +36,7 @@ tracing-actix-web = "0.6.0"
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
+common = { path = "../common" }
 
 [[bin]]
 name = "exo-server"

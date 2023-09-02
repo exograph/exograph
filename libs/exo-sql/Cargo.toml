@@ -35,6 +35,8 @@ rand.workspace = true
 tempfile.workspace = true
 urlencoding = "2.1.2"
 
+common = { path = "../../crates/common" } # Until we remove database_client's dependency on env vars
+
 [dev-dependencies]
 serde_json.workspace = true
 

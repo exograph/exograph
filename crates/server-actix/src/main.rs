@@ -20,8 +20,8 @@ use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::time;
 
-const EXO_CORS_DOMAINS: &str = "EXO_CORS_DOMAINS";
-const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
+use common::env_const::{EXO_CORS_DOMAINS, EXO_SERVER_PORT};
+
 const EXO_SERVER_HOST: &str = "EXO_SERVER_HOST";
 
 #[derive(Error)]
