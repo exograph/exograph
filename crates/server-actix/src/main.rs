@@ -127,7 +127,13 @@ fn pretty_addr(addrs: &[SocketAddr]) -> String {
 
     match loopback_addr {
         Some(addr) => format!("localhost:{}", addr.port()),
-        None => format!("{:?}", addrs),
+        None => match addrs {
+            // Print single address without square brackets
+            [addr] => format!("{}", addr),
+            _ => {
+                format!("{:?}", addrs)
+            }
+        },
     }
 }
 
