@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
 pub const EXO_INTROSPECTION_LIVE_UPDATE: &str = "EXO_INTROSPECTION_LIVE_UPDATE";
 
@@ -13,3 +15,34 @@ pub const EXO_CONNECTION_POOL_SIZE: &str = "EXO_CONNECTION_POOL_SIZE";
 pub const EXO_CHECK_CONNECTION_ON_STARTUP: &str = "EXO_CHECK_CONNECTION_ON_STARTUP";
 
 pub const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
+
+pub const EXO_DEPLOYMENT_MODE: &str = "EXO_DEPLOYMENT_MODE"; // "yolo", "dev" or "prod" (default)
+
+#[derive(Error, Debug)]
+pub enum EnvError {
+    #[error("Invalid env value {env_value} for {env_key}: {message}")]
+    InvalidEnum {
+        env_key: &'static str,
+        env_value: String,
+        message: String,
+    },
+}
+
+pub enum DeploymentMode {
+    Yolo,
+    Dev,
+    Prod,
+}
+
+pub fn get_deployment_mode() -> Result<DeploymentMode, EnvError> {
+    match std::env::var(EXO_DEPLOYMENT_MODE).as_deref() {
+        Ok("yolo") => Ok(DeploymentMode::Yolo),
+        Ok("dev") => Ok(DeploymentMode::Dev),
+        Ok("prod") | Err(_) => Ok(DeploymentMode::Prod),
+        Ok(other) => Err(EnvError::InvalidEnum {
+            env_key: EXO_DEPLOYMENT_MODE,
+            env_value: other.to_string(),
+            message: "Must be one of 'yolo', 'dev' or 'prod'".to_string(),
+        }),
+    }
+}

@@ -12,7 +12,9 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
-use common::env_const::{EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE};
+use common::env_const::{
+    EXO_CORS_DOMAINS, EXO_DEPLOYMENT_MODE, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+};
 use std::{path::PathBuf, sync::atomic::Ordering};
 
 use crate::{
@@ -100,6 +102,7 @@ async fn run_server(
     std::env::remove_var(EXO_POSTGRES_PASSWORD);
     std::env::set_var(EXO_INTROSPECTION, "true");
     std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
+    std::env::set_var(EXO_DEPLOYMENT_MODE, "yolo");
 
     match jwt_secret {
         JWTSecret::EnvSecret(s) => std::env::set_var(EXO_JWT_SECRET, s),

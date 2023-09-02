@@ -20,7 +20,7 @@ use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::time;
 
-use common::env_const::{EXO_CORS_DOMAINS, EXO_SERVER_PORT};
+use common::env_const::{get_deployment_mode, DeploymentMode, EXO_CORS_DOMAINS, EXO_SERVER_PORT};
 
 const EXO_SERVER_HOST: &str = "EXO_SERVER_HOST";
 
@@ -30,6 +30,8 @@ enum ServerError {
     PortInUse(u16),
     #[error("{0}")]
     Io(#[from] std::io::Error),
+    #[error("{0}")]
+    EnvError(#[from] common::env_const::EnvError),
 }
 
 // A custom `Debug` implementation for `ServerError` (that delegate to the `Display` impl), so that
@@ -68,21 +70,29 @@ async fn main() -> Result<(), ServerError> {
             .configure(configure_playground)
     });
 
-    // Bind to:
-    // - "0.0.0.0" (all interfaces; needed for production; see the recommendation in `HttpServer::bind` documentation)
-    // - "localhost" (needed for development). By binding to "localhost" we bind to both IPv4 and IPv6 loopback addresses
-    //    ([::1]:9876, 127.0.0.1:9876)
-    //
-    // Note that tools such as "@graphql-codegen/cli" are unable to connect to "localhost:<port>" if we
-    // only bind to "0.0.0.0" or even "127.0.0.1".
     let server_host = env::var(EXO_SERVER_HOST);
 
     let server = match server_host {
         Ok(host) => server.bind((host, server_port)),
         Err(_) => {
-            server
-                .bind(("0.0.0.0", server_port)) // bind to all interfaces (needed for production)
-                .and_then(|server| server.bind(("localhost", server_port))) // bind to localhost (needed for development; for example, )
+            match get_deployment_mode()? {
+                DeploymentMode::Dev | DeploymentMode::Yolo => {
+                    // Bind to "localhost" (needed for development). By binding to "localhost" we
+                    // bind to both IPv4 and IPv6 loopback addresses ([::1]:9876, 127.0.0.1:9876)
+                    //
+                    // Note that tools such as "@graphql-codegen/cli" are unable to connect to
+                    // "localhost:<port>" if we only bind to "0.0.0.0" or even "127.0.0.1" (but
+                    // works fine, if we bind to IPv6 loopback address "::1").
+                    server.bind(("localhost", server_port))
+                }
+                DeploymentMode::Prod => {
+                    // Bind to "0.0.0.0" (all interfaces; needed for production; see the
+                    // recommendation in `HttpServer::bind` documentation). This allows the server
+                    // to be accessed from outside the host machine (e.g. when the server is in a
+                    // Docker container in a fly.io deployment).
+                    server.bind(("0.0.0.0", server_port))
+                }
+            }
         }
     };
     match server {
