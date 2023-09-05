@@ -12,14 +12,12 @@ use std::{path::Path, time::Duration};
 use anyhow::{anyhow, Context, Result};
 use builder::error::ParserError;
 use colored::Colorize;
+use common::env_const::EXO_SERVER_PORT;
 use core_model_builder::error::ModelBuildingError;
 use futures::{future::BoxFuture, FutureExt};
 use notify_debouncer_mini::notify::RecursiveMode;
 
-use crate::commands::{
-    build::{build, BuildError},
-    util::EXO_SERVER_PORT,
-};
+use crate::commands::build::{build, BuildError};
 
 /// Starts a watcher that will rebuild and serve model files with every change.
 /// Takes a callback that will be called before the start of each server.

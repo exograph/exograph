@@ -25,6 +25,7 @@ core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 introspection-resolver = { path = "../introspection-subsystem/introspection-resolver" }
+common = { path = "../common" }
 
 [dev-dependencies]
 tokio.workspace = true

@@ -9,18 +9,16 @@
 
 use std::{cell::RefCell, env, fs::File, io::BufReader};
 
+use common::env_const::{
+    EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_POSTGRES_PASSWORD,
+    EXO_POSTGRES_URL, EXO_POSTGRES_USER,
+};
 use deadpool_postgres::{Client, Manager, ManagerConfig, Pool, RecyclingMethod};
 use rustls::{Certificate, RootCertStore};
 use rustls_native_certs::load_native_certs;
 use tokio_postgres::{config::SslMode, Config};
 
 use crate::database_error::DatabaseError;
-
-const EXO_POSTGRES_URL: &str = "EXO_POSTGRES_URL";
-const EXO_POSTGRES_USER: &str = "EXO_POSTGRES_USER";
-const EXO_POSTGRES_PASSWORD: &str = "EXO_POSTGRES_PASSWORD";
-const EXO_CONNECTION_POOL_SIZE: &str = "EXO_CONNECTION_POOL_SIZE";
-const EXO_CHECK_CONNECTION_ON_STARTUP: &str = "EXO_CHECK_CONNECTION_ON_STARTUP";
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {

@@ -10,6 +10,7 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
+use common::env_const::EXO_INTROSPECTION;
 use core_resolver::context::JwtAuthenticator;
 use introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
@@ -34,9 +35,6 @@ thread_local! {
 pub type StaticLoaders = Vec<Box<dyn SubsystemLoader>>;
 
 pub struct SystemLoader;
-
-pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
-pub const EXO_INTROSPECTION_LIVE_UPDATE: &str = "EXO_INTROSPECTION_LIVE_UPDATE";
 
 const EXO_MAX_SELECTION_DEPTH: &str = "EXO_MAX_SELECTION_DEPTH";
 

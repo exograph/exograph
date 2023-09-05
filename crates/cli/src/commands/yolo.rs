@@ -12,12 +12,11 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
+use common::env_const::{
+    EXO_CORS_DOMAINS, EXO_DEPLOYMENT_MODE, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+};
 use std::{path::PathBuf, sync::atomic::Ordering};
 
-use crate::commands::util::{
-    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, EXO_JWT_SECRET,
-    EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER,
-};
 use crate::{
     commands::{
         schema::migration::{self, Migration},
@@ -25,11 +24,14 @@ use crate::{
     },
     util::watcher,
 };
+use common::env_const::{
+    EXO_JWT_SECRET, EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER,
+};
 
 use super::command::{
     default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition,
 };
-use super::util::EXO_JWKS_ENDPOINT;
+use common::env_const::EXO_JWKS_ENDPOINT;
 use exo_sql::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
 use futures::FutureExt;
 
@@ -100,6 +102,7 @@ async fn run_server(
     std::env::remove_var(EXO_POSTGRES_PASSWORD);
     std::env::set_var(EXO_INTROSPECTION, "true");
     std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
+    std::env::set_var(EXO_DEPLOYMENT_MODE, "yolo");
 
     match jwt_secret {
         JWTSecret::EnvSecret(s) => std::env::set_var(EXO_JWT_SECRET, s),
@@ -108,10 +111,9 @@ async fn run_server(
     };
     std::env::set_var(EXO_CORS_DOMAINS, "*");
 
-    println!("{}", "Starting server with a temporary database...".cyan());
     println!(
         "{}",
-        "This database will be wiped out when the server exits.".red()
+        "Starting with a temporary database (will be wiped out when the server exits)...".purple()
     );
 
     println!("Postgres URL: {}", &db.url().cyan());

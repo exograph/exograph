@@ -11,6 +11,9 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
+use common::env_const::{
+    EXO_CORS_DOMAINS, EXO_DEPLOYMENT_MODE, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+};
 use futures::FutureExt;
 use std::path::PathBuf;
 
@@ -19,9 +22,7 @@ use crate::{
     commands::{
         command::{default_model_file, ensure_exo_project_dir},
         schema::{migration::Migration, verify::VerificationErrors},
-        util::{
-            wait_for_enter, EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
-        },
+        util::wait_for_enter,
     },
     util::watcher,
 };
@@ -50,6 +51,7 @@ impl CommandDefinition for DevCommandDefinition {
         // In the serve mode, which is meant for development, always enable introspection and use relaxed CORS
         std::env::set_var(EXO_INTROSPECTION, "true");
         std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
+        std::env::set_var(EXO_DEPLOYMENT_MODE, "dev");
 
         std::env::set_var(EXO_CORS_DOMAINS, "*");
 
