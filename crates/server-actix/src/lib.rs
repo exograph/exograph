@@ -13,7 +13,7 @@ use std::path::Path;
 
 use actix_web::{
     http::header::{CacheControl, CacheDirective},
-    web::{self, Bytes, ServiceConfig},
+    web::{self, Bytes, Redirect, ServiceConfig},
     Error, HttpRequest, HttpResponse, Responder,
 };
 
@@ -45,8 +45,16 @@ pub fn configure_playground(cfg: &mut ServiceConfig) {
     let playground_path = get_playground_http_path();
     let playground_path_subpaths = format!("{playground_path}/{{path:.*}}");
 
+    async fn playground_redirect() -> impl Responder {
+        Redirect::to(get_playground_http_path()).permanent()
+    }
+
+    // Serve GraphiQL playground from the playground path and all subpaths. Also set up a redirect
+    // from the root path to the playground path (this way, users don't see an error ""No webpage
+    // was found for the web address" when they go to the root path).
     cfg.route(&playground_path, web::get().to(playground))
-        .route(&playground_path_subpaths, web::get().to(playground));
+        .route(&playground_path_subpaths, web::get().to(playground))
+        .route("/", web::get().to(playground_redirect));
 }
 
 async fn resolve(
