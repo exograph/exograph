@@ -122,7 +122,7 @@ impl CommandDefinition for FlyCommandDefinition {
                 .italic()
         );
         println!("{}", format!("\tfly apps create {}", app_name).blue());
-        println!("Either of the following: ");
+        println!("\n\tSet up JWT by running either of the following: ");
         println!(
             "{}{}",
             format!("\tfly secrets set --app {} EXO_JWT_SECRET=", app_name,).blue(),
@@ -133,6 +133,8 @@ impl CommandDefinition for FlyCommandDefinition {
             format!("\tfly secrets set --app {} EXO_JWKS_ENDPOINT=", app_name,).blue(),
             "<your-jwks-url>".yellow()
         );
+        println!("\n\tSet up database: ");
+
         if use_fly_db {
             println!(
                 "{}",
@@ -142,8 +144,11 @@ impl CommandDefinition for FlyCommandDefinition {
                 "{}",
                 format!("\tfly postgres attach --app {} {}-db", app_name, app_name).blue()
             );
+
+            println!("\n\tCreate the database schema:");
             println!(
-                "\tIn a separate terminal: {}",
+                "\t{} {}",
+                "In a separate terminal:".italic(),
                 format!("fly proxy 54321:5432 -a {}-db", app_name).blue()
             );
             let db_name = &app_name.to_snake_case(); // this is how fly.io names the db
@@ -159,6 +164,8 @@ impl CommandDefinition for FlyCommandDefinition {
                 format!("\tfly secrets set --app {} EXO_POSTGRES_URL=", app_name).blue(),
                 "<your-postgres-url>".yellow()
             );
+
+            println!("\n\tCreate the database schema:");
             println!(
                 "{}{}",
                 "\texo schema create | psql ".blue(),
@@ -166,11 +173,11 @@ impl CommandDefinition for FlyCommandDefinition {
             );
         }
 
-        println!("{}", "\tfly deploy --local-only".blue());
+        println!("{}", "\n\tfly deploy --local-only".blue());
 
         println!(
             "{} '{}'{}",
-            "\nTo deploy a new version of an existing app (you must provide the '--version' argument to point to the next version), update 'image' in fly.toml to "
+            "\nTo deploy a new version of an existing app (you must provide the '--version' argument to point to the next version), update 'image' in fly.toml to"
                 .green()
                 .italic(),
             image_tag.yellow(),

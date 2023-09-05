@@ -108,10 +108,9 @@ async fn run_server(
     };
     std::env::set_var(EXO_CORS_DOMAINS, "*");
 
-    println!("{}", "Starting server with a temporary database...".cyan());
     println!(
         "{}",
-        "This database will be wiped out when the server exits.".red()
+        "Starting with a temporary database (will be wiped out when the server exits)...".purple()
     );
 
     println!("Postgres URL: {}", &db.url().cyan());

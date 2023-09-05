@@ -14,6 +14,7 @@ use std::path::PathBuf;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::{ArgMatches, Command};
+use colored::Colorize;
 
 use super::command::{get_required, new_project_arg, CommandDefinition};
 
@@ -35,10 +36,12 @@ impl CommandDefinition for NewCommandDefinition {
     async fn execute(&self, matches: &ArgMatches) -> Result<()> {
         let path: PathBuf = get_required(matches, "path")?;
 
+        let path_str = path.display().to_string();
+
         if path.exists() {
             return Err(anyhow!(
                 "The path '{}' already exists. Please choose a different name.",
-                path.display()
+                path_str
             ));
         }
 
@@ -58,6 +61,17 @@ impl CommandDefinition for NewCommandDefinition {
 
         let mut init_file = File::create(tests_path.join("init.gql"))?;
         init_file.write_all(TESTS_INIT_TEMPLATE)?;
+
+        println!(
+            "A new project has been created in the {} directory.",
+            path_str.bold().cyan()
+        );
+        println!(
+            "To start the server, run {} {} and then {}!",
+            "cd".bold().cyan(),
+            path_str.bold().cyan(),
+            "exo yolo".bold().green(),
+        );
 
         Ok(())
     }
