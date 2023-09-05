@@ -1111,7 +1111,7 @@ dependencies = [
  "builder",
  "clap 4.3.3",
  "colored",
- "core-model",
+ "common",
  "core-model-builder",
  "core-plugin-interface",
  "core-plugin-shared",
@@ -1196,6 +1196,13 @@ name = "comma"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55b672471b4e9f9e95499ea597ff64941a309b2cdbffcc46f2cc5e2d971fd335"
+
+[[package]]
+name = "common"
+version = "0.2.7"
+dependencies = [
+ "thiserror",
+]
 
 [[package]]
 name = "console"
@@ -1324,6 +1331,7 @@ dependencies = [
  "async-trait",
  "builder",
  "bytes",
+ "common",
  "cookie",
  "core-model",
  "core-plugin-interface",
@@ -2942,6 +2950,7 @@ version = "0.2.7"
 dependencies = [
  "bytes",
  "chrono",
+ "common",
  "deadpool-postgres",
  "lazy_static",
  "maybe-owned",
@@ -5923,6 +5932,7 @@ dependencies = [
  "bincode",
  "builder",
  "bytes",
+ "common",
  "core-model",
  "core-plugin-interface",
  "core-plugin-shared",
@@ -6460,6 +6470,7 @@ dependencies = [
  "actix-files",
  "actix-web",
  "async-trait",
+ "common",
  "core-resolver",
  "futures",
  "resolver",
@@ -6476,6 +6487,7 @@ version = "0.2.7"
 dependencies = [
  "async-trait",
  "builder",
+ "common",
  "core-resolver",
  "futures",
  "lambda_runtime",

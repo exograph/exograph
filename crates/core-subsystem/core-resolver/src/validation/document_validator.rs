@@ -113,6 +113,7 @@ mod tests {
     use std::env;
 
     use async_graphql_parser::parse_query;
+    use common::env_const::{EXO_CHECK_CONNECTION_ON_STARTUP, EXO_POSTGRES_URL};
     use core_plugin_shared::{
         serializable_system::SerializableSystem, system_serializer::SystemSerializer,
     };
@@ -743,11 +744,11 @@ mod tests {
         // connecting to a database, this is fine (we are only interested get queries, mutations, and types
         // to build the schema)
         env::set_var(
-            "EXO_POSTGRES_URL",
+            EXO_POSTGRES_URL,
             "postgres://postgres:postgres@localhost:5432/exo_test",
         );
 
-        env::set_var("EXO_CHECK_CONNECTION_ON_STARTUP", "false");
+        env::set_var(EXO_CHECK_CONNECTION_ON_STARTUP, "false");
         loader
             .init(subsystem)
             .await
