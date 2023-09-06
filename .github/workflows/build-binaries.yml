@@ -82,7 +82,7 @@ jobs:
           7z a exograph-${{matrix.target}}.zip *
           cd ..
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: exograph-${{matrix.target}}.zip
           path: dist/exograph-${{matrix.target}}.zip
@@ -141,7 +141,7 @@ jobs:
           zip exograph-${{ env.ARCH }}.zip *
           cd ..
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: exograph-${{ env.ARCH }}.zip
           path: dist/exograph-${{ env.ARCH }}.zip
