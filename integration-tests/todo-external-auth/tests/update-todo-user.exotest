@@ -1,0 +1,88 @@
+
+stages:
+  # First try to update a todo with a user that owns it
+  - operation: |
+        mutation($id: Int!, $title: String!) {
+          updateTodo(id: $id, data: { title: $title }) {
+            id
+            title
+            completed
+          }
+        }
+    variable: |
+      {
+        "id": 2,
+        "title": "U1-T2-updated",
+        "completed": true
+      }
+    auth: |
+      {
+          "sub": "u1",
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "updateTodo": {
+            "id": 2,
+            "title": "U1-T2-updated",
+            "completed": true
+          }
+        }
+      }
+  # Now try to update a todo that does not belong to the user
+  - operation: |
+        mutation($id: Int!, $title: String!) {
+          updateTodo(id: $id, data: { title: $title }) {
+            id
+            title
+            completed
+          }
+        }
+    variable: |
+      {
+        "id": 2,
+        "title": "U1-T2-updated",
+        "completed": true
+      }
+    auth: |
+      {
+          "sub": "u2",
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "updateTodo": null
+        }
+      }      
+  - operation: |
+      query {
+        todos(orderBy: {id: ASC}) {
+          id
+          title
+          completed
+        }
+      }
+    auth: |
+      {
+          "sub": "u1",
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "todos": [
+            {
+              "id": 1,
+              "title": "U1-T1",
+              "completed": false
+            },
+            {
+              "id": 2,
+              "title": "U1-T2-updated",
+              "completed": true
+            }
+          ]
+        }
+      }
