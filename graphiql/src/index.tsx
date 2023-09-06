@@ -7,10 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import { createRoot } from 'react-dom/client';
-import './index.css';
-import App from './App';
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import { AppWithAuth } from "./App";
 
-const container = document.getElementById('root');
+const container = document.getElementById("root");
 const root = createRoot(container as HTMLElement);
-root.render(<App/>);
+root.render(<AppWithAuth />);
