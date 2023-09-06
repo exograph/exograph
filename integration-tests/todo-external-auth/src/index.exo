@@ -1,0 +1,15 @@
+context AuthContext {
+  @jwt("sub") id: String
+  @jwt("role") role: String = "user"
+}
+
+@postgres
+module TodoDatabase {
+  @access(self.userId == AuthContext.id || AuthContext.role == "admin")
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+    userId: String = AuthContext.id
+  }
+}
