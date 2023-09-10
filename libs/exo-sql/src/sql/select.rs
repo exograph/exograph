@@ -96,6 +96,7 @@ mod tests {
     fn json_object() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             "people",
+            "public",
             vec![pk_column("id"), string_column("name"), int_column("age")],
         )])
         .to_database();

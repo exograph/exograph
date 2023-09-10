@@ -1,0 +1,18 @@
+operation: |
+    mutation {
+        u1: createUser(data: {name: "U1"}) {
+            id @bind(name: "u1id")
+        }
+        t1: createTodo(data: {title: "T1", completed: true, owner: {id: 1}}) {
+            id @bind(name: "t1id")
+        }
+        t2: createTodo(data: {title: "T2", completed: false, owner: {id: 1}}) {
+            id @bind(name: "t2id")
+        }
+        t3: createTodo(data: {title: "T3", completed: true, owner: {id: 1}}) {
+            id @bind(name: "t3id")
+        }
+        t4: createTodo(data: {title: "T4", completed: false, owner: {id: 1}}) {
+            id @bind(name: "t4id")
+        }
+    }

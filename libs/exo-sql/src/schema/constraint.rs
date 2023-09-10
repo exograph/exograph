@@ -24,6 +24,7 @@ pub(super) struct ForeignKeyConstraint {
     pub(super) _constraint_name: String,
     pub(super) self_columns: HashSet<String>,
     pub(super) foreign_table: String,
+    pub(super) foreign_table_schema: String,
     pub(super) foreign_columns: HashSet<String>,
 }
 
@@ -103,6 +104,7 @@ impl Constraints {
                     _constraint_name: conname.to_string(),
                     self_columns,
                     foreign_table,
+                    foreign_table_schema: "public".to_string(),
                     foreign_columns,
                 }
             })

@@ -106,6 +106,7 @@ values:
             unique_constraints: []
             default_value: ~
         table_name: entitys
+        schema_name: public
         access:
           default: ~
           query: ~

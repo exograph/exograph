@@ -36,85 +36,8 @@ values:
         Interception: Operation
   - - ~
     - Composite:
-        name: Concert
-        plural_name: Concerts
-        fields:
-          - name: id
-            typ:
-              Plain:
-                type_name: Int
-                is_primitive: true
-            column_name: id
-            self_column: true
-            is_pk: true
-            type_hint: ~
-            unique_constraints: []
-            default_value: AutoIncrement
-          - name: title
-            typ:
-              Plain:
-                type_name: String
-                is_primitive: true
-            column_name: title
-            self_column: true
-            is_pk: false
-            type_hint: ~
-            unique_constraints: []
-            default_value: ~
-          - name: public
-            typ:
-              Plain:
-                type_name: Boolean
-                is_primitive: true
-            column_name: public
-            self_column: true
-            is_pk: false
-            type_hint: ~
-            unique_constraints: []
-            default_value: ~
-        table_name: concerts
-        schema_name: public
-        access:
-          default:
-            LogicalOp:
-              Or:
-                - RelationalOp:
-                    Eq:
-                      - FieldSelection:
-                          Select:
-                            - Single:
-                                - - AuthContext
-                                - Reference:
-                                    index: 15
-                                    generation: ~
-                            - - role
-                            - Reference:
-                                index: 4
-                                generation: ~
-                      - StringLiteral:
-                          - ROLE_ADMIN
-                      - Primitive: Boolean
-                - FieldSelection:
-                    Select:
-                      - Single:
-                          - - self
-                          - Reference:
-                              index: 16
-                              generation: ~
-                      - - public
-                      - Reference:
-                          index: 0
-                          generation: ~
-                - Primitive: Boolean
-          query: ~
-          mutation: ~
-          creation: ~
-          update: ~
-          delete: ~
-  - - ~
-    - Composite:
-        name: Venue
-        plural_name: Venues
+        name: AuthSchemaTable
+        plural_name: AuthSchemaTables
         fields:
           - name: id
             typ:
@@ -138,12 +61,10 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: venues
-        schema_name: public
+        table_name: auth_schema_tables
+        schema_name: auth
         access:
-          default:
-            BooleanLiteral:
-              - true
+          default: ~
           query: ~
           mutation: ~
           creation: ~
@@ -151,8 +72,8 @@ values:
           delete: ~
   - - ~
     - Composite:
-        name: Artist
-        plural_name: Artists
+        name: AuthSchemaTableWithCustomName
+        plural_name: AuthSchemaTableWithCustomNames
         fields:
           - name: id
             typ:
@@ -176,17 +97,16 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: artists
-        schema_name: public
+        table_name: custom_table
+        schema_name: auth
         access:
-          default:
-            BooleanLiteral:
-              - false
+          default: ~
           query: ~
           mutation: ~
           creation: ~
           update: ~
           delete: ~
+  - ~
   - ~
   - ~
   - ~
@@ -202,17 +122,17 @@ values:
   - ~
   - ~
 map:
-  Artist:
-    index: 17
+  AuthSchemaTable:
+    index: 15
+    generation: ~
+  AuthSchemaTableWithCustomName:
+    index: 16
     generation: ~
   Blob:
     index: 10
     generation: ~
   Boolean:
     index: 0
-    generation: ~
-  Concert:
-    index: 15
     generation: ~
   Decimal:
     index: 3
@@ -252,8 +172,5 @@ map:
     generation: ~
   Uuid:
     index: 11
-    generation: ~
-  Venue:
-    index: 16
     generation: ~
 

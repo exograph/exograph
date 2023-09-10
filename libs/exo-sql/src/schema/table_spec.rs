@@ -13,6 +13,7 @@ use super::statement::SchemaStatement;
 use std::collections::{HashMap, HashSet};
 
 use crate::database_error::DatabaseError;
+use crate::PhysicalTable;
 use deadpool_postgres::Client;
 
 use super::constraint::{sorted_comma_list, Constraints};
@@ -21,14 +22,36 @@ use super::issue::WithIssues;
 #[derive(Debug)]
 pub struct TableSpec {
     pub name: String,
+    pub schema: String,
     pub columns: Vec<ColumnSpec>,
 }
 
 impl TableSpec {
-    pub fn new(name: impl Into<String>, columns: Vec<ColumnSpec>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        schema: impl Into<String>,
+        columns: Vec<ColumnSpec>,
+    ) -> Self {
         Self {
             name: name.into(),
+            schema: schema.into(),
             columns,
+        }
+    }
+
+    pub fn to_column_less_table(&self) -> PhysicalTable {
+        PhysicalTable {
+            name: self.name.clone(),
+            schema: self.schema.clone(),
+            columns: vec![],
+        }
+    }
+
+    pub fn sql_name(&self) -> String {
+        if self.schema == "public" {
+            format!("\"{}\"", self.name.clone())
+        } else {
+            format!("\"{}\".\"{}\"", self.schema, self.name)
         }
     }
 
@@ -48,6 +71,7 @@ impl TableSpec {
     pub(super) async fn from_live_db(
         client: &Client,
         table_name: &str,
+        schema: &str,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         // Query to get a list of columns in the table
         let columns_query = format!(
@@ -81,6 +105,7 @@ impl TableSpec {
                     self_column_name.clone(),
                     ColumnTypeSpec::ColumnReference {
                         foreign_table_name: foreign_constraint.foreign_table.clone(),
+                        foreign_table_schema_name: foreign_constraint.foreign_table_schema.clone(),
                         foreign_pk_column_name: foreign_pk_column_name.clone(),
                         foreign_pk_type: Box::new(spec.typ),
                     },
@@ -123,6 +148,7 @@ impl TableSpec {
         Ok(WithIssues {
             value: TableSpec {
                 name: table_name.to_string(),
+                schema: schema.to_string(),
                 columns,
             },
             issues,
@@ -236,7 +262,7 @@ impl TableSpec {
             .columns
             .iter()
             .map(|c| {
-                let mut s = c.to_sql(&self.name);
+                let mut s = c.to_sql(self);
                 post_statements.append(&mut s.post_statements);
                 s.statement
             })
@@ -247,13 +273,17 @@ impl TableSpec {
             let columns_part = sorted_comma_list(columns, true);
 
             post_statements.push(format!(
-                "ALTER TABLE \"{}\" ADD CONSTRAINT \"{}\" UNIQUE ({});",
-                self.name, unique_constraint_name, columns_part
+                "ALTER TABLE {} ADD CONSTRAINT \"{}\" UNIQUE ({});",
+                self.sql_name(),
+                unique_constraint_name,
+                columns_part
             ));
         }
 
+        let name = self.sql_name();
+
         SchemaStatement {
-            statement: format!("CREATE TABLE \"{}\" (\n\t{}\n);", self.name, column_stmts),
+            statement: format!("CREATE TABLE {name} (\n\t{column_stmts}\n);"),
             pre_statements: vec![],
             post_statements,
         }
@@ -263,13 +293,14 @@ impl TableSpec {
         let mut pre_statements = vec![];
         for (unique_constraint_name, _) in self.named_unique_constraints().iter() {
             pre_statements.push(format!(
-                "ALTER TABLE \"{}\" DROP CONSTRAINT \"{}\";",
-                self.name, unique_constraint_name
+                "ALTER TABLE {} DROP CONSTRAINT \"{}\";",
+                self.sql_name(),
+                unique_constraint_name
             ));
         }
 
         SchemaStatement {
-            statement: format!("DROP TABLE \"{}\" CASCADE;", self.name),
+            statement: format!("DROP TABLE {} CASCADE;", self.sql_name()),
             pre_statements,
             post_statements: vec![],
         }

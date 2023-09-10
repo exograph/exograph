@@ -66,6 +66,7 @@ mod test {
     fn single() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             "people",
+            "public",
             vec![pk_column("id"), int_column("age")],
         )])
         .to_database();
@@ -86,6 +87,7 @@ mod test {
     fn multiple() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             "people",
+            "public",
             vec![pk_column("id"), string_column("name"), int_column("age")],
         )])
         .to_database();

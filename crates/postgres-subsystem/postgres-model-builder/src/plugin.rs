@@ -173,7 +173,16 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     targets: &[AnnotationTarget::Type],
                     no_params: false,
                     single_params: true,
-                    mapped_params: None,
+                    mapped_params: Some(&[
+                        MappedAnnotationParamSpec {
+                            name: "name",
+                            optional: true,
+                        },
+                        MappedAnnotationParamSpec {
+                            name: "schema",
+                            optional: true,
+                        },
+                    ]),
                 },
             ),
             (

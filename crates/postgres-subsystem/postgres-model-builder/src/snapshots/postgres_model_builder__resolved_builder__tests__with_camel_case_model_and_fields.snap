@@ -62,6 +62,7 @@ values:
             unique_constraints: []
             default_value: ~
         table_name: concert_infos
+        schema_name: public
         access:
           default: ~
           query: ~

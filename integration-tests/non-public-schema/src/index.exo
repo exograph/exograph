@@ -1,0 +1,20 @@
+// The focus is on using a non-public schema, so access control is permissive
+
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+    owner: User
+  }
+
+  @access(true)
+  @table(schema="auth")
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    todos: Set<Todo>?
+  }
+}

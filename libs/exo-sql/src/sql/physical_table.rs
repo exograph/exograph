@@ -22,6 +22,8 @@ use serde::{Deserialize, Serialize};
 pub struct PhysicalTable {
     /// The name of the table.
     pub name: String,
+    /// The schema of the table.
+    pub schema: String,
     /// The columns of the table.
     // concerts.venue_id: (venues.id, "int", "venue_id_table")
     pub columns: Vec<PhysicalColumn>,
@@ -103,6 +105,10 @@ impl PhysicalTable {
 impl ExpressionBuilder for PhysicalTable {
     /// Build a table reference for the `<table>`.
     fn build(&self, _database: &Database, builder: &mut crate::sql::SQLBuilder) {
+        if self.schema != "public" {
+            builder.push_identifier(&self.schema);
+            builder.push('.');
+        }
         builder.push_identifier(&self.name);
     }
 }

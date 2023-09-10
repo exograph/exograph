@@ -45,30 +45,41 @@ impl TestSetup {
         let database = DatabaseSpec::new(vec![
             TableSpec::new(
                 "concerts",
+                "public",
                 vec![
                     pk_column("id"),
-                    pk_reference_column("venue_id", "venues"),
+                    pk_reference_column("venue_id", "venues", "public"),
                     string_column("name"),
                 ],
             ),
-            TableSpec::new("venues", vec![pk_column("id"), string_column("name")]),
+            TableSpec::new(
+                "venues",
+                "public",
+                vec![pk_column("id"), string_column("name")],
+            ),
             TableSpec::new(
                 "concert_artists",
+                "public",
                 vec![
                     pk_column("id"),
-                    pk_reference_column("concert_id", "concerts"),
-                    pk_reference_column("artist_id", "artists"),
+                    pk_reference_column("concert_id", "concerts", "public"),
+                    pk_reference_column("artist_id", "artists", "public"),
                 ],
             ),
             TableSpec::new(
                 "artists",
+                "public",
                 vec![
                     pk_column("id"),
                     string_column("name"),
-                    pk_reference_column("address_id", "addresses"),
+                    pk_reference_column("address_id", "addresses", "public"),
                 ],
             ),
-            TableSpec::new("addresses", vec![pk_column("id"), string_column("city")]),
+            TableSpec::new(
+                "addresses",
+                "public",
+                vec![pk_column("id"), string_column("city")],
+            ),
         ])
         .to_database();
 

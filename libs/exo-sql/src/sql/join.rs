@@ -61,9 +61,17 @@ mod tests {
         let database = DatabaseSpec::new(vec![
             TableSpec::new(
                 "concerts",
-                vec![pk_column("id"), pk_reference_column("venue_id", "venues")],
+                "public",
+                vec![
+                    pk_column("id"),
+                    pk_reference_column("venue_id", "venues", "public"),
+                ],
             ),
-            TableSpec::new("venues", vec![pk_column("id"), int_column("capacity")]),
+            TableSpec::new(
+                "venues",
+                "public",
+                vec![pk_column("id"), int_column("capacity")],
+            ),
         ])
         .to_database();
 
