@@ -1,0 +1,37 @@
+operation: |
+    mutation {
+        d1: createDocument(data: {
+            content: "d1", 
+            documentUsers: [
+                {userId: "u1", read: true,  write: true}, 
+                {userId: "u2", read: false,  write: false}
+            ]
+        }) {
+            id
+            content
+            documentUsers {
+            id
+            read
+            write
+            }
+        }
+        d2: createDocument(data: {
+            content: "d2", 
+            documentUsers: [
+                {userId: "u2", read: true,  write: true}, 
+                {userId: "u1", read: false,  write: false}
+            ]
+        }) {
+            id
+            content
+            documentUsers {
+            id
+            read
+            write
+            }
+        }        
+    }
+auth: |
+    {
+        "role": "admin"
+    }

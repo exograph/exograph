@@ -1,0 +1,71 @@
+operation: |
+  fragment DocumentWithUser on Document {
+    id
+    content
+    documentUsers {
+      id
+      read
+      write
+    }
+  }
+  query {
+    u1Docs: documents(where: {
+      documentUsers: {and: [
+        {userId: {eq: "u1"}},
+        {read: {eq: true}}
+      ]}}) {
+      ...DocumentWithUser
+    }
+    u2Docs: documents(where: {
+      documentUsers: {and: [
+        {userId: {eq: "u2"}},
+        {read: {eq: true}}
+      ]}}) {
+      ...DocumentWithUser
+    }    
+  }
+auth: |
+  {
+    "role": "admin"
+  }
+response: |
+  {
+    "data": {
+      "u1Docs": [
+        {
+          "id": 1,
+          "content": "d1",
+          "documentUsers": [
+            {
+              "id": 1,
+              "read": true,
+              "write": true
+            },
+            {
+              "id": 2,
+              "read": false,
+              "write": false
+            }
+          ]
+        }
+      ],
+      "u2Docs": [
+        {
+          "id": 2,
+          "content": "d2",
+          "documentUsers": [
+            {
+              "id": 3,
+              "read": true,
+              "write": true
+            },
+            {
+              "id": 4,
+              "read": false,
+              "write": false
+            }
+          ]
+        }
+      ]
+    }
+  }
