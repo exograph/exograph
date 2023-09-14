@@ -43,13 +43,14 @@ use crate::{
         },
         update::TemplateUpdate,
     },
-    transform::transformer::{
-        InsertTransformer, PredicateTransformer, SelectTransformer, UpdateTransformer,
+    transform::{
+        pg::{selection_level::SelectionLevel, Postgres},
+        transformer::{
+            InsertTransformer, PredicateTransformer, SelectTransformer, UpdateTransformer,
+        },
     },
     ColumnId, Database, NestedAbstractInsertSet, PhysicalColumn,
 };
-
-use super::{selection_level::SelectionLevel, Postgres};
 
 impl UpdateTransformer for Postgres {
     /// Transform an abstract update into a transaction script.

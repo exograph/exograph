@@ -17,11 +17,12 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
+    transform::{
+        pg::{selection_level::SelectionLevel, Postgres},
+        transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
+    },
     Database,
 };
-
-use super::{selection_level::SelectionLevel, Postgres};
 
 impl DeleteTransformer for Postgres {
     #[instrument(

@@ -7,14 +7,4 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-mod delete;
-mod insert;
-mod select;
-mod update;
-
-mod order_by_transformer;
-mod predicate_transformer;
-
-pub mod selection_level;
-
-pub struct Postgres {}
+pub(crate) mod update_transformer;
