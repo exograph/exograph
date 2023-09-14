@@ -22,29 +22,29 @@
 //! }
 //! ```
 
-use tracing::instrument;
-
 use super::insertion_strategy_chain::InsertionStrategyChain;
 use crate::{
-    sql::transaction::TransactionScript,
+    sql::transaction::{TransactionScript, TransactionStepId},
     transform::{pg::Postgres, transformer::InsertTransformer},
-    AbstractInsert, Database,
+    AbstractInsert, ColumnId, Database,
 };
 
 impl InsertTransformer for Postgres {
-    #[instrument(
-        name = "InsertTransformer::to_transaction_script for Postgres"
-        skip(self)
-        )]
-    fn to_transaction_script<'a>(
+    fn update_transaction_script<'a>(
         &self,
         abstract_insert: &'a AbstractInsert,
+        parent_step: Option<(TransactionStepId, ColumnId)>,
         database: &'a Database,
-    ) -> TransactionScript<'a> {
+        transaction_script: &mut TransactionScript<'a>,
+    ) {
         let chain = InsertionStrategyChain::default();
 
-        chain
-            .to_transaction_script(abstract_insert, database, self)
-            .expect("No suitable insertion strategy found")
+        chain.update_transaction_script(
+            abstract_insert,
+            parent_step,
+            database,
+            self,
+            transaction_script,
+        );
     }
 }

@@ -10,7 +10,9 @@
 use tracing::debug;
 
 use crate::{
-    sql::transaction::TransactionScript, transform::pg::Postgres, AbstractInsert, Database,
+    sql::transaction::{TransactionScript, TransactionStepId},
+    transform::pg::Postgres,
+    AbstractInsert, ColumnId, Database,
 };
 
 use super::{
@@ -31,20 +33,29 @@ impl<'s> InsertionStrategyChain<'s> {
 
     /// Find the first strategy that is suitable for the given insertion context, and return a
     /// `TransactionScript` to execute.
-    pub fn to_transaction_script<'a>(
+    pub fn update_transaction_script<'a>(
         &self,
         abstract_insert: &'a AbstractInsert,
+        parent_step: Option<(TransactionStepId, ColumnId)>,
         database: &'a Database,
         transformer: &Postgres,
-    ) -> Option<TransactionScript<'a>> {
+        transaction_script: &mut TransactionScript<'a>,
+    ) {
         let strategy = self
             .strategies
             .iter()
-            .find(|s| s.suitable(abstract_insert, database))?;
+            .find(|s| s.suitable(abstract_insert, database))
+            .unwrap();
 
         debug!("Using insertion strategy: {}", strategy.id());
 
-        Some(strategy.to_transaction_script(abstract_insert, database, transformer))
+        strategy.update_transaction_script(
+            abstract_insert,
+            parent_step,
+            database,
+            transformer,
+            transaction_script,
+        );
     }
 }
 

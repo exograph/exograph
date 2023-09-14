@@ -7,16 +7,21 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use tracing::instrument;
+
 use crate::{
     asql::{
         abstract_operation::AbstractOperation, delete::AbstractDelete, insert::AbstractInsert,
         select::AbstractSelect, update::AbstractUpdate,
     },
     sql::{
-        cte::WithQuery, order::OrderBy, predicate::ConcretePredicate, select::Select,
-        transaction::TransactionScript,
+        cte::WithQuery,
+        order::OrderBy,
+        predicate::ConcretePredicate,
+        select::Select,
+        transaction::{TransactionScript, TransactionStepId},
     },
-    AbstractOrderBy, AbstractPredicate, Database,
+    AbstractOrderBy, AbstractPredicate, ColumnId, Database,
 };
 
 use super::pg::{selection_level::SelectionLevel, Postgres};
@@ -44,7 +49,7 @@ impl OperationTransformer for Postgres {
                 DeleteTransformer::to_transaction_script(self, delete, database)
             }
             AbstractOperation::Insert(insert) => {
-                InsertTransformer::to_transaction_script(self, insert, database)
+                InsertTransformer::to_transaction_script(self, insert, None, database)
             }
             AbstractOperation::Update(update) => {
                 UpdateTransformer::to_transaction_script(self, update, database)
@@ -78,11 +83,35 @@ pub trait DeleteTransformer {
 }
 
 pub trait InsertTransformer {
+    #[instrument(
+        name = "InsertTransformer::to_transaction_script for Postgres"
+        skip(self)
+        )]
     fn to_transaction_script<'a>(
         &self,
         abstract_insert: &'a AbstractInsert,
+        parent_step: Option<(TransactionStepId, ColumnId)>,
         database: &'a Database,
-    ) -> TransactionScript<'a>;
+    ) -> TransactionScript<'a> {
+        let mut transaction_script = TransactionScript::default();
+
+        self.update_transaction_script(
+            abstract_insert,
+            parent_step,
+            database,
+            &mut transaction_script,
+        );
+
+        transaction_script
+    }
+
+    fn update_transaction_script<'a>(
+        &self,
+        abstract_insert: &'a AbstractInsert,
+        parent_step: Option<(TransactionStepId, ColumnId)>,
+        database: &'a Database,
+        transaction_script: &mut TransactionScript<'a>,
+    );
 }
 
 pub trait UpdateTransformer {

@@ -41,23 +41,23 @@ impl InsertionStrategy for MultiStatementStrategy {
         true
     }
 
-    fn to_transaction_script<'a>(
+    fn update_transaction_script<'a>(
         &self,
         abstract_insert: &'a AbstractInsert,
+        parent_step: Option<(TransactionStepId, ColumnId)>,
         database: &'a Database,
         transformer: &Postgres,
-    ) -> TransactionScript<'a> {
+        transaction_script: &mut TransactionScript<'a>,
+    ) {
         let AbstractInsert {
             table_id,
             rows,
             selection,
         } = abstract_insert;
 
-        let mut transaction_script = TransactionScript::default();
-
         let insert_step_ids: Vec<_> = rows
             .iter()
-            .map(|row| insert_row(*table_id, row, None, &mut transaction_script, database))
+            .map(|row| insert_row(*table_id, row, parent_step, transaction_script, database))
             .collect();
 
         let select = transformer.to_select(selection, database);
@@ -68,7 +68,7 @@ impl InsertionStrategy for MultiStatementStrategy {
             let in_values = SQLParamContainer::new(
                 insert_step_ids
                     .into_iter()
-                    .map(|prev_step_id| transaction_context.resolve_value(prev_step_id, 0, 0))
+                    .map(|insert_step_id| transaction_context.resolve_value(insert_step_id, 0, 0))
                     .collect::<Vec<_>>(),
             );
 
@@ -96,15 +96,13 @@ impl InsertionStrategy for MultiStatementStrategy {
         transaction_script.add_step(TransactionStep::Dynamic(DynamicTransactionStep {
             function: select_transformation,
         }));
-
-        transaction_script
     }
 }
 
 fn insert_row<'a>(
     table_id: TableId,
     row: &'a InsertionRow,
-    parent_step_id: Option<(TransactionStepId, ColumnId)>,
+    parent_step: Option<(TransactionStepId, ColumnId)>,
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,
 ) -> TransactionStepId {
@@ -113,7 +111,7 @@ fn insert_row<'a>(
     let self_insert_id = insert_self_row(
         table_id,
         self_row,
-        parent_step_id,
+        parent_step,
         transaction_script,
         database,
     );
@@ -128,7 +126,7 @@ fn insert_row<'a>(
 fn insert_self_row<'a>(
     table_id: TableId,
     row: Vec<&'a ColumnValuePair>,
-    parent_step_id: Option<(TransactionStepId, ColumnId)>,
+    parent_step: Option<(TransactionStepId, ColumnId)>,
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,
 ) -> TransactionStepId {
@@ -148,27 +146,27 @@ fn insert_self_row<'a>(
         })
         .unzip();
 
-    match parent_step_id {
-        Some(parent_step_id) => {
-            columns.push(parent_step_id.1.get_column(database));
+    match parent_step {
+        Some((parent_step_id, parent_column_id)) => {
+            columns.push(parent_column_id.get_column(database));
             let mut proxy_values = values
                 .into_iter()
                 .map(ProxyColumn::Concrete)
                 .collect::<Vec<_>>();
             proxy_values.push(ProxyColumn::Template {
                 col_index: 0,
-                step_id: parent_step_id.0,
+                step_id: parent_step_id,
             });
 
             let insert = TemplateSQLOperation::Insert(TemplateInsert {
                 table,
                 columns,
                 column_values_seq: vec![proxy_values],
-                returning: vec![],
+                returning: vec![pk_column],
             });
             transaction_script.add_step(TransactionStep::Template(TemplateTransactionStep {
                 operation: insert,
-                prev_step_id: parent_step_id.0,
+                prev_step_id: parent_step_id,
             }))
         }
         None => {

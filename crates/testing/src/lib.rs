@@ -17,7 +17,7 @@ use exotest::integration_tests::{build_exo_ir_file, run_testfile};
 use exotest::loader::load_project_dir;
 use futures::FutureExt;
 use std::cmp::min;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -89,8 +89,8 @@ pub fn run(
                         .unwrap();
                     let local = tokio::task::LocalSet::new();
                     local.block_on(&runtime, async move {
-                        fn report_panic() -> Result<TestResult, Error> {
-                            Err(anyhow::anyhow!("Panic during test run!"))
+                        fn report_panic(model_path: &Path) -> Result<TestResult, Error> {
+                            Err(anyhow::anyhow!("Panic during test run: {}", model_path.display()))
                         }
 
                         if run_introspection_tests {
@@ -98,7 +98,7 @@ pub fn run(
                                 std::panic::AssertUnwindSafe(run_introspection_test(&model_path))
                                     .catch_unwind()
                                     .await;
-                            tx.send(result.unwrap_or_else(|_| report_panic()))
+                            tx.send(result.unwrap_or_else(|_| report_panic(&model_path)))
                                 .map_err(|_| ())
                                 .unwrap();
                         };
@@ -121,7 +121,7 @@ pub fn run(
                                     retries = 0;
                                 }
 
-                                let result = result.unwrap_or_else(|_| report_panic());
+                                let result = result.unwrap_or_else(|_| report_panic(&model_path));
                                 let test_succeeded = result.as_ref().map(|t| t.is_success()).unwrap_or_else(|_| false);
 
                                 if retries == 0 || test_succeeded {

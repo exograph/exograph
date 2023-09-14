@@ -8,7 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    sql::transaction::TransactionScript, transform::pg::Postgres, AbstractInsert, Database,
+    sql::transaction::{TransactionScript, TransactionStepId},
+    transform::pg::Postgres,
+    AbstractInsert, ColumnId, Database,
 };
 
 /// A strategy for generating a SQL query from an abstract select.
@@ -19,11 +21,12 @@ pub(crate) trait InsertionStrategy {
     /// See `SelectionStrategy::suitable`
     fn suitable(&self, abstract_insert: &AbstractInsert, database: &Database) -> bool;
 
-    /// Computes the transaction script
-    fn to_transaction_script<'a>(
+    fn update_transaction_script<'a>(
         &self,
         abstract_insert: &'a AbstractInsert,
+        parent_step: Option<(TransactionStepId, ColumnId)>,
         database: &'a Database,
         transformer: &Postgres,
-    ) -> TransactionScript<'a>;
+        transaction_script: &mut TransactionScript<'a>,
+    );
 }
