@@ -8,23 +8,22 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    asql::delete::AbstractDelete,
-    sql::transaction::TransactionScript,
-    transform::{pg::Postgres, transformer::DeleteTransformer},
-    Database,
+    sql::transaction::TransactionScript, transform::pg::Postgres, AbstractDelete, Database,
 };
 
-use super::deletion_strategy_chain::DeletionStrategyChain;
+/// A strategy for generating a SQL query from an abstract delete.
+pub(crate) trait DeletionStrategy {
+    /// A unique identifier for this strategy (for debugging purposes)
+    fn id(&self) -> &'static str;
 
-impl DeleteTransformer for Postgres {
+    /// See `SelectionStrategy::suitable`
+    fn suitable(&self, abstract_insert: &AbstractDelete, database: &Database) -> bool;
+
     fn update_transaction_script<'a>(
         &self,
         abstract_delete: &'a AbstractDelete,
         database: &'a Database,
+        transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
-    ) {
-        let chain = DeletionStrategyChain::default();
-
-        chain.update_transaction_script(abstract_delete, database, self, transaction_script);
-    }
+    );
 }

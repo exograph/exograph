@@ -13,7 +13,7 @@ use crate::{
     AbstractInsert, ColumnId, Database,
 };
 
-/// A strategy for generating a SQL query from an abstract select.
+/// A strategy for generating a SQL query from an abstract insert.
 pub(crate) trait InsertionStrategy {
     /// A unique identifier for this strategy (for debugging purposes)
     fn id(&self) -> &'static str;

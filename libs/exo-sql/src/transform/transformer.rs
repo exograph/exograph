@@ -15,7 +15,6 @@ use crate::{
         select::AbstractSelect, update::AbstractUpdate,
     },
     sql::{
-        cte::WithQuery,
         order::OrderBy,
         predicate::ConcretePredicate,
         select::Select,
@@ -69,17 +68,28 @@ pub trait SelectTransformer {
 }
 
 pub trait DeleteTransformer {
-    fn to_delete<'a>(
-        &self,
-        abstract_delete: &'a AbstractDelete,
-        database: &'a Database,
-    ) -> WithQuery<'a>;
-
+    #[instrument(
+        name = "DeleteTransformer::to_transaction_script for Postgres"
+        skip(self)
+        )]
     fn to_transaction_script<'a>(
         &self,
         abstract_delete: &'a AbstractDelete,
         database: &'a Database,
-    ) -> TransactionScript<'a>;
+    ) -> TransactionScript<'a> {
+        let mut transaction_script = TransactionScript::default();
+
+        self.update_transaction_script(abstract_delete, database, &mut transaction_script);
+
+        transaction_script
+    }
+
+    fn update_transaction_script<'a>(
+        &self,
+        abstract_delete: &'a AbstractDelete,
+        database: &'a Database,
+        transaction_script: &mut TransactionScript<'a>,
+    );
 }
 
 pub trait InsertTransformer {
