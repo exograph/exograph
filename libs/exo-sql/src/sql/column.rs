@@ -87,7 +87,7 @@ impl ExpressionBuilder for Column {
                 let column = column_id.get_column(database);
                 match table_alias {
                     Some(table_alias) if table_alias != &column.get_table_name(database) => {
-                        builder.push_column(table_alias, &column.name);
+                        builder.push_column_with_table_alias(&column.name, table_alias);
                     }
                     _ => column.build(database, builder),
                 }

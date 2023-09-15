@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{Database, SQLParam};
 
@@ -21,6 +21,8 @@ pub struct SQLBuilder {
     /// Indicates if column name should be rendered with the table name i.e. "table"."col"  instead
     /// of "col" (needed for INSERT/UPDATE statements)
     fully_qualify_column_names: bool,
+
+    pub cte_table_map: HashMap<String, String>,
 }
 
 impl SQLBuilder {
@@ -29,6 +31,7 @@ impl SQLBuilder {
             sql: String::new(),
             params: Vec::new(),
             fully_qualify_column_names: true,
+            cte_table_map: HashMap::new(),
         }
     }
 
@@ -51,14 +54,34 @@ impl SQLBuilder {
         self.sql.push('"');
     }
 
-    /// Push a column. Push `<table_name>.<column_name>` if in fully_qualify_column_names mode, otherwise
-    /// just `<column_name>`. See [`SQLBuilder::plain`].
-    pub fn push_column<T: AsRef<str>>(&mut self, table_name: T, column_name: T) {
+    pub fn push_column_with_table_alias<T1: AsRef<str>, T2: AsRef<str>>(
+        &mut self,
+        column_name: T1,
+        table_alias: T2,
+    ) {
+        self.push_identifier(table_alias);
+        self.push('.');
+        self.push_identifier(column_name);
+    }
+
+    /// Push a table name. If the table name is a CTE name, push the CTE name instead.
+    pub fn push_table<T: AsRef<str>>(&mut self, table_name: T) {
+        let table_name = table_name.as_ref();
+        let table_name = match self.cte_table_map.get(table_name) {
+            Some(cte_name) => cte_name,
+            None => table_name,
+        }
+        .to_owned();
+        self.push_identifier(table_name);
+    }
+
+    /// Push a table prefix (for a column). Push `<table_name>.` if in fully_qualify_column_names
+    /// mode, otherwise an empty string.
+    pub fn push_table_prefix<T: AsRef<str>>(&mut self, table_name: T) {
         if self.fully_qualify_column_names {
-            self.push_identifier(table_name);
+            self.push_table(table_name);
             self.push('.');
         }
-        self.push_identifier(column_name);
     }
 
     /// Push a space. This is a common operation, so it is provided as a separate method.
@@ -125,6 +148,17 @@ impl SQLBuilder {
         self.fully_qualify_column_names = false;
         let ret = func(self);
         self.fully_qualify_column_names = cur_fully_qualify_column_names;
+        ret
+    }
+
+    pub fn with_cte_table_map<F, R>(&mut self, cte_table_map: HashMap<String, String>, func: F) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        let cur_cte_table_map = self.cte_table_map.clone();
+        self.cte_table_map.extend(cte_table_map);
+        let ret = func(self);
+        self.cte_table_map = cur_cte_table_map;
         ret
     }
 }

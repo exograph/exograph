@@ -33,7 +33,7 @@ impl ExpressionBuilder for OrderByElement {
         let column = self.0.get_column(database);
         match self.2 {
             Some(ref table_alias) => {
-                builder.push_column(table_alias, &column.name);
+                builder.push_column_with_table_alias(&column.name, table_alias);
             }
             None => {
                 column.build(database, builder);

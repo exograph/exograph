@@ -41,7 +41,7 @@ impl ExpressionBuilder for Table {
         match self {
             Table::Physical { table_id, alias } => {
                 let physical_table = database.get_table(*table_id);
-                builder.push_identifier(&physical_table.name);
+                physical_table.build(database, builder);
 
                 if let Some(alias) = alias {
                     if &physical_table.name != alias {
