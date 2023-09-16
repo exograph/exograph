@@ -34,12 +34,14 @@ use crate::{
         AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
     },
     sql::{
-        column::Column,
+        column::{ArrayParamWrapper, Column},
         delete::TemplateDelete,
+        select::Select,
         sql_operation::{SQLOperation, TemplateSQLOperation},
         transaction::{
-            ConcreteTransactionStep, TemplateFilterOperation, TemplateTransactionStep,
-            TransactionScript, TransactionStep, TransactionStepId,
+            ConcreteTransactionStep, DynamicTransactionStep, TemplateFilterOperation,
+            TemplateTransactionStep, TransactionContext, TransactionScript, TransactionStep,
+            TransactionStepId,
         },
         update::TemplateUpdate,
     },
@@ -49,7 +51,7 @@ use crate::{
             InsertTransformer, PredicateTransformer, SelectTransformer, UpdateTransformer,
         },
     },
-    ColumnId, Database, NestedAbstractInsertSet, PhysicalColumn,
+    ColumnId, Database, NestedAbstractInsertSet, PhysicalColumn, Predicate, SQLParamContainer,
 };
 
 impl UpdateTransformer for Postgres {
@@ -82,8 +84,6 @@ impl UpdateTransformer for Postgres {
             false,
             database,
         );
-
-        let select = self.to_select(&abstract_update.selection, database);
 
         // Select only the primary key column, so that we can use that
         // as the proxy column in the nested updates added to the transaction script.
@@ -163,9 +163,42 @@ impl UpdateTransformer for Postgres {
                 let _ = transaction_script.add_step(TransactionStep::Template(delete_op));
             });
 
-        let _ = transaction_script.add_step(TransactionStep::Concrete(
-            ConcreteTransactionStep::new(SQLOperation::Select(select)),
-        ));
+        let select = self.to_select(&abstract_update.selection, database);
+
+        // Take the root step and use ids returned by it as the input to the select
+        // statement to form a predicate `pk IN (update_pk1, update_pk2, ...)`
+        let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
+            let update_count = transaction_context.row_count(root_step_id);
+            let update_ids = SQLParamContainer::new(
+                (0..update_count)
+                    .map(|i| transaction_context.resolve_value(root_step_id, i, 0))
+                    .collect::<Vec<_>>(),
+            );
+
+            let predicate = Predicate::and(
+                Predicate::Eq(
+                    Column::physical(
+                        database
+                            .get_pk_column_id(abstract_update.table_id)
+                            .expect("No primary key column"),
+                        None,
+                    ),
+                    Column::ArrayParam {
+                        param: update_ids,
+                        wrapper: ArrayParamWrapper::Any,
+                    },
+                ),
+                select.predicate,
+            );
+            ConcreteTransactionStep::new(SQLOperation::Select(Select {
+                predicate,
+                ..select
+            }))
+        });
+
+        transaction_script.add_step(TransactionStep::Dynamic(DynamicTransactionStep {
+            function: select_transformation,
+        }));
 
         transaction_script
     }

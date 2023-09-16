@@ -1,7 +1,9 @@
 operation: |
     mutation {
-      deleteConcerts(where: {venue: {name: {eq: "Venue1"}}}) @unordered {
+      updateConcerts(where: {title: {eq: "Concert1"}}, data: {title: "Concert1-updated"}) {
         id
+        title
+        price
         venue {
           id
           name
@@ -11,24 +13,17 @@ operation: |
 response: |
     {
       "data": {
-        "deleteConcerts": [
-          {
-            "id": 3,
-            "venue": {
-              "id": 1,
-              "name": "Venue1"
-            }
-          },
+        "updateConcerts": [
           {
             "id": 1,
+            "title": "Concert1-updated",
+            "price": "20.50",
             "venue": {
               "id": 1,
               "name": "Venue1"
             }
-          },
-
+          }
         ]
-      }  
+      }
     }
 
-    
