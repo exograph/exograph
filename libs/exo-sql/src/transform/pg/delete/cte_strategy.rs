@@ -24,11 +24,11 @@ use crate::{
     AbstractDelete, Column, Database,
 };
 
-use super::deletion_strategy::DeletionStrategy;
+use super::delete_strategy::DeleteStrategy;
 
 pub(crate) struct CteStrategy {}
 
-impl DeletionStrategy for CteStrategy {
+impl DeleteStrategy for CteStrategy {
     fn id(&self) -> &'static str {
         "CteStrategy"
     }

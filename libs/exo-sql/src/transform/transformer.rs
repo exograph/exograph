@@ -125,11 +125,28 @@ pub trait InsertTransformer {
 }
 
 pub trait UpdateTransformer {
+    #[instrument(
+        name = "UpdateTransformer::to_transaction_script for Postgres"
+        skip(self)
+        )]
     fn to_transaction_script<'a>(
         &self,
         abstract_update: &'a AbstractUpdate,
         database: &'a Database,
-    ) -> TransactionScript<'a>;
+    ) -> TransactionScript<'a> {
+        let mut transaction_script = TransactionScript::default();
+
+        self.update_transaction_script(abstract_update, database, &mut transaction_script);
+
+        transaction_script
+    }
+
+    fn update_transaction_script<'a>(
+        &self,
+        abstract_update: &'a AbstractUpdate,
+        database: &'a Database,
+        transaction_script: &mut TransactionScript<'a>,
+    );
 }
 
 pub trait PredicateTransformer {

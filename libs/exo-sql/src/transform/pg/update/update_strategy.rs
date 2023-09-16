@@ -8,20 +8,20 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    sql::transaction::TransactionScript, transform::pg::Postgres, AbstractDelete, Database,
+    sql::transaction::TransactionScript, transform::pg::Postgres, AbstractUpdate, Database,
 };
 
-/// A strategy for generating a SQL query from an abstract delete.
-pub(crate) trait DeletionStrategy {
+/// A strategy for generating a transaction script from an abstract update.
+pub(crate) trait UpdateStrategy {
     /// A unique identifier for this strategy (for debugging purposes)
     fn id(&self) -> &'static str;
 
     /// See `SelectionStrategy::suitable`
-    fn suitable(&self, abstract_insert: &AbstractDelete, database: &Database) -> bool;
+    fn suitable(&self, abstract_update: &AbstractUpdate, database: &Database) -> bool;
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_delete: &'a AbstractDelete,
+        abstract_update: &'a AbstractUpdate,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,

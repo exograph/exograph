@@ -8,3 +8,7 @@
 // by the Apache License, Version 2.0.
 
 pub(crate) mod update_transformer;
+
+mod multi_statement_strategy;
+mod update_strategy;
+mod update_strategy_chain;

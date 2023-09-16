@@ -13,16 +13,16 @@ use crate::{
     sql::transaction::TransactionScript, transform::pg::Postgres, AbstractDelete, Database,
 };
 
-use super::{cte_strategy::CteStrategy, deletion_strategy::DeletionStrategy};
+use super::{cte_strategy::CteStrategy, delete_strategy::DeleteStrategy};
 
 /// Chain of various deletion strategies.
-pub(crate) struct DeletionStrategyChain<'s> {
-    strategies: Vec<&'s dyn DeletionStrategy>,
+pub(crate) struct DeleteStrategyChain<'s> {
+    strategies: Vec<&'s dyn DeleteStrategy>,
 }
 
-impl<'s> DeletionStrategyChain<'s> {
+impl<'s> DeleteStrategyChain<'s> {
     /// Create a new deletion strategy chain.
-    pub fn new(strategies: Vec<&'s dyn DeletionStrategy>) -> Self {
+    pub fn new(strategies: Vec<&'s dyn DeleteStrategy>) -> Self {
         Self { strategies }
     }
 
@@ -52,7 +52,7 @@ impl<'s> DeletionStrategyChain<'s> {
     }
 }
 
-impl Default for DeletionStrategyChain<'_> {
+impl Default for DeleteStrategyChain<'_> {
     fn default() -> Self {
         Self::new(vec![&CteStrategy {}])
     }

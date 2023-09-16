@@ -10,5 +10,5 @@
 pub(crate) mod delete_transformer;
 
 mod cte_strategy;
-mod deletion_strategy;
-mod deletion_strategy_chain;
+mod delete_strategy;
+mod delete_strategy_chain;
