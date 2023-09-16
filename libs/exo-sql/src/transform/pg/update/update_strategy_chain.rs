@@ -13,7 +13,10 @@ use crate::{
     sql::transaction::TransactionScript, transform::pg::Postgres, AbstractUpdate, Database,
 };
 
-use super::{multi_statement_strategy::MultiStatementStrategy, update_strategy::UpdateStrategy};
+use super::{
+    cte_strategy::CteStrategy, multi_statement_strategy::MultiStatementStrategy,
+    update_strategy::UpdateStrategy,
+};
 
 /// Chain of various deletion strategies.
 pub(crate) struct UpdateStrategyChain<'s> {
@@ -54,6 +57,6 @@ impl<'s> UpdateStrategyChain<'s> {
 
 impl Default for UpdateStrategyChain<'_> {
     fn default() -> Self {
-        Self::new(vec![&MultiStatementStrategy {}])
+        Self::new(vec![&CteStrategy {}, &MultiStatementStrategy {}])
     }
 }

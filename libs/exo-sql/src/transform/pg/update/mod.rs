@@ -9,6 +9,7 @@
 
 pub(crate) mod update_transformer;
 
+mod cte_strategy;
 mod multi_statement_strategy;
 mod update_strategy;
 mod update_strategy_chain;
