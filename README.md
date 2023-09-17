@@ -8,6 +8,21 @@
   </p>
 </a>
 
+<div align="center">
+
+[![X badge][]][X link]
+[![Discord badge][]][Discord link]
+
+</div>
+
+<p align="center">
+  <a href="https://exograph.dev/docs/getting-started">Getting Started</a> •
+  <a href="https://exograph.dev/docs">Documentation</a> •
+  <a href="https://github.com/exograph/examples">Examples</a>
+</p>
+
+<br/>
+
 [Exograph](https://exograph.dev) is a declarative way to create flexible, secure, and performant backends that provide GraphQL query and mutation APIs. Exograph lets you focus on your domain model and business logic, freeing you to pursue more creative work on your application. Furthermore, it offers tooling to support all stages of the development lifecycle, from development to deployment to maintenance.
 
 # Installation
@@ -20,7 +35,7 @@ Get started by following the [Getting Started](https://exograph.dev/docs/getting
 
 Must have:
 
-- [Rustup](https://rustup.rs/).
+- [Rustup](https://rustup.rs/)
 - [Protobuf-compiler version 3.x](https://grpc.io/docs/protoc-installation/)
 - [Postgres 12 or above](https://www.postgresql.org/)
 - [Node 16 or above](https://nodejs.org/en)
@@ -118,3 +133,8 @@ Please see [CLI Reference](https://exograph.dev/docs/cli-reference/environment) 
 ## Logging, tracing, and telemetry
 
 The code is instrumented using the [tracing](https://crates.io/crates/tracing) framework and will output log events to the console by default. For more details, including setting logging levels and using OpenTelemetry, see the [Exograph telemetry documentation](https://exograph.dev/docs/production/telemetry).
+
+[X badge]: https://img.shields.io/twitter/follow/ExographDev
+[X link]: https://twitter.com/ExographDev
+[Discord badge]: https://img.shields.io/discord/1099019056624975993?logo=discord&style=social
+[Discord link]: https://discord.gg/eeWYx9NtMW
