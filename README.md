@@ -8,13 +8,6 @@
   </p>
 </a>
 
-<div align="center">
-
-[![X badge][]][X link]
-[![Discord badge][]][Discord link]
-
-</div>
-
 <p align="center">
   <a href="https://exograph.dev/docs/getting-started">Getting Started</a> •
   <a href="https://exograph.dev/docs">Documentation</a> •
@@ -133,8 +126,3 @@ Please see [CLI Reference](https://exograph.dev/docs/cli-reference/environment) 
 ## Logging, tracing, and telemetry
 
 The code is instrumented using the [tracing](https://crates.io/crates/tracing) framework and will output log events to the console by default. For more details, including setting logging levels and using OpenTelemetry, see the [Exograph telemetry documentation](https://exograph.dev/docs/production/telemetry).
-
-[X badge]: https://img.shields.io/twitter/follow/ExographDev
-[X link]: https://twitter.com/ExographDev
-[Discord badge]: https://img.shields.io/discord/1099019056624975993?logo=discord&style=social
-[Discord link]: https://discord.gg/eeWYx9NtMW
