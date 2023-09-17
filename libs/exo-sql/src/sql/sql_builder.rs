@@ -21,8 +21,8 @@ pub struct SQLBuilder {
     /// Indicates if column name should be rendered with the table name i.e. "table"."col"  instead
     /// of "col" (needed for INSERT/UPDATE statements)
     fully_qualify_column_names: bool,
-
-    pub cte_table_map: HashMap<String, String>,
+    // Map from CTE name to table name. This is used to render CTE names in lieu of table names for the `select` in a CTE.
+    cte_table_map: HashMap<String, String>,
 }
 
 impl SQLBuilder {
