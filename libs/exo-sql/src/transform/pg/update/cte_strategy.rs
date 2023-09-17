@@ -17,8 +17,12 @@ use super::update_strategy::UpdateStrategy;
 
 pub(crate) struct CteStrategy {}
 
-// Suitable for simpler case where we do not have any nested insert/update/delete. We can just return a simple
-// CTE like:
+// Suitable for a simpler case without any nested insert/update/delete. For nested cases, trying to
+// build a CTE will result in a query that is too complex for Postgres to handle and still can't
+// handle complex cases like recursively nested updates. In those cases, we fall back to the
+// `super::multi_statement_strategy::MultiStatementStrategy`.
+//
+// Here we just return a simple CTE like:
 // ```sql
 // WITH "concerts" AS (
 //    UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING *
