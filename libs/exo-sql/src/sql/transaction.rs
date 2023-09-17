@@ -94,6 +94,7 @@ pub enum TransactionStep<'a> {
     Concrete(ConcreteTransactionStep<'a>),
     Template(TemplateTransactionStep<'a>),
     Filter(TemplateFilterOperation),
+    Dynamic(DynamicTransactionStep<'a>),
 }
 
 impl<'a> TransactionStep<'a> {
@@ -133,6 +134,11 @@ impl<'a> TransactionStep<'a> {
                 let concrete = step.resolve(transaction_context, database);
                 concrete.execute(database, client).await
             }
+            Self::Dynamic(step) => {
+                step.resolve(transaction_context)
+                    .execute(database, client)
+                    .await
+            }
         }
     }
 }
@@ -167,7 +173,7 @@ impl<'a> ConcreteTransactionStep<'a> {
         &'a self,
         database: &Database,
         client: &mut impl GenericClient,
-    ) -> Result<Vec<Row>, DatabaseError> {
+    ) -> Result<TransactionStepResult, DatabaseError> {
         let mut sql_builder = SQLBuilder::new();
         self.operation.build(database, &mut sql_builder);
         let (stmt, params) = sql_builder.into_sql();
@@ -250,5 +256,22 @@ impl TemplateFilterOperation {
         };
 
         op
+    }
+}
+
+/// A step that is resolved at runtime (e.g. a select that depends on the result of a previous step)
+pub struct DynamicTransactionStep<'a> {
+    pub function: Box<dyn FnOnce(&TransactionContext) -> ConcreteTransactionStep<'a> + Send + 'a>,
+}
+
+impl<'a> DynamicTransactionStep<'a> {
+    pub fn resolve(self, transaction_context: &TransactionContext) -> ConcreteTransactionStep<'a> {
+        (self.function)(transaction_context)
+    }
+}
+
+impl std::fmt::Debug for DynamicTransactionStep<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DynamicTransactionStep").finish()
     }
 }

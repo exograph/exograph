@@ -7,98 +7,109 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use tracing::instrument;
+use crate::{
+    sql::cte::{CteExpression, WithQuery},
+    transform::transformer::PredicateTransformer,
+};
 
 use crate::{
-    asql::delete::AbstractDelete,
     sql::{
-        column::Column,
-        cte::{CteExpression, WithQuery},
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::transformer::{DeleteTransformer, PredicateTransformer, SelectTransformer},
-    Database,
+    transform::{
+        pg::{selection_level::SelectionLevel, Postgres},
+        transformer::SelectTransformer,
+    },
+    AbstractDelete, Column, Database,
 };
 
-use super::{selection_level::SelectionLevel, Postgres};
+use super::delete_strategy::DeleteStrategy;
 
-impl DeleteTransformer for Postgres {
-    #[instrument(
-        name = "DeleteTransformer::to_transaction_script for Postgres"
-        skip(self)
-        )]
-    fn to_transaction_script<'a>(
-        &self,
-        abstract_delete: &'a AbstractDelete,
-        database: &'a Database,
-    ) -> TransactionScript<'a> {
-        let delete = self.to_delete(abstract_delete, database);
-        let mut transaction_script = TransactionScript::default();
-        transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-            SQLOperation::WithQuery(delete),
-        )));
-        transaction_script
+pub(crate) struct CteStrategy {}
+
+impl DeleteStrategy for CteStrategy {
+    fn id(&self) -> &'static str {
+        "CteStrategy"
     }
 
-    #[instrument(name = "DeleteTransformer::to_delete for Postgres", skip(self))]
-    fn to_delete<'a>(
+    fn suitable(&self, _abstract_delete: &AbstractDelete, _database: &Database) -> bool {
+        true
+    }
+
+    fn update_transaction_script<'a>(
         &self,
         abstract_delete: &'a AbstractDelete,
         database: &'a Database,
-    ) -> WithQuery<'a> {
-        // The concrete predicate created here will be a direct predicate if the abstract predicate
-        // refers to the columns of the table being deleted. For example, to delete concerts based
-        // on its title, the predicate will be:
-        // ```sql
-        // WHERE "concerts"."title" = $1
-        // ```
-        // However, if the abstract predicate refers to columns of a related table, we need to
-        // generate a subselect. For example, to delete concerts based on the venue's name, the
-        // predicate will be:
-        // ```sql
-        // DELETE FROM "concerts" WHERE "concerts"."id" IN (
-        //    SELECT "concerts"."id" FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" where "venues"."name" = $1
-        // )
-        // ```
-        // We need a subselect because the target of a DELETE statement must be a physical table,
-        // not a join.
-        let predicate = self.to_predicate(
-            &abstract_delete.predicate,
-            &SelectionLevel::TopLevel,
-            false,
-            database,
-        );
+        transformer: &Postgres,
+        transaction_script: &mut TransactionScript<'a>,
+    ) {
+        let delete_query = to_delete(abstract_delete, database, transformer);
 
-        // The root delete operation returning all columns of the table being deleted. This will be
-        // later used as a CTE.
-        // ```sql
-        // DELETE FROM "concerts" WHERE <the predicate above> RETURNING *
-        // ```
-        let root_delete = SQLOperation::Delete(
-            database
-                .get_table(abstract_delete.table_id)
-                .delete(predicate, vec![Column::Star(None)]),
-        );
+        let _ = transaction_script.add_step(TransactionStep::Concrete(
+            ConcreteTransactionStep::new(SQLOperation::WithQuery(delete_query)),
+        ));
+    }
+}
 
-        // The select (often a json aggregation)
-        let select = self.to_select(&abstract_delete.selection, database);
+fn to_delete<'a>(
+    abstract_delete: &'a AbstractDelete,
+    database: &'a Database,
+    transformer: &Postgres,
+) -> WithQuery<'a> {
+    // The concrete predicate created here will be a direct predicate if the abstract predicate
+    // refers to the columns of the table being deleted. For example, to delete concerts based
+    // on its title, the predicate will be:
+    // ```sql
+    // WHERE "concerts"."title" = $1
+    // ```
+    // However, if the abstract predicate refers to columns of a related table, we need to
+    // generate a subselect. For example, to delete concerts based on the venue's name, the
+    // predicate will be:
+    // ```sql
+    // DELETE FROM "concerts" WHERE "concerts"."id" IN (
+    //    SELECT "concerts"."id" FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" where "venues"."name" = $1
+    // )
+    // ```
+    // We need a subselect because the target of a DELETE statement must be a physical table,
+    // not a join.
+    let predicate = transformer.to_predicate(
+        &abstract_delete.predicate,
+        &SelectionLevel::TopLevel,
+        false,
+        database,
+    );
 
-        // A WITH query that uses the `root_delete` as a CTE and then selects from it.
-        // `WITH "concerts" AS <the delete above> <the select above>`. For example:
-        //
-        // ```sql
-        // WITH "concerts" AS (
-        //    DELETE FROM WHERE <the predicate above> RETURNING *
-        // ) SELECT COALESCE(...)::text AS "concerts"
-        // ```
-        WithQuery {
-            expressions: vec![CteExpression {
-                name: database.get_table(abstract_delete.table_id).name.clone(),
-                operation: root_delete,
-            }],
-            select,
-        }
+    // The root delete operation returning all columns of the table being deleted. This will be
+    // later used as a CTE.
+    // ```sql
+    // DELETE FROM "concerts" WHERE <the predicate above> RETURNING *
+    // ```
+    let root_delete = SQLOperation::Delete(
+        database
+            .get_table(abstract_delete.table_id)
+            .delete(predicate, vec![Column::Star(None)]),
+    );
+
+    // The select (often a json aggregation)
+    let select = transformer.to_select(&abstract_delete.selection, database);
+
+    // A WITH query that uses the `root_delete` as a CTE and then selects from it.
+    // `WITH "concerts" AS <the delete above> <the select above>`. For example:
+    //
+    // ```sql
+    // WITH "concerts" AS (
+    //    DELETE FROM WHERE <the predicate above> RETURNING *
+    // ) SELECT COALESCE(...)::text AS "concerts"
+    // ```
+    let table_name = database.get_table(abstract_delete.table_id).name.clone();
+    WithQuery {
+        expressions: vec![CteExpression {
+            name: table_name,
+            table_name: None,
+            operation: root_delete,
+        }],
+        select,
     }
 }
 
@@ -138,7 +149,7 @@ mod tests {
                     predicate: Predicate::True,
                 };
 
-                let delete = Postgres {}.to_delete(&adelete, &database);
+                let delete = to_delete(&adelete, &database, &Postgres {});
                 assert_binding!(
                     delete.to_sql(&database),
                     r#"WITH "concerts" AS (DELETE FROM "concerts" RETURNING *) SELECT "concerts"."id" FROM "concerts""#
@@ -178,7 +189,7 @@ mod tests {
                     predicate,
                 };
 
-                let delete = Postgres {}.to_delete(&adelete, &database);
+                let delete = to_delete(&adelete, &database, &Postgres {});
 
                 assert_binding!(
                     delete.to_sql(&database),
@@ -224,7 +235,7 @@ mod tests {
                     predicate,
                 };
 
-                let delete = Postgres {}.to_delete(&adelete, &database);
+                let delete = to_delete(&adelete, &database, &Postgres {});
 
                 assert_binding!(
                     delete.to_sql(&database),

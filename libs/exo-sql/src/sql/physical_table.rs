@@ -11,7 +11,7 @@ use crate::Database;
 
 use super::{
     column::Column, delete::Delete, insert::Insert, physical_column::PhysicalColumn,
-    predicate::ConcretePredicate, update::Update, ExpressionBuilder,
+    predicate::ConcretePredicate, update::Update, ExpressionBuilder, SQLBuilder,
 };
 
 use maybe_owned::MaybeOwned;
@@ -104,11 +104,7 @@ impl PhysicalTable {
 
 impl ExpressionBuilder for PhysicalTable {
     /// Build a table reference for the `<table>`.
-    fn build(&self, _database: &Database, builder: &mut crate::sql::SQLBuilder) {
-        if self.schema != "public" {
-            builder.push_identifier(&self.schema);
-            builder.push('.');
-        }
-        builder.push_identifier(&self.name);
+    fn build(&self, _database: &Database, builder: &mut SQLBuilder) {
+        builder.push_table(&self.name, &self.schema);
     }
 }

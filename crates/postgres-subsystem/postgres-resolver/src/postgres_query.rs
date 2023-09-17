@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use super::predicate_mapper::compute_predicate;
 use super::{
     postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLOperationKind,
@@ -30,7 +31,6 @@ use futures::StreamExt;
 use postgres_model::{
     aggregate::AggregateField,
     order::OrderByParameter,
-    predicate::PredicateParameter,
     query::{CollectionQuery, CollectionQueryParameters, PkQuery},
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     subsystem::PostgresSubsystem,
@@ -45,13 +45,21 @@ impl OperationSelectionResolver for PkQuery {
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
-        compute_select(
+        let predicate = compute_predicate(
             &self.parameters.predicate_param,
+            &field.arguments,
+            subsystem,
+            request_context,
+        )
+        .await?;
+
+        compute_select(
+            predicate,
             None,
             None,
             None,
             &self.return_type,
-            field,
+            &field.subfields,
             subsystem,
             request_context,
         )
@@ -74,13 +82,15 @@ impl OperationSelectionResolver for CollectionQuery {
             offset_param,
         } = &self.parameters;
 
+        let arguments = &field.arguments;
+
         compute_select(
-            predicate_param,
-            compute_order_by(order_by_param, &field.arguments, subsystem, request_context).await?,
-            extract_and_map(limit_param, &field.arguments, subsystem, request_context).await?,
-            extract_and_map(offset_param, &field.arguments, subsystem, request_context).await?,
+            compute_predicate(predicate_param, arguments, subsystem, request_context).await?,
+            compute_order_by(order_by_param, arguments, subsystem, request_context).await?,
+            extract_and_map(limit_param, arguments, subsystem, request_context).await?,
+            extract_and_map(offset_param, arguments, subsystem, request_context).await?,
             &self.return_type,
-            field,
+            &field.subfields,
             subsystem,
             request_context,
         )
@@ -89,13 +99,13 @@ impl OperationSelectionResolver for CollectionQuery {
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn compute_select<'content>(
-    predicate_param: &'content PredicateParameter,
+pub(super) async fn compute_select<'content>(
+    predicate: AbstractPredicate,
     order_by: Option<AbstractOrderBy>,
     limit: Option<Limit>,
     offset: Option<Offset>,
     return_type: &'content OperationReturnType<EntityType>,
-    field: &'content ValidatedField,
+    selection: &'content [ValidatedField],
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect, PostgresExecutionError> {
@@ -108,24 +118,12 @@ async fn compute_select<'content>(
     )
     .await?;
 
-    let query_predicate = super::predicate_mapper::compute_predicate(
-        predicate_param,
-        &field.arguments,
-        subsystem,
-        request_context,
-    )
-    .await?;
-    let predicate = AbstractPredicate::and(query_predicate, access_predicate);
+    let predicate = AbstractPredicate::and(predicate, access_predicate);
 
     let return_postgres_type = return_type.typ(&subsystem.entity_types);
 
-    let content_object = content_select(
-        return_postgres_type,
-        &field.subfields,
-        subsystem,
-        request_context,
-    )
-    .await?;
+    let content_object =
+        content_select(return_postgres_type, selection, subsystem, request_context).await?;
 
     let selection_cardinality = match return_type {
         OperationReturnType::List(_) => SelectionCardinality::Many,
