@@ -7,51 +7,58 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-//! Transform an abstract update into a transaction script.
-//!
-//! This allows us to execute GraphQL mutations like this:
-//!
-//! ```graphql
-//! mutation {
-//!   updateConcert(id: 4, data: {
-//!     title: "new-title",
-//!     concertArtists: {
-//!       create: [{artist: {id: 30}, rank: 2, role: "main"}],
-//!       update: [{id: 100, artist: {id: 10}, rank: 2}, {id: 101, artist: {id: 10}, role: "accompanying"}],
-//!       delete: [{id: 110}]
-//!     }
-//!   }) {
-//!     id
-//!   }
-//! }
-//! ```
-//!
 use maybe_owned::MaybeOwned;
-use tracing::instrument;
 
 use crate::{
-    asql::update::{
-        AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
-    },
     sql::{
-        column::{Column, ProxyColumn},
-        cte::{CteExpression, WithQuery},
+        column::ArrayParamWrapper,
         delete::TemplateDelete,
-        insert::TemplateInsert,
-        sql_operation::{SQLOperation, TemplateSQLOperation},
+        select::Select,
+        sql_operation::TemplateSQLOperation,
         transaction::{
-            ConcreteTransactionStep, TemplateFilterOperation, TemplateTransactionStep,
-            TransactionScript, TransactionStep, TransactionStepId,
+            DynamicTransactionStep, TemplateFilterOperation, TemplateTransactionStep,
+            TransactionContext, TransactionStepId,
         },
         update::TemplateUpdate,
     },
-    transform::transformer::{PredicateTransformer, SelectTransformer, UpdateTransformer},
-    ColumnId, Database, NestedAbstractInsertSet, PhysicalColumn,
+    transform::transformer::{InsertTransformer, PredicateTransformer},
+    ColumnId, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
+    NestedAbstractUpdate, PhysicalColumn, Predicate, SQLParamContainer,
 };
 
-use super::{selection_level::SelectionLevel, Postgres};
+use crate::{
+    sql::{
+        sql_operation::SQLOperation,
+        transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
+    },
+    transform::{
+        pg::{selection_level::SelectionLevel, Postgres},
+        transformer::SelectTransformer,
+    },
+    AbstractUpdate, Column, Database,
+};
 
-impl UpdateTransformer for Postgres {
+use super::update_strategy::UpdateStrategy;
+
+pub(crate) struct MultiStatementStrategy {}
+
+/// Transform an abstract update into a transaction script.
+/// Created transaction script looks like (for the example above):
+/// ```sql
+/// UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING "concerts"."id"
+/// UPDATE "concert_artists" SET "artist_id" = $1, "rank" = $2, "concert_id" = $3 WHERE "concert_artists"."id" = $4
+/// DELETE FROM "concert_artists" WHERE "concert_artists"."id" = $1
+/// SELECT json_build_object('id', "concerts"."id")::text FROM "concerts" WHERE "concerts"."id" = $1
+/// ```
+impl UpdateStrategy for MultiStatementStrategy {
+    fn id(&self) -> &'static str {
+        "MultiStatementStrategy"
+    }
+
+    fn suitable(&self, _abstract_update: &AbstractUpdate, _database: &Database) -> bool {
+        true
+    }
+
     /// Transform an abstract update into a transaction script.
     /// Created transaction script looks like (for the example above):
     /// ```sql
@@ -60,48 +67,34 @@ impl UpdateTransformer for Postgres {
     /// DELETE FROM "concert_artists" WHERE "concert_artists"."id" = $1
     /// SELECT json_build_object('id', "concerts"."id")::text FROM "concerts" WHERE "concerts"."id" = $1
     /// ```
-    #[instrument(
-        name = "UpdateTransformer::to_transaction_script for Postgres"
-        skip(self)
-        )]
-    fn to_transaction_script<'a>(
+    fn update_transaction_script<'a>(
         &self,
         abstract_update: &'a AbstractUpdate,
         database: &'a Database,
-    ) -> TransactionScript<'a> {
+        transformer: &Postgres,
+        transaction_script: &mut TransactionScript<'a>,
+    ) {
         let column_id_values: Vec<(ColumnId, MaybeOwned<'a, Column>)> = abstract_update
             .column_values
             .iter()
             .map(|(c, v)| (*c, v.into()))
             .collect();
 
-        let predicate = self.to_predicate(
+        let predicate = transformer.to_predicate(
             &abstract_update.predicate,
             &SelectionLevel::TopLevel,
             false,
             database,
         );
 
-        let select = self.to_select(&abstract_update.selection, database);
-
-        let has_nested_ops = !abstract_update.nested_updates.is_empty()
-            || !abstract_update.nested_inserts.is_empty()
-            || !abstract_update.nested_deletes.is_empty();
-
-        // If there is no nested update, select all the columns, so that the select statement in the
-        // CTE will have all those column (and not have to specify the WHERE clause once again).
-        // If there are nested updates, select only the primary key column, so that we can use that
+        // Select only the primary key column, so that we can use that
         // as the proxy column in the nested updates added to the transaction script.
-        let return_col = if has_nested_ops {
-            Column::physical(
-                database
-                    .get_pk_column_id(abstract_update.table_id)
-                    .expect("No primary key column"),
-                None,
-            )
-        } else {
-            Column::Star(None)
-        };
+        let return_col = Column::physical(
+            database
+                .get_pk_column_id(abstract_update.table_id)
+                .expect("No primary key column"),
+            None,
+        );
 
         let table = database.get_table(abstract_update.table_id);
         let column_values = column_id_values
@@ -114,93 +107,102 @@ impl UpdateTransformer for Postgres {
             vec![return_col.into()],
         ));
 
-        let mut transaction_script = TransactionScript::default();
+        let root_step_id = transaction_script.add_step(TransactionStep::Concrete(
+            ConcreteTransactionStep::new(root_update),
+        ));
 
-        if has_nested_ops {
-            let root_step_id = transaction_script.add_step(TransactionStep::Concrete(
-                ConcreteTransactionStep::new(root_update),
-            ));
+        abstract_update
+            .nested_updates
+            .iter()
+            .for_each(|nested_update| {
+                // Create a template update operation and bind it to the root step
+                let update_op = TemplateTransactionStep {
+                    operation: update_op(nested_update, transformer, database),
+                    prev_step_id: root_step_id,
+                };
 
-            abstract_update
-                .nested_updates
-                .iter()
-                .for_each(|nested_update| {
-                    // Create a template update operation and bind it to the root step
-                    let update_op = TemplateTransactionStep {
-                        operation: update_op(nested_update, self, database),
+                let _ = transaction_script.add_step(TransactionStep::Template(update_op));
+            });
+
+        abstract_update.nested_inserts.iter().for_each(
+            |NestedAbstractInsertSet {
+                 ops,
+                 filter_predicate,
+             }| {
+                let filter_step_predicate = transformer.to_predicate(
+                    filter_predicate,
+                    &SelectionLevel::TopLevel,
+                    false,
+                    database,
+                );
+
+                let filter_step_id =
+                    transaction_script.add_step(TransactionStep::Filter(TemplateFilterOperation {
+                        table_id: abstract_update.table_id,
                         prev_step_id: root_step_id,
-                    };
+                        predicate: filter_step_predicate,
+                    }));
 
-                    let _ = transaction_script.add_step(TransactionStep::Template(update_op));
-                });
-
-            abstract_update.nested_inserts.iter().for_each(
-                |NestedAbstractInsertSet {
-                     ops,
-                     filter_predicate,
-                 }| {
-                    let filter_step_predicate = self.to_predicate(
-                        filter_predicate,
-                        &SelectionLevel::TopLevel,
-                        false,
+                for nested_insert in ops {
+                    add_insert_steps(
+                        nested_insert,
+                        filter_step_id,
                         database,
+                        transformer,
+                        transaction_script,
                     );
+                }
+            },
+        );
 
-                    let filter_step_id = transaction_script.add_step(TransactionStep::Filter(
-                        TemplateFilterOperation {
-                            table_id: abstract_update.table_id,
-                            prev_step_id: root_step_id,
-                            predicate: filter_step_predicate,
-                        },
-                    ));
+        abstract_update
+            .nested_deletes
+            .iter()
+            .for_each(|nested_delete| {
+                let delete_op = TemplateTransactionStep {
+                    operation: delete_op(nested_delete, transformer, database),
+                    prev_step_id: root_step_id,
+                };
 
-                    for nested_insert in ops {
-                        let insert_op = TemplateTransactionStep {
-                            operation: insert_op(nested_insert, filter_step_id, database),
-                            prev_step_id: filter_step_id,
-                        };
+                let _ = transaction_script.add_step(TransactionStep::Template(delete_op));
+            });
 
-                        let _ = transaction_script.add_step(TransactionStep::Template(insert_op));
-                    }
-                },
+        let select = transformer.to_select(&abstract_update.selection, database);
+
+        // Take the root step and use ids returned by it as the input to the select
+        // statement to form a predicate `pk IN (update_pk1, update_pk2, ...)`
+        let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
+            let update_count = transaction_context.row_count(root_step_id);
+            let update_ids = SQLParamContainer::new(
+                (0..update_count)
+                    .map(|i| transaction_context.resolve_value(root_step_id, i, 0))
+                    .collect::<Vec<_>>(),
             );
 
-            abstract_update
-                .nested_deletes
-                .iter()
-                .for_each(|nested_delete| {
-                    let delete_op = TemplateTransactionStep {
-                        operation: delete_op(nested_delete, self, database),
-                        prev_step_id: root_step_id,
-                    };
+            let predicate = Predicate::and(
+                Predicate::Eq(
+                    Column::physical(
+                        database
+                            .get_pk_column_id(abstract_update.table_id)
+                            .expect("No primary key column"),
+                        None,
+                    ),
+                    Column::ArrayParam {
+                        param: update_ids,
+                        wrapper: ArrayParamWrapper::Any,
+                    },
+                ),
+                select.predicate,
+            );
+            ConcreteTransactionStep::new(SQLOperation::Select(Select {
+                predicate,
+                ..select
+            }))
+        });
 
-                    let _ = transaction_script.add_step(TransactionStep::Template(delete_op));
-                });
-
-            let _ = transaction_script.add_step(TransactionStep::Concrete(
-                ConcreteTransactionStep::new(SQLOperation::Select(select)),
-            ));
-        } else {
-            // Simpler case where we do not have any nested insert/update/delete. We can just return a simple
-            // CTE like:
-            // ```sql
-            // WITH "concerts" AS (
-            //    UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING *
-            // )
-            // SELECT json_build_object('id', "concerts"."id")::text FROM "concerts" WHERE "concerts"."id" = $3
-            // ```
-            transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::WithQuery(WithQuery {
-                    expressions: vec![CteExpression {
-                        name: table.name.clone(),
-                        operation: root_update,
-                    }],
-                    select,
-                }),
-            )));
-        }
-
-        transaction_script
+        transaction_script.add_step(TransactionStep::Dynamic(DynamicTransactionStep {
+            function: select_transformation,
+        }));
     }
 }
 
@@ -230,51 +232,24 @@ fn update_op<'a>(
     })
 }
 
-fn insert_op<'a>(
+fn add_insert_steps<'a>(
     nested_insert: &'a NestedAbstractInsert,
     parent_step_id: TransactionStepId,
     database: &'a Database,
-) -> TemplateSQLOperation<'a> {
-    let rows = &nested_insert.insert.rows;
+    transformer: &Postgres,
+    transaction_script: &mut TransactionScript<'a>,
+) {
+    let NestedAbstractInsert {
+        insert,
+        relation_column_id,
+    } = nested_insert;
 
-    // TODO: Deal with _nested_elems (i.e. a recursive use of nested insert)
-    let (self_elems, _nested_elems): (Vec<_>, Vec<_>) = rows
-        .iter()
-        .map(|row| row.partition_self_and_nested())
-        .unzip();
-
-    let (mut column_id_names, column_values_seq) = super::insert_transformer::align(self_elems);
-    column_id_names.push(nested_insert.relation_column_id);
-
-    let column_values_seq: Vec<_> = column_values_seq
-        .into_iter()
-        .map(|column_values| {
-            let mut column_values: Vec<_> = column_values
-                .into_iter()
-                .map(ProxyColumn::Concrete)
-                .collect();
-            column_values.push(ProxyColumn::Template {
-                // The column index is always 0 because we want to get the only column in the row
-                // such as `UPDATE "concerts" SET "title" = $1 WHERE "concerts"."id" = $2 RETURNING
-                // "concerts"."id"`
-                col_index: 0,
-                step_id: parent_step_id,
-            });
-            column_values
-        })
-        .collect();
-
-    let columns = column_id_names
-        .iter()
-        .map(|col_id| col_id.get_column(database))
-        .collect();
-
-    TemplateSQLOperation::Insert(TemplateInsert {
-        table: database.get_table(nested_insert.insert.table_id),
-        columns,
-        column_values_seq,
-        returning: vec![],
-    })
+    transformer.update_transaction_script(
+        insert,
+        Some((parent_step_id, *relation_column_id)),
+        database,
+        transaction_script,
+    );
 }
 
 fn delete_op<'a>(
@@ -308,7 +283,7 @@ mod tests {
             update::NestedAbstractUpdate,
         },
         sql::{column::Column, predicate::Predicate, SQLParamContainer},
-        transform::test_util::TestSetup,
+        transform::{test_util::TestSetup, transformer::UpdateTransformer},
         PhysicalColumnPath,
     };
 

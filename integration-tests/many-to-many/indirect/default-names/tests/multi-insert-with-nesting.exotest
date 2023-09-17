@@ -1,0 +1,90 @@
+operation: |
+  mutation {
+    createConcerts(data: [
+      { 
+        title: "CA", 
+        concertArtists: [
+            {artist: {id: 1}, rank: 1, role: "main"},
+            {artist: {id: 2}, rank: 2, role: "main"}, 
+            {artist: {id: 3}, rank: 3, role: "accompanying"}
+        ]
+      },
+      { 
+        title: "CB", 
+        concertArtists: [
+            {artist: {id: 4}, rank: 2, role: "accompanying"},
+            {artist: {id: 3}, rank: 1, role: "main"}
+        ]
+      }
+    ]) {
+           id
+           title
+            concertArtists {
+              artist {
+                id
+                name
+              }
+              rank
+              role
+            }
+        }     
+  }
+response: |
+  {
+    "data": {
+      "createConcerts": [
+        {
+          "id": 3,
+          "title": "CA",
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1"
+              },
+              "rank": 1,
+              "role": "main"
+            },
+            {
+              "artist": {
+                "id": 2,
+                "name": "A2"
+              },
+              "rank": 2,
+              "role": "main"
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A3"
+              },
+              "rank": 3,
+              "role": "accompanying"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "CB",
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 4,
+                "name": "A4"
+              },
+              "rank": 2,
+              "role": "accompanying"
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A3"
+              },
+              "rank": 1,
+              "role": "main"
+            }
+          ]
+        }
+      ]
+    }
+  }

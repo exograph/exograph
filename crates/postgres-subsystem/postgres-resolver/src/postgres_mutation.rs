@@ -13,10 +13,8 @@ use super::{
     util::{check_access, find_arg, return_type_info},
 };
 use crate::{
-    create_data_param_mapper::InsertOperation,
-    operation_resolver::{OperationResolver, OperationSelectionResolver},
-    predicate_mapper::compute_predicate,
-    sql_mapper::SQLMapper,
+    create_data_param_mapper::InsertOperation, operation_resolver::OperationResolver,
+    postgres_query::compute_select, predicate_mapper::compute_predicate, sql_mapper::SQLMapper,
     update_data_param_mapper::UpdateOperation,
 };
 use async_trait::async_trait;
@@ -25,7 +23,8 @@ use core_plugin_interface::core_resolver::{
     context::RequestContext, validation::field::ValidatedField,
 };
 use exo_sql::{
-    AbstractDelete, AbstractInsert, AbstractOperation, AbstractSelect, AbstractUpdate, Predicate,
+    AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
+    AbstractUpdate, Predicate,
 };
 use postgres_model::{
     mutation::{DataParameter, PostgresMutation, PostgresMutationParameters},
@@ -44,15 +43,20 @@ impl OperationResolver for PostgresMutation {
     ) -> Result<AbstractOperation, PostgresExecutionError> {
         let return_type = &self.return_type;
 
-        let abstract_select = {
-            let (_, pk_query, collection_query) = return_type_info(return_type, subsystem);
-            match return_type {
-                OperationReturnType::List(_) => {
-                    collection_query.resolve_select(field, request_context, subsystem)
-                }
-                _ => pk_query.resolve_select(field, request_context, subsystem),
-            }
-        }
+        // Compute a select without any **user-specified** predicate, order-by etc. The surrounding
+        // mutation will add an appropriate predicate (for example, an update mutation will add a
+        // predicate to restrict the select to only ids that had been updated). We do, however, add
+        // access-control predicates in `compute_select`.
+        let abstract_select = compute_select(
+            AbstractPredicate::True,
+            None,
+            None,
+            None,
+            &self.return_type,
+            &field.subfields,
+            subsystem,
+            request_context,
+        )
         .await?;
 
         Ok(match &self.parameters {
