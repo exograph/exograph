@@ -60,7 +60,7 @@ impl PhysicalColumn {
 impl ExpressionBuilder for PhysicalColumn {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         let table = database.get_table(self.table_id);
-        builder.push_table_prefix(&table.name, &table.schema);
+        builder.push_table_prefix(&table.name, table.schema.as_ref());
         builder.push_identifier(&self.name)
     }
 }

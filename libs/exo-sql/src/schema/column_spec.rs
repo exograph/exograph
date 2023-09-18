@@ -56,7 +56,7 @@ pub enum ColumnTypeSpec {
     },
     ColumnReference {
         foreign_table_name: String,
-        foreign_table_schema_name: String,
+        foreign_table_schema_name: Option<String>,
         foreign_pk_column_name: String,
         foreign_pk_type: Box<ColumnTypeSpec>,
     },
@@ -713,18 +713,17 @@ impl ColumnTypeSpec {
             } => {
                 let mut sql_statement =
                     foreign_pk_type.to_sql(table_spec, column_name, is_auto_increment);
-                let foreign_table_str = if foreign_table_schema_name == "public" {
-                    format!("\"{}\"", foreign_table_name)
-                } else {
-                    format!(
-                        "\"{}\".\"{}\"",
-                        foreign_table_schema_name, foreign_table_name
-                    )
+
+                let foreign_table_str = match foreign_table_schema_name {
+                    Some(schema_name) => format!("\"{}\".\"{}\"", schema_name, foreign_table_name),
+                    None => format!("\"{}\"", foreign_table_name),
                 };
-                let constraint_name = if table_spec.schema == "public" {
-                    format!("{}_{column_name}_fk", table_spec.name)
-                } else {
-                    format!("{}_{}_{column_name}_fk", table_spec.schema, table_spec.name)
+
+                let constraint_name = match table_spec.schema {
+                    Some(ref schema_name) => {
+                        format!("{}_{}_{}_fk", schema_name, table_spec.name, column_name)
+                    }
+                    None => format!("{}_{}_fk", table_spec.name, column_name),
                 };
 
                 let foreign_constraint = format!(

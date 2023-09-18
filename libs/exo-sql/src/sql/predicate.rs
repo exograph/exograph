@@ -296,7 +296,7 @@ mod tests {
     fn eq_predicate() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             "people",
-            "public",
+            None,
             vec![pk_column("id"), int_column("age")],
         )])
         .to_database();
@@ -316,7 +316,7 @@ mod tests {
     fn and_predicate() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             "people",
-            "public",
+            None,
             vec![pk_column("id"), string_column("name"), int_column("age")],
         )])
         .to_database();
@@ -348,7 +348,7 @@ mod tests {
     fn string_predicates() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             "videos",
-            "public",
+            None,
             vec![pk_column("id"), string_column("title")],
         )])
         .to_database();
@@ -411,7 +411,7 @@ mod tests {
     fn json_predicates() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             "card",
-            "public",
+            None,
             vec![pk_column("id"), json_column("data")],
         )])
         .to_database();

@@ -17,13 +17,19 @@ use super::{
 use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, PartialEq)]
+pub struct PhysicalTableName {
+    pub name: String,
+    pub schema: Option<String>,
+}
+
 /// A physical table in the database such as "concerts" or "users".
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct PhysicalTable {
     /// The name of the table.
     pub name: String,
     /// The schema of the table.
-    pub schema: String,
+    pub schema: Option<String>,
     /// The columns of the table.
     // concerts.venue_id: (venues.id, "int", "venue_id_table")
     pub columns: Vec<PhysicalColumn>,
@@ -100,11 +106,18 @@ impl PhysicalTable {
     pub(crate) fn get_pk_column_index(&self) -> Option<usize> {
         self.columns.iter().position(|c| c.is_pk)
     }
+
+    pub(crate) fn physical_name(&self) -> PhysicalTableName {
+        PhysicalTableName {
+            name: self.name.to_owned(),
+            schema: self.schema.to_owned(),
+        }
+    }
 }
 
 impl ExpressionBuilder for PhysicalTable {
     /// Build a table reference for the `<table>`.
     fn build(&self, _database: &Database, builder: &mut SQLBuilder) {
-        builder.push_table(&self.name, &self.schema);
+        builder.push_table(&self.name, self.schema.as_ref());
     }
 }

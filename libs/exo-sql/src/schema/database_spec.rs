@@ -32,7 +32,7 @@ impl DatabaseSpec {
     pub fn required_schemas(&self) -> HashSet<String> {
         self.tables
             .iter()
-            .flat_map(|table| (table.schema != "public").then(|| table.schema.clone()))
+            .flat_map(|table| table.schema.clone())
             .collect()
     }
 
@@ -175,7 +175,12 @@ impl DatabaseSpec {
             .await
             .map_err(DatabaseError::Delegate)?
         {
-            let schema_name: String = schema_row.get("table_schema");
+            let raw_schema_name: String = schema_row.get("table_schema");
+            let schema_name = if raw_schema_name == "public" {
+                None
+            } else {
+                Some(raw_schema_name)
+            };
 
             for table_row in client
                 .query(TABLE_NAMES_QUERY, &[])
@@ -183,7 +188,8 @@ impl DatabaseSpec {
                 .map_err(DatabaseError::Delegate)?
             {
                 let table_name: String = table_row.get("table_name");
-                let mut table = TableSpec::from_live_db(client, &table_name, &schema_name).await?;
+                let mut table =
+                    TableSpec::from_live_db(client, table_name, schema_name.clone()).await?;
                 issues.append(&mut table.issues);
                 tables.push(table.value);
             }

@@ -19,7 +19,7 @@ pub fn pk_column(name: impl Into<String>) -> ColumnSpec {
 pub fn pk_reference_column(
     name: impl Into<String>,
     foreign_table_name: impl Into<String>,
-    foreign_table_schema_name: impl Into<String>,
+    foreign_table_schema_name: impl Into<Option<String>>,
 ) -> ColumnSpec {
     ColumnSpec {
         name: name.into(),

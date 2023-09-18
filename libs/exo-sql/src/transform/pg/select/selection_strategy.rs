@@ -8,7 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    sql::{predicate::ConcretePredicate, select::Select, table::Table},
+    sql::{
+        physical_table::PhysicalTableName, predicate::ConcretePredicate, select::Select,
+        table::Table,
+    },
     transform::{
         join_util,
         pg::{selection_level::SelectionLevel, Postgres},
@@ -73,7 +76,7 @@ pub(super) fn nest_subselect(
     inner_select: Select,
     selection: &Selection,
     selection_level: &SelectionLevel,
-    alias: &str,
+    alias: (String, PhysicalTableName),
     transformer: &Postgres,
     database: &Database,
 ) -> Select {
@@ -82,7 +85,7 @@ pub(super) fn nest_subselect(
     Select {
         table: Table::SubSelect {
             select: Box::new(inner_select),
-            alias: Some(alias.to_owned()),
+            alias: Some(alias),
         },
         columns: selection_aggregate,
         predicate: ConcretePredicate::True,

@@ -65,14 +65,18 @@ impl SQLBuilder {
     }
 
     /// Push a table name. If the table name is a CTE name, push the CTE name instead.
-    pub fn push_table<T1: AsRef<str>, T2: AsRef<str>>(&mut self, table_name: T1, schema_name: T2) {
+    pub fn push_table<T1: AsRef<str>, T2: AsRef<str>>(
+        &mut self,
+        table_name: T1,
+        schema_name: Option<T2>,
+    ) {
         let table_name = table_name.as_ref();
         match self.cte_table_map.get(table_name).cloned() {
             Some(cte_name) => {
                 self.push_identifier(cte_name);
             }
             None => {
-                if schema_name.as_ref() != "public" {
+                if let Some(schema_name) = schema_name {
                     self.push_identifier(schema_name);
                     self.push('.');
                 }
@@ -86,7 +90,7 @@ impl SQLBuilder {
     pub fn push_table_prefix<T1: AsRef<str>, T2: AsRef<str>>(
         &mut self,
         table_name: T1,
-        schema_name: T2,
+        schema_name: Option<T2>,
     ) {
         if self.fully_qualify_column_names {
             self.push_table(table_name, schema_name);

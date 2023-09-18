@@ -120,7 +120,7 @@ values:
             unique_constraints: []
             default_value: ~
         table_name: custom_concerts
-        schema_name: public
+        schema_name: ~
         access:
           default: ~
           query: ~
@@ -195,7 +195,7 @@ values:
             unique_constraints: []
             default_value: ~
         table_name: venues
-        schema_name: public
+        schema_name: ~
         access:
           default: ~
           query: ~

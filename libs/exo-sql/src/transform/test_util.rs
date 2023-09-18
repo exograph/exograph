@@ -45,39 +45,35 @@ impl TestSetup {
         let database = DatabaseSpec::new(vec![
             TableSpec::new(
                 "concerts",
-                "public",
+                None,
                 vec![
                     pk_column("id"),
-                    pk_reference_column("venue_id", "venues", "public"),
+                    pk_reference_column("venue_id", "venues", None),
                     string_column("name"),
                 ],
             ),
-            TableSpec::new(
-                "venues",
-                "public",
-                vec![pk_column("id"), string_column("name")],
-            ),
+            TableSpec::new("venues", None, vec![pk_column("id"), string_column("name")]),
             TableSpec::new(
                 "concert_artists",
-                "public",
+                None,
                 vec![
                     pk_column("id"),
-                    pk_reference_column("concert_id", "concerts", "public"),
-                    pk_reference_column("artist_id", "artists", "public"),
+                    pk_reference_column("concert_id", "concerts", None),
+                    pk_reference_column("artist_id", "artists", None),
                 ],
             ),
             TableSpec::new(
                 "artists",
-                "public",
+                None,
                 vec![
                     pk_column("id"),
                     string_column("name"),
-                    pk_reference_column("address_id", "addresses", "public"),
+                    pk_reference_column("address_id", "addresses", None),
                 ],
             ),
             TableSpec::new(
                 "addresses",
-                "public",
+                None,
                 vec![pk_column("id"), string_column("city")],
             ),
         ])

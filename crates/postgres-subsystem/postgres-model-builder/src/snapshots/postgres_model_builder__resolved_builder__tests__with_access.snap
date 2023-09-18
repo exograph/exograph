@@ -73,7 +73,7 @@ values:
             unique_constraints: []
             default_value: ~
         table_name: concerts
-        schema_name: public
+        schema_name: ~
         access:
           default:
             LogicalOp:
@@ -139,7 +139,7 @@ values:
             unique_constraints: []
             default_value: ~
         table_name: venues
-        schema_name: public
+        schema_name: ~
         access:
           default:
             BooleanLiteral:
@@ -177,7 +177,7 @@ values:
             unique_constraints: []
             default_value: ~
         table_name: artists
-        schema_name: public
+        schema_name: ~
         access:
           default:
             BooleanLiteral:

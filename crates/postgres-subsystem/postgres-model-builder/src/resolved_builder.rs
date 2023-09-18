@@ -87,7 +87,7 @@ pub struct ResolvedCompositeType {
     pub plural_name: String,
     pub fields: Vec<ResolvedField>,
     pub table_name: String,
-    pub schema_name: String,
+    pub schema_name: Option<String>,
     pub access: ResolvedAccess,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -934,7 +934,7 @@ fn field_cardinality(field_type: &AstFieldType<Typed>) -> Cardinality {
 
 struct TableInfo {
     name: String,
-    schema: String,
+    schema: Option<String>,
 }
 
 /// Given parameters for `@table(name=<table-name>, schema=<schema-name>)` extract table and schema name.
@@ -951,26 +951,20 @@ fn extract_table_annotation(
     type_name: &str,
     plural_annotation_value: Option<String>,
 ) -> TableInfo {
-    const DEFAULT_SCHEMA: &str = "public";
-
     let default_table_name = || type_name.table_name(plural_annotation_value.clone());
 
     match annotation_params {
         Some(p) => match p {
             AstAnnotationParams::Single(value, _) => TableInfo {
                 name: value.as_string(),
-                schema: DEFAULT_SCHEMA.to_string(),
+                schema: None,
             },
             AstAnnotationParams::Map(m, _) => {
                 let name = m
                     .get("name")
                     .map(|value| value.as_string())
                     .unwrap_or_else(default_table_name);
-                let schema = m
-                    .get("schema")
-                    .cloned()
-                    .map(|value| value.as_string())
-                    .unwrap_or(DEFAULT_SCHEMA.to_string());
+                let schema = m.get("schema").cloned().map(|value| value.as_string());
 
                 TableInfo { name, schema }
             }
@@ -980,7 +974,7 @@ fn extract_table_annotation(
             let name = default_table_name();
             TableInfo {
                 name: name.clone(),
-                schema: DEFAULT_SCHEMA.to_string(),
+                schema: None,
             }
         }
     }

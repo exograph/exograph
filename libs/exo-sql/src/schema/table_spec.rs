@@ -22,14 +22,14 @@ use super::issue::WithIssues;
 #[derive(Debug)]
 pub struct TableSpec {
     pub name: String,
-    pub schema: String,
+    pub schema: Option<String>,
     pub columns: Vec<ColumnSpec>,
 }
 
 impl TableSpec {
     pub fn new(
         name: impl Into<String>,
-        schema: impl Into<String>,
+        schema: impl Into<Option<String>>,
         columns: Vec<ColumnSpec>,
     ) -> Self {
         Self {
@@ -48,10 +48,9 @@ impl TableSpec {
     }
 
     pub fn sql_name(&self) -> String {
-        if self.schema == "public" {
-            format!("\"{}\"", self.name.clone())
-        } else {
-            format!("\"{}\".\"{}\"", self.schema, self.name)
+        match self.schema {
+            Some(ref schema) => format!("\"{}\".\"{}\"", schema, self.name),
+            None => format!("\"{}\"", self.name),
         }
     }
 
@@ -70,8 +69,8 @@ impl TableSpec {
     /// Creates a new table specification from an SQL table.
     pub(super) async fn from_live_db(
         client: &Client,
-        table_name: &str,
-        schema: &str,
+        table_name: String,
+        schema: Option<String>,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         // Query to get a list of columns in the table
         let columns_query = format!(
@@ -80,7 +79,7 @@ impl TableSpec {
 
         let mut issues = Vec::new();
 
-        let constraints = Constraints::from_live_db(client, table_name).await?;
+        let constraints = Constraints::from_live_db(client, &table_name).await?;
 
         let mut column_type_mapping = HashMap::new();
 
@@ -91,7 +90,7 @@ impl TableSpec {
 
             let mut column = ColumnSpec::from_live_db(
                 client,
-                table_name,
+                &table_name,
                 foreign_pk_column_name,
                 true,
                 None,
@@ -131,7 +130,7 @@ impl TableSpec {
 
             let mut column = ColumnSpec::from_live_db(
                 client,
-                table_name,
+                &table_name,
                 &name,
                 constraints.primary_key.columns.contains(&name),
                 column_type_mapping.get(&name).cloned(),
@@ -148,7 +147,7 @@ impl TableSpec {
         Ok(WithIssues {
             value: TableSpec {
                 name: table_name.to_string(),
-                schema: schema.to_string(),
+                schema,
                 columns,
             },
             issues,
