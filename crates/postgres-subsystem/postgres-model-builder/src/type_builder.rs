@@ -184,12 +184,8 @@ fn expand_type_no_fields(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
-    let table_name = resolved_type.table_name.clone();
-    let schema_name = resolved_type.schema_name.clone();
-
     let table = PhysicalTable {
-        name: table_name,
-        schema: schema_name,
+        name: resolved_type.table_name.clone(),
         columns: vec![],
     };
 

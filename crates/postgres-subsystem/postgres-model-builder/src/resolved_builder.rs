@@ -35,6 +35,7 @@ use core_plugin_interface::{
         },
     },
 };
+use exo_sql::PhysicalTableName;
 
 use super::{
     access_builder::{build_access, ResolvedAccess},
@@ -86,8 +87,7 @@ pub struct ResolvedCompositeType {
     pub name: String,
     pub plural_name: String,
     pub fields: Vec<ResolvedField>,
-    pub table_name: String,
-    pub schema_name: Option<String>,
+    pub table_name: PhysicalTableName,
     pub access: ResolvedAccess,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -328,8 +328,10 @@ fn resolve(
                                 name,
                                 plural_name: plural_name.clone(),
                                 fields: resolved_fields,
-                                table_name,
-                                schema_name,
+                                table_name: PhysicalTableName {
+                                    name: table_name,
+                                    schema: schema_name,
+                                },
                                 access: access.clone(),
                                 span: ct.span,
                             }),

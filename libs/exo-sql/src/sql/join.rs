@@ -51,6 +51,7 @@ impl ExpressionBuilder for LeftJoin {
 mod tests {
     use super::*;
     use crate::schema::test_helper::{int_column, pk_column, pk_reference_column};
+    use crate::PhysicalTableName;
     use crate::{
         schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
         Column,
@@ -60,23 +61,25 @@ mod tests {
     fn basic_join() {
         let database = DatabaseSpec::new(vec![
             TableSpec::new(
-                "concerts",
-                None,
+                PhysicalTableName::new("concerts", None),
                 vec![
                     pk_column("id"),
                     pk_reference_column("venue_id", "venues", None),
                 ],
             ),
             TableSpec::new(
-                "venues",
-                None,
+                PhysicalTableName::new("venues", None),
                 vec![pk_column("id"), int_column("capacity")],
             ),
         ])
         .to_database();
 
-        let concert_physical_table_id = database.get_table_id("concerts").unwrap();
-        let venue_physical_table_id = database.get_table_id("venues").unwrap();
+        let concert_physical_table_id = database
+            .get_table_id(&PhysicalTableName::new("concerts", None))
+            .unwrap();
+        let venue_physical_table_id = database
+            .get_table_id(&PhysicalTableName::new("venues", None))
+            .unwrap();
 
         let join_predicate = ConcretePredicate::Eq(
             Column::physical(

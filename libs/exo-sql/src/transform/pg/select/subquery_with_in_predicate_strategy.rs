@@ -157,7 +157,7 @@ impl SelectionStrategy for SubqueryWithInPredicateStrategy {
         );
 
         let table = &database.get_table(abstract_select.table_id);
-        let alias_info = (table.name.clone(), table.physical_name());
+        let alias_info = (table.name.synthetic_name(), table.name.clone());
 
         nest_subselect(
             inner_select,

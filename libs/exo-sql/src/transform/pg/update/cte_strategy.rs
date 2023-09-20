@@ -70,15 +70,11 @@ impl UpdateStrategy for CteStrategy {
 
         let select = transformer.to_select(&abstract_update.selection, database);
 
-        let table_name = table.name.clone();
+        let table_name = &database.get_table(abstract_update.table_id).name;
 
         transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
             SQLOperation::WithQuery(WithQuery {
-                expressions: vec![CteExpression {
-                    name: table_name,
-                    table_name: None,
-                    operation: root_update,
-                }],
+                expressions: vec![CteExpression::new_auto_name(table_name, root_update)],
                 select,
             }),
         )));

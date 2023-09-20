@@ -105,8 +105,9 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: entitys
-        schema_name: ~
+        table_name:
+          name: entitys
+          schema: ~
         access:
           default: ~
           query: ~

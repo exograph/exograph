@@ -85,8 +85,9 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: concerts
-        schema_name: ~
+        table_name:
+          name: concerts
+          schema: ~
         access:
           default: ~
           query: ~
@@ -146,8 +147,9 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: venues
-        schema_name: ~
+        table_name:
+          name: venues
+          schema: ~
         access:
           default: ~
           query: ~

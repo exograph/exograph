@@ -85,7 +85,10 @@ pub(crate) async fn run_testfile(
         }
 
         let query = std::str::from_utf8(&cli_child.stdout)?;
-        run_psql(query, db_instance.as_ref()).await?;
+        run_psql(query, db_instance.as_ref()).await.map_err(|e| {
+            eprintln!("{}", e);
+            anyhow!("Could not create database for {}.", testfile.name())
+        })?;
 
         // spawn a exo instance
         println!("{log_prefix} Initializing exo-server ...");

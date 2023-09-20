@@ -7,7 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{database_error::DatabaseError, Database, ManyToOneId, OneToManyId, TableId};
+use crate::{
+    database_error::DatabaseError, Database, ManyToOneId, OneToManyId, PhysicalTableName, TableId,
+};
 
 use super::{ExpressionBuilder, SQLBuilder};
 use regex::Regex;
@@ -52,7 +54,7 @@ impl std::fmt::Debug for PhysicalColumn {
 }
 
 impl PhysicalColumn {
-    pub fn get_table_name(&self, database: &Database) -> String {
+    pub fn get_table_name(&self, database: &Database) -> PhysicalTableName {
         database.get_table(self.table_id).name.clone()
     }
 }
@@ -60,7 +62,7 @@ impl PhysicalColumn {
 impl ExpressionBuilder for PhysicalColumn {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         let table = database.get_table(self.table_id);
-        builder.push_table_prefix(&table.name, table.schema.as_ref());
+        builder.push_table_prefix(&table.name);
         builder.push_identifier(&self.name)
     }
 }

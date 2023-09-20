@@ -13,7 +13,7 @@ use deadpool_postgres::Client;
 
 use crate::{
     database_error::DatabaseError, schema::column_spec::ColumnSpec, Database, ManyToOne,
-    PhysicalColumn, TableId,
+    PhysicalColumn, PhysicalTableName, TableId,
 };
 
 use super::{column_spec::ColumnTypeSpec, issue::WithIssues, table_spec::TableSpec};
@@ -32,7 +32,7 @@ impl DatabaseSpec {
     pub fn required_schemas(&self) -> HashSet<String> {
         self.tables
             .iter()
-            .flat_map(|table| table.schema.clone())
+            .flat_map(|table| table.name.schema.clone())
             .collect()
     }
 
@@ -142,7 +142,6 @@ impl DatabaseSpec {
             .map(|(_, table)| {
                 TableSpec::new(
                     table.name.clone(),
-                    table.schema.clone(),
                     table
                         .columns
                         .clone()
@@ -187,9 +186,12 @@ impl DatabaseSpec {
                 .await
                 .map_err(DatabaseError::Delegate)?
             {
-                let table_name: String = table_row.get("table_name");
-                let mut table =
-                    TableSpec::from_live_db(client, table_name, schema_name.clone()).await?;
+                let table_name = PhysicalTableName {
+                    name: table_row.get("table_name"),
+                    schema: schema_name.clone(),
+                };
+
+                let mut table = TableSpec::from_live_db(client, table_name).await?;
                 issues.append(&mut table.issues);
                 tables.push(table.value);
             }

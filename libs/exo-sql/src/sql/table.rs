@@ -47,7 +47,9 @@ impl ExpressionBuilder for Table {
                 physical_table.build(database, builder);
 
                 if let Some(alias) = alias {
-                    if &physical_table.name != alias {
+                    // If the the table name is the same as the alias (and the table is in the "public" schema), we don't need to alias it
+                    // This avoid unnecessary aliasing like `SELECT * FROM concerts AS concerts`
+                    if &physical_table.name.name != alias || physical_table.name.schema.is_some() {
                         builder.push_str(" AS ");
                         builder.push_identifier(alias);
                     }

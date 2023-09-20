@@ -10,7 +10,10 @@
 use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
     sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
-    transform::table_dependency::{DependencyLink, TableDependency},
+    transform::{
+        pg::selection_level::ALIAS_SEPARATOR,
+        table_dependency::{DependencyLink, TableDependency},
+    },
     Database, PhysicalColumnPath, TableId,
 };
 
@@ -32,7 +35,10 @@ pub fn compute_join(
         top_level: bool,
     ) -> Table {
         let alias = selection_level.alias(
-            database.get_table(dependency.table_id).name.clone(),
+            database
+                .get_table(dependency.table_id)
+                .name
+                .fully_qualified_name_with_sep(ALIAS_SEPARATOR),
             database,
         );
 

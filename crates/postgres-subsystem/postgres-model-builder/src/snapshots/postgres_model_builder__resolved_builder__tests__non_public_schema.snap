@@ -61,8 +61,9 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: auth_schema_tables
-        schema_name: auth
+        table_name:
+          name: auth_schema_tables
+          schema: auth
         access:
           default: ~
           query: ~
@@ -97,8 +98,9 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: custom_table
-        schema_name: auth
+        table_name:
+          name: custom_table
+          schema: auth
         access:
           default: ~
           query: ~

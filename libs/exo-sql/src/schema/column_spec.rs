@@ -10,7 +10,9 @@
 use std::fmt::Write;
 
 use crate::database_error::DatabaseError;
-use crate::{Database, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType};
+use crate::{
+    Database, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalTableName,
+};
 
 use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
@@ -55,8 +57,7 @@ pub enum ColumnTypeSpec {
         typ: Box<ColumnTypeSpec>,
     },
     ColumnReference {
-        foreign_table_name: String,
-        foreign_table_schema_name: Option<String>,
+        foreign_table_name: PhysicalTableName,
         foreign_pk_column_name: String,
         foreign_pk_type: Box<ColumnTypeSpec>,
     },
@@ -76,7 +77,7 @@ impl ColumnSpec {
     /// `explicit_type`.
     pub async fn from_live_db(
         client: &Client,
-        table_name: &str,
+        table_name: &PhysicalTableName,
         column_name: &str,
         is_pk: bool,
         explicit_type: Option<ColumnTypeSpec>,
@@ -97,7 +98,8 @@ impl ColumnSpec {
                     "
                     SELECT format_type(atttypid, atttypmod), attndims
                     FROM pg_attribute
-                    WHERE attrelid = '{table_name}'::regclass AND attname = '{column_name}'"
+                    WHERE attrelid = '{}'::regclass AND attname = '{column_name}'",
+                    table_name.name
                 );
 
                 let rows = client.query(db_type_query.as_str(), &[]).await?;
@@ -115,7 +117,8 @@ impl ColumnSpec {
                     Ok(t) => Some(t),
                     Err(e) => {
                         issues.push(Issue::Warning(format!(
-                            "skipped column `{table_name}.{column_name}` ({e})"
+                            "skipped column `{}.{column_name}` ({e})",
+                            table_name.fully_qualified_name()
                         )));
                         None
                     }
@@ -127,7 +130,8 @@ impl ColumnSpec {
             "
             SELECT attnotnull
             FROM pg_attribute
-            WHERE attrelid = '{table_name}'::regclass AND attname = '{column_name}'"
+            WHERE attrelid = '{}'::regclass AND attname = '{column_name}'",
+            table_name.name
         );
 
         let not_null: bool = client
@@ -144,7 +148,10 @@ impl ColumnSpec {
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
 
-        let is_auto_increment = serial_columns.contains(&format!("{table_name}_{column_name}_seq"));
+        let is_auto_increment = serial_columns.contains(&format!(
+            "{}_{column_name}_seq",
+            table_name.fully_qualified_name_with_sep("_")
+        ));
 
         let default_value = if is_auto_increment {
             // if this column is autoIncrement, then default value will be populated
@@ -153,10 +160,18 @@ impl ColumnSpec {
             // clear it to normalize the column
             None
         } else {
+            let table_predicate = match table_name.schema {
+                Some(ref schema) => format!(
+                    "table_schema = '{}' AND table_name = '{}'",
+                    schema, table_name.name
+                ),
+                None => format!("table_name = '{}'", table_name.name),
+            };
+
             let db_query = format!(
                 "
                 SELECT column_default FROM information_schema.columns
-                WHERE table_name='{table_name}' and column_name = '{column_name}'"
+                WHERE {table_predicate} and column_name = '{column_name}'"
             );
 
             let rows = client.query(db_query.as_str(), &[]).await?;
@@ -294,7 +309,6 @@ impl ColumnSpec {
 
                     ColumnTypeSpec::ColumnReference {
                         foreign_table_name: foreign_table.name.clone(),
-                        foreign_table_schema_name: foreign_table.schema.clone(),
                         foreign_pk_column_name: foreign_pk_column.name.clone(),
                         foreign_pk_type: Box::new(ColumnTypeSpec::from_physical(
                             foreign_pk_column.typ.clone(),
@@ -542,7 +556,7 @@ impl ColumnTypeSpec {
 
             ColumnTypeSpec::ColumnReference {
                 foreign_table_name, ..
-            } => (foreign_table_name.clone(), "".to_string()),
+            } => (foreign_table_name.name.clone(), "".to_string()),
         }
     }
 
@@ -707,24 +721,24 @@ impl ColumnTypeSpec {
 
             Self::ColumnReference {
                 foreign_table_name,
-                foreign_table_schema_name,
                 foreign_pk_type,
                 ..
             } => {
                 let mut sql_statement =
                     foreign_pk_type.to_sql(table_spec, column_name, is_auto_increment);
 
-                let foreign_table_str = match foreign_table_schema_name {
-                    Some(schema_name) => format!("\"{}\".\"{}\"", schema_name, foreign_table_name),
-                    None => format!("\"{}\"", foreign_table_name),
+                let foreign_table_str = match &foreign_table_name.schema {
+                    Some(schema_name) => {
+                        format!("\"{}\".\"{}\"", schema_name, foreign_table_name.name)
+                    }
+                    None => format!("\"{}\"", foreign_table_name.name),
                 };
 
-                let constraint_name = match table_spec.schema {
-                    Some(ref schema_name) => {
-                        format!("{}_{}_{}_fk", schema_name, table_spec.name, column_name)
-                    }
-                    None => format!("{}_{}_fk", table_spec.name, column_name),
-                };
+                let constraint_name = format!(
+                    "{}_{}_fk",
+                    table_spec.name.fully_qualified_name_with_sep("_"),
+                    column_name
+                );
 
                 let foreign_constraint = format!(
                     r#"ALTER TABLE {} ADD CONSTRAINT "{constraint_name}" FOREIGN KEY ("{column_name}") REFERENCES {foreign_table_str};"#,

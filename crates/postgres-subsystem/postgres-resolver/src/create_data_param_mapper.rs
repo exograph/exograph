@@ -182,7 +182,11 @@ async fn map_self_column<'a>(
 
     let value_column = cast::literal_column(argument_value, key_column).with_context(format!(
         "While trying to get literal column for {}.{}",
-        subsystem.database.get_table(key_column.table_id).name,
+        subsystem
+            .database
+            .get_table(key_column.table_id)
+            .name
+            .fully_qualified_name(),
         key_column.name
     ))?;
 

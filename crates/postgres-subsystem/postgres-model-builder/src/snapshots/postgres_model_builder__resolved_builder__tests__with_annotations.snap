@@ -119,8 +119,9 @@ values:
                 scale: 2
             unique_constraints: []
             default_value: ~
-        table_name: custom_concerts
-        schema_name: ~
+        table_name:
+          name: custom_concerts
+          schema: ~
         access:
           default: ~
           query: ~
@@ -194,8 +195,9 @@ values:
                 bits: 24
             unique_constraints: []
             default_value: ~
-        table_name: venues
-        schema_name: ~
+        table_name:
+          name: venues
+          schema: ~
         access:
           default: ~
           query: ~

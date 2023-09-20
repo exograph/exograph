@@ -72,8 +72,9 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: concerts
-        schema_name: ~
+        table_name:
+          name: concerts
+          schema: ~
         access:
           default:
             LogicalOp:
@@ -138,8 +139,9 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: venues
-        schema_name: ~
+        table_name:
+          name: venues
+          schema: ~
         access:
           default:
             BooleanLiteral:
@@ -176,8 +178,9 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: artists
-        schema_name: ~
+        table_name:
+          name: artists
+          schema: ~
         access:
           default:
             BooleanLiteral:

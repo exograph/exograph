@@ -11,7 +11,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{Database, SQLParam};
 
-use super::ExpressionBuilder;
+use super::{physical_table::PhysicalTableName, ExpressionBuilder};
 
 pub struct SQLBuilder {
     /// The SQL being built with placeholders for each parameter
@@ -21,8 +21,11 @@ pub struct SQLBuilder {
     /// Indicates if column name should be rendered with the table name i.e. "table"."col"  instead
     /// of "col" (needed for INSERT/UPDATE statements)
     fully_qualify_column_names: bool,
-    // Map from CTE name to table name. This is used to render CTE names in lieu of table names for the `select` in a CTE.
-    cte_table_map: HashMap<String, String>,
+    /// Map from physical table to an alias.
+    /// For example, for a CTE, the alias would the name of the CTE ("WITH <alias> as
+    /// (...table...)"). Similarly, for a sub-select, the alias would be the name of the sub-select.
+    /// This is used to render alias in lieu of table names for the related expressions.
+    table_alias_map: HashMap<PhysicalTableName, String>,
 }
 
 impl SQLBuilder {
@@ -31,7 +34,7 @@ impl SQLBuilder {
             sql: String::new(),
             params: Vec::new(),
             fully_qualify_column_names: true,
-            cte_table_map: HashMap::new(),
+            table_alias_map: HashMap::new(),
         }
     }
 
@@ -64,36 +67,27 @@ impl SQLBuilder {
         self.push_identifier(column_name);
     }
 
-    /// Push a table name. If the table name is a CTE name, push the CTE name instead.
-    pub fn push_table<T1: AsRef<str>, T2: AsRef<str>>(
-        &mut self,
-        table_name: T1,
-        schema_name: Option<T2>,
-    ) {
-        let table_name = table_name.as_ref();
-        match self.cte_table_map.get(table_name).cloned() {
-            Some(cte_name) => {
-                self.push_identifier(cte_name);
+    /// Push a table name. If the table name has an alias, push the alias instead.
+    pub fn push_table(&mut self, table_name: &PhysicalTableName) {
+        match &self.table_alias_map.get(table_name).cloned() {
+            Some(alias) => {
+                self.push_identifier(alias);
             }
             None => {
-                if let Some(schema_name) = schema_name {
+                if let Some(schema_name) = &table_name.schema {
                     self.push_identifier(schema_name);
                     self.push('.');
                 }
-                self.push_identifier(table_name);
+                self.push_identifier(&table_name.name);
             }
         };
     }
 
     /// Push a table prefix (for a column). Push `<table_name>.` if in fully_qualify_column_names
     /// mode, otherwise an empty string.
-    pub fn push_table_prefix<T1: AsRef<str>, T2: AsRef<str>>(
-        &mut self,
-        table_name: T1,
-        schema_name: Option<T2>,
-    ) {
+    pub fn push_table_prefix(&mut self, table_name: &PhysicalTableName) {
         if self.fully_qualify_column_names {
-            self.push_table(table_name, schema_name);
+            self.push_table(table_name);
             self.push('.');
         }
     }
@@ -165,14 +159,18 @@ impl SQLBuilder {
         ret
     }
 
-    pub fn with_cte_table_map<F, R>(&mut self, cte_table_map: HashMap<String, String>, func: F) -> R
+    pub fn with_table_alias_map<F, R>(
+        &mut self,
+        table_alias_map: HashMap<PhysicalTableName, String>,
+        func: F,
+    ) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
-        let cur_cte_table_map = self.cte_table_map.clone();
-        self.cte_table_map.extend(cte_table_map);
+        let cur_table_alias_map = self.table_alias_map.clone();
+        self.table_alias_map.extend(table_alias_map);
         let ret = func(self);
-        self.cte_table_map = cur_cte_table_map;
+        self.table_alias_map = cur_table_alias_map;
         ret
     }
 }

@@ -14,7 +14,10 @@ use crate::{
     },
     transform::{
         join_util,
-        pg::{selection_level::SelectionLevel, Postgres},
+        pg::{
+            selection_level::{SelectionLevel, ALIAS_SEPARATOR},
+            Postgres,
+        },
         transformer::{OrderByTransformer, PredicateTransformer},
     },
     AbstractOrderBy, AbstractPredicate, Column, Database, Limit, ManyToOne, Offset, OneToMany,
@@ -60,7 +63,10 @@ pub(super) fn compute_inner_select(
     Select {
         table,
         columns: vec![Column::Star(Some(
-            database.get_table(wildcard_table).name.clone(),
+            database
+                .get_table(wildcard_table)
+                .name
+                .fully_qualified_name_with_sep("#"),
         ))],
         predicate,
         order_by: order_by.as_ref().map(|ob| transformer.to_order_by(ob)),
@@ -171,10 +177,15 @@ pub(super) fn compute_relation_predicate(
             };
 
             let alias = if use_alias {
-                Some(selection_level.alias(
-                    database.get_table(self_column_id.table_id).name.clone(),
-                    database,
-                ))
+                Some(
+                    selection_level.alias(
+                        database
+                            .get_table(self_column_id.table_id)
+                            .name
+                            .fully_qualified_name_with_sep(ALIAS_SEPARATOR),
+                        database,
+                    ),
+                )
             } else {
                 None
             };

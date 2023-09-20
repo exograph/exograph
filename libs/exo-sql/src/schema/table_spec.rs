@@ -13,7 +13,7 @@ use super::statement::SchemaStatement;
 use std::collections::{HashMap, HashSet};
 
 use crate::database_error::DatabaseError;
-use crate::PhysicalTable;
+use crate::{PhysicalTable, PhysicalTableName};
 use deadpool_postgres::Client;
 
 use super::constraint::{sorted_comma_list, Constraints};
@@ -21,36 +21,26 @@ use super::issue::WithIssues;
 
 #[derive(Debug)]
 pub struct TableSpec {
-    pub name: String,
-    pub schema: Option<String>,
+    pub name: PhysicalTableName,
     pub columns: Vec<ColumnSpec>,
 }
 
 impl TableSpec {
-    pub fn new(
-        name: impl Into<String>,
-        schema: impl Into<Option<String>>,
-        columns: Vec<ColumnSpec>,
-    ) -> Self {
-        Self {
-            name: name.into(),
-            schema: schema.into(),
-            columns,
-        }
+    pub fn new(name: PhysicalTableName, columns: Vec<ColumnSpec>) -> Self {
+        Self { name, columns }
     }
 
     pub fn to_column_less_table(&self) -> PhysicalTable {
         PhysicalTable {
             name: self.name.clone(),
-            schema: self.schema.clone(),
             columns: vec![],
         }
     }
 
     pub fn sql_name(&self) -> String {
-        match self.schema {
-            Some(ref schema) => format!("\"{}\".\"{}\"", schema, self.name),
-            None => format!("\"{}\"", self.name),
+        match self.name.schema {
+            Some(ref schema) => format!("\"{}\".\"{}\"", schema, self.name.name),
+            None => format!("\"{}\"", self.name.name),
         }
     }
 
@@ -69,12 +59,12 @@ impl TableSpec {
     /// Creates a new table specification from an SQL table.
     pub(super) async fn from_live_db(
         client: &Client,
-        table_name: String,
-        schema: Option<String>,
+        table_name: PhysicalTableName,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         // Query to get a list of columns in the table
         let columns_query = format!(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'",
+            "SELECT column_name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = '{}'",
+            table_name.name, table_name.schema.as_ref().unwrap_or(&"public".to_string())
         );
 
         let mut issues = Vec::new();
@@ -104,7 +94,6 @@ impl TableSpec {
                     self_column_name.clone(),
                     ColumnTypeSpec::ColumnReference {
                         foreign_table_name: foreign_constraint.foreign_table.clone(),
-                        foreign_table_schema_name: foreign_constraint.foreign_table_schema.clone(),
                         foreign_pk_column_name: foreign_pk_column_name.clone(),
                         foreign_pk_type: Box::new(spec.typ),
                     },
@@ -146,8 +135,7 @@ impl TableSpec {
 
         Ok(WithIssues {
             value: TableSpec {
-                name: table_name.to_string(),
-                schema,
+                name: table_name,
                 columns,
             },
             issues,
