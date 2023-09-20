@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::{ColumnId, Database, ParamEquality};
+use crate::{ColumnId, Database, ParamEquality, PhysicalTableName};
 
 use super::{
     json_agg::JsonAgg, json_object::JsonObject, select::Select, transaction::TransactionStepId,
@@ -50,8 +50,8 @@ pub enum Column {
     /// `select 'Concert', id from "concerts"`. Here 'Concert' is the constant string. Needed to
     /// have a query return __typename set to a constant value
     Constant(String),
-    /// All columns of a table. If the table is `None` should translate to `*`, else  `"table_name".*`
-    Star(Option<String>),
+    /// All columns of a table. If the table is `None` should translate to `*`, else  `"table_name".*` or "schema"."table_name".*
+    Star(Option<PhysicalTableName>),
     /// A null value
     Null,
     /// A function applied to a column. For example, `count(*)` or `lower(first_name)`.
@@ -135,7 +135,7 @@ impl ExpressionBuilder for Column {
             }
             Column::Star(table_name) => {
                 if let Some(table_name) = table_name {
-                    builder.push_identifier(table_name);
+                    builder.push_table(table_name);
                     builder.push('.');
                 }
                 builder.push('*');

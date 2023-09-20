@@ -63,10 +63,7 @@ pub(super) fn compute_inner_select(
     Select {
         table,
         columns: vec![Column::Star(Some(
-            database
-                .get_table(wildcard_table)
-                .name
-                .fully_qualified_name_with_sep("#"),
+            database.get_table(wildcard_table).name.clone(),
         ))],
         predicate,
         order_by: order_by.as_ref().map(|ob| transformer.to_order_by(ob)),
