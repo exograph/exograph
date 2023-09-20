@@ -366,7 +366,11 @@ fn directory_contains(dir: &Path, name: &str, is_dir: bool) -> bool {
     }
 
     let dir_entry = dir.read_dir().unwrap().flatten().find(|dir_entry| {
-        dir_entry.file_name() == name && dir_entry.file_type().unwrap().is_dir() == is_dir
+        // An entry may be a symlink, so we canonicalize it to get the actual path (else
+        // dir_entry.is_dir() will return false even when the link points to a directory)
+        let entry_path = std::fs::canonicalize(dir_entry.path()).unwrap();
+
+        dir_entry.file_name() == name && std::fs::metadata(entry_path).unwrap().is_dir() == is_dir
     });
 
     dir_entry.is_some()
