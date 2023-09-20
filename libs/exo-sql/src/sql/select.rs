@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use crate::{Database, Limit, Offset};
 
 use super::{
@@ -39,15 +41,20 @@ pub struct Select {
 
 impl ExpressionBuilder for Select {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
-        let subselect_synthetic_name_info = match &self.table {
-            Table::SubSelect { alias, .. } => alias.clone(),
-            _ => None,
+        let table_alias_map = match &self.table {
+            // If the underlying table is a subselect, we need to add it to the table alias map so
+            // tha the other parts (select, where, etc.) can use the alias instead of the subselect's table name
+            Table::SubSelect {
+                alias: Some((alias_name, table_name)),
+                ..
+            } => HashMap::from([(table_name.clone(), alias_name.clone())]),
+            _ => HashMap::new(),
         };
 
         builder.push_str("SELECT ");
 
         // Columns
-        let build_columns = |builder: &mut SQLBuilder| {
+        builder.with_table_alias_map(table_alias_map.clone(), |builder| {
             builder.push_iter(self.columns.iter(), ", ", |builder, col| {
                 col.build(database, builder);
 
@@ -58,25 +65,12 @@ impl ExpressionBuilder for Select {
                     builder.push_str("::text");
                 }
             });
-        };
-
-        match subselect_synthetic_name_info.clone() {
-            Some((alias, table_name)) => {
-                let mut cte_table_map = std::collections::HashMap::new();
-                cte_table_map.insert(table_name, alias);
-                builder.with_table_alias_map(cte_table_map, |builder| {
-                    build_columns(builder);
-                });
-            }
-            None => {
-                build_columns(builder);
-            }
-        }
+        });
 
         builder.push_str(" FROM ");
         self.table.build(database, builder);
 
-        let build_clauses = |builder: &mut SQLBuilder| {
+        builder.with_table_alias_map(table_alias_map, |builder| {
             // Avoid correct, but inelegant "WHERE TRUE" clause
             if self.predicate != ConcretePredicate::True {
                 builder.push_str(" WHERE ");
@@ -98,20 +92,7 @@ impl ExpressionBuilder for Select {
                 builder.push_space();
                 offset.build(database, builder);
             }
-        };
-
-        match subselect_synthetic_name_info {
-            Some((alias, table_name)) => {
-                let mut cte_table_map = std::collections::HashMap::new();
-                cte_table_map.insert(table_name, alias);
-                builder.with_table_alias_map(cte_table_map, |builder| {
-                    build_clauses(builder);
-                });
-            }
-            None => {
-                build_clauses(builder);
-            }
-        }
+        });
     }
 }
 

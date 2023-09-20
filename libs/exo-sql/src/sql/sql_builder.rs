@@ -167,6 +167,10 @@ impl SQLBuilder {
     where
         F: FnOnce(&mut Self) -> R,
     {
+        if table_alias_map.is_empty() {
+            return func(self);
+        }
+
         let cur_table_alias_map = self.table_alias_map.clone();
         self.table_alias_map.extend(table_alias_map);
         let ret = func(self);
