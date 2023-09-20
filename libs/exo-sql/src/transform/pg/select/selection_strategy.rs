@@ -8,10 +8,16 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    sql::{predicate::ConcretePredicate, select::Select, table::Table},
+    sql::{
+        physical_table::PhysicalTableName, predicate::ConcretePredicate, select::Select,
+        table::Table,
+    },
     transform::{
         join_util,
-        pg::{selection_level::SelectionLevel, Postgres},
+        pg::{
+            selection_level::{SelectionLevel, ALIAS_SEPARATOR},
+            Postgres,
+        },
         transformer::{OrderByTransformer, PredicateTransformer},
     },
     AbstractOrderBy, AbstractPredicate, Column, Database, Limit, ManyToOne, Offset, OneToMany,
@@ -73,7 +79,7 @@ pub(super) fn nest_subselect(
     inner_select: Select,
     selection: &Selection,
     selection_level: &SelectionLevel,
-    alias: &str,
+    alias: (String, PhysicalTableName),
     transformer: &Postgres,
     database: &Database,
 ) -> Select {
@@ -82,7 +88,7 @@ pub(super) fn nest_subselect(
     Select {
         table: Table::SubSelect {
             select: Box::new(inner_select),
-            alias: Some(alias.to_owned()),
+            alias: Some(alias),
         },
         columns: selection_aggregate,
         predicate: ConcretePredicate::True,
@@ -168,10 +174,15 @@ pub(super) fn compute_relation_predicate(
             };
 
             let alias = if use_alias {
-                Some(selection_level.alias(
-                    database.get_table(self_column_id.table_id).name.clone(),
-                    database,
-                ))
+                Some(
+                    selection_level.alias(
+                        database
+                            .get_table(self_column_id.table_id)
+                            .name
+                            .fully_qualified_name_with_sep(ALIAS_SEPARATOR),
+                        database,
+                    ),
+                )
             } else {
                 None
             };

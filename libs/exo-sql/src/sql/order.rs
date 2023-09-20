@@ -61,16 +61,19 @@ mod test {
     use super::*;
     use crate::schema::test_helper::{int_column, pk_column, string_column};
     use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
+    use crate::PhysicalTableName;
 
     #[test]
     fn single() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
-            "people",
+            PhysicalTableName::new("people", None),
             vec![pk_column("id"), int_column("age")],
         )])
         .to_database();
 
-        let people_table_id = database.get_table_id("people").unwrap();
+        let people_table_id = database
+            .get_table_id(&PhysicalTableName::new("people", None))
+            .unwrap();
 
         let age_col = database.get_column_id(people_table_id, "age").unwrap();
 
@@ -85,12 +88,14 @@ mod test {
     #[test]
     fn multiple() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
-            "people",
+            PhysicalTableName::new("people", None),
             vec![pk_column("id"), string_column("name"), int_column("age")],
         )])
         .to_database();
 
-        let table_id = database.get_table_id("people").unwrap();
+        let table_id = database
+            .get_table_id(&PhysicalTableName::new("people", None))
+            .unwrap();
 
         let name_col = database.get_column_id(table_id, "name").unwrap();
         let age_col = database.get_column_id(table_id, "age").unwrap();

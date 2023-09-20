@@ -102,13 +102,9 @@ fn to_delete<'a>(
     //    DELETE FROM WHERE <the predicate above> RETURNING *
     // ) SELECT COALESCE(...)::text AS "concerts"
     // ```
-    let table_name = database.get_table(abstract_delete.table_id).name.clone();
+    let table_name = &database.get_table(abstract_delete.table_id).name;
     WithQuery {
-        expressions: vec![CteExpression {
-            name: table_name,
-            table_name: None,
-            operation: root_delete,
-        }],
+        expressions: vec![CteExpression::new_auto_name(table_name, root_delete)],
         select,
     }
 }

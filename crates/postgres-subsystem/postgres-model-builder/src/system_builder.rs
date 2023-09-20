@@ -516,7 +516,7 @@ mod tests {
 
     fn get_table_from_arena<'a>(name: &'a str, database: &'a Database) -> &'a PhysicalTable {
         for (_, item) in database.tables().iter() {
-            if item.name == name {
+            if item.name.name == name {
                 return item;
             }
         }

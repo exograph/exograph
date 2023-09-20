@@ -36,67 +36,8 @@ values:
         Interception: Operation
   - - ~
     - Composite:
-        name: Concert
-        plural_name: Concerts
-        fields:
-          - name: id
-            typ:
-              Plain:
-                type_name: Int
-                is_primitive: true
-            column_name: id
-            self_column: true
-            is_pk: true
-            type_hint: ~
-            unique_constraints: []
-            default_value: AutoIncrement
-          - name: title
-            typ:
-              Plain:
-                type_name: String
-                is_primitive: true
-            column_name: title
-            self_column: true
-            is_pk: false
-            type_hint: ~
-            unique_constraints: []
-            default_value: ~
-          - name: ticket_office
-            typ:
-              Plain:
-                type_name: Venue
-                is_primitive: false
-            column_name: ticket_office
-            self_column: true
-            is_pk: false
-            type_hint: ~
-            unique_constraints: []
-            default_value: ~
-          - name: main
-            typ:
-              Plain:
-                type_name: Venue
-                is_primitive: false
-            column_name: main
-            self_column: true
-            is_pk: false
-            type_hint: ~
-            unique_constraints: []
-            default_value: ~
-        table_name:
-          name: concerts
-          schema: ~
-        access:
-          default: ~
-          query: ~
-          mutation: ~
-          creation: ~
-          update: ~
-          delete: ~
-  - - ~
-    - Composite:
-        name: Venue
-        plural_name: Venues
+        name: AuthSchemaTable
+        plural_name: AuthSchemaTables
         fields:
           - name: id
             typ:
@@ -120,33 +61,46 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-          - name: ticket_events
+        table_name:
+          name: auth_schema_tables
+          schema: auth
+        access:
+          default: ~
+          query: ~
+          mutation: ~
+          creation: ~
+          update: ~
+          delete: ~
+  - - ~
+    - Composite:
+        name: AuthSchemaTableWithCustomName
+        plural_name: AuthSchemaTableWithCustomNames
+        fields:
+          - name: id
             typ:
-              List:
-                Plain:
-                  type_name: Concert
-                  is_primitive: false
-            column_name: ticket_office
-            self_column: false
-            is_pk: false
+              Plain:
+                type_name: Int
+                is_primitive: true
+            column_name: id
+            self_column: true
+            is_pk: true
             type_hint: ~
             unique_constraints: []
-            default_value: ~
-          - name: main_events
+            default_value: AutoIncrement
+          - name: name
             typ:
-              List:
-                Plain:
-                  type_name: Concert
-                  is_primitive: false
-            column_name: main
-            self_column: false
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_name: name
+            self_column: true
             is_pk: false
             type_hint: ~
             unique_constraints: []
             default_value: ~
         table_name:
-          name: venues
-          schema: ~
+          name: custom_table
+          schema: auth
         access:
           default: ~
           query: ~
@@ -170,14 +124,17 @@ values:
   - ~
   - ~
 map:
+  AuthSchemaTable:
+    index: 15
+    generation: ~
+  AuthSchemaTableWithCustomName:
+    index: 16
+    generation: ~
   Blob:
     index: 10
     generation: ~
   Boolean:
     index: 0
-    generation: ~
-  Concert:
-    index: 15
     generation: ~
   Decimal:
     index: 3
@@ -217,8 +174,5 @@ map:
     generation: ~
   Uuid:
     index: 11
-    generation: ~
-  Venue:
-    index: 16
     generation: ~
 

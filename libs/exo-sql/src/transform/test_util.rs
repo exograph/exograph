@@ -11,7 +11,7 @@
 
 use crate::schema::test_helper::{pk_column, pk_reference_column, string_column};
 use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
-use crate::{ColumnId, Database, TableId};
+use crate::{ColumnId, Database, PhysicalTableName, TableId};
 
 pub struct TestSetup {
     pub database: Database,
@@ -44,35 +44,43 @@ impl TestSetup {
     pub fn with_setup(test_fn: impl Fn(TestSetup)) {
         let database = DatabaseSpec::new(vec![
             TableSpec::new(
-                "concerts",
+                PhysicalTableName::new("concerts", None),
                 vec![
                     pk_column("id"),
-                    pk_reference_column("venue_id", "venues"),
+                    pk_reference_column("venue_id", "venues", None),
                     string_column("name"),
                 ],
             ),
-            TableSpec::new("venues", vec![pk_column("id"), string_column("name")]),
             TableSpec::new(
-                "concert_artists",
+                PhysicalTableName::new("venues", None),
+                vec![pk_column("id"), string_column("name")],
+            ),
+            TableSpec::new(
+                PhysicalTableName::new("concert_artists", None),
                 vec![
                     pk_column("id"),
-                    pk_reference_column("concert_id", "concerts"),
-                    pk_reference_column("artist_id", "artists"),
+                    pk_reference_column("concert_id", "concerts", None),
+                    pk_reference_column("artist_id", "artists", None),
                 ],
             ),
             TableSpec::new(
-                "artists",
+                PhysicalTableName::new("artists", None),
                 vec![
                     pk_column("id"),
                     string_column("name"),
-                    pk_reference_column("address_id", "addresses"),
+                    pk_reference_column("address_id", "addresses", None),
                 ],
             ),
-            TableSpec::new("addresses", vec![pk_column("id"), string_column("city")]),
+            TableSpec::new(
+                PhysicalTableName::new("addresses", None),
+                vec![pk_column("id"), string_column("city")],
+            ),
         ])
         .to_database();
 
-        let concert_table_id = database.get_table_id("concerts").unwrap();
+        let concert_table_id = database
+            .get_table_id(&PhysicalTableName::new("concerts", None))
+            .unwrap();
 
         let concerts_id_column = database.get_column_id(concert_table_id, "id").unwrap();
         let concerts_name_column = database.get_column_id(concert_table_id, "name").unwrap();
@@ -80,11 +88,15 @@ impl TestSetup {
             .get_column_id(concert_table_id, "venue_id")
             .unwrap();
 
-        let venues_table_id = database.get_table_id("venues").unwrap();
+        let venues_table_id = database
+            .get_table_id(&PhysicalTableName::new("venues", None))
+            .unwrap();
         let venues_id_column = database.get_column_id(venues_table_id, "id").unwrap();
         let venues_name_column = database.get_column_id(venues_table_id, "name").unwrap();
 
-        let concert_artists_table_id = database.get_table_id("concert_artists").unwrap();
+        let concert_artists_table_id = database
+            .get_table_id(&PhysicalTableName::new("concert_artists", None))
+            .unwrap();
         let _concert_artists_id_column = database
             .get_column_id(concert_artists_table_id, "id")
             .unwrap();
@@ -95,14 +107,18 @@ impl TestSetup {
             .get_column_id(concert_artists_table_id, "artist_id")
             .unwrap();
 
-        let artists_table_id = database.get_table_id("artists").unwrap();
+        let artists_table_id = database
+            .get_table_id(&PhysicalTableName::new("artists", None))
+            .unwrap();
         let artists_id_column = database.get_column_id(artists_table_id, "id").unwrap();
         let artists_name_column = database.get_column_id(artists_table_id, "name").unwrap();
         let artists_address_id_column = database
             .get_column_id(artists_table_id, "address_id")
             .unwrap();
 
-        let addresses_table_id = database.get_table_id("addresses").unwrap();
+        let addresses_table_id = database
+            .get_table_id(&PhysicalTableName::new("addresses", None))
+            .unwrap();
         let addresses_id_column = database.get_column_id(addresses_table_id, "id").unwrap();
         let addresses_city_column = database.get_column_id(addresses_table_id, "city").unwrap();
 

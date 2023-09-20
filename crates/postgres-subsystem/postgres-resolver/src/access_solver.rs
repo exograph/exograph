@@ -364,6 +364,7 @@ mod tests {
     use core_resolver::context::Request;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::system_resolver::SystemResolver;
+    use exo_sql::PhysicalTableName;
     use serde_json::{json, Value};
 
     use super::*;
@@ -442,7 +443,7 @@ mod tests {
 
         let table_id = postgres_subsystem
             .database
-            .get_table_id("articles")
+            .get_table_id(&PhysicalTableName::new("articles", None))
             .unwrap();
 
         let get_column_id = |column_name: &str| {

@@ -9,7 +9,7 @@
 
 use std::fmt::{Debug, Formatter};
 
-use crate::{ColumnId, ManyToOne, PhysicalColumn, PhysicalTable};
+use crate::{ColumnId, ManyToOne, PhysicalColumn, PhysicalTable, PhysicalTableName};
 
 use serde::{Deserialize, Serialize};
 use typed_generational_arena::{Arena, IgnoreGeneration, Index};
@@ -46,9 +46,9 @@ impl Database {
         self.tables.insert(table)
     }
 
-    pub fn get_table_id(&self, table_name: &str) -> Option<TableId> {
+    pub fn get_table_id(&self, table_name: &PhysicalTableName) -> Option<TableId> {
         self.tables.iter().find_map(|(id, table)| {
-            if table.name == table_name {
+            if &table.name == table_name {
                 Some(id)
             } else {
                 None
@@ -94,7 +94,7 @@ impl Default for Database {
 impl Debug for Database {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for (id, table) in self.tables.iter() {
-            writeln!(f, "{}: {}", id.arr_idx(), table.name)?;
+            writeln!(f, "{}: {}", id.arr_idx(), table.name.fully_qualified_name())?;
             writeln!(f, "  columns: ")?;
             for (column_id, column) in table.columns.iter().enumerate() {
                 writeln!(f, "    {}: {:?}", column_id, column)?;

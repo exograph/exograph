@@ -9,7 +9,10 @@
 
 use crate::{Database, TableId};
 
-use super::{join::LeftJoin, select::Select, ExpressionBuilder, SQLBuilder};
+use super::{
+    join::LeftJoin, physical_table::PhysicalTableName, select::Select, ExpressionBuilder,
+    SQLBuilder,
+};
 
 /// A table-like concept that can be used in in place of `SELECT FROM <table-query> ...`.
 #[derive(Debug, PartialEq)]
@@ -25,7 +28,7 @@ pub enum Table {
     SubSelect {
         select: Box<Select>,
         /// The alias of the sub-select (optional, since we need to alias the sub-select when used in a FROM clause)
-        alias: Option<String>,
+        alias: Option<(String, PhysicalTableName)>,
     },
 }
 
@@ -44,7 +47,9 @@ impl ExpressionBuilder for Table {
                 physical_table.build(database, builder);
 
                 if let Some(alias) = alias {
-                    if &physical_table.name != alias {
+                    // If the the table name is the same as the alias (and the table is in the "public" schema), we don't need to alias it
+                    // This avoid unnecessary aliasing like `SELECT * FROM concerts AS concerts`
+                    if &physical_table.name.name != alias || physical_table.name.schema.is_some() {
                         builder.push_str(" AS ");
                         builder.push_identifier(alias);
                     }
@@ -55,7 +60,7 @@ impl ExpressionBuilder for Table {
                 builder.push('(');
                 select.build(database, builder);
                 builder.push(')');
-                if let Some(alias) = alias {
+                if let Some((alias, _)) = alias {
                     builder.push_str(" AS ");
                     builder.push_identifier(alias);
                 }

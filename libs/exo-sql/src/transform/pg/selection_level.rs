@@ -54,7 +54,7 @@ pub enum SelectionLevel {
     Nested(Vec<RelationId>),
 }
 
-const ALIAS_SEPARATOR: &str = "$";
+pub(crate) const ALIAS_SEPARATOR: &str = "$";
 
 impl SelectionLevel {
     pub(super) fn is_top_level(&self) -> bool {
@@ -89,7 +89,10 @@ impl SelectionLevel {
                         RelationId::ManyToOne(r) => r.deref(database).self_column_id.table_id,
                         RelationId::OneToMany(r) => r.deref(database).self_pk_column_id.table_id,
                     };
-                    let table_name = &database.get_table(foreign_table_id).name;
+                    let table_name = &database
+                        .get_table(foreign_table_id)
+                        .name
+                        .fully_qualified_name_with_sep(ALIAS_SEPARATOR);
                     format!("{table_name}{ALIAS_SEPARATOR}{acc}")
                 })
             }

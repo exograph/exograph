@@ -39,13 +39,15 @@ impl Migration {
 
         for diff in diffs.iter() {
             let is_destructive = match diff {
-                SchemaOp::DeleteColumn { .. }
+                SchemaOp::DeleteSchema { .. }
                 | SchemaOp::DeleteTable { .. }
+                | SchemaOp::DeleteColumn { .. }
                 | SchemaOp::RemoveExtension { .. } => true,
 
                 // Explicitly matching the other cases here to ensure that we have thought about each case
-                SchemaOp::CreateColumn { .. }
+                SchemaOp::CreateSchema { .. }
                 | SchemaOp::CreateTable { .. }
+                | SchemaOp::CreateColumn { .. }
                 | SchemaOp::CreateExtension { .. }
                 | SchemaOp::CreateUniqueConstraint { .. }
                 | SchemaOp::RemoveUniqueConstraint { .. }
@@ -955,6 +957,127 @@ mod tests {
                 r#"ALTER TABLE "logs" ALTER COLUMN "level" DROP NOT NULL;"#,
                 false,
             )],
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn non_public_schema() {
+        assert_changes(
+            r#"
+                @postgres
+                module LogModule {
+                    type Log {
+                        @pk id: Int
+                        level: String?
+                        message: String
+                        owner: User
+                    }
+
+                    type User {
+                        @pk id: Int
+                        name: String
+                        logs: Set<Log>?
+                    }
+                }
+            "#,
+            r#"
+                @postgres
+                module LogModule {
+                    type Log {
+                        @pk id: Int
+                        level: String
+                        message: String
+                        owner: User
+                    }
+
+                    @table(schema="auth")
+                    type User {
+                        @pk id: Int
+                        name: String
+                        logs: Set<Log>?
+                    }
+                }
+            "#,
+            vec![
+                (
+                    r#"CREATE TABLE "logs" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "level" TEXT,
+                    |    "message" TEXT NOT NULL,
+                    |    "owner_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (r#"ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "users";"#, false),
+                ("CREATE INDEX ON \"logs\" (\"level\");", false),
+                ("CREATE INDEX ON \"logs\" (\"message\");", false),
+                ("CREATE INDEX ON \"logs\" (\"owner_id\");", false),
+                ("CREATE INDEX ON \"users\" (\"name\");", false),
+            ],
+            vec![
+                (r#"CREATE SCHEMA "auth";"#, false),
+                (
+                    r#"CREATE TABLE "logs" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "level" TEXT NOT NULL,
+                    |    "message" TEXT NOT NULL,
+                    |    "owner_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "auth"."users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (r#"ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "auth"."users";"#, false),
+                ("CREATE INDEX ON \"logs\" (\"level\");", false),
+                ("CREATE INDEX ON \"logs\" (\"message\");", false),
+                ("CREATE INDEX ON \"logs\" (\"owner_id\");", false),
+                (r#"CREATE INDEX ON "auth"."users" ("name");"#, false),
+            ],
+            vec![
+                (r#"CREATE SCHEMA "auth";"#, false),
+                (
+                    r#"ALTER TABLE "logs" ALTER COLUMN "level" SET NOT NULL;"#,
+                    false,
+                ),
+                (r#"DROP TABLE "users" CASCADE;"#, true),
+                (
+                    r#"CREATE TABLE "auth"."users" (
+                 |    "id" INT PRIMARY KEY,
+                 |    "name" TEXT NOT NULL
+                 |);"#,
+                    false,
+                ),
+                (r#"CREATE INDEX ON "auth"."users" ("name");"#, false),
+            ],
+            vec![
+                (
+                    r#"ALTER TABLE "logs" ALTER COLUMN "level" DROP NOT NULL;"#,
+                    false,
+                ),
+                (r#"DROP TABLE "auth"."users" CASCADE;"#, true),
+                (
+                    r#"CREATE TABLE "users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("DROP SCHEMA \"auth\" CASCADE;", true),
+                (r#"CREATE INDEX ON "users" ("name");"#, false),
+            ],
         )
         .await
     }

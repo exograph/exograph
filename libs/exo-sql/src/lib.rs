@@ -71,7 +71,7 @@ pub use sql::{
     offset::Offset,
     order::Ordering,
     physical_column::{ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
-    physical_table::PhysicalTable,
+    physical_table::{PhysicalTable, PhysicalTableName},
     predicate::{CaseSensitivity, ParamEquality, Predicate},
     relation::{ManyToOne, ManyToOneId, OneToMany, OneToManyId, RelationId},
     SQLBytes, SQLParam, SQLParamContainer,

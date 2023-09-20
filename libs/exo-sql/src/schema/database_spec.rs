@@ -13,7 +13,7 @@ use deadpool_postgres::Client;
 
 use crate::{
     database_error::DatabaseError, schema::column_spec::ColumnSpec, Database, ManyToOne,
-    PhysicalColumn, PhysicalTable, TableId,
+    PhysicalColumn, PhysicalTableName, TableId,
 };
 
 use super::{column_spec::ColumnTypeSpec, issue::WithIssues, table_spec::TableSpec};
@@ -27,9 +27,15 @@ impl DatabaseSpec {
     pub fn new(tables: Vec<TableSpec>) -> Self {
         Self { tables }
     }
-}
 
-impl DatabaseSpec {
+    /// Non-public schemas required by this database spec.
+    pub fn required_schemas(&self) -> HashSet<String> {
+        self.tables
+            .iter()
+            .flat_map(|table| table.name.schema.clone())
+            .collect()
+    }
+
     pub fn required_extensions(&self) -> HashSet<String> {
         self.tables.iter().fold(HashSet::new(), |acc, table| {
             acc.union(&table.get_required_extensions())
@@ -46,10 +52,7 @@ impl DatabaseSpec {
             .tables
             .into_iter()
             .map(|table| {
-                let table_id = database.insert_table(PhysicalTable {
-                    name: table.name,
-                    columns: vec![],
-                });
+                let table_id = database.insert_table(table.to_column_less_table());
                 (table_id, table.columns)
             })
             .collect();
@@ -136,14 +139,16 @@ impl DatabaseSpec {
         let tables = database
             .tables()
             .into_iter()
-            .map(|(_, table)| TableSpec {
-                name: table.name.clone(),
-                columns: table
-                    .columns
-                    .clone()
-                    .into_iter()
-                    .map(|c| ColumnSpec::from_physical(c, &database))
-                    .collect(),
+            .map(|(_, table)| {
+                TableSpec::new(
+                    table.name.clone(),
+                    table
+                        .columns
+                        .clone()
+                        .into_iter()
+                        .map(|c| ColumnSpec::from_physical(c, &database))
+                        .collect(),
+                )
             })
             .collect();
 
@@ -154,22 +159,42 @@ impl DatabaseSpec {
     pub async fn from_live_database(
         client: &Client,
     ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
+        const SCHEMAS_QUERY: &str =
+            "SELECT table_schema FROM information_schema.tables WHERE table_schema != 'information_schema' AND table_schema != 'pg_catalog'";
+
         // Query to get a list of all the tables in the database
-        const QUERY: &str =
+        const TABLE_NAMES_QUERY: &str =
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
 
         let mut issues = Vec::new();
         let mut tables = Vec::new();
 
-        for row in client
-            .query(QUERY, &[])
+        for schema_row in client
+            .query(SCHEMAS_QUERY, &[])
             .await
             .map_err(DatabaseError::Delegate)?
         {
-            let table_name: String = row.get("table_name");
-            let mut table = TableSpec::from_live_db(client, &table_name).await?;
-            issues.append(&mut table.issues);
-            tables.push(table.value);
+            let raw_schema_name: String = schema_row.get("table_schema");
+            let schema_name = if raw_schema_name == "public" {
+                None
+            } else {
+                Some(raw_schema_name)
+            };
+
+            for table_row in client
+                .query(TABLE_NAMES_QUERY, &[])
+                .await
+                .map_err(DatabaseError::Delegate)?
+            {
+                let table_name = PhysicalTableName {
+                    name: table_row.get("table_name"),
+                    schema: schema_name.clone(),
+                };
+
+                let mut table = TableSpec::from_live_db(client, table_name).await?;
+                issues.append(&mut table.issues);
+                tables.push(table.value);
+            }
         }
 
         Ok(WithIssues {

@@ -13,7 +13,7 @@ use deadpool_postgres::Client;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::database_error::DatabaseError;
+use crate::{database_error::DatabaseError, PhysicalTableName};
 
 pub(super) struct PrimaryKeyConstraint {
     pub(super) _constraint_name: String,
@@ -23,7 +23,7 @@ pub(super) struct PrimaryKeyConstraint {
 pub(super) struct ForeignKeyConstraint {
     pub(super) _constraint_name: String,
     pub(super) self_columns: HashSet<String>,
-    pub(super) foreign_table: String,
+    pub(super) foreign_table: PhysicalTableName,
     pub(super) foreign_columns: HashSet<String>,
 }
 
@@ -50,14 +50,15 @@ lazy_static! {
 impl Constraints {
     pub(super) async fn from_live_db(
         client: &Client,
-        table_name: &str,
+        table_name: &PhysicalTableName,
     ) -> Result<Constraints, DatabaseError> {
         // Query to get a list of constraints in the table (primary key and foreign key constraints)
         let constraints_query = format!(
             "
             SELECT contype, conname, pg_get_constraintdef(oid, true) as condef
             FROM pg_constraint
-            WHERE conrelid = '{table_name}'::regclass AND conparentid = 0",
+            WHERE conrelid = '{}'::regclass AND conparentid = 0",
+            table_name.fully_qualified_name()
         );
 
         // Get all the constraints in the table
@@ -102,7 +103,10 @@ impl Constraints {
                 ForeignKeyConstraint {
                     _constraint_name: conname.to_string(),
                     self_columns,
-                    foreign_table,
+                    foreign_table: PhysicalTableName {
+                        name: foreign_table,
+                        schema: None,
+                    },
                     foreign_columns,
                 }
             })

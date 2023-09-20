@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use crate::PhysicalTableName;
+
 use super::column_spec::{ColumnSpec, ColumnTypeSpec};
 
 pub fn pk_column(name: impl Into<String>) -> ColumnSpec {
@@ -19,11 +21,15 @@ pub fn pk_column(name: impl Into<String>) -> ColumnSpec {
 pub fn pk_reference_column(
     name: impl Into<String>,
     foreign_table_name: impl Into<String>,
+    foreign_table_schema_name: Option<&str>,
 ) -> ColumnSpec {
     ColumnSpec {
         name: name.into(),
         typ: ColumnTypeSpec::ColumnReference {
-            foreign_table_name: foreign_table_name.into(),
+            foreign_table_name: PhysicalTableName::new(
+                foreign_table_name,
+                foreign_table_schema_name,
+            ),
             foreign_pk_column_name: "id".to_string(),
             foreign_pk_type: Box::new(ColumnTypeSpec::Int {
                 bits: crate::IntBits::_16,

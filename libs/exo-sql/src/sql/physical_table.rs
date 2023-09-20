@@ -17,11 +17,45 @@ use super::{
 use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct PhysicalTableName {
+    /// The name of the table.
+    pub name: String,
+    /// The schema of the table.
+    pub schema: Option<String>,
+}
+
+impl PhysicalTableName {
+    pub fn new(name: impl Into<String>, schema: Option<&str>) -> Self {
+        Self {
+            name: name.into(),
+            schema: schema.map(Into::into),
+        }
+    }
+
+    pub fn fully_qualified_name(&self) -> String {
+        self.fully_qualified_name_with_sep(".")
+    }
+
+    pub fn fully_qualified_name_with_sep(&self, sep: &str) -> String {
+        match &self.schema {
+            Some(schema) => format!("{}{}{}", schema, sep, self.name),
+            None => self.name.to_owned(),
+        }
+    }
+
+    pub(crate) fn synthetic_name(&self) -> String {
+        match &self.schema {
+            Some(schema) => format!("{}#{}", schema, self.name),
+            None => self.name.to_owned(),
+        }
+    }
+}
+
 /// A physical table in the database such as "concerts" or "users".
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct PhysicalTable {
-    /// The name of the table.
-    pub name: String,
+    pub name: PhysicalTableName,
     /// The columns of the table.
     // concerts.venue_id: (venues.id, "int", "venue_id_table")
     pub columns: Vec<PhysicalColumn>,
@@ -32,7 +66,11 @@ pub struct PhysicalTable {
 impl std::fmt::Debug for PhysicalTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Table: ")?;
-        f.write_str(&self.name)
+        if let Some(schema) = &self.name.schema {
+            f.write_str(schema)?;
+            f.write_str(".")?;
+        }
+        f.write_str(&self.name.name)
     }
 }
 

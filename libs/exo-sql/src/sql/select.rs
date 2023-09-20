@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use crate::{Database, Limit, Offset};
 
 use super::{
@@ -39,43 +41,58 @@ pub struct Select {
 
 impl ExpressionBuilder for Select {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
+        let table_alias_map = match &self.table {
+            // If the underlying table is a subselect, we need to add it to the table alias map so
+            // tha the other parts (select, where, etc.) can use the alias instead of the subselect's table name
+            Table::SubSelect {
+                alias: Some((alias_name, table_name)),
+                ..
+            } => HashMap::from([(table_name.clone(), alias_name.clone())]),
+            _ => HashMap::new(),
+        };
+
         builder.push_str("SELECT ");
 
         // Columns
-        builder.push_iter(self.columns.iter(), ", ", |builder, col| {
-            col.build(database, builder);
+        builder.with_table_alias_map(table_alias_map.clone(), |builder| {
+            builder.push_iter(self.columns.iter(), ", ", |builder, col| {
+                col.build(database, builder);
 
-            if self.top_level_selection && matches!(col, Column::JsonObject(_) | Column::JsonAgg(_))
-            {
-                // See the comment on `top_level_selection` for why we do this
-                builder.push_str("::text");
-            }
+                if self.top_level_selection
+                    && matches!(col, Column::JsonObject(_) | Column::JsonAgg(_))
+                {
+                    // See the comment on `top_level_selection` for why we do this
+                    builder.push_str("::text");
+                }
+            });
         });
 
         builder.push_str(" FROM ");
         self.table.build(database, builder);
 
-        // Avoid correct, but inelegant "WHERE TRUE" clause
-        if self.predicate != ConcretePredicate::True {
-            builder.push_str(" WHERE ");
-            self.predicate.build(database, builder);
-        }
-        if let Some(group_by) = &self.group_by {
-            builder.push_space();
-            group_by.build(database, builder);
-        }
-        if let Some(order_by) = &self.order_by {
-            builder.push_space();
-            order_by.build(database, builder);
-        }
-        if let Some(limit) = &self.limit {
-            builder.push_space();
-            limit.build(database, builder);
-        }
-        if let Some(offset) = &self.offset {
-            builder.push_space();
-            offset.build(database, builder);
-        }
+        builder.with_table_alias_map(table_alias_map, |builder| {
+            // Avoid correct, but inelegant "WHERE TRUE" clause
+            if self.predicate != ConcretePredicate::True {
+                builder.push_str(" WHERE ");
+                self.predicate.build(database, builder);
+            }
+            if let Some(group_by) = &self.group_by {
+                builder.push_space();
+                group_by.build(database, builder);
+            }
+            if let Some(order_by) = &self.order_by {
+                builder.push_space();
+                order_by.build(database, builder);
+            }
+            if let Some(limit) = &self.limit {
+                builder.push_space();
+                limit.build(database, builder);
+            }
+            if let Some(offset) = &self.offset {
+                builder.push_space();
+                offset.build(database, builder);
+            }
+        });
     }
 }
 
@@ -88,6 +105,7 @@ mod tests {
             test_helper::{int_column, pk_column, string_column},
         },
         sql::json_object::{JsonObject, JsonObjectElement},
+        PhysicalTableName,
     };
 
     use super::*;
@@ -95,12 +113,17 @@ mod tests {
     #[test]
     fn json_object() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
-            "people",
+            PhysicalTableName {
+                name: "people".to_owned(),
+                schema: None,
+            },
             vec![pk_column("id"), string_column("name"), int_column("age")],
         )])
         .to_database();
 
-        let table_id = database.get_table_id("people").unwrap();
+        let table_id = database
+            .get_table_id(&PhysicalTableName::new("people", None))
+            .unwrap();
         let age_col_id = database.get_column_id(table_id, "age").unwrap();
         let age_col2_id = database.get_column_id(table_id, "age").unwrap();
         let name_col_id = database.get_column_id(table_id, "name").unwrap();

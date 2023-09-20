@@ -72,7 +72,9 @@ values:
             type_hint: ~
             unique_constraints: []
             default_value: ~
-        table_name: concerts
+        table_name:
+          name: concerts
+          schema: ~
         access:
           default:
             LogicalOp:

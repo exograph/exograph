@@ -102,7 +102,10 @@ impl ToModel for TableSpec {
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
 
-        let table_annot = format!("@table(\"{}\")", self.name);
+        let table_annot = match &self.name.schema {
+            Some(schema) => format!("@table(name=\"{}\", schema=\"{}\")", self.name.name, schema),
+            None => format!("@table(\"{}\")", self.name.name),
+        };
         let column_stmts = self
             .columns
             .iter()
@@ -114,10 +117,10 @@ impl ToModel for TableSpec {
             .collect::<String>();
 
         // not a robust check
-        if self.name.ends_with('s') {
+        if self.name.name.ends_with('s') {
             issues.push(Issue::Hint(format!(
                 "model name `{}` should be changed to singular",
-                to_model_name(&self.name)
+                to_model_name(&self.name.name)
             )));
         }
 
@@ -125,7 +128,7 @@ impl ToModel for TableSpec {
             value: format!(
                 "{}\nmodel {} {{\n{}}}",
                 table_annot,
-                to_model_name(&self.name),
+                to_model_name(&self.name.name),
                 column_stmts
             ),
             issues,
@@ -154,7 +157,7 @@ impl ToModel for ColumnSpec {
 
             issues.push(Issue::Hint(format!(
                 "consider adding a field to `{}` of type `[{}]` to create a one-to-many relationship",
-                foreign_table_name, to_model_name(&self.name),
+                foreign_table_name.fully_qualified_name(), to_model_name(&self.name),
             )));
         }
 

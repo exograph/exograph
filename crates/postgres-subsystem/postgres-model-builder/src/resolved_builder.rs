@@ -35,6 +35,7 @@ use core_plugin_interface::{
         },
     },
 };
+use exo_sql::PhysicalTableName;
 
 use super::{
     access_builder::{build_access, ResolvedAccess},
@@ -86,7 +87,7 @@ pub struct ResolvedCompositeType {
     pub name: String,
     pub plural_name: String,
     pub fields: Vec<ResolvedField>,
-    pub table_name: String,
+    pub table_name: PhysicalTableName,
     pub access: ResolvedAccess,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -261,11 +262,15 @@ fn resolve(
                             .get("plural")
                             .map(|p| p.as_single().as_string());
 
-                        let table_name = ct
-                            .annotations
-                            .get("table")
-                            .map(|p| p.as_single().as_string())
-                            .unwrap_or_else(|| ct.name.table_name(plural_annotation_value.clone()));
+                        let TableInfo {
+                            name: table_name,
+                            schema: schema_name,
+                        } = extract_table_annotation(
+                            ct.annotations.get("table"),
+                            &ct.name,
+                            plural_annotation_value.clone(),
+                        );
+
                         let access = build_access(ct.annotations.get("access"));
                         let name = ct.name.clone();
                         let plural_name =
@@ -323,7 +328,10 @@ fn resolve(
                                 name,
                                 plural_name: plural_name.clone(),
                                 fields: resolved_fields,
-                                table_name,
+                                table_name: PhysicalTableName {
+                                    name: table_name,
+                                    schema: schema_name,
+                                },
                                 access: access.clone(),
                                 span: ct.span,
                             }),
@@ -926,6 +934,54 @@ fn field_cardinality(field_type: &AstFieldType<Typed>) -> Cardinality {
     }
 }
 
+struct TableInfo {
+    name: String,
+    schema: Option<String>,
+}
+
+/// Given parameters for `@table(name=<table-name>, schema=<schema-name>)` extract table and schema name.
+///
+/// If a single string is provided (for example, `@table("t_name")), it is assumed to be the table name and the schema name is assumed to be `public`.
+/// If a map is provided (for example, `@table(name="t_name", schema="s_name")`), the table name is extracted from the `name` key and the schema name from the `schema` key.
+/// If a map is provided with only one key (for example, `@table(name="t_name")`), the table name is extracted from the key and the schema name is assumed to be `public`.
+///
+///
+/// If no parameters are provided, the table name is derived from the type name and the schema name is assumed to be `public`.
+///
+fn extract_table_annotation(
+    annotation_params: Option<&AstAnnotationParams<Typed>>,
+    type_name: &str,
+    plural_annotation_value: Option<String>,
+) -> TableInfo {
+    let default_table_name = || type_name.table_name(plural_annotation_value.clone());
+
+    match annotation_params {
+        Some(p) => match p {
+            AstAnnotationParams::Single(value, _) => TableInfo {
+                name: value.as_string(),
+                schema: None,
+            },
+            AstAnnotationParams::Map(m, _) => {
+                let name = m
+                    .get("name")
+                    .map(|value| value.as_string())
+                    .unwrap_or_else(default_table_name);
+                let schema = m.get("schema").cloned().map(|value| value.as_string());
+
+                TableInfo { name, schema }
+            }
+            _ => panic!(),
+        },
+        None => {
+            let name = default_table_name();
+            TableInfo {
+                name: name.clone(),
+                schema: None,
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use codemap::CodeMap;
@@ -1220,6 +1276,33 @@ mod tests {
             type ConcertInfo {
                 @pk concertId: Int = autoIncrement() 
                 mainTitle: String 
+            }
+        }
+        "#;
+
+        // Both type and fields names are camel case, but the table and column should be defaulted to snake case
+        let resolved = create_resolved_system(src).unwrap();
+
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
+    }
+
+    #[test]
+    fn non_public_schema() {
+        let src = r#"
+        @postgres
+        module Db {
+            @table(schema="auth") // let the table name be derived from the type name
+            type AuthSchemaTable {
+                @pk id: Int = autoIncrement() 
+                name: String 
+            }
+
+            @table(name="custom_table", schema="auth")
+            type AuthSchemaTableWithCustomName {
+                @pk id: Int = autoIncrement() 
+                name: String 
             }
         }
         "#;
