@@ -1,0 +1,41 @@
+operation: |
+    mutation (
+        $venue_name1: String!, $venue_name2: String!, 
+        $venue_latitude1: Float!, $venue_latitude2: Float!, 
+        $concert_price1: Decimal!, $concert_price2: Decimal!, $concert_price3: Decimal!, $concert_price4: Decimal!,
+        $concert_title1: String!, $concert_title2: String!, $concert_title3: String!, $concert_title4: String!
+    ) {
+        venue1: createVenue(data: {name: $venue_name1, published: true, latitude: $venue_latitude1}) {
+            id
+        }
+        venue2: createVenue(data: {name: $venue_name2, published: false, latitude: $venue_latitude2}) {
+            id
+        }
+        concert1: createConcert(data: {title: $concert_title1, venue: {id: 1}, published: true, price: $concert_price1}) {
+            id
+        }
+        concert2: createConcert(data: {title: $concert_title2, venue: {id: 2}, published: false, price: $concert_price2}) {
+            id
+        }
+        concert3: createConcert(data: {title: $concert_title3, venue: {id: 1}, published: true, price: $concert_price3}) {
+            id
+        }
+        concert4: createConcert(data: {title: $concert_title4, venue: {id: 2}, published: false, price: $concert_price4}) {
+            id
+        }        
+    }  
+variable: |
+    {
+        "venue_name1": "Venue1",
+        "venue_name2": "Venue2",
+        "venue_latitude1": 37.7749,
+        "venue_latitude2": 35.6762,
+        "concert_price1": "20.50",
+        "concert_price2": "12.50",
+        "concert_price3": "30.50",
+        "concert_price4": "22.50",        
+        "concert_title1": "Concert1",
+        "concert_title2": "Concert2",
+        "concert_title3": "Concert3",
+        "concert_title4": "Concert4"        
+    }
