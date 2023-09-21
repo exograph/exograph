@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use oidc_jwt_validator::{cache::Strategy, ValidationError, ValidationSettings, Validator};
 use serde_json::Value;
 
@@ -11,13 +9,12 @@ pub struct Oidc {
 
 impl Oidc {
     pub(super) async fn new(url: String) -> Result<Self, JwtConfigurationError> {
-        let client = reqwest::ClientBuilder::new()
-            .timeout(Duration::from_secs(2))
-            .build()
-            .map_err(|e| JwtConfigurationError::Configuration {
-                message: "Unable to create client".to_owned(),
+        let client = reqwest::ClientBuilder::new().build().map_err(|e| {
+            JwtConfigurationError::Configuration {
+                message: "Unable to create HTTP client".to_owned(),
                 source: e.into(),
-            })?;
+            }
+        })?;
         let mut settings = ValidationSettings::new();
         settings.set_issuer(&[&url]);
 
