@@ -31,13 +31,13 @@ use common::env_const::{
 use super::command::{
     default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition,
 };
-use common::env_const::EXO_JWKS_ENDPOINT;
+use common::env_const::EXO_OIDC_URL;
 use exo_sql::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
 use futures::FutureExt;
 
 enum JWTSecret {
     EnvSecret(String),
-    EnvJwksEndpoint(String),
+    EnvOidc(String),
     Generated(String),
 }
 
@@ -72,16 +72,16 @@ async fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
     let db = db_server.create_database("yolo")?;
 
     let jwt_secret = std::env::var(EXO_JWT_SECRET).ok();
-    let jwt_jwks_endpoint = std::env::var(EXO_JWKS_ENDPOINT).ok();
+    let oidc_url = std::env::var(EXO_OIDC_URL).ok();
 
-    let jwt_secret = match (jwt_secret, jwt_jwks_endpoint) {
+    let jwt_secret = match (jwt_secret, oidc_url) {
         (Some(_), Some(_)) => Err(anyhow::anyhow!(
             "Both {} and {} are set. Please unset one of them.",
             EXO_JWT_SECRET,
-            EXO_JWKS_ENDPOINT
+            EXO_OIDC_URL
         )),
         (Some(s), None) => Ok(JWTSecret::EnvSecret(s)),
-        (None, Some(s)) => Ok(JWTSecret::EnvJwksEndpoint(s)),
+        (None, Some(s)) => Ok(JWTSecret::EnvOidc(s)),
         (None, None) => Ok(JWTSecret::Generated(super::util::generate_random_string())),
     }?;
 
@@ -107,7 +107,7 @@ async fn run_server(
     match jwt_secret {
         JWTSecret::EnvSecret(s) => std::env::set_var(EXO_JWT_SECRET, s),
         JWTSecret::Generated(s) => std::env::set_var(EXO_JWT_SECRET, s),
-        JWTSecret::EnvJwksEndpoint(s) => std::env::set_var(EXO_JWKS_ENDPOINT, s),
+        JWTSecret::EnvOidc(s) => std::env::set_var(EXO_OIDC_URL, s),
     };
     std::env::set_var(EXO_CORS_DOMAINS, "*");
 
@@ -125,11 +125,8 @@ async fn run_server(
                 "Using the EXO_JWT_SECRET env value".cyan()
             )
         }
-        JWTSecret::EnvJwksEndpoint(_) => {
-            println!(
-                "JWKS Endpoint: {}",
-                "Using the EXO_JWKS_ENDPOINT env value".cyan()
-            )
+        JWTSecret::EnvOidc(_) => {
+            println!("OIDC URL: {}", "Using the EXO_OIDC_URL env value".cyan())
         }
         JWTSecret::Generated(s) => {
             println!("Generated JWT secret: {}", s.cyan())

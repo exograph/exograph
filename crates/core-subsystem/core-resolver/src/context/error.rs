@@ -17,6 +17,9 @@ pub enum ContextExtractionError {
     #[error("Unauthorized request")]
     Unauthorized,
 
+    #[error("Expired authentication")]
+    ExpiredAuthentication,
+
     #[error("Malformed request")]
     Malformed,
 

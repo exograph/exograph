@@ -9,10 +9,10 @@
 
 mod authenticator;
 mod extractor;
-mod jwks;
+mod oidc;
 
 pub use authenticator::JwtAuthenticator;
 pub use extractor::JwtExtractor;
 
-pub use authenticator::LOCAL_JWKS_URL;
 pub use authenticator::LOCAL_JWT_SECRET;
+pub use authenticator::LOCAL_OIDC_URL;

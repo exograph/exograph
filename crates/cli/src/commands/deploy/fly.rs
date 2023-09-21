@@ -130,8 +130,8 @@ impl CommandDefinition for FlyCommandDefinition {
         );
         println!(
             "{}{}",
-            format!("\tfly secrets set --app {} EXO_JWKS_ENDPOINT=", app_name,).blue(),
-            "<your-jwks-url>".yellow()
+            format!("\tfly secrets set --app {} EXO_OIDC_URL=", app_name,).blue(),
+            "<your-oidc-url>".yellow()
         );
         println!("\n\tSet up database: ");
 

@@ -1,49 +1,55 @@
 use std::cell::RefCell;
 use std::env;
 
-use common::env_const::{EXO_JWKS_ENDPOINT, EXO_JWT_SECRET};
-use jsonwebtoken::errors::ErrorKind;
-use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
+use common::env_const::{EXO_JWT_SECRET, EXO_OIDC_URL};
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde_json::Value;
-use tracing::warn;
 
 use thiserror::Error;
+use tracing::error;
 
 use crate::context::error::ContextExtractionError;
 use crate::context::request::Request;
 
-use super::jwks::{JwksEndpoint, JwksExtractionError};
+use super::oidc::Oidc;
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
     pub static LOCAL_JWT_SECRET: RefCell<Option<String>> = RefCell::new(None);
-    pub static LOCAL_JWKS_URL: RefCell<Option<String>> = RefCell::new(None);
+    pub static LOCAL_OIDC_URL: RefCell<Option<String>> = RefCell::new(None);
 }
 
 /// Authenticator with information about how to validate JWT tokens
-/// It can be either a secret or a JWKS endpoint
+/// It can be either a secret or a OIDC url
 pub enum JwtAuthenticator {
     Secret(String),
-    Endpoint(JwksEndpoint),
+    Oidc(Oidc),
 }
 
 #[derive(Debug, Error)]
 pub(super) enum JwtAuthenticationError {
-    #[error("Token extraction error `{0}`")]
-    JsonWebToken(#[from] jsonwebtoken::errors::Error),
-
-    #[error("JWKS extraction error `{0}`")]
-    JwksExtractionError(#[from] JwksExtractionError),
+    #[error("Invalid token")]
+    Invalid,
+    #[error("Expired token")]
+    Expired,
+    #[error("Delegate error: {0}")]
+    Delegate(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 #[derive(Debug, Error)]
-pub enum JwtAuthenticatorError {
-    #[error("JWT configuration error `{0}`")]
-    Configuration(String),
+pub enum JwtConfigurationError {
+    #[error("Invalid setup: {0}")]
+    InvalidSetup(String),
+
+    #[error("JWT configuration error `{message}`")]
+    Configuration {
+        message: String,
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
 }
 
 impl JwtAuthenticator {
-    pub fn new_from_env() -> Result<Option<Self>, JwtAuthenticatorError> {
+    pub async fn new_from_env() -> Result<Option<Self>, JwtConfigurationError> {
         let secret = LOCAL_JWT_SECRET.with(|local_jwt_secret| {
             local_jwt_secret
                 .borrow()
@@ -51,30 +57,44 @@ impl JwtAuthenticator {
                 .or_else(|| env::var(EXO_JWT_SECRET).ok())
         });
 
-        let jwks_url = LOCAL_JWKS_URL.with(|url| {
-            url.borrow()
-                .clone()
-                .or_else(|| env::var(EXO_JWKS_ENDPOINT).ok())
-        });
+        let oidc_url =
+            LOCAL_OIDC_URL.with(|url| url.borrow().clone().or_else(|| env::var(EXO_OIDC_URL).ok()));
 
-        match (secret, jwks_url) {
+        match (secret, oidc_url) {
             (Some(secret), None) => Ok(Some(JwtAuthenticator::Secret(secret))),
-            (None, Some(jwks_url)) => Ok(Some(JwtAuthenticator::Endpoint(JwksEndpoint::new(jwks_url)))),
+            (None, Some(oidc_url)) => Ok(Some(JwtAuthenticator::Oidc(Oidc::new(oidc_url).await?))),
             (Some(_), Some(_)) => {
-                Err(JwtAuthenticatorError::Configuration(format!("Both {EXO_JWT_SECRET} and {EXO_JWKS_ENDPOINT} are set. Only one of them can be set at a time")))
+                Err(JwtConfigurationError::InvalidSetup(format!("Both {EXO_JWT_SECRET} and {EXO_OIDC_URL} are set. Only one of them can be set at a time")))
             }
             (None, None) => Ok(None),
         }
     }
 
-    async fn validate_jwt(&self, token: &str) -> Result<TokenData<Value>, JwtAuthenticationError> {
+    async fn validate_jwt(&self, token: &str) -> Result<Value, JwtAuthenticationError> {
+        fn map_jwt_error(error: jsonwebtoken::errors::Error) -> JwtAuthenticationError {
+            match error.kind() {
+                jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+                    JwtAuthenticationError::Expired
+                }
+                _ => JwtAuthenticationError::Invalid,
+            }
+        }
+
         match self {
             JwtAuthenticator::Secret(secret) => Ok(decode::<Value>(
                 token,
                 &DecodingKey::from_secret(secret.as_ref()),
                 &Validation::default(),
-            )?),
-            JwtAuthenticator::Endpoint(endpoint) => Ok(endpoint.decode_token(token).await?),
+            )
+            .map_err(map_jwt_error)?
+            .claims),
+            JwtAuthenticator::Oidc(oidc) => oidc.validate(token).await.map_err(|err| match err {
+                oidc_jwt_validator::ValidationError::ValidationFailed(err) => map_jwt_error(err),
+                err => {
+                    error!("Error validating JWT: {}", err);
+                    JwtAuthenticationError::Invalid
+                }
+            }),
         }
     }
 
@@ -93,17 +113,14 @@ impl JwtAuthenticator {
             Some(jwt_token) => self
                 .validate_jwt(&jwt_token)
                 .await
-                .map(|v| v.claims)
                 .map_err(|err| match &err {
-                    JwtAuthenticationError::JsonWebToken(err) => match err.kind() {
-                        ErrorKind::InvalidSignature | ErrorKind::ExpiredSignature => {
-                            ContextExtractionError::Unauthorized
-                        }
-                        _ => ContextExtractionError::Malformed,
-                    },
-                    JwtAuthenticationError::JwksExtractionError(_) => {
-                        warn!("Failed to process JWT using JWKS: {}", err);
-                        ContextExtractionError::Malformed
+                    JwtAuthenticationError::Invalid => ContextExtractionError::Unauthorized,
+                    JwtAuthenticationError::Expired => {
+                        ContextExtractionError::ExpiredAuthentication
+                    }
+                    JwtAuthenticationError::Delegate(err) => {
+                        error!("Error validating JWT: {}", err);
+                        ContextExtractionError::Unauthorized
                     }
                 }),
             None => {

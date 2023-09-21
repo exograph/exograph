@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use common::env_const::{EXO_JWKS_ENDPOINT, EXO_JWT_SECRET};
+use common::env_const::{EXO_JWT_SECRET, EXO_OIDC_URL};
 use serde_json::Value;
 use tokio::sync::OnceCell;
 use tracing::warn;
@@ -35,7 +35,7 @@ impl JwtExtractor {
         } else {
             warn!(
                 "{} or {} is not set, not parsing JWT tokens",
-                EXO_JWT_SECRET, EXO_JWKS_ENDPOINT
+                EXO_JWT_SECRET, EXO_OIDC_URL
             );
             Ok(serde_json::Value::Null)
         }
