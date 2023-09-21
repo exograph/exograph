@@ -121,6 +121,7 @@ impl SystemLoader {
         let (normal_query_depth_limit, introspection_query_depth_limit) = query_depth_limits()?;
 
         let authenticator = JwtAuthenticator::new_from_env()
+            .await
             .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
 
         Ok(SystemResolver::new(

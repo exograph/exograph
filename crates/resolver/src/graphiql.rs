@@ -18,7 +18,7 @@ static GRAPHIQL_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/
 pub fn get_asset_bytes<P: AsRef<Path>>(file_name: P) -> Option<Vec<u8>> {
     let enable_introspection_live_update =
         std::env::var(EXO_INTROSPECTION_LIVE_UPDATE).unwrap_or_else(|_| "false".to_string());
-    let jwks_endpoint = std::env::var("EXO_JWKS_ENDPOINT").unwrap_or_else(|_| "".to_string());
+    let oidc_url = std::env::var("EXO_OIDC_URL").unwrap_or_else(|_| "".to_string());
 
     GRAPHIQL_DIR.get_file(file_name.as_ref()).map(|file| {
         if file_name.as_ref() == Path::new("index.html") {
@@ -32,21 +32,7 @@ pub fn get_asset_bytes<P: AsRef<Path>>(file_name: P) -> Option<Vec<u8>> {
                 &enable_introspection_live_update,
             );
 
-            let str = {
-                let jwks_base_url = if jwks_endpoint.is_empty() {
-                    ""
-                } else {
-                    let jwks_path = "/.well-known/jwks.json";
-
-                    if jwks_endpoint.ends_with(jwks_path) {
-                        &jwks_endpoint[..jwks_endpoint.len() - jwks_path.len()]
-                    } else {
-                        &jwks_endpoint
-                    }
-                };
-
-                str.replace("%%JWKS_BASE_URL%%", jwks_base_url)
-            };
+            let str = str.replace("%%OIDC_URL%%", &oidc_url);
 
             str.as_bytes().to_owned()
         } else {

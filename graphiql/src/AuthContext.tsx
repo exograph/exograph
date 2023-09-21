@@ -25,12 +25,10 @@ interface AuthContextType {
   setAuthenticatorInfo?: (info: AuthenticatorInfo) => void;
 }
 
-const exoJwksBaseUrl: string = (window as any).exoJwksBaseUrl;
+const exoOidcUrl: string = (window as any).exoOidcUrl;
 
 const authenticatorType =
-  exoJwksBaseUrl && exoJwksBaseUrl.endsWith("clerk.accounts.dev")
-    ? "clerk"
-    : "secret";
+  exoOidcUrl && exoOidcUrl.endsWith("clerk.accounts.dev") ? "clerk" : "secret";
 
 const publishableKeyKey = "exograph:clerkPublishableKey";
 const templateIdKey = "exograph:clerkTemplateId";
