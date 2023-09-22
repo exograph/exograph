@@ -4787,8 +4787,9 @@ dependencies = [
 
 [[package]]
 name = "oidc-jwt-validator"
-version = "0.2.0"
-source = "git+https://github.com/exograph/oidc_jwt_validator.git?branch=reqwest-no-default-features#b58cc647db179bfbd4677e514f394a05c0dd0595"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5a946417e6f2bd610148c0d30f527fc84fc339b7e574ae6b54e9060a37133e5"
 dependencies = [
  "base64 0.13.1",
  "jsonwebtoken",
