@@ -1,14 +1,13 @@
 import { useUser } from "@clerk/clerk-react";
 
 export function UserIcon() {
-  const { user } = useUser();
+  const { user, isSignedIn } = useUser();
 
   return (
-    <img
-      src={user?.imageUrl}
-      alt="user"
-      width={"20px"}
-      style={{ borderRadius: "50%" }}
-    />
+    <>
+      {isSignedIn && (
+        <img src={user?.imageUrl} alt="user" width={"20px"} style={{ borderRadius: "50%" }} />
+      )}
+    </>
   );
 }
