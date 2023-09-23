@@ -1,6 +1,4 @@
 import { useContext, useEffect, useState } from "react";
-import * as jose from "jose";
-import { AuthContext } from "../../AuthContext";
 import { EditorView } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
 import { linter } from "@codemirror/lint";
@@ -8,44 +6,22 @@ import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 
 import { tags } from "@lezer/highlight";
-
-const defaultPayload = `{
-  "sub": "1234567890",
-  "name": "Jordan Taylor"
-}`;
-
-type PanelState = {
-  jwtSecret: string | undefined;
-  payload: string;
-};
-
-const paneState: PanelState = {
-  jwtSecret: undefined,
-  payload: defaultPayload,
-};
+import { SecretConfig } from "./SecretConfig";
+import { AuthConfigContext } from "./AuthConfigProvider";
+import { SecretAuthContext } from "./SecretAuthProvider";
 
 const jsonExtension = json();
 const jsonLinterExtension = linter(jsonParseLinter());
 
 export function SignInPanel(props: { onDone: () => void }) {
-  const [jwtSecret, setJwtSecret] = useState<string | undefined>(
-    paneState.jwtSecret
-  );
-  const [payload, setPayload] = useState<string>(paneState.payload);
+  const { config, setConfig } = useContext(AuthConfigContext);
+  const { setSignedIn } = useContext(SecretAuthContext);
 
+  const [jwtSecret, setJwtSecret] = useState(config.secret);
+  const [payload, setPayload] = useState(config.payload || "");
   const [payloadError, setPayloadError] = useState<string | undefined>(
     undefined
   );
-
-  const { setTokenFn, isSignedIn, setIsSignedIn } = useContext(AuthContext);
-
-  useEffect(() => {
-    setTokenFn &&
-      jwtSecret &&
-      setTokenFn(() =>
-        Promise.resolve(createJwtToken(JSON.parse(payload), jwtSecret))
-      );
-  }, [payload, jwtSecret, setTokenFn]);
 
   useEffect(() => {
     try {
@@ -57,12 +33,13 @@ export function SignInPanel(props: { onDone: () => void }) {
     }
   }, [payload]);
 
-  useEffect(() => {
-    paneState.jwtSecret = jwtSecret;
-    paneState.payload = payload;
-  }, [jwtSecret, payload]);
-
   const enableSignIn = !payloadError && jwtSecret && payload ? true : false;
+
+  function onSignIn() {
+    setConfig(new SecretConfig(jwtSecret, payload));
+    setSignedIn(true);
+    props.onDone();
+  }
 
   return (
     <div
@@ -121,53 +98,21 @@ export function SignInPanel(props: { onDone: () => void }) {
         <button
           className="graphiql-button"
           style={{
-            background: enableSignIn ? "hsla(var(--color-tertiary), 1)" : "hsla(var(--color-tertiary), 0.4)",
+            background: enableSignIn
+              ? "hsla(var(--color-tertiary), 1)"
+              : "hsla(var(--color-tertiary), 0.4)",
             color: "white",
           }}
           onClick={() => {
-            setIsSignedIn && setIsSignedIn(true);
-            props.onDone();
+            onSignIn();
           }}
           disabled={!enableSignIn}
         >
           Sign In
         </button>
-        <button
-          className="graphiql-button"
-          style={{
-            background: isSignedIn ? "hsla(var(--color-secondary), 1)" : "hsla(var(--color-secondary), 0.4)",
-            color: "white",
-          }}
-          disabled={!isSignedIn}
-          onClick={() => {
-            setTokenFn && setTokenFn(undefined);
-            setIsSignedIn && setIsSignedIn(false);
-            props.onDone();
-          }}
-        >
-          Sign Out
-        </button>
       </div>
     </div>
   );
-}
-
-async function createJwtToken(
-  payload: Record<string, unknown>,
-  secret: string
-): Promise<string | null> {
-  if (secret === "") {
-    return null;
-  }
-
-  const encodedSecret = new TextEncoder().encode(secret);
-  const alg = "HS256";
-
-  return await new jose.SignJWT(payload)
-    .setProtectedHeader({ alg })
-    .setIssuedAt()
-    .setExpirationTime("10m")
-    .sign(encodedSecret);
 }
 
 let exoTheme = EditorView.theme({

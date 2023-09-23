@@ -18,7 +18,10 @@ static GRAPHIQL_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/
 pub fn get_asset_bytes<P: AsRef<Path>>(file_name: P) -> Option<Vec<u8>> {
     let enable_introspection_live_update =
         std::env::var(EXO_INTROSPECTION_LIVE_UPDATE).unwrap_or_else(|_| "false".to_string());
-    let oidc_url = std::env::var("EXO_OIDC_URL").unwrap_or_else(|_| "".to_string());
+    // Normalize the OIDC URL to remove the trailing slash, if any
+    let oidc_url = std::env::var("EXO_OIDC_URL")
+        .map(|s| s.trim_end_matches('/').to_owned())
+        .unwrap_or_else(|_| "".to_owned());
 
     GRAPHIQL_DIR.get_file(file_name.as_ref()).map(|file| {
         if file_name.as_ref() == Path::new("index.html") {

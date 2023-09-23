@@ -1,11 +1,12 @@
-import { SignIn } from "@clerk/clerk-react";
 import { useContext, useState } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
 import { AuthConfigContext } from "./AuthConfigProvider";
-import { ClerkConfig } from "./ClerkConfig";
+import { Auth0Config } from "./Auth0Config";
 
 export function SignInPanel() {
   const { config } = useContext(AuthConfigContext);
   const canShowSignIn = config.canSignIn();
+  const { loginWithRedirect } = useAuth0();
 
   const [currentPanel, setCurrentPanel] = useState<"info" | "sign-in">(
     canShowSignIn ? "sign-in" : "info"
@@ -25,7 +26,7 @@ export function SignInPanel() {
         setCurrentPanel(currentPanel === "info" ? "sign-in" : "info");
       }}
     >
-      {currentPanel === "info" ? "Sign In" : "Configure Clerk"}
+      {currentPanel === "info" ? "Sign In" : "Configure Auth0"}
     </button>
   );
 
@@ -41,7 +42,16 @@ export function SignInPanel() {
             gap: "1rem",
           }}
         >
-          <SignIn redirectUrl={"/playground"} />
+          <button
+            className="graphiql-button"
+            style={{
+              background: "hsla(var(--color-tertiary), 1)",
+              color: "white",
+            }}
+            onClick={() => loginWithRedirect()}
+          >
+            Sign in with Auth0
+          </button>
           {switchLink}
         </div>
       );
@@ -55,11 +65,12 @@ export function SignInPanel() {
 
 function ConfigurationPanel(props: { onDone: () => void }) {
   const { config, setConfig } = useContext(AuthConfigContext);
-  const [publishableKey, setPublishableKey] = useState<string>(
-    config.publishableKey || ""
+  const [domain, setDomain] = useState<string>(config.domain || "");
+  const [clientId, setClientId] = useState<string>(config.clientId || "");
+  const [profile, setProfile] = useState<string>(
+    config.profile || "read:current_user profile"
   );
-  const [templateId, setTemplateId] = useState<string>(config.templateId || "");
-  const disabledDone = publishableKey === "";
+  const disabledDone = domain === "" || clientId === "" || profile === "";
   const background = disabledDone
     ? "hsla(var(--color-secondary), 0.5)"
     : "hsla(var(--color-secondary), 1)";
@@ -72,17 +83,23 @@ function ConfigurationPanel(props: { onDone: () => void }) {
         width: "100%",
       }}
     >
-      <div style={labelStyle}>Clerk Publishable Key</div>
+      <div style={labelStyle}>Auth0 Domain</div>
       <input
         style={inputStyle}
-        value={publishableKey}
-        onChange={(e) => setPublishableKey(e.target.value)}
+        value={domain}
+        onChange={(e) => setDomain(e.target.value)}
       />
-      <div style={labelStyle}>Template for getting token (optional)</div>
+      <div style={labelStyle}>Auth0 Client Id</div>
       <input
         style={inputStyle}
-        value={templateId}
-        onChange={(e) => setTemplateId(e.target.value)}
+        value={clientId}
+        onChange={(e) => setClientId(e.target.value)}
+      />
+      <div style={labelStyle}>Profile</div>
+      <input
+        style={inputStyle}
+        value={profile}
+        onChange={(e) => setProfile(e.target.value)}
       />
       <button
         className="graphiql-button"
@@ -95,7 +112,7 @@ function ConfigurationPanel(props: { onDone: () => void }) {
         }}
         disabled={disabledDone}
         onClick={() => {
-          setConfig(new ClerkConfig(publishableKey, templateId));
+          setConfig(new Auth0Config(domain, clientId, profile));
           props.onDone();
         }}
       >

@@ -1,59 +1,63 @@
 import React, { useCallback, useState } from "react";
+import { ClerkAuthPlugin } from "./auth/clerk";
+import { SecretAuthPlugin } from "./auth/secret";
+import { Auth0AuthPlugin } from "./auth/auth0";
+import { AuthPlugin } from "./AuthPlugin";
 
 type GetToken = () => Promise<string | null>;
-
-export type AuthenticatorInfo =
-  | SecretAuthenticatorInfo
-  | ClerkAuthenticatorInfo;
-
-export type ClerkAuthenticatorInfo = {
-  type: "clerk";
-  publishableKey: string | undefined;
-  templateId: string | undefined;
-};
-
-export type SecretAuthenticatorInfo = {
-  type: "secret";
-};
-
-interface AuthContextType {
-  isSignedIn?: boolean;
-  setIsSignedIn?: (isSignedIn?: boolean) => void;
-  getTokenFn?: GetToken;
-  setTokenFn?: (getToken: GetToken | undefined) => void;
-  authenticatorInfo: AuthenticatorInfo;
-  setAuthenticatorInfo?: (info: AuthenticatorInfo) => void;
-}
 
 const exoOidcUrl: string = (window as any).exoOidcUrl;
 
 const authenticatorType =
-  exoOidcUrl && exoOidcUrl.endsWith("clerk.accounts.dev") ? "clerk" : "secret";
+  exoOidcUrl && exoOidcUrl.endsWith("auth0.com")
+    ? "auth0"
+    : exoOidcUrl && exoOidcUrl.endsWith("clerk.accounts.dev")
+    ? "clerk"
+    : "secret";
 
-const publishableKeyKey = "exograph:clerkPublishableKey";
-const templateIdKey = "exograph:clerkTemplateId";
-
-const initAuthenticatorInfo: AuthenticatorInfo =
+const plugin: AuthPlugin =
   authenticatorType === "clerk"
-    ? {
-        type: authenticatorType,
-        publishableKey: localStorage.getItem(publishableKeyKey) || undefined,
-        templateId: localStorage.getItem(templateIdKey) || undefined,
-      }
-    : {
-        type: authenticatorType,
-      };
+    ? new ClerkAuthPlugin()
+    : authenticatorType === "auth0"
+    ? new Auth0AuthPlugin()
+    : new SecretAuthPlugin();
 
-export const AuthContext = React.createContext<AuthContextType>({
-  authenticatorInfo: initAuthenticatorInfo,
-});
+export function updateLocalStorage(key: string, value?: string): void {
+  if (value) {
+    localStorage.setItem(key, value);
+  } else {
+    localStorage.removeItem(key);
+  }
+}
+
+type AuthContextType = {
+  plugin: AuthPlugin;
+
+  getTokenFn?: GetToken;
+  setTokenFn?: (getToken: GetToken | undefined) => void;
+
+  getSignOutFn?: () => Promise<void>;
+  setSignOutFn?: (signOut: () => Promise<void>) => void;
+
+  isSignedIn?: boolean;
+  setIsSignedIn?: (isSignedIn?: boolean) => void;
+
+  userInfo?: string;
+  setUserInfo?: (userInfo?: string) => void;
+};
+
+const defaultContext: AuthContextType = {
+  plugin,
+};
+
+export const AuthContext = React.createContext<AuthContextType>(defaultContext);
 
 export function AuthContextProvider(props: { children: React.ReactNode }) {
   const [isSignedIn, setIsSignedIn] = useState<boolean | undefined>(false);
   const [getTokenFn, setTokenFn] = useState<GetToken | undefined>();
-  const [authenticatorInfo, setAuthenticatorInfo] = useState<AuthenticatorInfo>(
-    initAuthenticatorInfo
-  );
+  const [getSignOutFn, setSignOutFn] = useState<() => Promise<void>>();
+
+  const [userInfo, setUserInfo] = useState<string | undefined>();
 
   const setTokenFnCb = useCallback(
     (f: GetToken | undefined) => {
@@ -62,23 +66,11 @@ export function AuthContextProvider(props: { children: React.ReactNode }) {
     [setTokenFn]
   );
 
-  const setAuthenticatorInfoCb = useCallback(
-    (info: AuthenticatorInfo) => {
-      setAuthenticatorInfo(info);
-      if (info.type === "clerk") {
-        if (info.publishableKey) {
-          localStorage.setItem(publishableKeyKey, info.publishableKey);
-        } else {
-          localStorage.removeItem(publishableKeyKey);
-        }
-        if (info.templateId) {
-          localStorage.setItem(templateIdKey, info.templateId);
-        } else {
-          localStorage.removeItem(templateIdKey);
-        }
-      }
+  const setSignOutCb = useCallback(
+    (f: () => Promise<void>) => {
+      setSignOutFn(() => f);
     },
-    [setAuthenticatorInfo]
+    [setSignOutFn]
   );
 
   return (
@@ -86,10 +78,13 @@ export function AuthContextProvider(props: { children: React.ReactNode }) {
       value={{
         isSignedIn,
         setIsSignedIn,
+        plugin: defaultContext.plugin,
         getTokenFn,
         setTokenFn: setTokenFnCb,
-        authenticatorInfo,
-        setAuthenticatorInfo: setAuthenticatorInfoCb,
+        getSignOutFn,
+        setSignOutFn: setSignOutCb,
+        userInfo,
+        setUserInfo,
       }}
     >
       {props.children}

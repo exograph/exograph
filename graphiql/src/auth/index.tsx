@@ -1,28 +1,39 @@
-import { useContext, useState } from "react";
+import React, { forwardRef, useContext, useEffect, useState } from "react";
 import { ToolbarButton, Dialog } from "@graphiql/react";
 
 import { AuthContext } from "../AuthContext";
 
-import {
-  SignInPanel as ClerkSignInPanel,
-  UserIcon as ClerkUserIcon,
-  AuthProvider as ClerkAuthProvider,
-  SignOutButton as ClerkSignOutButton,
-} from "./clerk";
-import {
-  SignInPanel as SecretSignInPanel,
-  UserIcon as SecretUserIcon,
-} from "./secret";
-
 export function AuthToolbarButton() {
   const [showAuthPanel, setShowAuthPanel] = useState(false);
-  const { isSignedIn } = useContext(AuthContext);
+  const { plugin, isSignedIn, userInfo } = useContext(AuthContext);
+  const AuthConfigProvider = plugin.getAuthConfigProvider();
+
+  const getUserIcon = () => {
+    if (isSignedIn) {
+      const UserIcon = plugin.getUserIcon();
+      return <UserIcon />;
+    } else {
+      return null;
+    }
+  };
+
+  const getTooltip = () => {
+    if (isSignedIn) {
+      if (userInfo) {
+        return `${userInfo}`;
+      } else {
+        return "Sign out";
+      }
+    } else {
+      return "Authenticate";
+    }
+  };
 
   return (
-    <AuthProvider>
+    <AuthConfigProvider>
       <div style={{ position: "relative" }}>
         <ToolbarButton
-          label="Authenticate"
+          label={getTooltip()}
           onClick={() => setShowAuthPanel(!showAuthPanel)}
         >
           <svg
@@ -38,21 +49,19 @@ export function AuthToolbarButton() {
               d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"
             />
           </svg>
-          {isSignedIn && (
-            <div
-              style={{
-                position: "absolute",
-                right: "0px",
-                bottom: "-4px",
-              }}
-            >
-              <UserIcon />
-            </div>
-          )}
+          <div
+            style={{
+              position: "absolute",
+              right: "0px",
+              bottom: "-4px",
+            }}
+          >
+            {getUserIcon()}
+          </div>
         </ToolbarButton>
         <AuthPanel open={showAuthPanel} onOpenChange={setShowAuthPanel} />
       </div>
-    </AuthProvider>
+    </AuthConfigProvider>
   );
 }
 
@@ -61,27 +70,43 @@ export function AuthPanel(props: {
   onOpenChange: (open: boolean) => void;
 }) {
   const { isSignedIn } = useContext(AuthContext);
+  const signoutRef = React.createRef<HTMLButtonElement>();
+
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.target && signoutRef.current && e.target !== signoutRef.current) {
+        props.onOpenChange(false);
+      }
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [props, signoutRef]);
 
   if (!props.open) {
     return null;
   }
 
   if (isSignedIn) {
-    return <SignOutPanel {...props} />;
+    return (
+      <SignOutButton
+        onSignOut={() => props.onOpenChange(false)}
+        ref={signoutRef}
+      />
+    );
   } else {
-    return <SignInPanel {...props} />;
+    return <SignInDialog {...props} />;
   }
 }
 
-function SignInPanel(props: {
+function SignInDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { authenticatorInfo } = useContext(AuthContext);
-  const panelStyle = authenticatorInfo?.type;
+  const { plugin } = useContext(AuthContext);
+  const SignInPanel = plugin.getSignInPanel();
 
   return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+    <Dialog modal={false} open={props.open} onOpenChange={props.onOpenChange}>
       <div className="graphiql-dialog-header">
         <Dialog.Title className="graphiql-dialog-title">
           Authentication
@@ -95,48 +120,36 @@ function SignInPanel(props: {
           alignItems: "flex-start",
         }}
       >
-        {panelStyle === "clerk" ? (
-          <ClerkSignInPanel />
-        ) : (
-          <SecretSignInPanel onDone={() => props.onOpenChange(false)} />
-        )}
+        <SignInPanel onDone={() => props.onOpenChange(false)} />
       </div>
     </Dialog>
   );
 }
 
-function SignOutPanel(props: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const { authenticatorInfo } = useContext(AuthContext);
-  const panelStyle = authenticatorInfo?.type;
+const SignOutButton = forwardRef<HTMLButtonElement, { onSignOut: () => void }>(
+  (props, ref) => {
+    const { getSignOutFn } = useContext(AuthContext);
 
-  if (panelStyle === "clerk") {
-    return <ClerkSignOutButton onSignOut={() => props.onOpenChange(false)} />;
-  } else {
-    return <SignInPanel {...props} />;
+    return (
+      <button
+        ref={ref}
+        style={{
+          background: "hsla(var(--color-secondary), 1)",
+          color: "white",
+          width: "100px",
+          padding: "5px",
+          borderRadius: "5px",
+          position: "absolute",
+          right: "-16px",
+          marginTop: "5px",
+          zIndex: 100,
+        }}
+        onClick={() => {
+          getSignOutFn && getSignOutFn().then(props.onSignOut);
+        }}
+      >
+        Sign Out
+      </button>
+    );
   }
-}
-
-function UserIcon() {
-  const { authenticatorInfo } = useContext(AuthContext);
-  const panelStyle = authenticatorInfo?.type;
-
-  if (panelStyle === "clerk") {
-    return <ClerkUserIcon />;
-  } else {
-    return <SecretUserIcon />;
-  }
-}
-
-function AuthProvider(props: { children: React.ReactNode }) {
-  const { authenticatorInfo } = useContext(AuthContext);
-  const panelStyle = authenticatorInfo?.type;
-
-  if (panelStyle === "clerk") {
-    return <ClerkAuthProvider>{props.children}</ClerkAuthProvider>;
-  } else {
-    return <>{props.children}</>;
-  }
-}
+);
