@@ -48,7 +48,14 @@ export function SignInPanel() {
               background: "hsla(var(--color-tertiary), 1)",
               color: "white",
             }}
-            onClick={() => loginWithRedirect()}
+            onClick={() =>
+              loginWithRedirect({
+                // Specify custom openUrl to prevent Auth0 from reopening the window (which doesn't work in Arc)
+                openUrl(url) {
+                  window.location.replace(url);
+                },
+              })
+            }
           >
             Sign in with Auth0
           </button>

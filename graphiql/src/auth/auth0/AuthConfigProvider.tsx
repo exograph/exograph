@@ -52,7 +52,7 @@ function ContextInitializer(props: { children: React.ReactNode }) {
     useContext(AuthContext);
 
   const signOutFn = useCallback(async () => {
-    logout();
+    logout({ openUrl: false });
   }, [logout]);
 
   const getUserInfo = useCallback(() => {
