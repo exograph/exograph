@@ -5,42 +5,42 @@ edition = "2021"
 # See https://github.com/mozilla/application-services/blob/main/Cargo.toml for the reasons why we use this structure
 [workspace]
 members = [
-    "crates/builder",
-    "crates/cli",
-    "crates/resolver",
-    "crates/server-actix",
-    "crates/server-aws-lambda",
-    "crates/server-common",
-    "crates/testing",
-    "crates/core-subsystem/*",
-    "crates/postgres-subsystem/*",
-    "crates/deno-subsystem/*",
-    "crates/wasm-subsystem/*",
-    "crates/subsystem-util/*",
-    "crates/introspection-subsystem/*",
-    "libs/exo-deno",
-    "libs/exo-sql",
-    "libs/exo-wasm",
+  "crates/builder",
+  "crates/cli",
+  "crates/resolver",
+  "crates/server-actix",
+  "crates/server-aws-lambda",
+  "crates/server-common",
+  "crates/testing",
+  "crates/core-subsystem/*",
+  "crates/postgres-subsystem/*",
+  "crates/deno-subsystem/*",
+  "crates/wasm-subsystem/*",
+  "crates/subsystem-util/*",
+  "crates/introspection-subsystem/*",
+  "libs/exo-deno",
+  "libs/exo-sql",
+  "libs/exo-wasm",
 ]
 
 # The default workspace member to run `cargo` commands on (we exclude server-aws-lambda here, since we don't need to build it during normal development)
 # Pass --all to `cargo` to include it
 default-members = [
-    "crates/builder",
-    "crates/cli",
-    "crates/resolver",
-    "crates/server-actix",
-    "crates/testing",
-    "crates/core-subsystem/*",
-    "crates/postgres-subsystem/*",
-    "crates/deno-subsystem/*",
-    "crates/wasm-subsystem/*",
-    "crates/subsystem-util/*",
-    "crates/introspection-subsystem/*",
-    "crates/server-common",
-    "libs/exo-deno",
-    "libs/exo-sql",
-    "libs/exo-wasm",
+  "crates/builder",
+  "crates/cli",
+  "crates/resolver",
+  "crates/server-actix",
+  "crates/testing",
+  "crates/core-subsystem/*",
+  "crates/postgres-subsystem/*",
+  "crates/deno-subsystem/*",
+  "crates/wasm-subsystem/*",
+  "crates/subsystem-util/*",
+  "crates/introspection-subsystem/*",
+  "crates/server-common",
+  "libs/exo-deno",
+  "libs/exo-sql",
+  "libs/exo-wasm",
 ]
 
 resolver = "2"
@@ -48,8 +48,8 @@ resolver = "2"
 [workspace.dependencies]
 colored = "2.0"
 anyhow = "1.0"
-async-graphql-parser = "5.0.6"
-async-graphql-value = "5.0.6"
+async-graphql-parser = "6.0.7"
+async-graphql-value = "6.0.7"
 async-recursion = "1.0.0"
 async-trait = "0.1.53"
 bincode = "1.3.3"
@@ -57,7 +57,7 @@ bytes = "1"
 chrono = { version = "0.4.22", default-features = false, features = ["clock"] }
 codemap = "0.1.3"
 codemap-diagnostic = "0.1.1"
-deno = { git = "https://github.com/exograph/deno.git", branch = "patched_1_36_3", default-features = false  }
+deno = { git = "https://github.com/exograph/deno.git", branch = "patched_1_36_3", default-features = false }
 deno_ast = "0.28.0"
 deno_core = "0.204.0"
 deno_fs = { git = "https://github.com/exograph/deno.git", branch = "patched_1_36_3" }
@@ -66,7 +66,7 @@ deno_runtime = { git = "https://github.com/exograph/deno.git", branch = "patched
 futures = "0.3"
 heck = "0.4.0"
 include_dir = "0.7.2"
-indexmap = "1.9.3"
+indexmap = "2.0.1"
 insta = { version = "1.31.0", features = ["redactions"] }
 jsonwebtoken = "8.3.0"
 lazy_static = "1.4.0"
