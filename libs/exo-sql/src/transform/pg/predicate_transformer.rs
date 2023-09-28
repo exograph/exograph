@@ -12,7 +12,7 @@ use crate::{
     sql::predicate::ConcretePredicate,
     transform::{pg::selection_level::SelectionLevel, transformer::PredicateTransformer},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, Database,
-    PhysicalColumnPath, Selection, SelectionElement,
+    Selection, SelectionElement,
 };
 
 use super::Postgres;
@@ -149,64 +149,81 @@ fn to_subselect_predicate(
         select_transformer: &Postgres,
     ) -> Option<ConcretePredicate> {
         fn form_subselect(
-            path: &ColumnPath,
-            other: &ColumnPath,
-            predicate_op: impl Fn(PhysicalColumnPath, ColumnPath) -> AbstractPredicate,
+            relation_link: RelationLink,
+            predicate: AbstractPredicate,
             database: &Database,
             select_transformer: &Postgres,
-        ) -> Option<ConcretePredicate> {
-            column_path_components(path).map(
-                |(
-                    RelationLink {
-                        self_column_id,
-                        foreign_column_id,
-                        ..
-                    },
-                    tail_links,
-                )| {
-                    let foreign_column = foreign_column_id.get_column(database);
-                    let abstract_select = AbstractSelect {
-                        table_id: self_column_id.table_id,
-                        selection: Selection::Seq(vec![AliasedSelectionElement::new(
-                            foreign_column.name.clone(),
-                            SelectionElement::Physical(foreign_column_id),
-                        )]),
-                        predicate: predicate_op(tail_links, other.clone()),
-                        order_by: None,
-                        offset: None,
-                        limit: None,
-                    };
+        ) -> ConcretePredicate {
+            let RelationLink {
+                self_column_id,
+                foreign_column_id,
+                ..
+            } = relation_link;
 
-                    let select = select_transformer.compute_select(
-                        &abstract_select,
-                        &SelectionLevel::TopLevel,
-                        true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
-                        database,
-                    );
+            let foreign_column = foreign_column_id.get_column(database);
+            let abstract_select = AbstractSelect {
+                table_id: self_column_id.table_id,
+                selection: Selection::Seq(vec![AliasedSelectionElement::new(
+                    foreign_column.name.clone(),
+                    SelectionElement::Physical(foreign_column_id),
+                )]),
+                predicate,
+                order_by: None,
+                offset: None,
+                limit: None,
+            };
 
-                    let select_column = Column::SubSelect(Box::new(select));
+            let select = select_transformer.compute_select(
+                &abstract_select,
+                &SelectionLevel::TopLevel,
+                true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
+                database,
+            );
 
-                    ConcretePredicate::In(Column::physical(self_column_id, None), select_column)
-                },
-            )
+            let select_column = Column::SubSelect(Box::new(select));
+
+            ConcretePredicate::In(Column::physical(self_column_id, None), select_column)
         }
 
-        form_subselect(
-            left,
-            right,
-            |tail_links, right| predicate_op(ColumnPath::Physical(tail_links), right),
-            database,
-            select_transformer,
-        )
-        .or_else(|| {
-            form_subselect(
-                right,
-                left,
-                |tail_links, left| predicate_op(left, ColumnPath::Physical(tail_links)),
-                database,
-                select_transformer,
-            )
-        })
+        // Forming a subselect requires that one of the sides is a physical column path,
+        // so we pick one of the side to form the subselect
+        match (left, right) {
+            (ColumnPath::Physical(left_path), right) => {
+                let (head, tail) = left_path.split_head();
+
+                let relation_link = match head {
+                    ColumnPathLink::Relation(head_link) => head_link,
+                    ColumnPathLink::Leaf(_) => return None,
+                };
+
+                tail.map(|tail| {
+                    form_subselect(
+                        relation_link,
+                        predicate_op(ColumnPath::Physical(tail), right.clone()),
+                        database,
+                        select_transformer,
+                    )
+                })
+            }
+            (left, ColumnPath::Physical(right_path)) => {
+                let (head, tail) = right_path.split_head();
+
+                let relation_link = match head {
+                    ColumnPathLink::Relation(head_link) => head_link,
+                    ColumnPathLink::Leaf(_) => return None,
+                };
+
+                tail.map(|tail| {
+                    form_subselect(
+                        relation_link,
+                        predicate_op(left.clone(), ColumnPath::Physical(tail)),
+                        database,
+                        select_transformer,
+                    )
+                })
+            }
+            _ => None,
+        }
     }
 
     match predicate {
@@ -315,27 +332,12 @@ fn leaf_column(
     }
 }
 
-/// Returns the components of a column path that are relevant for a subselect predicate.
-/// The first element of the tuple head link and the second element tail.
-fn column_path_components(column_path: &ColumnPath) -> Option<(RelationLink, PhysicalColumnPath)> {
-    match column_path {
-        ColumnPath::Physical(links) => {
-            let (head, tail) = links.split_head();
-            match head {
-                ColumnPathLink::Relation(head_link) => Some((head_link, tail.unwrap())), // If the head is a relation, the tail must exist
-                ColumnPathLink::Leaf(_) => None,
-            }
-        }
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{
         sql::{predicate::CaseSensitivity, ExpressionBuilder, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
-        AbstractPredicate, ColumnPath,
+        AbstractPredicate, ColumnPath, PhysicalColumnPath,
     };
 
     use super::*;

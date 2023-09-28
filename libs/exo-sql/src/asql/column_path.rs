@@ -159,6 +159,23 @@ impl PhysicalColumnPath {
         Self::init(ColumnPathLink::Leaf(column_id))
     }
 
+    pub fn head(&self) -> &ColumnPathLink {
+        // We can assume that the path is non-empty due to the invariants
+        self.0.first().unwrap()
+    }
+
+    pub fn tail(&self) -> Option<PhysicalColumnPath> {
+        // We can assume that the path is non-empty due to the invariants
+        let mut path = self.0.clone();
+        path.remove(0);
+
+        if path.is_empty() {
+            None
+        } else {
+            Some(PhysicalColumnPath(path))
+        }
+    }
+
     pub fn split_head(&self) -> (ColumnPathLink, Option<PhysicalColumnPath>) {
         // We can assume that the path is non-empty due to the invariants
         let mut path = self.0.clone();
