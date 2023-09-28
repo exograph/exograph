@@ -18,25 +18,25 @@ export function SignInPanel(props: { onDone: () => void }) {
   const { setSignedIn } = useContext(SecretAuthContext);
 
   const [jwtSecret, setJwtSecret] = useState(config.secret);
-  const [payload, setPayload] = useState(config.payload || "");
-  const [payloadError, setPayloadError] = useState<string | undefined>(
+  const [claims, setClaims] = useState(config.claims || "");
+  const [claimsError, setClaimsError] = useState<string | undefined>(
     undefined
   );
 
   useEffect(() => {
     try {
-      JSON.parse(payload);
-      setPayloadError(undefined);
+      JSON.parse(claims);
+      setClaimsError(undefined);
     } catch (e) {
-      setPayloadError((e as Error).message);
+      setClaimsError((e as Error).message);
       return;
     }
-  }, [payload]);
+  }, [claims]);
 
-  const enableSignIn = !payloadError && jwtSecret && payload ? true : false;
+  const enableSignIn = !claimsError && jwtSecret && claims ? true : false;
 
   function onSignIn() {
-    setConfig(new SecretConfig(jwtSecret, payload));
+    setConfig(new SecretConfig(jwtSecret, claims));
     setSignedIn(true);
     props.onDone();
   }
@@ -64,10 +64,10 @@ export function SignInPanel(props: { onDone: () => void }) {
         theme={exoTheme}
         onChange={setJwtSecret}
       />
-      <div style={labelStyle}>Payload</div>
+      <div style={labelStyle}>Claims</div>
       <CodeMirror
         style={codeMirrorStyle}
-        value={payload}
+        value={claims}
         minHeight="5rem"
         basicSetup={{
           lineNumbers: false,
@@ -81,7 +81,7 @@ export function SignInPanel(props: { onDone: () => void }) {
           jsonLinterExtension,
         ]}
         theme={exoTheme}
-        onChange={setPayload}
+        onChange={setClaims}
       />
       {
         <div
@@ -91,7 +91,7 @@ export function SignInPanel(props: { onDone: () => void }) {
             height: "2rem",
           }}
         >
-          {payloadError}
+          {claimsError}
         </div>
       }
       <div style={{ display: "flex", gap: "1rem", justifyContent: "end" }}>
