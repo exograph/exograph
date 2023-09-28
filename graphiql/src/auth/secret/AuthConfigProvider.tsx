@@ -38,16 +38,16 @@ function ContextInitializer(props: { children: React.ReactNode }) {
 
   useEffect(() => {
     const secret = config.secret;
-    const payload = config.payload;
+    const claims = config.claims;
 
     setTokenFn &&
       setTokenFn(
         signedIn
-          ? () => Promise.resolve(createJwtToken(JSON.parse(payload), secret))
+          ? () => Promise.resolve(createJwtToken(JSON.parse(claims), secret))
           : undefined
       );
     setIsSignedIn && setIsSignedIn(signedIn);
-    setUserInfo && setUserInfo(payload);
+    setUserInfo && setUserInfo(claims);
     setSignOutFn &&
       setSignOutFn(() => {
         setSignedIn(!signedIn);
@@ -67,7 +67,7 @@ function ContextInitializer(props: { children: React.ReactNode }) {
 }
 
 async function createJwtToken(
-  payload: Record<string, unknown>,
+  claims: Record<string, unknown>,
   secret: string
 ): Promise<string | null> {
   if (secret === "") {
@@ -77,7 +77,7 @@ async function createJwtToken(
   const encodedSecret = new TextEncoder().encode(secret);
   const alg = "HS256";
 
-  return await new jose.SignJWT(payload)
+  return await new jose.SignJWT(claims)
     .setProtectedHeader({ alg })
     .setIssuedAt()
     .setExpirationTime("10m")
