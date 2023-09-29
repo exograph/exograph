@@ -8,8 +8,9 @@ operation: |
       write
     }
   }
-  query {
+  query @unordered {
     u1Docs: documents(where: {
+      id: {lt: 10}, # Effectively true, but to test that we process mixed conditions correctly
       documentUsers: {and: [
         {userId: {eq: "u1"}},
         {read: {eq: true}}
@@ -17,6 +18,7 @@ operation: |
       ...DocumentWithUser
     }
     u2Docs: documents(where: {
+      id: {lt: 10},
       documentUsers: {and: [
         {userId: {eq: "u2"}},
         {read: {eq: true}}
@@ -48,7 +50,7 @@ response: |
             }
           ]
         }
-      ],
+      ], 
       "u2Docs": [
         {
           "id": 2,

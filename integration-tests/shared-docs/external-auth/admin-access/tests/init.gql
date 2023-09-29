@@ -10,24 +10,24 @@ operation: |
             id
             content
             documentUsers {
-            id
-            read
-            write
+                id
+                read
+                write
             }
         }
         d2: createDocument(data: {
             content: "d2", 
             documentUsers: [
-                {userId: "u2", read: true,  write: true}, 
-                {userId: "u1", read: false,  write: false}
+                {userId: "u1", read: false,  write: false},
+                {userId: "u2", read: true,  write: true}
             ]
         }) {
             id
             content
             documentUsers {
-            id
-            read
-            write
+                id
+                read
+                write
             }
         }        
     }

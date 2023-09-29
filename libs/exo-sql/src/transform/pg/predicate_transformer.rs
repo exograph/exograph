@@ -141,6 +141,7 @@ fn to_subselect_predicate(
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> ConcretePredicate {
+    /// Returns None if the predicate cannot be converted to a subselect predicate (i.e. neither side has the head as a relation link)
     fn binary_operator(
         left: &ColumnPath,
         right: &ColumnPath,
@@ -148,43 +149,6 @@ fn to_subselect_predicate(
         database: &Database,
         select_transformer: &Postgres,
     ) -> Option<ConcretePredicate> {
-        fn form_subselect(
-            relation_link: RelationLink,
-            predicate: AbstractPredicate,
-            database: &Database,
-            select_transformer: &Postgres,
-        ) -> ConcretePredicate {
-            let RelationLink {
-                self_column_id,
-                foreign_column_id,
-                ..
-            } = relation_link;
-
-            let foreign_column = foreign_column_id.get_column(database);
-            let abstract_select = AbstractSelect {
-                table_id: self_column_id.table_id,
-                selection: Selection::Seq(vec![AliasedSelectionElement::new(
-                    foreign_column.name.clone(),
-                    SelectionElement::Physical(foreign_column_id),
-                )]),
-                predicate,
-                order_by: None,
-                offset: None,
-                limit: None,
-            };
-
-            let select = select_transformer.compute_select(
-                &abstract_select,
-                &SelectionLevel::TopLevel,
-                true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
-                database,
-            );
-
-            let select_column = Column::SubSelect(Box::new(select));
-
-            ConcretePredicate::In(Column::physical(self_column_id, None), select_column)
-        }
-
         // Forming a subselect requires that one of the sides is a physical column path,
         // so we pick one of the side to form the subselect
         match (left, right) {
@@ -193,7 +157,7 @@ fn to_subselect_predicate(
 
                 let relation_link = match head {
                     ColumnPathLink::Relation(head_link) => head_link,
-                    ColumnPathLink::Leaf(_) => return None,
+                    ColumnPathLink::Leaf(_) => return None, // no subselect needed (join predicate, which is used as a callback will suffice)
                 };
 
                 tail.map(|tail| {
@@ -222,7 +186,7 @@ fn to_subselect_predicate(
                     )
                 })
             }
-            _ => None,
+            _ => unimplemented!("Subselect predicate with both sides as non-physical column paths"),
         }
     }
 
@@ -300,10 +264,25 @@ fn to_subselect_predicate(
             database,
             transformer,
         ),
-        AbstractPredicate::And(p1, p2) => Some(ConcretePredicate::and(
-            to_subselect_predicate(transformer, p1, selection_level, database),
-            to_subselect_predicate(transformer, p2, selection_level, database),
-        )),
+        AbstractPredicate::And(p1, p2) => {
+            let relation_link = predicate.common_relation_link();
+
+            match relation_link {
+                Some(relation_link) => {
+                    let subselect_predicate = predicate.subselect_predicate();
+                    Some(form_subselect(
+                        relation_link,
+                        subselect_predicate,
+                        database,
+                        transformer,
+                    ))
+                }
+                None => Some(ConcretePredicate::and(
+                    to_subselect_predicate(transformer, p1, selection_level, database),
+                    to_subselect_predicate(transformer, p2, selection_level, database),
+                )),
+            }
+        }
         AbstractPredicate::Or(p1, p2) => Some(ConcretePredicate::or(
             to_subselect_predicate(transformer, p1, selection_level, database),
             to_subselect_predicate(transformer, p2, selection_level, database),
@@ -313,6 +292,43 @@ fn to_subselect_predicate(
         ))),
     }
     .unwrap_or(to_join_predicate(predicate, selection_level, database)) // fallback to join predicate
+}
+
+fn form_subselect(
+    relation_link: RelationLink,
+    predicate: AbstractPredicate,
+    database: &Database,
+    select_transformer: &Postgres,
+) -> ConcretePredicate {
+    let RelationLink {
+        self_column_id,
+        foreign_column_id,
+        ..
+    } = relation_link;
+
+    let foreign_column = foreign_column_id.get_column(database);
+    let abstract_select = AbstractSelect {
+        table_id: self_column_id.table_id,
+        selection: Selection::Seq(vec![AliasedSelectionElement::new(
+            foreign_column.name.clone(),
+            SelectionElement::Physical(foreign_column_id),
+        )]),
+        predicate,
+        order_by: None,
+        offset: None,
+        limit: None,
+    };
+
+    let select = select_transformer.compute_select(
+        &abstract_select,
+        &SelectionLevel::TopLevel,
+        true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
+        database,
+    );
+
+    let select_column = Column::SubSelect(Box::new(select));
+
+    ConcretePredicate::In(Column::physical(self_column_id, None), select_column)
 }
 
 fn leaf_column(
