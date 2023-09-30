@@ -36,7 +36,6 @@ operation: |
     u1ReadableOrWritable: documents(where: {
       documentUsers: {and: [
         {userId: {eq: "u1"}},
-        {write: {eq: true}}
         {or: [
           {read: {eq: true}},
           {write: {eq: true}}
