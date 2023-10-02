@@ -1,0 +1,72 @@
+operation: |
+  fragment DocumentWithUser on Document {
+    id
+    content
+    documentUsers {
+      userId
+      read
+      write
+    }
+  }
+  mutation @unordered {
+    u1u2Writable: updateDocuments(where: {
+      documentUsers: {and: [
+        {or: [{userId: {eq: "u1"}}, {userId: {eq: "u2"}}]},
+        {write: {eq: true}}
+      ]}}, data: {content: "u1u2Writable"}) {
+      ...DocumentWithUser
+    }
+  }
+auth: |
+  {
+    "role": "admin"
+  }
+response: |
+  {
+    "data": {
+      "u1u2Writable": [
+        {
+          "id": 1,
+          "content": "u1u2Writable",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u2",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "content": "u1u2Writable",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u2",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        }
+      ]
+    }
+  }
