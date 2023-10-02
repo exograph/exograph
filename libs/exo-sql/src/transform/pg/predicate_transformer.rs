@@ -141,172 +141,23 @@ fn to_subselect_predicate(
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> ConcretePredicate {
-    /// Returns None if the predicate cannot be converted to a subselect predicate (i.e. neither side has the head as a relation link)
-    fn binary_operator(
-        left: &ColumnPath,
-        right: &ColumnPath,
-        predicate_op: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
-        database: &Database,
-        select_transformer: &Postgres,
-    ) -> Option<ConcretePredicate> {
-        // Forming a subselect requires that one of the sides is a physical column path,
-        // so we pick one of the side to form the subselect
-        match (left, right) {
-            (ColumnPath::Physical(left_path), right) => {
-                let (head, tail) = left_path.split_head();
-
-                let relation_link = match head {
-                    ColumnPathLink::Relation(head_link) => head_link,
-                    ColumnPathLink::Leaf(_) => return None, // no subselect needed (join predicate, which is used as a callback will suffice)
-                };
-
-                tail.map(|tail| {
-                    form_subselect(
-                        relation_link,
-                        predicate_op(ColumnPath::Physical(tail), right.clone()),
-                        database,
-                        select_transformer,
-                    )
-                })
-            }
-            (left, ColumnPath::Physical(right_path)) => {
-                let (head, tail) = right_path.split_head();
-
-                let relation_link = match head {
-                    ColumnPathLink::Relation(head_link) => head_link,
-                    ColumnPathLink::Leaf(_) => return None,
-                };
-
-                tail.map(|tail| {
-                    form_subselect(
-                        relation_link,
-                        predicate_op(left.clone(), ColumnPath::Physical(tail)),
-                        database,
-                        select_transformer,
-                    )
-                })
-            }
-            _ => unimplemented!("Subselect predicate with both sides as non-physical column paths"),
+    match attempt_subselect_predicate(predicate) {
+        Some((relation_link, subselect_predicate)) => {
+            form_subselect(relation_link, subselect_predicate, database, transformer)
         }
+        None => match predicate {
+            AbstractPredicate::And(p1, p2) => ConcretePredicate::and(
+                to_subselect_predicate(transformer, p1, selection_level, database),
+                to_subselect_predicate(transformer, p2, selection_level, database),
+            ),
+
+            AbstractPredicate::Or(p1, p2) => ConcretePredicate::or(
+                to_subselect_predicate(transformer, p1, selection_level, database),
+                to_subselect_predicate(transformer, p2, selection_level, database),
+            ),
+            _ => to_join_predicate(predicate, selection_level, database),
+        },
     }
-
-    match predicate {
-        AbstractPredicate::True => Some(ConcretePredicate::True),
-        AbstractPredicate::False => Some(ConcretePredicate::False),
-
-        AbstractPredicate::Eq(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Eq, database, transformer)
-        }
-        AbstractPredicate::Neq(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Neq, database, transformer)
-        }
-        AbstractPredicate::Lt(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Lt, database, transformer)
-        }
-        AbstractPredicate::Lte(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Lte, database, transformer)
-        }
-        AbstractPredicate::Gt(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Gt, database, transformer)
-        }
-        AbstractPredicate::Gte(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Gte, database, transformer)
-        }
-        AbstractPredicate::In(l, r) => {
-            binary_operator(l, r, AbstractPredicate::In, database, transformer)
-        }
-
-        AbstractPredicate::StringStartsWith(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::StringStartsWith,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::StringEndsWith(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::StringEndsWith,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::StringLike(l, r, cs) => binary_operator(
-            l,
-            r,
-            |l, r| AbstractPredicate::StringLike(l, r, *cs),
-            database,
-            transformer,
-        ),
-        AbstractPredicate::JsonContains(l, r) => {
-            binary_operator(l, r, AbstractPredicate::JsonContains, database, transformer)
-        }
-        AbstractPredicate::JsonContainedBy(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::JsonContainedBy,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::JsonMatchKey(l, r) => {
-            binary_operator(l, r, AbstractPredicate::JsonMatchKey, database, transformer)
-        }
-        AbstractPredicate::JsonMatchAnyKey(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::JsonMatchAnyKey,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::JsonMatchAllKeys(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::JsonMatchAllKeys,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::And(p1, p2) => {
-            let relation_link = predicate.common_relation_link();
-
-            match relation_link {
-                Some(relation_link) => {
-                    let subselect_predicate = predicate.subselect_predicate();
-                    Some(form_subselect(
-                        relation_link,
-                        subselect_predicate,
-                        database,
-                        transformer,
-                    ))
-                }
-                None => Some(ConcretePredicate::and(
-                    to_subselect_predicate(transformer, p1, selection_level, database),
-                    to_subselect_predicate(transformer, p2, selection_level, database),
-                )),
-            }
-        }
-        AbstractPredicate::Or(p1, p2) => {
-            let relation_link = predicate.common_relation_link();
-
-            match relation_link {
-                Some(relation_link) => {
-                    let subselect_predicate = predicate.subselect_predicate();
-                    Some(form_subselect(
-                        relation_link,
-                        subselect_predicate,
-                        database,
-                        transformer,
-                    ))
-                }
-                None => Some(ConcretePredicate::or(
-                    to_subselect_predicate(transformer, p1, selection_level, database),
-                    to_subselect_predicate(transformer, p2, selection_level, database),
-                )),
-            }
-        }
-        AbstractPredicate::Not(p) => Some(ConcretePredicate::Not(Box::new(
-            to_subselect_predicate(transformer, p, selection_level, database),
-        ))),
-    }
-    .unwrap_or(to_join_predicate(predicate, selection_level, database)) // fallback to join predicate
 }
 
 fn form_subselect(
@@ -363,97 +214,99 @@ fn leaf_column(
     }
 }
 
-impl AbstractPredicate {
-    fn common_relation_link(&self) -> Option<RelationLink> {
-        let mut result = None;
-        for column_path in self.column_paths() {
-            if let ColumnPath::Physical(physical_path) = column_path {
-                let head = physical_path.head();
-                match head {
-                    ColumnPathLink::Relation(link) => {
-                        if let Some(existing_link) = &result {
-                            if existing_link != link {
-                                return None;
-                            }
-                        } else {
-                            result = Some(link.clone());
+fn attempt_subselect_predicate(
+    predicate: &AbstractPredicate,
+) -> Option<(RelationLink, AbstractPredicate)> {
+    fn binary_operator(
+        l: &ColumnPath,
+        r: &ColumnPath,
+        constructor: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
+    ) -> Option<(RelationLink, AbstractPredicate)> {
+        fn split(cp: &ColumnPath) -> Option<(RelationLink, ColumnPath)> {
+            match cp {
+                ColumnPath::Physical(physical_path) => {
+                    let (head, tail) = physical_path.split_head();
+                    match (head, tail) {
+                        (ColumnPathLink::Relation(link), Some(tail)) => {
+                            Some((link.clone(), ColumnPath::Physical(tail.clone())))
                         }
-                    }
-                    ColumnPathLink::Leaf(_) => {
-                        return None;
+                        _ => None,
                     }
                 }
+                ColumnPath::Param(_) | ColumnPath::Null => None,
             }
         }
-        result
+
+        match split(l) {
+            Some((l_link, l_tail)) => match split(r) {
+                Some((r_link, r_tail)) => {
+                    // If both sides are linked paths, their links must be the same. In that case,
+                    // compute the predicate based on their tails.
+                    (l_link == r_link).then_some((l_link, constructor(l_tail, r_tail)))
+                }
+                None => Some((l_link, constructor(l_tail, r.clone()))),
+            },
+            None => split(r).map(|(r_link, r_tail)| (r_link, constructor(l.clone(), r_tail))),
+        }
     }
 
-    fn subselect_predicate(&self) -> AbstractPredicate {
-        fn binary_operator(
-            l: &ColumnPath,
-            r: &ColumnPath,
-            constructor: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
-        ) -> AbstractPredicate {
-            let l_tail = match l {
-                ColumnPath::Physical(physical_path) => {
-                    ColumnPath::Physical(physical_path.tail().unwrap())
-                }
-                _ => l.clone(),
-            };
-            let r_tail = match r {
-                ColumnPath::Physical(physical_path) => {
-                    ColumnPath::Physical(physical_path.tail().unwrap())
-                }
-                _ => r.clone(),
-            };
+    fn logical_binary_op(
+        l: &AbstractPredicate,
+        r: &AbstractPredicate,
+        constructor: impl Fn(Box<AbstractPredicate>, Box<AbstractPredicate>) -> AbstractPredicate,
+    ) -> Option<(RelationLink, AbstractPredicate)> {
+        let l = attempt_subselect_predicate(l);
+        let r = attempt_subselect_predicate(r);
 
-            constructor(l_tail, r_tail)
+        match (l, r) {
+            (Some((l_link, l_path)), Some((r_link, r_path))) => {
+                if l_link == r_link {
+                    Some((l_link, constructor(Box::new(l_path), Box::new(r_path))))
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
+    }
 
-        match self {
-            AbstractPredicate::True => AbstractPredicate::True,
-            AbstractPredicate::False => AbstractPredicate::False,
-            AbstractPredicate::Eq(l, r) => binary_operator(l, r, AbstractPredicate::Eq),
-            AbstractPredicate::Neq(l, r) => binary_operator(l, r, AbstractPredicate::Neq),
-            AbstractPredicate::Lt(l, r) => binary_operator(l, r, AbstractPredicate::Lt),
-            AbstractPredicate::Lte(l, r) => binary_operator(l, r, AbstractPredicate::Lte),
-            AbstractPredicate::Gt(l, r) => binary_operator(l, r, AbstractPredicate::Gt),
-            AbstractPredicate::Gte(l, r) => binary_operator(l, r, AbstractPredicate::Gte),
-            AbstractPredicate::In(l, r) => binary_operator(l, r, AbstractPredicate::In),
-            AbstractPredicate::StringLike(l, r, sens) => {
-                binary_operator(l, r, |l, r| AbstractPredicate::StringLike(l, r, *sens))
-            }
-            AbstractPredicate::StringStartsWith(l, r) => {
-                binary_operator(l, r, AbstractPredicate::StringStartsWith)
-            }
-            AbstractPredicate::StringEndsWith(l, r) => {
-                binary_operator(l, r, AbstractPredicate::StringEndsWith)
-            }
-            AbstractPredicate::JsonContains(l, r) => {
-                binary_operator(l, r, AbstractPredicate::JsonContains)
-            }
-            AbstractPredicate::JsonContainedBy(l, r) => {
-                binary_operator(l, r, AbstractPredicate::JsonContainedBy)
-            }
-            AbstractPredicate::JsonMatchKey(l, r) => {
-                binary_operator(l, r, AbstractPredicate::JsonMatchKey)
-            }
-            AbstractPredicate::JsonMatchAnyKey(l, r) => {
-                binary_operator(l, r, AbstractPredicate::JsonMatchAnyKey)
-            }
-            AbstractPredicate::JsonMatchAllKeys(l, r) => {
-                binary_operator(l, r, AbstractPredicate::JsonMatchAllKeys)
-            }
-            AbstractPredicate::And(l, r) => AbstractPredicate::And(
-                Box::new(l.subselect_predicate()),
-                Box::new(r.subselect_predicate()),
-            ),
-            AbstractPredicate::Or(l, r) => AbstractPredicate::Or(
-                Box::new(l.subselect_predicate()),
-                Box::new(r.subselect_predicate()),
-            ),
-            AbstractPredicate::Not(p) => AbstractPredicate::Not(Box::new(p.subselect_predicate())),
+    match predicate {
+        AbstractPredicate::True | AbstractPredicate::False => None,
+        AbstractPredicate::Eq(l, r) => binary_operator(l, r, AbstractPredicate::Eq),
+        AbstractPredicate::Neq(l, r) => binary_operator(l, r, AbstractPredicate::Neq),
+        AbstractPredicate::Lt(l, r) => binary_operator(l, r, AbstractPredicate::Lt),
+        AbstractPredicate::Lte(l, r) => binary_operator(l, r, AbstractPredicate::Lte),
+        AbstractPredicate::Gt(l, r) => binary_operator(l, r, AbstractPredicate::Gt),
+        AbstractPredicate::Gte(l, r) => binary_operator(l, r, AbstractPredicate::Gte),
+        AbstractPredicate::In(l, r) => binary_operator(l, r, AbstractPredicate::In),
+        AbstractPredicate::StringLike(l, r, sens) => {
+            binary_operator(l, r, |l, r| AbstractPredicate::StringLike(l, r, *sens))
         }
+        AbstractPredicate::StringStartsWith(l, r) => {
+            binary_operator(l, r, AbstractPredicate::StringStartsWith)
+        }
+        AbstractPredicate::StringEndsWith(l, r) => {
+            binary_operator(l, r, AbstractPredicate::StringEndsWith)
+        }
+        AbstractPredicate::JsonContains(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonContains)
+        }
+        AbstractPredicate::JsonContainedBy(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonContainedBy)
+        }
+        AbstractPredicate::JsonMatchKey(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonMatchKey)
+        }
+        AbstractPredicate::JsonMatchAnyKey(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonMatchAnyKey)
+        }
+        AbstractPredicate::JsonMatchAllKeys(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonMatchAllKeys)
+        }
+        AbstractPredicate::And(l, r) => logical_binary_op(l, r, AbstractPredicate::And),
+        AbstractPredicate::Or(l, r) => logical_binary_op(l, r, AbstractPredicate::Or),
+        AbstractPredicate::Not(p) => attempt_subselect_predicate(p)
+            .map(|(p_link, p_path)| (p_link, AbstractPredicate::Not(Box::new(p_path)))),
     }
 }
 
