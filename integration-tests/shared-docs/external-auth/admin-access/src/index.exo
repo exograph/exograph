@@ -1,0 +1,24 @@
+// Only admins can create documents. Use external-auth setup (i.e. no `User` type in our model)
+
+context AuthContext {
+  @jwt role: String
+}
+
+@postgres
+module TodoDatabase {
+  @access(AuthContext.role == "admin")
+  type Document {
+    @pk id: Int = autoIncrement()
+    content: String
+    documentUsers: Set<DocumentUser>
+  }
+
+  @access(AuthContext.role == "admin")
+  type DocumentUser {
+    @pk id: Int = autoIncrement()
+    document: Document
+    userId: String
+    read: Boolean
+    write: Boolean
+  }
+}

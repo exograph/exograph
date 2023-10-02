@@ -1,0 +1,59 @@
+# d1 -> u1 (r, w),   u2 (-r, -w), u3 (r), u4 (-)
+# d2 -> u1 (-r, -w), u2 (r, w),   u3 (r), u4 (-)
+# d3 -> u1 (-),      u2 (-),      u3 (-), u4 (r, -w)
+operation: |
+    mutation {
+        d1: createDocument(data: {
+            content: "d1", 
+            documentUsers: [
+                {userId: "u1", read: true,  write: true}, 
+                {userId: "u2", read: false,  write: false},
+                {userId: "u3", read: true,  write: false},
+                # u4 doesn't have any relation to d1
+            ]
+        }) {
+            id
+            content
+            documentUsers {
+                id
+                read
+                write
+            }
+        }
+        d2: createDocument(data: {
+            content: "d2", 
+            documentUsers: [
+                {userId: "u1", read: false,  write: false},
+                {userId: "u2", read: true,  write: true},
+                {userId: "u3", read: true,  write: false},
+                # u4 doesn't have any relation to d2
+            ]
+        }) {
+            id
+            content
+            documentUsers {
+                id
+                read
+                write
+            }
+        }
+        d3: createDocument(data: {
+            content: "d3", 
+            documentUsers: [
+                {userId: "u4", read: true,  write: false},
+                # u1, u2, u3 don't have any relation to d3
+            ]
+        }) {
+            id
+            content
+            documentUsers {
+                id
+                read
+                write
+            }
+        }                
+    }
+auth: |
+    {
+        "role": "admin"
+    }

@@ -12,7 +12,7 @@ use crate::{
     sql::predicate::ConcretePredicate,
     transform::{pg::selection_level::SelectionLevel, transformer::PredicateTransformer},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, Database,
-    PhysicalColumnPath, Selection, SelectionElement,
+    Selection, SelectionElement,
 };
 
 use super::Postgres;
@@ -141,161 +141,60 @@ fn to_subselect_predicate(
     selection_level: &SelectionLevel,
     database: &Database,
 ) -> ConcretePredicate {
-    fn binary_operator(
-        left: &ColumnPath,
-        right: &ColumnPath,
-        predicate_op: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
-        database: &Database,
-        select_transformer: &Postgres,
-    ) -> Option<ConcretePredicate> {
-        fn form_subselect(
-            path: &ColumnPath,
-            other: &ColumnPath,
-            predicate_op: impl Fn(PhysicalColumnPath, ColumnPath) -> AbstractPredicate,
-            database: &Database,
-            select_transformer: &Postgres,
-        ) -> Option<ConcretePredicate> {
-            column_path_components(path).map(
-                |(
-                    RelationLink {
-                        self_column_id,
-                        foreign_column_id,
-                        ..
-                    },
-                    tail_links,
-                )| {
-                    let foreign_column = foreign_column_id.get_column(database);
-                    let abstract_select = AbstractSelect {
-                        table_id: self_column_id.table_id,
-                        selection: Selection::Seq(vec![AliasedSelectionElement::new(
-                            foreign_column.name.clone(),
-                            SelectionElement::Physical(foreign_column_id),
-                        )]),
-                        predicate: predicate_op(tail_links, other.clone()),
-                        order_by: None,
-                        offset: None,
-                        limit: None,
-                    };
-
-                    let select = select_transformer.compute_select(
-                        &abstract_select,
-                        &SelectionLevel::TopLevel,
-                        true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
-                        database,
-                    );
-
-                    let select_column = Column::SubSelect(Box::new(select));
-
-                    ConcretePredicate::In(Column::physical(self_column_id, None), select_column)
-                },
-            )
+    match attempt_subselect_predicate(predicate) {
+        Some((relation_link, subselect_predicate)) => {
+            form_subselect(relation_link, subselect_predicate, database, transformer)
         }
+        None => match predicate {
+            AbstractPredicate::And(p1, p2) => ConcretePredicate::and(
+                to_subselect_predicate(transformer, p1, selection_level, database),
+                to_subselect_predicate(transformer, p2, selection_level, database),
+            ),
 
-        form_subselect(
-            left,
-            right,
-            |tail_links, right| predicate_op(ColumnPath::Physical(tail_links), right),
-            database,
-            select_transformer,
-        )
-        .or_else(|| {
-            form_subselect(
-                right,
-                left,
-                |tail_links, left| predicate_op(left, ColumnPath::Physical(tail_links)),
-                database,
-                select_transformer,
-            )
-        })
+            AbstractPredicate::Or(p1, p2) => ConcretePredicate::or(
+                to_subselect_predicate(transformer, p1, selection_level, database),
+                to_subselect_predicate(transformer, p2, selection_level, database),
+            ),
+            _ => to_join_predicate(predicate, selection_level, database),
+        },
     }
+}
 
-    match predicate {
-        AbstractPredicate::True => Some(ConcretePredicate::True),
-        AbstractPredicate::False => Some(ConcretePredicate::False),
+fn form_subselect(
+    relation_link: RelationLink,
+    predicate: AbstractPredicate,
+    database: &Database,
+    select_transformer: &Postgres,
+) -> ConcretePredicate {
+    let RelationLink {
+        self_column_id,
+        foreign_column_id,
+        ..
+    } = relation_link;
 
-        AbstractPredicate::Eq(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Eq, database, transformer)
-        }
-        AbstractPredicate::Neq(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Neq, database, transformer)
-        }
-        AbstractPredicate::Lt(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Lt, database, transformer)
-        }
-        AbstractPredicate::Lte(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Lte, database, transformer)
-        }
-        AbstractPredicate::Gt(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Gt, database, transformer)
-        }
-        AbstractPredicate::Gte(l, r) => {
-            binary_operator(l, r, AbstractPredicate::Gte, database, transformer)
-        }
-        AbstractPredicate::In(l, r) => {
-            binary_operator(l, r, AbstractPredicate::In, database, transformer)
-        }
+    let foreign_column = foreign_column_id.get_column(database);
+    let abstract_select = AbstractSelect {
+        table_id: self_column_id.table_id,
+        selection: Selection::Seq(vec![AliasedSelectionElement::new(
+            foreign_column.name.clone(),
+            SelectionElement::Physical(foreign_column_id),
+        )]),
+        predicate,
+        order_by: None,
+        offset: None,
+        limit: None,
+    };
 
-        AbstractPredicate::StringStartsWith(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::StringStartsWith,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::StringEndsWith(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::StringEndsWith,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::StringLike(l, r, cs) => binary_operator(
-            l,
-            r,
-            |l, r| AbstractPredicate::StringLike(l, r, *cs),
-            database,
-            transformer,
-        ),
-        AbstractPredicate::JsonContains(l, r) => {
-            binary_operator(l, r, AbstractPredicate::JsonContains, database, transformer)
-        }
-        AbstractPredicate::JsonContainedBy(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::JsonContainedBy,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::JsonMatchKey(l, r) => {
-            binary_operator(l, r, AbstractPredicate::JsonMatchKey, database, transformer)
-        }
-        AbstractPredicate::JsonMatchAnyKey(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::JsonMatchAnyKey,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::JsonMatchAllKeys(l, r) => binary_operator(
-            l,
-            r,
-            AbstractPredicate::JsonMatchAllKeys,
-            database,
-            transformer,
-        ),
-        AbstractPredicate::And(p1, p2) => Some(ConcretePredicate::and(
-            to_subselect_predicate(transformer, p1, selection_level, database),
-            to_subselect_predicate(transformer, p2, selection_level, database),
-        )),
-        AbstractPredicate::Or(p1, p2) => Some(ConcretePredicate::or(
-            to_subselect_predicate(transformer, p1, selection_level, database),
-            to_subselect_predicate(transformer, p2, selection_level, database),
-        )),
-        AbstractPredicate::Not(p) => Some(ConcretePredicate::Not(Box::new(
-            to_subselect_predicate(transformer, p, selection_level, database),
-        ))),
-    }
-    .unwrap_or(to_join_predicate(predicate, selection_level, database)) // fallback to join predicate
+    let select = select_transformer.compute_select(
+        &abstract_select,
+        &SelectionLevel::TopLevel,
+        true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
+        database,
+    );
+
+    let select_column = Column::SubSelect(Box::new(select));
+
+    ConcretePredicate::In(Column::physical(self_column_id, None), select_column)
 }
 
 fn leaf_column(
@@ -315,18 +214,94 @@ fn leaf_column(
     }
 }
 
-/// Returns the components of a column path that are relevant for a subselect predicate.
-/// The first element of the tuple head link and the second element tail.
-fn column_path_components(column_path: &ColumnPath) -> Option<(RelationLink, PhysicalColumnPath)> {
-    match column_path {
-        ColumnPath::Physical(links) => {
-            let (head, tail) = links.split_head();
-            match head {
-                ColumnPathLink::Relation(head_link) => Some((head_link, tail.unwrap())), // If the head is a relation, the tail must exist
-                ColumnPathLink::Leaf(_) => None,
+fn attempt_subselect_predicate(
+    predicate: &AbstractPredicate,
+) -> Option<(RelationLink, AbstractPredicate)> {
+    fn binary_operator(
+        l: &ColumnPath,
+        r: &ColumnPath,
+        constructor: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
+    ) -> Option<(RelationLink, AbstractPredicate)> {
+        fn split(cp: &ColumnPath) -> Option<(RelationLink, ColumnPath)> {
+            match cp {
+                ColumnPath::Physical(physical_path) => {
+                    let (head, tail) = physical_path.split_head();
+                    match (head, tail) {
+                        // If the tail is non-empty, the head will be a relation link (but the way we have expressed ColumnPath, we can't express that in the type system)
+                        // TODO: Fix the type system to express this
+                        (ColumnPathLink::Relation(link), Some(tail)) => {
+                            Some((link.clone(), ColumnPath::Physical(tail.clone())))
+                        }
+                        _ => None,
+                    }
+                }
+                ColumnPath::Param(_) | ColumnPath::Null => None,
             }
         }
-        _ => None,
+
+        match split(l) {
+            Some((l_link, l_tail)) => match split(r) {
+                Some((r_link, r_tail)) => {
+                    // If both sides are linked paths, their links must be the same. In that case,
+                    // compute the predicate based on their tails.
+                    (l_link == r_link).then_some((l_link, constructor(l_tail, r_tail)))
+                }
+                None => Some((l_link, constructor(l_tail, r.clone()))),
+            },
+            None => split(r).map(|(r_link, r_tail)| (r_link, constructor(l.clone(), r_tail))),
+        }
+    }
+
+    fn logical_binary_op(
+        l: &AbstractPredicate,
+        r: &AbstractPredicate,
+        constructor: impl Fn(Box<AbstractPredicate>, Box<AbstractPredicate>) -> AbstractPredicate,
+    ) -> Option<(RelationLink, AbstractPredicate)> {
+        attempt_subselect_predicate(l).and_then(|(l_link, l_path)| {
+            attempt_subselect_predicate(r).and_then(|(r_link, r_path)| {
+                (l_link == r_link)
+                    .then_some((l_link, constructor(Box::new(l_path), Box::new(r_path))))
+            })
+        })
+    }
+
+    match predicate {
+        AbstractPredicate::True | AbstractPredicate::False => None,
+        AbstractPredicate::Eq(l, r) => binary_operator(l, r, AbstractPredicate::Eq),
+        AbstractPredicate::Neq(l, r) => binary_operator(l, r, AbstractPredicate::Neq),
+        AbstractPredicate::Lt(l, r) => binary_operator(l, r, AbstractPredicate::Lt),
+        AbstractPredicate::Lte(l, r) => binary_operator(l, r, AbstractPredicate::Lte),
+        AbstractPredicate::Gt(l, r) => binary_operator(l, r, AbstractPredicate::Gt),
+        AbstractPredicate::Gte(l, r) => binary_operator(l, r, AbstractPredicate::Gte),
+        AbstractPredicate::In(l, r) => binary_operator(l, r, AbstractPredicate::In),
+        AbstractPredicate::StringLike(l, r, sens) => {
+            binary_operator(l, r, |l, r| AbstractPredicate::StringLike(l, r, *sens))
+        }
+        AbstractPredicate::StringStartsWith(l, r) => {
+            binary_operator(l, r, AbstractPredicate::StringStartsWith)
+        }
+        AbstractPredicate::StringEndsWith(l, r) => {
+            binary_operator(l, r, AbstractPredicate::StringEndsWith)
+        }
+        AbstractPredicate::JsonContains(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonContains)
+        }
+        AbstractPredicate::JsonContainedBy(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonContainedBy)
+        }
+        AbstractPredicate::JsonMatchKey(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonMatchKey)
+        }
+        AbstractPredicate::JsonMatchAnyKey(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonMatchAnyKey)
+        }
+        AbstractPredicate::JsonMatchAllKeys(l, r) => {
+            binary_operator(l, r, AbstractPredicate::JsonMatchAllKeys)
+        }
+        AbstractPredicate::And(l, r) => logical_binary_op(l, r, AbstractPredicate::And),
+        AbstractPredicate::Or(l, r) => logical_binary_op(l, r, AbstractPredicate::Or),
+        AbstractPredicate::Not(p) => attempt_subselect_predicate(p)
+            .map(|(p_link, p_path)| (p_link, AbstractPredicate::Not(Box::new(p_path)))),
     }
 }
 
@@ -335,7 +310,7 @@ mod tests {
     use crate::{
         sql::{predicate::CaseSensitivity, ExpressionBuilder, SQLParamContainer},
         transform::{pg::Postgres, test_util::TestSetup},
-        AbstractPredicate, ColumnPath,
+        AbstractPredicate, ColumnPath, PhysicalColumnPath,
     };
 
     use super::*;

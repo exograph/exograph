@@ -1,0 +1,378 @@
+operation: |
+  fragment DocumentWithUser on Document {
+    id
+    content
+    documentUsers {
+      userId
+      read
+      write
+    }
+  }
+  query @unordered {
+    u1_or_u2Readable: documents(where: {
+      documentUsers: {and: [
+        {or: [{userId: {eq: "u1"}}, {userId: {eq: "u2"}}]},
+        {read: {eq: true}}
+      ]}}) {
+      ...DocumentWithUser
+    }
+    u1_or_u2Writable: documents(where: {
+      documentUsers: {and: [
+        {or: [{userId: {eq: "u1"}}, {userId: {eq: "u2"}}]},
+        {write: {eq: true}}
+      ]}}) {
+      ...DocumentWithUser
+    }
+    u1_or_u2ReadableAndWritable: documents(where: {
+      documentUsers: {and: [
+        {or: [{userId: {eq: "u1"}}, {userId: {eq: "u2"}}]},
+        {and: [
+          {read: {eq: true}},
+          {write: {eq: true}}
+        ]}
+      ]}}) {
+      ...DocumentWithUser
+    }
+    u1_or_u2ReadableOrWritable: documents(where: {
+      documentUsers: {and: [
+        {or: [{userId: {eq: "u1"}}, {userId: {eq: "u2"}}]},
+        {or: [
+          {read: {eq: true}},
+          {write: {eq: true}}
+        ]}
+      ]}}) {
+      ...DocumentWithUser
+    }
+    u3_or_u4Readable: documents(where: {
+      documentUsers: {and: [
+        {or: [{userId: {eq: "u3"}}, {userId: {eq: "u4"}}]},
+        {read: {eq: true}}
+      ]}}) {
+      ...DocumentWithUser
+    }
+    u3_or_u4Writable: documents(where: {
+      documentUsers: {and: [
+        {or: [{userId: {eq: "u3"}}, {userId: {eq: "u4"}}]},
+        {write: {eq: true}}
+      ]}}) {
+      ...DocumentWithUser
+    }
+    u3_or_u4ReadableAndWritable: documents(where: {
+      documentUsers: {and: [
+        {or: [{userId: {eq: "u3"}}, {userId: {eq: "u4"}}]},
+        {and: [
+          {read: {eq: true}},
+          {write: {eq: true}}
+        ]}
+      ]}}) {
+      ...DocumentWithUser
+    }
+    u3_or_u4ReadableOrWritable: documents(where: {
+      documentUsers: {and: [
+        {or: [{userId: {eq: "u3"}}, {userId: {eq: "u4"}}]},
+        {or: [
+          {read: {eq: true}},
+          {write: {eq: true}}
+        ]}
+      ]}}) {
+      ...DocumentWithUser
+    }            
+  }
+auth: |
+  {
+    "role": "admin"
+  }
+response: |
+  {
+    "data": {
+      "u1_or_u2Readable": [
+        {
+          "id": 1,
+          "content": "d1",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u2",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "content": "d2",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u2",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        }
+      ],
+      "u1_or_u2Writable": [
+        {
+          "id": 1,
+          "content": "d1",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u2",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "content": "d2",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u2",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        }
+      ],
+      "u1_or_u2ReadableAndWritable": [
+        {
+          "id": 1,
+          "content": "d1",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u2",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "content": "d2",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u2",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        }
+      ],      
+      "u1_or_u2ReadableOrWritable": [
+        {
+          "id": 1,
+          "content": "d1",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u2",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "content": "d2",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u2",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        }
+      ],
+
+      "u3_or_u4Readable": [
+        {
+          "id": 1,
+          "content": "d1",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u2",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "content": "d2",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u2",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "content": "d3",
+          "documentUsers": [
+            {
+              "userId": "u4",
+              "read": true,
+              "write": false
+            }
+          ]
+        }
+      ],
+      "u3_or_u4Writable": [],
+      "u3_or_u4ReadableAndWritable": [],    
+      "u3_or_u4ReadableOrWritable": [
+        {
+          "id": 1,
+          "content": "d1",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u2",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "content": "d2",
+          "documentUsers": [
+            {
+              "userId": "u1",
+              "read": false,
+              "write": false
+            },
+            {
+              "userId": "u2",
+              "read": true,
+              "write": true
+            },
+            {
+              "userId": "u3",
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "content": "d3",
+          "documentUsers": [
+            {
+              "userId": "u4",
+              "read": true,
+              "write": false
+            }
+          ]
+        }
+      ]
+    }
+  }
