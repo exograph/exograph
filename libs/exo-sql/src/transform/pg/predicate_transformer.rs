@@ -227,6 +227,8 @@ fn attempt_subselect_predicate(
                 ColumnPath::Physical(physical_path) => {
                     let (head, tail) = physical_path.split_head();
                     match (head, tail) {
+                        // If the tail is non-empty, the head will be a relation link (but the way we have expressed ColumnPath, we can't express that in the type system)
+                        // TODO: Fix the type system to express this
                         (ColumnPathLink::Relation(link), Some(tail)) => {
                             Some((link.clone(), ColumnPath::Physical(tail.clone())))
                         }
@@ -255,19 +257,12 @@ fn attempt_subselect_predicate(
         r: &AbstractPredicate,
         constructor: impl Fn(Box<AbstractPredicate>, Box<AbstractPredicate>) -> AbstractPredicate,
     ) -> Option<(RelationLink, AbstractPredicate)> {
-        let l = attempt_subselect_predicate(l);
-        let r = attempt_subselect_predicate(r);
-
-        match (l, r) {
-            (Some((l_link, l_path)), Some((r_link, r_path))) => {
-                if l_link == r_link {
-                    Some((l_link, constructor(Box::new(l_path), Box::new(r_path))))
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
+        attempt_subselect_predicate(l).and_then(|(l_link, l_path)| {
+            attempt_subselect_predicate(r).and_then(|(r_link, r_path)| {
+                (l_link == r_link)
+                    .then_some((l_link, constructor(Box::new(l_path), Box::new(r_path))))
+            })
+        })
     }
 
     match predicate {
