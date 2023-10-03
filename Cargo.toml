@@ -87,8 +87,9 @@ tokio-postgres = "0.7.6"
 tree-sitter = "0.20.9"
 tree-sitter-cli = "0.20.8"
 typed-generational-arena = { version = "0.2.5", features = ["serde"] }
-wasmtime = "6.0.1"
-wasmtime-wasi = "6.0.1"
+wasmtime = "13.0.0"
+wasmtime-wasi = "13.0.0"
+wasi-common = "13.0.0"
 wildmatch = "2.1.0"
 
 # reduce binary size, does not affect stack traces
