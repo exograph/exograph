@@ -55,15 +55,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Clear up some disk space from the default runner
+        if: ${{ runner.os != 'Windows' }}
         run: |
-          if [ "$RUNNER_OS" != "Windows" ]; then
-            sudo rm -rf /usr/share/dotnet
-            sudo rm -rf /opt/ghc
-            sudo rm -rf /usr/local/graalvm
-            sudo rm -rf /usr/local/lib/android
-            sudo rm -rf /usr/local/share/boost
-            sudo rm -rf $AGENT_TOOLSDIRECTORY
-          fi
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/graalvm
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf $AGENT_TOOLSDIRECTORY
       - uses: actions/checkout@v3
       - name: Clear up some disk space from the runner
         if: ${{ runner.os != 'Windows' }}
