@@ -48,7 +48,7 @@ jobs:
       - name: Clear up some disk space from the runner
         if: ${{ runner.os != 'Windows' }}
         run: |
-          bash ./clear-disk-space.sh      
+          bash ${PWD}/.github/workflows./clear-disk-space.sh      
       - name: Install deps
         run: ${{ matrix.deps-script }}
       - name: Setup Node
