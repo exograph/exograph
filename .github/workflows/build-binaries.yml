@@ -44,6 +44,10 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Clear up some disk space from the runner
+        if: ${{ runner.os != 'Windows' }}
+        run: |
+          ./clear-disk-space.sh      
       - uses: actions/checkout@v3
       - name: Install deps
         run: ${{ matrix.deps-script }}
@@ -53,7 +57,7 @@ jobs:
           node-version: 16
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2.3.0
+      - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
       - name: Build
@@ -126,7 +130,7 @@ jobs:
           node-version: 16
       - name: Add Rust target
         run: rustup target add x86_64-unknown-linux-gnu
-      - uses: Swatinem/rust-cache@v2.3.0
+      - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ env.ARCH }}
       - name: Build
