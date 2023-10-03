@@ -24,12 +24,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clear up some disk space from the default runner
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v3
       - uses: Swatinem/rust-cache@v2
       - uses: dtolnay/rust-toolchain@stable
@@ -60,6 +54,12 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Clear up some disk space from the default runner
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"      
       - uses: actions/checkout@v3
       - name: Clear up some disk space from the runner
         if: ${{ runner.os != 'Windows' }}
