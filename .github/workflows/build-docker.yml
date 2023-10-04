@@ -16,7 +16,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # Build and publish Docker image
@@ -26,6 +25,13 @@ jobs:
       contents: read
       packages: write
 
+    strategy:
+      matrix:
+        # Images we need to publish
+        include:
+          - image: cli
+          - image: server
+  
     steps:
       - uses: actions/checkout@v3
 
@@ -40,7 +46,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/exograph/${{ matrix.image }}
 
       - name: Download artifacts
         run: |
@@ -50,7 +56,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: docker/Dockerfile.ci
+          file: docker/Dockerfile.${{ matrix.image }}.ci
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

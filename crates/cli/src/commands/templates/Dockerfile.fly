@@ -1,4 +1,4 @@
-FROM ghcr.io/exograph/exograph:latest
+FROM ghcr.io/exograph/server:latest
 
 COPY ./target/index.exo_ir ./target/index.exo_ir
 
