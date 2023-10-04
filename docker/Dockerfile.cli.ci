@@ -1,0 +1,34 @@
+# We must use "debian:bullseye*" (and not "debian:buster") as the base runtime image to match the libc version used while building the binaries
+
+## Create a builder image with exograph release binaries
+FROM debian:bullseye-slim as builder
+
+RUN apt-get update && apt-get -y install unzip
+
+WORKDIR /usr/src
+COPY exograph-x86_64-unknown-linux-gnu.zip ./exograph-x86_64-unknown-linux-gnu.zip
+RUN unzip ./exograph-x86_64-unknown-linux-gnu.zip
+
+
+## Build the runtime image with just the binary we need for the cli
+FROM debian:bullseye-slim
+
+### Install ca-certificates and tzdata (needed to establish TLS connections and set the timezone)
+RUN apt-get update \
+  && apt-get install -y ca-certificates tzdata \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/src/exo /usr/local/bin/exo
+
+ENV TZ=Etc/UTC
+ENV APP_USER=exo
+ENV APP_DIR=/usr/src/app
+
+### Create a non-root user to run the cli
+RUN groupadd $APP_USER \
+  && useradd -g $APP_USER $APP_USER \
+  && mkdir -p ${APP_DIR}
+RUN chown -R $APP_USER:$APP_USER ${APP_DIR}
+USER $APP_USER
+
+WORKDIR ${APP_DIR}
