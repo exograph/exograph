@@ -141,7 +141,21 @@ module.exports = grammar({
     selection_select: $ => seq(
       field("prefix", $.selection),
       ".",
-      field("term", $.term)
+      field("selection_element", $.selection_element)
+    ),
+    selection_element: $ => choice(
+      $.term,
+      $.macro,
+    ),
+    // macros for the form `name(term, expr)` such as `exists(du, du.userId == AuthContext.id && du.read)`
+    // Note, we do not support macros such as has(<expr>)
+    macro: $ => seq(
+      field("name", $.term),
+      "(",
+      $.term,
+      ",",
+      field("args", $.expression),
+      ")"
     ),
     logical_op: $ => choice(
       $.logical_or,

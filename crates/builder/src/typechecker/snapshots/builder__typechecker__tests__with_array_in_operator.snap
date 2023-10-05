@@ -81,11 +81,15 @@ types:
                               - FieldSelection:
                                   Select:
                                     - Single:
-                                        - - AuthContext
+                                        - Identifier:
+                                            - AuthContext
+                                            - Defer
                                         - Reference:
                                             index: 15
                                             generation: ~
-                                    - - roles
+                                    - Identifier:
+                                        - roles
+                                        - Defer
                                     - Array:
                                         Reference:
                                           index: 4
@@ -193,11 +197,15 @@ modules:
                                 - FieldSelection:
                                     Select:
                                       - Single:
-                                          - - AuthContext
+                                          - Identifier:
+                                              - AuthContext
+                                              - Defer
                                           - Reference:
                                               index: 15
                                               generation: ~
-                                      - - roles
+                                      - Identifier:
+                                          - roles
+                                          - Defer
                                       - Array:
                                           Reference:
                                             index: 4

@@ -14,13 +14,14 @@ use std::{collections::HashMap, path::Path};
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use core_model_builder::ast::ast_types::FieldSelectionElement;
 use tree_sitter::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
 use crate::ast::ast_types::{
     AstAnnotation, AstAnnotationParams, AstArgument, AstExpr, AstField, AstFieldDefault,
     AstFieldDefaultKind, AstFieldType, AstInterceptor, AstMethod, AstModel, AstModelKind,
-    AstModule, AstSystem, FieldSelection, Identifier, LogicalOp, RelationalOp, Untyped,
+    AstModule, AstSystem, FieldSelection, LogicalOp, RelationalOp, Untyped,
 };
 use crate::error::ParserError;
 
@@ -602,20 +603,22 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
                 source,
                 source_span,
             )),
-            Identifier(
+            FieldSelectionElement::Identifier(
                 text_child(first_child, source, "term"),
                 span_from_node(
                     source_span,
                     first_child.child_by_field_name("term").unwrap(),
                 ),
+                (),
             ),
             span_from_node(source_span, first_child),
             (),
         ),
         "term" => FieldSelection::Single(
-            Identifier(
+            FieldSelectionElement::Identifier(
                 first_child.utf8_text(source).unwrap().to_string(),
                 span_from_node(source_span, first_child),
+                (),
             ),
             (),
         ),
@@ -710,6 +713,26 @@ mod tests {
             context AuthUser {
                 @jwt("sub") id: Int 
                 @jwt roles: Array<String> 
+            }
+        "#
+        );
+    }
+
+    #[test]
+    fn access_control_function() {
+        parsing_test!(
+            r#"
+            @postgres
+            module TestModule {
+                @access(self.concerts.exists(c, c.id == 1))
+                type Venue {
+                    concerts: Set<Concert>?
+                }
+
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    venue: Venue
+                }
             }
         "#
         );

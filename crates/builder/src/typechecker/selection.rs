@@ -11,19 +11,48 @@ use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::mapped_arena::MappedArena;
-use core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
+use core_model_builder::{
+    ast::ast_types::FieldSelectionElement,
+    typechecker::{annotation::AnnotationSpec, Typed},
+};
 
-use crate::ast::ast_types::{AstModelKind, FieldSelection, Identifier, Untyped};
+use crate::ast::ast_types::{AstModelKind, FieldSelection, Untyped};
 
 use super::{Scope, Type, TypecheckFrom};
+
+impl TypecheckFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typed> {
+    fn shallow(untyped: &FieldSelectionElement<Untyped>) -> Self {
+        match untyped {
+            FieldSelectionElement::Identifier(i, s, _) => {
+                FieldSelectionElement::Identifier(i.clone(), *s, Type::Defer)
+            }
+            FieldSelectionElement::Macro(_, _, _, _, _) => {
+                // FieldSelectionElement::Macro(i.clone(), *s, Type::Defer, None, None)
+                todo!()
+            }
+        }
+    }
+
+    fn pass(
+        &mut self,
+        _type_env: &MappedArena<Type>,
+        _annotation_env: &HashMap<String, AnnotationSpec>,
+        _scope: &Scope,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> bool {
+        false
+    }
+}
 
 impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
     fn shallow(untyped: &FieldSelection<Untyped>) -> FieldSelection<Typed> {
         match untyped {
-            FieldSelection::Single(v, _) => FieldSelection::Single(v.clone(), Type::Defer),
+            FieldSelection::Single(v, _) => {
+                FieldSelection::Single(FieldSelectionElement::shallow(v), Type::Defer)
+            }
             FieldSelection::Select(selection, i, span, _) => FieldSelection::Select(
                 Box::new(FieldSelection::shallow(selection)),
-                i.clone(),
+                FieldSelectionElement::shallow(i),
                 *span,
                 Type::Defer,
             ),
@@ -38,7 +67,10 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
         match self {
-            FieldSelection::Single(Identifier(i, s), typ) => {
+            FieldSelection::Single(FieldSelectionElement::Macro(_, _, _, _, _), _) => {
+                todo!("macro")
+            }
+            FieldSelection::Single(FieldSelectionElement::Identifier(i, s, _), typ) => {
                 if typ.is_incomplete() {
                     if i.as_str() == "self" {
                         if let Some(enclosing) = &scope.enclosing_type {
@@ -92,7 +124,11 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                 let in_updated = prefix.pass(type_env, _annotation_env, scope, errors);
                 let out_updated = if typ.is_incomplete() {
                     if let Type::Composite(c) = prefix.typ().deref(type_env) {
-                        if let Some(field) = c.fields.iter().find(|f| f.name == i.0) {
+                        let i = match i {
+                            FieldSelectionElement::Identifier(i, s, _) => (i, *s),
+                            FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
+                        };
+                        if let Some(field) = c.fields.iter().find(|f| &f.name == i.0) {
                             let resolved_typ = field.typ.to_typ(type_env);
                             if resolved_typ.is_complete() {
                                 *typ = resolved_typ;
@@ -118,6 +154,11 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                         }
                     } else {
                         *typ = Type::Error;
+
+                        let i = match i {
+                            FieldSelectionElement::Identifier(i, s, _) => (i, *s),
+                            FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
+                        };
 
                         if !prefix.typ().is_error() {
                             errors.push(Diagnostic {

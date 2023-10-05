@@ -310,10 +310,10 @@ impl<T: NodeTypedness> AstExpr<T> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum FieldSelection<T: NodeTypedness> {
-    Single(Identifier, T::FieldSelection),
+    Single(FieldSelectionElement<T>, T::FieldSelection),
     Select(
-        Box<FieldSelection<T>>,
-        Identifier,
+        Box<FieldSelection<T>>, // prefix, for example, `self` or `self.documentUsers`
+        FieldSelectionElement<T>, // suffix, for example, `documentUsers.exists(...)` or `exists(...)`
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -323,13 +323,37 @@ pub enum FieldSelection<T: NodeTypedness> {
 }
 
 impl FieldSelection<Typed> {
-    pub fn path(&self) -> Vec<String> {
+    pub fn path(&self) -> Vec<FieldSelectionElement<Typed>> {
+        fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<FieldSelectionElement<Typed>>) {
+            match selection {
+                FieldSelection::Single(elem, _) => acc.push(elem.clone()),
+                FieldSelection::Select(path, elem, _, _) => {
+                    flatten(path, acc);
+                    acc.push(elem.clone());
+                }
+            }
+        }
+
+        let mut acc = vec![];
+        flatten(self, &mut acc);
+        acc
+    }
+
+    // temporary method to get a string representation of the path until we resolve typechecking etc
+    pub fn string_path(&self) -> Vec<String> {
         fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
             match selection {
-                FieldSelection::Single(identifier, _) => acc.push(identifier.0.clone()),
-                FieldSelection::Select(path, identifier, _, _) => {
+                FieldSelection::Single(elem, _) => match elem {
+                    FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
+                    FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
+                },
+                FieldSelection::Select(path, elem, _, _) => {
                     flatten(path, acc);
-                    acc.push(identifier.0.clone());
+
+                    match elem {
+                        FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
+                        FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
+                    }
                 }
             }
         }
@@ -345,6 +369,37 @@ impl<T: NodeTypedness> FieldSelection<T> {
         match &self {
             FieldSelection::Select(_, _, s, _) => s,
             _ => panic!(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum FieldSelectionElement<T: NodeTypedness> {
+    Identifier(
+        String,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+        T::FieldSelection,
+    ),
+    Macro(
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+        Identifier,      // name of the macro such as "exists" and "all"
+        Identifier,      // name of the macro argument such as "du"
+        Box<AstExpr<T>>, // expression passed to the macro such as "du.userId == AuthContext.id && du.read"
+        T::FieldSelection,
+    ),
+}
+
+impl<T: NodeTypedness> FieldSelectionElement<T> {
+    pub fn span(&self) -> &Span {
+        match &self {
+            FieldSelectionElement::Identifier(_, s, _) => s,
+            FieldSelectionElement::Macro(s, _, _, _, _) => s,
         }
     }
 }

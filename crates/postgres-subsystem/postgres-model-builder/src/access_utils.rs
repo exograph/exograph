@@ -378,7 +378,7 @@ fn compute_column_selection<'a>(
         (column_path_link, &field.typ)
     }
 
-    let path_elements = selection.path();
+    let path_elements = selection.string_path();
 
     if path_elements[0] == "self" {
         let (_, column_path, field_type) = path_elements[1..].iter().fold(
@@ -410,6 +410,7 @@ fn compute_column_selection<'a>(
         // TODO: Avoid this unwrap (parser should have caught expression "self" without any fields)
         DatabasePathSelection::Column(column_path.unwrap(), field_type.unwrap())
     } else {
+        let path_elements = selection.string_path();
         let (context_selection, context_field_type) =
             get_context(&path_elements, resolved_env.contexts);
         DatabasePathSelection::Context(context_selection, context_field_type)
@@ -432,7 +433,7 @@ fn compute_json_selection<'a>(
             .unwrap_or_else(|| panic!("Field {field_name} not found while processing access rules"))
     }
 
-    let path_elements = selection.path();
+    let path_elements = selection.string_path();
 
     if path_elements[0] == "self" {
         let (_, json_path, field_type) = path_elements[1..].iter().fold(

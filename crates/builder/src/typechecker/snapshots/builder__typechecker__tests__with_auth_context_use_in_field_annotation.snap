@@ -87,11 +87,15 @@ types:
                                     - FieldSelection:
                                         Select:
                                           - Single:
-                                              - - AuthContext
+                                              - Identifier:
+                                                  - AuthContext
+                                                  - Defer
                                               - Reference:
                                                   index: 15
                                                   generation: ~
-                                          - - role
+                                          - Identifier:
+                                              - role
+                                              - Defer
                                           - Reference:
                                               index: 4
                                               generation: ~
@@ -101,11 +105,15 @@ types:
                               - FieldSelection:
                                   Select:
                                     - Single:
-                                        - - self
+                                        - Identifier:
+                                            - self
+                                            - Defer
                                         - Reference:
                                             index: 16
                                             generation: ~
-                                    - - is_public
+                                    - Identifier:
+                                        - is_public
+                                        - Defer
                                     - Reference:
                                         index: 0
                                         generation: ~
@@ -221,11 +229,15 @@ modules:
                                       - FieldSelection:
                                           Select:
                                             - Single:
-                                                - - AuthContext
+                                                - Identifier:
+                                                    - AuthContext
+                                                    - Defer
                                                 - Reference:
                                                     index: 15
                                                     generation: ~
-                                            - - role
+                                            - Identifier:
+                                                - role
+                                                - Defer
                                             - Reference:
                                                 index: 4
                                                 generation: ~
@@ -235,11 +247,15 @@ modules:
                                 - FieldSelection:
                                     Select:
                                       - Single:
-                                          - - self
+                                          - Identifier:
+                                              - self
+                                              - Defer
                                           - Reference:
                                               index: 16
                                               generation: ~
-                                      - - is_public
+                                      - Identifier:
+                                          - is_public
+                                          - Defer
                                       - Reference:
                                           index: 0
                                           generation: ~

@@ -133,7 +133,7 @@ fn compute_selection<'a>(
     selection: &FieldSelection<Typed>,
     resolved_env: &'a ResolvedTypeEnv<'a>,
 ) -> PathSelection<'a> {
-    let path_elements = selection.path();
+    let path_elements = selection.string_path();
 
     let (context_selection, column_type) = get_context(&path_elements, resolved_env.contexts);
     PathSelection::Context(context_selection, column_type)

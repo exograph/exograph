@@ -340,8 +340,10 @@ fn expand_dynamic_default_values(
                         .and_then(|default_value| match default_value {
                             ResolvedFieldDefault::Value(expr) => match expr.as_ref() {
                                 AstExpr::FieldSelection(selection) => {
-                                    let (context_selection, context_type) =
-                                        get_context(&selection.path(), resolved_env.contexts);
+                                    let (context_selection, context_type) = get_context(
+                                        &selection.string_path(),
+                                        resolved_env.contexts,
+                                    );
 
                                     match entity_field.relation {
                                         PostgresRelation::Scalar { .. } => {
