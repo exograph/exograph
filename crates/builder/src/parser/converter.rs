@@ -14,7 +14,7 @@ use std::{collections::HashMap, path::Path};
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model_builder::ast::ast_types::FieldSelectionElement;
+use core_model_builder::ast::ast_types::{FieldSelectionElement, Identifier};
 use tree_sitter::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
@@ -603,13 +603,12 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
                 source,
                 source_span,
             )),
-            FieldSelectionElement::Identifier(
-                text_child(first_child, source, "term"),
-                span_from_node(
-                    source_span,
-                    first_child.child_by_field_name("term").unwrap(),
-                ),
-                (),
+            convert_selection_elem(
+                first_child
+                    .child_by_field_name("selection_element")
+                    .unwrap(),
+                source,
+                source_span,
             ),
             span_from_node(source_span, first_child),
             (),
@@ -623,6 +622,41 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
             (),
         ),
         o => panic!("unsupported logical op kind: {o}"),
+    }
+}
+
+fn convert_selection_elem(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> FieldSelectionElement<Untyped> {
+    assert_eq!(node.kind(), "selection_element");
+    let first_child = node.child(0).unwrap();
+
+    match first_child.kind() {
+        "term" => FieldSelectionElement::Identifier(
+            first_child.utf8_text(source).unwrap().to_string(),
+            span_from_node(source_span, first_child),
+            (),
+        ),
+        "macro" => {
+            let name_field = first_child.child_by_field_name("name").unwrap();
+            let name = name_field.utf8_text(source).unwrap().to_string();
+
+            let elem_name_field = first_child.child_by_field_name("elem_name").unwrap();
+            let elem_name = elem_name_field.utf8_text(source).unwrap().to_string();
+
+            let expr_field = first_child.child_by_field_name("expr").unwrap();
+            let expr = convert_expression(expr_field, source, source_span);
+            FieldSelectionElement::Macro(
+                span_from_node(source_span, first_child),
+                Identifier(name, span_from_node(source_span, name_field)),
+                Identifier(elem_name, span_from_node(source_span, elem_name_field)),
+                Box::new(expr),
+                (),
+            )
+        }
+        o => panic!("unsupported selection element kind: {o}"),
     }
 }
 

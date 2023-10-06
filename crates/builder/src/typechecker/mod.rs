@@ -540,6 +540,39 @@ mod tests {
     }
 
     #[test]
+    fn with_macros() {
+        let src = r#"
+        context AuthContext {
+          @jwt("sub") id: String
+          @jwt role: String
+        }
+
+        @postgres
+        module DocsDatabase {
+          @access(
+            query = AuthContext.role == "admin"|| self.documentUsers.exists(du, du.userId == AuthContext.id && du.read),
+            mutation = AuthContext.role == "admin" || self.documentUsers.exists(du, du.userId == AuthContext.id && du.write)
+          )
+          type Document {
+            @pk id: Int = autoIncrement()
+            content: String
+            documentUsers: Set<DocumentUser>
+          }
+        
+          type DocumentUser {
+            @pk id: Int = autoIncrement()
+            document: Document
+            userId: String
+            read: Boolean
+            write: Boolean
+          }
+        }
+        "#;
+
+        assert_typechecking!(src);
+    }
+
+    #[test]
     fn insignificant_whitespace() {
         let typical = r#"
         @postgres

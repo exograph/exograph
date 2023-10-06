@@ -150,11 +150,11 @@ module.exports = grammar({
     // macros for the form `name(term, expr)` such as `exists(du, du.userId == AuthContext.id && du.read)`
     // Note, we do not support macros such as has(<expr>)
     macro: $ => seq(
-      field("name", $.term),
+      field("name", $.term), // "exists"
       "(",
-      $.term,
+      field("elem_name", $.term), // "du"
       ",",
-      field("args", $.expression),
+      field("expr", $.expression), // "du.userId == AuthContext.id && du.read"
       ")"
     ),
     logical_op: $ => choice(

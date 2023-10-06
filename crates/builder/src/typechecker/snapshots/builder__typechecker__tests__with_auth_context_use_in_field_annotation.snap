@@ -89,7 +89,9 @@ types:
                                           - Single:
                                               - Identifier:
                                                   - AuthContext
-                                                  - Defer
+                                                  - Reference:
+                                                      index: 15
+                                                      generation: ~
                                               - Reference:
                                                   index: 15
                                                   generation: ~
@@ -107,7 +109,9 @@ types:
                                     - Single:
                                         - Identifier:
                                             - self
-                                            - Defer
+                                            - Reference:
+                                                index: 16
+                                                generation: ~
                                         - Reference:
                                             index: 16
                                             generation: ~
@@ -231,7 +235,9 @@ modules:
                                             - Single:
                                                 - Identifier:
                                                     - AuthContext
-                                                    - Defer
+                                                    - Reference:
+                                                        index: 15
+                                                        generation: ~
                                                 - Reference:
                                                     index: 15
                                                     generation: ~
@@ -249,7 +255,9 @@ modules:
                                       - Single:
                                           - Identifier:
                                               - self
-                                              - Defer
+                                              - Reference:
+                                                  index: 16
+                                                  generation: ~
                                           - Reference:
                                               index: 16
                                               generation: ~

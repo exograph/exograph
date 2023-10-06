@@ -83,7 +83,9 @@ types:
                                     - Single:
                                         - Identifier:
                                             - AuthContext
-                                            - Defer
+                                            - Reference:
+                                                index: 15
+                                                generation: ~
                                         - Reference:
                                             index: 15
                                             generation: ~
@@ -199,7 +201,9 @@ modules:
                                       - Single:
                                           - Identifier:
                                               - AuthContext
-                                              - Defer
+                                              - Reference:
+                                                  index: 15
+                                                  generation: ~
                                           - Reference:
                                               index: 15
                                               generation: ~

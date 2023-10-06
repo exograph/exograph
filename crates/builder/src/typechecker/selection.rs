@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
-    ast::ast_types::FieldSelectionElement,
+    ast::ast_types::{AstExpr, FieldSelectionElement},
     typechecker::{annotation::AnnotationSpec, Typed},
 };
 
@@ -26,21 +26,80 @@ impl TypecheckFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typ
             FieldSelectionElement::Identifier(i, s, _) => {
                 FieldSelectionElement::Identifier(i.clone(), *s, Type::Defer)
             }
-            FieldSelectionElement::Macro(_, _, _, _, _) => {
-                // FieldSelectionElement::Macro(i.clone(), *s, Type::Defer, None, None)
-                todo!()
+            FieldSelectionElement::Macro(s, name, elem_name, expr, _) => {
+                FieldSelectionElement::Macro(
+                    *s,
+                    name.clone(),
+                    elem_name.clone(),
+                    Box::new(AstExpr::shallow(expr)),
+                    Type::Defer,
+                )
             }
         }
     }
 
     fn pass(
         &mut self,
-        _type_env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
         _annotation_env: &HashMap<String, AnnotationSpec>,
-        _scope: &Scope,
-        _errors: &mut Vec<Diagnostic>,
+        scope: &Scope,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        false
+        match self {
+            FieldSelectionElement::Identifier(value, s, typ) => {
+                if typ.is_incomplete() {
+                    if value.as_str() == "self" {
+                        if let Some(enclosing) = &scope.enclosing_type {
+                            *typ = Type::Reference(type_env.get_id(enclosing).unwrap());
+                            true
+                        } else {
+                            *typ = Type::Error;
+
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: "Cannot use self outside a model".to_string(),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: *s,
+                                    style: SpanStyle::Primary,
+                                    label: Some("self not allowed".to_string()),
+                                }],
+                            });
+
+                            false
+                        }
+                    } else {
+                        let context_type = type_env.get_by_key(value).and_then(|t| match t {
+                            Type::Composite(c) if c.kind == AstModelKind::Context => Some(c),
+                            _ => None,
+                        });
+
+                        if let Some(context_type) = context_type {
+                            *typ = Type::Reference(type_env.get_id(&context_type.name).unwrap());
+                        } else {
+                            *typ = Type::Error;
+
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: format!("Reference to unknown context: {value}"),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: *s,
+                                    style: SpanStyle::Primary,
+                                    label: Some("unknown context".to_string()),
+                                }],
+                            });
+                        }
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            FieldSelectionElement::Macro(_, _, _, _, _) => {
+                todo!()
+            }
+        }
     }
 }
 
@@ -62,66 +121,23 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
     fn pass(
         &mut self,
         type_env: &MappedArena<Type>,
-        _annotation_env: &HashMap<String, AnnotationSpec>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
         match self {
-            FieldSelection::Single(FieldSelectionElement::Macro(_, _, _, _, _), _) => {
-                todo!("macro")
-            }
-            FieldSelection::Single(FieldSelectionElement::Identifier(i, s, _), typ) => {
-                if typ.is_incomplete() {
-                    if i.as_str() == "self" {
-                        if let Some(enclosing) = &scope.enclosing_type {
-                            *typ = Type::Reference(type_env.get_id(enclosing).unwrap());
-                            true
-                        } else {
-                            *typ = Type::Error;
-
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: "Cannot use self outside a model".to_string(),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: *s,
-                                    style: SpanStyle::Primary,
-                                    label: Some("self not allowed".to_string()),
-                                }],
-                            });
-
-                            false
-                        }
-                    } else {
-                        let context_type = type_env.get_by_key(i).and_then(|t| match t {
-                            Type::Composite(c) if c.kind == AstModelKind::Context => Some(c),
-                            _ => None,
-                        });
-
-                        if let Some(context_type) = context_type {
-                            *typ = Type::Reference(type_env.get_id(&context_type.name).unwrap());
-                        } else {
-                            *typ = Type::Error;
-
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: format!("Reference to unknown context: {i}"),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: *s,
-                                    style: SpanStyle::Primary,
-                                    label: Some("unknown context".to_string()),
-                                }],
-                            });
-                        }
-                        false
+            FieldSelection::Single(selection_elem, typ) => {
+                let updated = selection_elem.pass(type_env, annotation_env, scope, errors);
+                match selection_elem {
+                    FieldSelectionElement::Identifier(_, _, resolved_typ) => {
+                        *typ = resolved_typ.clone();
                     }
-                } else {
-                    false
+                    FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
                 }
+                updated
             }
             FieldSelection::Select(prefix, i, _, typ) => {
-                let in_updated = prefix.pass(type_env, _annotation_env, scope, errors);
+                let in_updated = prefix.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if typ.is_incomplete() {
                     if let Type::Composite(c) = prefix.typ().deref(type_env) {
                         let i = match i {
@@ -157,7 +173,9 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
 
                         let i = match i {
                             FieldSelectionElement::Identifier(i, s, _) => (i, *s),
-                            FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
+                            FieldSelectionElement::Macro(_, _, _, _, _) => {
+                                todo!()
+                            }
                         };
 
                         if !prefix.typ().is_error() {
