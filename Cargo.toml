@@ -83,7 +83,7 @@ tempfile = "3.0.0"
 thiserror = "1.0.31"
 tracing = "0.1"
 tokio = "1"
-tokio-postgres = "0.7.6"
+tokio-postgres = "0.7.10"
 tree-sitter = "0.20.9"
 tree-sitter-cli = "0.20.8"
 typed-generational-arena = { version = "0.2.5", features = ["serde"] }
