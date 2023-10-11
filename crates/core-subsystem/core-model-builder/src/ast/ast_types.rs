@@ -345,14 +345,14 @@ impl FieldSelection<Typed> {
             match selection {
                 FieldSelection::Single(elem, _) => match elem {
                     FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
-                    FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
+                    FieldSelectionElement::Macro { .. } => todo!(),
                 },
                 FieldSelection::Select(path, elem, _, _) => {
                     flatten(path, acc);
 
                     match elem {
                         FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
-                        FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
+                        FieldSelectionElement::Macro { .. } => todo!(),
                     }
                 }
             }
@@ -383,23 +383,23 @@ pub enum FieldSelectionElement<T: NodeTypedness> {
         Span,
         T::FieldSelection,
     ),
-    Macro(
+    Macro {
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
-        Span,
-        Identifier,      // name of the macro such as "exists" and "all"
-        Identifier,      // name of the macro argument such as "du"
-        Box<AstExpr<T>>, // expression passed to the macro such as "du.userId == AuthContext.id && du.read"
-        T::FieldSelection,
-    ),
+        span: Span,
+        name: Identifier,      // name of the macro such as "exists" and "all"
+        elem_name: Identifier, // name of the macro argument such as "du"
+        expr: Box<AstExpr<T>>, // expression passed to the macro such as "du.userId == AuthContext.id && du.read"
+        typ: T::FieldSelection,
+    },
 }
 
 impl<T: NodeTypedness> FieldSelectionElement<T> {
     pub fn span(&self) -> &Span {
         match &self {
-            FieldSelectionElement::Identifier(_, s, _) => s,
-            FieldSelectionElement::Macro(s, _, _, _, _) => s,
+            FieldSelectionElement::Identifier(_, span, _) => span,
+            FieldSelectionElement::Macro { span, .. } => span,
         }
     }
 }

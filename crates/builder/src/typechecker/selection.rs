@@ -20,29 +20,49 @@ use crate::ast::ast_types::{AstModelKind, FieldSelection, Untyped};
 
 use super::{Scope, Type, TypecheckFrom};
 
-impl TypecheckFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typed> {
+pub trait TypecheckMacroFrom<T>
+where
+    Self: Sized,
+{
+    fn shallow(untyped: &T) -> Self;
+    fn pass(
+        &mut self,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
+        scope: &Scope,
+        elem_type: Option<&Type>,
+        errors: &mut Vec<Diagnostic>,
+    ) -> bool;
+}
+
+impl TypecheckMacroFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typed> {
     fn shallow(untyped: &FieldSelectionElement<Untyped>) -> Self {
         match untyped {
-            FieldSelectionElement::Identifier(i, s, _) => {
-                FieldSelectionElement::Identifier(i.clone(), *s, Type::Defer)
+            FieldSelectionElement::Identifier(value, s, _) => {
+                FieldSelectionElement::Identifier(value.clone(), *s, Type::Defer)
             }
-            FieldSelectionElement::Macro(s, name, elem_name, expr, _) => {
-                FieldSelectionElement::Macro(
-                    *s,
-                    name.clone(),
-                    elem_name.clone(),
-                    Box::new(AstExpr::shallow(expr)),
-                    Type::Defer,
-                )
-            }
+            FieldSelectionElement::Macro {
+                span,
+                name,
+                elem_name,
+                expr,
+                ..
+            } => FieldSelectionElement::Macro {
+                span: *span,
+                name: name.clone(),
+                elem_name: elem_name.clone(),
+                expr: Box::new(AstExpr::shallow(expr)),
+                typ: Type::Defer,
+            },
         }
     }
 
     fn pass(
         &mut self,
         type_env: &MappedArena<Type>,
-        _annotation_env: &HashMap<String, AnnotationSpec>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
+        elem_type: Option<&Type>,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
         match self {
@@ -68,6 +88,11 @@ impl TypecheckFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typ
 
                             false
                         }
+                    } else if scope.placeholder_mapping.contains_key(value.as_str()) {
+                        let placeholder_type =
+                            scope.placeholder_mapping.get(value.as_str()).unwrap();
+                        *typ = Type::Reference(type_env.get_id(placeholder_type).unwrap());
+                        true
                     } else {
                         let context_type = type_env.get_by_key(value).and_then(|t| match t {
                             Type::Composite(c) if c.kind == AstModelKind::Context => Some(c),
@@ -96,8 +121,19 @@ impl TypecheckFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typ
                     false
                 }
             }
-            FieldSelectionElement::Macro(_, _, _, _, _) => {
-                todo!()
+            FieldSelectionElement::Macro {
+                elem_name, expr, ..
+            } => {
+                let function_scope = Scope::with_placeholder_mapping(
+                    scope.enclosing_type.clone(),
+                    HashMap::from_iter([(
+                        elem_name.0.clone(),
+                        elem_type
+                            .and_then(|t| t.get_underlying_typename(type_env))
+                            .unwrap(),
+                    )]),
+                );
+                expr.pass(type_env, annotation_env, &function_scope, errors)
             }
         }
     }
@@ -127,75 +163,136 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
     ) -> bool {
         match self {
             FieldSelection::Single(selection_elem, typ) => {
-                let updated = selection_elem.pass(type_env, annotation_env, scope, errors);
+                let updated = selection_elem.pass(type_env, annotation_env, scope, None, errors);
                 match selection_elem {
                     FieldSelectionElement::Identifier(_, _, resolved_typ) => {
                         *typ = resolved_typ.clone();
                     }
-                    FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
+                    FieldSelectionElement::Macro { name, span, .. } => {
+                        *typ = Type::Error;
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "Macro cannot be a top-level field selection: {}",
+                                name.0
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: *span,
+                                style: SpanStyle::Primary,
+                                label: Some(
+                                    "Macro cannot be a top-level field selection".to_string(),
+                                ),
+                            }],
+                        });
+                    }
                 }
                 updated
             }
-            FieldSelection::Select(prefix, i, _, typ) => {
+            FieldSelection::Select(prefix, elem, _, typ) => {
                 let in_updated = prefix.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if typ.is_incomplete() {
-                    if let Type::Composite(c) = prefix.typ().deref(type_env) {
-                        let i = match i {
-                            FieldSelectionElement::Identifier(i, s, _) => (i, *s),
-                            FieldSelectionElement::Macro(_, _, _, _, _) => todo!(),
-                        };
-                        if let Some(field) = c.fields.iter().find(|f| &f.name == i.0) {
-                            let resolved_typ = field.typ.to_typ(type_env);
-                            if resolved_typ.is_complete() {
-                                *typ = resolved_typ;
-                                true
+                    match prefix.typ().deref(type_env) {
+                        Type::Composite(c) => {
+                            let elem = match elem {
+                                FieldSelectionElement::Identifier(value, s, _) => (value, *s),
+                                FieldSelectionElement::Macro { span, name, .. } => {
+                                    *typ = Type::Error;
+                                    errors.push(Diagnostic {
+                                        level: Level::Error,
+                                        message: format!(
+                                            "Macro {} not supported on type {}",
+                                            name.0, c.name
+                                        ),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: *span,
+                                            style: SpanStyle::Primary,
+                                            label: Some(
+                                                "unsupported macro target type".to_string(),
+                                            ),
+                                        }],
+                                    });
+                                    return false;
+                                }
+                            };
+                            if let Some(field) = c.fields.iter().find(|f| &f.name == elem.0) {
+                                let resolved_typ = field.typ.to_typ(type_env);
+                                if resolved_typ.is_complete() {
+                                    *typ = resolved_typ;
+                                    true
+                                } else {
+                                    *typ = Type::Error;
+                                    // no diagnostic because the prefix is incomplete
+                                    false
+                                }
                             } else {
                                 *typ = Type::Error;
-                                // no diagnostic because the prefix is incomplete
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!("No such field {} on type {}", elem.0, c.name),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: elem.1,
+                                        style: SpanStyle::Primary,
+                                        label: Some("unknown field".to_string()),
+                                    }],
+                                });
                                 false
                             }
-                        } else {
+                        }
+                        Type::Set(elem_type) => match elem {
+                            FieldSelectionElement::Identifier(value, span, _) => {
+                                *typ = Type::Error;
+                                errors.push(Diagnostic {
+                                        level: Level::Error,
+                                        message: format!(
+                                            "Plain field selection '{value}' not supported on set type {elem_type}"
+                                        ),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: *span,
+                                            style: SpanStyle::Primary,
+                                            label: Some("unsupported field".to_string()),
+                                        }],
+                                    });
+                                return false;
+                            }
+                            marco @ FieldSelectionElement::Macro { .. } => marco.pass(
+                                type_env,
+                                annotation_env,
+                                scope,
+                                Some(&elem_type),
+                                errors,
+                            ),
+                        },
+                        _ => {
                             *typ = Type::Error;
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: format!("No such field {} on type {}", i.0, c.name),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: i.1,
-                                    style: SpanStyle::Primary,
-                                    label: Some("unknown field".to_string()),
-                                }],
-                            });
+
+                            let field_name = match elem {
+                                FieldSelectionElement::Identifier(value, _, _) => value,
+                                FieldSelectionElement::Macro { name, .. } => &name.0,
+                            };
+
+                            if !prefix.typ().is_error() {
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!(
+                                        "Cannot read field {} from a non-composite type {}",
+                                        field_name,
+                                        prefix.typ().deref(type_env)
+                                    ),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: *prefix.span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some("non-composite value".to_string()),
+                                    }],
+                                });
+                            }
+
                             false
                         }
-                    } else {
-                        *typ = Type::Error;
-
-                        let i = match i {
-                            FieldSelectionElement::Identifier(i, s, _) => (i, *s),
-                            FieldSelectionElement::Macro(_, _, _, _, _) => {
-                                todo!()
-                            }
-                        };
-
-                        if !prefix.typ().is_error() {
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: format!(
-                                    "Cannot read field {} from a non-composite type {}",
-                                    i.0,
-                                    prefix.typ().deref(type_env)
-                                ),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: *prefix.span(),
-                                    style: SpanStyle::Primary,
-                                    label: Some("non-composite value".to_string()),
-                                }],
-                            });
-                        }
-
-                        false
                     }
                 } else {
                     false

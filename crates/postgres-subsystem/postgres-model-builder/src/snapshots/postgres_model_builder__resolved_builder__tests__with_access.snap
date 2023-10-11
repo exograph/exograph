@@ -86,7 +86,9 @@ values:
                             - Single:
                                 - Identifier:
                                     - AuthContext
-                                    - Defer
+                                    - Reference:
+                                        index: 15
+                                        generation: ~
                                 - Reference:
                                     index: 15
                                     generation: ~
@@ -104,7 +106,9 @@ values:
                       - Single:
                           - Identifier:
                               - self
-                              - Defer
+                              - Reference:
+                                  index: 16
+                                  generation: ~
                           - Reference:
                               index: 16
                               generation: ~

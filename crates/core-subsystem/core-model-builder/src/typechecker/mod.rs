@@ -9,6 +9,8 @@
 
 pub mod annotation;
 pub mod annotation_map;
+use std::collections::HashMap;
+
 pub use annotation_map::AnnotationMap;
 pub mod typ;
 
@@ -23,8 +25,29 @@ use crate::ast::ast_types::NodeTypedness;
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Default)]
 pub struct Scope {
     pub enclosing_type: Option<String>,
+    pub placeholder_mapping: HashMap<String, String>,
+}
+
+impl Scope {
+    pub fn with_enclosing_type(enclosing_type: String) -> Self {
+        Self {
+            enclosing_type: Some(enclosing_type),
+            placeholder_mapping: HashMap::new(),
+        }
+    }
+
+    pub fn with_placeholder_mapping(
+        enclosing_type: Option<String>,
+        placeholder_mapping: HashMap<String, String>,
+    ) -> Self {
+        Self {
+            enclosing_type,
+            placeholder_mapping,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

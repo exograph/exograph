@@ -41,9 +41,12 @@ modules:
                               - ~
                           - ~
                       - Macro:
-                          - - exists
-                          - - c
-                          - RelationalOp:
+                          name:
+                            - exists
+                          elem_name:
+                            - c
+                          expr:
+                            RelationalOp:
                               Eq:
                                 - FieldSelection:
                                     Select:
@@ -59,7 +62,7 @@ modules:
                                 - NumberLiteral:
                                     - 1
                                 - ~
-                          - ~
+                          typ: ~
                       - ~
       - name: Concert
         kind: Type

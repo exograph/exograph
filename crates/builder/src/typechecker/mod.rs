@@ -272,9 +272,7 @@ pub fn build(
 
     loop {
         let mut did_change = false;
-        let init_scope = Scope {
-            enclosing_type: None,
-        };
+        let init_scope = Scope::default();
 
         let mut errors = Vec::new();
 
@@ -550,8 +548,8 @@ mod tests {
         @postgres
         module DocsDatabase {
           @access(
-            query = AuthContext.role == "admin"|| self.documentUsers.exists(du, du.userId == AuthContext.id && du.read),
-            mutation = AuthContext.role == "admin" || self.documentUsers.exists(du, du.userId == AuthContext.id && du.write)
+            query = self.documentUsers.exists(du, AuthContext.role == "admin"|| du.userId == AuthContext.id && du.read),
+            mutation = self.documentUsers.exists(du, AuthContext.role == "admin"|| du.userId == AuthContext.id && du.write)
           )
           type Document {
             @pk id: Int = autoIncrement()

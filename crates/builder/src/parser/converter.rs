@@ -648,13 +648,13 @@ fn convert_selection_elem(
 
             let expr_field = first_child.child_by_field_name("expr").unwrap();
             let expr = convert_expression(expr_field, source, source_span);
-            FieldSelectionElement::Macro(
-                span_from_node(source_span, first_child),
-                Identifier(name, span_from_node(source_span, name_field)),
-                Identifier(elem_name, span_from_node(source_span, elem_name_field)),
-                Box::new(expr),
-                (),
-            )
+            FieldSelectionElement::Macro {
+                span: span_from_node(source_span, first_child),
+                name: Identifier(name, span_from_node(source_span, name_field)),
+                elem_name: Identifier(elem_name, span_from_node(source_span, elem_name_field)),
+                expr: Box::new(expr),
+                typ: (),
+            }
         }
         o => panic!("unsupported selection element kind: {o}"),
     }
