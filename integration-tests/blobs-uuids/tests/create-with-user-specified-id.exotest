@@ -1,0 +1,27 @@
+# Explicitly provide the id argument, even though there is a default `generate_uuid()` value. The
+# test ensures that the provided value (and not an auto-generated value) is used when creating a
+# database row.
+operation: |
+    mutation($id: Uuid!, $name: String!, $data: Blob!) {
+        result: createImage(data: { id: $id, name: $name, data: $data}) {
+            id
+            name
+            data
+        }
+    }
+variable: |
+    {
+        "id": "3997a999-dff4-9999-a59d-385e367dcc0d",
+        "name": "exograph",
+        "data": "iVBORw0KGgoAAAANSUhEUgAAABgAAAAWCAIAAABVH8vfAAAACXBIWXMAAC4jAAAuIwF4pT92AAACQ0lEQVQ4y7WUS09TQRTHz5nHfUwvLY9SLCghJfigG2PCwo2fwJ0rIku/gV/DtXHlyhDj2g9hwkLqi0RTDA9pS4HGXtrbmbkz44LGRGxJIXpWkzMzv5zzPw9cvncf/oWRiy4R+wcH4BNgeMFbNphQjtjDeTItnHGQpEARBQMHdi/W69vQ1KNFlKF8bYnMRsAJBhQnfMx6wAhwQko5/rg0amq4EKLgQ9MtCMDRQO5713X0MJCtdcAN8NPp4o3zPu3sfgwRQ4+gR/uSK2uPE7t1kr7eAeVGEBtRZBfNj0S++AaIMEZxjIEB19IgLSIJo3nJGjZNLgKJ3GL5wdNofM45J7ut5LSpZZzqBJzld7KBmAqjPPNEqpKdz293P70aClpaeRKNXwcARAwyU0FmanDLeKJ091GrXomPPg4WOxwrjNjHiDRXWB5atfZRdUSQNbp18H5o1U5qm0E0xz1BqYc4eHqM7nXbtermm1bt3R8x/h5aApCnpGmsA/DC6WjyVpgt+uEkocyaVMu2lvHpSbX7c9sayRByhBwZi+fEXs1Fq8VCjrPE2KZUh0o11Jd6/UOcmo61CBARIhgpcF6cnZjxvRnP8ynZTXrP9moVqfsRLTD68nYpIOQK26PaSdaqu3gm9ooIrkYBgLnQ54j9qlUSqZ27GuhQqrO/BAC+6nT9oBGn5lIIB1CX6vl+A89VTSCWfX4z8K95PM/5BGcBJQEhDPFsZjvGamuPdXqodE3prZ7cUtr+PSJd5zZ6aqOn/sPOvoz9Au0j8DNKwmoRAAAAAElFTkSuQmCC"
+    }
+response: |
+    {
+        "data": {
+            "result": {
+                "id": $.id,
+                "name": $.name,
+                "data": $.data
+            }
+        }
+    }

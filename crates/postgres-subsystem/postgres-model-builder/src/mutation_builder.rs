@@ -257,25 +257,32 @@ pub trait DataParamBuilder<D> {
                         dynamic_default_value: field.dynamic_default_value.clone(),
                     })
                 } else {
-                    // Make the decision to include the pk column based on the default value for
-                    // the PK column. We assume that if the default value is autoIncrement() or
-                    // gen_uuid(), it is a system assigned field and we should not include it in the
-                    // input type.
-                    // We should revisit this after we support "readonly" fields
+                    // Make the decision to include the pk column based on the default value for the
+                    // PK column. We assume that if the default value is autoIncrement(), it is a
+                    // system assigned field and we should not include it in the input type.
+                    //
+                    // We should revisit this after we support "readonly" fields (see
+                    // https://github.com/exograph/exograph/issues/926)
                     let column = column_id.get_column(&building.database);
-                    let is_system_assigned = column.is_auto_increment
-                        || column
-                            .default_value
-                            .iter()
-                            .any(|v| v.as_str() == "gen_random_uuid()");
 
-                    (!is_system_assigned).then(|| PostgresField {
-                        name: field.name.clone(),
-                        typ: to_mutation_type(&field.typ),
-                        relation: field.relation.clone(),
-                        has_default_value: field.has_default_value,
-                        dynamic_default_value: field.dynamic_default_value.clone(),
-                    })
+                    if column.is_auto_increment {
+                        None
+                    } else {
+                        let base_mutation_type = to_mutation_type(&field.typ);
+
+                        let mutation_type = if optional {
+                            base_mutation_type.optional()
+                        } else {
+                            base_mutation_type
+                        };
+                        Some(PostgresField {
+                            name: field.name.clone(),
+                            typ: mutation_type,
+                            relation: field.relation.clone(),
+                            has_default_value: field.has_default_value,
+                            dynamic_default_value: field.dynamic_default_value.clone(),
+                        })
+                    }
                 }
             }
             PostgresRelation::Scalar { .. } => Some(PostgresField {
