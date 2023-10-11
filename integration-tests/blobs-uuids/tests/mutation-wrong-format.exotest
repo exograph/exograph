@@ -15,7 +15,7 @@ response: |
     {
         "errors": [
             {
-                "message": ""
+                "message": "Unable to convert input to the expected type: trying to convert the 'data' field to the 'Blob' type"
             }
         ]
     }

@@ -181,13 +181,9 @@ async fn map_self_column<'a>(
     };
 
     let value_column = cast::literal_column(argument_value, key_column).with_context(format!(
-        "While trying to get literal column for {}.{}",
-        subsystem
-            .database
-            .get_table(key_column.table_id)
-            .name
-            .fully_qualified_name(),
-        key_column.name
+        "trying to convert the '{}' field to the '{}' type",
+        field.name,
+        key_column.typ.type_string()
     ))?;
 
     Ok(InsertionElement::SelfInsert(ColumnValuePair::new(
