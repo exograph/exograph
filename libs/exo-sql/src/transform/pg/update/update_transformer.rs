@@ -39,7 +39,7 @@ use super::update_strategy_chain::UpdateStrategyChain;
 impl UpdateTransformer for Postgres {
     #[instrument(
         name = "UpdateTransformer::to_transaction_script for Postgres"
-        skip(self)
+        skip(self, database, transaction_script)
         )]
     fn update_transaction_script<'a>(
         &self,

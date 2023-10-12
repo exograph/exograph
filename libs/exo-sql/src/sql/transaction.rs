@@ -58,7 +58,7 @@ impl<'a> TransactionScript<'a> {
     /// Returns the result of the last step
     #[instrument(
         name = "TransactionScript::execute"
-        skip(self, tx)
+        skip_all
         )]
     pub async fn execute(
         self,
@@ -101,7 +101,7 @@ impl<'a> TransactionStep<'a> {
     #[instrument(
         name = "TransactionStep::execute"
         level = "trace"
-        skip(self, client, transaction_context)
+        skip_all
         )]
     pub async fn execute(
         self,
@@ -156,7 +156,7 @@ impl<'a> ConcreteTransactionStep<'a> {
     #[instrument(
         name = "ConcreteTransactionStep::execute"
         level = "trace"
-        skip(self, client)
+        skip_all
         fields(
             operation = ?self.operation
             )

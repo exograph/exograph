@@ -109,7 +109,7 @@ impl SelectTransformer for Postgres {
     /// Form a [`Select`] from a given [`AbstractSelect`].
     #[instrument(
         name = "SelectTransformer::to_select for Postgres"
-        skip(self)
+        skip(self, database)
         )]
     fn to_select<'a>(&self, abstract_select: &AbstractSelect, database: &'a Database) -> Select {
         self.compute_select(abstract_select, &SelectionLevel::TopLevel, false, database)
