@@ -70,7 +70,7 @@ pub trait SelectTransformer {
 pub trait DeleteTransformer {
     #[instrument(
         name = "DeleteTransformer::to_transaction_script for Postgres"
-        skip(self)
+        skip(self, database)
         )]
     fn to_transaction_script<'a>(
         &self,
@@ -95,7 +95,7 @@ pub trait DeleteTransformer {
 pub trait InsertTransformer {
     #[instrument(
         name = "InsertTransformer::to_transaction_script for Postgres"
-        skip(self)
+        skip(self, parent_step, database)
         )]
     fn to_transaction_script<'a>(
         &self,
@@ -127,7 +127,7 @@ pub trait InsertTransformer {
 pub trait UpdateTransformer {
     #[instrument(
         name = "UpdateTransformer::to_transaction_script for Postgres"
-        skip(self)
+        skip(self, database)
         )]
     fn to_transaction_script<'a>(
         &self,
