@@ -122,7 +122,10 @@ impl TypecheckMacroFrom<FieldSelectionElement<Untyped>> for FieldSelectionElemen
                 }
             }
             FieldSelectionElement::Macro {
-                elem_name, expr, ..
+                elem_name,
+                expr,
+                typ,
+                ..
             } => {
                 let function_scope = Scope::with_placeholder_mapping(
                     scope.enclosing_type.clone(),
@@ -133,7 +136,9 @@ impl TypecheckMacroFrom<FieldSelectionElement<Untyped>> for FieldSelectionElemen
                             .unwrap(),
                     )]),
                 );
-                expr.pass(type_env, annotation_env, &function_scope, errors)
+                let updated = expr.pass(type_env, annotation_env, &function_scope, errors);
+                *typ = expr.typ().clone();
+                updated
             }
         }
     }
@@ -258,13 +263,17 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                                     });
                                 return false;
                             }
-                            marco @ FieldSelectionElement::Macro { .. } => marco.pass(
-                                type_env,
-                                annotation_env,
-                                scope,
-                                Some(&elem_type),
-                                errors,
-                            ),
+                            marco @ FieldSelectionElement::Macro { .. } => {
+                                let updated = marco.pass(
+                                    type_env,
+                                    annotation_env,
+                                    scope,
+                                    Some(&elem_type),
+                                    errors,
+                                );
+                                *typ = marco.typ().clone();
+                                updated
+                            }
                         },
                         _ => {
                             *typ = Type::Error;

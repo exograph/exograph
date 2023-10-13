@@ -98,6 +98,9 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 DatabaseAccessPrimitiveExpression::Column(column_path) => {
                     Some(SolvedPrimitiveExpression::Column(column_path.clone()))
                 }
+                DatabaseAccessPrimitiveExpression::Function(_, _) => {
+                    todo!("Function calls are not supported yet")
+                }
             })
         }
 
@@ -222,6 +225,9 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
                 }
                 InputAccessPrimitiveExpression::Path(path) => {
                     Some(SolvedJsonPrimitiveExpression::Path(path.clone()))
+                }
+                InputAccessPrimitiveExpression::Function(_, _) => {
+                    todo!("Function calls are not supported yet")
                 }
             })
         }

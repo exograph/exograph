@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use crate::{
     aggregate_type_builder::aggregate_type_name, naming::ToPlural,
     resolved_builder::ResolvedFieldTypeHelper, shallow::Shallow,
@@ -441,6 +443,7 @@ fn compute_database_access_expr(
                 access_utils::compute_predicate_expression(
                     ast_expr,
                     entity,
+                    HashMap::new(),
                     resolved_env,
                     &building.primitive_types,
                     &building.entity_types,
@@ -480,6 +483,7 @@ fn compute_input_access_expr(
                 access_utils::compute_input_predicate_expression(
                     ast_expr,
                     entity,
+                    HashMap::new(),
                     resolved_env,
                     &building.primitive_types,
                     &building.entity_types,

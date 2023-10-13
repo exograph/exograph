@@ -402,6 +402,13 @@ impl<T: NodeTypedness> FieldSelectionElement<T> {
             FieldSelectionElement::Macro { span, .. } => span,
         }
     }
+
+    pub fn typ(&self) -> &T::FieldSelection {
+        match &self {
+            FieldSelectionElement::Identifier(_, _, typ) => typ,
+            FieldSelectionElement::Macro { typ, .. } => typ,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_model::{
-    access::{AccessPredicateExpression, CommonAccessPrimitiveExpression},
+    access::{AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall},
     mapped_arena::SerializableSlabIndex,
 };
 use exo_sql::PhysicalColumnPath;
@@ -36,12 +36,14 @@ pub struct UpdateAccessExpression {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum DatabaseAccessPrimitiveExpression {
     Column(PhysicalColumnPath), // Column path, for example self.user.id
-    Common(CommonAccessPrimitiveExpression), // expression shared by all access expressions
+    Function(PhysicalColumnPath, FunctionCall<Self>), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
+    Common(CommonAccessPrimitiveExpression),          // expression shared by all access expressions
 }
 
 /// Primitive expressions that can express data input access control rules.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum InputAccessPrimitiveExpression {
-    Path(Vec<String>),                       // JSON path, for example self.user.id
-    Common(CommonAccessPrimitiveExpression), // expression shared by all access expressions
+    Path(Vec<String>),                         // JSON path, for example self.user.id
+    Function(Vec<String>, FunctionCall<Self>), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
+    Common(CommonAccessPrimitiveExpression),   // expression shared by all access expressions
 }

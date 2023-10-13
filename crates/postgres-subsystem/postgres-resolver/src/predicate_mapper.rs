@@ -83,6 +83,8 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                 logical_op_params,
             } => {
                 // first, match any logical op predicates the argument_value might contain
+                // logical_op_argument_value is of the form operation and value pair. For example,
+                // `and: [{name: {eq: "foo"}}, {id: {lt: 1}}]` will be mapped to `("and", Some([{name: {eq: "foo"}}, {id: {lt: 1}}]))`
                 let logical_op_argument_value: (&str, Option<&Val>) = logical_op_params
                     .iter()
                     .map(|parameter| {
@@ -146,9 +148,10 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                         )
                                     });
 
-                                    let mapped: Result<Vec<_>, _> = try_join_all(predicates).await;
+                                    let predicates: Result<Vec<_>, _> =
+                                        try_join_all(predicates).await;
 
-                                    Ok(mapped?
+                                    Ok(predicates?
                                         .into_iter()
                                         .fold(identity_predicate, |acc, predicate| {
                                             predicate_connector(acc, predicate)

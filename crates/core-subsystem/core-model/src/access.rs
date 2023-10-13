@@ -104,3 +104,13 @@ pub enum CommonAccessPrimitiveExpression {
     BooleanLiteral(bool),               // for example, true
     NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FunctionCall<PrimExpr>
+where
+    PrimExpr: Send + Sync,
+{
+    pub name: String,                              // "some", "all", etc
+    pub parameter_name: String,                    // "du"
+    pub expr: AccessPredicateExpression<PrimExpr>, // "du.id == AuthContext.id && du.read"
+}
