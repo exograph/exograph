@@ -118,17 +118,9 @@ pub fn compute_input_predicate_expression(
                         ))
                     }
                 }
-                JsonPathSelection::Function(column_path, function_call) => Ok(
-                    AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-                        Box::new(InputAccessPrimitiveExpression::Function(
-                            column_path,
-                            function_call,
-                        )),
-                        Box::new(InputAccessPrimitiveExpression::Common(
-                            CommonAccessPrimitiveExpression::BooleanLiteral(true),
-                        )),
-                    )),
-                ),
+                JsonPathSelection::Function(lead_path, function_call) => {
+                    compute_input_function_expr(lead_path, function_call.expr)
+                }
             }
         }
         AstExpr::LogicalOp(op) => {
@@ -215,17 +207,9 @@ pub fn compute_predicate_expression(
                         ))
                     }
                 }
-                DatabasePathSelection::Function(column_path, function_call) => Ok(
-                    AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-                        Box::new(DatabaseAccessPrimitiveExpression::Function(
-                            column_path,
-                            function_call,
-                        )),
-                        Box::new(DatabaseAccessPrimitiveExpression::Common(
-                            CommonAccessPrimitiveExpression::BooleanLiteral(true),
-                        )),
-                    )),
-                ),
+                DatabasePathSelection::Function(column_path, function_call) => {
+                    compute_function_expr(column_path, function_call.expr)
+                }
                 DatabasePathSelection::Context(context_selection, field_type) => {
                     if field_type.innermost() == &PrimitiveType::Boolean {
                         // Treat boolean context expressions in the same way as an "eq" relational expression
@@ -283,6 +267,131 @@ pub fn compute_predicate_expression(
         _ => Err(ModelBuildingError::Generic(
             "Unsupported expression type".to_string(),
         )), // String or NumberLiteral cannot be used as a top-level expression in access rules
+    }
+}
+
+fn compute_function_expr(
+    lead_path: PhysicalColumnPath,
+    expr: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+) -> Result<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>, ModelBuildingError> {
+    fn function_elem_path(
+        lead_path: PhysicalColumnPath,
+        expr: DatabaseAccessPrimitiveExpression,
+    ) -> Result<DatabaseAccessPrimitiveExpression, ModelBuildingError> {
+        match expr {
+            DatabaseAccessPrimitiveExpression::Column(function_column_path) => {
+                Ok(DatabaseAccessPrimitiveExpression::Column(
+                    lead_path.clone().join(function_column_path),
+                ))
+            }
+            DatabaseAccessPrimitiveExpression::Function(_, _) => Err(ModelBuildingError::Generic(
+                "Cannot have a function call inside another function call".to_string(),
+            )),
+            expr => Ok(expr),
+        }
+    }
+
+    match expr {
+        AccessPredicateExpression::LogicalOp(op) => match op {
+            AccessLogicalExpression::Not(p) => {
+                let updated_expr = compute_function_expr(lead_path, *p)?;
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::Not(Box::new(updated_expr)),
+                ))
+            }
+            AccessLogicalExpression::And(left, right) => {
+                let updated_left = compute_function_expr(lead_path.clone(), *left)?;
+                let updated_right = compute_function_expr(lead_path, *right)?;
+
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::And(Box::new(updated_left), Box::new(updated_right)),
+                ))
+            }
+            AccessLogicalExpression::Or(left, right) => {
+                let updated_left = compute_function_expr(lead_path.clone(), *left)?;
+                let updated_right = compute_function_expr(lead_path, *right)?;
+
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::Or(Box::new(updated_left), Box::new(updated_right)),
+                ))
+            }
+        },
+        AccessPredicateExpression::RelationalOp(op) => {
+            let combiner = op.combiner();
+            let (left, right) = op.owned_sides();
+
+            let updated_left = function_elem_path(lead_path.clone(), *left)?;
+            let updated_right = function_elem_path(lead_path, *right)?;
+            Ok(AccessPredicateExpression::RelationalOp(combiner(
+                Box::new(updated_left),
+                Box::new(updated_right),
+            )))
+        }
+        AccessPredicateExpression::BooleanLiteral(value) => {
+            Ok(AccessPredicateExpression::BooleanLiteral(value))
+        }
+    }
+}
+
+fn compute_input_function_expr(
+    lead_path: Vec<String>,
+    expr: AccessPredicateExpression<InputAccessPrimitiveExpression>,
+) -> Result<AccessPredicateExpression<InputAccessPrimitiveExpression>, ModelBuildingError> {
+    fn function_elem_path(
+        lead_path: Vec<String>,
+        expr: InputAccessPrimitiveExpression,
+    ) -> Result<InputAccessPrimitiveExpression, ModelBuildingError> {
+        match expr {
+            InputAccessPrimitiveExpression::Path(function_path) => {
+                let new_path = lead_path.clone().into_iter().chain(function_path).collect();
+                Ok(InputAccessPrimitiveExpression::Path(new_path))
+            }
+            InputAccessPrimitiveExpression::Function(_, _) => Err(ModelBuildingError::Generic(
+                "Cannot have a function call inside another function call".to_string(),
+            )),
+            expr => Ok(expr),
+        }
+    }
+
+    match expr {
+        AccessPredicateExpression::LogicalOp(op) => match op {
+            AccessLogicalExpression::Not(p) => {
+                let updated_expr = compute_input_function_expr(lead_path, *p)?;
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::Not(Box::new(updated_expr)),
+                ))
+            }
+            AccessLogicalExpression::And(left, right) => {
+                let updated_left = compute_input_function_expr(lead_path.clone(), *left)?;
+                let updated_right = compute_input_function_expr(lead_path, *right)?;
+
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::And(Box::new(updated_left), Box::new(updated_right)),
+                ))
+            }
+            AccessLogicalExpression::Or(left, right) => {
+                let updated_left = compute_input_function_expr(lead_path.clone(), *left)?;
+                let updated_right = compute_input_function_expr(lead_path, *right)?;
+
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::Or(Box::new(updated_left), Box::new(updated_right)),
+                ))
+            }
+        },
+        AccessPredicateExpression::RelationalOp(op) => {
+            let combiner = op.combiner();
+            let (left, right) = op.owned_sides();
+
+            let updated_left = function_elem_path(lead_path.clone(), *left)?;
+            let updated_right = function_elem_path(lead_path, *right)?;
+            Ok(AccessPredicateExpression::RelationalOp(combiner(
+                Box::new(updated_left),
+                Box::new(updated_right),
+            )))
+        }
+        AccessPredicateExpression::BooleanLiteral(value) => {
+            Ok(AccessPredicateExpression::BooleanLiteral(value))
+        }
     }
 }
 
@@ -842,15 +951,9 @@ fn reduce_nested_relational_op(
         }
     }
 
-    match op {
-        AccessRelationalOp::Eq(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Eq),
-        AccessRelationalOp::Neq(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Neq),
-        AccessRelationalOp::Lt(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Lt),
-        AccessRelationalOp::Lte(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Lte),
-        AccessRelationalOp::Gt(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Gt),
-        AccessRelationalOp::Gte(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Gte),
-        AccessRelationalOp::In(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::In),
-    }
+    let combiner = op.combiner();
+    let (l, r) = op.owned_sides();
+    combine(*l, *r, parent_entity, combiner)
 }
 
 fn reduce_nested_primitive_expr(

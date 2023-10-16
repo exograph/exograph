@@ -95,6 +95,32 @@ where
             AccessRelationalOp::In(left, right) => (left, right),
         }
     }
+
+    pub fn owned_sides(self) -> (Box<PrimExpr>, Box<PrimExpr>) {
+        match self {
+            AccessRelationalOp::Eq(left, right) => (left, right),
+            AccessRelationalOp::Neq(left, right) => (left, right),
+            AccessRelationalOp::Lt(left, right) => (left, right),
+            AccessRelationalOp::Lte(left, right) => (left, right),
+            AccessRelationalOp::Gt(left, right) => (left, right),
+            AccessRelationalOp::Gte(left, right) => (left, right),
+            AccessRelationalOp::In(left, right) => (left, right),
+        }
+    }
+
+    pub fn combiner(
+        &self,
+    ) -> impl Fn(Box<PrimExpr>, Box<PrimExpr>) -> AccessRelationalOp<PrimExpr> {
+        match self {
+            AccessRelationalOp::Eq(_, _) => AccessRelationalOp::Eq,
+            AccessRelationalOp::Neq(_, _) => AccessRelationalOp::Neq,
+            AccessRelationalOp::Lt(_, _) => AccessRelationalOp::Lt,
+            AccessRelationalOp::Lte(_, _) => AccessRelationalOp::Lte,
+            AccessRelationalOp::Gt(_, _) => AccessRelationalOp::Gt,
+            AccessRelationalOp::Gte(_, _) => AccessRelationalOp::Gte,
+            AccessRelationalOp::In(_, _) => AccessRelationalOp::In,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
