@@ -1,0 +1,40 @@
+context AuthContext {
+  @jwt userId: String
+}
+
+context AdminHeaderContext {
+  @header("X-Admin-Secret") adminSecretHeader: String
+}
+
+context AdminEnvContext {
+  @env("ADMIN_SECRET") adminSecretEnv: String
+}
+
+@postgres
+module TodoPersistence {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+  }
+}
+
+@postgres
+module AuditPersistence {
+  // Intentially lax access control to keep the focus on the interception and context passing
+  @access(true)
+  type Audit {
+    @pk id: Int = autoIncrement()
+    operation: String
+    result: String
+    authContext: String
+    adminHeaderContext: String
+    adminEnvContext: String
+  }
+}
+
+@deno("interception.ts")
+module Interception {
+  @around("query *")
+  interceptor captureContext(operation: Operation, authContext: AuthContext, adminHeaderContext: AdminHeaderContext, adminEnvContext: AdminEnvContext, exograph: Exograph)
+}
