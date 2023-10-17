@@ -225,8 +225,9 @@ types:
                                                 index: 0
                                                 generation: ~
                                       - Primitive: Boolean
-                                typ: Defer
-                            - Error
+                                typ:
+                                  Primitive: Boolean
+                            - Primitive: Boolean
                       query:
                         FieldSelection:
                           Select:
@@ -335,8 +336,9 @@ types:
                                                 index: 0
                                                 generation: ~
                                       - Primitive: Boolean
-                                typ: Defer
-                            - Error
+                                typ:
+                                  Primitive: Boolean
+                            - Primitive: Boolean
     - - ~
       - Composite:
           name: DocumentUser
@@ -629,8 +631,9 @@ modules:
                                                   index: 0
                                                   generation: ~
                                         - Primitive: Boolean
-                                  typ: Defer
-                              - Defer
+                                  typ:
+                                    Primitive: Boolean
+                              - Primitive: Boolean
                         query:
                           FieldSelection:
                             Select:
@@ -739,8 +742,9 @@ modules:
                                                   index: 0
                                                   generation: ~
                                         - Primitive: Boolean
-                                  typ: Defer
-                              - Defer
+                                  typ:
+                                    Primitive: Boolean
+                              - Primitive: Boolean
           - name: DocumentUser
             kind: Type
             fields:

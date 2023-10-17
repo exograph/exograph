@@ -95,7 +95,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                         reduce_common_primitive_expression(solver, request_context, expr).await?;
                     Some(SolvedPrimitiveExpression::Common(primitive_expr))
                 }
-                DatabaseAccessPrimitiveExpression::Column(column_path) => {
+                DatabaseAccessPrimitiveExpression::Column(column_path, _) => {
                     Some(SolvedPrimitiveExpression::Column(column_path.clone()))
                 }
                 DatabaseAccessPrimitiveExpression::Function(_, _) => {
@@ -223,7 +223,7 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
                         reduce_common_primitive_expression(solver, request_context, expr).await?;
                     Some(SolvedJsonPrimitiveExpression::Common(primitive_expr))
                 }
-                InputAccessPrimitiveExpression::Path(path) => {
+                InputAccessPrimitiveExpression::Path(path, _) => {
                     Some(SolvedJsonPrimitiveExpression::Path(path.clone()))
                 }
                 InputAccessPrimitiveExpression::Function(_, _) => {
@@ -528,7 +528,7 @@ mod tests {
         column_path: PhysicalColumnPath,
     ) -> AccessPredicateExpression<DatabaseAccessPrimitiveExpression> {
         AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-            Box::new(DatabaseAccessPrimitiveExpression::Column(column_path)),
+            Box::new(DatabaseAccessPrimitiveExpression::Column(column_path, None)),
             Box::new(DatabaseAccessPrimitiveExpression::Common(
                 CommonAccessPrimitiveExpression::BooleanLiteral(true),
             )),
@@ -630,6 +630,7 @@ mod tests {
                     context_selection_expr("AccessContext", "user_id"),
                     Box::new(DatabaseAccessPrimitiveExpression::Column(
                         owner_id_column_path.clone(),
+                        None,
                     )),
                 );
                 assert_solve_access!(
@@ -649,6 +650,7 @@ mod tests {
                 let test_ae = relational_op(
                     Box::new(DatabaseAccessPrimitiveExpression::Column(
                         owner_id_column_path.clone(),
+                        None,
                     )),
                     context_selection_expr("AccessContext", "user_id"),
                 );
@@ -674,9 +676,11 @@ mod tests {
                 let test_ae = relational_op(
                     Box::new(DatabaseAccessPrimitiveExpression::Column(
                         dept1_id_column_path.clone(),
+                        None,
                     )),
                     Box::new(DatabaseAccessPrimitiveExpression::Column(
                         dept2_id_column_path.clone(),
+                        None,
                     )),
                 );
 
@@ -695,9 +699,11 @@ mod tests {
                 let test_ae = relational_op(
                     Box::new(DatabaseAccessPrimitiveExpression::Column(
                         dept2_id_column_path.clone(),
+                        None,
                     )),
                     Box::new(DatabaseAccessPrimitiveExpression::Column(
                         dept1_id_column_path.clone(),
+                        None,
                     )),
                 );
 
@@ -1123,6 +1129,7 @@ mod tests {
             context_selection_expr("AccessContext", "user_id"),
             Box::new(DatabaseAccessPrimitiveExpression::Column(
                 owner_id_column_path.clone(),
+                None,
             )),
         ));
 
@@ -1177,6 +1184,7 @@ mod tests {
             let data_rule = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
                 Box::new(DatabaseAccessPrimitiveExpression::Column(
                     published_column_path.clone(),
+                    None,
                 )),
                 Box::new(DatabaseAccessPrimitiveExpression::Common(
                     CommonAccessPrimitiveExpression::BooleanLiteral(true),
@@ -1335,7 +1343,7 @@ mod tests {
         ] {
             // We test with both a column and a literal on the other side of the relational operator
             let column_expr_fn =
-                &|| DatabaseAccessPrimitiveExpression::Column(owner_id_column_path.clone());
+                &|| DatabaseAccessPrimitiveExpression::Column(owner_id_column_path.clone(), None);
             let literal_expr_fn = &|| {
                 DatabaseAccessPrimitiveExpression::Common(
                     CommonAccessPrimitiveExpression::NumberLiteral(1),
@@ -1412,6 +1420,7 @@ mod tests {
                             context_selection_expr("AccessContext", "user_id"),
                             Box::new(DatabaseAccessPrimitiveExpression::Column(
                                 owner_id_column_path.clone(),
+                                None,
                             )),
                         ))),
                         Box::new(AccessPredicateExpression::BooleanLiteral(true)),

@@ -35,7 +35,7 @@ pub struct UpdateAccessExpression {
 /// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum DatabaseAccessPrimitiveExpression {
-    Column(PhysicalColumnPath), // Column path, for example self.user.id
+    Column(PhysicalColumnPath, Option<String>), // Column path, for example self.user.id and parameter name (such as "du", default: "self")
     Function(PhysicalColumnPath, FunctionCall<Self>), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
     Common(CommonAccessPrimitiveExpression),          // expression shared by all access expressions
 }
@@ -43,7 +43,7 @@ pub enum DatabaseAccessPrimitiveExpression {
 /// Primitive expressions that can express data input access control rules.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum InputAccessPrimitiveExpression {
-    Path(Vec<String>),                         // JSON path, for example self.user.id
+    Path(Vec<String>, Option<String>), // JSON path, for example self.user.id and parameter name (such as "du", default: "self")
     Function(Vec<String>, FunctionCall<Self>), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
     Common(CommonAccessPrimitiveExpression),   // expression shared by all access expressions
 }
