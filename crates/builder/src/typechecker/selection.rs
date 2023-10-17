@@ -68,54 +68,58 @@ impl TypecheckMacroFrom<FieldSelectionElement<Untyped>> for FieldSelectionElemen
         match self {
             FieldSelectionElement::Identifier(value, s, typ) => {
                 if typ.is_incomplete() {
-                    if value.as_str() == "self" {
-                        if let Some(enclosing) = &scope.enclosing_type {
-                            *typ = Type::Reference(type_env.get_id(enclosing).unwrap());
+                    match scope.get_type(value) {
+                        Some(type_name) => {
+                            *typ = Type::Reference(type_env.get_id(type_name).unwrap());
                             true
-                        } else {
-                            *typ = Type::Error;
-
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: "Cannot use self outside a model".to_string(),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: *s,
-                                    style: SpanStyle::Primary,
-                                    label: Some("self not allowed".to_string()),
-                                }],
-                            });
-
-                            false
                         }
-                    } else if scope.placeholder_mapping.contains_key(value.as_str()) {
-                        let placeholder_type =
-                            scope.placeholder_mapping.get(value.as_str()).unwrap();
-                        *typ = Type::Reference(type_env.get_id(placeholder_type).unwrap());
-                        true
-                    } else {
-                        let context_type = type_env.get_by_key(value).and_then(|t| match t {
-                            Type::Composite(c) if c.kind == AstModelKind::Context => Some(c),
-                            _ => None,
-                        });
+                        None => {
+                            if value.as_str() == "self" {
+                                *typ = Type::Error;
 
-                        if let Some(context_type) = context_type {
-                            *typ = Type::Reference(type_env.get_id(&context_type.name).unwrap());
-                        } else {
-                            *typ = Type::Error;
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: "Cannot use self outside a model".to_string(),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: *s,
+                                        style: SpanStyle::Primary,
+                                        label: Some("self not allowed".to_string()),
+                                    }],
+                                });
 
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: format!("Reference to unknown context: {value}"),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: *s,
-                                    style: SpanStyle::Primary,
-                                    label: Some("unknown context".to_string()),
-                                }],
-                            });
+                                false
+                            } else {
+                                let context_type =
+                                    type_env.get_by_key(value).and_then(|t| match t {
+                                        Type::Composite(c) if c.kind == AstModelKind::Context => {
+                                            Some(c)
+                                        }
+                                        _ => None,
+                                    });
+
+                                if let Some(context_type) = context_type {
+                                    *typ = Type::Reference(
+                                        type_env.get_id(&context_type.name).unwrap(),
+                                    );
+                                    true
+                                } else {
+                                    *typ = Type::Error;
+
+                                    errors.push(Diagnostic {
+                                        level: Level::Error,
+                                        message: format!("Reference to unknown context: {value}"),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: *s,
+                                            style: SpanStyle::Primary,
+                                            label: Some("unknown context".to_string()),
+                                        }],
+                                    });
+                                    false
+                                }
+                            }
                         }
-                        false
                     }
                 } else {
                     false
@@ -127,15 +131,12 @@ impl TypecheckMacroFrom<FieldSelectionElement<Untyped>> for FieldSelectionElemen
                 typ,
                 ..
             } => {
-                let function_scope = Scope::with_placeholder_mapping(
-                    scope.enclosing_type.clone(),
-                    HashMap::from_iter([(
-                        elem_name.0.clone(),
-                        elem_type
-                            .and_then(|t| t.get_underlying_typename(type_env))
-                            .unwrap(),
-                    )]),
-                );
+                let function_scope = scope.with_additional_mapping(HashMap::from_iter([(
+                    elem_name.0.clone(),
+                    elem_type
+                        .and_then(|t| t.get_underlying_typename(type_env))
+                        .unwrap(),
+                )]));
                 let updated = expr.pass(type_env, annotation_env, &function_scope, errors);
                 *typ = expr.typ().clone();
                 updated

@@ -25,28 +25,36 @@ use crate::ast::ast_types::NodeTypedness;
 
 use serde::{Deserialize, Serialize};
 
+/// The scope for the current typechecking context.
+///
+/// Typically starts out with ("self" -> name of the type being checked) extended with additional
+/// mappings when a access control selection with a function such as `.some(du => ...)` is
+/// encountered.
 #[derive(Debug, Default)]
 pub struct Scope {
-    pub enclosing_type: Option<String>,
-    pub placeholder_mapping: HashMap<String, String>,
+    mapping: HashMap<String, String>,
 }
 
 impl Scope {
     pub fn with_enclosing_type(enclosing_type: String) -> Self {
         Self {
-            enclosing_type: Some(enclosing_type),
-            placeholder_mapping: HashMap::new(),
+            mapping: HashMap::from_iter([("self".to_string(), enclosing_type)]),
         }
     }
 
-    pub fn with_placeholder_mapping(
-        enclosing_type: Option<String>,
-        placeholder_mapping: HashMap<String, String>,
-    ) -> Self {
+    pub fn with_additional_mapping(&self, additional_mapping: HashMap<String, String>) -> Self {
         Self {
-            enclosing_type,
-            placeholder_mapping,
+            mapping: self
+                .mapping
+                .clone()
+                .into_iter()
+                .chain(additional_mapping)
+                .collect(),
         }
+    }
+
+    pub fn get_type(&self, name: &str) -> Option<&str> {
+        self.mapping.get(name).map(|s| s.as_str())
     }
 }
 
