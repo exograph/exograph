@@ -83,23 +83,31 @@ pub fn compute_input_predicate_expression(
                 subsystem_primitive_types,
                 subsystem_entity_types,
             ) {
-                JsonPathSelection::Path(path, _, parameter_name) => {
-                    // if field_type.innermost().type_id == &PrimitiveType::Boolean {
-                    // Treat boolean context expressions in the same way as an "eq" relational expression
-                    // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
-                    Ok(AccessPredicateExpression::RelationalOp(
-                        AccessRelationalOp::Eq(
-                            Box::new(InputAccessPrimitiveExpression::Path(path, parameter_name)),
-                            Box::new(InputAccessPrimitiveExpression::Common(
-                                CommonAccessPrimitiveExpression::BooleanLiteral(true),
-                            )),
-                        ),
-                    ))
-                    // } else {
-                    //     Err(ModelBuildingError::Generic(
-                    //         "Top-level context selection must be a boolean".to_string(),
-                    //     ))
-                    // }
+                JsonPathSelection::Path(path, field_type, parameter_name) => {
+                    let field_entity_type = field_type.innermost().type_id.to_type(
+                        subsystem_primitive_types.values_ref(),
+                        subsystem_entity_types.values_ref(),
+                    );
+
+                    if field_entity_type.name() == "Boolean" {
+                        // Treat boolean context expressions in the same way as an "eq" relational expression
+                        // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
+                        Ok(AccessPredicateExpression::RelationalOp(
+                            AccessRelationalOp::Eq(
+                                Box::new(InputAccessPrimitiveExpression::Path(
+                                    path,
+                                    parameter_name,
+                                )),
+                                Box::new(InputAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::BooleanLiteral(true),
+                                )),
+                            ),
+                        ))
+                    } else {
+                        Err(ModelBuildingError::Generic(
+                            "Top-level context selection must be a boolean".to_string(),
+                        ))
+                    }
                 }
                 JsonPathSelection::Context(context_selection, field_type) => {
                     if field_type.innermost() == &PrimitiveType::Boolean {
