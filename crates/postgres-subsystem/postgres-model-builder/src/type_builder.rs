@@ -482,8 +482,7 @@ fn compute_input_access_expr(
             ast_expr.as_ref().map(|ast_expr| {
                 access_utils::compute_input_predicate_expression(
                     ast_expr,
-                    entity,
-                    HashMap::new(),
+                    HashMap::from_iter([("self".to_string(), entity)]),
                     resolved_env,
                     &building.primitive_types,
                     &building.entity_types,

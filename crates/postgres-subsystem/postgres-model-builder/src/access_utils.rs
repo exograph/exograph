@@ -67,8 +67,7 @@ enum JsonPathSelection<'a> {
 
 pub fn compute_input_predicate_expression(
     expr: &AstExpr<Typed>,
-    self_type_info: &EntityType,
-    function_context: HashMap<String, &EntityType>,
+    scope: HashMap<String, &EntityType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -77,8 +76,7 @@ pub fn compute_input_predicate_expression(
         AstExpr::FieldSelection(selection) => {
             match compute_json_selection(
                 selection,
-                self_type_info,
-                function_context,
+                scope,
                 resolved_env,
                 subsystem_primitive_types,
                 subsystem_entity_types,
@@ -144,8 +142,7 @@ pub fn compute_input_predicate_expression(
             let predicate_expr = |expr: &AstExpr<Typed>| {
                 compute_input_predicate_expression(
                     expr,
-                    self_type_info,
-                    function_context.clone(),
+                    scope.clone(),
                     resolved_env,
                     subsystem_primitive_types,
                     subsystem_entity_types,
@@ -157,8 +154,7 @@ pub fn compute_input_predicate_expression(
             let primitive_expr = |expr: &AstExpr<Typed>| {
                 compute_primitive_json_expr(
                     expr,
-                    self_type_info,
-                    function_context.clone(),
+                    scope.clone(),
                     resolved_env,
                     subsystem_primitive_types,
                     subsystem_entity_types,
@@ -502,8 +498,7 @@ fn compute_primitive_db_expr(
 
 fn compute_primitive_json_expr(
     expr: &AstExpr<Typed>,
-    self_type_info: &EntityType,
-    function_context: HashMap<String, &EntityType>,
+    scope: HashMap<String, &EntityType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -512,8 +507,7 @@ fn compute_primitive_json_expr(
         AstExpr::FieldSelection(selection) => {
             match compute_json_selection(
                 selection,
-                self_type_info,
-                function_context,
+                scope,
                 resolved_env,
                 subsystem_primitive_types,
                 subsystem_entity_types,
@@ -731,8 +725,7 @@ fn compute_column_selection<'a>(
 
 fn compute_json_selection<'a>(
     selection: &FieldSelection<Typed>,
-    self_type_info: &'a EntityType,
-    function_context: HashMap<String, &'a EntityType>,
+    scope: HashMap<String, &'a EntityType>,
     resolved_env: &'a ResolvedTypeEnv<'a>,
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &'a MappedArena<EntityType>,
@@ -790,54 +783,59 @@ fn compute_json_selection<'a>(
 
     match path_head {
         FieldSelectionElement::Identifier(value, _, _) => {
-            if value == "self" || function_context.contains_key(value) {
-                let (lead_type, parameter_name) = if value == "self" {
-                    (&self_type_info, Option::<String>::None)
-                } else {
-                    (function_context.get(value).unwrap(), Some(value.clone()))
-                };
-                let (tail_last, tail_init) = path_tail.split_last().unwrap();
+            let scope_type = scope.get(value);
 
-                match tail_last {
-                    FieldSelectionElement::Identifier(_, _, _) => {
-                        let (_, json_path, field_type) = compute_json_path(lead_type, path_tail);
-                        JsonPathSelection::Path(json_path, field_type.unwrap(), parameter_name)
-                    }
-                    FieldSelectionElement::Macro {
-                        name,
-                        elem_name,
-                        expr,
-                        ..
-                    } => {
-                        let (field_composite_type, path, _field_type) =
-                            compute_json_path(lead_type, tail_init);
-                        let mut new_function_context = function_context.clone();
-                        new_function_context
-                            .extend([(elem_name.0.clone(), field_composite_type.unwrap())]);
-                        let predicate_expr = compute_input_predicate_expression(
+            match scope_type {
+                Some(scope_type) => {
+                    let parameter_name = if value == "self" {
+                        Option::<String>::None
+                    } else {
+                        Some(value.clone())
+                    };
+                    let (tail_last, tail_init) = path_tail.split_last().unwrap();
+
+                    match tail_last {
+                        FieldSelectionElement::Identifier(_, _, _) => {
+                            let (_, json_path, field_type) =
+                                compute_json_path(scope_type, path_tail);
+                            JsonPathSelection::Path(json_path, field_type.unwrap(), parameter_name)
+                        }
+                        FieldSelectionElement::Macro {
+                            name,
+                            elem_name,
                             expr,
-                            self_type_info,
-                            new_function_context,
-                            resolved_env,
-                            subsystem_primitive_types,
-                            subsystem_entity_types,
-                        )
-                        .unwrap();
-                        JsonPathSelection::Function(
-                            path,
-                            FunctionCall {
-                                name: name.0.clone(),
-                                parameter_name: elem_name.0.clone(),
-                                expr: predicate_expr,
-                            },
-                        )
+                            ..
+                        } => {
+                            let (field_composite_type, path, _field_type) =
+                                compute_json_path(scope_type, tail_init);
+                            let mut new_function_context = scope.clone();
+                            new_function_context
+                                .extend([(elem_name.0.clone(), field_composite_type.unwrap())]);
+                            let predicate_expr = compute_input_predicate_expression(
+                                expr,
+                                new_function_context,
+                                resolved_env,
+                                subsystem_primitive_types,
+                                subsystem_entity_types,
+                            )
+                            .unwrap();
+                            JsonPathSelection::Function(
+                                path,
+                                FunctionCall {
+                                    name: name.0.clone(),
+                                    parameter_name: elem_name.0.clone(),
+                                    expr: predicate_expr,
+                                },
+                            )
+                        }
                     }
                 }
-            } else {
-                let path_elements = selection.string_path();
-                let (context_selection, context_field_type) =
-                    get_context(&path_elements, resolved_env.contexts);
-                JsonPathSelection::Context(context_selection, context_field_type)
+                None => {
+                    let path_elements = selection.string_path();
+                    let (context_selection, context_field_type) =
+                        get_context(&path_elements, resolved_env.contexts);
+                    JsonPathSelection::Context(context_selection, context_field_type)
+                }
             }
         }
         FieldSelectionElement::Macro { .. } => {
