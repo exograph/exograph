@@ -209,21 +209,17 @@ impl PhysicalColumnPath {
         self
     }
 
-    pub fn can_join(&self, tail: &Self) -> bool {
-        matches!(
+    pub fn join(mut self, tail: Self) -> Self {
+        // Assert that the the last link in the path points to the same table as the new link's self table
+        // This checks for the last two invariants (see above):
+        // the last link must be a relation and its table must be the same as the new link's self table
+        assert!(matches!(
             self.0.last().unwrap(),
             ColumnPathLink::Relation(RelationLink {
                 foreign_column_id,
                 ..
             }) if foreign_column_id.table_id == tail.0[0].self_column_id().table_id
-        )
-    }
-
-    pub fn join(mut self, tail: Self) -> Self {
-        // Assert that the the last link in the path points to the same table as the new link's self table
-        // This checks for the last two invariants (see above):
-        // the last link must be a relation and its table must be the same as the new link's self table
-        assert!(self.can_join(&tail));
+        ));
 
         self.0.extend(tail.0);
 
