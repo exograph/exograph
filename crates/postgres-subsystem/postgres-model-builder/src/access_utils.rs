@@ -224,11 +224,17 @@ pub fn compute_predicate_expression(
                     }
                 }
                 DatabasePathSelection::Function(column_path, function_call) => {
-                    compute_function_expr(
-                        column_path,
-                        function_call.parameter_name,
-                        function_call.expr,
-                    )
+                    if function_call.name != "some" {
+                        Err(ModelBuildingError::Generic(
+                            "Only `some` function is supported".to_string(),
+                        ))
+                    } else {
+                        compute_function_expr(
+                            column_path,
+                            function_call.parameter_name,
+                            function_call.expr,
+                        )
+                    }
                 }
                 DatabasePathSelection::Context(context_selection, field_type) => {
                     if field_type.innermost() == &PrimitiveType::Boolean {
