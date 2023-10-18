@@ -639,19 +639,19 @@ fn convert_selection_elem(
             span_from_node(source_span, first_child),
             (),
         ),
-        "macro" => {
+        "hof_call" => {
             let name_field = first_child.child_by_field_name("name").unwrap();
             let name = name_field.utf8_text(source).unwrap().to_string();
 
-            let elem_name_field = first_child.child_by_field_name("elem_name").unwrap();
-            let elem_name = elem_name_field.utf8_text(source).unwrap().to_string();
+            let param_name_field = first_child.child_by_field_name("param_name").unwrap();
+            let param_name = param_name_field.utf8_text(source).unwrap().to_string();
 
             let expr_field = first_child.child_by_field_name("expr").unwrap();
             let expr = convert_expression(expr_field, source, source_span);
-            FieldSelectionElement::Macro {
+            FieldSelectionElement::HofCall {
                 span: span_from_node(source_span, first_child),
                 name: Identifier(name, span_from_node(source_span, name_field)),
-                elem_name: Identifier(elem_name, span_from_node(source_span, elem_name_field)),
+                param_name: Identifier(param_name, span_from_node(source_span, param_name_field)),
                 expr: Box::new(expr),
                 typ: (),
             }

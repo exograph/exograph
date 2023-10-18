@@ -20,7 +20,7 @@ use crate::ast::ast_types::{AstModelKind, FieldSelection, Untyped};
 
 use super::{Scope, Type, TypecheckFrom};
 
-pub trait TypecheckMacroFrom<T>
+pub trait TypecheckHofCallFrom<T>
 where
     Self: Sized,
 {
@@ -35,22 +35,22 @@ where
     ) -> bool;
 }
 
-impl TypecheckMacroFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typed> {
+impl TypecheckHofCallFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typed> {
     fn shallow(untyped: &FieldSelectionElement<Untyped>) -> Self {
         match untyped {
             FieldSelectionElement::Identifier(value, s, _) => {
                 FieldSelectionElement::Identifier(value.clone(), *s, Type::Defer)
             }
-            FieldSelectionElement::Macro {
+            FieldSelectionElement::HofCall {
                 span,
                 name,
-                elem_name,
+                param_name: elem_name,
                 expr,
                 ..
-            } => FieldSelectionElement::Macro {
+            } => FieldSelectionElement::HofCall {
                 span: *span,
                 name: name.clone(),
-                elem_name: elem_name.clone(),
+                param_name: elem_name.clone(),
                 expr: Box::new(AstExpr::shallow(expr)),
                 typ: Type::Defer,
             },
@@ -125,8 +125,8 @@ impl TypecheckMacroFrom<FieldSelectionElement<Untyped>> for FieldSelectionElemen
                     false
                 }
             }
-            FieldSelectionElement::Macro {
-                elem_name,
+            FieldSelectionElement::HofCall {
+                param_name: elem_name,
                 expr,
                 typ,
                 ..
@@ -174,12 +174,12 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                     FieldSelectionElement::Identifier(_, _, resolved_typ) => {
                         *typ = resolved_typ.clone();
                     }
-                    FieldSelectionElement::Macro { name, span, .. } => {
+                    FieldSelectionElement::HofCall { name, span, .. } => {
                         *typ = Type::Error;
                         errors.push(Diagnostic {
                             level: Level::Error,
                             message: format!(
-                                "Macro cannot be a top-level field selection: {}",
+                                "Function call cannot be a top-level field selection: {}",
                                 name.0
                             ),
                             code: Some("C000".to_string()),
@@ -187,7 +187,8 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                                 span: *span,
                                 style: SpanStyle::Primary,
                                 label: Some(
-                                    "Macro cannot be a top-level field selection".to_string(),
+                                    "Function call cannot be a top-level field selection"
+                                        .to_string(),
                                 ),
                             }],
                         });
@@ -202,12 +203,12 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                         Type::Composite(c) => {
                             let elem = match elem {
                                 FieldSelectionElement::Identifier(value, s, _) => (value, *s),
-                                FieldSelectionElement::Macro { span, name, .. } => {
+                                FieldSelectionElement::HofCall { span, name, .. } => {
                                     *typ = Type::Error;
                                     errors.push(Diagnostic {
                                         level: Level::Error,
                                         message: format!(
-                                            "Macro {} not supported on type {}",
+                                            "Function call {} not supported on type {}",
                                             name.0, c.name
                                         ),
                                         code: Some("C000".to_string()),
@@ -215,7 +216,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                                             span: *span,
                                             style: SpanStyle::Primary,
                                             label: Some(
-                                                "unsupported macro target type".to_string(),
+                                                "unsupported function call target type".to_string(),
                                             ),
                                         }],
                                     });
@@ -264,7 +265,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                                     });
                                 return false;
                             }
-                            marco @ FieldSelectionElement::Macro { .. } => {
+                            marco @ FieldSelectionElement::HofCall { .. } => {
                                 let updated = marco.pass(
                                     type_env,
                                     annotation_env,
@@ -281,7 +282,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
 
                             let field_name = match elem {
                                 FieldSelectionElement::Identifier(value, _, _) => value,
-                                FieldSelectionElement::Macro { name, .. } => &name.0,
+                                FieldSelectionElement::HofCall { name, .. } => &name.0,
                             };
 
                             if !prefix.typ().is_error() {

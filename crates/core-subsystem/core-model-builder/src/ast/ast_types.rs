@@ -345,7 +345,7 @@ impl FieldSelection<Typed> {
             fn process_selection_elem(elem: &FieldSelectionElement<Typed>, acc: &mut Vec<String>) {
                 match elem {
                     FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
-                    FieldSelectionElement::Macro { .. } => {
+                    FieldSelectionElement::HofCall { .. } => {
                         unimplemented!("Context path doesn't support function calls yet")
                     }
                 }
@@ -376,6 +376,7 @@ impl<T: NodeTypedness> FieldSelection<T> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum FieldSelectionElement<T: NodeTypedness> {
+    /// Identifier such as `self` or `documentUsers`
     Identifier(
         String,
         #[serde(skip_serializing)]
@@ -384,14 +385,15 @@ pub enum FieldSelectionElement<T: NodeTypedness> {
         Span,
         T::FieldSelection,
     ),
-    Macro {
+    /// Higher-order function call such as `some(du => du.id == AuthContext.id && du.read)`
+    HofCall {
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
         span: Span,
-        name: Identifier,      // name of the macro such as "exists" and "all"
-        elem_name: Identifier, // name of the macro argument such as "du"
-        expr: Box<AstExpr<T>>, // expression passed to the macro such as "du.userId == AuthContext.id && du.read"
+        name: Identifier,       // name of the function such as "some" and "every"
+        param_name: Identifier, // name of the function parameter such as "du"
+        expr: Box<AstExpr<T>>, // expression passed to the function such as "du.userId == AuthContext.id && du.read"
         typ: T::FieldSelection,
     },
 }
@@ -400,14 +402,14 @@ impl<T: NodeTypedness> FieldSelectionElement<T> {
     pub fn span(&self) -> &Span {
         match &self {
             FieldSelectionElement::Identifier(_, span, _) => span,
-            FieldSelectionElement::Macro { span, .. } => span,
+            FieldSelectionElement::HofCall { span, .. } => span,
         }
     }
 
     pub fn typ(&self) -> &T::FieldSelection {
         match &self {
             FieldSelectionElement::Identifier(_, _, typ) => typ,
-            FieldSelectionElement::Macro { typ, .. } => typ,
+            FieldSelectionElement::HofCall { typ, .. } => typ,
         }
     }
 }

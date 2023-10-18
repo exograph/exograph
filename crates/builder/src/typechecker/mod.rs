@@ -538,7 +538,7 @@ mod tests {
     }
 
     #[test]
-    fn with_macros() {
+    fn with_function_calls() {
         let src = r#"
         context AuthContext {
           @jwt("sub") id: String

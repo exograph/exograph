@@ -145,17 +145,18 @@ module.exports = grammar({
     ),
     selection_element: $ => choice(
       $.term,
-      $.macro,
+      $.hof_call,
     ),
-    // macros for the form `name(parameter_name, expr)` such as `some((du) => du.userId == AuthContext.id && du.read)`
-    // or `some(du => du.userId == AuthContext.id && du.read)`
-    // Note, we do not support macros such as `every(<expr>)`
-    macro: $ => seq(
+    // High-order function call of the `name(param_name, expr)` such as: 
+    // - `some((du) => du.userId == AuthContext.id && du.read)`
+    // - `some(du => du.userId == AuthContext.id && du.read)`
+    // (note `du` vs `(du)`)
+    hof_call: $ => seq(
       field("name", $.term), // "some"
       "(",
       choice(
-        field("elem_name", $.term), // "du"
-        seq("(", field("elem_name", $.term), ")") // "(du)"
+        field("param_name", $.term), // "du"
+        seq("(", field("param_name", $.term), ")") // "(du)"
       ),
       "=>",
       field("expr", $.expression), // "du.userId == AuthContext.id && du.read"

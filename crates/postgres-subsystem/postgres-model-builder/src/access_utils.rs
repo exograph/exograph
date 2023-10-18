@@ -651,7 +651,7 @@ fn compute_column_selection<'a>(
                             Some(field_type),
                         )
                     }
-                    FieldSelectionElement::Macro { .. } => unreachable!(),
+                    FieldSelectionElement::HofCall { .. } => unreachable!(),
                 }
             },
         )
@@ -679,9 +679,9 @@ fn compute_column_selection<'a>(
                             parameter_name,
                         )
                     }
-                    FieldSelectionElement::Macro {
+                    FieldSelectionElement::HofCall {
                         name,
-                        elem_name,
+                        param_name: elem_name,
                         expr,
                         ..
                     } => {
@@ -717,8 +717,8 @@ fn compute_column_selection<'a>(
                 DatabasePathSelection::Context(context_selection, context_field_type)
             }
         }
-        FieldSelectionElement::Macro { .. } => {
-            unreachable!("Macro selection at the top level is not supported")
+        FieldSelectionElement::HofCall { .. } => {
+            unreachable!("Function selection at the top level is not supported")
         }
     }
 }
@@ -775,7 +775,7 @@ fn compute_json_selection<'a>(
 
                         (field_composite_type, json_path, Some(field_type))
                     }
-                    FieldSelectionElement::Macro { .. } => unreachable!(),
+                    FieldSelectionElement::HofCall { .. } => unreachable!(),
                 }
             },
         )
@@ -800,9 +800,9 @@ fn compute_json_selection<'a>(
                                 compute_json_path(scope_type, path_tail);
                             JsonPathSelection::Path(json_path, field_type.unwrap(), parameter_name)
                         }
-                        FieldSelectionElement::Macro {
+                        FieldSelectionElement::HofCall {
                             name,
-                            elem_name,
+                            param_name: elem_name,
                             expr,
                             ..
                         } => {
@@ -838,8 +838,8 @@ fn compute_json_selection<'a>(
                 }
             }
         }
-        FieldSelectionElement::Macro { .. } => {
-            unreachable!("Macro selection at the top level is not supported")
+        FieldSelectionElement::HofCall { .. } => {
+            unreachable!("Function selection at the top level is not supported")
         }
     }
 }
