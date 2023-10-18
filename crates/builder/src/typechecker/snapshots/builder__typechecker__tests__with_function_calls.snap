@@ -137,10 +137,10 @@ types:
                                     Reference:
                                       index: 17
                                       generation: ~
-                            - Macro:
+                            - HofCall:
                                 name:
                                   - some
-                                elem_name:
+                                param_name:
                                   - du
                                 expr:
                                   LogicalOp:
@@ -248,10 +248,10 @@ types:
                                     Reference:
                                       index: 17
                                       generation: ~
-                            - Macro:
+                            - HofCall:
                                 name:
                                   - some
-                                elem_name:
+                                param_name:
                                   - du
                                 expr:
                                   LogicalOp:
@@ -543,10 +543,10 @@ modules:
                                       Reference:
                                         index: 17
                                         generation: ~
-                              - Macro:
+                              - HofCall:
                                   name:
                                     - some
-                                  elem_name:
+                                  param_name:
                                     - du
                                   expr:
                                     LogicalOp:
@@ -654,10 +654,10 @@ modules:
                                       Reference:
                                         index: 17
                                         generation: ~
-                              - Macro:
+                              - HofCall:
                                   name:
                                     - some
-                                  elem_name:
+                                  param_name:
                                     - du
                                   expr:
                                     LogicalOp:
