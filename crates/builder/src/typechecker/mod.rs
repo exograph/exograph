@@ -548,8 +548,8 @@ mod tests {
         @postgres
         module DocsDatabase {
           @access(
-            query = self.documentUsers.exists(du, AuthContext.role == "admin"|| du.userId == AuthContext.id && du.read),
-            mutation = self.documentUsers.exists(du, AuthContext.role == "admin"|| du.userId == AuthContext.id && du.write)
+            query = self.documentUsers.some(du => AuthContext.role == "admin"|| du.userId == AuthContext.id && du.read),
+            mutation = self.documentUsers.some(du => AuthContext.role == "admin"|| du.userId == AuthContext.id && du.write)
           )
           type Document {
             @pk id: Int = autoIncrement()

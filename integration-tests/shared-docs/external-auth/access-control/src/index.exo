@@ -6,8 +6,8 @@ context AuthContext {
 @postgres
 module DocsDatabase {
   @access(
-    query = AuthContext.role == "admin"|| self.documentUsers.exists(du, du.userId == AuthContext.id && du.read),
-    mutation = AuthContext.role == "admin" || self.documentUsers.exists(du, du.userId == AuthContext.id && du.write)
+    query = AuthContext.role == "admin"|| self.documentUsers.some(du => du.userId == AuthContext.id && du.read),
+    mutation = AuthContext.role == "admin" || self.documentUsers.some(du => du.userId == AuthContext.id && du.write)
   )  
   type Document {
     @pk id: Int = autoIncrement()

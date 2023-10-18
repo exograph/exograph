@@ -147,13 +147,17 @@ module.exports = grammar({
       $.term,
       $.macro,
     ),
-    // macros for the form `name(term, expr)` such as `exists(du, du.userId == AuthContext.id && du.read)`
-    // Note, we do not support macros such as has(<expr>)
+    // macros for the form `name(parameter_name, expr)` such as `some((du) => du.userId == AuthContext.id && du.read)`
+    // or `some(du => du.userId == AuthContext.id && du.read)`
+    // Note, we do not support macros such as `every(<expr>)`
     macro: $ => seq(
-      field("name", $.term), // "exists"
+      field("name", $.term), // "some"
       "(",
-      field("elem_name", $.term), // "du"
-      ",",
+      choice(
+        field("elem_name", $.term), // "du"
+        seq("(", field("elem_name", $.term), ")") // "(du)"
+      ),
+      "=>",
       field("expr", $.expression), // "du.userId == AuthContext.id && du.read"
       ")"
     ),

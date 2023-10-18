@@ -753,12 +753,32 @@ mod tests {
     }
 
     #[test]
-    fn access_control_function() {
+    fn access_control_function_without_paren() {
         parsing_test!(
             r#"
             @postgres
             module TestModule {
-                @access(self.concerts.exists(c, c.id == 1))
+                @access(self.concerts.some(c => c.id == 1))
+                type Venue {
+                    concerts: Set<Concert>?
+                }
+
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    venue: Venue
+                }
+            }
+        "#
+        );
+    }
+
+    #[test]
+    fn access_control_function_with_paren() {
+        parsing_test!(
+            r#"
+            @postgres
+            module TestModule {
+                @access(self.concerts.some((c) => c.id == 1))
                 type Venue {
                     concerts: Set<Concert>?
                 }

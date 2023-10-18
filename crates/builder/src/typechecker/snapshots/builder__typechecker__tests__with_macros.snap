@@ -139,7 +139,7 @@ types:
                                       generation: ~
                             - Macro:
                                 name:
-                                  - exists
+                                  - some
                                 elem_name:
                                   - du
                                 expr:
@@ -250,7 +250,7 @@ types:
                                       generation: ~
                             - Macro:
                                 name:
-                                  - exists
+                                  - some
                                 elem_name:
                                   - du
                                 expr:
@@ -545,7 +545,7 @@ modules:
                                         generation: ~
                               - Macro:
                                   name:
-                                    - exists
+                                    - some
                                   elem_name:
                                     - du
                                   expr:
@@ -656,7 +656,7 @@ modules:
                                         generation: ~
                               - Macro:
                                   name:
-                                    - exists
+                                    - some
                                   elem_name:
                                     - du
                                   expr:
