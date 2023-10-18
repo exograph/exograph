@@ -343,7 +343,7 @@ fn expand_dynamic_default_values(
                             ResolvedFieldDefault::Value(expr) => match expr.as_ref() {
                                 AstExpr::FieldSelection(selection) => {
                                     let (context_selection, context_type) = get_context(
-                                        &selection.string_path(),
+                                        &selection.context_path(),
                                         resolved_env.contexts,
                                     );
 

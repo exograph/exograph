@@ -711,7 +711,7 @@ fn compute_column_selection<'a>(
                     }
                 }
             } else {
-                let path_elements = selection.string_path();
+                let path_elements = selection.context_path();
                 let (context_selection, context_field_type) =
                     get_context(&path_elements, resolved_env.contexts);
                 DatabasePathSelection::Context(context_selection, context_field_type)
@@ -831,7 +831,7 @@ fn compute_json_selection<'a>(
                     }
                 }
                 None => {
-                    let path_elements = selection.string_path();
+                    let path_elements = selection.context_path();
                     let (context_selection, context_field_type) =
                         get_context(&path_elements, resolved_env.contexts);
                     JsonPathSelection::Context(context_selection, context_field_type)
@@ -1041,8 +1041,22 @@ fn reduce_nested_primitive_expr(
                 _ => NestedPredicatePart::Nested(expr),
             }
         }
-        DatabaseAccessPrimitiveExpression::Function(_, _) => {
-            todo!("Functions are not supported yet")
+        DatabaseAccessPrimitiveExpression::Function(ref pc, ref fc) => {
+            let (head, tail) = pc.split_head();
+
+            match head {
+                ColumnPathLink::Relation(r)
+                    if r.foreign_column_id.table_id == parent_entity.table_id =>
+                {
+                    // Eliminate the head link. For example if the expression is self.user.id, then
+                    // we can reduce it to just id (assuming that the parent entity is user)
+                    NestedPredicatePart::Parent(DatabaseAccessPrimitiveExpression::Column(
+                        tail.unwrap(),
+                        Some(fc.parameter_name.clone()),
+                    ))
+                }
+                _ => NestedPredicatePart::Nested(expr),
+            }
         }
         DatabaseAccessPrimitiveExpression::Common(_) => NestedPredicatePart::Common(expr),
     }

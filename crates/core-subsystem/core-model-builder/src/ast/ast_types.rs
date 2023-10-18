@@ -340,20 +340,21 @@ impl FieldSelection<Typed> {
     }
 
     // temporary method to get a string representation of the path until we resolve typechecking etc
-    pub fn string_path(&self) -> Vec<String> {
+    pub fn context_path(&self) -> Vec<String> {
         fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
-            match selection {
-                FieldSelection::Single(elem, _) => match elem {
+            fn process_selection_elem(elem: &FieldSelectionElement<Typed>, acc: &mut Vec<String>) {
+                match elem {
                     FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
-                    FieldSelectionElement::Macro { .. } => todo!(),
-                },
+                    FieldSelectionElement::Macro { .. } => {
+                        unimplemented!("Context path doesn't support function calls yet")
+                    }
+                }
+            }
+            match selection {
+                FieldSelection::Single(elem, _) => process_selection_elem(elem, acc),
                 FieldSelection::Select(path, elem, _, _) => {
                     flatten(path, acc);
-
-                    match elem {
-                        FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
-                        FieldSelectionElement::Macro { .. } => todo!(),
-                    }
+                    process_selection_elem(elem, acc);
                 }
             }
         }
