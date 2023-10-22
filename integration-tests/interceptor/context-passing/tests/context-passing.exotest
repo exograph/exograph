@@ -1,0 +1,41 @@
+envs:
+  "ADMIN_SECRET": "admin-secret-env"
+  
+operation: |
+  query {
+    todos {
+      id
+    }
+    audits {
+      id
+      result
+      operation
+      authContext
+      adminHeaderContext
+      adminEnvContext
+    }
+  }
+auth: |
+  {
+    "userId": "u1"
+  }
+headers: |
+  {
+    "X-Admin-Secret": "admin-secret-header"
+  }
+response: |
+  {
+    "data": {
+      "todos": [],
+      "audits": [
+        {
+          "id": 1,
+          "operation": "{\"alias\":null,\"name\":\"todos\",\"arguments\":{},\"subfields\":[{\"alias\":null,\"name\":\"id\",\"arguments\":{},\"subfields\":[]}]}",
+          "result": "[]",
+          "authContext": "{\"userId\":\"u1\"}",
+          "adminHeaderContext": "{\"adminSecretHeader\":\"admin-secret-header\"}",
+          "adminEnvContext": "{\"adminSecretEnv\":\"admin-secret-env\"}"
+        }
+      ]
+    }
+  }
