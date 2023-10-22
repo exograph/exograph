@@ -41,9 +41,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
         _scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        let model_scope = Scope {
-            enclosing_type: Some(self.name.clone()),
-        };
+        let model_scope = Scope::with_enclosing_type(self.name.clone());
 
         let fields_changed = self
             .fields

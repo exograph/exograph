@@ -53,9 +53,7 @@ impl TypecheckFrom<AstModule<Untyped>> for AstModule<Typed> {
             .types
             .iter_mut()
             .map(|m| {
-                let model_scope = Scope {
-                    enclosing_type: Some(m.name.clone()),
-                };
+                let model_scope = Scope::with_enclosing_type(m.name.clone());
 
                 m.pass(type_env, annotation_env, &model_scope, errors)
             })

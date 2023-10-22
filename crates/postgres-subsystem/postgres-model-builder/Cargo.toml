@@ -19,7 +19,7 @@ postgres-model = { path = "../postgres-model" }
 exo-sql = { path = "../../../libs/exo-sql" }
 
 [dev-dependencies]
-insta = { workspace = true, features = ["yaml"] }
+insta.workspace = true
 builder = { path = "../../builder" }
 
 

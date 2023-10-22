@@ -141,7 +141,26 @@ module.exports = grammar({
     selection_select: $ => seq(
       field("prefix", $.selection),
       ".",
-      field("term", $.term)
+      field("selection_element", $.selection_element)
+    ),
+    selection_element: $ => choice(
+      $.term,
+      $.hof_call,
+    ),
+    // High-order function call of the `name(param_name, expr)` such as: 
+    // - `some((du) => du.userId == AuthContext.id && du.read)`
+    // - `some(du => du.userId == AuthContext.id && du.read)`
+    // (note `du` vs `(du)`)
+    hof_call: $ => seq(
+      field("name", $.term), // "some"
+      "(",
+      choice(
+        field("param_name", $.term), // "du"
+        seq("(", field("param_name", $.term), ")") // "(du)"
+      ),
+      "=>",
+      field("expr", $.expression), // "du.userId == AuthContext.id && du.read"
+      ")"
     ),
     logical_op: $ => choice(
       $.logical_or,

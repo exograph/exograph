@@ -14,13 +14,14 @@ use std::{collections::HashMap, path::Path};
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use core_model_builder::ast::ast_types::{FieldSelectionElement, Identifier};
 use tree_sitter::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
 use crate::ast::ast_types::{
     AstAnnotation, AstAnnotationParams, AstArgument, AstExpr, AstField, AstFieldDefault,
     AstFieldDefaultKind, AstFieldType, AstInterceptor, AstMethod, AstModel, AstModelKind,
-    AstModule, AstSystem, FieldSelection, Identifier, LogicalOp, RelationalOp, Untyped,
+    AstModule, AstSystem, FieldSelection, LogicalOp, RelationalOp, Untyped,
 };
 use crate::error::ParserError;
 
@@ -602,24 +603,60 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
                 source,
                 source_span,
             )),
-            Identifier(
-                text_child(first_child, source, "term"),
-                span_from_node(
-                    source_span,
-                    first_child.child_by_field_name("term").unwrap(),
-                ),
+            convert_selection_elem(
+                first_child
+                    .child_by_field_name("selection_element")
+                    .unwrap(),
+                source,
+                source_span,
             ),
             span_from_node(source_span, first_child),
             (),
         ),
         "term" => FieldSelection::Single(
-            Identifier(
+            FieldSelectionElement::Identifier(
                 first_child.utf8_text(source).unwrap().to_string(),
                 span_from_node(source_span, first_child),
+                (),
             ),
             (),
         ),
         o => panic!("unsupported logical op kind: {o}"),
+    }
+}
+
+fn convert_selection_elem(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> FieldSelectionElement<Untyped> {
+    assert_eq!(node.kind(), "selection_element");
+    let first_child = node.child(0).unwrap();
+
+    match first_child.kind() {
+        "term" => FieldSelectionElement::Identifier(
+            first_child.utf8_text(source).unwrap().to_string(),
+            span_from_node(source_span, first_child),
+            (),
+        ),
+        "hof_call" => {
+            let name_field = first_child.child_by_field_name("name").unwrap();
+            let name = name_field.utf8_text(source).unwrap().to_string();
+
+            let param_name_field = first_child.child_by_field_name("param_name").unwrap();
+            let param_name = param_name_field.utf8_text(source).unwrap().to_string();
+
+            let expr_field = first_child.child_by_field_name("expr").unwrap();
+            let expr = convert_expression(expr_field, source, source_span);
+            FieldSelectionElement::HofCall {
+                span: span_from_node(source_span, first_child),
+                name: Identifier(name, span_from_node(source_span, name_field)),
+                param_name: Identifier(param_name, span_from_node(source_span, param_name_field)),
+                expr: Box::new(expr),
+                typ: (),
+            }
+        }
+        o => panic!("unsupported selection element kind: {o}"),
     }
 }
 
@@ -710,6 +747,46 @@ mod tests {
             context AuthUser {
                 @jwt("sub") id: Int 
                 @jwt roles: Array<String> 
+            }
+        "#
+        );
+    }
+
+    #[test]
+    fn access_control_function_without_paren() {
+        parsing_test!(
+            r#"
+            @postgres
+            module TestModule {
+                @access(self.concerts.some(c => c.id == 1))
+                type Venue {
+                    concerts: Set<Concert>?
+                }
+
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    venue: Venue
+                }
+            }
+        "#
+        );
+    }
+
+    #[test]
+    fn access_control_function_with_paren() {
+        parsing_test!(
+            r#"
+            @postgres
+            module TestModule {
+                @access(self.concerts.some((c) => c.id == 1))
+                type Venue {
+                    concerts: Set<Concert>?
+                }
+
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    venue: Venue
+                }
             }
         "#
         );

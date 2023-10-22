@@ -81,11 +81,17 @@ types:
                               - FieldSelection:
                                   Select:
                                     - Single:
-                                        - - AuthContext
+                                        - Identifier:
+                                            - AuthContext
+                                            - Reference:
+                                                index: 15
+                                                generation: ~
                                         - Reference:
                                             index: 15
                                             generation: ~
-                                    - - roles
+                                    - Identifier:
+                                        - roles
+                                        - Defer
                                     - Array:
                                         Reference:
                                           index: 4
@@ -193,11 +199,17 @@ modules:
                                 - FieldSelection:
                                     Select:
                                       - Single:
-                                          - - AuthContext
+                                          - Identifier:
+                                              - AuthContext
+                                              - Reference:
+                                                  index: 15
+                                                  generation: ~
                                           - Reference:
                                               index: 15
                                               generation: ~
-                                      - - roles
+                                      - Identifier:
+                                          - roles
+                                          - Defer
                                       - Array:
                                           Reference:
                                             index: 4

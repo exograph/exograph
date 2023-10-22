@@ -1,0 +1,188 @@
+stages:
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      query @unordered {
+        documents {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u1"
+      }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": 1,
+              "content": "d1",
+              "documentUsers": [
+                {
+                  "userId": "u1",
+                  "read": true,
+                  "write": true
+                }
+              ]
+            }
+          ]
+        }
+      }
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      query @unordered {
+        documents {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u2"
+      }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": 2,
+              "content": "d2",
+              "documentUsers": [
+                {
+                  "userId": "u2",
+                  "read": true,
+                  "write": true
+                }
+              ]
+            }
+          ]
+        }
+      }
+
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      query @unordered {
+        documents {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u3"
+      }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": 1,
+              "content": "d1",
+              "documentUsers": [
+                {
+                  "userId": "u3",
+                  "read": true,
+                  "write": false
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "content": "d2",
+              "documentUsers": [
+                {
+                  "userId": "u3",
+                  "read": true,
+                  "write": false
+                }
+              ]
+            }
+          ]
+        }
+      }
+
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      query @unordered {
+        documents {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u4"
+      }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": 3,
+              "content": "d3",
+              "documentUsers": [
+                {
+                  "userId": "u4",
+                  "read": true,
+                  "write": false
+                }
+              ]
+            }
+          ]
+        }
+      }
+
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      query @unordered {
+        documents {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u-does-not-exist" 
+      }
+    response: |
+      {
+        "data": {
+          "documents": []
+        }
+      }

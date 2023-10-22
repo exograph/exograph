@@ -36,9 +36,13 @@ modules:
                                       - FieldSelection:
                                           Select:
                                             - Single:
-                                                - - self
+                                                - Identifier:
+                                                    - self
+                                                    - ~
                                                 - ~
-                                            - - role
+                                            - Identifier:
+                                                - role
+                                                - ~
                                             - ~
                                       - ~
                                 - StringLiteral:
@@ -49,9 +53,13 @@ modules:
                                 - FieldSelection:
                                     Select:
                                       - Single:
-                                          - - self
+                                          - Identifier:
+                                              - self
+                                              - ~
                                           - ~
-                                      - - role
+                                      - Identifier:
+                                          - role
+                                          - ~
                                       - ~
                                 - StringLiteral:
                                     - role_superuser

@@ -7,20 +7,28 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::core_model::{
-    access::{
-        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
-        CommonAccessPrimitiveExpression,
+use std::collections::HashMap;
+
+use core_plugin_interface::{
+    core_model::access::FunctionCall,
+    core_model_builder::{
+        ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
+        error::ModelBuildingError,
+        typechecker::Typed,
     },
-    context_type::{get_context, ContextFieldType, ContextSelection},
-    mapped_arena::MappedArena,
-    primitive_type::PrimitiveType,
-    types::FieldType,
 };
-use core_plugin_interface::core_model_builder::{
-    ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
-    error::ModelBuildingError,
-    typechecker::Typed,
+use core_plugin_interface::{
+    core_model::{
+        access::{
+            AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+            CommonAccessPrimitiveExpression,
+        },
+        context_type::{get_context, ContextFieldType, ContextSelection},
+        mapped_arena::MappedArena,
+        primitive_type::PrimitiveType,
+        types::FieldType,
+    },
+    core_model_builder::ast::ast_types::FieldSelectionElement,
 };
 
 use exo_sql::{ColumnPathLink, Database, PhysicalColumnPath};
@@ -38,18 +46,28 @@ enum DatabasePathSelection<'a> {
     Column(
         PhysicalColumnPath,
         &'a FieldType<PostgresFieldType<EntityType>>,
+        Option<String>, // Parameter name (such as "du", default: "self")
     ),
+    Function(
+        PhysicalColumnPath,
+        FunctionCall<DatabaseAccessPrimitiveExpression>,
+    ), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
     Context(ContextSelection, &'a ContextFieldType),
 }
 
 enum JsonPathSelection<'a> {
-    Path(Vec<String>, &'a FieldType<PostgresFieldType<EntityType>>),
+    Path(
+        Vec<String>,
+        &'a FieldType<PostgresFieldType<EntityType>>,
+        Option<String>, // Parameter name (such as "du", default: "self")
+    ),
+    Function(Vec<String>, FunctionCall<InputAccessPrimitiveExpression>), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
     Context(ContextSelection, &'a ContextFieldType),
 }
 
 pub fn compute_input_predicate_expression(
     expr: &AstExpr<Typed>,
-    self_type_info: &EntityType,
+    scope: HashMap<String, &EntityType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -58,14 +76,37 @@ pub fn compute_input_predicate_expression(
         AstExpr::FieldSelection(selection) => {
             match compute_json_selection(
                 selection,
-                self_type_info,
+                scope,
                 resolved_env,
                 subsystem_primitive_types,
                 subsystem_entity_types,
             ) {
-                JsonPathSelection::Path(_, _) => Err(ModelBuildingError::Generic(
-                    "Top-level path selection of just `self` not allowed".to_string(),
-                )),
+                JsonPathSelection::Path(path, field_type, parameter_name) => {
+                    let field_entity_type = field_type.innermost().type_id.to_type(
+                        subsystem_primitive_types.values_ref(),
+                        subsystem_entity_types.values_ref(),
+                    );
+
+                    if field_entity_type.name() == "Boolean" {
+                        // Treat boolean context expressions in the same way as an "eq" relational expression
+                        // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
+                        Ok(AccessPredicateExpression::RelationalOp(
+                            AccessRelationalOp::Eq(
+                                Box::new(InputAccessPrimitiveExpression::Path(
+                                    path,
+                                    parameter_name,
+                                )),
+                                Box::new(InputAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::BooleanLiteral(true),
+                                )),
+                            ),
+                        ))
+                    } else {
+                        Err(ModelBuildingError::Generic(
+                            "Top-level context selection must be a boolean".to_string(),
+                        ))
+                    }
+                }
                 JsonPathSelection::Context(context_selection, field_type) => {
                     if field_type.innermost() == &PrimitiveType::Boolean {
                         // Treat boolean context expressions in the same way as an "eq" relational expression
@@ -88,13 +129,20 @@ pub fn compute_input_predicate_expression(
                         ))
                     }
                 }
+                JsonPathSelection::Function(lead_path, function_call) => {
+                    compute_input_function_expr(
+                        lead_path,
+                        function_call.parameter_name,
+                        function_call.expr,
+                    )
+                }
             }
         }
         AstExpr::LogicalOp(op) => {
             let predicate_expr = |expr: &AstExpr<Typed>| {
                 compute_input_predicate_expression(
                     expr,
-                    self_type_info,
+                    scope.clone(),
                     resolved_env,
                     subsystem_primitive_types,
                     subsystem_entity_types,
@@ -106,7 +154,7 @@ pub fn compute_input_predicate_expression(
             let primitive_expr = |expr: &AstExpr<Typed>| {
                 compute_primitive_json_expr(
                     expr,
-                    self_type_info,
+                    scope.clone(),
                     resolved_env,
                     subsystem_primitive_types,
                     subsystem_entity_types,
@@ -130,6 +178,7 @@ pub fn compute_input_predicate_expression(
 pub fn compute_predicate_expression(
     expr: &AstExpr<Typed>,
     self_type_info: &EntityType,
+    function_context: HashMap<String, &EntityType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -141,11 +190,12 @@ pub fn compute_predicate_expression(
                 selection,
                 self_type_info,
                 resolved_env,
+                function_context,
                 subsystem_primitive_types,
                 subsystem_entity_types,
                 database,
             ) {
-                DatabasePathSelection::Column(column_path, column_type) => {
+                DatabasePathSelection::Column(column_path, column_type, parameter_name) => {
                     if base_type(
                         column_type,
                         subsystem_primitive_types.values_ref(),
@@ -158,7 +208,10 @@ pub fn compute_predicate_expression(
                         // For example, treat `self.published` the same as `self.published == true`
                         Ok(AccessPredicateExpression::RelationalOp(
                             AccessRelationalOp::Eq(
-                                Box::new(DatabaseAccessPrimitiveExpression::Column(column_path)),
+                                Box::new(DatabaseAccessPrimitiveExpression::Column(
+                                    column_path,
+                                    parameter_name,
+                                )),
                                 Box::new(DatabaseAccessPrimitiveExpression::Common(
                                     CommonAccessPrimitiveExpression::BooleanLiteral(true),
                                 )),
@@ -168,6 +221,19 @@ pub fn compute_predicate_expression(
                         Err(ModelBuildingError::Generic(
                             "Field selection must be a boolean".to_string(),
                         ))
+                    }
+                }
+                DatabasePathSelection::Function(column_path, function_call) => {
+                    if function_call.name != "some" {
+                        Err(ModelBuildingError::Generic(
+                            "Only `some` function is supported".to_string(),
+                        ))
+                    } else {
+                        compute_function_expr(
+                            column_path,
+                            function_call.parameter_name,
+                            function_call.expr,
+                        )
                     }
                 }
                 DatabasePathSelection::Context(context_selection, field_type) => {
@@ -199,6 +265,7 @@ pub fn compute_predicate_expression(
                 compute_predicate_expression(
                     expr,
                     self_type_info,
+                    function_context.clone(),
                     resolved_env,
                     subsystem_primitive_types,
                     subsystem_entity_types,
@@ -213,6 +280,7 @@ pub fn compute_predicate_expression(
                     expr,
                     self_type_info,
                     resolved_env,
+                    function_context.clone(),
                     subsystem_primitive_types,
                     subsystem_entity_types,
                     database,
@@ -228,10 +296,171 @@ pub fn compute_predicate_expression(
     }
 }
 
+fn compute_function_expr(
+    lead_path: PhysicalColumnPath,
+    function_param_name: String,
+    function_expr: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+) -> Result<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>, ModelBuildingError> {
+    fn function_elem_path(
+        lead_path: PhysicalColumnPath,
+        function_param_name: String,
+        expr: DatabaseAccessPrimitiveExpression,
+    ) -> Result<DatabaseAccessPrimitiveExpression, ModelBuildingError> {
+        match expr {
+            DatabaseAccessPrimitiveExpression::Column(function_column_path, parameter_name) => {
+                // We may have expression like `self.documentUser.some(du => du.read)`, in which case we want to join the column path
+                // to form `self.documentUser.read`.
+                //
+                // However, if the lead path is `self.documentUser.some(du => du.id === self.id)`, we don't want to join the column path
+                // for the `self.id` part.
+                Ok(DatabaseAccessPrimitiveExpression::Column(
+                    if parameter_name == Some(function_param_name) {
+                        lead_path.clone().join(function_column_path)
+                    } else {
+                        function_column_path
+                    },
+                    parameter_name,
+                ))
+            }
+            DatabaseAccessPrimitiveExpression::Function(_, _) => Err(ModelBuildingError::Generic(
+                "Cannot have a function call inside another function call".to_string(),
+            )),
+            expr => Ok(expr),
+        }
+    }
+
+    match function_expr {
+        AccessPredicateExpression::LogicalOp(op) => match op {
+            AccessLogicalExpression::Not(p) => {
+                let updated_expr = compute_function_expr(lead_path, function_param_name, *p)?;
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::Not(Box::new(updated_expr)),
+                ))
+            }
+            AccessLogicalExpression::And(left, right) => {
+                let updated_left =
+                    compute_function_expr(lead_path.clone(), function_param_name.clone(), *left)?;
+                let updated_right = compute_function_expr(lead_path, function_param_name, *right)?;
+
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::And(Box::new(updated_left), Box::new(updated_right)),
+                ))
+            }
+            AccessLogicalExpression::Or(left, right) => {
+                let updated_left =
+                    compute_function_expr(lead_path.clone(), function_param_name.clone(), *left)?;
+                let updated_right = compute_function_expr(lead_path, function_param_name, *right)?;
+
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::Or(Box::new(updated_left), Box::new(updated_right)),
+                ))
+            }
+        },
+        AccessPredicateExpression::RelationalOp(op) => {
+            let combiner = op.combiner();
+            let (left, right) = op.owned_sides();
+
+            let updated_left =
+                function_elem_path(lead_path.clone(), function_param_name.clone(), *left)?;
+            let updated_right = function_elem_path(lead_path, function_param_name, *right)?;
+            Ok(AccessPredicateExpression::RelationalOp(combiner(
+                Box::new(updated_left),
+                Box::new(updated_right),
+            )))
+        }
+        AccessPredicateExpression::BooleanLiteral(value) => {
+            Ok(AccessPredicateExpression::BooleanLiteral(value))
+        }
+    }
+}
+
+fn compute_input_function_expr(
+    lead_path: Vec<String>,
+    function_param_name: String,
+    function_expr: AccessPredicateExpression<InputAccessPrimitiveExpression>,
+) -> Result<AccessPredicateExpression<InputAccessPrimitiveExpression>, ModelBuildingError> {
+    fn function_elem_path(
+        lead_path: Vec<String>,
+        function_param_name: String,
+        expr: InputAccessPrimitiveExpression,
+    ) -> Result<InputAccessPrimitiveExpression, ModelBuildingError> {
+        match expr {
+            InputAccessPrimitiveExpression::Path(function_path, parameter_name) => {
+                let new_path = if parameter_name == Some(function_param_name) {
+                    lead_path.clone().into_iter().chain(function_path).collect()
+                } else {
+                    function_path
+                };
+                Ok(InputAccessPrimitiveExpression::Path(
+                    new_path,
+                    parameter_name,
+                ))
+            }
+            InputAccessPrimitiveExpression::Function(_, _) => Err(ModelBuildingError::Generic(
+                "Cannot have a function call inside another function call".to_string(),
+            )),
+            expr => Ok(expr),
+        }
+    }
+
+    match function_expr {
+        AccessPredicateExpression::LogicalOp(op) => match op {
+            AccessLogicalExpression::Not(p) => {
+                let updated_expr = compute_input_function_expr(lead_path, function_param_name, *p)?;
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::Not(Box::new(updated_expr)),
+                ))
+            }
+            AccessLogicalExpression::And(left, right) => {
+                let updated_left = compute_input_function_expr(
+                    lead_path.clone(),
+                    function_param_name.clone(),
+                    *left,
+                )?;
+                let updated_right =
+                    compute_input_function_expr(lead_path, function_param_name, *right)?;
+
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::And(Box::new(updated_left), Box::new(updated_right)),
+                ))
+            }
+            AccessLogicalExpression::Or(left, right) => {
+                let updated_left = compute_input_function_expr(
+                    lead_path.clone(),
+                    function_param_name.clone(),
+                    *left,
+                )?;
+                let updated_right =
+                    compute_input_function_expr(lead_path, function_param_name, *right)?;
+
+                Ok(AccessPredicateExpression::LogicalOp(
+                    AccessLogicalExpression::Or(Box::new(updated_left), Box::new(updated_right)),
+                ))
+            }
+        },
+        AccessPredicateExpression::RelationalOp(op) => {
+            let combiner = op.combiner();
+            let (left, right) = op.owned_sides();
+
+            let updated_left =
+                function_elem_path(lead_path.clone(), function_param_name.clone(), *left)?;
+            let updated_right = function_elem_path(lead_path, function_param_name, *right)?;
+            Ok(AccessPredicateExpression::RelationalOp(combiner(
+                Box::new(updated_left),
+                Box::new(updated_right),
+            )))
+        }
+        AccessPredicateExpression::BooleanLiteral(value) => {
+            Ok(AccessPredicateExpression::BooleanLiteral(value))
+        }
+    }
+}
+
 fn compute_primitive_db_expr(
     expr: &AstExpr<Typed>,
     self_type_info: &EntityType,
     resolved_env: &ResolvedTypeEnv,
+    function_context: HashMap<String, &EntityType>,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
     database: &Database,
@@ -242,12 +471,16 @@ fn compute_primitive_db_expr(
                 selection,
                 self_type_info,
                 resolved_env,
+                function_context,
                 subsystem_primitive_types,
                 subsystem_entity_types,
                 database,
             ) {
-                DatabasePathSelection::Column(column_path, _) => {
-                    DatabaseAccessPrimitiveExpression::Column(column_path)
+                DatabasePathSelection::Column(column_path, _, parameter_name) => {
+                    DatabaseAccessPrimitiveExpression::Column(column_path, parameter_name)
+                }
+                DatabasePathSelection::Function(column_path, function_call) => {
+                    DatabaseAccessPrimitiveExpression::Function(column_path, function_call)
                 }
                 DatabasePathSelection::Context(c, _) => DatabaseAccessPrimitiveExpression::Common(
                     CommonAccessPrimitiveExpression::ContextSelection(c),
@@ -264,14 +497,14 @@ fn compute_primitive_db_expr(
             CommonAccessPrimitiveExpression::NumberLiteral(*value),
         ),
         AstExpr::StringList(_, _) => panic!("Access expressions do not support lists yet"),
-        AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
-        AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
+        AstExpr::LogicalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
+        AstExpr::RelationalOp(_) => unreachable!(), // Parser ensures that the two sides are primitive expressions
     }
 }
 
 fn compute_primitive_json_expr(
     expr: &AstExpr<Typed>,
-    self_type_info: &EntityType,
+    scope: HashMap<String, &EntityType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &MappedArena<EntityType>,
@@ -280,15 +513,20 @@ fn compute_primitive_json_expr(
         AstExpr::FieldSelection(selection) => {
             match compute_json_selection(
                 selection,
-                self_type_info,
+                scope,
                 resolved_env,
                 subsystem_primitive_types,
                 subsystem_entity_types,
             ) {
-                JsonPathSelection::Path(path, _) => InputAccessPrimitiveExpression::Path(path),
+                JsonPathSelection::Path(path, _, parameter_name) => {
+                    InputAccessPrimitiveExpression::Path(path, parameter_name)
+                }
                 JsonPathSelection::Context(c, _) => InputAccessPrimitiveExpression::Common(
                     CommonAccessPrimitiveExpression::ContextSelection(c),
                 ),
+                JsonPathSelection::Function(path, function_call) => {
+                    InputAccessPrimitiveExpression::Function(path, function_call)
+                }
             }
         }
         AstExpr::StringLiteral(value, _) => InputAccessPrimitiveExpression::Common(
@@ -357,6 +595,7 @@ fn compute_column_selection<'a>(
     selection: &FieldSelection<Typed>,
     self_type_info: &'a EntityType,
     resolved_env: &'a ResolvedTypeEnv<'a>,
+    function_context: HashMap<String, &'a EntityType>,
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &'a MappedArena<EntityType>,
     database: &Database,
@@ -378,47 +617,121 @@ fn compute_column_selection<'a>(
         (column_path_link, &field.typ)
     }
 
-    let path_elements = selection.path();
+    let path = selection.path();
+    let (path_head, path_tail) = path.split_first().unwrap(); // Parser ensures that the path is not empty
 
-    if path_elements[0] == "self" {
-        let (_, column_path, field_type) = path_elements[1..].iter().fold(
-            (Some(self_type_info), None::<PhysicalColumnPath>, None),
-            |(self_type_info, column_path, _field_type), field_name| {
-                let self_type_info =
-                    self_type_info.expect("Type for the access selection is not defined");
+    #[allow(clippy::type_complexity)]
+    let compute_column_path = |lead_type: &'a EntityType,
+                               selection_elems: &[FieldSelectionElement<Typed>]|
+     -> (
+        Option<&'a EntityType>,
+        Option<PhysicalColumnPath>,
+        Option<&'a FieldType<PostgresFieldType<EntityType>>>,
+    ) {
+        selection_elems.iter().fold(
+            (Some(lead_type), None::<PhysicalColumnPath>, None),
+            |(lead_type, column_path, _field_type), selection_elem| {
+                let lead_type = lead_type.expect("Type for the access selection is not defined");
 
-                let (field_column_path, field_type) =
-                    get_column(field_name, self_type_info, database);
+                match selection_elem {
+                    FieldSelectionElement::Identifier(field_name, _, _) => {
+                        let (field_column_path, field_type) =
+                            get_column(field_name, lead_type, database);
 
-                let field_composite_type = match base_type(
-                    field_type,
-                    subsystem_primitive_types.values_ref(),
-                    subsystem_entity_types.values_ref(),
-                ) {
-                    PostgresType::Composite(composite_type) => Some(composite_type),
-                    _ => None,
-                };
+                        let field_composite_type = match base_type(
+                            field_type,
+                            subsystem_primitive_types.values_ref(),
+                            subsystem_entity_types.values_ref(),
+                        ) {
+                            PostgresType::Composite(composite_type) => Some(composite_type),
+                            _ => None,
+                        };
 
-                let new_column_path = match column_path {
-                    Some(column_path) => Some(column_path.push(field_column_path)),
-                    None => Some(PhysicalColumnPath::init(field_column_path)),
-                };
-                (field_composite_type, new_column_path, Some(field_type))
+                        let new_column_path = match column_path {
+                            Some(column_path) => column_path.push(field_column_path),
+                            None => PhysicalColumnPath::init(field_column_path),
+                        };
+                        (
+                            field_composite_type,
+                            Some(new_column_path),
+                            Some(field_type),
+                        )
+                    }
+                    FieldSelectionElement::HofCall { .. } => unreachable!(),
+                }
             },
-        );
+        )
+    };
 
-        // TODO: Avoid this unwrap (parser should have caught expression "self" without any fields)
-        DatabasePathSelection::Column(column_path.unwrap(), field_type.unwrap())
-    } else {
-        let (context_selection, context_field_type) =
-            get_context(&path_elements, resolved_env.contexts);
-        DatabasePathSelection::Context(context_selection, context_field_type)
+    match path_head {
+        FieldSelectionElement::Identifier(value, _, _) => {
+            if value == "self" || function_context.contains_key(value) {
+                let (lead_type, parameter_name) = if value == "self" {
+                    (&self_type_info, Option::<String>::None)
+                } else {
+                    (function_context.get(value).unwrap(), Some(value.clone()))
+                };
+
+                let (tail_last, tail_init) = path_tail.split_last().unwrap();
+
+                match tail_last {
+                    FieldSelectionElement::Identifier(_, _, _) => {
+                        let (_, column_path, field_type) =
+                            compute_column_path(lead_type, path_tail);
+                        // TODO: Avoid this unwrap (parser should have caught expression "self" without any fields)
+                        DatabasePathSelection::Column(
+                            column_path.unwrap(),
+                            field_type.unwrap(),
+                            parameter_name,
+                        )
+                    }
+                    FieldSelectionElement::HofCall {
+                        name,
+                        param_name: elem_name,
+                        expr,
+                        ..
+                    } => {
+                        let (field_composite_type, column_path, _field_type) =
+                            compute_column_path(lead_type, tail_init);
+                        let mut new_function_context = function_context.clone();
+                        new_function_context
+                            .extend([(elem_name.0.clone(), field_composite_type.unwrap())]);
+                        let predicate_expr = compute_predicate_expression(
+                            expr,
+                            self_type_info,
+                            new_function_context,
+                            resolved_env,
+                            subsystem_primitive_types,
+                            subsystem_entity_types,
+                            database,
+                        )
+                        .unwrap();
+                        DatabasePathSelection::Function(
+                            column_path.unwrap(),
+                            FunctionCall {
+                                name: name.0.clone(),
+                                parameter_name: elem_name.0.clone(),
+                                expr: predicate_expr,
+                            },
+                        )
+                    }
+                }
+            } else {
+                let path_elements = selection.context_path();
+                let (context_selection, context_field_type) =
+                    get_context(&path_elements, resolved_env.contexts);
+                DatabasePathSelection::Context(context_selection, context_field_type)
+            }
+        }
+        FieldSelectionElement::HofCall { .. } => {
+            unreachable!("Function selection at the top level is not supported")
+        }
     }
 }
 
 fn compute_json_selection<'a>(
     selection: &FieldSelection<Typed>,
-    self_type_info: &'a EntityType,
+    scope: HashMap<String, &'a EntityType>,
     resolved_env: &'a ResolvedTypeEnv<'a>,
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &'a MappedArena<EntityType>,
@@ -432,41 +745,108 @@ fn compute_json_selection<'a>(
             .unwrap_or_else(|| panic!("Field {field_name} not found while processing access rules"))
     }
 
-    let path_elements = selection.path();
+    let path = selection.path();
+    let (path_head, path_tail) = path.split_first().unwrap(); // Parser ensures that the path is not empty
 
-    if path_elements[0] == "self" {
-        let (_, json_path, field_type) = path_elements[1..].iter().fold(
-            (Some(self_type_info), Vec::new(), None),
-            |(self_type_info, json_path, _field_type), field_name| {
-                let self_type_info =
-                    self_type_info.expect("Type for the access selection is not defined");
+    #[allow(clippy::type_complexity)]
+    let compute_json_path = |lead_type: &'a EntityType,
+                             selection_elems: &[FieldSelectionElement<Typed>]|
+     -> (
+        Option<&'a EntityType>,
+        Vec<String>,
+        Option<&'a FieldType<PostgresFieldType<EntityType>>>,
+    ) {
+        selection_elems.iter().fold(
+            (Some(lead_type), Vec::new(), None),
+            |(lead_type, json_path, _field_type), selection_elem| {
+                let lead_type = lead_type.expect("Type for the access selection is not defined");
 
-                let field = get_field(field_name, self_type_info);
-                let field_type = &field.typ;
+                match selection_elem {
+                    FieldSelectionElement::Identifier(field_name, _, _) => {
+                        let field = get_field(field_name, lead_type);
+                        let field_type = &field.typ;
 
-                let field_composite_type = match base_type(
-                    field_type,
-                    subsystem_primitive_types.values_ref(),
-                    subsystem_entity_types.values_ref(),
-                ) {
-                    PostgresType::Composite(composite_type) => Some(composite_type),
-                    _ => None,
-                };
+                        let field_composite_type = match base_type(
+                            field_type,
+                            subsystem_primitive_types.values_ref(),
+                            subsystem_entity_types.values_ref(),
+                        ) {
+                            PostgresType::Composite(composite_type) => Some(composite_type),
+                            _ => None,
+                        };
 
-                let field_name = field_name.clone();
-                let mut json_path = json_path;
-                json_path.push(field_name);
+                        let field_name = field_name.clone();
+                        let mut json_path = json_path;
+                        json_path.push(field_name);
 
-                (field_composite_type, json_path, Some(field_type))
+                        (field_composite_type, json_path, Some(field_type))
+                    }
+                    FieldSelectionElement::HofCall { .. } => unreachable!(),
+                }
             },
-        );
+        )
+    };
 
-        // TODO: Avoid this unwrap (parser should have caught expression "self" without any fields)
-        JsonPathSelection::Path(json_path, field_type.unwrap())
-    } else {
-        let (context_selection, context_field_type) =
-            get_context(&path_elements, resolved_env.contexts);
-        JsonPathSelection::Context(context_selection, context_field_type)
+    match path_head {
+        FieldSelectionElement::Identifier(value, _, _) => {
+            let scope_type = scope.get(value);
+
+            match scope_type {
+                Some(scope_type) => {
+                    let parameter_name = if value == "self" {
+                        Option::<String>::None
+                    } else {
+                        Some(value.clone())
+                    };
+                    let (tail_last, tail_init) = path_tail.split_last().unwrap();
+
+                    match tail_last {
+                        FieldSelectionElement::Identifier(_, _, _) => {
+                            let (_, json_path, field_type) =
+                                compute_json_path(scope_type, path_tail);
+                            JsonPathSelection::Path(json_path, field_type.unwrap(), parameter_name)
+                        }
+                        FieldSelectionElement::HofCall {
+                            name,
+                            param_name: elem_name,
+                            expr,
+                            ..
+                        } => {
+                            let (field_composite_type, path, _field_type) =
+                                compute_json_path(scope_type, tail_init);
+                            let mut new_function_context = scope.clone();
+                            new_function_context
+                                .extend([(elem_name.0.clone(), field_composite_type.unwrap())]);
+                            let predicate_expr = compute_input_predicate_expression(
+                                expr,
+                                new_function_context,
+                                resolved_env,
+                                subsystem_primitive_types,
+                                subsystem_entity_types,
+                            )
+                            .unwrap();
+                            JsonPathSelection::Function(
+                                path,
+                                FunctionCall {
+                                    name: name.0.clone(),
+                                    parameter_name: elem_name.0.clone(),
+                                    expr: predicate_expr,
+                                },
+                            )
+                        }
+                    }
+                }
+                None => {
+                    let path_elements = selection.context_path();
+                    let (context_selection, context_field_type) =
+                        get_context(&path_elements, resolved_env.contexts);
+                    JsonPathSelection::Context(context_selection, context_field_type)
+                }
+            }
+        }
+        FieldSelectionElement::HofCall { .. } => {
+            unreachable!("Function selection at the top level is not supported")
+        }
     }
 }
 
@@ -640,15 +1020,9 @@ fn reduce_nested_relational_op(
         }
     }
 
-    match op {
-        AccessRelationalOp::Eq(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Eq),
-        AccessRelationalOp::Neq(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Neq),
-        AccessRelationalOp::Lt(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Lt),
-        AccessRelationalOp::Lte(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Lte),
-        AccessRelationalOp::Gt(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Gt),
-        AccessRelationalOp::Gte(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::Gte),
-        AccessRelationalOp::In(l, r) => combine(*l, *r, parent_entity, AccessRelationalOp::In),
-    }
+    let combiner = op.combiner();
+    let (l, r) = op.owned_sides();
+    combine(*l, *r, parent_entity, combiner)
 }
 
 fn reduce_nested_primitive_expr(
@@ -656,7 +1030,7 @@ fn reduce_nested_primitive_expr(
     parent_entity: &EntityType,
 ) -> NestedPredicatePart<DatabaseAccessPrimitiveExpression> {
     match expr {
-        DatabaseAccessPrimitiveExpression::Column(ref pc) => {
+        DatabaseAccessPrimitiveExpression::Column(ref pc, ref parameter_name) => {
             let (head, tail) = pc.split_head();
 
             match head {
@@ -667,6 +1041,24 @@ fn reduce_nested_primitive_expr(
                     // we can reduce it to just id (assuming that the parent entity is user)
                     NestedPredicatePart::Parent(DatabaseAccessPrimitiveExpression::Column(
                         tail.unwrap(),
+                        parameter_name.clone(),
+                    ))
+                }
+                _ => NestedPredicatePart::Nested(expr),
+            }
+        }
+        DatabaseAccessPrimitiveExpression::Function(ref pc, ref fc) => {
+            let (head, tail) = pc.split_head();
+
+            match head {
+                ColumnPathLink::Relation(r)
+                    if r.foreign_column_id.table_id == parent_entity.table_id =>
+                {
+                    // Eliminate the head link. For example if the expression is self.user.id, then
+                    // we can reduce it to just id (assuming that the parent entity is user)
+                    NestedPredicatePart::Parent(DatabaseAccessPrimitiveExpression::Column(
+                        tail.unwrap(),
+                        Some(fc.parameter_name.clone()),
                     ))
                 }
                 _ => NestedPredicatePart::Nested(expr),

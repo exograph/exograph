@@ -310,10 +310,10 @@ impl<T: NodeTypedness> AstExpr<T> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum FieldSelection<T: NodeTypedness> {
-    Single(Identifier, T::FieldSelection),
+    Single(FieldSelectionElement<T>, T::FieldSelection),
     Select(
-        Box<FieldSelection<T>>,
-        Identifier,
+        Box<FieldSelection<T>>, // prefix, for example, `self` or `self.documentUsers`
+        FieldSelectionElement<T>, // suffix, for example, `documentUsers.exists(...)` or `exists(...)`
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -323,13 +323,38 @@ pub enum FieldSelection<T: NodeTypedness> {
 }
 
 impl FieldSelection<Typed> {
-    pub fn path(&self) -> Vec<String> {
-        fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
+    pub fn path(&self) -> Vec<FieldSelectionElement<Typed>> {
+        fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<FieldSelectionElement<Typed>>) {
             match selection {
-                FieldSelection::Single(identifier, _) => acc.push(identifier.0.clone()),
-                FieldSelection::Select(path, identifier, _, _) => {
+                FieldSelection::Single(elem, _) => acc.push(elem.clone()),
+                FieldSelection::Select(path, elem, _, _) => {
                     flatten(path, acc);
-                    acc.push(identifier.0.clone());
+                    acc.push(elem.clone());
+                }
+            }
+        }
+
+        let mut acc = vec![];
+        flatten(self, &mut acc);
+        acc
+    }
+
+    // temporary method to get a string representation of the path until we resolve typechecking etc
+    pub fn context_path(&self) -> Vec<String> {
+        fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
+            fn process_selection_elem(elem: &FieldSelectionElement<Typed>, acc: &mut Vec<String>) {
+                match elem {
+                    FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
+                    FieldSelectionElement::HofCall { .. } => {
+                        unimplemented!("Context path doesn't support function calls yet")
+                    }
+                }
+            }
+            match selection {
+                FieldSelection::Single(elem, _) => process_selection_elem(elem, acc),
+                FieldSelection::Select(path, elem, _, _) => {
+                    flatten(path, acc);
+                    process_selection_elem(elem, acc);
                 }
             }
         }
@@ -345,6 +370,46 @@ impl<T: NodeTypedness> FieldSelection<T> {
         match &self {
             FieldSelection::Select(_, _, s, _) => s,
             _ => panic!(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum FieldSelectionElement<T: NodeTypedness> {
+    /// Identifier such as `self` or `documentUsers`
+    Identifier(
+        String,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+        T::FieldSelection,
+    ),
+    /// Higher-order function call such as `some(du => du.id == AuthContext.id && du.read)`
+    HofCall {
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        span: Span,
+        name: Identifier,       // name of the function such as "some" and "every"
+        param_name: Identifier, // name of the function parameter such as "du"
+        expr: Box<AstExpr<T>>, // expression passed to the function such as "du.userId == AuthContext.id && du.read"
+        typ: T::FieldSelection,
+    },
+}
+
+impl<T: NodeTypedness> FieldSelectionElement<T> {
+    pub fn span(&self) -> &Span {
+        match &self {
+            FieldSelectionElement::Identifier(_, span, _) => span,
+            FieldSelectionElement::HofCall { span, .. } => span,
+        }
+    }
+
+    pub fn typ(&self) -> &T::FieldSelection {
+        match &self {
+            FieldSelectionElement::Identifier(_, _, typ) => typ,
+            FieldSelectionElement::HofCall { typ, .. } => typ,
         }
     }
 }

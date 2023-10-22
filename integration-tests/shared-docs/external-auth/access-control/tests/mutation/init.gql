@@ -1,0 +1,44 @@
+# d1 -> u1 (r, w),   u2 (-r, -w), u3 (r), u4 (-)
+# d2 -> u1 (-r, -w), u2 (r, w),   u3 (r), u4 (-)
+# d3 -> u1 (-),      u2 (-),      u3 (-), u4 (r, -w)
+operation: |
+    mutation {
+        all_readable_and_writable: createDocument(data: {
+            content: "all-readable-and-writable", 
+            documentUsers: [
+                {userId: "u1", read: true,  write: true}, 
+                {userId: "u2", read: true,  write: true},
+                {userId: "u3", read: true,  write: true},
+                {userId: "u4", read: true,  write: true},
+            ]
+        }) {
+            id
+            content
+            documentUsers {
+                id
+                read
+                write
+            }
+        }
+        all_readable_no_writable: createDocument(data: {
+            content: "all-readable-no-writable", 
+            documentUsers: [
+                {userId: "u1", read: true,  write: false}, 
+                {userId: "u2", read: true,  write: false},
+                {userId: "u3", read: true,  write: false},
+                {userId: "u4", read: true,  write: false},
+            ]
+        }) {
+            id
+            content
+            documentUsers {
+                id
+                read
+                write
+            }
+        }              
+    }
+auth: |
+    {
+        "role": "admin"
+    }

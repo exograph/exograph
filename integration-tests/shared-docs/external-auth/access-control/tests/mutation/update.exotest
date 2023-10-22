@@ -1,0 +1,190 @@
+stages:
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          id
+          userId
+          read
+          write
+        }
+      }
+      mutation {
+        updateDocuments(data: { # no `where` clause, implies all documents writable by u1
+            content: "updated-by-u1"
+        }) {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u1"
+      }
+    response: |
+      {
+        "data": {
+          "updateDocuments": [
+            {
+              "id": 1,
+              "content": "updated-by-u1",
+              "documentUsers": [
+                {
+                  "id": 1,
+                  "userId": "u1",
+                  "read": true,
+                  "write": true
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "content": "updated-by-u1",
+              "documentUsers": [
+                {
+                  "id": 8,
+                  "userId": "u1",
+                  "read": true,
+                  "write": true
+                }
+              ]
+            }
+          ]
+        }
+      }
+
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      mutation {
+        updateDocument(id: 1, data: {
+            content: "updated-by-u1 (with id)"
+        }) {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u1"
+      }
+    response: |
+      {
+        "data": {
+          "updateDocument": {
+            "id": 1,
+            "content": "updated-by-u1 (with id)",
+            "documentUsers": [
+              {
+                "userId": "u1",
+                "read": true,
+                "write": true
+              }
+            ]
+          }
+        }
+      }
+
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      mutation {
+        updateDocument(id: 1, data: { # attempt to transfer a owned document to another user (u1 -> u2)
+            content: "updated-by-u1",
+            documentUsers: {update: [
+                {id: 1, userId: "u2", read: true,  write: true}
+            ]}
+        }) {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u1"
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      mutation {
+        updateDocuments(data: { # attempt to transfer a owned document to another user (u1 -> u2)
+            content: "updated-by-u1",
+            documentUsers: {update: [
+                {id: 1, userId: "u2", read: true,  write: true}
+            ]}
+        }) {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u1"
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      mutation {
+        updateDocuments(data: { # another attempt to transfer a owned document to another user (u1 -> u2) by creating a new documentUser
+            content: "updated-by-u1",
+            documentUsers: {create: [
+                {userId: "u2", read: true,  write: true}
+            ]}
+        }) {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u1"
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

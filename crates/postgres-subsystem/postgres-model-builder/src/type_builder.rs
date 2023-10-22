@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use crate::{
     aggregate_type_builder::aggregate_type_name, naming::ToPlural,
     resolved_builder::ResolvedFieldTypeHelper, shallow::Shallow,
@@ -340,8 +342,10 @@ fn expand_dynamic_default_values(
                         .and_then(|default_value| match default_value {
                             ResolvedFieldDefault::Value(expr) => match expr.as_ref() {
                                 AstExpr::FieldSelection(selection) => {
-                                    let (context_selection, context_type) =
-                                        get_context(&selection.path(), resolved_env.contexts);
+                                    let (context_selection, context_type) = get_context(
+                                        &selection.context_path(),
+                                        resolved_env.contexts,
+                                    );
 
                                     match entity_field.relation {
                                         PostgresRelation::Scalar { .. } => {
@@ -439,6 +443,7 @@ fn compute_database_access_expr(
                 access_utils::compute_predicate_expression(
                     ast_expr,
                     entity,
+                    HashMap::new(),
                     resolved_env,
                     &building.primitive_types,
                     &building.entity_types,
@@ -477,7 +482,7 @@ fn compute_input_access_expr(
             ast_expr.as_ref().map(|ast_expr| {
                 access_utils::compute_input_predicate_expression(
                     ast_expr,
-                    entity,
+                    HashMap::from_iter([("self".to_string(), entity)]),
                     resolved_env,
                     &building.primitive_types,
                     &building.entity_types,

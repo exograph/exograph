@@ -272,9 +272,7 @@ pub fn build(
 
     loop {
         let mut did_change = false;
-        let init_scope = Scope {
-            enclosing_type: None,
-        };
+        let init_scope = Scope::default();
 
         let mut errors = Vec::new();
 
@@ -533,6 +531,39 @@ mod tests {
               is_public: Boolean
               content: String
             }
+        }
+        "#;
+
+        assert_typechecking!(src);
+    }
+
+    #[test]
+    fn with_function_calls() {
+        let src = r#"
+        context AuthContext {
+          @jwt("sub") id: String
+          @jwt role: String
+        }
+
+        @postgres
+        module DocsDatabase {
+          @access(
+            query = self.documentUsers.some(du => AuthContext.role == "admin"|| du.userId == AuthContext.id && du.read),
+            mutation = self.documentUsers.some(du => AuthContext.role == "admin"|| du.userId == AuthContext.id && du.write)
+          )
+          type Document {
+            @pk id: Int = autoIncrement()
+            content: String
+            documentUsers: Set<DocumentUser>
+          }
+        
+          type DocumentUser {
+            @pk id: Int = autoIncrement()
+            document: Document
+            userId: String
+            read: Boolean
+            write: Boolean
+          }
         }
         "#;
 

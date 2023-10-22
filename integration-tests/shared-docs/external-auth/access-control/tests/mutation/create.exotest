@@ -1,0 +1,106 @@
+stages:
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      mutation {
+        createDocument(data: {
+            content: "created-by-u1", 
+            documentUsers: [
+                {userId: "u1", read: true,  write: true}
+            ]
+        }) {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u1"
+      }
+    response: |
+      {
+        "data": {
+          "createDocument": {
+            "id": 6,
+            "content": "created-by-u1",
+            "documentUsers": [
+              {
+                "userId": "u1",
+                "read": true,
+                "write": true
+              }
+            ]
+          }
+        }
+      }
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      mutation {
+        createDocument(data: {
+            content: "created-by-u1-for-u2", 
+            documentUsers: [
+                {userId: "u2", read: true,  write: true}
+            ]
+        }) {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u1"
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+      fragment DocumentWithUser on Document {
+        id
+        content
+        documentUsers {
+          userId
+          read
+          write
+        }
+      }
+      mutation {
+        createDocument(data: {
+            content: "created-by-u1-no-write", 
+            documentUsers: [
+                {userId: "u2", read: true,  write: false}
+            ]
+        }) {
+          ...DocumentWithUser
+        }
+      }
+    auth: |
+      {
+        "sub": "u1"
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }      
