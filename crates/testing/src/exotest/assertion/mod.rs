@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{anyhow, Result};
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
-    deno_executor_pool::ResolvedModule,
+    deno_executor_pool::{DenoScriptDefn, ResolvedModule},
     Arg, DenoModule, DenoModuleSharedState, UserCode,
 };
 
@@ -51,12 +51,19 @@ pub async fn dynamic_assert_using_deno(
     let mut deno_module = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "file:///internal/assert.js".to_owned(),
-            script: vec![(
-                Url::parse("file:///internal/assert.js").unwrap(),
-                ResolvedModule::Module(script, ModuleType::JavaScript),
-            )]
-            .into_iter()
-            .collect(),
+            script: DenoScriptDefn {
+                modules: vec![(
+                    Url::parse("file:///internal/assert.js").unwrap(),
+                    ResolvedModule::Module(
+                        script,
+                        ModuleType::JavaScript,
+                        Url::parse("file:///internal/assert.js").unwrap(),
+                    ),
+                )]
+                .into_iter()
+                .collect(),
+                npm_snapshot: None,
+            },
         },
         "ExographTest",
         vec![],
@@ -110,12 +117,19 @@ pub async fn evaluate_using_deno(
     let mut deno_module = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "file:///internal/assert.js".to_owned(),
-            script: vec![(
-                Url::parse("file:///internal/assert.js").unwrap(),
-                ResolvedModule::Module(script, ModuleType::JavaScript),
-            )]
-            .into_iter()
-            .collect(),
+            script: DenoScriptDefn {
+                modules: vec![(
+                    Url::parse("file:///internal/assert.js").unwrap(),
+                    ResolvedModule::Module(
+                        script,
+                        ModuleType::JavaScript,
+                        Url::parse("file:///internal/assert.js").unwrap(),
+                    ),
+                )]
+                .into_iter()
+                .collect(),
+                npm_snapshot: None,
+            },
         },
         "ExographTest",
         vec![],
