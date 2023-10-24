@@ -1,0 +1,5 @@
+@deno("color_ops.ts")
+module TodoDatabase {
+  @access(true)
+  query lighten_color(color: String): String
+}

@@ -26,7 +26,7 @@ use deno_model::{
     types::{ModuleCompositeType, ModuleTypeKind},
 };
 
-use exo_deno::Arg;
+use exo_deno::{deno_executor_pool::DenoScriptDefn, Arg};
 use futures::StreamExt;
 
 use crate::{
@@ -95,12 +95,14 @@ impl<'a> DenoOperation<'a> {
             exograph_proceed: None,
         };
 
+        let deserialized: DenoScriptDefn = serde_json::from_slice(&script.script).unwrap();
+
         let (result, response) = self
             .subsystem_resolver
             .executor
             .execute_and_get_r(
                 &script.path,
-                bincode::deserialize(&script.script).unwrap(),
+                deserialized,
                 &self.method.name,
                 arg_sequence,
                 None,
