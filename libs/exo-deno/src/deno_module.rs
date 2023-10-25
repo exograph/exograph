@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use deno_core::anyhow::bail;
 use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
@@ -16,17 +17,32 @@ use deno_core::v8;
 use deno_core::Extension;
 use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
+use deno_fs::FileSystem;
+use deno_npm::resolution::NpmResolutionSnapshot;
+use deno_npm::resolution::PackageReqNotFoundError;
+use deno_npm::resolution::SerializedNpmResolutionSnapshot;
+use deno_npm::NpmPackageCacheFolderId;
+use deno_npm::NpmPackageId;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_io::Stdio;
+use deno_runtime::deno_node::NpmResolver;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::permissions::PermissionsContainer;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
+use deno_semver::package::PackageNv;
+use deno_semver::package::PackageReq;
+use deno_semver::Version;
+use deno_virtual_fs::file_system::DenoCompileFileSystem;
+use deno_virtual_fs::virtual_fs::FileBackedVfs;
+use deno_virtual_fs::virtual_fs::VfsRoot;
 use include_dir::Dir;
+use tempfile::tempfile;
 use tracing::error;
 
 use std::cell::RefCell;
+use std::io::Write;
 use std::path::PathBuf;
 use tracing::instrument;
 
@@ -66,6 +82,106 @@ pub struct DenoModule {
     explicit_error_class_name: Option<&'static str>,
 }
 
+#[derive(Debug)]
+struct SnapshotNpmResolver {
+    registry_base: PathBuf,
+    snapshot: NpmResolutionSnapshot,
+}
+
+impl SnapshotNpmResolver {
+    pub fn new(registry_base: PathBuf, serialized: SerializedNpmResolutionSnapshot) -> Self {
+        let snapshot = NpmResolutionSnapshot::new(serialized.into_valid().unwrap());
+        Self {
+            registry_base,
+            snapshot,
+        }
+    }
+}
+
+impl NpmResolver for SnapshotNpmResolver {
+    fn resolve_package_folder_from_package(
+        &self,
+        specifier: &str,
+        referrer: &ModuleSpecifier,
+        mode: deno_runtime::deno_node::NodeResolutionMode,
+    ) -> Result<PathBuf, AnyError> {
+        assert!(mode == deno_runtime::deno_node::NodeResolutionMode::Execution);
+        if let Ok(referrer_path) = referrer.to_file_path() {
+            if let Ok(without_registry) = referrer_path.strip_prefix(&self.registry_base) {
+                let first_two = without_registry.iter().take(2).collect::<Vec<_>>();
+                let version_maybe_index = first_two[1].to_str().unwrap();
+                let split = version_maybe_index.split('_').collect::<Vec<_>>();
+
+                let referrer_id = NpmPackageCacheFolderId {
+                    nv: PackageNv {
+                        name: first_two[0].to_str().unwrap().to_string(),
+                        version: Version::parse_standard(split[0]).unwrap(),
+                    },
+                    copy_index: if split.len() > 1 {
+                        split[1].parse::<u8>().unwrap()
+                    } else {
+                        0
+                    },
+                };
+                let resolved = self
+                    .snapshot
+                    .resolve_package_from_package(specifier, &referrer_id)?;
+
+                Ok(self
+                    .registry_base
+                    .join(&resolved.id.nv.name)
+                    .join(resolved.id.nv.version.to_string()))
+            } else {
+                bail!("Expected referrer module to also be in the registry")
+            }
+        } else {
+            bail!("Expected referrer module to be a file path")
+        }
+    }
+
+    fn resolve_package_folder_from_path(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<Option<PathBuf>, AnyError> {
+        let without_registry = path.strip_prefix(&self.registry_base).unwrap();
+        let first_two = without_registry.iter().take(2).collect::<Vec<_>>();
+        let full_path = self.registry_base.join(first_two[0]).join(first_two[1]);
+        Ok(Some(full_path))
+    }
+
+    fn resolve_package_folder_from_deno_module(
+        &self,
+        _pkg_nv: &PackageNv,
+    ) -> Result<PathBuf, AnyError> {
+        todo!()
+    }
+
+    fn resolve_pkg_id_from_pkg_req(
+        &self,
+        _req: &PackageReq,
+    ) -> Result<NpmPackageId, PackageReqNotFoundError> {
+        todo!()
+    }
+
+    fn in_npm_package(&self, specifier: &ModuleSpecifier) -> bool {
+        specifier
+            .to_file_path()
+            .is_ok_and(|p| p.starts_with(&self.registry_base))
+    }
+
+    fn ensure_read_permission(
+        &self,
+        _permissions: &dyn deno_runtime::deno_node::NodePermissions,
+        path: &std::path::Path,
+    ) -> Result<(), AnyError> {
+        if path.starts_with(&self.registry_base) {
+            Ok(())
+        } else {
+            bail!("")
+        }
+    }
+}
+
 /// A Deno-based runner for JavaScript.
 ///
 /// DenoModule has no concept of Exograph; it exists solely to configure the JavaScript execution environment
@@ -92,7 +208,7 @@ pub struct DenoModule {
 impl DenoModule {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        user_code: UserCode,
+        mut user_code: UserCode,
         user_agent_name: &str,
         shims: Vec<(&str, &[&str])>,
         additional_code: Vec<&'static str>,
@@ -133,49 +249,95 @@ impl DenoModule {
 
         let main_module_specifier = "file:///main.js".to_string();
         let main_specifier_parsed = ModuleSpecifier::parse(&main_module_specifier)?;
-        let module_loader = Rc::new(EmbeddedModuleLoader {
-            source_code_map: {
-                let mut map: DenoScriptDefn = match &user_code {
-                    UserCode::LoadFromFs(_) => {
-                        vec![(
-                            main_specifier_parsed.clone(),
-                            ResolvedModule::Module(source_code, ModuleType::JavaScript),
-                        )]
-                    }
-                    UserCode::LoadFromMemory { script, .. } => {
-                        let mut out = vec![(
-                            main_specifier_parsed.clone(),
-                            ResolvedModule::Module(source_code, ModuleType::JavaScript),
-                        )];
 
-                        for (specifier, resolved) in script {
-                            out.push((specifier.clone(), resolved.clone()));
-                        }
-
-                        out
-                    }
-                }
+        let (mut script_modules, npm_snapshot) = match &mut user_code {
+            UserCode::LoadFromFs(_) => (
+                vec![(
+                    main_specifier_parsed.clone(),
+                    ResolvedModule::Module(
+                        source_code,
+                        ModuleType::JavaScript,
+                        main_specifier_parsed,
+                        false,
+                    ),
+                )]
                 .into_iter()
-                .collect();
+                .collect::<HashMap<ModuleSpecifier, ResolvedModule>>(),
+                None,
+            ),
+            UserCode::LoadFromMemory { script, .. } => {
+                let mut out = vec![(
+                    main_specifier_parsed.clone(),
+                    ResolvedModule::Module(
+                        source_code,
+                        ModuleType::JavaScript,
+                        main_specifier_parsed,
+                        false,
+                    ),
+                )];
 
-                // override entries with provided extra_sources
-                if let Some(extra_sources) = extra_sources {
-                    for (url, source) in extra_sources {
-                        map.insert(
-                            ModuleSpecifier::parse(url)?,
-                            ResolvedModule::Module(source, ModuleType::JavaScript),
-                        );
-                    }
+                for (specifier, resolved) in &script.modules {
+                    out.push((specifier.clone(), resolved.clone()));
                 }
 
-                Rc::new(RefCell::new(map))
-            },
+                (out.into_iter().collect(), script.npm_snapshot.take())
+            }
+        };
+
+        // override entries with provided extra_sources
+        if let Some(extra_sources) = extra_sources {
+            for (url, source) in extra_sources {
+                script_modules.insert(
+                    ModuleSpecifier::parse(url)?,
+                    ResolvedModule::Module(
+                        source,
+                        ModuleType::JavaScript,
+                        ModuleSpecifier::parse(url)?,
+                        false,
+                    ),
+                );
+            }
+        }
+
+        let module_loader = Rc::new(EmbeddedModuleLoader {
+            source_code_map: Rc::new(RefCell::new(script_modules)),
             embedded_dirs: embedded_script_dirs.unwrap_or_default(),
         });
 
         let create_web_worker_cb = Arc::new(|_| {
             todo!("Web workers are not supported");
         });
+
+        let (fs, resolver): (Arc<dyn FileSystem>, Option<Arc<dyn NpmResolver>>) =
+            if let Some((resolution, vfs, contents)) = npm_snapshot {
+                let mut temp_file = tempfile().unwrap();
+                for buffer in contents {
+                    temp_file.write_all(&buffer).unwrap();
+                }
+
+                #[cfg(target_os = "windows")]
+                let absolute_root = PathBuf::from("C:\\EXOGRAPH_NPM_MODULES_SNAPSHOT");
+
+                #[cfg(not(target_os = "windows"))]
+                let absolute_root = PathBuf::from("/EXOGRAPH_NPM_MODULES_SNAPSHOT");
+
+                (
+                    Arc::new(DenoCompileFileSystem::new(FileBackedVfs::new(
+                        temp_file,
+                        VfsRoot {
+                            dir: vfs,
+                            root_path: absolute_root.clone(),
+                            start_file_offset: 0,
+                        },
+                    ))),
+                    Some(Arc::new(SnapshotNpmResolver::new(
+                        absolute_root,
+                        resolution,
+                    ))),
+                )
+            } else {
+                (Arc::new(deno_fs::RealFs), None)
+            };
 
         let options = WorkerOptions {
             bootstrap: BootstrapOptions {
@@ -212,9 +374,9 @@ impl DenoModule {
             compiled_wasm_module_store: None,
             source_map_getter: None,
             format_js_error_fn: None,
-            fs: Arc::new(deno_fs::RealFs),
+            fs,
             stdio: Stdio::default(),
-            npm_resolver: None,
+            npm_resolver: resolver,
             cache_storage_dir: None,
             should_wait_for_inspector_session: false,
             startup_snapshot: None,
