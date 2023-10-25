@@ -1,0 +1,10 @@
+operation: |
+  query {
+    lighten_color(color: "#FF0000")
+  }
+response: |
+  {
+    "data": {
+      "lighten_color": "#FF8080"
+    }
+  }
