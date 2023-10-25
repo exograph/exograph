@@ -10,6 +10,7 @@
 use deno_core::error::AnyError;
 use deno_core::futures::FutureExt;
 use deno_core::resolve_import;
+use deno_core::url::Url;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
@@ -22,7 +23,6 @@ use std::rc::Rc;
 
 use include_dir::Dir;
 
-use crate::deno_executor_pool::DenoScriptDefn;
 use crate::deno_executor_pool::ResolvedModule;
 
 /// A module loader that allows loading source code from memory for the given module specifier;
@@ -31,7 +31,7 @@ use crate::deno_executor_pool::ResolvedModule;
 pub(super) struct EmbeddedModuleLoader {
     #[allow(unused)]
     pub embedded_dirs: HashMap<String, &'static Dir<'static>>,
-    pub source_code_map: Rc<RefCell<DenoScriptDefn>>,
+    pub source_code_map: Rc<RefCell<HashMap<Url, ResolvedModule>>>,
 }
 
 impl ModuleLoader for EmbeddedModuleLoader {
@@ -52,17 +52,31 @@ impl ModuleLoader for EmbeddedModuleLoader {
     ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
         let borrowed_map = self.source_code_map.borrow();
         let mut resolved = borrowed_map.get(module_specifier);
-        let mut final_specifier = module_specifier.clone();
         while let Some(ResolvedModule::Redirect(to)) = resolved {
             resolved = borrowed_map.get(to);
-            final_specifier = to.clone();
         }
 
         // do we have the module source in-memory?
         let module_specifier = module_specifier.clone();
 
         if let Some(script) = resolved {
-            if let ResolvedModule::Module(script, module_type) = script.clone() {
+            #[allow(unused_mut)]
+            if let ResolvedModule::Module(mut script, module_type, mut final_specifier) =
+                script.clone()
+            {
+                #[cfg(target_os = "windows")]
+                {
+                    script = script.replace(
+                        "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
+                        "C:\\EXOGRAPH_NPM_MODULES_SNAPSHOT",
+                    );
+                    final_specifier = ModuleSpecifier::parse(&final_specifier.as_str().replace(
+                        "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
+                        "C:\\EXOGRAPH_NPM_MODULES_SNAPSHOT",
+                    ))
+                    .unwrap()
+                }
+
                 let module_source = ModuleSource::new_with_redirect(
                     module_type,
                     script.into(),
@@ -101,10 +115,11 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 let mut map = source_code_map.borrow_mut();
 
                 map.insert(
-                    module_specifier,
+                    module_specifier.clone(),
                     ResolvedModule::Module(
                         module_source.code.as_str().to_string(),
                         module_source.module_type,
+                        module_specifier,
                     ),
                 );
 
