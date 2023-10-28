@@ -9,6 +9,8 @@
 
 use std::{io, path::PathBuf};
 
+use anyhow::anyhow;
+
 use crate::{
     commands::command::{
         database_arg, default_model_file, ensure_exo_project_dir, get, output_arg,
@@ -32,8 +34,15 @@ impl CommandDefinition for MigrateCommandDefinition {
         .arg(database_arg())
         .arg(output_arg())
         .arg(
+            Arg::new("apply-to-database")
+                .help("Apply non-destructive migration to the database specified by the --database flag or the environment variable EXO_POSTGRES_URL")
+                .long("apply-to-database")
+                .required(false)
+                .num_args(0)
+        )
+        .arg(
             Arg::new("allow-destructive-changes")
-                .help("By default, destructive changes in the model file are commented out. If specified, this option will uncomment such changes.")
+                .help("By default, destructive changes in the model file are commented out. If specified, this option will uncomment such changes")
                 .long("allow-destructive-changes")
                 .required(false)
                 .num_args(0),
@@ -47,13 +56,28 @@ impl CommandDefinition for MigrateCommandDefinition {
         let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
         let output: Option<PathBuf> = get(matches, "output");
+        let apply_to_database: bool = matches.get_flag("apply-to-database");
         let allow_destructive_changes: bool = matches.get_flag("allow-destructive-changes");
+
+        if output.is_some() && apply_to_database {
+            return Err(anyhow!(
+                "Cannot specify both --output and --apply-to-database"
+            ));
+        }
 
         let migrations = Migration::from_db_and_model(database.as_deref(), &model).await?;
 
-        let mut buffer: Box<dyn io::Write> = open_file_for_output(output.as_deref())?;
-        migrations.write(&mut buffer, allow_destructive_changes)?;
-
-        Ok(())
+        if apply_to_database {
+            if migrations.has_destructive_changes() {
+                Err(anyhow!("Migration contains destructive changes"))
+            } else {
+                migrations.apply(database.as_deref(), false).await?;
+                Ok(())
+            }
+        } else {
+            let mut buffer: Box<dyn io::Write> = open_file_for_output(output.as_deref())?;
+            migrations.write(&mut buffer, allow_destructive_changes)?;
+            Ok(())
+        }
     }
 }
