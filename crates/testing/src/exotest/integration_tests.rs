@@ -74,21 +74,32 @@ pub(crate) async fn run_testfile(
             testfile.name()
         );
 
-        let cli_child = cmd("exo")
-            .args(["schema", "create"])
+        let migrate_child = cmd("exo")
+            .args([
+                "schema",
+                "migrate",
+                "--database",
+                &db_instance.url(),
+                "--apply-to-database",
+            ])
             .current_dir(project_dir)
             .output()?;
 
-        if !cli_child.status.success() {
-            eprintln!("{}", std::str::from_utf8(&cli_child.stderr).unwrap());
-            bail!("Could not build schema.");
+        if !migrate_child.status.success() {
+            eprintln!("{}", std::str::from_utf8(&migrate_child.stderr).unwrap());
+            bail!("Could not build schema for {}", testfile.name());
         }
 
-        let query = std::str::from_utf8(&cli_child.stdout)?;
-        run_psql(query, db_instance.as_ref()).await.map_err(|e| {
-            eprintln!("{}", e);
-            anyhow!("Could not create database for {}.", testfile.name())
-        })?;
+        // Verify the schema to exercise the verification logic (which in-turn exercises the database introspection logic)
+        let verify_child = cmd("exo")
+            .args(["schema", "verify", "--database", &db_instance.url()])
+            .current_dir(project_dir)
+            .output()?;
+
+        if !verify_child.status.success() {
+            eprintln!("{}", std::str::from_utf8(&verify_child.stderr).unwrap());
+            bail!("Could not verify schema for {}", testfile.name());
+        }
 
         // spawn a exo instance
         println!("{log_prefix} Initializing exo-server ...");

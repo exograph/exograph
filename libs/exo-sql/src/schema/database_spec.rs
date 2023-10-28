@@ -160,11 +160,11 @@ impl DatabaseSpec {
         client: &Client,
     ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
         const SCHEMAS_QUERY: &str =
-            "SELECT table_schema FROM information_schema.tables WHERE table_schema != 'information_schema' AND table_schema != 'pg_catalog'";
+            "SELECT DISTINCT table_schema FROM information_schema.tables WHERE table_schema != 'information_schema' AND table_schema != 'pg_catalog'";
 
         // Query to get a list of all the tables in the database
         const TABLE_NAMES_QUERY: &str =
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = $1";
 
         let mut issues = Vec::new();
         let mut tables = Vec::new();
@@ -178,11 +178,11 @@ impl DatabaseSpec {
             let schema_name = if raw_schema_name == "public" {
                 None
             } else {
-                Some(raw_schema_name)
+                Some(raw_schema_name.clone())
             };
 
             for table_row in client
-                .query(TABLE_NAMES_QUERY, &[])
+                .query(TABLE_NAMES_QUERY, &[&raw_schema_name])
                 .await
                 .map_err(DatabaseError::Delegate)?
             {
