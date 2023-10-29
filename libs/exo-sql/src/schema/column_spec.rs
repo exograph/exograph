@@ -101,7 +101,19 @@ impl ColumnSpec {
                 let row = rows.get(0).unwrap();
 
                 let mut sql_type: String = row.get("format_type");
-                let dims: i32 = row.get("attndims");
+                let dims = {
+                    // depending on the version of postgres, the type of `attndims` is either `i16`
+                    // or `i32` (postgres type is `int2`` or `int4``), so try both
+                    let dims: Result<i32, _> = row.try_get("attndims");
+
+                    match dims {
+                        Ok(dims) => dims,
+                        Err(_) => {
+                            let dims: i16 = row.get("attndims");
+                            dims as i32
+                        }
+                    }
+                };
 
                 // When querying array types, the number of dimensions is not correctly shown
                 // e.g. a column declared as `INT[][][]` will be shown as `INT[]`
