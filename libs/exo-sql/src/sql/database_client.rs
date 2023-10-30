@@ -98,10 +98,6 @@ impl<'a> DatabaseClient {
             config.password(password);
         }
 
-        if config.get_user().is_none() {
-            return Err(DatabaseError::Config("Database user must be specified as a part of EXO_POSTGRES_URL or through EXO_POSTGRES_USER".into()));
-        }
-
         let manager_config = ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
         };
