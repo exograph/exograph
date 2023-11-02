@@ -62,6 +62,20 @@ impl CommandDefinition for NewCommandDefinition {
         let mut init_file = File::create(tests_path.join("init.gql"))?;
         init_file.write_all(TESTS_INIT_TEMPLATE)?;
 
+        match which::which("git") {
+            Ok(_) => {
+                std::process::Command::new("git")
+                    .arg("init")
+                    .arg(path_str.clone())
+                    .output()
+                    .expect("failed to initialize git repository");
+            }
+            Err(_) => {
+                println!("Git is not installed. Skipping repository initialization...");
+                return Ok(());
+            }
+        }
+
         println!(
             "A new project has been created in the {} directory.",
             path_str.bold().cyan()

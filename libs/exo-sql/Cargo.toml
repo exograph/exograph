@@ -30,7 +30,7 @@ tracing.workspace = true
 typed-generational-arena.workspace = true
 url = "2.2.2"
 
-which = "4.4.0"
+which.workspace = true
 rand.workspace = true
 tempfile.workspace = true
 urlencoding = "2.1.2"

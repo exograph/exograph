@@ -52,7 +52,7 @@ crossbeam-channel = "0.5.8"
 insta.workspace = true
 
 [build-dependencies]
-which = "4.4.0"
+which.workspace = true
 
 [lib]
 doctest = false
