@@ -91,6 +91,7 @@ wasmtime = "13.0.0"
 wasmtime-wasi = "13.0.0"
 wasi-common = "13.0.0"
 wildmatch = "2.1.0"
+which = "5.0.0"
 
 # reduce binary size, does not affect stack traces
 [profile.dev]

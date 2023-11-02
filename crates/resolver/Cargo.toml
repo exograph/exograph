@@ -32,7 +32,7 @@ tokio.workspace = true
 builder = { path = "../builder" }
 
 [build-dependencies]
-which = "4.4.0"
+which.workspace = true
 
 [lib]
 doctest = false
