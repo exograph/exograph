@@ -63,16 +63,23 @@ impl CommandDefinition for NewCommandDefinition {
         init_file.write_all(TESTS_INIT_TEMPLATE)?;
 
         match which::which("git") {
-            Ok(_) => {
-                std::process::Command::new("git")
-                    .arg("init")
-                    .arg(path_str.clone())
-                    .output()
-                    .expect("failed to initialize git repository");
-            }
+            Ok(_) => match std::process::Command::new("git").arg("status").output() {
+                Ok(output) if output.status.success() => {
+                    // Git is already initialized (in a target directory's parent). Following `cargo
+                    // new` behavior, we skip the initialization This is useful, for example, if the
+                    // user is creating it as a sibling to the frontend repo and the parent of
+                    // backend/frontend has git initialized
+                }
+                _ => {
+                    std::process::Command::new("git")
+                        .arg("init")
+                        .arg(path_str.clone())
+                        .output()?;
+                }
+            },
             Err(_) => {
+                // It is not an error to not have git installed, but we should warn the user
                 println!("Git is not installed. Skipping repository initialization...");
-                return Ok(());
             }
         }
 
