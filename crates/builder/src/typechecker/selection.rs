@@ -200,6 +200,20 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                 let in_updated = prefix.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if typ.is_incomplete() {
                     match prefix.typ().deref(type_env) {
+                        Type::Optional(elem_type) => {
+                            // Support optional field selection by calling pass on the element. This
+                            // uniformly dealing with simple selection and hof calls on optional
+                            // fields
+                            let updated = elem.pass(
+                                type_env,
+                                annotation_env,
+                                scope,
+                                Some(&elem_type),
+                                errors,
+                            );
+                            *typ = elem.typ().clone();
+                            updated
+                        }
                         Type::Composite(c) => {
                             let elem = match elem {
                                 FieldSelectionElement::Identifier(value, s, _) => (value, *s),
@@ -265,15 +279,15 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                                     });
                                 return false;
                             }
-                            marco @ FieldSelectionElement::HofCall { .. } => {
-                                let updated = marco.pass(
+                            hof_call @ FieldSelectionElement::HofCall { .. } => {
+                                let updated = hof_call.pass(
                                     type_env,
                                     annotation_env,
                                     scope,
                                     Some(&elem_type),
                                     errors,
                                 );
-                                *typ = marco.typ().clone();
+                                *typ = hof_call.typ().clone();
                                 updated
                             }
                         },
