@@ -11,6 +11,7 @@ use super::command::SubcommandDefinition;
 
 mod aws_lambda;
 mod fly;
+mod railway;
 
 pub fn command_definition() -> SubcommandDefinition {
     SubcommandDefinition::new(
@@ -18,6 +19,7 @@ pub fn command_definition() -> SubcommandDefinition {
         "Deploy your Exograph project",
         vec![
             Box::new(fly::FlyCommandDefinition {}),
+            Box::new(railway::RailwayCommandDefinition {}),
             Box::new(aws_lambda::AwsLambdaCommandDefinition {}),
         ],
     )

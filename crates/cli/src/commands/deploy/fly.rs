@@ -75,9 +75,6 @@ impl CommandDefinition for FlyCommandDefinition {
 
     /// Create a fly.toml file, a Dockerfile, and build the docker image. Then provide instructions
     /// on how to deploy the app to Fly.io.
-    ///
-    /// To avoid clobbering existing files, this command will create a `fly` directory in the same
-    /// directory as the model file, and put the `fly.toml` and `Dockerfile` in there.
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         let app_name: String = get_required(matches, "app-name")?;
         let version: String = get_required(matches, "version")?;
@@ -223,7 +220,7 @@ fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
     Ok(())
 }
 
-/// Create a fly.toml file in the fly directory.
+/// Create a fly.toml file.
 /// Replaces the placeholders in the template with the app name and image tag
 /// as well as the environment variables.
 fn create_fly_toml(

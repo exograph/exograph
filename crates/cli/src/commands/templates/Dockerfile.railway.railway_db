@@ -1,0 +1,34 @@
+FROM ghcr.io/exograph/cli:latest as builder
+ARG DATABASE_URL
+
+WORKDIR /app
+
+COPY ./src ./src
+
+RUN exo build
+
+ENV EXO_POSTGRES_URL=${DATABASE_URL}?sslmode=disable
+
+# Migrate database. Remove the next line if you want to handle migration separately.
+RUN exo schema migrate --apply-to-database
+
+# Check that migration brought up the schema to match the model.
+RUN exo schema verify
+
+FROM ghcr.io/exograph/server:latest
+ARG DATABASE_PRIVATE_URL
+
+WORKDIR /app
+
+COPY --from=builder /app/target/index.exo_ir ./target/index.exo_ir
+
+# Update the following environment variables to match your needs. See the documentation for more information.
+ENV EXO_INTROSPECTION=true 
+ENV EXO_CORS_DOMAINS="*"
+ENV EXO_POSTGRES_URL=${DATABASE_PRIVATE_URL}?sslmode=disable
+
+# The following defers checking for connection to the database until the first request is received.
+# This accommodates Railway's delay in setting up private networking (which takes about 100ms after the app is ready).
+ENV EXO_CHECK_CONNECTION_ON_STARTUP=false
+
+CMD ["sh", "-c", "EXO_SERVER_PORT=$PORT exo-server"]
