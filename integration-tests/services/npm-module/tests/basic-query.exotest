@@ -1,0 +1,12 @@
+operation: |
+  query {
+    lighten_color(color: "#FF0000")
+    color_by_name(name: "red")
+  }
+response: |
+  {
+    "data": {
+      "lighten_color": "#FF8080",
+      "color_by_name": "#ff0000"
+    }
+  }
