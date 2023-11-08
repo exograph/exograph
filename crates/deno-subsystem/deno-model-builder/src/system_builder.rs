@@ -19,15 +19,20 @@ use core_plugin_interface::{
     },
 };
 
-use deno::{CliFactory, CliOptions, Flags};
+use deno::{module_loader::NpmModuleLoader, CliFactory, CliOptions, Flags, PathBuf};
 use deno_ast::{MediaType, ParseParams, SourceTextInfo};
-use deno_graph::{Module, ModuleEntryRef, ModuleGraph, WalkOptions};
+use deno_graph::{Module, ModuleEntryRef, ModuleGraph, ModuleSpecifier, WalkOptions};
 use deno_model::{
     interceptor::Interceptor,
     operation::{DenoMutation, DenoQuery},
     subsystem::DenoSubsystem,
 };
-use exo_deno::deno_executor_pool::ResolvedModule;
+use deno_runtime::{
+    deno_node::{NodeResolution, NodeResolver},
+    permissions::PermissionsContainer,
+};
+use deno_virtual_fs::virtual_fs::{VfsBuilder, VirtualDirectory};
+use exo_deno::deno_executor_pool::{DenoScriptDefn, ResolvedModule};
 use url::Url;
 
 use crate::module_skeleton_generator;
@@ -114,7 +119,7 @@ fn process_script(
     // `BoxFuture`, which has the `Send` requirement.
     // TODO: Note that ProcState no longer exists in later versions of deno and has been replaced
     // with CliFactory.
-    let modules = std::thread::spawn(move || {
+    let script_defn = std::thread::spawn(move || {
         let future = async move {
             let cli_options = CliOptions::new(
                 Flags::default(),
@@ -146,18 +151,67 @@ fn process_script(
                     ))
                 })?;
 
-            walk_module_graph(graph)
+            let registry_url = factory.npm_api().unwrap().base_url();
+            let root_path = factory.npm_cache().unwrap().registry_folder(registry_url);
+
+            let node_resolver = factory.node_resolver().await.unwrap();
+            let npm_resolver = factory.npm_resolver().await.unwrap();
+            let npm_resolution = factory.npm_resolution().await.unwrap();
+
+            let npm_loader = NpmModuleLoader::new(
+                factory.cjs_resolutions().clone(),
+                factory.node_code_translator().await.unwrap().clone(),
+                factory.fs().clone(),
+                factory.node_resolver().await.unwrap().clone(),
+            );
+
+            if !root_path.exists() {
+                std::fs::create_dir_all(&root_path).unwrap();
+            }
+
+            let vfs = if let Ok(mut builder) = VfsBuilder::new(root_path.clone()) {
+                for package in npm_resolution.all_system_packages(&Default::default()) {
+                    let folder = npm_resolver
+                        .resolve_pkg_folder_from_pkg_id(&package.id)
+                        .unwrap();
+                    builder.add_dir_recursive(&folder).unwrap();
+                }
+
+                builder.set_root_dir_name("EXOGRAPH_NPM_MODULES_SNAPSHOT".to_string());
+
+                builder.into_dir_and_files()
+            } else {
+                (
+                    VirtualDirectory {
+                        name: "EXOGRAPH_NPM_MODULES_SNAPSHOT".to_string(),
+                        entries: vec![],
+                    },
+                    vec![],
+                )
+            };
+
+            Ok::<DenoScriptDefn, ModelBuildingError>(DenoScriptDefn {
+                modules: walk_module_graph(graph, npm_loader, node_resolver.clone(), root_path)?,
+                npm_snapshot: Some((
+                    npm_resolution.serialized_valid_snapshot().into_serialized(),
+                    vfs.0,
+                    vfs.1,
+                )),
+            })
         };
         run_local(future)
     })
     .join()
     .unwrap()?;
 
-    Ok((root.to_string(), bincode::serialize(&modules).unwrap()))
+    Ok((root.to_string(), serde_json::to_vec(&script_defn).unwrap()))
 }
 
 fn walk_module_graph(
     graph: ModuleGraph,
+    npm_loader: NpmModuleLoader,
+    node_resolver: Arc<NodeResolver>,
+    root_path: PathBuf,
 ) -> Result<HashMap<Url, ResolvedModule>, ModelBuildingError> {
     let mut modules: HashMap<Url, ResolvedModule> = HashMap::new();
 
@@ -171,9 +225,134 @@ fn walk_module_graph(
     ) {
         match maybe_module {
             ModuleEntryRef::Module(m) => {
-                let module_source = match m {
-                    Module::Esm(e) => e.source.to_string(),
-                    Module::Json(j) => j.source.to_string(),
+                let maybe_serializable_module = match m {
+                    Module::Esm(e) => Some((
+                        e.source.to_string(),
+                        MediaType::from_specifier(specifier),
+                        specifier.clone(),
+                        false,
+                    )),
+                    Module::Json(j) => Some((
+                        j.source.to_string(),
+                        MediaType::from_specifier(specifier),
+                        specifier.clone(),
+                        false,
+                    )),
+                    Module::Node(_) => None,
+                    Module::Npm(npm) => {
+                        // trigger CommonJS detection, which will lead to `npm_loader` giving us the wrapped module
+                        let _ = npm_loader
+                            .resolve_nv_ref(&npm.nv_reference, &PermissionsContainer::allow_all())
+                            .unwrap();
+                        let resolved = node_resolver
+                            .resolve_npm_reference(
+                                &npm.nv_reference,
+                                deno_runtime::deno_node::NodeResolutionMode::Execution,
+                                &PermissionsContainer::allow_all(),
+                            )
+                            .unwrap()
+                            .unwrap();
+
+                        match resolved {
+                            NodeResolution::BuiltIn(_) => {
+                                unreachable!("only NPM modules")
+                            }
+                            NodeResolution::CommonJs(cjs_specifier) => {
+                                let loaded = npm_loader
+                                    .load_sync_if_in_npm_package(
+                                        &cjs_specifier,
+                                        None,
+                                        &PermissionsContainer::allow_all(),
+                                    )
+                                    .unwrap()
+                                    .unwrap();
+
+                                let cjs_path = cjs_specifier.to_file_path().unwrap();
+
+                                let node_relative_path =
+                                    cjs_path.strip_prefix(root_path.clone()).unwrap();
+
+                                // encode the segments of the path with forward slashes, even on windows
+                                let node_relative_path_str = node_relative_path
+                                    .components()
+                                    .map(|c| c.as_os_str().to_str().unwrap())
+                                    .collect::<Vec<_>>()
+                                    .join("/");
+
+                                // Deno generates a thin ESM wrapper that uses an absolute path
+                                let mut root_replaced_specifier: ModuleSpecifier =
+                                    ModuleSpecifier::parse(&format!(
+                                        "file:///EXOGRAPH_NPM_MODULES_SNAPSHOT/{}",
+                                        node_relative_path_str
+                                    ))
+                                    .unwrap();
+                                root_replaced_specifier.set_host(Some("localhost")).unwrap();
+
+                                let root_replaced = loaded.code.as_str().replace(
+                                    &cjs_specifier
+                                        .to_file_path()
+                                        .unwrap()
+                                        .to_str()
+                                        .unwrap()
+                                        .replace('\\', "\\\\")
+                                        .replace('\'', "\\\'")
+                                        .replace('\"', "\\\""),
+                                    &format!(
+                                        "/EXOGRAPH_NPM_MODULES_SNAPSHOT/{}",
+                                        node_relative_path_str
+                                    )
+                                    .replace('\\', "\\\\")
+                                    .replace('\'', "\\\'")
+                                    .replace('\"', "\\\""),
+                                );
+
+                                Some((
+                                    root_replaced,
+                                    MediaType::JavaScript,
+                                    root_replaced_specifier,
+                                    true,
+                                ))
+                            }
+                            NodeResolution::Esm(esm_specifier) => {
+                                let loaded = npm_loader
+                                    .load_sync_if_in_npm_package(
+                                        &esm_specifier,
+                                        None,
+                                        &PermissionsContainer::allow_all(),
+                                    )
+                                    .unwrap()
+                                    .unwrap();
+
+                                let esm_path = esm_specifier.to_file_path().unwrap();
+
+                                let node_relative_path =
+                                    esm_path.strip_prefix(root_path.clone()).unwrap();
+
+                                // encode the segments of the path with forward slashes, even on windows
+                                let node_relative_path_str = node_relative_path
+                                    .components()
+                                    .map(|c| c.as_os_str().to_str().unwrap())
+                                    .collect::<Vec<_>>()
+                                    .join("/");
+
+                                // Deno generates a thin ESM wrapper that uses an absolute path
+                                let mut root_replaced_specifier: ModuleSpecifier =
+                                    ModuleSpecifier::parse(&format!(
+                                        "file:///EXOGRAPH_NPM_MODULES_SNAPSHOT/{}",
+                                        node_relative_path_str
+                                    ))
+                                    .unwrap();
+                                root_replaced_specifier.set_host(Some("localhost")).unwrap();
+
+                                Some((
+                                    loaded.code.as_str().to_string(),
+                                    MediaType::JavaScript,
+                                    root_replaced_specifier,
+                                    false,
+                                ))
+                            }
+                        }
+                    }
                     o => {
                         return Err(ModelBuildingError::Generic(format!(
                             "Unexpected module type {o:?} in Deno graph",
@@ -181,47 +360,55 @@ fn walk_module_graph(
                     }
                 };
 
-                let media_type = MediaType::from_specifier(specifier);
+                if let Some((module_source, media_type, final_specifier, requires_rewrite)) =
+                    maybe_serializable_module
+                {
+                    // from Deno examples
+                    let (module_type, should_transpile) = match media_type {
+                        MediaType::JavaScript | MediaType::Mjs | MediaType::Cjs => {
+                            (deno_core::ModuleType::JavaScript, false)
+                        }
+                        MediaType::Jsx => (deno_core::ModuleType::JavaScript, true),
+                        MediaType::TypeScript
+                        | MediaType::Mts
+                        | MediaType::Cts
+                        | MediaType::Dts
+                        | MediaType::Dmts
+                        | MediaType::Dcts
+                        | MediaType::Tsx => (deno_core::ModuleType::JavaScript, true),
+                        MediaType::Json => (deno_core::ModuleType::Json, false),
+                        _ => panic!("Unknown media type {:?}", media_type),
+                    };
 
-                // from Deno examples
-                let (module_type, should_transpile) = match media_type {
-                    MediaType::JavaScript | MediaType::Mjs | MediaType::Cjs => {
-                        (deno_core::ModuleType::JavaScript, false)
-                    }
-                    MediaType::Jsx => (deno_core::ModuleType::JavaScript, true),
-                    MediaType::TypeScript
-                    | MediaType::Mts
-                    | MediaType::Cts
-                    | MediaType::Dts
-                    | MediaType::Dmts
-                    | MediaType::Dcts
-                    | MediaType::Tsx => (deno_core::ModuleType::JavaScript, true),
-                    MediaType::Json => (deno_core::ModuleType::Json, false),
-                    _ => panic!("Unknown media type {:?}", media_type),
-                };
+                    let transpiled = if should_transpile {
+                        let parsed = deno_ast::parse_module(ParseParams {
+                            specifier: specifier.to_string(),
+                            text_info: SourceTextInfo::from_string(module_source),
+                            media_type,
+                            capture_tokens: false,
+                            scope_analysis: false,
+                            maybe_syntax: None,
+                        })
+                        .unwrap();
+                        // TODO(shadaj): fail gracefully here
+                        parsed.transpile(&Default::default()).unwrap().text
+                    } else {
+                        module_source
+                    };
 
-                let transpiled = if should_transpile {
-                    let parsed = deno_ast::parse_module(ParseParams {
-                        specifier: specifier.to_string(),
-                        text_info: SourceTextInfo::from_string(module_source),
-                        media_type,
-                        capture_tokens: false,
-                        scope_analysis: false,
-                        maybe_syntax: None,
-                    })
-                    .unwrap();
-                    parsed.transpile(&Default::default()).unwrap().text
-                } else {
-                    module_source
-                };
-
-                modules.insert(
-                    specifier.clone(),
-                    ResolvedModule::Module(transpiled, module_type),
-                )
+                    modules.insert(
+                        specifier.clone(),
+                        ResolvedModule::Module(
+                            transpiled,
+                            module_type,
+                            final_specifier,
+                            requires_rewrite,
+                        ),
+                    );
+                }
             }
             ModuleEntryRef::Redirect(to) => {
-                modules.insert(specifier.clone(), ResolvedModule::Redirect(to.clone()))
+                modules.insert(specifier.clone(), ResolvedModule::Redirect(to.clone()));
             }
             ModuleEntryRef::Err(e) => {
                 return Err(ModelBuildingError::ExternalResourceParsing(

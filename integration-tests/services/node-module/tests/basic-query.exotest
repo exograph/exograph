@@ -1,0 +1,10 @@
+operation: |
+  query {
+    test_builtin
+  }
+response: |
+  {
+    "data": {
+      "test_builtin": "OK"
+    }
+  }
