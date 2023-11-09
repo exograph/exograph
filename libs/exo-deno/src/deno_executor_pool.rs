@@ -10,6 +10,8 @@
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 use deno_core::{url::Url, Extension, ModuleType};
+use deno_npm::resolution::SerializedNpmResolutionSnapshot;
+use deno_virtual_fs::virtual_fs::VirtualDirectory;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex;
@@ -29,12 +31,20 @@ type DenoActorPool<C, M, R> = Vec<DenoActor<C, M, R>>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ResolvedModule {
-    Module(String, ModuleType),
+    Module(String, ModuleType, Url, bool),
     Redirect(Url),
 }
 
 /// Serialized type for modules loaded during the build phase
-pub type DenoScriptDefn = HashMap<Url, ResolvedModule>;
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DenoScriptDefn {
+    pub modules: HashMap<Url, ResolvedModule>,
+    pub npm_snapshot: Option<(
+        SerializedNpmResolutionSnapshot,
+        VirtualDirectory,
+        Vec<Vec<u8>>,
+    )>,
+}
 
 pub struct DenoExecutorConfig<C> {
     user_agent_name: &'static str,
@@ -241,12 +251,20 @@ mod tests {
         let res = executor_pool
             .execute(
                 module_path,
-                vec![(
-                    ModuleSpecifier::parse(module_path).unwrap(),
-                    ResolvedModule::Module(module_script, ModuleType::JavaScript),
-                )]
-                .into_iter()
-                .collect(),
+                DenoScriptDefn {
+                    modules: vec![(
+                        ModuleSpecifier::parse(module_path).unwrap(),
+                        ResolvedModule::Module(
+                            module_script,
+                            ModuleType::JavaScript,
+                            ModuleSpecifier::parse(module_path).unwrap(),
+                            false,
+                        ),
+                    )]
+                    .into_iter()
+                    .collect(),
+                    npm_snapshot: None,
+                },
                 "addAndDouble",
                 vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
                 (),
@@ -285,12 +303,20 @@ mod tests {
         ) -> Result<Value, DenoError> {
             pool.execute(
                 script_path,
-                vec![(
-                    ModuleSpecifier::parse(script_path).unwrap(),
-                    ResolvedModule::Module(script, ModuleType::JavaScript),
-                )]
-                .into_iter()
-                .collect(),
+                DenoScriptDefn {
+                    modules: vec![(
+                        ModuleSpecifier::parse(script_path).unwrap(),
+                        ResolvedModule::Module(
+                            script,
+                            ModuleType::JavaScript,
+                            ModuleSpecifier::parse(script_path).unwrap(),
+                            false,
+                        ),
+                    )]
+                    .into_iter()
+                    .collect(),
+                    npm_snapshot: None,
+                },
                 method_name,
                 arguments,
                 (),
