@@ -11,7 +11,7 @@ use core_plugin_interface::core_resolver::{
     context::RequestContext, system_resolver::ExographExecuteQueryFn, InterceptedOperation,
 };
 use deno_model::interceptor::Interceptor;
-use exo_deno::Arg;
+use exo_deno::{deno_executor_pool::DenoScriptDefn, Arg};
 use indexmap::IndexMap;
 use serde_json::Value;
 
@@ -47,11 +47,13 @@ pub async fn execute_interceptor<'a>(
         exograph_proceed: Some(&intercepted_operation_resolver),
     };
 
+    let deserialized: DenoScriptDefn = serde_json::from_slice(&script.script).unwrap();
+
     subsystem_resolver
         .executor
         .execute_and_get_r(
             &script.path,
-            bincode::deserialize(&script.script).unwrap(),
+            deserialized,
             &interceptor.method_name,
             arg_sequence,
             Some(InterceptedOperationInfo {

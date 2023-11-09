@@ -1,0 +1,5 @@
+@deno("node_ops.ts")
+module TodoDatabase {
+  @access(true)
+  query test_builtin(): String
+}
