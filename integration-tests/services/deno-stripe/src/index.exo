@@ -1,0 +1,6 @@
+@deno("test_ops.ts")
+module TodoDatabase {
+  query fake(): String
+  @access(true)
+  mutation create_customer(email: String): String
+}
