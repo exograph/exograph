@@ -25,6 +25,7 @@ use deno_npm::NpmPackageCacheFolderId;
 use deno_npm::NpmPackageId;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_io::Stdio;
+use deno_runtime::deno_node::NodeResolver;
 use deno_runtime::deno_node::NpmResolver;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::permissions::PermissionsContainer;
@@ -303,11 +304,6 @@ impl DenoModule {
             }
         }
 
-        let module_loader = Rc::new(EmbeddedModuleLoader {
-            source_code_map: Rc::new(RefCell::new(script_modules)),
-            embedded_dirs: embedded_script_dirs.unwrap_or_default(),
-        });
-
         let create_web_worker_cb = Arc::new(|_| {
             todo!("Web workers are not supported");
         });
@@ -342,6 +338,18 @@ impl DenoModule {
             } else {
                 (Arc::new(deno_fs::RealFs), None)
             };
+
+        let node_resolver = if let Some(npm_resolver) = resolver.as_ref() {
+            Some(NodeResolver::new(fs.clone(), npm_resolver.clone()))
+        } else {
+            None
+        };
+
+        let module_loader = Rc::new(EmbeddedModuleLoader {
+            source_code_map: Rc::new(RefCell::new(script_modules)),
+            embedded_dirs: embedded_script_dirs.unwrap_or_default(),
+            node_resolver,
+        });
 
         let options = WorkerOptions {
             bootstrap: BootstrapOptions {

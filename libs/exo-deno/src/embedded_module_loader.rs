@@ -15,6 +15,8 @@ use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::ResolutionKind;
+use deno_runtime::deno_node::NodeResolver;
+use deno_runtime::permissions::PermissionsContainer;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -32,6 +34,7 @@ pub(super) struct EmbeddedModuleLoader {
     #[allow(unused)]
     pub embedded_dirs: HashMap<String, &'static Dir<'static>>,
     pub source_code_map: Rc<RefCell<HashMap<Url, ResolvedModule>>>,
+    pub node_resolver: Option<NodeResolver>,
 }
 
 impl ModuleLoader for EmbeddedModuleLoader {
@@ -41,6 +44,16 @@ impl ModuleLoader for EmbeddedModuleLoader {
         referrer: &str,
         _kind: ResolutionKind,
     ) -> Result<ModuleSpecifier, AnyError> {
+        if let Some(node_resolver) = &self.node_resolver {
+            if let Ok(referrer) = ModuleSpecifier::parse(referrer) {
+                if node_resolver.in_npm_package(&referrer) {
+                    if let Ok(Some(res)) = node_resolver.resolve(specifier, &referrer, deno_runtime::deno_node::NodeResolutionMode::Execution, &PermissionsContainer::allow_all()) {
+                        return Ok(res.into_url());
+                    }
+                }
+            }
+        }
+
         Ok(resolve_import(specifier, referrer)?)
     }
 
