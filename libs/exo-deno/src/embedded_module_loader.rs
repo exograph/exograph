@@ -140,6 +140,10 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 panic!()
             }
         } else {
+            dbg!(&module_specifier);
+            dbg!(&module_specifier_unix);
+            dbg!(&borrowed_map.keys().cloned().collect::<Vec<ModuleSpecifier>>());
+
             drop(borrowed_map);
 
             // we will have to load it ourselves
