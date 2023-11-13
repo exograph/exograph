@@ -15,6 +15,8 @@ use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::ResolutionKind;
+use deno_runtime::deno_node::NodeResolver;
+use deno_runtime::permissions::PermissionsContainer;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -32,6 +34,7 @@ pub(super) struct EmbeddedModuleLoader {
     #[allow(unused)]
     pub embedded_dirs: HashMap<String, &'static Dir<'static>>,
     pub source_code_map: Rc<RefCell<HashMap<Url, ResolvedModule>>>,
+    pub node_resolver: Option<NodeResolver>,
 }
 
 impl ModuleLoader for EmbeddedModuleLoader {
@@ -41,6 +44,21 @@ impl ModuleLoader for EmbeddedModuleLoader {
         referrer: &str,
         _kind: ResolutionKind,
     ) -> Result<ModuleSpecifier, AnyError> {
+        if let Some(node_resolver) = &self.node_resolver {
+            if let Ok(referrer) = ModuleSpecifier::parse(referrer) {
+                if node_resolver.in_npm_package(&referrer) {
+                    if let Ok(Some(res)) = node_resolver.resolve(
+                        specifier,
+                        &referrer,
+                        deno_runtime::deno_node::NodeResolutionMode::Execution,
+                        &PermissionsContainer::allow_all(),
+                    ) {
+                        return Ok(res.into_url());
+                    }
+                }
+            }
+        }
+
         Ok(resolve_import(specifier, referrer)?)
     }
 
@@ -51,7 +69,20 @@ impl ModuleLoader for EmbeddedModuleLoader {
         is_dynamic: bool,
     ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
         let borrowed_map = self.source_code_map.borrow();
-        let mut resolved = borrowed_map.get(module_specifier);
+
+        #[allow(unused_mut)]
+        let mut module_specifier_unix = module_specifier.clone();
+        #[cfg(target_os = "windows")]
+        {
+            module_specifier_unix =
+                ModuleSpecifier::parse(&module_specifier_unix.as_str().replace(
+                    "C:\\EXOGRAPH_NPM_MODULES_SNAPSHOT",
+                    "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
+                ))
+                .unwrap();
+        }
+
+        let mut resolved = borrowed_map.get(&module_specifier_unix);
         while let Some(ResolvedModule::Redirect(to)) = resolved {
             resolved = borrowed_map.get(to);
         }
@@ -75,11 +106,15 @@ impl ModuleLoader for EmbeddedModuleLoader {
                         "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
                         "C:\\\\EXOGRAPH_NPM_MODULES_SNAPSHOT",
                     );
+                }
+
+                #[cfg(target_os = "windows")]
+                {
                     final_specifier = ModuleSpecifier::parse(&final_specifier.as_str().replace(
                         "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
                         "C:\\EXOGRAPH_NPM_MODULES_SNAPSHOT",
                     ))
-                    .unwrap()
+                    .unwrap();
                 }
 
                 let module_source = ModuleSource::new_with_redirect(
@@ -93,6 +128,9 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 panic!()
             }
         } else {
+            dbg!(&module_specifier);
+            dbg!(&module_specifier_unix);
+
             drop(borrowed_map);
 
             // we will have to load it ourselves
