@@ -93,11 +93,15 @@ impl ModuleLoader for EmbeddedModuleLoader {
                         "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
                         "C:\\\\EXOGRAPH_NPM_MODULES_SNAPSHOT",
                     );
+                }
+
+                #[cfg(target_os = "windows")]
+                {
                     final_specifier = ModuleSpecifier::parse(&final_specifier.as_str().replace(
                         "/EXOGRAPH_NPM_MODULES_SNAPSHOT",
                         "C:\\EXOGRAPH_NPM_MODULES_SNAPSHOT",
                     ))
-                    .unwrap()
+                    .unwrap();
                 }
 
                 let module_source = ModuleSource::new_with_redirect(
