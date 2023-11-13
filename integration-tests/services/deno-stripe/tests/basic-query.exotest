@@ -1,0 +1,10 @@
+operation: |
+  mutation {
+    create_customer(email: "customer@example.com")
+  }
+response: |
+  {
+    "data": {
+      "create_customer": "cus_"
+    }
+  }
