@@ -25,6 +25,7 @@ use deno_npm::NpmPackageCacheFolderId;
 use deno_npm::NpmPackageId;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_io::Stdio;
+use deno_runtime::deno_node::NodeResolver;
 use deno_runtime::deno_node::NpmResolver;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::permissions::PermissionsContainer;
@@ -303,16 +304,11 @@ impl DenoModule {
             }
         }
 
-        let module_loader = Rc::new(EmbeddedModuleLoader {
-            source_code_map: Rc::new(RefCell::new(script_modules)),
-            embedded_dirs: embedded_script_dirs.unwrap_or_default(),
-        });
-
         let create_web_worker_cb = Arc::new(|_| {
             todo!("Web workers are not supported");
         });
 
-        let (fs, resolver): (Arc<dyn FileSystem>, Option<Arc<dyn NpmResolver>>) =
+        let (fs, npm_resolver): (Arc<dyn FileSystem>, Option<Arc<dyn NpmResolver>>) =
             if let Some((resolution, vfs, contents)) = npm_snapshot {
                 let mut temp_file = tempfile().unwrap();
                 for buffer in contents {
@@ -342,6 +338,16 @@ impl DenoModule {
             } else {
                 (Arc::new(deno_fs::RealFs), None)
             };
+
+        let node_resolver = npm_resolver
+            .as_ref()
+            .map(|npm_resolver| NodeResolver::new(fs.clone(), npm_resolver.clone()));
+
+        let module_loader = Rc::new(EmbeddedModuleLoader {
+            source_code_map: Rc::new(RefCell::new(script_modules)),
+            embedded_dirs: embedded_script_dirs.unwrap_or_default(),
+            node_resolver,
+        });
 
         let options = WorkerOptions {
             bootstrap: BootstrapOptions {
@@ -380,7 +386,7 @@ impl DenoModule {
             format_js_error_fn: None,
             fs,
             stdio: Stdio::default(),
-            npm_resolver: resolver,
+            npm_resolver,
             cache_storage_dir: None,
             should_wait_for_inspector_session: false,
             startup_snapshot: None,

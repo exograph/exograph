@@ -18,7 +18,7 @@ colored.workspace = true
 tokio.workspace = true
 async-trait.workspace = true
 async-recursion.workspace = true
-anyhow.workspace = true
+anyhow = { workspace = true, features = ["backtrace"] }
 heck.workspace = true
 lazy_static.workspace = true
 notify-debouncer-mini = "0.2.1"
