@@ -59,8 +59,15 @@ function App() {
     });
   }, [getTokenFn]);
 
+  const schemaFetcher = useMemo(() => {
+    return createGraphiQLFetcher({
+      url: (window as any).exoSchemaEndpoint,
+      fetch: window.fetch,
+    });
+  }, []);
+
   async function fetchAndSetSchema() {
-    const schema = await fetchSchema(fetcher);
+    const schema = await fetchSchema(schemaFetcher);
 
     // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
     if (networkErrorCount.current >= 3) {
@@ -137,7 +144,9 @@ function ErrorMessage(props: {
   return (
     <div className="error-message">
       <div className="error-title">{props.title}</div>
-      {props.message && <div className="error-description">{props.message}</div>}
+      {props.message && (
+        <div className="error-description">{props.message}</div>
+      )}
       {props.children}
     </div>
   );
@@ -162,7 +171,10 @@ function NetworkError() {
       title="Network error"
       message="Please ensure that the server is running."
     >
-      <button className="graphiql-button reload-btn" onClick={() => window.location.reload()}>
+      <button
+        className="graphiql-button reload-btn"
+        onClick={() => window.location.reload()}
+      >
         Reload
       </button>
     </ErrorMessage>
@@ -170,5 +182,7 @@ function NetworkError() {
 }
 
 function Overlay(props: { children: React.ReactNode }) {
-  return <div className="overlay graphiql-dialog-overlay">{props.children}</div>;
+  return (
+    <div className="overlay graphiql-dialog-overlay">{props.children}</div>
+  );
 }

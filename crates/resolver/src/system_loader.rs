@@ -10,7 +10,7 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
-use common::env_const::EXO_INTROSPECTION;
+use common::env_const::{EnvError, EXO_INTROSPECTION};
 use core_resolver::context::JwtAuthenticator;
 use introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
@@ -28,7 +28,7 @@ use tracing::debug;
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
-    pub static LOCAL_ALLOW_INTROSPECTION: RefCell<Option<bool>> = RefCell::new(None);
+    pub static LOCAL_ALLOW_INTROSPECTION: RefCell<Option<IntrospectionMode>> = RefCell::new(None);
     pub static LOCAL_ENVIRONMENT: RefCell<Option<std::collections::HashMap<String, String>>> = RefCell::new(None);
 }
 
@@ -112,11 +112,7 @@ impl SystemLoader {
         // Then use those resolvers to build the schema
         let schema = Schema::new_from_resolvers(&subsystem_resolvers);
 
-        if let Some(introspection_resolver) =
-            Self::create_introspection_resolver(&subsystem_resolvers)?
-        {
-            subsystem_resolvers.push(introspection_resolver);
-        }
+        let subsystem_resolvers = Self::with_introspection_resolver(subsystem_resolvers)?;
 
         let (normal_query_depth_limit, introspection_query_depth_limit) = query_depth_limits()?;
 
@@ -140,33 +136,52 @@ impl SystemLoader {
         ))
     }
 
-    fn create_introspection_resolver(
-        subsystem_resolvers: &[Box<dyn SubsystemResolver + Send + Sync>],
-    ) -> Result<Option<Box<IntrospectionResolver>>, SystemLoadingError> {
-        let schema = Schema::new_from_resolvers(subsystem_resolvers);
+    fn with_introspection_resolver(
+        mut subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
+    ) -> Result<Vec<Box<dyn SubsystemResolver + Send + Sync>>, SystemLoadingError> {
+        let schema = || Schema::new_from_resolvers(&subsystem_resolvers);
 
-        allow_introspection().map(|allow_introspection| {
-            if allow_introspection {
-                Some(Box::new(IntrospectionResolver::new(schema)))
-            } else {
-                None
+        Ok(match introspection_mode()? {
+            IntrospectionMode::Disabled => subsystem_resolvers,
+            IntrospectionMode::Enabled => {
+                let introspection_resolver = Box::new(IntrospectionResolver::new(schema()));
+                subsystem_resolvers.push(introspection_resolver);
+                subsystem_resolvers
+            }
+            IntrospectionMode::Only => {
+                // forgo all other resolvers and only use introspection
+                let introspection_resolver = Box::new(IntrospectionResolver::new(schema()));
+                vec![introspection_resolver]
             }
         })
     }
 }
 
-pub fn allow_introspection() -> Result<bool, SystemLoadingError> {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum IntrospectionMode {
+    Enabled,  // Introspection queries are allowed (typically dev/yolo mode)
+    Disabled, // Introspection queries are not allowed (typically in production)
+    Only,     // Only introspection queries are allowed (to support "exo playground")
+}
+
+pub fn introspection_mode() -> Result<IntrospectionMode, EnvError> {
     LOCAL_ALLOW_INTROSPECTION.with(|f| {
         f.borrow()
             .map(Ok)
             .unwrap_or_else(|| match std::env::var(EXO_INTROSPECTION).ok() {
-                Some(e) => match e.parse::<bool>() {
-                    Ok(v) => Ok(v),
-                    Err(_) => Err(SystemLoadingError::Config(format!(
-                        "{EXO_INTROSPECTION} env var must be set to either true or false"
-                    ))),
+                Some(e) => match e.to_lowercase().as_str() {
+                    "true" | "enabled" | "1" => Ok(IntrospectionMode::Enabled),
+                    "false" | "disabled" => Ok(IntrospectionMode::Disabled),
+                    "only" => Ok(IntrospectionMode::Only),
+                    _ => Err(EnvError::InvalidEnum {
+                        env_key: EXO_INTROSPECTION,
+                        env_value: e,
+                        message: "Must be set to either true, enabled, 1, false, disabled, or only"
+                            .to_string(),
+                    }),
                 },
-                None => Ok(false),
+
+                None => Ok(IntrospectionMode::Disabled),
             })
     })
 }
@@ -217,4 +232,7 @@ pub enum SystemLoadingError {
 
     #[error("Configuration error: {0}")]
     Config(String),
+
+    #[error("{0}")]
+    EnvError(#[from] EnvError),
 }

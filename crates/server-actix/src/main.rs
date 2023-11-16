@@ -10,7 +10,9 @@
 use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpServer};
 
-use resolver::{allow_introspection, get_endpoint_http_path, get_playground_http_path};
+use resolver::{
+    get_endpoint_http_path, get_playground_http_path, introspection_mode, IntrospectionMode,
+};
 use server_actix::{configure_playground, configure_resolver};
 use thiserror::Error;
 use tracing_actix_web::TracingLogger;
@@ -76,7 +78,7 @@ async fn main() -> Result<(), ServerError> {
         Ok(host) => server.bind((host, server_port)),
         Err(_) => {
             match get_deployment_mode()? {
-                DeploymentMode::Dev | DeploymentMode::Yolo => {
+                DeploymentMode::Dev | DeploymentMode::Yolo | DeploymentMode::Playground => {
                     // Bind to "localhost" (needed for development). By binding to "localhost" we
                     // bind to both IPv4 and IPv6 loopback addresses ([::1]:9876, 127.0.0.1:9876)
                     //
@@ -98,20 +100,34 @@ async fn main() -> Result<(), ServerError> {
     match server {
         Ok(server) => {
             let pretty_addr = pretty_addr(&server.addrs());
-            println!(
-                "Started server on {} in {:.2} ms",
-                pretty_addr,
-                start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
-            );
 
-            if let Ok(true) = allow_introspection() {
+            let print_server_info = || {
+                println!(
+                    "Started server on {} in {:.2} ms",
+                    pretty_addr,
+                    start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
+                );
+                println!("- Endpoint hosted at:");
+                println!("\thttp://{pretty_addr}{}", get_endpoint_http_path());
+            };
+
+            let print_playground_info = || {
                 println!("- Playground hosted at:");
                 println!("\thttp://{pretty_addr}{}", get_playground_http_path());
+            };
+
+            match introspection_mode()? {
+                IntrospectionMode::Enabled => {
+                    print_server_info();
+                    print_playground_info();
+                }
+                IntrospectionMode::Disabled => {
+                    print_server_info();
+                }
+                IntrospectionMode::Only => {
+                    print_playground_info();
+                }
             }
-
-            println!("- Endpoint hosted at:");
-            println!("\thttp://{pretty_addr}{}", get_endpoint_http_path());
-
             Ok(server.run().await?)
         }
         Err(e) => Err(if e.kind() == ErrorKind::AddrInUse {
