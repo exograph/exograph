@@ -18,6 +18,8 @@ pub const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
 
 pub const _EXO_DEPLOYMENT_MODE: &str = "_EXO_DEPLOYMENT_MODE"; // "yolo", "dev", "playground" or "prod" (default)
 
+pub const _EXO_PLAYGROUND_ENDPOINT_URL: &str = "_EXO_PLAYGROUND_ENDPOINT_URL";
+
 #[derive(Error, Debug)]
 pub enum EnvError {
     #[error("Invalid env value {env_value} for {env_key}: {message}")]

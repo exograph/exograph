@@ -33,6 +33,8 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 futures.workspace = true
 tracing.workspace = true
 tracing-actix-web = "0.7.7"
+url.workspace = true
+reqwest.workspace = true
 resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }

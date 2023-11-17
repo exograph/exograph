@@ -29,17 +29,7 @@ pub fn get_asset_bytes<P: AsRef<Path>>(file_name: P) -> Option<Vec<u8>> {
                 .contents_utf8()
                 .expect("index.html for playground should be utf8");
             let str = str.replace("%%PLAYGROUND_URL%%", &get_playground_http_path());
-
-            // If the server is running in the playground mode, then use the endpoint URL from the
-            // environment variable (such as "http://<remote-server-address>/graphql"). Otherwise,
-            // use the default endpoint relative path (such as "/graphql").
-            let str = match std::env::var("_EXO_PLAYGROUND_ENDPOINT_URL") {
-                Ok(url) => str.replace("%%ENDPOINT_URL%%", &url),
-                Err(_) => str.replace("%%ENDPOINT_URL%%", &get_endpoint_http_path()),
-            };
-
-            let str = str.replace("%%SCHEMA_URL%%", &get_endpoint_http_path());
-
+            let str = str.replace("%%ENDPOINT_URL%%", &get_endpoint_http_path());
             let str = str.replace(
                 "%%ENABLE_INTROSPECTION_LIVE_UPDATE%%",
                 &enable_introspection_live_update,

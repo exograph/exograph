@@ -60,9 +60,23 @@ function App() {
   }, [getTokenFn]);
 
   const schemaFetcher = useMemo(() => {
+    const schemaFetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit | undefined
+    ) => {
+      const headers = {
+        ...init?.headers,
+        // This is a special header that tells the server that the current operation is a schema query
+        // This is used in playground mode to resolve such request locally (and not forward it to the upstream server)
+        _exo_operation_kind: "schema_query",
+      };
+      const withHeader = { ...init, headers };
+      return await window.fetch(input, withHeader);
+    };
+
     return createGraphiQLFetcher({
-      url: (window as any).exoSchemaEndpoint,
-      fetch: window.fetch,
+      url: (window as any).exoGraphQLEndpoint,
+      fetch: schemaFetch,
     });
   }, []);
 

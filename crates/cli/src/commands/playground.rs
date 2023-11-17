@@ -9,7 +9,7 @@ use clap::{Arg, ArgMatches, Command};
 use anyhow::Result;
 use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_POSTGRES_URL,
-    _EXO_DEPLOYMENT_MODE,
+    _EXO_DEPLOYMENT_MODE, _EXO_PLAYGROUND_ENDPOINT_URL,
 };
 
 use crate::{commands::command::get_required, util::watcher};
@@ -59,7 +59,7 @@ impl CommandDefinition for PlaygroundCommandDefinition {
 
         std::env::set_var(_EXO_DEPLOYMENT_MODE, "playground");
 
-        std::env::set_var("_EXO_PLAYGROUND_ENDPOINT_URL", &endpoint_url);
+        std::env::set_var(_EXO_PLAYGROUND_ENDPOINT_URL, &endpoint_url);
 
         let mut server =
             watcher::build_and_start_server(port, &|| async { Ok(()) }.boxed()).await?;
