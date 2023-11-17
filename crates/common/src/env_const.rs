@@ -33,7 +33,7 @@ pub enum EnvError {
 pub enum DeploymentMode {
     Yolo,
     Dev,
-    Playground,
+    Playground(String), // URL of the GraphQL endpoint to connect to
     Prod,
 }
 
@@ -41,7 +41,15 @@ pub fn get_deployment_mode() -> Result<DeploymentMode, EnvError> {
     match std::env::var(_EXO_DEPLOYMENT_MODE).as_deref() {
         Ok("yolo") => Ok(DeploymentMode::Yolo),
         Ok("dev") => Ok(DeploymentMode::Dev),
-        Ok("playground") => Ok(DeploymentMode::Playground),
+        Ok("playground") => {
+            let endpoint_url =
+                std::env::var(_EXO_PLAYGROUND_ENDPOINT_URL).map_err(|_| EnvError::InvalidEnum {
+                    env_key: _EXO_PLAYGROUND_ENDPOINT_URL,
+                    env_value: "".to_string(),
+                    message: "Must be set to a valid URL".to_string(),
+                })?;
+            Ok(DeploymentMode::Playground(endpoint_url))
+        }
         Ok("prod") | Err(_) => Ok(DeploymentMode::Prod),
         Ok(other) => Err(EnvError::InvalidEnum {
             env_key: _EXO_DEPLOYMENT_MODE,

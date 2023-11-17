@@ -78,7 +78,7 @@ async fn main() -> Result<(), ServerError> {
         Ok(host) => server.bind((host, server_port)),
         Err(_) => {
             match get_deployment_mode()? {
-                DeploymentMode::Dev | DeploymentMode::Yolo | DeploymentMode::Playground => {
+                DeploymentMode::Dev | DeploymentMode::Yolo | DeploymentMode::Playground(_) => {
                     // Bind to "localhost" (needed for development). By binding to "localhost" we
                     // bind to both IPv4 and IPv6 loopback addresses ([::1]:9876, 127.0.0.1:9876)
                     //

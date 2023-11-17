@@ -18,7 +18,7 @@ use actix_web::{
 };
 use url::Url;
 
-use common::env_const::{get_deployment_mode, DeploymentMode, _EXO_PLAYGROUND_ENDPOINT_URL};
+use common::env_const::{get_deployment_mode, DeploymentMode};
 use core_resolver::context::{ContextExtractionError, RequestContext};
 use core_resolver::system_resolver::SystemResolver;
 use core_resolver::OperationsPayload;
@@ -37,11 +37,8 @@ pub fn configure_resolver(
 ) -> impl FnOnce(&mut ServiceConfig) {
     let resolve_path = get_endpoint_http_path();
 
-    let endpoint_url = match (
-        std::env::var(_EXO_PLAYGROUND_ENDPOINT_URL),
-        get_deployment_mode(),
-    ) {
-        (Ok(url), Ok(DeploymentMode::Playground)) => Some(Url::parse(&url).unwrap()),
+    let endpoint_url = match get_deployment_mode() {
+        Ok(DeploymentMode::Playground(url)) => Some(Url::parse(&url).unwrap()),
         _ => None,
     };
 
@@ -80,7 +77,7 @@ async fn resolve(
 ) -> impl Responder {
     match endpoint_url.as_ref() {
         Some(endpoint_url) => match http_request.headers().get("_exo_operation_kind") {
-            Some(value) if value == "schema_operation" => {
+            Some(value) if value == "schema_query" => {
                 // This is a schema fetch request, so solve it locally
                 resolve_locally(http_request, body, system_resolver).await
             }

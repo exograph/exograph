@@ -58,7 +58,6 @@ impl CommandDefinition for PlaygroundCommandDefinition {
         std::env::set_var(EXO_CORS_DOMAINS, "*");
 
         std::env::set_var(_EXO_DEPLOYMENT_MODE, "playground");
-
         std::env::set_var(_EXO_PLAYGROUND_ENDPOINT_URL, &endpoint_url);
 
         let mut server =
