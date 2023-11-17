@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use common::env_const::EXO_INTROSPECTION_LIVE_UPDATE;
+use common::env_const::{EXO_INTROSPECTION_LIVE_UPDATE, _EXO_UPSTREAM_ENDPOINT_URL};
 use include_dir::{include_dir, Dir};
 use std::path::Path;
 
@@ -30,6 +30,12 @@ pub fn get_asset_bytes<P: AsRef<Path>>(file_name: P) -> Option<Vec<u8>> {
                 .expect("index.html for playground should be utf8");
             let str = str.replace("%%PLAYGROUND_URL%%", &get_playground_http_path());
             let str = str.replace("%%ENDPOINT_URL%%", &get_endpoint_http_path());
+
+            let str = str.replace(
+                "%%UPSTREAM_ENDPOINT_URL%%",
+                &std::env::var(_EXO_UPSTREAM_ENDPOINT_URL).unwrap_or("".to_string()),
+            );
+
             let str = str.replace(
                 "%%ENABLE_INTROSPECTION_LIVE_UPDATE%%",
                 &enable_introspection_live_update,

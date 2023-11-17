@@ -18,7 +18,7 @@ pub const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
 
 pub const _EXO_DEPLOYMENT_MODE: &str = "_EXO_DEPLOYMENT_MODE"; // "yolo", "dev", "playground" or "prod" (default)
 
-pub const _EXO_PLAYGROUND_ENDPOINT_URL: &str = "_EXO_PLAYGROUND_ENDPOINT_URL";
+pub const _EXO_UPSTREAM_ENDPOINT_URL: &str = "_EXO_UPSTREAM_ENDPOINT_URL";
 
 #[derive(Error, Debug)]
 pub enum EnvError {
@@ -43,8 +43,8 @@ pub fn get_deployment_mode() -> Result<DeploymentMode, EnvError> {
         Ok("dev") => Ok(DeploymentMode::Dev),
         Ok("playground") => {
             let endpoint_url =
-                std::env::var(_EXO_PLAYGROUND_ENDPOINT_URL).map_err(|_| EnvError::InvalidEnum {
-                    env_key: _EXO_PLAYGROUND_ENDPOINT_URL,
+                std::env::var(_EXO_UPSTREAM_ENDPOINT_URL).map_err(|_| EnvError::InvalidEnum {
+                    env_key: _EXO_UPSTREAM_ENDPOINT_URL,
                     env_value: "".to_string(),
                     message: "Must be set to a valid URL".to_string(),
                 })?;

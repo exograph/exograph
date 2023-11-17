@@ -135,18 +135,36 @@ function App() {
 }
 
 function Core(props: { schema: GraphQLSchema | null; fetcher: Fetcher }) {
+  const upstreamGraphQLEndpoint = (window as any).exoUpstreamGraphQLEndpoint;
+
   return (
-    <GraphiQL
-      fetcher={props.fetcher}
-      defaultEditorToolsVisibility={true}
-      isHeadersEditorEnabled={true}
-      schema={props.schema}
-      toolbar={{ additionalContent: <AuthToolbarButton /> }}
-    >
-      <GraphiQL.Logo>
-        <Logo />
-      </GraphiQL.Logo>
-    </GraphiQL>
+    <>
+      <GraphiQL
+        fetcher={props.fetcher}
+        defaultEditorToolsVisibility={true}
+        isHeadersEditorEnabled={true}
+        schema={props.schema}
+        toolbar={{ additionalContent: <AuthToolbarButton /> }}
+      >
+        <GraphiQL.Logo>
+          <Logo />
+        </GraphiQL.Logo>
+        {upstreamGraphQLEndpoint && (
+          <GraphiQL.Footer>
+            <div style={{ paddingTop: "5px" }}>
+              <b>Endpoint URL</b>:{" "}
+              <span
+                style={{
+                  color: "hsl(var(--color-primary))",
+                }}
+              >
+                {upstreamGraphQLEndpoint}
+              </span>
+            </div>
+          </GraphiQL.Footer>
+        )}
+      </GraphiQL>
+    </>
   );
 }
 
