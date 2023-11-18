@@ -162,9 +162,9 @@ async fn forward_request(
     let forwarded_req = req
         .headers()
         .iter()
-        .filter(|(h, _)| *h != "origin")
+        .filter(|(h, _)| *h != "origin" && *h != "connection" && *h != "host")
         .fold(forwarded_req, |forwarded_req, (h, v)| {
-            forwarded_req.header(h.clone(), v.clone())
+            forwarded_req.header(h.as_str(), v.as_bytes())
         });
 
     let res = match forwarded_req.send().await {
