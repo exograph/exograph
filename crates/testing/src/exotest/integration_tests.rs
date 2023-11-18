@@ -20,7 +20,8 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
 use resolver::{
-    create_system_resolver, resolve_in_memory, LOCAL_ALLOW_INTROSPECTION, LOCAL_ENVIRONMENT,
+    create_system_resolver, resolve_in_memory, IntrospectionMode, LOCAL_ALLOW_INTROSPECTION,
+    LOCAL_ENVIRONMENT,
 };
 use serde::Serialize;
 use serde_json::{json, Map, Value};
@@ -131,7 +132,7 @@ pub(crate) async fn run_testfile(
                             jwt.borrow_mut().replace(jwtsecret.clone());
 
                             LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-                                allow.borrow_mut().replace(true);
+                                allow.borrow_mut().replace(IntrospectionMode::Enabled);
 
                                 LOCAL_ENVIRONMENT.with(|env| {
                                     env.borrow_mut().replace(extra_envs.clone());

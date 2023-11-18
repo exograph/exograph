@@ -24,6 +24,7 @@ use commands::{
     deploy,
     dev::DevCommandDefinition,
     new::NewCommandDefinition,
+    playground::PlaygroundCommandDefinition,
     schema,
     test::TestCommandDefinition,
     yolo::YoloCommandDefinition,
@@ -67,6 +68,7 @@ async fn main() -> Result<()> {
             Box::new(BuildCommandDefinition {}),
             Box::new(deploy::command_definition()),
             Box::new(schema::command_definition()),
+            Box::new(PlaygroundCommandDefinition {}),
             Box::new(TestCommandDefinition {}),
         ],
     );

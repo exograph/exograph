@@ -19,7 +19,7 @@ use exo_deno::{
 };
 use exo_sql::{LOCAL_CHECK_CONNECTION_ON_STARTUP, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
 use include_dir::{include_dir, Dir};
-use resolver::{create_system_resolver, LOCAL_ALLOW_INTROSPECTION};
+use resolver::{create_system_resolver, IntrospectionMode, LOCAL_ALLOW_INTROSPECTION};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
 
@@ -51,7 +51,7 @@ pub(crate) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
                     pool_size.borrow_mut().replace(1);
 
                     LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-                        allow.borrow_mut().replace(true);
+                        allow.borrow_mut().replace(IntrospectionMode::Enabled);
 
                         LOCAL_CHECK_CONNECTION_ON_STARTUP.with(|check_connection| {
                             check_connection.borrow_mut().replace(false);

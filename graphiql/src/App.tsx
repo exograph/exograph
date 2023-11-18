@@ -59,8 +59,29 @@ function App() {
     });
   }, [getTokenFn]);
 
+  const schemaFetcher = useMemo(() => {
+    const schemaFetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit | undefined
+    ) => {
+      const headers = {
+        ...init?.headers,
+        // This is a special header that tells the server that the current operation is a schema query
+        // This is used in playground mode to resolve such request locally (and not forward it to the upstream server)
+        _exo_operation_kind: "schema_query",
+      };
+      const withHeader = { ...init, headers };
+      return await window.fetch(input, withHeader);
+    };
+
+    return createGraphiQLFetcher({
+      url: (window as any).exoGraphQLEndpoint,
+      fetch: schemaFetch,
+    });
+  }, []);
+
   async function fetchAndSetSchema() {
-    const schema = await fetchSchema(fetcher);
+    const schema = await fetchSchema(schemaFetcher);
 
     // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
     if (networkErrorCount.current >= 3) {
@@ -114,18 +135,36 @@ function App() {
 }
 
 function Core(props: { schema: GraphQLSchema | null; fetcher: Fetcher }) {
+  const upstreamGraphQLEndpoint = (window as any).exoUpstreamGraphQLEndpoint;
+
   return (
-    <GraphiQL
-      fetcher={props.fetcher}
-      defaultEditorToolsVisibility={true}
-      isHeadersEditorEnabled={true}
-      schema={props.schema}
-      toolbar={{ additionalContent: <AuthToolbarButton /> }}
-    >
-      <GraphiQL.Logo>
-        <Logo />
-      </GraphiQL.Logo>
-    </GraphiQL>
+    <>
+      <GraphiQL
+        fetcher={props.fetcher}
+        defaultEditorToolsVisibility={true}
+        isHeadersEditorEnabled={true}
+        schema={props.schema}
+        toolbar={{ additionalContent: <AuthToolbarButton /> }}
+      >
+        <GraphiQL.Logo>
+          <Logo />
+        </GraphiQL.Logo>
+        {upstreamGraphQLEndpoint && (
+          <GraphiQL.Footer>
+            <div style={{ paddingTop: "5px" }}>
+              <b>Endpoint URL</b>:{" "}
+              <span
+                style={{
+                  color: "hsl(var(--color-primary))",
+                }}
+              >
+                {upstreamGraphQLEndpoint}
+              </span>
+            </div>
+          </GraphiQL.Footer>
+        )}
+      </GraphiQL>
+    </>
   );
 }
 
@@ -137,7 +176,9 @@ function ErrorMessage(props: {
   return (
     <div className="error-message">
       <div className="error-title">{props.title}</div>
-      {props.message && <div className="error-description">{props.message}</div>}
+      {props.message && (
+        <div className="error-description">{props.message}</div>
+      )}
       {props.children}
     </div>
   );
@@ -162,7 +203,10 @@ function NetworkError() {
       title="Network error"
       message="Please ensure that the server is running."
     >
-      <button className="graphiql-button reload-btn" onClick={() => window.location.reload()}>
+      <button
+        className="graphiql-button reload-btn"
+        onClick={() => window.location.reload()}
+      >
         Reload
       </button>
     </ErrorMessage>
@@ -170,5 +214,7 @@ function NetworkError() {
 }
 
 function Overlay(props: { children: React.ReactNode }) {
-  return <div className="overlay graphiql-dialog-overlay">{props.children}</div>;
+  return (
+    <div className="overlay graphiql-dialog-overlay">{props.children}</div>
+  );
 }

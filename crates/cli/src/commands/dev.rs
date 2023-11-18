@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::{
-    EXO_CORS_DOMAINS, EXO_DEPLOYMENT_MODE, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
 use futures::FutureExt;
 use std::path::PathBuf;
@@ -31,7 +31,7 @@ pub struct DevCommandDefinition {}
 
 #[async_trait]
 impl CommandDefinition for DevCommandDefinition {
-    fn command(&self) -> clap::Command {
+    fn command(&self) -> Command {
         Command::new("dev")
             .about("Run exograph server in development mode")
             .arg(port_arg())
@@ -51,7 +51,7 @@ impl CommandDefinition for DevCommandDefinition {
         // In the serve mode, which is meant for development, always enable introspection and use relaxed CORS
         std::env::set_var(EXO_INTROSPECTION, "true");
         std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
-        std::env::set_var(EXO_DEPLOYMENT_MODE, "dev");
+        std::env::set_var(_EXO_DEPLOYMENT_MODE, "dev");
 
         std::env::set_var(EXO_CORS_DOMAINS, "*");
 

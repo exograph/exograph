@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use clap::{ArgMatches, Command};
 use colored::Colorize;
 use common::env_const::{
-    EXO_CORS_DOMAINS, EXO_DEPLOYMENT_MODE, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE,
+    EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
 use std::{path::PathBuf, sync::atomic::Ordering};
 
@@ -45,7 +45,7 @@ pub struct YoloCommandDefinition {}
 
 #[async_trait]
 impl CommandDefinition for YoloCommandDefinition {
-    fn command(&self) -> clap::Command {
+    fn command(&self) -> Command {
         Command::new("yolo")
             .about("Run local exograph server with a temporary database")
             .arg(port_arg())
@@ -102,7 +102,7 @@ async fn run_server(
     std::env::remove_var(EXO_POSTGRES_PASSWORD);
     std::env::set_var(EXO_INTROSPECTION, "true");
     std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
-    std::env::set_var(EXO_DEPLOYMENT_MODE, "yolo");
+    std::env::set_var(_EXO_DEPLOYMENT_MODE, "yolo");
 
     match jwt_secret {
         JWTSecret::EnvSecret(s) => std::env::set_var(EXO_JWT_SECRET, s),
