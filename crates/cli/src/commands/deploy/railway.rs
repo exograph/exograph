@@ -52,37 +52,36 @@ impl CommandDefinition for RailwayCommandDefinition {
 
         println!(
             "{}",
-            "\nPush the repository to a (public or private) repository on GitHub".blue()
+            "\n- Push the repository to a (public or private) repository on GitHub".blue()
         );
         println!(
-            "{}\n",
-            "Create a new project on Railway.app and connect it to the GitHub repository".blue()
+            "{}",
+            "- Create a new project on Railway.app and connect it to the GitHub repository".blue()
         );
 
         if use_railway_db {
             println!(
                 "{}",
-                r#"In the same project, choose "New" and then add a Postgres database"#.blue()
+                r#"- In the same project, choose "New" and then add a Postgres database"#.blue()
             );
             println!(
                 "{}",
-                "Set the following environment variables in Railway.app:".blue()
+                "- Set the following environment variables in Railway.app:".blue()
             );
             println!(
                 "\t{} to point to {}",
-                "DATABASE_URL".blue(),
+                "DATABASE_URL".green(),
                 "${{Postgres.DATABASE_URL}}".yellow()
             );
             println!(
                 "\t{} to point to {}",
-                "DATABASE_PRIVATE_URL".blue(),
+                "DATABASE_PRIVATE_URL".green(),
                 "${{Postgres.DATABASE_PRIVATE_URL}}".yellow()
             );
         } else {
             println!(
                 "{}",
-                "Create a Postgres database and set the following environment variables in Railway.app:"
-                    .blue()
+                "Set the following environment variables in Railway.app:".blue()
             );
             println!(
                 "\t{} to point to {}",
@@ -92,14 +91,17 @@ impl CommandDefinition for RailwayCommandDefinition {
         }
 
         println!(
-            "\n{}",
-            r#"Go to the "Networking" section in the "Settings" tab and click "Generate Domain"."#
-                .blue()
+            "{}",
+            r#"- Go to the "Settings" -> "Networking" and click "Generate Domain"."#.blue()
+        );
+        println!("{}", "- Start Exograph in playground mode".blue());
+        println!(
+            "\t{}",
+            "exo playground --endpoint <the generated domain>/graphql".yellow()
         );
         println!(
             "{}",
-            "Visit the displayed URL, and you will see the familiar Exograph GraphQL playground!"
-                .blue()
+            r#"- Open the playground URL shown and execute GraphQL operations as usual"#.blue()
         );
 
         Ok(())
@@ -131,11 +133,7 @@ fn create_dockerfile(base_dir: &Path, use_railway_db: bool) -> Result<()> {
     let mut dockerfile = File::create(dockerfile_path)?;
     dockerfile.write_all(dockerfile_content.as_bytes())?;
 
-    println!(
-        "{}",
-        "Created Dockerfile.railway file. You may edit this file to customize the deployment such as installing additional dependencies."
-            .green()
-    );
+    println!("{}", "Created Dockerfile.railway file.".green());
 
     Ok(())
 }
@@ -157,10 +155,7 @@ fn create_config_toml(base_dir: &Path) -> Result<()> {
     let config_file_content = RAILWAY_TOML;
     config_file.write_all(config_file_content.as_bytes())?;
 
-    println!(
-        "{}",
-        "Created railway.toml file. You may edit this file to customize the deployment.".green()
-    );
+    println!("{}", "Created railway.toml file.".green());
 
     Ok(())
 }
