@@ -75,7 +75,7 @@ impl LocalPostgresDatabaseServer {
             let config_file = data_dir.path().join("postgresql.conf");
             let mut file = OpenOptions::new()
                 .append(true)
-                .open(&config_file)
+                .open(config_file)
                 .map_err(|e| {
                     EphemeralDatabaseSetupError::Generic(format!(
                         "Failed to open Postgres config file: {e}"

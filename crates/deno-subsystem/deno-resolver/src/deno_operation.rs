@@ -74,8 +74,6 @@ impl<'a> DenoOperation<'a> {
             .map(|r| r.0)
             .unwrap_or(ModuleAccessPredicate::False);
 
-        let method_level_access = method_level_access;
-
         // deny if either access check fails
         Ok(!(matches!(type_level_access, false)
             || matches!(method_level_access, ModuleAccessPredicate::False)))
