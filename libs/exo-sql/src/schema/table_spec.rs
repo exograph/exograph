@@ -48,7 +48,7 @@ impl TableSpec {
         self.columns.iter().fold(HashMap::new(), |mut map, c| {
             {
                 for name in c.unique_constraints.iter() {
-                    let entry: &mut HashSet<String> = map.entry(name).or_insert_with(HashSet::new);
+                    let entry: &mut HashSet<String> = map.entry(name).or_default();
                     (*entry).insert(c.name.clone());
                 }
             }

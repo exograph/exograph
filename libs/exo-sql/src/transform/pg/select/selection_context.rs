@@ -42,7 +42,7 @@ impl<'c> SelectionContext<'c> {
             })
             .collect();
 
-        let order_by_column_paths = abstract_select
+        let order_by_column_paths: Vec<_> = abstract_select
             .order_by
             .as_ref()
             .map(|ob| {
@@ -51,7 +51,7 @@ impl<'c> SelectionContext<'c> {
                     .map(|p| <&PhysicalColumnPath>::clone(p).clone())
                     .collect()
             })
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         // Sanity check that there are no one-to-many links in the order by clause
         // such a clause would be ill-formed

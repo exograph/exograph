@@ -15,7 +15,8 @@ use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::table_spec::TableSpec;
 use exo_sql::DatabaseClient;
-use std::{io::Write, path::PathBuf};
+use std::fmt::Write;
+use std::path::PathBuf;
 
 use heck::ToUpperCamelCase;
 
@@ -45,7 +46,7 @@ impl CommandDefinition for ImportCommandDefinition {
         issues.append(&mut schema.issues);
         issues.append(&mut model.issues);
 
-        let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
+        let mut buffer: Box<dyn std::io::Write> = open_file_for_output(output.as_deref())?;
         buffer.write_all(schema.value.to_model().value.as_bytes())?;
 
         for issue in &issues {
@@ -80,15 +81,12 @@ impl ToModel for DatabaseSpec {
     /// Converts the schema specification to a exograph file.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
-        let stmt = self
-            .tables
-            .iter()
-            .map(|table| {
-                let mut model = table.to_model();
-                issues.append(&mut model.issues);
-                format!("{}\n\n", model.value)
-            })
-            .collect();
+        let stmt = self.tables.iter().fold(String::new(), |mut acc, table| {
+            let mut model = table.to_model();
+            issues.append(&mut model.issues);
+            let _ = write!(acc, "{}\n\n", model.value);
+            acc
+        });
 
         WithIssues {
             value: stmt,
@@ -106,15 +104,12 @@ impl ToModel for TableSpec {
             Some(schema) => format!("@table(name=\"{}\", schema=\"{}\")", self.name.name, schema),
             None => format!("@table(\"{}\")", self.name.name),
         };
-        let column_stmts = self
-            .columns
-            .iter()
-            .map(|c| {
-                let mut model = c.to_model();
-                issues.append(&mut model.issues);
-                format!("  {}\n", model.value)
-            })
-            .collect::<String>();
+        let column_stmts = self.columns.iter().fold(String::new(), |mut acc, c| {
+            let mut model = c.to_model();
+            issues.append(&mut model.issues);
+            let _ = writeln!(acc, "  {}", model.value);
+            acc
+        });
 
         // not a robust check
         if self.name.name.ends_with('s') {

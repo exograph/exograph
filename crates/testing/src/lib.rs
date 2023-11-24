@@ -40,7 +40,7 @@ pub fn run(
         pattern
             .as_ref()
             .map(|p| format!("with pattern '{p}'"))
-            .unwrap_or_else(|| "".to_string()),
+            .unwrap_or_default(),
         "...".blue().bold(),
     );
 

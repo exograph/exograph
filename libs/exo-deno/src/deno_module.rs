@@ -243,7 +243,7 @@ impl DenoModule {
         let user_module_path = match &user_code {
             UserCode::LoadFromFs(user_module_path) => {
                 let abs = fs::canonicalize(user_module_path)?;
-                Url::from_file_path(&abs).unwrap()
+                Url::from_file_path(abs).unwrap()
             }
             UserCode::LoadFromMemory { path, .. } => Url::parse(path).unwrap(),
         };
