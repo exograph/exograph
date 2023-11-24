@@ -110,15 +110,31 @@ impl NpmResolver for SnapshotNpmResolver {
         assert!(mode == deno_runtime::deno_node::NodeResolutionMode::Execution);
         if let Ok(referrer_path) = referrer.to_file_path() {
             if let Ok(without_registry) = referrer_path.strip_prefix(&self.registry_base) {
+                let mut without_registry_vec = without_registry.iter().collect::<Vec<_>>();
+                let mut namespace_prefix = "".to_string();
+
+                // Skip npm namespaces where the without_registry starts with @ (such as "@react-email/render/0.0.9/dist/index.js")
+                if without_registry
+                    .iter()
+                    .next()
+                    .unwrap() // safe because we know without_registry is either with namespace or at least the package name
+                    .to_str()
+                    .unwrap()
+                    .starts_with('@')
+                {
+                    namespace_prefix =
+                        format!("{}/", without_registry_vec.remove(0).to_str().unwrap());
+                }
+
                 // inside the registry, the module is in a folder NAME/VERSION(_INDEX)
-                let first_two = without_registry.iter().take(2).collect::<Vec<_>>();
+                let first_two = without_registry_vec.iter().take(2).collect::<Vec<_>>();
                 let version_maybe_index = first_two[1].to_str().unwrap();
                 let split = version_maybe_index.split('_').collect::<Vec<_>>();
 
                 // figure out which package is requesting the import
                 let referrer_id = NpmPackageCacheFolderId {
                     nv: PackageNv {
-                        name: first_two[0].to_str().unwrap().to_string(),
+                        name: namespace_prefix + first_two[0].to_str().unwrap(),
                         version: Version::parse_standard(split[0]).unwrap(),
                     },
                     copy_index: if split.len() > 1 {
