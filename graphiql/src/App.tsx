@@ -170,7 +170,7 @@ function Core(props: { schema: GraphQLSchema | null; fetcher: Fetcher }) {
 
 function ErrorMessage(props: {
   title: string;
-  message?: string;
+  message?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   return (
@@ -192,7 +192,17 @@ function EmptySchema() {
   return (
     <ErrorMessage
       title="Schema contains no queries"
-      message="Please check the model to ensure that at least one query is defined."
+      message={
+        <div>
+          <p>
+            <a href="https://spec.graphql.org/June2018/#sec-Root-Operation-Types">
+              GraphQL specification
+            </a>{" "}
+            requires at least one query in the schema.
+          </p>
+          <p>Please ensure that the model defines a query.</p>
+        </div>
+      }
     />
   );
 }
