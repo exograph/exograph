@@ -102,11 +102,10 @@ You will see URLs for the GraphQL playground and GraphQL endpoint. You can use t
 cd integration-tests/basic-model-no-auth
 ```
 
-2. Create a test database and update its schema
+2. Create a test database
 
 ```sh
 createdb concerts-db
-cargo run --bin exo schema create | psql concerts-db
 ```
 
 3. Start the server
