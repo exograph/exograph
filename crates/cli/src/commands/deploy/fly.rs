@@ -151,7 +151,10 @@ impl CommandDefinition for FlyCommandDefinition {
             let db_name = &app_name.to_snake_case(); // this is how fly.io names the db
             println!(
                 "{}{}{}",
-                format!("\texo schema create | psql postgres://{db_name}:",).blue(),
+                format!(
+                    "\texo schema migrate --apply-to-database --database postgres://{db_name}:",
+                )
+                .blue(),
                 "<APP_DATABASE_PASSWORD>".yellow(),
                 format!("@localhost:54321/{db_name}").blue(),
             );
@@ -165,7 +168,7 @@ impl CommandDefinition for FlyCommandDefinition {
             println!("\n\tCreate the database schema:");
             println!(
                 "{}{}",
-                "\texo schema create | psql ".blue(),
+                "\texo schema migrate --apply-to-database --database ".blue(),
                 "<your-postgres-url>".yellow()
             );
         }

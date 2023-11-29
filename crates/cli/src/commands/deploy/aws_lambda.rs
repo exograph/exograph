@@ -100,7 +100,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
 
         println!(
             "{}{}",
-            "exo schema create | psql ".blue(),
+            "exo schema migrate --apply-to-database --database ".blue(),
             "<your-postgres-url>".yellow(),
         );
 
