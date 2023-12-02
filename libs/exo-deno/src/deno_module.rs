@@ -19,10 +19,8 @@ use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
 use deno_fs::FileSystem;
 use deno_npm::resolution::NpmResolutionSnapshot;
-use deno_npm::resolution::PackageReqNotFoundError;
 use deno_npm::resolution::SerializedNpmResolutionSnapshot;
 use deno_npm::NpmPackageCacheFolderId;
-use deno_npm::NpmPackageId;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_io::Stdio;
 use deno_runtime::deno_node::NodeResolver;
@@ -33,7 +31,6 @@ use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
 use deno_semver::package::PackageNv;
-use deno_semver::package::PackageReq;
 use deno_semver::Version;
 use deno_virtual_fs::file_system::DenoCompileFileSystem;
 use deno_virtual_fs::virtual_fs::FileBackedVfs;
@@ -142,30 +139,6 @@ impl NpmResolver for SnapshotNpmResolver {
         } else {
             bail!("Expected referrer module to be a file path")
         }
-    }
-
-    fn resolve_package_folder_from_path(
-        &self,
-        path: &std::path::Path,
-    ) -> Result<Option<PathBuf>, AnyError> {
-        let without_registry = path.strip_prefix(&self.registry_base).unwrap();
-        let first_two = without_registry.iter().take(2).collect::<Vec<_>>();
-        let full_path = self.registry_base.join(first_two[0]).join(first_two[1]);
-        Ok(Some(full_path))
-    }
-
-    fn resolve_package_folder_from_deno_module(
-        &self,
-        _pkg_nv: &PackageNv,
-    ) -> Result<PathBuf, AnyError> {
-        unreachable!()
-    }
-
-    fn resolve_pkg_id_from_pkg_req(
-        &self,
-        _req: &PackageReq,
-    ) -> Result<NpmPackageId, PackageReqNotFoundError> {
-        unreachable!()
     }
 
     fn in_npm_package(&self, specifier: &ModuleSpecifier) -> bool {
@@ -357,8 +330,6 @@ impl DenoModule {
                 enable_testing_features: false,
                 location: None,
                 no_color: false,
-                runtime_version: "x".to_string(),
-                ts_version: "x".to_string(),
                 unstable: true,
                 is_tty: false,
                 user_agent: user_agent_name.to_string(),
@@ -366,6 +337,8 @@ impl DenoModule {
                 locale: "en".to_string(),
                 has_node_modules_dir: false,
                 maybe_binary_npm_command_name: None,
+                enable_op_summary_metrics: false,
+                unstable_features: vec![],
             },
             create_params: None,
             extensions,
@@ -390,6 +363,9 @@ impl DenoModule {
             cache_storage_dir: None,
             should_wait_for_inspector_session: false,
             startup_snapshot: None,
+            feature_checker: Default::default(),
+            skip_op_registration: false,
+            strace_ops: None,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
@@ -605,7 +581,7 @@ pub enum Arg {
 mod tests {
     use std::path::Path;
 
-    use deno_core::op;
+    use deno_core::op2;
     use serde_json::json;
 
     use super::*;
@@ -791,13 +767,15 @@ mod tests {
         );
     }
 
-    #[op]
-    fn rust_impl(arg: String) -> Result<String, AnyError> {
+    #[op2]
+    #[string]
+    fn rust_impl(#[string] arg: String) -> Result<String, AnyError> {
         Ok(format!("Register Op: {arg}"))
     }
 
-    #[op]
-    async fn async_rust_impl(arg: String) -> Result<String, AnyError> {
+    #[op2(async)]
+    #[string]
+    async fn async_rust_impl(#[string] arg: String) -> Result<String, AnyError> {
         Ok(format!("Register Async Op: {arg}"))
     }
 
