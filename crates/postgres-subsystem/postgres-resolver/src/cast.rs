@@ -175,7 +175,7 @@ fn cast_string(
                         PhysicalColumnType::Timestamp { timezone, .. } => {
                             if *timezone {
                                 // default to UTC+0 if this field is a timestamp+timezone field
-                                SQLParamContainer::new(DateTime::<Utc>::from_utc(
+                                SQLParamContainer::new(DateTime::<Utc>::from_naive_utc_and_offset(
                                     naive_datetime,
                                     chrono::Utc,
                                 ))
