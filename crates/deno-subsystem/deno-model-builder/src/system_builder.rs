@@ -20,18 +20,25 @@ use core_plugin_interface::{
 };
 
 use deno::{
-    cache::ParsedSourceCache, module_loader::NpmModuleLoader, node::CliCjsCodeAnalyzer, CliFactory,
-    CliOptions, Flags, PathBuf,
+    args::CliOptions,
+    cache::{ModuleInfoCache, ParsedSourceCache},
+    module_loader::NpmModuleLoader,
+    node::CliCjsCodeAnalyzer,
+    npm::ManagedCliNpmResolver,
+    CliFactory, Flags, PathBuf,
 };
 use deno_ast::{MediaType, ParseParams, SourceTextInfo};
-use deno_graph::{Module, ModuleEntryRef, ModuleGraph, ModuleSpecifier, WalkOptions};
+use deno_graph::{
+    Module, ModuleAnalyzer, ModuleEntryRef, ModuleGraph, ModuleSpecifier, WalkOptions,
+};
 use deno_model::{
     interceptor::Interceptor,
     operation::{DenoMutation, DenoQuery},
     subsystem::DenoSubsystem,
 };
+use deno_npm::NpmSystemInfo;
 use deno_runtime::{
-    deno_node::{analyze::NodeCodeTranslator, NodeResolution, NodeResolver},
+    deno_node::{analyze::NodeCodeTranslator, NodeResolution, NodeResolutionMode, NodeResolver},
     permissions::PermissionsContainer,
 };
 use deno_virtual_fs::virtual_fs::{VfsBuilder, VirtualDirectory};
@@ -152,29 +159,29 @@ fn process_script(
                     ))
                 })?;
 
-            let registry_url = factory.npm_api().unwrap().base_url();
-            let root_path = factory.npm_cache().unwrap().registry_folder(registry_url);
-
             let node_resolver = factory.node_resolver().await.unwrap();
             let npm_resolver = factory.npm_resolver().await.unwrap();
-            let npm_resolution = factory.npm_resolution().await.unwrap();
 
             let code_translator = factory.node_code_translator().await.unwrap().clone();
-            let parsed_source_cache = factory.parsed_source_cache().unwrap().clone();
+            let parsed_source_cache = factory.parsed_source_cache().clone();
+            let module_info_cache = factory.module_info_cache().unwrap().clone();
             let npm_loader = NpmModuleLoader::new(
                 factory.cjs_resolutions().clone(),
                 code_translator.clone(),
                 factory.fs().clone(),
-                factory.node_resolver().await.unwrap().clone(),
+                factory.cli_node_resolver().await.unwrap().clone(),
             );
 
+            let managed_npm = npm_resolver.as_managed().unwrap();
+            let root_path =
+                managed_npm.registry_folder_in_global_cache(managed_npm.registry_base_url());
             if !root_path.exists() {
                 std::fs::create_dir_all(&root_path).unwrap();
             }
 
             let vfs = if let Ok(mut builder) = VfsBuilder::new(root_path.clone()) {
-                for package in npm_resolution.all_system_packages(&Default::default()) {
-                    let folder = npm_resolver
+                for package in managed_npm.all_system_packages(&Default::default()) {
+                    let folder = managed_npm
                         .resolve_pkg_folder_from_pkg_id(&package.id)
                         .unwrap();
                     builder.add_dir_recursive(&folder).unwrap();
@@ -198,12 +205,16 @@ fn process_script(
                     graph,
                     npm_loader,
                     node_resolver.clone(),
+                    managed_npm,
                     code_translator,
                     parsed_source_cache,
+                    module_info_cache,
                     root_path,
                 )?,
                 npm_snapshot: Some((
-                    npm_resolution.serialized_valid_snapshot().into_serialized(),
+                    managed_npm
+                        .serialized_valid_snapshot_for_system(&NpmSystemInfo::default())
+                        .into_serialized(),
                     vfs.0,
                     vfs.1,
                 )),
@@ -217,12 +228,14 @@ fn process_script(
     Ok((root.to_string(), serde_json::to_vec(&script_defn).unwrap()))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_node_resolutions(
     root: NodeResolution,
     npm_loader: &NpmModuleLoader,
     node_resolver: &Arc<NodeResolver>,
     code_translator: &Arc<NodeCodeTranslator<CliCjsCodeAnalyzer>>,
     parsed_source_cache: &Arc<ParsedSourceCache>,
+    module_info_cache: &Arc<ModuleInfoCache>,
     root_path: &PathBuf,
     modules: &mut HashMap<Url, ResolvedModule>,
 ) -> Option<(String, MediaType, ModuleSpecifier, bool)> {
@@ -340,8 +353,10 @@ fn walk_node_resolutions(
                     ),
                 );
 
-                let analysis = parsed_source_cache
-                    .as_analyzer()
+                let store = parsed_source_cache.as_store();
+                let analyzer = module_info_cache.as_module_analyzer(None, &*store);
+
+                let analysis = analyzer
                     .analyze(
                         &esm_specifier,
                         Arc::from(loaded.code.as_str()),
@@ -366,6 +381,7 @@ fn walk_node_resolutions(
                         node_resolver,
                         code_translator,
                         parsed_source_cache,
+                        module_info_cache,
                         root_path,
                         modules,
                     );
@@ -382,12 +398,15 @@ fn walk_node_resolutions(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_module_graph(
     graph: ModuleGraph,
     npm_loader: NpmModuleLoader,
     node_resolver: Arc<NodeResolver>,
+    npm_resolver: &ManagedCliNpmResolver,
     code_translator: Arc<NodeCodeTranslator<CliCjsCodeAnalyzer>>,
     parsed_source_cache: Arc<ParsedSourceCache>,
+    module_info_cache: Arc<ModuleInfoCache>,
     root_path: PathBuf,
 ) -> Result<HashMap<Url, ResolvedModule>, ModelBuildingError> {
     let mut modules: HashMap<Url, ResolvedModule> = HashMap::new();
@@ -417,10 +436,16 @@ fn walk_module_graph(
                     )),
                     Module::Node(_) => None,
                     Module::Npm(npm) => {
+                        let containing_folder = npm_resolver
+                            .resolve_pkg_folder_from_deno_module(npm.nv_reference.nv())
+                            .unwrap();
                         let resolved = node_resolver
-                            .resolve_npm_reference(
-                                &npm.nv_reference,
-                                deno_runtime::deno_node::NodeResolutionMode::Execution,
+                            .resolve_package_subpath_from_deno_module(
+                                &containing_folder,
+                                npm.nv_reference.sub_path(),
+                                // this uses the module as its own referrer, but this seems to be fine
+                                specifier,
+                                NodeResolutionMode::Execution,
                                 &PermissionsContainer::allow_all(),
                             )
                             .unwrap()
@@ -432,6 +457,7 @@ fn walk_module_graph(
                             &node_resolver,
                             &code_translator,
                             &parsed_source_cache,
+                            &module_info_cache,
                             &root_path,
                             &mut modules,
                         )
