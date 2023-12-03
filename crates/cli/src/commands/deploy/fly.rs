@@ -17,7 +17,6 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::{Arg, ArgAction, Command};
 use colored::Colorize;
-use heck::ToSnakeCase;
 
 use crate::commands::{
     build::build,
@@ -38,15 +37,6 @@ impl CommandDefinition for FlyCommandDefinition {
                     .short('a')
                     .long("app")
                     .required(true)
-                    .num_args(1),
-            )
-            .arg(
-                Arg::new("version")
-                    .help("The version of application (Dockerfile will use this as tag)")
-                    .short('v')
-                    .long("version")
-                    .required(false)
-                    .default_value("latest")
                     .num_args(1),
             )
             .arg(
@@ -77,113 +67,69 @@ impl CommandDefinition for FlyCommandDefinition {
     /// on how to deploy the app to Fly.io.
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         let app_name: String = get_required(matches, "app-name")?;
-        let version: String = get_required(matches, "version")?;
         let envs: Option<Vec<String>> = matches.get_many("env").map(|env| env.cloned().collect());
         let env_file: Option<PathBuf> = get(matches, "env-file");
         let use_fly_db: bool = matches.get_flag("use-fly-db");
-
-        let image_tag = format!("{}:{}", app_name, version);
 
         build(false).await?; // Build the exo_ir file
 
         let current_dir = std::env::current_dir()?;
 
-        create_fly_toml(&current_dir, &app_name, &image_tag, &env_file, &envs)?;
-
+        create_fly_toml(&current_dir, &app_name, &env_file, &envs)?;
         create_dockerfile(&current_dir, use_fly_db)?;
 
-        let docker_build_output = std::process::Command::new("docker")
-            .args(["build", "-t", &image_tag, "-f", "Dockerfile.fly", "."])
-            .current_dir(".")
-            .output()
-            .map_err(|err| {
-                anyhow!("While trying to invoke `docker` in order to build the docker image: {err}")
-            })?;
-
-        if !docker_build_output.status.success() {
-            return Err(anyhow!(
-                "Docker build failed. Output: {}",
-                String::from_utf8_lossy(&docker_build_output.stderr)
-            ));
-        }
-
         println!(
-            "{}",
-            "If you haven't already done so, run `fly auth login` to login.".purple()
+            "\n{}\n",
+            "To deploy to Fly.io, run the following commands:".green()
         );
 
         println!(
-            "{}",
-            "\nTo deploy the app for the first time, run:"
-                .blue()
-                .italic()
+            "\t{} {}",
+            "flyctl auth login".blue(),
+            "(If you haven't already done so)".purple()
         );
-        println!("{}", format!("\tfly apps create {}", app_name).blue());
-        println!("\n\tSet up JWT by running either of the following: ");
+
+        println!("\t{}", format!("flyctl apps create {}", app_name).blue());
         println!(
-            "{}{}",
-            format!("\tfly secrets set --app {} EXO_JWT_SECRET=", app_name,).blue(),
+            "\n\tSet up JWT by running {} of the following: ",
+            "either".bold()
+        );
+        println!(
+            "\t{}{}",
+            format!("flyctl secrets set --app {} EXO_JWT_SECRET=", app_name,).blue(),
             "<your-jwt-secret>".yellow()
         );
         println!(
-            "{}{}",
-            format!("\tfly secrets set --app {} EXO_OIDC_URL=", app_name,).blue(),
+            "\t{}{}",
+            format!("flyctl secrets set --app {} EXO_OIDC_URL=", app_name,).blue(),
             "<your-oidc-url>".yellow()
         );
-        println!("\n\tSet up database: ");
+        println!("\n\tSet up the database: ");
 
         if use_fly_db {
             println!(
-                "{}",
-                format!("\tfly postgres create --name {}-db", app_name).blue()
+                "\t{}",
+                format!("flyctl postgres create --name {}-db", app_name).blue()
             );
             println!(
-                "{}",
-                format!("\tfly postgres attach --app {} {}-db", app_name, app_name).blue()
-            );
-
-            println!("\n\tCreate the database schema:");
-            println!(
-                "\t{} {}",
-                "In a separate terminal:".italic(),
-                format!("fly proxy 54321:5432 -a {}-db", app_name).blue()
-            );
-            let db_name = &app_name.to_snake_case(); // this is how fly.io names the db
-            println!(
-                "{}{}{}",
-                format!(
-                    "\texo schema migrate --apply-to-database --database postgres://{db_name}:",
-                )
-                .blue(),
-                "<APP_DATABASE_PASSWORD>".yellow(),
-                format!("@localhost:54321/{db_name}").blue(),
+                "\t{}",
+                format!("flyctl postgres attach --app {} {}-db", app_name, app_name).blue()
             );
         } else {
             println!(
-                "{}{}",
-                format!("\tfly secrets set --app {} EXO_POSTGRES_URL=", app_name).blue(),
-                "<your-postgres-url>".yellow()
-            );
-
-            println!("\n\tCreate the database schema:");
-            println!(
-                "{}{}",
-                "\texo schema migrate --apply-to-database --database ".blue(),
-                "<your-postgres-url>".yellow()
+                "\t{}{}{}",
+                format!("flyctl secrets set --app {} DATABASE_URL=\"", app_name).blue(),
+                "<your-postgres-url>".yellow(),
+                "\"".blue()
             );
         }
 
-        println!("{}", "\n\tfly deploy --local-only".blue());
+        println!("\n\tDeploy the app: ");
 
         println!(
-            "{} '{}'{}",
-            "\nTo deploy a new version of an existing app (you must provide the '--version' argument to point to the next version), update 'image' in fly.toml to"
-                .green()
-                .italic(),
-            image_tag.yellow(),
-            " and run:".green().italic()
+            "\t{}",
+            r#"flyctl console --dockerfile Dockerfile.fly.builder -C "/srv/deploy.sh" --env=FLY_API_TOKEN=$(flyctl auth token)"#.blue(),
         );
-        println!("{}", "\tfly deploy --local-only".green());
 
         Ok(())
     }
@@ -191,34 +137,50 @@ impl CommandDefinition for FlyCommandDefinition {
 
 static FLY_TOML: &str = include_str!("../templates/fly.toml");
 static DOCKERFILE: &str = include_str!("../templates/Dockerfile.fly");
+static DOCKERFILE_BUILDER: &str = include_str!("../templates/Dockerfile.fly.builder");
 
 fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
-    let dockerfile_path = fly_dir.join("Dockerfile.fly");
+    {
+        let dockerfile_path = fly_dir.join("Dockerfile.fly");
 
-    if dockerfile_path.exists() {
-        println!(
-            "{}",
-            "Dockerfile already exists. To regenerate, remove the existing file. Skipping..."
-                .purple()
-        );
-        return Ok(());
+        if dockerfile_path.exists() {
+            println!(
+                "{}",
+                "Dockerfile.fly already exists. To regenerate, remove the existing file. Skipping..."
+                    .purple()
+            );
+        } else {
+            let extra_env = if use_fly_db {
+                format!("{EXO_POSTGRES_URL}=${{DATABASE_URL}}")
+            } else {
+                "".into()
+            };
+
+            let dockerfile_content = DOCKERFILE.replace("<<<EXTRA_ENV>>>", &extra_env);
+
+            let mut dockerfile = File::create(dockerfile_path)?;
+            dockerfile.write_all(dockerfile_content.as_bytes())?;
+            println!(
+                "{}",
+                "Created Dockerfile.fly. You can edit this file to customize the deployment such as installing additional dependencies."
+                    .green()
+            );
+        }
     }
 
-    let extra_env = if use_fly_db {
-        format!("{EXO_POSTGRES_URL}=${{DATABASE_URL}}")
-    } else {
-        "".into()
-    };
-    let dockerfile_content = DOCKERFILE.replace("<<<EXTRA_ENV>>>", &extra_env);
-
-    let mut dockerfile = File::create(dockerfile_path)?;
-    dockerfile.write_all(dockerfile_content.as_bytes())?;
-
-    println!(
-        "{}",
-        "Created Dockerfile.fly file. You can edit this file to customize the deployment such as installing additional dependencies."
-            .green()
-    );
+    {
+        let dockerfile_builder_path = fly_dir.join("Dockerfile.fly.builder");
+        if dockerfile_builder_path.exists() {
+            println!(
+                "{}",
+                "Dockerfile.fly.builder already exists. To regenerate, remove the existing file. Skipping..."
+                    .purple()
+            );
+        } else {
+            let mut dockerfile_builder = File::create(dockerfile_builder_path)?;
+            dockerfile_builder.write_all(DOCKERFILE_BUILDER.as_bytes())?;
+        }
+    }
 
     Ok(())
 }
@@ -229,7 +191,6 @@ fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
 fn create_fly_toml(
     fly_dir: &Path,
     app_name: &str,
-    image_tag: &str,
     env_file: &Option<PathBuf>,
     envs: &Option<Vec<String>>,
 ) -> Result<()> {
@@ -245,7 +206,6 @@ fn create_fly_toml(
     }
 
     let fly_toml_content = FLY_TOML.replace("<<<APP_NAME>>>", app_name);
-    let fly_toml_content = fly_toml_content.replace("<<<IMAGE_NAME>>>", image_tag);
 
     let mut accumulated_env = String::new();
 

@@ -5,7 +5,7 @@ kill_timeout = 5
 processes = []
 
 [build]
-image = "<<<IMAGE_NAME>>>"
+dockerfile = "Dockerfile.fly"
 
 [env]
 <<<ENV_VARS>>>
