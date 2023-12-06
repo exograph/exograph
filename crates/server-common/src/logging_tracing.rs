@@ -9,7 +9,7 @@
 
 //! # Tracing/Telemetry configuration setup.
 //!
-//! The server code is instrumented with Rust's `tracing` frawework.
+//! The server code is instrumented with Rust's `tracing` framework.
 //!
 //! Calling the `init` function will initialize a global tracing subscriber based on the values of
 //! the `EXO_LOG` environment variable which follows the same conventions as `RUST_LOG`. This will
@@ -35,7 +35,6 @@
 //! $ docker run -d --name jaeger -e COLLECTOR_OTLP_ENABLED=true -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:latest
 //! ```
 //!
-use opentelemetry_otlp::WithExportConfig;
 use std::str::FromStr;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
 
@@ -61,21 +60,20 @@ pub(super) fn init() {
         .init();
 }
 
-fn create_otlp_tracer() -> Option<opentelemetry::sdk::trace::Tracer> {
+fn create_otlp_tracer() -> Option<opentelemetry_sdk::trace::Tracer> {
     if !std::env::vars().any(|(name, _)| name.starts_with("OTEL_")) {
         return None;
     }
     let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
 
-    let mut tracer = opentelemetry_otlp::new_pipeline().tracing();
+    let base_tracer = opentelemetry_otlp::new_pipeline().tracing();
     let headers = parse_otlp_headers_from_env();
 
-    match protocol.as_str() {
+    let tracer = match protocol.as_str() {
         "grpc" => {
             let mut exporter = opentelemetry_otlp::new_exporter()
                 .tonic()
-                .with_metadata(metadata_from_headers(headers))
-                .with_env();
+                .with_metadata(metadata_from_headers(headers));
 
             // Check if we need TLS
             if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
@@ -83,14 +81,13 @@ fn create_otlp_tracer() -> Option<opentelemetry::sdk::trace::Tracer> {
                     exporter = exporter.with_tls_config(Default::default());
                 }
             }
-            tracer = tracer.with_exporter(exporter)
+            base_tracer.with_exporter(exporter)
         }
         "http/protobuf" => {
             let exporter = opentelemetry_otlp::new_exporter()
                 .http()
-                .with_headers(headers.into_iter().collect())
-                .with_env();
-            tracer = tracer.with_exporter(exporter)
+                .with_headers(headers.into_iter().collect());
+            base_tracer.with_exporter(exporter)
         }
         p => panic!("Unsupported protocol {}", p),
     };
@@ -99,7 +96,11 @@ fn create_otlp_tracer() -> Option<opentelemetry::sdk::trace::Tracer> {
     // opentelemetry. Otherwise the test server will be killed before the batched
     // spans are exported.
     // Some(tracer.install_simple().unwrap())
-    Some(tracer.install_batch(opentelemetry::runtime::Tokio).unwrap())
+    Some(
+        tracer
+            .install_batch(opentelemetry_sdk::runtime::Tokio)
+            .unwrap(),
+    )
 }
 
 fn metadata_from_headers(headers: Vec<(String, String)>) -> tonic::metadata::MetadataMap {
