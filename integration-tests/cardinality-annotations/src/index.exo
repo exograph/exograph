@@ -1,0 +1,15 @@
+@postgres
+module Product {
+  @access(true)
+  type Product {
+    @pk id: Int = autoIncrement()
+    name: String
+    @manyToOne department: Department
+  }
+
+  @access(true)
+  type Department {
+    @pk id: Int = autoIncrement()
+    name: String
+  }
+}

@@ -201,6 +201,33 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     no_params: true,
                     single_params: true,
                     mapped_params: None,
+                }
+            ),
+            (
+                "manyToOne",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "oneToMany",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "oneToOne",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
                 },
             ),
         ]
