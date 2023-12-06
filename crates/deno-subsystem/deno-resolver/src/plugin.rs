@@ -53,6 +53,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
         &self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
+        deno_core::JsRuntime::init_platform(None);
         let subsystem = DenoSubsystem::deserialize(serialized_subsystem)?;
 
         let executor = DenoExecutorPool::new_from_config(exo_config());
