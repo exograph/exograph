@@ -1,5 +1,5 @@
-import os from "node:os";
+import process from "node:process";
 
 export function test_builtin(): string {
-	return os.arch().length > 0 ? "OK" : "FAIL";
+	return process.cwd().length > 0 ? "OK" : "FAIL";
 }

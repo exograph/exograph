@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use anyhow::{anyhow, bail, Result};
-use exo_deno::deno_core::{error::AnyError, op, OpState};
+use exo_deno::deno_core::{error::AnyError, op2, OpState};
 
 use core_plugin_interface::core_resolver::system_resolver::SystemResolutionError;
 use serde_json::Value;
@@ -75,26 +75,29 @@ pub async fn op_exograph_execute_query_helper(
     }
 }
 
-#[op]
+#[op2(async)]
+#[serde]
 pub async fn op_exograph_execute_query(
     state: Rc<RefCell<OpState>>,
-    query_string: Value,
-    variables: Option<Value>,
-) -> Result<Value, AnyError> {
+    #[serde] query_string: serde_json::Value,
+    #[serde] variables: Option<serde_json::Value>,
+) -> Result<serde_json::Value, AnyError> {
     op_exograph_execute_query_helper(state, query_string, variables, Value::Null).await
 }
 
-#[op]
+#[op2(async)]
+#[serde]
 pub async fn op_exograph_execute_query_priv(
     state: Rc<RefCell<OpState>>,
-    query_string: Value,
-    variables: Option<Value>,
-    context_override: Value,
-) -> Result<Value, AnyError> {
+    #[serde] query_string: serde_json::Value,
+    #[serde] variables: Option<serde_json::Value>,
+    #[serde] context_override: serde_json::Value,
+) -> Result<serde_json::Value, AnyError> {
     op_exograph_execute_query_helper(state, query_string, variables, context_override).await
 }
 
-#[op]
+#[op2]
+#[string]
 pub fn op_operation_name(state: &mut OpState) -> Result<String, AnyError> {
     // try to read the intercepted operation name out of Deno's GothamStorage
     if let Some(InterceptedOperationInfo { name, .. }) = state.borrow() {
@@ -104,8 +107,9 @@ pub fn op_operation_name(state: &mut OpState) -> Result<String, AnyError> {
     }
 }
 
-#[op]
-pub fn op_operation_query(state: &mut OpState) -> Result<Value, AnyError> {
+#[op2]
+#[serde]
+pub fn op_operation_query(state: &mut OpState) -> Result<serde_json::Value, AnyError> {
     if let Some(InterceptedOperationInfo { query, .. }) = state.borrow() {
         Ok(query.to_owned())
     } else {
@@ -113,8 +117,11 @@ pub fn op_operation_query(state: &mut OpState) -> Result<Value, AnyError> {
     }
 }
 
-#[op]
-pub async fn op_operation_proceed(state: Rc<RefCell<OpState>>) -> Result<Value, AnyError> {
+#[op2(async)]
+#[serde]
+pub async fn op_operation_proceed(
+    state: Rc<RefCell<OpState>>,
+) -> Result<serde_json::Value, AnyError> {
     let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
 
     let sender = {
@@ -164,11 +171,12 @@ pub fn add_header(state: &mut OpState, header: String, value: String) -> Result<
     Ok(())
 }
 
-#[op]
+#[op2]
+#[serde]
 pub fn op_exograph_add_header(
     state: &mut OpState,
-    header: String,
-    value: String,
+    #[string] header: String,
+    #[string] value: String,
 ) -> Result<(), AnyError> {
     add_header(state, header, value)
 }

@@ -21,6 +21,7 @@ deno.workspace = true
 deno_core.workspace = true
 deno_ast = { workspace = true, features = ["transpiling"] }
 deno_graph.workspace = true
+deno_npm.workspace = true
 deno_virtual_fs.workspace = true
 deno_runtime.workspace = true
 serde_json.workspace = true
