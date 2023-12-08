@@ -123,17 +123,15 @@ impl<'a> DatabaseClient {
                             })?;
                             let mut buf = BufReader::new(cert_file);
                             rustls_pemfile::certs(&mut buf)
+                                .collect::<Result<Vec<_>, _>>()
                                 .map_err(|_| DatabaseError::Config("Invalid certificate".into()))?
                                 .into_iter()
-                                .for_each(|cert| {
-                                    root_store
-                                        .add(&Certificate(cert))
-                                        .expect("Failed to add certificate");
-                                });
+                                .map(|cert| root_store.add(&Certificate(cert.to_vec())))
+                                .collect::<Result<Vec<_>, _>>()?;
                         }
                         None => {
                             for cert in load_native_certs()? {
-                                root_store.add(&Certificate(cert.0))?;
+                                root_store.add(&Certificate(cert.to_vec()))?;
                             }
                         }
                     }
