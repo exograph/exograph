@@ -32,7 +32,13 @@ operation: |
         }
         adminNotes: createAdminNotes(data: [{content: "n1_user3", user: {id: 3}}, {content: "n2_user4", user: {id: 4}}]) {
             id
-        }                       
+        }
+        externalDoc1: createExternalDoc(data: {content: "externalDoc1", externalId: 1}) {
+            id
+        }
+        externalDoc2: createExternalDoc(data: {content: "externalDoc2", externalId: 2}) {
+            id
+        }                    
     }  
 auth: |
     {

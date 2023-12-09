@@ -1,6 +1,7 @@
 context AuthContext {
   @jwt("sub") id: Int 
   @jwt("roles") roles: Array<String> 
+  @jwt("externalId") externalId: Int
 }
 
 @postgres
@@ -41,5 +42,13 @@ module DocumentModule {
     @pk id: Int = autoIncrement()
     content: String
     user: User
+  }
+
+  // To set up a scenario where access control uses an optional field (and compares to a non-optional context field)
+  @access(self.externalId == AuthContext.externalId || "ADMIN" in AuthContext.roles)
+  type ExternalDoc {
+    @pk id: Int = autoIncrement()
+    externalId: Int?
+    content: String
   }
 }

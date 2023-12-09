@@ -54,6 +54,7 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
             let out_updated = if o_typ.is_incomplete() {
                 let left_typ = left.typ().deref(type_env);
                 let right_typ = right.typ().deref(type_env);
+
                 if left_typ.is_complete()
                     && right_typ.is_complete()
                     && type_match(&left_typ, &right_typ)
@@ -96,7 +97,13 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
         };
 
         fn identical_match(left: &Type, right: &Type) -> bool {
-            left == right
+            // Allow optional types to be compared to non-optional types
+            match (left, right) {
+                (Type::Optional(left), Type::Optional(right)) => left == right,
+                (Type::Optional(left), right) => left.as_ref() == right,
+                (left, Type::Optional(right)) => left == right.as_ref(),
+                _ => left == right,
+            }
         }
 
         fn in_relation_match(left: &Type, right: &Type) -> bool {
