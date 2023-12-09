@@ -1,0 +1,104 @@
+stages:
+  - operation: |
+      query {
+        externalDocs {
+          id
+          content
+        }
+      }
+    auth: |
+        {
+            "externalId": 1
+        }  
+    response: |
+        {
+          "data": {
+            "externalDocs": [
+              {
+                "id": 1,
+                "content": "externalDoc1"
+              }
+            ]
+          }
+        }
+  - operation: |
+      query {
+        externalDocs {
+          id
+          content
+        }
+      }
+    auth: |
+        {
+            "externalId": 2
+        }  
+    response: |
+        {
+          "data": {
+            "externalDocs": [
+              {
+                "id": 2,
+                "content": "externalDoc2"
+              }
+            ]
+          }
+        }
+  - operation: |
+      query {
+        externalDocs {
+          id
+          content
+        }
+      }
+    auth: |
+        {
+            "externalId": 3
+        }  
+    response: |
+        {
+          "data": {
+            "externalDocs": [
+            ]
+          }
+        }        
+  - operation: |
+      query {
+        externalDocs {
+          id
+          content
+        }
+      }
+    auth: |
+        {
+            "roles": ["ADMIN"]
+        }  
+    response: |
+        {
+          "data": {
+            "externalDocs": [
+              {
+                "id": 1,
+                "content": "externalDoc1"
+              },
+              {
+                "id": 2,
+                "content": "externalDoc2"
+              }
+            ]
+          }
+        }
+  - operation: |
+      query {
+        externalDocs {
+          id
+          content
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
