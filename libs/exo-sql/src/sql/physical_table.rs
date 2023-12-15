@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashSet;
+
 use crate::Database;
 
 use super::{
@@ -53,12 +55,21 @@ impl PhysicalTableName {
 }
 
 /// A physical table in the database such as "concerts" or "users".
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct PhysicalTable {
     pub name: PhysicalTableName,
     /// The columns of the table.
     // concerts.venue_id: (venues.id, "int", "venue_id_table")
     pub columns: Vec<PhysicalColumn>,
+
+    pub indices: Vec<PhysicalIndex>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct PhysicalIndex {
+    pub name: String,
+    pub columns: HashSet<String>,
+    pub unique: bool,
 }
 
 /// The derived implementation of `Debug` is quite verbose, so we implement it manually

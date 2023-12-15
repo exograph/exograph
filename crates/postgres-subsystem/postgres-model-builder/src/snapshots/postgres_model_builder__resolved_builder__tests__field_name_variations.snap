@@ -49,6 +49,7 @@ values:
             is_pk: true
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: AutoIncrement
           - name: title_main
             typ:
@@ -60,6 +61,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: title_main1
             typ:
@@ -71,6 +73,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: public1
             typ:
@@ -82,6 +85,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: PUBLIC2
             typ:
@@ -93,6 +97,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: foo123
             typ:
@@ -104,6 +109,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
         table_name:
           name: entitys

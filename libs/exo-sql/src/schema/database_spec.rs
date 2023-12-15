@@ -13,10 +13,12 @@ use deadpool_postgres::Client;
 
 use crate::{
     database_error::DatabaseError, schema::column_spec::ColumnSpec, Database, ManyToOne,
-    PhysicalColumn, PhysicalTableName, TableId,
+    PhysicalColumn, PhysicalIndex, PhysicalTableName, TableId,
 };
 
-use super::{column_spec::ColumnTypeSpec, issue::WithIssues, table_spec::TableSpec};
+use super::{
+    column_spec::ColumnTypeSpec, index_spec::IndexSpec, issue::WithIssues, table_spec::TableSpec,
+};
 
 #[derive(Debug)]
 pub struct DatabaseSpec {
@@ -44,21 +46,28 @@ impl DatabaseSpec {
         })
     }
 
+    pub fn get_indices(&self) -> Vec<IndexSpec> {
+        self.tables
+            .iter()
+            .flat_map(|table| table.indices.clone())
+            .collect()
+    }
+
     pub fn to_database(self) -> Database {
         let mut database = Database::default();
 
         // Step 1: Create tables (without columns)
-        let tables: Vec<(TableId, Vec<ColumnSpec>)> = self
+        let tables: Vec<(TableId, Vec<ColumnSpec>, Vec<IndexSpec>)> = self
             .tables
             .into_iter()
             .map(|table| {
                 let table_id = database.insert_table(table.to_column_less_table());
-                (table_id, table.columns)
+                (table_id, table.columns, table.indices)
             })
             .collect();
 
         // Step 2: Add columns to tables
-        for (table_id, column_specs) in tables.iter() {
+        for (table_id, column_specs, index_specs) in tables.iter() {
             let columns = column_specs
                 .iter()
                 .map(|column_spec| PhysicalColumn {
@@ -73,13 +82,23 @@ impl DatabaseSpec {
                 })
                 .collect();
 
-            database.get_table_mut(*table_id).columns = columns;
+            let table = database.get_table_mut(*table_id);
+
+            table.columns = columns;
+            table.indices = index_specs
+                .iter()
+                .map(|index_spec| PhysicalIndex {
+                    name: index_spec.name.to_owned(),
+                    columns: index_spec.columns.to_owned(),
+                    unique: index_spec.is_unique,
+                })
+                .collect();
         }
 
         // Step 3: Add relations to the database
         let relations: Vec<ManyToOne> = tables
             .iter()
-            .flat_map(|(table_id, column_specs)| {
+            .flat_map(|(table_id, column_specs, _)| {
                 let table = database.get_table(*table_id);
 
                 let column_ids = database.get_column_ids(*table_id);
@@ -147,6 +166,16 @@ impl DatabaseSpec {
                         .clone()
                         .into_iter()
                         .map(|c| ColumnSpec::from_physical(c, &database))
+                        .collect(),
+                    table
+                        .indices
+                        .clone()
+                        .into_iter()
+                        .map(|index| IndexSpec {
+                            name: index.name,
+                            columns: index.columns.into_iter().collect(),
+                            is_unique: index.unique,
+                        })
                         .collect(),
                 )
             })

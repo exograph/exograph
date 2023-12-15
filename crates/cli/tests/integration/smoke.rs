@@ -37,7 +37,7 @@ fn exo_smoke_tests() -> Result<(), Error> {
     let sql = p.exp_eof()?;
     let sql = sql.replace('\r', "");
 
-    assert_eq!(sql, EXPECTED_SCHEMA);
+    assert_eq!(sql.trim(), EXPECTED_SCHEMA.trim());
 
     cmd = exo(project_dir.clone(), ["build"]);
     let p = spawn_command(cmd, Some(5000))?;

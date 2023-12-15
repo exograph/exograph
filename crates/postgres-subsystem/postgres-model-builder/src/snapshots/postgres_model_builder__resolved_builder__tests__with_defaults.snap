@@ -51,6 +51,7 @@ values:
               Explicit:
                 dbtype: BIGINT
             unique_constraints: []
+            indices: []
             default_value: AutoIncrement
           - name: title
             typ:
@@ -62,6 +63,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: venue
             typ:
@@ -74,6 +76,7 @@ values:
             type_hint: ~
             unique_constraints:
               - unique_concert
+            indices: []
             default_value: ~
           - name: attending
             typ:
@@ -86,6 +89,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: seating
             typ:
@@ -99,6 +103,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
         table_name:
           name: concerts
@@ -127,6 +132,7 @@ values:
               Explicit:
                 dbtype: BIGINT
             unique_constraints: []
+            indices: []
             default_value: AutoIncrement
           - name: name
             typ:
@@ -138,6 +144,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: concerts
             typ:
@@ -150,6 +157,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
         table_name:
           name: venues

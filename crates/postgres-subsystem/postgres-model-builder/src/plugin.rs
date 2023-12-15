@@ -194,6 +194,15 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     mapped_params: None,
                 },
             ),
+            (
+                "index",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: true,
+                    mapped_params: None,
+                },
+            ),
         ]
     }
 

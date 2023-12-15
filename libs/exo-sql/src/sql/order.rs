@@ -68,6 +68,7 @@ mod test {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("people", None),
             vec![pk_column("id"), int_column("age")],
+            vec![],
         )])
         .to_database();
 
@@ -90,6 +91,7 @@ mod test {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("people", None),
             vec![pk_column("id"), string_column("name"), int_column("age")],
+            vec![],
         )])
         .to_database();
 

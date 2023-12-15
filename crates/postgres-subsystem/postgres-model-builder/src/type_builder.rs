@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     aggregate_type_builder::aggregate_type_name, naming::ToPlural,
@@ -29,8 +29,8 @@ use core_plugin_interface::{
 };
 
 use exo_sql::{
-    ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalTable,
-    TableId,
+    ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalIndex,
+    PhysicalTable, TableId,
 };
 
 use heck::ToSnakeCase;
@@ -189,16 +189,40 @@ fn expand_type_no_fields(
     let table = PhysicalTable {
         name: resolved_type.table_name.clone(),
         columns: vec![],
+        indices: vec![],
     };
 
     let table_id = building.database.insert_table(table);
 
-    let columns = resolved_type
-        .fields
-        .iter()
-        .flat_map(|field| create_column(field, table_id, resolved_env))
-        .collect();
-    building.database.get_table_mut(table_id).columns = columns;
+    {
+        let columns = resolved_type
+            .fields
+            .iter()
+            .flat_map(|field| create_column(field, table_id, resolved_env))
+            .collect();
+        building.database.get_table_mut(table_id).columns = columns;
+    }
+
+    {
+        let mut indices: Vec<PhysicalIndex> = vec![];
+        resolved_type.fields.iter().for_each(|field| {
+            field.indices.iter().for_each(|index_name| {
+                let existing_index = indices.iter_mut().find(|i| &i.name == index_name);
+
+                match existing_index {
+                    Some(existing_index) => {
+                        existing_index.columns.insert(field.column_name.clone());
+                    }
+                    None => indices.push(PhysicalIndex {
+                        name: index_name.clone(),
+                        columns: HashSet::from_iter([field.column_name.clone()]),
+                        unique: false,
+                    }),
+                }
+            })
+        });
+        building.database.get_table_mut(table_id).indices = indices;
+    }
 
     let pk_query = building
         .pk_queries

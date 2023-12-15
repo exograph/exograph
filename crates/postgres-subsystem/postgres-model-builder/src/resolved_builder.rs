@@ -137,6 +137,7 @@ pub struct ResolvedField {
     pub is_pk: bool,
     pub type_hint: Option<ResolvedTypeHint>,
     pub unique_constraints: Vec<String>,
+    pub indices: Vec<String>,
     pub default_value: Option<ResolvedFieldDefault>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -288,6 +289,7 @@ fn resolve(
                                         name: column_name,
                                         self_column,
                                         unique_constraints,
+                                        indices,
                                     }) => {
                                         let typ = resolve_field_type(
                                             &field.typ.to_typ(&typechecked_system.types),
@@ -310,6 +312,7 @@ fn resolve(
                                                 &typechecked_system.types,
                                             ),
                                             unique_constraints,
+                                            indices,
                                             default_value,
                                             span: field.span,
                                         })
@@ -619,6 +622,7 @@ struct ColumnInfo {
     name: String,
     self_column: bool,
     unique_constraints: Vec<String>,
+    indices: Vec<String>,
 }
 
 fn compute_column_info(
@@ -652,9 +656,25 @@ fn compute_column_info(
                 AstAnnotationParams::Single(expr, _) => match expr {
                     AstExpr::StringLiteral(string, _) => vec![string.clone()],
                     AstExpr::StringList(string_list, _) => string_list.clone(),
-                    _ => panic!("Not a string nor a string list"),
+                    _ => panic!("Not a string nor a string list when specifying unique"),
                 },
                 AstAnnotationParams::None => vec![unique_constraint_computed_name.clone()],
+                AstAnnotationParams::Map(_, _) => panic!(),
+            })
+            .unwrap_or_default();
+
+        let index_computed_name =
+            format!("{}_{}_idx", enclosing_type.name, field.name).to_ascii_lowercase();
+        let indices = field
+            .annotations
+            .get("index")
+            .map(|p| match p {
+                AstAnnotationParams::Single(expr, _) => match expr {
+                    AstExpr::StringLiteral(string, _) => vec![string.clone()],
+                    AstExpr::StringList(string_list, _) => string_list.clone(),
+                    _ => panic!("Not a string nor a string list when specifying index"),
+                },
+                AstAnnotationParams::None => vec![index_computed_name.clone()],
                 AstAnnotationParams::Map(_, _) => panic!(),
             })
             .unwrap_or_default();
@@ -727,12 +747,14 @@ fn compute_column_info(
                                     Cardinality::One => Ok(ColumnInfo {
                                         name: id_column_name(&matching_field.name),
                                         self_column: false,
-                                        unique_constraints
+                                        unique_constraints,
+                                        indices
                                     }),
                                     Cardinality::Unbounded => Ok(ColumnInfo {
                                         name: id_column_name(&field.name),
                                         self_column: true,
-                                        unique_constraints
+                                        unique_constraints,
+                                        indices,
                                     }),
                                 }
                             }
@@ -748,6 +770,7 @@ fn compute_column_info(
                                     name: id_column_name(&field.name),
                                     self_column: true,
                                     unique_constraints,
+                                    indices,
                                 })
                             }
                         }
@@ -766,6 +789,7 @@ fn compute_column_info(
                                 name: id_column_name(&matching_field.name),
                                 self_column: false,
                                 unique_constraints,
+                                indices,
                             })
                         } else {
                             Err(Diagnostic {
@@ -793,6 +817,7 @@ fn compute_column_info(
                                 name: compute_column_name(&field.name),
                                 self_column: true,
                                 unique_constraints,
+                                indices,
                             })
                         } else {
                             Err(Diagnostic {
@@ -811,6 +836,7 @@ fn compute_column_info(
                         name: compute_column_name(&field.name),
                         self_column: true,
                         unique_constraints,
+                        indices,
                     }),
                 }
             }
