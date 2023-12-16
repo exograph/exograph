@@ -66,10 +66,12 @@ mod tests {
                     pk_column("id"),
                     pk_reference_column("venue_id", "venues", None),
                 ],
+                vec![],
             ),
             TableSpec::new(
                 PhysicalTableName::new("venues", None),
                 vec![pk_column("id"), int_column("capacity")],
+                vec![],
             ),
         ])
         .to_database();

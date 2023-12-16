@@ -50,10 +50,12 @@ impl TestSetup {
                     pk_reference_column("venue_id", "venues", None),
                     string_column("name"),
                 ],
+                vec![],
             ),
             TableSpec::new(
                 PhysicalTableName::new("venues", None),
                 vec![pk_column("id"), string_column("name")],
+                vec![],
             ),
             TableSpec::new(
                 PhysicalTableName::new("concert_artists", None),
@@ -62,6 +64,7 @@ impl TestSetup {
                     pk_reference_column("concert_id", "concerts", None),
                     pk_reference_column("artist_id", "artists", None),
                 ],
+                vec![],
             ),
             TableSpec::new(
                 PhysicalTableName::new("artists", None),
@@ -70,10 +73,12 @@ impl TestSetup {
                     string_column("name"),
                     pk_reference_column("address_id", "addresses", None),
                 ],
+                vec![],
             ),
             TableSpec::new(
                 PhysicalTableName::new("addresses", None),
                 vec![pk_column("id"), string_column("city")],
+                vec![],
             ),
         ])
         .to_database();

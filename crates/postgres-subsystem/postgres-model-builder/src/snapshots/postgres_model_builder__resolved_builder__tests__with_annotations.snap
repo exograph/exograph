@@ -51,6 +51,7 @@ values:
               Explicit:
                 dbtype: BIGINT
             unique_constraints: []
+            indices: []
             default_value: AutoIncrement
           - name: title
             typ:
@@ -64,6 +65,7 @@ values:
               String:
                 max_length: 12
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: venue
             typ:
@@ -75,6 +77,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: reserved
             typ:
@@ -91,6 +94,7 @@ values:
                   - 0
                   - 300
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: time
             typ:
@@ -104,6 +108,7 @@ values:
               DateTime:
                 precision: 4
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: price
             typ:
@@ -118,6 +123,7 @@ values:
                 precision: 10
                 scale: 2
             unique_constraints: []
+            indices: []
             default_value: ~
         table_name:
           name: custom_concerts
@@ -144,6 +150,7 @@ values:
             is_pk: true
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: AutoIncrement
           - name: name
             typ:
@@ -155,6 +162,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: concerts
             typ:
@@ -167,6 +175,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: capacity
             typ:
@@ -181,6 +190,7 @@ values:
                 bits: 16
                 range: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: latitude
             typ:
@@ -194,6 +204,7 @@ values:
               Float:
                 bits: 24
             unique_constraints: []
+            indices: []
             default_value: ~
         table_name:
           name: venues

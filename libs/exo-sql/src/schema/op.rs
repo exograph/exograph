@@ -9,7 +9,7 @@
 
 use std::collections::HashSet;
 
-use crate::schema::constraint::sorted_comma_list;
+use crate::schema::{constraint::sorted_comma_list, index_spec::IndexSpec};
 
 use super::{column_spec::ColumnSpec, statement::SchemaStatement, table_spec::TableSpec};
 
@@ -37,6 +37,14 @@ pub enum SchemaOp<'a> {
     DeleteColumn {
         table: &'a TableSpec,
         column: &'a ColumnSpec,
+    },
+    CreateIndex {
+        table: &'a TableSpec,
+        index: &'a IndexSpec,
+    },
+    DeleteIndex {
+        table: &'a TableSpec,
+        index: &'a IndexSpec,
     },
     SetColumnDefaultValue {
         table: &'a TableSpec,
@@ -77,16 +85,6 @@ pub enum SchemaOp<'a> {
 
 impl SchemaOp<'_> {
     pub fn to_sql(&self) -> SchemaStatement {
-        fn create_index(column: &ColumnSpec, table_name: &str, post_statements: &mut Vec<String>) {
-            // create indices for all columns except pk columns
-            if !column.is_pk {
-                post_statements.push(format!(
-                    r#"CREATE INDEX ON {} ("{}");"#,
-                    table_name, column.name
-                ))
-            }
-        }
-
         match self {
             SchemaOp::CreateSchema { schema } => SchemaStatement {
                 statement: format!("CREATE SCHEMA \"{}\";", schema),
@@ -96,24 +94,10 @@ impl SchemaOp<'_> {
                 statement: format!("DROP SCHEMA \"{}\" CASCADE;", schema),
                 ..Default::default()
             },
-            SchemaOp::CreateTable { table } => {
-                let mut table_creation = table.creation_sql();
-
-                for column in table.columns.iter() {
-                    create_index(
-                        column,
-                        &table.sql_name(),
-                        &mut table_creation.post_statements,
-                    )
-                }
-
-                table_creation
-            }
+            SchemaOp::CreateTable { table } => table.creation_sql(),
             SchemaOp::DeleteTable { table } => table.deletion_sql(),
             SchemaOp::CreateColumn { table, column } => {
-                let mut column_stmt = column.to_sql(table);
-
-                create_index(column, &table.sql_name(), &mut column_stmt.post_statements);
+                let column_stmt = column.to_sql(table);
 
                 SchemaStatement {
                     statement: format!(
@@ -131,6 +115,14 @@ impl SchemaOp<'_> {
                     table.sql_name(),
                     column.name
                 ),
+                ..Default::default()
+            },
+            SchemaOp::CreateIndex { table, index } => SchemaStatement {
+                statement: index.creation_sql(&table.name),
+                ..Default::default()
+            },
+            SchemaOp::DeleteIndex { index, .. } => SchemaStatement {
+                statement: format!("DROP INDEX \"{}\";", index.name),
                 ..Default::default()
             },
             SchemaOp::SetColumnDefaultValue {
@@ -221,6 +213,8 @@ impl SchemaOp<'_> {
                     column.name, table.sql_name()))
                 }
             }
+            SchemaOp::CreateIndex { table, index } => Some(format!("The index `{}` in the table `{}` exists in the model, but does not exist in the database table.", index.name, table.sql_name())),
+            SchemaOp::DeleteIndex { .. } => None, // An extra index in the database is not a problem
 
             SchemaOp::SetColumnDefaultValue { table, column, default_value } => Some(format!("The default value for column `{}` in table `{}` does not match `{}`", column.name, table.sql_name(), default_value)),
             SchemaOp::UnsetColumnDefaultValue { table, column } => Some(format!("The column `{}` in table `{}` is not set in the model.", column.name, table.sql_name())),

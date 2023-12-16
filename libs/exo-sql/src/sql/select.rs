@@ -118,6 +118,7 @@ mod tests {
                 schema: None,
             },
             vec![pk_column("id"), string_column("name"), int_column("age")],
+            vec![],
         )])
         .to_database();
 

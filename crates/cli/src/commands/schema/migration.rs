@@ -48,6 +48,8 @@ impl Migration {
                 SchemaOp::CreateSchema { .. }
                 | SchemaOp::CreateTable { .. }
                 | SchemaOp::CreateColumn { .. }
+                | SchemaOp::CreateIndex { .. }
+                | SchemaOp::DeleteIndex { .. } // Creating and deleting index is not considered destructive (they affect performance but not data loss)
                 | SchemaOp::CreateExtension { .. }
                 | SchemaOp::CreateUniqueConstraint { .. }
                 | SchemaOp::RemoveUniqueConstraint { .. }
@@ -235,30 +237,22 @@ mod tests {
             }
             "#,
             vec![],
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
+            vec![(
+                r#"CREATE TABLE "concerts" (
                    |    "id" SERIAL PRIMARY KEY,
                    |    "title" TEXT NOT NULL,
                    |    "published" BOOLEAN NOT NULL
                    |);"#,
-                    false,
-                ),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX ON \"concerts\" (\"published\");", false),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
+                false,
+            )],
+            vec![(
+                r#"CREATE TABLE "concerts" (
                    |    "id" SERIAL PRIMARY KEY,
                    |    "title" TEXT NOT NULL,
                    |    "published" BOOLEAN NOT NULL
                    |);"#,
-                    false,
-                ),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX ON \"concerts\" (\"published\");", false),
-            ],
+                false,
+            )],
             vec![(r#"DROP TABLE "concerts" CASCADE;"#, true)],
         )
         .await
@@ -286,35 +280,25 @@ mod tests {
                 }
             }
             "#,
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
+            vec![(
+                r#"CREATE TABLE "concerts" (
                     |    "id" SERIAL PRIMARY KEY,
                     |    "title" TEXT NOT NULL
                     |);"#,
-                    false,
-                ),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
+                false,
+            )],
+            vec![(
+                r#"CREATE TABLE "concerts" (
                     |    "id" SERIAL PRIMARY KEY,
                     |    "title" TEXT NOT NULL,
                     |    "published" BOOLEAN NOT NULL
                     |);"#,
-                    false,
-                ),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX ON \"concerts\" (\"published\");", false),
-            ],
-            vec![
-                (
-                    r#"ALTER TABLE "concerts" ADD "published" BOOLEAN NOT NULL;"#,
-                    false,
-                ),
-                ("CREATE INDEX ON \"concerts\" (\"published\");", false),
-            ],
+                false,
+            )],
+            vec![(
+                r#"ALTER TABLE "concerts" ADD "published" BOOLEAN NOT NULL;"#,
+                false,
+            )],
             vec![(r#"ALTER TABLE "concerts" DROP COLUMN "published";"#, true)],
         )
         .await
@@ -355,7 +339,6 @@ mod tests {
                     |);"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
             ],
             vec![
                 (
@@ -377,9 +360,6 @@ mod tests {
                     r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX ON \"concerts\" (\"venue_id\");", false),
-                ("CREATE INDEX ON \"venues\" (\"name\");", false),
             ],
             vec![
                 (
@@ -397,8 +377,6 @@ mod tests {
                     r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"concerts\" (\"venue_id\");", false),
-                ("CREATE INDEX ON \"venues\" (\"name\");", false),
             ],
             vec![
                 (r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true),
@@ -453,8 +431,6 @@ mod tests {
                     |);"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX ON \"venues\" (\"name\");", false),
             ],
             vec![
                 (
@@ -476,9 +452,6 @@ mod tests {
                     r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX ON \"concerts\" (\"venue_id\");", false),
-                ("CREATE INDEX ON \"venues\" (\"name\");", false),
             ],
             vec![
                 (
@@ -489,7 +462,6 @@ mod tests {
                     r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"concerts\" (\"venue_id\");", false),
             ],
             vec![(r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true)],
         ).await
@@ -546,9 +518,6 @@ mod tests {
                     false,
                 ),
                 ("ALTER TABLE \"concerts\" ADD CONSTRAINT \"concerts_venue_id_fk\" FOREIGN KEY (\"venue_id\") REFERENCES \"venues\";", false),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX ON \"concerts\" (\"venue_id\");", false),
-                ("CREATE INDEX ON \"venues\" (\"name\");", false),
             ],
             vec![
                 (
@@ -570,14 +539,342 @@ mod tests {
                     r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX ON \"concerts\" (\"venue_id\");", false),
-                ("CREATE INDEX ON \"venues\" (\"name\");", false),
             ],
             vec![
                 ("ALTER TABLE \"concerts\" ALTER COLUMN \"venue_id\" DROP NOT NULL;", false),
             ],
             vec![("ALTER TABLE \"concerts\" ALTER COLUMN \"venue_id\" SET NOT NULL;", false)],
+        ).await
+    }
+
+    #[tokio::test]
+    async fn add_indices() {
+        assert_changes(
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    title: String
+                    venue: Venue
+                }
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    @index title: String
+                    @index venue: Venue
+                }
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    @index name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+            ],
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false),
+                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false),
+                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false),
+            ],
+            vec![
+                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false),
+                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false),
+                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false),
+            ],
+            vec![
+                ("DROP INDEX \"concert_title_idx\";", false),
+                ("DROP INDEX \"concert_venue_idx\";", false),
+                ("DROP INDEX \"venue_name_idx\";", false),
+            ],
+
+        ).await
+    }
+
+    #[tokio::test]
+    async fn modify_multi_column_indices() {
+        assert_changes(
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    @index title: String
+                    @index venue: Venue
+                }
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    @index name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    @index("title", "title-venue") title: String
+                    @index("venue", "title-venue") venue: Venue
+                }
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    @index("name") name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false), 
+                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false), 
+                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false)       
+            ],
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+                ("CREATE INDEX \"title\" ON \"concerts\" (\"title\");", false), 
+                ("CREATE INDEX \"title-venue\" ON \"concerts\" (\"title\", \"venue_id\");", false), 
+                ("CREATE INDEX \"venue\" ON \"concerts\" (\"venue_id\");", false), 
+                ("CREATE INDEX \"name\" ON \"venues\" (\"name\");", false)
+            ],
+            vec![
+                ("DROP INDEX \"concert_title_idx\";", false), 
+                ("DROP INDEX \"concert_venue_idx\";", false), 
+                ("CREATE INDEX \"title\" ON \"concerts\" (\"title\");", false), 
+                ("CREATE INDEX \"title-venue\" ON \"concerts\" (\"title\", \"venue_id\");", false), 
+                ("CREATE INDEX \"venue\" ON \"concerts\" (\"venue_id\");", false), 
+                ("DROP INDEX \"venue_name_idx\";", false), 
+                ("CREATE INDEX \"name\" ON \"venues\" (\"name\");", false)
+            ],
+            vec![
+                ("DROP INDEX \"title\";", false), 
+                ("DROP INDEX \"title-venue\";", false), 
+                ("DROP INDEX \"venue\";", false), 
+                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false), 
+                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false), 
+                ("DROP INDEX \"name\";", false), 
+                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false)
+            ],
+
+        ).await
+    }
+
+    #[tokio::test]
+    async fn add_indices_non_public_schemas() {
+        assert_changes(
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    title: String
+                    venue: Venue
+                }
+
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            r#"
+            @postgres
+            module ConcertModule {
+                @table(schema="c")
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    @index title: String
+                    @index venue: Venue
+                }
+
+                @table(schema="v")
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    @index name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+            ],
+            vec![
+                ("CREATE SCHEMA \"c\";", false), 
+                ("CREATE SCHEMA \"v\";", false),
+                (
+                    r#"CREATE TABLE "c"."concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "v"."venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "c"."concerts" ADD CONSTRAINT "c_concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "v"."venues";"#,
+                    false,
+                ),
+                ("CREATE INDEX \"concert_title_idx\" ON \"c\".\"concerts\" (\"title\");", false),
+                ("CREATE INDEX \"concert_venue_idx\" ON \"c\".\"concerts\" (\"venue_id\");", false),
+                ("CREATE INDEX \"venue_name_idx\" ON \"v\".\"venues\" (\"name\");", false),
+            ],
+            vec![
+                ("CREATE SCHEMA \"c\";", false), 
+                ("CREATE SCHEMA \"v\";", false),
+                ("DROP TABLE \"concerts\" CASCADE;", true), 
+                ("DROP TABLE \"venues\" CASCADE;", true),
+                (
+                    r#"CREATE TABLE "c"."concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "v"."venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("ALTER TABLE \"c\".\"concerts\" ADD CONSTRAINT \"c_concerts_venue_id_fk\" FOREIGN KEY (\"venue_id\") REFERENCES \"v\".\"venues\";", false),
+                ("CREATE INDEX \"concert_title_idx\" ON \"c\".\"concerts\" (\"title\");", false),
+                ("CREATE INDEX \"concert_venue_idx\" ON \"c\".\"concerts\" (\"venue_id\");", false),
+                ("CREATE INDEX \"venue_name_idx\" ON \"v\".\"venues\" (\"name\");", false),
+            ],
+            vec![
+                ("DROP TABLE \"c\".\"concerts\" CASCADE;", true), 
+                ("DROP TABLE \"v\".\"venues\" CASCADE;", true),
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("DROP SCHEMA \"c\" CASCADE;", true), 
+                ("DROP SCHEMA \"v\" CASCADE;", true), 
+                ("ALTER TABLE \"concerts\" ADD CONSTRAINT \"concerts_venue_id_fk\" FOREIGN KEY (\"venue_id\") REFERENCES \"venues\";", false)
+            ],
+
         ).await
     }
 
@@ -624,7 +921,6 @@ mod tests {
                     |);"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"users\" (\"name\");", false),
             ],
             vec![
                 (
@@ -649,8 +945,6 @@ mod tests {
                     r#"ALTER TABLE "memberships" ADD CONSTRAINT "unique_constraint_membership_user" UNIQUE ("user_id");"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"memberships\" (\"user_id\");", false),
-                ("CREATE INDEX ON \"users\" (\"name\");", false),
             ],
             vec![
                 (
@@ -665,7 +959,6 @@ mod tests {
                     r#"ALTER TABLE "memberships" ADD CONSTRAINT "memberships_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "users";"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"memberships\" (\"user_id\");", false),
             ],
             vec![
                 (r#"ALTER TABLE "memberships" DROP COLUMN "user_id";"#, true),
@@ -709,8 +1002,6 @@ mod tests {
                 |);"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"rsvps\" (\"email\");", false),
-                ("CREATE INDEX ON \"rsvps\" (\"event_id\");", false),
             ],
             vec![
                 (
@@ -725,8 +1016,6 @@ mod tests {
                     r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"rsvps\" (\"email\");", false),
-                ("CREATE INDEX ON \"rsvps\" (\"event_id\");", false),
             ],
             vec![(
                 r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
@@ -775,8 +1064,6 @@ mod tests {
                     r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email");"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"rsvps\" (\"email\");", false),
-                ("CREATE INDEX ON \"rsvps\" (\"event_id\");", false),
             ],
             vec![
                 (
@@ -791,8 +1078,6 @@ mod tests {
                     r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
                     false,
                 ),
-                ("CREATE INDEX ON \"rsvps\" (\"email\");", false),
-                ("CREATE INDEX ON \"rsvps\" (\"event_id\");", false),
             ],
             vec![
                 (
@@ -842,34 +1127,24 @@ mod tests {
                     }
                 }
             "#,
-            vec![
-                (
-                    r#"CREATE TABLE "users" (
+            vec![(
+                r#"CREATE TABLE "users" (
                     |    "id" SERIAL PRIMARY KEY,
                     |    "role" TEXT NOT NULL,
                     |    "verified" BOOLEAN NOT NULL DEFAULT false,
                     |    "enabled" BOOLEAN NOT NULL DEFAULT true
                     |);"#,
-                    false,
-                ),
-                ("CREATE INDEX ON \"users\" (\"role\");", false),
-                ("CREATE INDEX ON \"users\" (\"verified\");", false),
-                ("CREATE INDEX ON \"users\" (\"enabled\");", false),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "users" (
+                false,
+            )],
+            vec![(
+                r#"CREATE TABLE "users" (
                     |    "id" SERIAL PRIMARY KEY,
                     |    "role" TEXT NOT NULL DEFAULT 'USER'::text,
                     |    "verified" BOOLEAN NOT NULL DEFAULT true,
                     |    "enabled" BOOLEAN NOT NULL
                     |);"#,
-                    false,
-                ),
-                ("CREATE INDEX ON \"users\" (\"role\");", false),
-                ("CREATE INDEX ON \"users\" (\"verified\");", false),
-                ("CREATE INDEX ON \"users\" (\"enabled\");", false),
-            ],
+                false,
+            )],
             vec![
                 (
                     r#"ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'USER'::text;"#,
@@ -925,30 +1200,22 @@ mod tests {
                     }
                 }
             "#,
-            vec![
-                (
-                    r#"CREATE TABLE "logs" (
+            vec![(
+                r#"CREATE TABLE "logs" (
                     |    "id" INT PRIMARY KEY,
                     |    "level" TEXT,
                     |    "message" TEXT NOT NULL
                     |);"#,
-                    false,
-                ),
-                ("CREATE INDEX ON \"logs\" (\"level\");", false),
-                ("CREATE INDEX ON \"logs\" (\"message\");", false),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "logs" (
+                false,
+            )],
+            vec![(
+                r#"CREATE TABLE "logs" (
                     |    "id" INT PRIMARY KEY,
                     |    "level" TEXT NOT NULL,
                     |    "message" TEXT NOT NULL
                     |);"#,
-                    false,
-                ),
-                ("CREATE INDEX ON \"logs\" (\"level\");", false),
-                ("CREATE INDEX ON \"logs\" (\"message\");", false),
-            ],
+                false,
+            )],
             vec![(
                 r#"ALTER TABLE "logs" ALTER COLUMN "level" SET NOT NULL;"#,
                 false,
@@ -1017,10 +1284,6 @@ mod tests {
                     false,
                 ),
                 (r#"ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "users";"#, false),
-                ("CREATE INDEX ON \"logs\" (\"level\");", false),
-                ("CREATE INDEX ON \"logs\" (\"message\");", false),
-                ("CREATE INDEX ON \"logs\" (\"owner_id\");", false),
-                ("CREATE INDEX ON \"users\" (\"name\");", false),
             ],
             vec![
                 (r#"CREATE SCHEMA "auth";"#, false),
@@ -1041,10 +1304,6 @@ mod tests {
                     false,
                 ),
                 (r#"ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "auth"."users";"#, false),
-                ("CREATE INDEX ON \"logs\" (\"level\");", false),
-                ("CREATE INDEX ON \"logs\" (\"message\");", false),
-                ("CREATE INDEX ON \"logs\" (\"owner_id\");", false),
-                (r#"CREATE INDEX ON "auth"."users" ("name");"#, false),
             ],
             vec![
                 (r#"CREATE SCHEMA "auth";"#, false),
@@ -1060,7 +1319,6 @@ mod tests {
                  |);"#,
                     false,
                 ),
-                (r#"CREATE INDEX ON "auth"."users" ("name");"#, false),
             ],
             vec![
                 (
@@ -1076,7 +1334,6 @@ mod tests {
                     false,
                 ),
                 ("DROP SCHEMA \"auth\" CASCADE;", true),
-                (r#"CREATE INDEX ON "users" ("name");"#, false),
             ],
         )
         .await

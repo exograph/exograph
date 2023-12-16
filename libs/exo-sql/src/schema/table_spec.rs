@@ -7,41 +7,46 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::column_spec::{ColumnSpec, ColumnTypeSpec};
-use super::op::SchemaOp;
-use super::statement::SchemaStatement;
 use std::collections::{HashMap, HashSet};
+
+use deadpool_postgres::Client;
 
 use crate::database_error::DatabaseError;
 use crate::{PhysicalTable, PhysicalTableName};
-use deadpool_postgres::Client;
 
+use super::column_spec::{ColumnSpec, ColumnTypeSpec};
 use super::constraint::{sorted_comma_list, Constraints};
+use super::index_spec::IndexSpec;
 use super::issue::WithIssues;
+use super::op::SchemaOp;
+use super::statement::SchemaStatement;
 
 #[derive(Debug)]
 pub struct TableSpec {
     pub name: PhysicalTableName,
     pub columns: Vec<ColumnSpec>,
+    pub indices: Vec<IndexSpec>,
 }
 
 impl TableSpec {
-    pub fn new(name: PhysicalTableName, columns: Vec<ColumnSpec>) -> Self {
-        Self { name, columns }
+    pub fn new(name: PhysicalTableName, columns: Vec<ColumnSpec>, indices: Vec<IndexSpec>) -> Self {
+        Self {
+            name,
+            columns,
+            indices,
+        }
     }
 
     pub fn to_column_less_table(&self) -> PhysicalTable {
         PhysicalTable {
             name: self.name.clone(),
             columns: vec![],
+            indices: vec![],
         }
     }
 
     pub fn sql_name(&self) -> String {
-        match self.name.schema {
-            Some(ref schema) => format!("\"{}\".\"{}\"", schema, self.name.name),
-            None => format!("\"{}\"", self.name.name),
-        }
+        self.name.sql_name()
     }
 
     fn named_unique_constraints(&self) -> HashMap<&String, HashSet<String>> {
@@ -133,10 +138,17 @@ impl TableSpec {
             }
         }
 
+        let WithIssues {
+            issues: indices_issues,
+            value: indices,
+        } = IndexSpec::from_live_db(client, &table_name).await?;
+        issues.extend(indices_issues);
+
         Ok(WithIssues {
             value: TableSpec {
                 name: table_name,
                 columns,
+                indices,
             },
             issues,
         })
@@ -193,6 +205,33 @@ impl TableSpec {
                 changes.push(SchemaOp::CreateColumn {
                     table: new,
                     column: new_column,
+                });
+            }
+        }
+
+        for existing_index in self.indices.iter() {
+            let new_index = new.indices.iter().find(|i| i.name == existing_index.name);
+
+            match new_index {
+                Some(new_index) => {
+                    changes.extend(existing_index.diff(new_index, self, new));
+                }
+                None => {
+                    changes.push(SchemaOp::DeleteIndex {
+                        table: self,
+                        index: existing_index,
+                    });
+                }
+            }
+        }
+
+        for new_index in new.indices.iter() {
+            let existing_index = self.indices.iter().find(|i| i.name == new_index.name);
+
+            if existing_index.is_none() {
+                changes.push(SchemaOp::CreateIndex {
+                    table: new,
+                    index: new_index,
                 });
             }
         }
@@ -256,21 +295,23 @@ impl TableSpec {
             .collect::<Vec<_>>()
             .join(",\n\t");
 
+        let table_name = self.sql_name();
+
         for (unique_constraint_name, columns) in self.named_unique_constraints().iter() {
             let columns_part = sorted_comma_list(columns, true);
 
             post_statements.push(format!(
                 "ALTER TABLE {} ADD CONSTRAINT \"{}\" UNIQUE ({});",
-                self.sql_name(),
-                unique_constraint_name,
-                columns_part
+                table_name, unique_constraint_name, columns_part
             ));
         }
 
-        let name = self.sql_name();
+        for index in self.indices.iter() {
+            post_statements.push(index.creation_sql(&self.name));
+        }
 
         SchemaStatement {
-            statement: format!("CREATE TABLE {name} (\n\t{column_stmts}\n);"),
+            statement: format!("CREATE TABLE {table_name} (\n\t{column_stmts}\n);"),
             pre_statements: vec![],
             post_statements,
         }

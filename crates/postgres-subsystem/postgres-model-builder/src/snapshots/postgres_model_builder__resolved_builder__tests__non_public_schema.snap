@@ -49,6 +49,7 @@ values:
             is_pk: true
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: AutoIncrement
           - name: name
             typ:
@@ -60,6 +61,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
         table_name:
           name: auth_schema_tables
@@ -86,6 +88,7 @@ values:
             is_pk: true
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: AutoIncrement
           - name: name
             typ:
@@ -97,6 +100,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
         table_name:
           name: custom_table

@@ -297,6 +297,7 @@ mod tests {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("people", None),
             vec![pk_column("id"), int_column("age")],
+            vec![],
         )])
         .to_database();
 
@@ -318,6 +319,7 @@ mod tests {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("people", None),
             vec![pk_column("id"), string_column("name"), int_column("age")],
+            vec![],
         )])
         .to_database();
 
@@ -351,6 +353,7 @@ mod tests {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("videos", None),
             vec![pk_column("id"), string_column("title")],
+            vec![],
         )])
         .to_database();
 
@@ -415,6 +418,7 @@ mod tests {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("card", None),
             vec![pk_column("id"), json_column("data")],
+            vec![],
         )])
         .to_database();
 

@@ -49,6 +49,7 @@ values:
             is_pk: true
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: AutoIncrement
           - name: title
             typ:
@@ -60,6 +61,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: ticket_office
             typ:
@@ -71,6 +73,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: main
             typ:
@@ -82,6 +85,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
         table_name:
           name: concerts
@@ -108,6 +112,7 @@ values:
             is_pk: true
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: AutoIncrement
           - name: name
             typ:
@@ -119,6 +124,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: ticket_events
             typ:
@@ -131,6 +137,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
           - name: main_events
             typ:
@@ -143,6 +150,7 @@ values:
             is_pk: false
             type_hint: ~
             unique_constraints: []
+            indices: []
             default_value: ~
         table_name:
           name: venues
