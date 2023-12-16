@@ -74,8 +74,8 @@ impl IndexSpec {
         self_table: &'a TableSpec,
         other_table: &'a TableSpec,
     ) -> Vec<SchemaOp<'a>> {
-        // As long as the columns and is_unique are the same, there is no change (even if the name is different)
-        if self.columns == other.columns
+        if self.name == other.name
+            && self.columns == other.columns
             && self.is_unique == other.is_unique
             && self_table.name == other_table.name
         {
@@ -92,5 +92,25 @@ impl IndexSpec {
                 table: other_table,
             },
         ]
+    }
+
+    pub fn creation_sql(&self, table_name: &PhysicalTableName) -> String {
+        let sorted_columns = {
+            let mut columns = self.columns.iter().collect::<Vec<_>>();
+            columns.sort();
+            columns
+        };
+
+        format!(
+            "CREATE {unique}INDEX \"{index_name}\" ON {table_name} ({columns});",
+            unique = if self.is_unique { "UNIQUE " } else { "" },
+            index_name = self.name,
+            table_name = table_name.sql_name(),
+            columns = sorted_columns
+                .iter()
+                .map(|c| format!("\"{}\"", c))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 }

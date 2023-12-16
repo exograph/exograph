@@ -42,14 +42,14 @@ impl Migration {
                 SchemaOp::DeleteSchema { .. }
                 | SchemaOp::DeleteTable { .. }
                 | SchemaOp::DeleteColumn { .. }
-                | SchemaOp::RemoveExtension { .. }
-                | SchemaOp::DeleteIndex { .. } => true,
+                | SchemaOp::RemoveExtension { .. } => true,
 
                 // Explicitly matching the other cases here to ensure that we have thought about each case
                 SchemaOp::CreateSchema { .. }
                 | SchemaOp::CreateTable { .. }
                 | SchemaOp::CreateColumn { .. }
                 | SchemaOp::CreateIndex { .. }
+                | SchemaOp::DeleteIndex { .. } // Creating and deleting index is not considered destructive (they affect performance but not data loss)
                 | SchemaOp::CreateExtension { .. }
                 | SchemaOp::CreateUniqueConstraint { .. }
                 | SchemaOp::RemoveUniqueConstraint { .. }
@@ -631,9 +631,248 @@ mod tests {
                 ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false),
             ],
             vec![
-                ("DROP INDEX \"concert_title_idx\";", true),
-                ("DROP INDEX \"concert_venue_idx\";", true),
-                ("DROP INDEX \"venue_name_idx\";", true),
+                ("DROP INDEX \"concert_title_idx\";", false),
+                ("DROP INDEX \"concert_venue_idx\";", false),
+                ("DROP INDEX \"venue_name_idx\";", false),
+            ],
+
+        ).await
+    }
+
+    #[tokio::test]
+    async fn modify_multi_column_indices() {
+        assert_changes(
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    @index title: String
+                    @index venue: Venue
+                }
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    @index name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    @index("title", "title-venue") title: String
+                    @index("venue", "title-venue") venue: Venue
+                }
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    @index("name") name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false), 
+                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false), 
+                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false)       
+            ],
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+                ("CREATE INDEX \"title\" ON \"concerts\" (\"title\");", false), 
+                ("CREATE INDEX \"title-venue\" ON \"concerts\" (\"title\", \"venue_id\");", false), 
+                ("CREATE INDEX \"venue\" ON \"concerts\" (\"venue_id\");", false), 
+                ("CREATE INDEX \"name\" ON \"venues\" (\"name\");", false)
+            ],
+            vec![
+                ("DROP INDEX \"concert_title_idx\";", false), 
+                ("DROP INDEX \"concert_venue_idx\";", false), 
+                ("CREATE INDEX \"title\" ON \"concerts\" (\"title\");", false), 
+                ("CREATE INDEX \"title-venue\" ON \"concerts\" (\"title\", \"venue_id\");", false), 
+                ("CREATE INDEX \"venue\" ON \"concerts\" (\"venue_id\");", false), 
+                ("DROP INDEX \"venue_name_idx\";", false), 
+                ("CREATE INDEX \"name\" ON \"venues\" (\"name\");", false)
+            ],
+            vec![
+                ("DROP INDEX \"title\";", false), 
+                ("DROP INDEX \"title-venue\";", false), 
+                ("DROP INDEX \"venue\";", false), 
+                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false), 
+                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false), 
+                ("DROP INDEX \"name\";", false), 
+                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false)
+            ],
+
+        ).await
+    }
+
+    #[tokio::test]
+    async fn add_indices_non_public_schemas() {
+        assert_changes(
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    title: String
+                    venue: Venue
+                }
+
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            r#"
+            @postgres
+            module ConcertModule {
+                @table(schema="c")
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    @index title: String
+                    @index venue: Venue
+                }
+
+                @table(schema="v")
+                type Venue {
+                    @pk id: Int = autoIncrement()
+                    @index name: String
+                    concerts: Set<Concert>?
+                }
+            }
+            "#,
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+            ],
+            vec![
+                ("CREATE SCHEMA \"c\";", false), 
+                ("CREATE SCHEMA \"v\";", false),
+                (
+                    r#"CREATE TABLE "c"."concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "v"."venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "c"."concerts" ADD CONSTRAINT "c_concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "v"."venues";"#,
+                    false,
+                ),
+                ("CREATE INDEX \"concert_title_idx\" ON \"c\".\"concerts\" (\"title\");", false),
+                ("CREATE INDEX \"concert_venue_idx\" ON \"c\".\"concerts\" (\"venue_id\");", false),
+                ("CREATE INDEX \"venue_name_idx\" ON \"v\".\"venues\" (\"name\");", false),
+            ],
+            vec![
+                ("CREATE SCHEMA \"c\";", false), 
+                ("CREATE SCHEMA \"v\";", false),
+                ("DROP TABLE \"concerts\" CASCADE;", true), 
+                ("DROP TABLE \"venues\" CASCADE;", true),
+                (
+                    r#"CREATE TABLE "c"."concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "v"."venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("ALTER TABLE \"c\".\"concerts\" ADD CONSTRAINT \"c_concerts_venue_id_fk\" FOREIGN KEY (\"venue_id\") REFERENCES \"v\".\"venues\";", false),
+                ("CREATE INDEX \"concert_title_idx\" ON \"c\".\"concerts\" (\"title\");", false),
+                ("CREATE INDEX \"concert_venue_idx\" ON \"c\".\"concerts\" (\"venue_id\");", false),
+                ("CREATE INDEX \"venue_name_idx\" ON \"v\".\"venues\" (\"name\");", false),
+            ],
+            vec![
+                ("DROP TABLE \"c\".\"concerts\" CASCADE;", true), 
+                ("DROP TABLE \"v\".\"venues\" CASCADE;", true),
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "venue_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("DROP SCHEMA \"c\" CASCADE;", true), 
+                ("DROP SCHEMA \"v\" CASCADE;", true), 
+                ("ALTER TABLE \"concerts\" ADD CONSTRAINT \"concerts_venue_id_fk\" FOREIGN KEY (\"venue_id\") REFERENCES \"venues\";", false)
             ],
 
         ).await

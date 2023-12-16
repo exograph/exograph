@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::{hash_map::RandomState, hash_set::Difference};
+
 use super::{database_spec::DatabaseSpec, op::SchemaOp};
 
 pub fn diff<'a>(old: &'a DatabaseSpec, new: &'a DatabaseSpec) -> Vec<SchemaOp<'a>> {
@@ -27,7 +29,7 @@ pub fn diff<'a>(old: &'a DatabaseSpec, new: &'a DatabaseSpec) -> Vec<SchemaOp<'a
     let new_required_schemas = new.required_schemas();
 
     // schema creation
-    let schemas_to_create = new_required_schemas.difference(&old_required_schemas);
+    let schemas_to_create = sorted_strings(new_required_schemas.difference(&old_required_schemas));
     for schema in schemas_to_create {
         changes.push(SchemaOp::CreateSchema {
             schema: schema.clone(),
@@ -78,4 +80,10 @@ pub fn diff<'a>(old: &'a DatabaseSpec, new: &'a DatabaseSpec) -> Vec<SchemaOp<'a
     }
 
     changes
+}
+
+fn sorted_strings(strings: Difference<String, RandomState>) -> Vec<&String> {
+    let mut strings: Vec<_> = strings.into_iter().collect();
+    strings.sort();
+    strings
 }

@@ -46,10 +46,7 @@ impl TableSpec {
     }
 
     pub fn sql_name(&self) -> String {
-        match self.name.schema {
-            Some(ref schema) => format!("\"{}\".\"{}\"", schema, self.name.name),
-            None => format!("\"{}\"", self.name.name),
-        }
+        self.name.sql_name()
     }
 
     fn named_unique_constraints(&self) -> HashMap<&String, HashSet<String>> {
@@ -298,33 +295,23 @@ impl TableSpec {
             .collect::<Vec<_>>()
             .join(",\n\t");
 
-        let name = self.sql_name();
+        let table_name = self.sql_name();
 
         for (unique_constraint_name, columns) in self.named_unique_constraints().iter() {
             let columns_part = sorted_comma_list(columns, true);
 
             post_statements.push(format!(
                 "ALTER TABLE {} ADD CONSTRAINT \"{}\" UNIQUE ({});",
-                name, unique_constraint_name, columns_part
+                table_name, unique_constraint_name, columns_part
             ));
         }
 
         for index in self.indices.iter() {
-            post_statements.push(format!(
-                r#"CREATE INDEX "{}" ON {} ({});"#,
-                index.name,
-                name,
-                index
-                    .columns
-                    .iter()
-                    .map(|c| format!("\"{}\"", c))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ));
+            post_statements.push(index.creation_sql(&self.name));
         }
 
         SchemaStatement {
-            statement: format!("CREATE TABLE {name} (\n\t{column_stmts}\n);"),
+            statement: format!("CREATE TABLE {table_name} (\n\t{column_stmts}\n);"),
             pre_statements: vec![],
             post_statements,
         }

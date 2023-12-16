@@ -118,17 +118,7 @@ impl SchemaOp<'_> {
                 ..Default::default()
             },
             SchemaOp::CreateIndex { table, index } => SchemaStatement {
-                statement: format!(
-                    r#"CREATE INDEX "{}" ON {} ({});"#,
-                    index.name,
-                    table.sql_name(),
-                    index
-                        .columns
-                        .iter()
-                        .map(|c| format!("\"{}\"", c))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
+                statement: index.creation_sql(&table.name),
                 ..Default::default()
             },
             SchemaOp::DeleteIndex { index, .. } => SchemaStatement {

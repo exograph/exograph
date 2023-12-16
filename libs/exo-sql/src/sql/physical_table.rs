@@ -52,6 +52,13 @@ impl PhysicalTableName {
             None => self.name.to_owned(),
         }
     }
+
+    pub fn sql_name(&self) -> String {
+        match self.schema {
+            Some(ref schema) => format!("\"{}\".\"{}\"", schema, self.name),
+            None => format!("\"{}\"", self.name),
+        }
+    }
 }
 
 /// A physical table in the database such as "concerts" or "users".
