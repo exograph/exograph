@@ -98,7 +98,7 @@ type Concert {
 }
 ```
 
-As discussed [earlier](defining-types.md#defining-a-relationship), Exograph will infer a relationship between these two types. In the following example, it infers the foreign key column in the `Concert` table to be `venue_id`. It does so by appending `_id` to the field's name (in this case `venue`).
+As discussed [earlier](defining-types.md#defining-a-relationship), Exograph will infer a relationship between these two types. In the following example, it infers that the foreign key column in the `Concert` table is `venue_id`. It does so by appending `_id` to the field's name (in this case, `venue`).
 
 ```exo
 @postgres
@@ -140,7 +140,7 @@ The `@pk` annotation designates the primary key of a type. The current implement
 
 #### Auto-incrementing primary key
 
-To use the primary key of integer type, specify the field to be of the `Int` type and set its default value of `autoIncrement()`. In the following example, the `id` field is the primary key, and it will be automatically assigned a value when you create a new concert. Behind the scene, Exograph will use the `SERIAL` type in PostgreSQL by default, but you can customize it to use `SMALLSERIAL` or `BIGSERIAL` through the `@dbtype` annotation as we will see [later](#customizing-field-type).
+To use the primary key of integer type, specify the field to be of the `Int` type and set its default value of `autoIncrement()`. In the following example, the `id` field is the primary key, and it will be automatically assigned a value when you create a new concert. Behind the scenes, Exograph will use the `SERIAL` type in PostgreSQL by default, but you can customize it to use `SMALLSERIAL` or `BIGSERIAL` through the `@dbtype` annotation, as we will see [later](#customizing-field-type).
 
 ```exo
 type Concert {
@@ -203,7 +203,7 @@ When you create a new concert, the `createdAt` field will be set to optional, an
 
 #### Controlling Nullability
 
-Exograph will make the column nullable if the field is optional. Controlling nullability by adding the `?` suffix to the field type. For example, if you want to make the `name` field non-nullable, you can use the following definition:
+Exograph will make the column nullable if the field is optional. You can control nullability by adding the `?` suffix to the field type. For example, if you want to make the `name` field non-nullable, you can use the following definition:
 
 ```exo
 type TicketPrice {
@@ -249,6 +249,52 @@ type Person {
 ```
 
 Since we use the name `unique_email_primary` for the `primary_email_id` and the `email_domain` fields, that combination will be marked unique. We do the same for the `secondary_email_id` and the `email_domain` fields.
+
+### Index
+
+It is a common practice to set up indexes on columns to speed up queries. While indexes speed up queries, they slow down inserts and updates. So, you should analyze the usage pattern of your application and create indexes accordingly.
+
+By default, Exograph will not set up any explicit indexes. However, note that Postgres will set up indices for primary key columns and those with a uniqueness constraint (see `@unique` above). Exograph offers the `@index` annotation to allow you to set up appropriate indices. The `@index` annotation follows the same syntax as the `@unique` annotation. For example, if you want to create an index on the `age` column, you can use the `@index` annotation as follows:
+
+```exo
+type Person {
+  ...
+  @index age: Int
+}
+```
+
+Here, Exograph will create an index named `person_age_idx` on the `age` column. If you want to control the name of the index, you can use the `@index` annotation as follows:
+
+```exo
+type Person {
+  ...
+  @index("person_age_index") age: Int
+}
+```
+
+Suppose the application's usage pattern suggests that you must create an index on a combination of fields (typically, a frequent query that supplies a `where` clause with multiple fields). You can use the `@index` annotation by specifying a name for the index. For example, if you want to create an index on the combination of `firstName` and `lastName`, you can use the `@index` annotation specifying a name for the index:
+
+```exo
+type Person {
+  ...
+  @index("person_name") firstName: String
+  @index("person_name") lastName: String
+}
+```
+
+Here, Exograph will create an index with the name `person_name` on the columns for the `firstName` and `lastName` fields.
+
+Like the `@unique` annotation, you can pass an array of field names to the `@index` annotation to specify an index. For example, suppose you need to create an index on the combination of `firstName` and `lastName` and those fields individually. You can use the `@index` annotation specifying names for the index:
+
+```exo
+type Person {
+  ...
+  @index("person_name", "person_first_name") firstName: String
+  @index("person_name", "person_last_name") lastName: String
+}
+```
+
+Here, Exograph will set up three indices: one on the `firstName` field, one on the `lastName` field, and one on the combination of the `firstName` and `lastName` fields.
 
 ### Customizing field type
 
