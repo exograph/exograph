@@ -19,6 +19,7 @@ not_cross = ["exo-deno/not_cross"]
 [dependencies]
 anyhow.workspace = true
 colored.workspace = true
+deno_core.workspace = true
 num_cpus = "1.13.1"
 serde.workspace = true
 jsonwebtoken.workspace = true
