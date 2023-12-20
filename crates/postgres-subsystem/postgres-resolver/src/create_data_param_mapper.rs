@@ -26,8 +26,8 @@ use postgres_model::{
 };
 
 use crate::{
+    auth_util::check_access,
     sql_mapper::{SQLMapper, SQLOperationKind},
-    util::check_access,
 };
 
 use super::{

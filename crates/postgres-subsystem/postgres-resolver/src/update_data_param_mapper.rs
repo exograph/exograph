@@ -26,8 +26,9 @@ use postgres_model::{
 };
 
 use crate::{
+    auth_util::check_access,
     sql_mapper::{SQLMapper, SQLOperationKind},
-    util::{check_access, get_argument_field, return_type_info},
+    util::{get_argument_field, return_type_info},
 };
 
 use super::{cast, postgres_execution_error::PostgresExecutionError};

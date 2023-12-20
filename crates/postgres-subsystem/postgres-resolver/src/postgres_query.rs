@@ -9,9 +9,8 @@
 
 use super::predicate_mapper::compute_predicate;
 use super::{
-    postgres_execution_error::PostgresExecutionError,
-    sql_mapper::SQLOperationKind,
-    util::{check_access, Arguments},
+    auth_util::check_access, postgres_execution_error::PostgresExecutionError,
+    sql_mapper::SQLOperationKind, util::Arguments,
 };
 use crate::{
     operation_resolver::OperationSelectionResolver, order_by_mapper::OrderByParameterInput,
