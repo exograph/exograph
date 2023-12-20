@@ -32,6 +32,10 @@ pub fn run(
     run_introspection_tests: bool,
 ) -> Result<()> {
     let root_directory_str = root_directory.to_str().unwrap();
+    // Make sure deno runtime is initialized in the main thread to work around deno segfault
+    // on Linux issue. The tests are run in parallel and will initialize the deno module
+    // (and the deno runtime) in child threads, which will cause the crash if we don't do it
+    // here first.
     deno_core::JsRuntime::init_platform(None);
 
     println!(
