@@ -1,13 +1,14 @@
 operation: |
   mutation {
-      createCustomer(data: {name: "C5", internalTier: 55}) {
+      deleteCustomers {
           id
           name
+          internalTier
       }
   }
 auth: |
   {
-    "sub": 5
+    "sub": 1
   }
 response: |
   {

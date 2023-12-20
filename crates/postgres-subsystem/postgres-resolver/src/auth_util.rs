@@ -45,10 +45,18 @@ pub(crate) async fn check_access<'a>(
                 // conditions) The `False` case is already handled by the check_access function (by rejecting
                 // the request)
                 if access_predicate != Predicate::True {
-                    return Err(PostgresExecutionError::Authorization);
+                    Err(PostgresExecutionError::Authorization)
                 } else {
-                    access_predicate
-                }
+                    let field_access_predicate =
+                        check_input_access(input_context, return_type, subsystem, request_context)
+                            .await?;
+
+                    if field_access_predicate != AbstractPredicate::True {
+                        Err(PostgresExecutionError::Authorization)
+                    } else {
+                        Ok(AbstractPredicate::True)
+                    }
+                }?
             }
             SQLOperationKind::Retrieve => {
                 let entity_access = check_retrieve_access(
@@ -210,4 +218,80 @@ async fn check_selection_access<'a>(
             },
         )
         .await
+}
+
+async fn check_input_access<'a>(
+    input_context: Option<&'a Val>,
+    return_type: &'a EntityType,
+    subsystem: &'a PostgresSubsystem,
+    request_context: &'a RequestContext<'a>,
+) -> Result<AbstractPredicate, PostgresExecutionError> {
+    match input_context {
+        None => Ok(AbstractPredicate::True),
+        Some(Val::Object(elems)) => {
+            futures::stream::iter(elems.iter().map(Ok))
+                .try_fold(
+                    AbstractPredicate::True,
+                    |access_predicate, (elem_name, elem_value)| async {
+                        let postgres_field = return_type.field_by_name(elem_name);
+
+                        let field_access_predicate = match postgres_field {
+                            Some(postgres_field) => {
+                                check_create_access(
+                                    &subsystem.input_access_expressions
+                                        [postgres_field.access.creation],
+                                    subsystem,
+                                    request_context,
+                                    Some(elem_value),
+                                )
+                                .await
+                            }
+                            None => Ok(AbstractPredicate::True),
+                        }?;
+
+                        if field_access_predicate == AbstractPredicate::False {
+                            Err(PostgresExecutionError::Authorization)
+                        } else {
+                            Ok(AbstractPredicate::and(
+                                access_predicate,
+                                field_access_predicate,
+                            ))
+                        }
+                    },
+                )
+                .await
+        }
+        _ => Ok(AbstractPredicate::True),
+    }
+
+    // futures::stream::iter(selection.iter().map(Ok))
+    //     .try_fold(
+    //         AbstractPredicate::True,
+    //         |access_predicate, selection_field| async {
+    //             let postgres_field = return_type.field_by_name(&selection_field.name);
+
+    //             let field_access_predicate = match postgres_field {
+    //                 Some(postgres_field) => {
+    //                     check_create_access(
+    //                         &subsystem.database_access_expressions[postgres_field.access.creation],
+    //                         subsystem,
+    //                         request_context,
+    //                         input_context,
+    //                     )
+    //                     .await
+    //                 }
+    //                 None => Ok(AbstractPredicate::True),
+    //             }?;
+
+    //             if field_access_predicate == AbstractPredicate::False {
+    //                 Err(PostgresExecutionError::Authorization)
+    //             } else {
+    //                 Ok(AbstractPredicate::and(
+    //                     access_predicate,
+    //                     field_access_predicate,
+    //                 ))
+    //             }
+    //         },
+    //     )
+    //     .await
 }

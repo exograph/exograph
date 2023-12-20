@@ -1,22 +1,20 @@
 operation: |
   mutation {
-      deleteCustomers {
+      createCustomer(data: {name: "C5"}) {
           id
           name
       }
   }
 auth: |
   {
-    "sub": 1
+    "sub": 5
   }
 response: |
   {
     "data": {
-      "deleteCustomers": [
-        {
-          "id": 1,
-          "name": "C1"
-        }
-      ]
+      "createCustomer": {
+        "id": 5,
+        "name": "C5"
+      }
     }
   }
