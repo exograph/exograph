@@ -51,6 +51,7 @@ crossbeam-channel = "0.5.8"
 
 [dev-dependencies]
 insta.workspace = true
+ctor.workspace = true
 
 [build-dependencies]
 which.workspace = true

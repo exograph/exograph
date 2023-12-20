@@ -25,6 +25,16 @@ use crate::exotest::common::TestResult;
 use crate::exotest::introspection_tests::run_introspection_test;
 use crate::exotest::loader::ProjectTests;
 
+#[cfg(test)]
+use ctor::ctor;
+
+#[cfg(test)]
+#[ctor]
+// Make sure deno runtime is initialized in the main thread in test executables.
+fn init_deno_runtime() {
+    deno_core::JsRuntime::init_platform(None);
+}
+
 /// Loads test files from the supplied directory and runs them using a thread pool.
 pub fn run(
     root_directory: &PathBuf,
