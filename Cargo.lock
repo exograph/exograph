@@ -7529,6 +7529,7 @@ dependencies = [
  "core-plugin-interface",
  "core-resolver",
  "crossbeam-channel",
+ "deno_core",
  "exo-deno",
  "exo-sql",
  "futures",

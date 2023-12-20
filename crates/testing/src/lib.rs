@@ -32,6 +32,7 @@ pub fn run(
     run_introspection_tests: bool,
 ) -> Result<()> {
     let root_directory_str = root_directory.to_str().unwrap();
+    deno_core::JsRuntime::init_platform(None);
 
     println!(
         "{} {} {} {}",
