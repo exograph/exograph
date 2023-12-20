@@ -26,3 +26,13 @@ mod embedded_module_loader;
 mod typescript_module_loader;
 
 pub use deno_core;
+
+#[cfg(test)]
+use ctor::ctor;
+
+#[cfg(test)]
+#[ctor]
+// Make sure deno runtime is initialized in the main thread in test executables.
+fn init_deno_runtime() {
+    deno_core::JsRuntime::init_platform(None);
+}
