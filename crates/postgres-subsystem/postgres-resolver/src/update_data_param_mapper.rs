@@ -246,6 +246,7 @@ async fn compute_nested_update_object_arg<'a>(
 
     let access_predicate = check_access(
         &subsystem.entity_types[field_entity_type.entity_id],
+        &[],
         &SQLOperationKind::Update,
         subsystem,
         request_context,
@@ -461,6 +462,7 @@ async fn compute_nested_delete_object_arg<'a>(
 
     let access_predicate = check_access(
         &subsystem.entity_types[field_mutation_type.entity_id],
+        &[],
         &SQLOperationKind::Delete,
         subsystem,
         request_context,

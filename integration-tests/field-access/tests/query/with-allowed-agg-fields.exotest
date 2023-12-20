@@ -1,0 +1,22 @@
+operation: |
+  query {
+    customersAgg {
+      id {
+        count
+      }
+    }
+  }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "data": {
+      "customersAgg": {
+        "id": {
+          "count": 1
+        }
+      }
+    }
+  }

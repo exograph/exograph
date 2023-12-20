@@ -135,6 +135,7 @@ pub struct ResolvedField {
     pub column_name: String,
     pub self_column: bool, // is the column name in the same table or does it point to a column in a different table?
     pub is_pk: bool,
+    pub access: ResolvedAccess,
     pub type_hint: Option<ResolvedTypeHint>,
     pub unique_constraints: Vec<String>,
     pub indices: Vec<String>,
@@ -288,6 +289,7 @@ fn resolve(
                                     Ok(ColumnInfo {
                                         name: column_name,
                                         self_column,
+                                        access,
                                         unique_constraints,
                                         indices,
                                     }) => {
@@ -307,6 +309,7 @@ fn resolve(
                                             column_name,
                                             self_column,
                                             is_pk: field.annotations.contains("pk"),
+                                            access,
                                             type_hint: build_type_hint(
                                                 field,
                                                 &typechecked_system.types,
@@ -623,6 +626,7 @@ struct ColumnInfo {
     self_column: bool,
     unique_constraints: Vec<String>,
     indices: Vec<String>,
+    access: ResolvedAccess,
 }
 
 fn compute_column_info(
@@ -644,6 +648,17 @@ fn compute_column_info(
             user_supplied_column_name
                 .clone()
                 .unwrap_or_else(|| field_name.to_snake_case())
+        };
+
+        let access_annotation = field.annotations.get("access");
+
+        // For fields, by default, we assume the `access(true)` annotation
+        let access = match access_annotation {
+            Some(_) => build_access(access_annotation),
+            None => ResolvedAccess {
+                default: AstExpr::BooleanLiteral(true, default_span()).into(),
+                ..Default::default()
+            },
         };
 
         let unique_constraint_computed_name =
@@ -747,12 +762,14 @@ fn compute_column_info(
                                     Cardinality::One => Ok(ColumnInfo {
                                         name: id_column_name(&matching_field.name),
                                         self_column: false,
+                                        access,
                                         unique_constraints,
                                         indices
                                     }),
                                     Cardinality::Unbounded => Ok(ColumnInfo {
                                         name: id_column_name(&field.name),
                                         self_column: true,
+                                        access,
                                         unique_constraints,
                                         indices,
                                     }),
@@ -769,6 +786,7 @@ fn compute_column_info(
                                 Ok(ColumnInfo {
                                     name: id_column_name(&field.name),
                                     self_column: true,
+                                    access,
                                     unique_constraints,
                                     indices,
                                 })
@@ -788,6 +806,7 @@ fn compute_column_info(
                             Ok(ColumnInfo {
                                 name: id_column_name(&matching_field.name),
                                 self_column: false,
+                                access,
                                 unique_constraints,
                                 indices,
                             })
@@ -816,6 +835,7 @@ fn compute_column_info(
                             Ok(ColumnInfo {
                                 name: compute_column_name(&field.name),
                                 self_column: true,
+                                access,
                                 unique_constraints,
                                 indices,
                             })
@@ -835,6 +855,7 @@ fn compute_column_info(
                     _ => Ok(ColumnInfo {
                         name: compute_column_name(&field.name),
                         self_column: true,
+                        access,
                         unique_constraints,
                         indices,
                     }),

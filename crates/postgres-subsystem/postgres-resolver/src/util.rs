@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::core_model::access::AccessPredicateExpression;
+use futures::stream::TryStreamExt;
 use indexmap::IndexMap;
 use postgres_model::access::{
     DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression, UpdateAccessExpression,
@@ -15,9 +15,12 @@ use postgres_model::access::{
 use postgres_model::types::EntityType;
 
 use crate::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLOperationKind};
-use core_plugin_interface::core_model::types::OperationReturnType;
+use core_plugin_interface::core_model::{
+    access::AccessPredicateExpression, types::OperationReturnType,
+};
 use core_plugin_interface::core_resolver::{
-    access_solver::AccessSolver, context::RequestContext, value::Val,
+    access_solver::AccessSolver, context::RequestContext, validation::field::ValidatedField,
+    value::Val,
 };
 use exo_sql::{AbstractPredicate, Predicate, TableId};
 use postgres_model::{
@@ -29,6 +32,7 @@ pub type Arguments = IndexMap<String, Val>;
 
 pub(crate) async fn check_access<'a>(
     return_type: &'a EntityType,
+    selection: &'a [ValidatedField],
     kind: &SQLOperationKind,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
@@ -55,12 +59,45 @@ pub(crate) async fn check_access<'a>(
                 }
             }
             SQLOperationKind::Retrieve => {
-                check_retrieve_access(
+                let entity_access = check_retrieve_access(
                     &subsystem.database_access_expressions[return_type.access.read],
                     subsystem,
                     request_context,
                 )
-                .await?
+                .await?;
+
+                if entity_access == Predicate::False {
+                    // Short circuit this common case
+                    Err(PostgresExecutionError::Authorization)
+                } else {
+                    futures::stream::iter(selection.iter().map(Ok))
+                        .try_fold(entity_access, |access_predicate, selection_field| async {
+                            let postgres_field = return_type.field_by_name(&selection_field.name);
+
+                            let field_access_predicate = match postgres_field {
+                                Some(postgres_field) => {
+                                    crate::util::check_retrieve_access(
+                                        &subsystem.database_access_expressions
+                                            [postgres_field.access.read],
+                                        subsystem,
+                                        request_context,
+                                    )
+                                    .await
+                                }
+                                None => Ok(AbstractPredicate::True),
+                            }?;
+
+                            if field_access_predicate == AbstractPredicate::False {
+                                Err(PostgresExecutionError::Authorization)
+                            } else {
+                                Ok(AbstractPredicate::and(
+                                    access_predicate,
+                                    field_access_predicate,
+                                ))
+                            }
+                        })
+                        .await
+                }?
             }
             SQLOperationKind::Update => {
                 check_update_access(
@@ -103,7 +140,7 @@ async fn check_create_access<'a>(
         .unwrap_or(AbstractPredicate::False))
 }
 
-async fn check_retrieve_access<'a>(
+pub(super) async fn check_retrieve_access<'a>(
     expr: &AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,

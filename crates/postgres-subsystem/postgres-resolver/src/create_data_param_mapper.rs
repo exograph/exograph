@@ -97,6 +97,7 @@ async fn map_single<'a>(
 ) -> Result<InsertionRow, PostgresExecutionError> {
     check_access(
         &subsystem.entity_types[data_type.entity_id],
+        &[],
         &SQLOperationKind::Create,
         subsystem,
         request_context,

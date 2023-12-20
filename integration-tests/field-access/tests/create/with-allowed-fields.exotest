@@ -1,0 +1,22 @@
+operation: |
+  mutation {
+      deleteCustomers {
+          id
+          name
+      }
+  }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "data": {
+      "deleteCustomers": [
+        {
+          "id": 1,
+          "name": "C1"
+        }
+      ]
+    }
+  }

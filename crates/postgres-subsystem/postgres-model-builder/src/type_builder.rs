@@ -67,13 +67,13 @@ impl<'a> ResolvedTypeEnv<'a> {
     }
 }
 
-pub(crate) fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+pub(super) fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         create_shallow_type(resolved_type, resolved_env, building);
     }
 }
 
-pub(crate) fn build_expanded(
+pub(super) fn build_expanded(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
@@ -432,7 +432,7 @@ fn expand_type_access(
 ) -> Result<(), ModelBuildingError> {
     let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
 
-    let expr = compute_access_composite_types(
+    let expr = compute_access(
         &resolved_type.access,
         existing_type_id,
         resolved_env,
@@ -453,7 +453,7 @@ fn compute_database_access_expr(
     ast_exprs: &[&Option<AstExpr<Typed>>],
     entity_id: SerializableSlabIndex<EntityType>,
     resolved_env: &ResolvedTypeEnv,
-    building: &mut SystemContextBuilding,
+    building: &SystemContextBuilding,
 ) -> Result<
     SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
     ModelBuildingError,
@@ -493,7 +493,7 @@ fn compute_input_access_expr(
     ast_exprs: &[&Option<AstExpr<Typed>>],
     entity_id: SerializableSlabIndex<EntityType>,
     resolved_env: &ResolvedTypeEnv,
-    building: &mut SystemContextBuilding,
+    building: &SystemContextBuilding,
 ) -> Result<
     SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
     ModelBuildingError,
@@ -524,13 +524,13 @@ fn compute_input_access_expr(
     })
 }
 
-pub fn compute_access_composite_types(
+fn compute_access(
     resolved: &ResolvedAccess,
     entity_id: SerializableSlabIndex<EntityType>,
     resolved_env: &ResolvedTypeEnv,
-    building: &mut SystemContextBuilding,
+    building: &SystemContextBuilding,
 ) -> Result<Access, ModelBuildingError> {
-    let mut compute_input_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
+    let compute_input_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
         compute_input_access_expr(ast_exprs, entity_id, resolved_env, building)
     };
 
@@ -539,7 +539,7 @@ pub fn compute_access_composite_types(
     let update_input_access =
         compute_input_access_expr(&[&resolved.update, &resolved.mutation, &resolved.default])?;
 
-    let mut compute_database_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
+    let compute_database_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
         compute_database_access_expr(ast_exprs, entity_id, resolved_env, building)
     };
 
@@ -590,10 +590,13 @@ fn create_persistent_field(
 
     let relation = create_relation(field, *type_id, building, env, expand_foreign_relations);
 
+    let access = compute_access(&field.access, *type_id, env, building).unwrap();
+
     PostgresField {
         name: field.name.to_owned(),
         typ: field.typ.wrap(base_field_type),
         relation,
+        access,
         has_default_value: field.default_value.is_some(),
         dynamic_default_value: None,
     }
