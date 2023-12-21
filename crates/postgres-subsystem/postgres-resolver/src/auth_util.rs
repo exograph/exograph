@@ -7,11 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use futures::stream::TryStreamExt;
 use postgres_model::access::{
     DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression, UpdateAccessExpression,
 };
-use postgres_model::types::EntityType;
+use postgres_model::types::{EntityType, PostgresField};
 
 use crate::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLOperationKind};
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
@@ -47,9 +48,14 @@ pub(crate) async fn check_access<'a>(
                 if access_predicate != Predicate::True {
                     Err(PostgresExecutionError::Authorization)
                 } else {
-                    let field_access_predicate =
-                        check_input_access(input_context, return_type, subsystem, request_context)
-                            .await?;
+                    let field_access_predicate = check_input_access(
+                        input_context,
+                        return_type,
+                        subsystem,
+                        request_context,
+                        |field| field.access.creation,
+                    )
+                    .await?;
 
                     if field_access_predicate != AbstractPredicate::True {
                         Err(PostgresExecutionError::Authorization)
@@ -84,13 +90,35 @@ pub(crate) async fn check_access<'a>(
                 }?
             }
             SQLOperationKind::Update => {
-                check_update_access(
+                let entity_access = check_update_access(
                     &return_type.access.update,
                     subsystem,
                     request_context,
                     input_context,
                 )
-                .await?
+                .await?;
+
+                if entity_access == Predicate::False {
+                    // Short circuit this common case
+                    Err(PostgresExecutionError::Authorization)
+                } else {
+                    let field_access_predicate = check_input_access(
+                        input_context,
+                        return_type,
+                        subsystem,
+                        request_context,
+                        |field| field.access.update.input,
+                    )
+                    .await?;
+                    if field_access_predicate == AbstractPredicate::False {
+                        Err(PostgresExecutionError::Authorization)
+                    } else {
+                        Ok(AbstractPredicate::and(
+                            entity_access,
+                            field_access_predicate,
+                        ))
+                    }
+                }?
             }
             SQLOperationKind::Delete => {
                 check_delete_access(
@@ -225,6 +253,11 @@ async fn check_input_access<'a>(
     return_type: &'a EntityType,
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
+    field_access: fn(
+        &PostgresField<EntityType>,
+    ) -> SerializableSlabIndex<
+        AccessPredicateExpression<InputAccessPrimitiveExpression>,
+    >,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     match input_context {
         None => Ok(AbstractPredicate::True),
@@ -239,7 +272,7 @@ async fn check_input_access<'a>(
                             Some(postgres_field) => {
                                 check_create_access(
                                     &subsystem.input_access_expressions
-                                        [postgres_field.access.creation],
+                                        [field_access(postgres_field)],
                                     subsystem,
                                     request_context,
                                     Some(elem_value),

@@ -1,0 +1,19 @@
+operation: |
+  mutation {
+      updateCustomer(id: 1, data: {name: "C5", internalTier: 55}) {
+          id
+          name
+      }
+  }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }
