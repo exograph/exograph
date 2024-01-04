@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::subsystem::PostgresSubsystem;
+use crate::{access::Access, subsystem::PostgresSubsystem};
 use async_graphql_parser::types::{InputObjectType, Type, TypeDefinition, TypeKind};
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
@@ -37,6 +37,7 @@ pub struct PredicateParameter {
     ///   where: None
     /// ```
     pub column_path_link: Option<ColumnPathLink>,
+    pub access: Option<Access>,
 }
 
 /// Thw wrapper around PredicateParameterType to be able to satisfy the Named trait, without cloning the parameter type.

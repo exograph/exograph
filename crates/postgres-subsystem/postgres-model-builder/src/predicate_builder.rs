@@ -35,6 +35,7 @@ impl Shallow for PredicateParameter {
             name: String::new(),
             typ: FieldType::Plain(PredicateParameterTypeWrapper::shallow()),
             column_path_link: None,
+            access: None,
         }
     }
 }
@@ -203,6 +204,7 @@ fn create_operator_filter_type_kind(
                 type_id: predicate_param_type_id,
             }))),
             column_path_link: None,
+            access: None,
         }
     };
 
@@ -246,6 +248,7 @@ fn create_composite_filter_type_kind(
                     },
                 ))),
                 column_path_link,
+                access: Some(field.access.clone()),
             }
         })
         .collect();
@@ -284,6 +287,7 @@ fn create_composite_filter_type_kind(
                 name: name.to_string(),
                 typ: param_field_type,
                 column_path_link: None,
+                access: None,
             }
         })
         .collect();

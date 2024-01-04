@@ -8,6 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
+use futures::{StreamExt, TryStreamExt};
+
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
@@ -20,6 +22,7 @@ use postgres_model::{
 };
 
 use crate::{
+    auth_util::check_retrieve_access,
     column_path_util::to_column_path,
     sql_mapper::{extract_and_map, SQLMapper},
     util::{get_argument_field, Arguments},
@@ -64,6 +67,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                         subsystem,
                                     )
                                     .expect("Could not get operands");
+
                                     predicate_from_name(
                                         &parameter.name,
                                         op_key_column,
@@ -189,26 +193,42 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                             arg.map(|arg| (arg, parameter))
                         });
 
-                        let predicates = provided_field_params.map(|(arg, parameter)| {
-                            let new_column_path = to_column_path(
-                                &self.parent_column_path,
-                                &self.param.column_path_link,
-                            );
+                        futures::stream::iter(provided_field_params)
+                            .map(Ok)
+                            .try_fold(AbstractPredicate::True, |acc, (arg, parameter)| async {
+                                let new_column_path = to_column_path(
+                                    &self.parent_column_path,
+                                    &self.param.column_path_link,
+                                );
 
-                            PredicateParamInput {
-                                param: parameter,
-                                parent_column_path: new_column_path,
-                            }
-                            .to_sql(arg, subsystem, request_context)
-                        });
+                                let field_access = match parameter.access {
+                                    Some(ref access) => {
+                                        check_retrieve_access(
+                                            &subsystem.database_access_expressions[access.read],
+                                            subsystem,
+                                            request_context,
+                                        )
+                                        .await?
+                                    }
+                                    None => AbstractPredicate::True,
+                                };
 
-                        let mapped: Result<Vec<_>, _> = try_join_all(predicates).await;
-
-                        Ok(mapped?
-                            .into_iter()
-                            .fold(AbstractPredicate::True, |acc, predicate| {
-                                AbstractPredicate::and(acc, predicate)
-                            }))
+                                if field_access == AbstractPredicate::False {
+                                    Err(PostgresExecutionError::Authorization)
+                                } else {
+                                    let param_predicate = PredicateParamInput {
+                                        param: parameter,
+                                        parent_column_path: new_column_path,
+                                    }
+                                    .to_sql(arg, subsystem, request_context)
+                                    .await?;
+                                    Ok(AbstractPredicate::and(
+                                        AbstractPredicate::and(param_predicate, field_access),
+                                        acc,
+                                    ))
+                                }
+                            })
+                            .await
                     }
                 }
             }

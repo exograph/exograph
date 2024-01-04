@@ -296,35 +296,4 @@ async fn check_input_access<'a>(
         }
         _ => Ok(AbstractPredicate::True),
     }
-
-    // futures::stream::iter(selection.iter().map(Ok))
-    //     .try_fold(
-    //         AbstractPredicate::True,
-    //         |access_predicate, selection_field| async {
-    //             let postgres_field = return_type.field_by_name(&selection_field.name);
-
-    //             let field_access_predicate = match postgres_field {
-    //                 Some(postgres_field) => {
-    //                     check_create_access(
-    //                         &subsystem.database_access_expressions[postgres_field.access.creation],
-    //                         subsystem,
-    //                         request_context,
-    //                         input_context,
-    //                     )
-    //                     .await
-    //                 }
-    //                 None => Ok(AbstractPredicate::True),
-    //             }?;
-
-    //             if field_access_predicate == AbstractPredicate::False {
-    //                 Err(PostgresExecutionError::Authorization)
-    //             } else {
-    //                 Ok(AbstractPredicate::and(
-    //                     access_predicate,
-    //                     field_access_predicate,
-    //                 ))
-    //             }
-    //         },
-    //     )
-    //     .await
 }

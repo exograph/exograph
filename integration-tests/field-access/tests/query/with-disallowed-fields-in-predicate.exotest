@@ -1,0 +1,20 @@
+operation: |
+  # A sneaky way to know the current customer's internalTier without adding it to the selection set (which would be denied by the baseline field-access rule implementation)
+  query {
+      customers(where: {internalTier: {eq: 1}}) {
+          id
+          name
+      }
+  }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }
