@@ -213,7 +213,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     None => AbstractPredicate::True,
                                 };
 
-                                if field_access == AbstractPredicate::False {
+                                if field_access != AbstractPredicate::True {
                                     Err(PostgresExecutionError::Authorization)
                                 } else {
                                     let param_predicate = PredicateParamInput {
@@ -222,10 +222,8 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     }
                                     .to_sql(arg, subsystem, request_context)
                                     .await?;
-                                    Ok(AbstractPredicate::and(
-                                        AbstractPredicate::and(param_predicate, field_access),
-                                        acc,
-                                    ))
+
+                                    Ok(AbstractPredicate::and(acc, param_predicate))
                                 }
                             })
                             .await

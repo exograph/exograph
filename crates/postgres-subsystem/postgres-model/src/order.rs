@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::subsystem::PostgresSubsystem;
+use crate::{access::Access, subsystem::PostgresSubsystem};
 
 use async_graphql_parser::{
     types::{EnumType, EnumValueDefinition, InputObjectType, Type, TypeDefinition, TypeKind},
@@ -39,6 +39,7 @@ pub struct OrderByParameter {
     ///   order_by: None
     /// ```
     pub column_path_link: Option<ColumnPathLink>,
+    pub access: Option<Access>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
