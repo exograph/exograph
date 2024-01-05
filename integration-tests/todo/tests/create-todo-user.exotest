@@ -15,7 +15,7 @@ stages:
       }
     auth: |
       {
-          "sub": 1,
+          "sub": $.u1Id,
           "role": null
       } 
     response: |
@@ -39,7 +39,7 @@ stages:
       }
     auth: |
       {
-          "sub": 1,
+          "sub": $.u1Id,
           "role": null
       } 
     response: |

@@ -33,7 +33,7 @@ pub enum TestfileOperation {
         variables: Option<String>,        // stringified
         expected_payload: Option<String>, // stringified
         deno_prelude: Option<String>,
-        auth: Option<serde_json::Value>,
+        auth: Option<String>,    // stringified
         headers: Option<String>, // stringified
     },
 }
@@ -292,7 +292,7 @@ Error as a multistage test: {}
             Ok(TestfileOperation::GqlDocument {
                 document: stage.operation,
                 operations_metadata,
-                auth: stage.auth.map(from_json).transpose()?,
+                auth: stage.auth,
                 variables: stage.variable,
                 expected_payload: stage.response,
                 headers: stage.headers,
@@ -332,7 +332,7 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
             Ok(TestfileOperation::GqlDocument {
                 document: deserialized_initfile.operation.clone(),
                 operations_metadata: build_operations_metadata(&gql_document),
-                auth: deserialized_initfile.auth.map(from_json).transpose()?,
+                auth: deserialized_initfile.auth,
                 variables: deserialized_initfile.variable,
                 headers: deserialized_initfile.headers,
                 expected_payload: None,
@@ -343,11 +343,6 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
             bail!("Bad extension")
         }
     }
-}
-
-// Parse JSON from a string
-fn from_json(json: String) -> Result<serde_json::Value> {
-    serde_json::from_str(&json).context("Failed to parse JSON")
 }
 
 // Exograph projects have a src/index.exo file
