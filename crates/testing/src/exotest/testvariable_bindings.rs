@@ -235,7 +235,7 @@ pub fn resolve_testvariable(
             [key, path_tail @ ..] => {
                 match base_value {
                     // binding on a pk query (e.g. log(id: 2) {
-                    //    id @(name: "log_id")
+                    //    id @bind(name: "log_id")
                     // })
                     serde_json::Value::Object(obj) => {
                         if let Some(value) = obj.get(key) {

@@ -3,11 +3,11 @@ operation: |
     mutation {
         u1: createUser(data: {email: "one@example.com", firstName: "F1", lastName: "L1", profileImageUrl: "https://example.com/1.jpg",
                               todos: [{title: "U1-T1", completed: false}, {title: "U1-T2", completed: true}]}) {
-            id
+            id @bind(name: "u1Id")
         }
         u2: createUser(data: {email: "two@example.com", firstName: "F2", lastName: "L2", profileImageUrl: "https://example.com/2.jpg",
                               todos: [{title: "U2-T1", completed: false}, {title: "U2-T2", completed: true}]}) {
-            id
+            id @bind(name: "u2Id")
         }
     }
 auth: |

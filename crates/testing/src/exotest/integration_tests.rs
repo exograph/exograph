@@ -298,7 +298,7 @@ async fn run_operation(
 
             // add JWT token if specified in testfile
             if let Some(auth) = auth {
-                let mut auth = auth.clone();
+                let mut auth = evaluate_using_deno(auth, "", &ctx.testvariables).await?;
                 let auth_ref = auth.as_object_mut().unwrap();
                 let epoch_time = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
 
