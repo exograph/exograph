@@ -9,9 +9,8 @@
 
 use super::predicate_mapper::compute_predicate;
 use super::{
-    postgres_execution_error::PostgresExecutionError,
-    sql_mapper::SQLOperationKind,
-    util::{check_access, Arguments},
+    auth_util::check_access, postgres_execution_error::PostgresExecutionError,
+    sql_mapper::SQLOperationKind, util::Arguments,
 };
 use crate::{
     operation_resolver::OperationSelectionResolver, order_by_mapper::OrderByParameterInput,
@@ -109,8 +108,11 @@ pub(super) async fn compute_select<'content>(
     subsystem: &'content PostgresSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect, PostgresExecutionError> {
+    let return_entity_type = return_type.typ(&subsystem.entity_types);
+
     let access_predicate = check_access(
-        return_type.typ(&subsystem.entity_types),
+        return_entity_type,
+        selection,
         &SQLOperationKind::Retrieve,
         subsystem,
         request_context,
@@ -120,17 +122,15 @@ pub(super) async fn compute_select<'content>(
 
     let predicate = AbstractPredicate::and(predicate, access_predicate);
 
-    let return_postgres_type = return_type.typ(&subsystem.entity_types);
-
     let content_object =
-        content_select(return_postgres_type, selection, subsystem, request_context).await?;
+        content_select(return_entity_type, selection, subsystem, request_context).await?;
 
     let selection_cardinality = match return_type {
         OperationReturnType::List(_) => SelectionCardinality::Many,
         _ => SelectionCardinality::One,
     };
     Ok(AbstractSelect {
-        table_id: return_postgres_type.table_id,
+        table_id: return_entity_type.table_id,
         selection: exo_sql::Selection::Json(content_object, selection_cardinality),
         predicate,
         order_by,

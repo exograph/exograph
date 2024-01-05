@@ -26,8 +26,8 @@ use postgres_model::{
 };
 
 use crate::{
+    auth_util::check_access,
     sql_mapper::{SQLMapper, SQLOperationKind},
-    util::check_access,
 };
 
 use super::{
@@ -97,6 +97,7 @@ async fn map_single<'a>(
 ) -> Result<InsertionRow, PostgresExecutionError> {
     check_access(
         &subsystem.entity_types[data_type.entity_id],
+        &[],
         &SQLOperationKind::Create,
         subsystem,
         request_context,

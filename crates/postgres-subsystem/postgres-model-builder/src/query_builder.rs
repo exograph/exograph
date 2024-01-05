@@ -123,6 +123,7 @@ pub fn pk_predicate_param(
         name: pk_field.name.to_string(),
         typ: FieldType::Plain(param_type),
         column_path_link: Some(pk_field.relation.column_path_link(database)),
+        access: None,
     }
 }
 
@@ -240,6 +241,7 @@ pub fn collection_predicate_param(
         name: "where".to_string(),
         typ: FieldType::Optional(Box::new(FieldType::Plain(param_type))),
         column_path_link: None,
+        access: None,
     }
 }
 

@@ -14,6 +14,7 @@ use core_plugin_interface::core_model::{
 
 use exo_sql::{ColumnPathLink, Database};
 use postgres_model::{
+    access::Access,
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},
     types::{EntityType, PostgresField, PostgresPrimitiveType, PostgresType},
@@ -33,6 +34,7 @@ impl Shallow for OrderByParameter {
             name: String::default(),
             typ: FieldType::Plain(OrderByParameterTypeWrapper::shallow()),
             column_path_link: None,
+            access: None,
         }
     }
 }
@@ -121,6 +123,7 @@ fn new_param(
     is_primitive: bool,
     column_path_link: Option<ColumnPathLink>,
     order_by_types: &MappedArena<OrderByParameterType>,
+    access: Option<Access>,
 ) -> OrderByParameter {
     let (param_type_name, param_type_id) =
         order_by_param_type(entity_type_name, is_primitive, order_by_types);
@@ -145,6 +148,7 @@ fn new_param(
             },
         ))))),
         column_path_link,
+        access,
     }
 }
 
@@ -179,6 +183,7 @@ pub fn new_field_param(
         matches!(field_entity_type, PostgresType::Primitive(_)),
         column_path_link,
         order_by_types,
+        Some(entity_field.access.clone()),
     ))
 }
 
@@ -193,6 +198,7 @@ pub fn new_root_param(
         is_primitive,
         None,
         order_by_types,
+        None,
     )
 }
 

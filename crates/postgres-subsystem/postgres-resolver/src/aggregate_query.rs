@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use super::{
-    postgres_execution_error::PostgresExecutionError, sql_mapper::SQLOperationKind,
-    util::check_access,
+    auth_util::check_access, postgres_execution_error::PostgresExecutionError,
+    sql_mapper::SQLOperationKind,
 };
 use crate::operation_resolver::OperationSelectionResolver;
 use async_recursion::async_recursion;
@@ -38,6 +38,7 @@ impl OperationSelectionResolver for AggregateQuery {
     ) -> Result<AbstractSelect, PostgresExecutionError> {
         let access_predicate = check_access(
             self.return_type.typ(&subsystem.entity_types),
+            &field.subfields,
             &SQLOperationKind::Retrieve,
             subsystem,
             request_context,

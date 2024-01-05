@@ -84,6 +84,7 @@ where
             (Predicate::False, _) | (_, Predicate::False) => Predicate::False,
             (Predicate::True, rhs) => rhs,
             (lhs, Predicate::True) => lhs,
+            (lhs, rhs) if lhs == rhs => lhs,
             (lhs, rhs) => Predicate::And(Box::new(lhs), Box::new(rhs)),
         }
     }
@@ -94,6 +95,7 @@ where
             (Predicate::True, _) | (_, Predicate::True) => Predicate::True,
             (Predicate::False, rhs) => rhs,
             (lhs, Predicate::False) => lhs,
+            (lhs, rhs) if lhs == rhs => lhs,
             (lhs, rhs) => Predicate::Or(Box::new(lhs), Box::new(rhs)),
         }
     }

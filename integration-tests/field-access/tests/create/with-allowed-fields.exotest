@@ -1,0 +1,20 @@
+operation: |
+  mutation {
+      createCustomer(data: {name: "C5"}) {
+          id
+          name
+      }
+  }
+auth: |
+  {
+    "sub": 5
+  }
+response: |
+  {
+    "data": {
+      "createCustomer": {
+        "id": 5,
+        "name": "C5"
+      }
+    }
+  }

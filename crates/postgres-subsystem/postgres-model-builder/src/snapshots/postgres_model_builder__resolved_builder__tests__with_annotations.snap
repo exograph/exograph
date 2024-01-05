@@ -47,6 +47,15 @@ values:
             column_name: custom_id
             self_column: true
             is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint:
               Explicit:
                 dbtype: BIGINT
@@ -61,6 +70,15 @@ values:
             column_name: custom_title
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint:
               String:
                 max_length: 12
@@ -75,6 +93,15 @@ values:
             column_name: custom_venue_id
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -87,6 +114,15 @@ values:
             column_name: reserved
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint:
               Int:
                 bits: ~
@@ -104,6 +140,15 @@ values:
             column_name: time
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint:
               DateTime:
                 precision: 4
@@ -118,6 +163,15 @@ values:
             column_name: price
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint:
               Decimal:
                 precision: 10
@@ -148,6 +202,15 @@ values:
             column_name: custom_id
             self_column: true
             is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -160,6 +223,15 @@ values:
             column_name: custom_name
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -173,6 +245,15 @@ values:
             column_name: custom_venue_id
             self_column: false
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -185,6 +266,15 @@ values:
             column_name: capacity
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint:
               Int:
                 bits: 16
@@ -200,6 +290,15 @@ values:
             column_name: latitude
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint:
               Float:
                 bits: 24

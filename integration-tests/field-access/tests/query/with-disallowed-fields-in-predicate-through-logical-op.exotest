@@ -1,0 +1,19 @@
+operation: |
+  query {
+      customers(where: {and: [{internalTier: {eq: 1}}, {internalTier: {lte: 1}}]}) {
+          id
+          name
+      }
+  }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }

@@ -11,12 +11,12 @@ use async_trait::async_trait;
 use futures::future::join_all;
 
 use crate::{
-    column_path_util::to_column_path, postgres_execution_error::PostgresExecutionError,
-    sql_mapper::SQLMapper,
+    auth_util::check_retrieve_access, column_path_util::to_column_path,
+    postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper,
 };
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
-use exo_sql::{AbstractOrderBy, Ordering, PhysicalColumnPath};
+use exo_sql::{AbstractOrderBy, AbstractPredicate, Ordering, PhysicalColumnPath};
 use postgres_model::{
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
     subsystem::PostgresSubsystem,
@@ -91,7 +91,25 @@ async fn order_by_pair<'a>(
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
             match parameters.iter().find(|p| p.name == parameter_name) {
-                Some(parameter) => Ok(parameter),
+                Some(parameter) => {
+                    let field_access = match parameter.access {
+                        Some(ref access) => {
+                            check_retrieve_access(
+                                &subsystem.database_access_expressions[access.read],
+                                subsystem,
+                                request_context,
+                            )
+                            .await?
+                        }
+                        None => AbstractPredicate::True,
+                    };
+
+                    if field_access != AbstractPredicate::True {
+                        return Err(PostgresExecutionError::Authorization);
+                    }
+
+                    Ok(parameter)
+                }
                 None => Err(PostgresExecutionError::Validation(
                     parameter_name.into(),
                     "Invalid order by parameter".into(),

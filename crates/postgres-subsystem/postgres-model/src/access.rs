@@ -15,7 +15,7 @@ use exo_sql::PhysicalColumnPath;
 use serde::{Deserialize, Serialize};
 
 /// Access specification for a model
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Access {
     pub creation: SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
     pub read: SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
@@ -23,7 +23,7 @@ pub struct Access {
     pub delete: SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateAccessExpression {
     pub input: SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
     pub database:

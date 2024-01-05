@@ -1,0 +1,20 @@
+operation: |
+  mutation {
+      updateCustomer(id: 1, data: {name: "C1-updated"}) {
+          id
+          name
+      }
+  }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "data": {
+      "updateCustomer": {
+        "id": 1,
+        "name": "C1-updated"
+      }
+    }
+  }

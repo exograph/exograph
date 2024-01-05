@@ -66,6 +66,7 @@ fn expanded_reference_types(
             PostgresRelation::Pk { .. } => Some(PostgresField {
                 name: field.name.clone(),
                 typ: to_mutation_type(&field.typ),
+                access: field.access.clone(),
                 relation: field.relation.clone(),
                 has_default_value: field.has_default_value,
                 dynamic_default_value: None,

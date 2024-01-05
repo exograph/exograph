@@ -8,9 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use super::{
+    auth_util::check_access,
     postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLOperationKind,
-    util::{check_access, find_arg, return_type_info},
+    util::{find_arg, return_type_info},
 };
 use crate::{
     create_data_param_mapper::InsertOperation, operation_resolver::OperationResolver,
@@ -139,6 +140,7 @@ async fn delete_operation<'content>(
 
     let access_predicate = check_access(
         return_type.typ(&subsystem.entity_types),
+        &field.subfields,
         &SQLOperationKind::Delete,
         subsystem,
         request_context,
@@ -174,6 +176,7 @@ async fn update_operation<'content>(
     let data_arg = find_arg(&field.arguments, &data_param.name);
     let access_predicate = check_access(
         return_type.typ(&subsystem.entity_types),
+        &field.subfields,
         &SQLOperationKind::Update,
         subsystem,
         request_context,

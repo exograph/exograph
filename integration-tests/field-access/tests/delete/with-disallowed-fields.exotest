@@ -1,0 +1,20 @@
+operation: |
+  mutation {
+      deleteCustomers {
+          id
+          name
+          internalTier
+      }
+  }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }

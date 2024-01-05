@@ -1,0 +1,19 @@
+operation: |
+    mutation {
+        c1: createCustomer(data: {name: "C1", userId: 1, internalTier: 1}) {
+            id @bind(name: "c1id")
+        }
+        c2: createCustomer(data: {name: "C2", userId: 2, internalTier: 2}) {
+            id @bind(name: "c2id")
+        }
+        c3: createCustomer(data: {name: "C3", userId: 3, internalTier: 3}) {
+            id @bind(name: "c3id")
+        }
+        c4: createCustomer(data: {name: "C4", userId: 4, internalTier: 4}) {
+            id @bind(name: "c4id")
+        }                
+    }
+auth: |
+    {
+        "role": "admin"
+    }    

@@ -47,6 +47,15 @@ values:
             column_name: id
             self_column: true
             is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -59,6 +68,15 @@ values:
             column_name: name
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -86,6 +104,15 @@ values:
             column_name: id
             self_column: true
             is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -98,6 +125,15 @@ values:
             column_name: name
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []

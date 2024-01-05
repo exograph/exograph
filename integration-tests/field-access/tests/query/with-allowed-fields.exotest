@@ -1,0 +1,22 @@
+operation: |
+  query {
+      customers {
+          id
+          name
+      }
+  }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "data": {
+      "customers": [
+        {
+          "id": 1,
+          "name": "C1"
+        }
+      ]
+    }
+  }

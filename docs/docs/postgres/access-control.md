@@ -44,7 +44,7 @@ module BlogModule {
 
 Here, we have defined a `Blog` type along with access control rules for queries and mutations associated with the type.
 
-Access control expressions for queries as a gate and filter for existing data. For mutations, they carry additional semantics that we will examine in the [Effect on Mutation APIs](#effect-on-mutation-apis) section.
+Access control expressions for queries act as a gate and filter for existing data. The expressions carry additional semantics for mutations; we will examine them in the [Effect on Mutation APIs](#effect-on-mutation-apis) section.
 
 Consider the above definition along with the following query and mutation:
 
@@ -102,7 +102,7 @@ When an admin user executes the query, the access control expression `AuthContex
 
 If a non-admin user makes a query, the access control expression evaluates to a `self.published` residue. Exograph will apply that residue to get only published blogs, as if the user had also specified `published: {eq: true}` in the where clause, effectively making the where clause as `where: {and: [publishedOn: {gt: "2022-08-18"}, {published: {eq: true}]}`. If a non-admin user makes a mutation, the access control expression evaluates to `false`, and the mutation will return an authorization error.
 
-Access control will be in effect for all queries and mutations associated with the type--even the nested ones. For example, if we have modeled a `User` type with a `blogs` field of the `Set<Blog>` type, accessing the `blogs` field will be subject to the same access control rules as the `Blog` type. In other words, _no matter how you access a particular type, unintended access will be prevented_.
+Access control will be in effect for all queries and mutations associated with the type--even the nested ones. For example, if we have modeled a `User` type with a `blogs` field of the `Set<Blog>` type, accessing the `blogs` field will be subject to the same access control rules as the `Blog` type. In other words, _no matter how you access a particular type, Exograph prevents unintended access_.
 
 We will first examine the primitive elements that form the access control expression. Then, we will discuss combining these elements to form access expressions.
 
@@ -146,9 +146,9 @@ You can combine these elements using relational and logical operations. Let's ta
 
 ### Relational Operations
 
-To compare numeric values, you can use the relational operators: `==`, `!=`, `<`, `<=`, `>`, and `>=`. For example, you can use `AuthContext.id == 100` to check if the user's id is 100 and `self.price > 100` to check if the price of the object being accessed is greater than 100.
+To compare numeric values, you can use the relational operators: `==`, `!=`, `<`, `<=`, `>`, and `>=`. For example, you can use `AuthContext.id == 100` to check if the user's id is 100 and `self.price > 100` to check if the price of the accessed object is greater than 100.
 
-You may use `==` and `!=` to compare boolean values. For example, you can use `CaptchaContext.isValid == true` to check captcha validity. However, usually, you will use the value as is or its negation. For example, the earlier check could be written more simply as `CaptchaContext.isValid`. Similarly, you can use `!CaptchaContext.isValid` to check if the captcha is invalid.
+You may use `==` and `!=` to compare boolean values. For example, you can use `CaptchaContext.isValid == true` to check captcha validity. However, usually, you will use the value as is or its negation. For example, you may write the earlier check simply as `CaptchaContext.isValid`. Similarly, you can use `!CaptchaContext.isValid` to check if the captcha is invalid.
 
 You can use `==` and `!=` to compare strings. For example, you can use `AuthContext.role == "admin"` to check if the user's role is "admin".
 
@@ -157,6 +157,8 @@ You can use `in` to check if the value is in a set of values. This works for any
 ### Logical Operations
 
 You can combine expressions with the logical operators `&&`, `||`, and `!`. For example, you can use `AuthContext.role == "admin" || AuthContext.role == "manager"` to check if the user's role is either "admin" or "manager". Similarly, you can use`EnvContext.isDevelopment && CaptchaContext.isValid` to ascertain that the captcha has been validated and that the app is in development mode.
+
+You may use parentheses to group expressions. For example, you can use `(AuthContext.role == "admin" || AuthContext.role == "manager") && CaptchaContext.isValid` to check if the user's role is either "admin" or "manager" and that the captcha is valid.
 
 ## Examples
 
@@ -234,16 +236,16 @@ module BlogModule {
 }
 ```
 
-Here, the access control rule on the `Blog` type specifies that the user can access a blog only if the owner is accessing it. So, not only the `self` can refer to the object being accessed, but it can also refer to its fields.
+Here, the access control rule on the `Blog` type specifies that the user can access a blog only if the owner is accessing it. So, not only the `self` can refer to the accessed object, but it can also refer to its fields.
 
 ### Using higher-order functions
 
-Consider a document management system where users can create and share documents with others with read or write permission. This can be modeled using a `Permission` type that connects documents with users (forming a many-to-many relationship) and the permission kind (read or write). The access control for the `Document` type needs to ascertain that there is some permission such that :
+Consider a document management system where users can create and share documents with others with read or write permission. You can model this using a `Permission` type that connects documents with users (forming a many-to-many relationship) and the permission kind (read or write). The access control for the `Document` type needs to ascertain that there is some permission such that:
 
 - its user is the same as the user accessing the document, and
 - the user can read (for queries) or write (for mutations).
 
-This rule can be expressed using the `some` higher-order function. The `some` function works the same way as JavaScript's [some](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/some) function over an array. It declares a placeholder name (in the following code `permission`) and an expression, which may use this placeholder and any other values (such as `self` or any context) to create a boolean expression (in the following code `permission.user.id == AuthContext.id && permission.read` or `permission.user.id == AuthContext.id && permission.write`).
+You can express this rule using the `some` higher-order function. The `some` function works the same way as JavaScript's [some](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/some) function over an array. It declares a placeholder name (in the following code `permission`) and an expression, which may use this placeholder and any other values (such as `self` or any context) to create a boolean expression (in the following code `permission.user.id == AuthContext.id && permission.read` or `permission.user.id == AuthContext.id && permission.write`).
 
 ```exo
 context AuthContext {
@@ -253,9 +255,9 @@ context AuthContext {
 @postgres
 module DocsDatabase {
   @access(
-    # highlight-next-line
+    // highlight-next-line
     query = self.permissions.some(permission => permission.user.id == AuthContext.id && permission.read),
-    # highlight-next-line
+    // highlight-next-line
     mutation = self.permissions.some(permission => permission.user.id == AuthContext.id && permission.write)
   )
   type Document {
@@ -293,7 +295,7 @@ You can combine expressions using the logical operators `&&`, `||`, and `!`. We 
 
 ## Separating queries and mutations access control
 
-Often, you need to provide a separate rule for queries and mutations. Furthermore, you may want to provide a different rule for each kind of mutation. For example, you may want to allow all users to query for a list of todos but only allow the "admin" user to create and update todos. The `@access` annotation enables you to specify a separate access control expression for queries and mutations.
+Often, you need to provide a separate rule for queries and mutations. Furthermore, you may want to provide a different rule for each kind of mutation. For example, you may allow all users to query for a list of todos but only "admin" users to create and update todos. The `@access` annotation lets you specify a separate access control expression for queries and mutations.
 
 ### Sharing rules for queries and mutations
 
@@ -315,7 +317,7 @@ All queries and mutations for the `Product` type will only be accessible to the 
 
 ### Separating Query and Mutation Access Control
 
-Often, queries may be requested by a wider audience than mutations. For example, you may want to allow all users to query for a list of products but only the "admin" users to mutate. In such cases, you can separate access control expression for queries and mutations:
+Often, queries may be allowed for a wider audience than mutations. For example, you may want all users to query for a list of products but only the "admin" users to mutate. In such cases, you can separate access control expression for queries and mutations:
 
 ```exo
 @postgres
@@ -514,3 +516,95 @@ Like the `create` mutations, admin users can specify the `owner` field in the in
 ### Delete mutations
 
 Delete mutations only evaluate against the existing data in the database since there is no input data. In other words, the expression evaluation is the same as for a query.
+
+## Field-level access control
+
+Imagine the following model where the `Product` type has two pricing fields: sales price and purchase price.
+
+```exo
+@postgres
+module ProductDatabase {
+  @access(query = true, mutation = AuthContext.role == "admin")
+  type Product {
+    @pk id: Int = autoIncrement()
+    name: String
+    // highlight-start
+    salePrice: Float
+    purchasePrice: Float
+    // highlight-end
+  }
+}
+```
+
+Due to access control `@access(true)`, all products&mdash;and their fields&mdash;are accessible to all users. However, you likely want to restrict access to the `purchasePrice` field to users with elevated privileges. Exograph's field-level access control helps model such restrictions. For example, to limit access to the `purchasePrice` field to only "admin" users, you can specify access control for the field:
+
+```exo
+@postgres
+module ProductDatabase {
+  @access(query = true, mutation = AuthContext.role == "admin")
+  type Product {
+    @pk id: Int = autoIncrement()
+    name: String
+    salePrice: Float
+    // highlight-start
+    @access(AuthContext.role == "admin")
+    purchasePrice: Float
+    // highlight-end
+  }
+}
+```
+
+Only "admin" users can query the `purchasePrice` field. For example, if a non-admin user makes the following query, they will get the result.
+
+```graphql title="Will return the result for any user"
+query {
+  products {
+    id
+    name
+    salePrice
+  }
+}
+```
+
+However, if they specify the `purchasePrice` field, they will get an authorization error.
+
+```graphql title="Will return an authorization error for non-admin users"
+query {
+  products {
+    id
+    name
+    salePrice
+    // highlight-next-line
+    purchasePrice
+  }
+}
+```
+
+Note that the type-level access control will still be in effect. In this particular case, a non-admin user will get an authorization error if they try to create, update, or delete a product.
+
+:::note Field-level access control and `self` object
+Currently, Exograph imposes that field-level access control expressions must not use the `self` object. In other words, you may use context objects and literals. Please [let us know](https://github.com/exograph/exograph/issues) if you have a use case for using the `self` object.
+:::
+
+Like the type-level access control, you can specify separate access control expressions for queries and mutations. For example, you can specify that only "super-admin" users can mutate the `purchasePrice` field:
+
+```exo
+@postgres
+module ProductDatabase {
+  @access(query = true, mutation = AuthContext.role == "admin")
+  type Product {
+    @pk id: Int = autoIncrement()
+    name: String
+    salePrice: Float
+    // highlight-start
+    @access(
+      query = AuthContext.role == "admin",
+      mutation = AuthContext.role == "super-admin"
+    )
+    purchasePrice: Float
+    // highlight-end
+  }
+}
+```
+
+Here, "admin" users can query the `purchasePrice` field, but only "super-admin" users can mutate it. You can specify separate access control expressions for creating, updating, and deleting mutations, like the access control at the type level.

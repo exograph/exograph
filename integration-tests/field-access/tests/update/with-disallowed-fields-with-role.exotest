@@ -1,0 +1,45 @@
+stages:
+  - operation: |
+      mutation {
+          updateCustomer(id: 1, data: {name: "C5", internalTier: 55}) {
+              id
+              name
+          }
+      }
+    auth: |
+      {
+        "sub": 1,
+        "role": "tier-updater"
+      }
+    response: |
+      {
+        "data": {
+          "updateCustomer": {
+            "id": 1,
+            "name": "C5"
+          }
+        }
+      }
+  - operation: |
+      query {
+          customer(id: 1) {
+              id
+              name
+              internalTier
+          }
+      }
+    auth: |
+      {
+        "sub": 1,
+        "role": "tier-querier"
+      }
+    response: |
+      {
+        "data": {
+          "customer": {
+            "id": 1,
+            "name": "C5",
+            "internalTier": 55
+          }
+        }
+      }

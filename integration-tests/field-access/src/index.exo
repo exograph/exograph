@@ -1,0 +1,21 @@
+context AuthContext {
+  @jwt("sub") id: Int
+  @jwt role: String
+}
+
+@postgres
+module CustomerDatabase {
+  @access(self.userId == AuthContext.id || AuthContext.role == "admin")
+  type Customer {
+    @pk id: Int = autoIncrement()
+    name: String
+    userId: Int = AuthContext.id
+    
+    @access(
+      query=AuthContext.role == "tier-querier" || AuthContext.role == "admin", 
+      create=AuthContext.role == "tier-creator" || AuthContext.role == "admin",
+      update=AuthContext.role == "tier-updater" || AuthContext.role == "admin")
+    // @access(AuthContext.role == "admin")
+    internalTier: Int = 0
+  }
+}

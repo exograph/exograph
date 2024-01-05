@@ -1,0 +1,20 @@
+operation: |
+  query {
+    customersAgg {
+      internalTier {
+        count
+      }
+    }
+  }
+auth: |
+  {
+    "sub": 1
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }

@@ -67,7 +67,7 @@ deno_runtime = { git = "https://github.com/exograph/deno.git", branch = "patched
 deno_virtual_fs = { git = "https://github.com/exograph/deno.git", branch = "patched_1_38_5" }
 deno_semver = "0.5.1"
 deno_npm = "0.15.2"
-futures = "0.3"
+futures = "0.3.29"
 heck = "0.4.0"
 include_dir = "0.7.2"
 indexmap = "2.0.1"

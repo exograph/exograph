@@ -254,6 +254,7 @@ pub trait DataParamBuilder<D> {
                         typ: to_mutation_type(&field.typ).optional(),
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
+                        access: field.access.clone(),
                         dynamic_default_value: field.dynamic_default_value.clone(),
                     })
                 } else {
@@ -278,6 +279,7 @@ pub trait DataParamBuilder<D> {
                         Some(PostgresField {
                             name: field.name.clone(),
                             typ: mutation_type,
+                            access: field.access.clone(),
                             relation: field.relation.clone(),
                             has_default_value: field.has_default_value,
                             dynamic_default_value: field.dynamic_default_value.clone(),
@@ -292,6 +294,7 @@ pub trait DataParamBuilder<D> {
                 } else {
                     to_mutation_type(&field.typ)
                 },
+                access: field.access.clone(),
                 relation: field.relation.clone(),
                 has_default_value: field.has_default_value,
                 dynamic_default_value: field.dynamic_default_value.clone(),
@@ -323,6 +326,7 @@ pub trait DataParamBuilder<D> {
                     _ => Some(PostgresField {
                         name: field.name.clone(),
                         typ: field_type,
+                        access: field.access.clone(),
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
                         dynamic_default_value: field.dynamic_default_value.clone(),
@@ -365,6 +369,7 @@ pub trait DataParamBuilder<D> {
                         } else {
                             field_type
                         },
+                        access: field.access.clone(),
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
                         dynamic_default_value: field.dynamic_default_value.clone(),

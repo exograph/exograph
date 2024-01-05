@@ -1,0 +1,19 @@
+operation: |
+  mutation {
+      createCustomer(data: {name: "C5", internalTier: 55}) {
+          id
+          name
+      }
+  }
+auth: |
+  {
+    "sub": 5
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }

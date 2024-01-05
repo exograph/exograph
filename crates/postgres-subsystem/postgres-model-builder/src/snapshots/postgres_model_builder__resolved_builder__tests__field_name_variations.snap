@@ -47,6 +47,15 @@ values:
             column_name: id
             self_column: true
             is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -59,6 +68,15 @@ values:
             column_name: title_main
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -71,6 +89,15 @@ values:
             column_name: title_main1
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -83,6 +110,15 @@ values:
             column_name: public1
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -95,6 +131,15 @@ values:
             column_name: public2
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -107,6 +152,15 @@ values:
             column_name: foo123
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []

@@ -47,6 +47,15 @@ values:
             column_name: id
             self_column: true
             is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -59,6 +68,15 @@ values:
             column_name: title
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -71,6 +89,15 @@ values:
             column_name: ticket_office
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -83,6 +110,15 @@ values:
             column_name: main
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -110,6 +146,15 @@ values:
             column_name: id
             self_column: true
             is_pk: true
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -122,6 +167,15 @@ values:
             column_name: name
             self_column: true
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -135,6 +189,15 @@ values:
             column_name: ticket_office
             self_column: false
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []
@@ -148,6 +211,15 @@ values:
             column_name: main
             self_column: false
             is_pk: false
+            access:
+              default:
+                BooleanLiteral:
+                  - true
+              query: ~
+              mutation: ~
+              creation: ~
+              update: ~
+              delete: ~
             type_hint: ~
             unique_constraints: []
             indices: []

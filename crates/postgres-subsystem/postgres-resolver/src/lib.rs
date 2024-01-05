@@ -12,6 +12,7 @@ pub use plugin::PostgresSubsystemLoader;
 mod abstract_operation_resolver;
 mod access_solver;
 mod aggregate_query;
+mod auth_util;
 mod cast;
 mod column_path_util;
 mod create_data_param_mapper;

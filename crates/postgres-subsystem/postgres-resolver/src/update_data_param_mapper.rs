@@ -26,8 +26,9 @@ use postgres_model::{
 };
 
 use crate::{
+    auth_util::check_access,
     sql_mapper::{SQLMapper, SQLOperationKind},
-    util::{check_access, get_argument_field, return_type_info},
+    util::{get_argument_field, return_type_info},
 };
 
 use super::{cast, postgres_execution_error::PostgresExecutionError};
@@ -246,6 +247,7 @@ async fn compute_nested_update_object_arg<'a>(
 
     let access_predicate = check_access(
         &subsystem.entity_types[field_entity_type.entity_id],
+        &[],
         &SQLOperationKind::Update,
         subsystem,
         request_context,
@@ -461,6 +463,7 @@ async fn compute_nested_delete_object_arg<'a>(
 
     let access_predicate = check_access(
         &subsystem.entity_types[field_mutation_type.entity_id],
+        &[],
         &SQLOperationKind::Delete,
         subsystem,
         request_context,
