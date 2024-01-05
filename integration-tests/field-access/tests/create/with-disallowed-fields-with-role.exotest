@@ -1,0 +1,45 @@
+stages:
+  - operation: |
+      mutation {
+          createCustomer(data: {name: "C5", internalTier: 55}) {
+              id
+              name
+          }
+      }
+    auth: |
+      {
+        "sub": "5",
+        "role": "tier-creator"
+      }
+    response: |
+      {
+        "data": {
+          "createCustomer": {
+            "id": 5,
+            "name": "C5"
+          }
+        }
+      }
+  - operation: |
+      query {
+        customer(id: 5) {
+          id
+          name
+          internalTier
+        }
+      }
+    auth: |
+      {
+        "sub": "5",
+        "role": "tier-querier"
+      }
+    response: |
+      {
+        "data": {
+          "customer": {
+            "id": 5,
+            "name": "C5",
+            "internalTier": 55
+          }
+        }
+      } 
