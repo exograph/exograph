@@ -90,11 +90,11 @@ pub fn build_operations_metadata(document: &ExecutableDocument) -> OperationsMet
         DocumentOperations::Multiple(operations) => OperationsMetadata::combine(
             operations
                 .iter()
-                .map(|(name, operation)| {
+                .map(|(_, operation)| {
                     let selection_set = &operation.node.selection_set.node;
                     process_selection_set(
                         selection_set,
-                        vec!["data".to_owned(), name.to_string()],
+                        vec!["data".to_owned()],
                         &document.fragments,
                         HashSet::new(),
                     )
@@ -288,6 +288,18 @@ mod tests {
         }    
     "#;
 
+    const TEST_NAMED_QUERY_WITH_BINDINGS: &str = r#"
+        query createLogs {
+            createLog(data: {}) {
+                id @bind(name: "createLog_id")
+            }
+
+            log1: createLogs(data: []) {
+                id @bind(name: "log1_ids")
+            }
+        }    
+    "#;
+
     const TEST_QUERY_WITH_UNORDERED: &str = r#"
         query {
             getProducts @unordered {
@@ -345,6 +357,37 @@ mod tests {
     #[test]
     fn test_resolution() {
         let document = async_graphql_parser::parse_query(TEST_QUERY_WITH_BINDINGS).unwrap();
+        let metadata = build_operations_metadata(&document);
+        let response = serde_json::from_str(
+            r#"
+            {
+                "data": {
+                    "createLog": {
+                        "id": 1
+                    },
+
+                    "log1": [
+                        { "id": 2 },
+                        { "id": 3 },
+                        { "id": 4 }
+                    ]
+                }
+            }
+        "#,
+        )
+        .unwrap();
+
+        let create_log_id =
+            resolve_testvariable("createLog_id", &response, &metadata.bindings).unwrap();
+        let log1_ids = resolve_testvariable("log1_ids", &response, &metadata.bindings).unwrap();
+
+        assert_eq!(create_log_id, 1);
+        assert_eq!(log1_ids, serde_json::to_value(vec![2, 3, 4]).unwrap());
+    }
+
+    #[test]
+    fn test_resolution_named_query() {
+        let document = async_graphql_parser::parse_query(TEST_NAMED_QUERY_WITH_BINDINGS).unwrap();
         let metadata = build_operations_metadata(&document);
         let response = serde_json::from_str(
             r#"

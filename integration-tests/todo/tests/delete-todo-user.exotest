@@ -11,7 +11,7 @@ stages:
         }
     variable: |
       {
-        "id": 2
+        "id": $.u1TodoIds[1]
       }
     auth: |
       {
@@ -22,7 +22,7 @@ stages:
       {
         "data": {
           "deleteTodo": {
-            "id": 2,
+            "id": $.u1TodoIds[1],
             "title": "U1-T2",
             "completed": true
           }
@@ -40,7 +40,7 @@ stages:
         }
     variable: |
       {
-        "id": 2
+        "id": $.u1TodoIds[1]
       }
     auth: |
       {
@@ -63,7 +63,7 @@ stages:
       }
     auth: |
       {
-          "sub": 1,
+          "sub": $.u1Id,
           "role": null
       } 
     response: |
@@ -71,7 +71,7 @@ stages:
         "data": {
           "todos": [
             {
-              "id": 1,
+              "id": $.u1TodoIds[0],
               "title": "U1-T1",
               "completed": false
             }

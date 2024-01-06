@@ -3,7 +3,7 @@ stages:
   - operation: |
         mutation createTodo($title: String!, $completed: Boolean!, $userId: Int!) {
           createTodo(data: { title: $title, completed: $completed, user: {id: $userId} }) {
-            id
+            id @bind(name: "newTodoId")
             title
             completed
           }
@@ -12,7 +12,7 @@ stages:
       {
         "title": "U1-T3-by-admin",
         "completed": true,
-        "userId": 1
+        "userId": $.u1Id
       }
     auth: |
       {
@@ -40,7 +40,7 @@ stages:
       }
     auth: |
       {
-          "sub": 1,
+          "sub": $.u1Id,
           "role": null
       } 
     response: |
@@ -48,17 +48,17 @@ stages:
         "data": {
           "todos": [
             {
-              "id": 1,
+              "id": $.u1TodoIds[0],
               "title": "U1-T1",
               "completed": false
             },
             {
-              "id": 2,
+              "id": $.u1TodoIds[1],
               "title": "U1-T2",
               "completed": true
             },
             {
-              "id": 5,
+              "id": $.newTodoId,
               "title": "U1-T3-by-admin",
               "completed": true
             }
