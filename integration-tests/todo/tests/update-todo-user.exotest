@@ -11,7 +11,7 @@ stages:
         }
     variable: |
       {
-        "id": 2,
+        "id": $.u1TodoIds[1],
         "title": "U1-T2-updated",
         "completed": true
       }
@@ -24,7 +24,7 @@ stages:
       {
         "data": {
           "updateTodo": {
-            "id": 2,
+            "id": $.u1TodoIds[1],
             "title": "U1-T2-updated",
             "completed": true
           }
@@ -41,7 +41,7 @@ stages:
         }
     variable: |
       {
-        "id": 2,
+        "id": $.u1TodoIds[1],
         "title": "U1-T2-updated",
         "completed": true
       }
@@ -74,12 +74,12 @@ stages:
         "data": {
           "todos": [
             {
-              "id": 1,
+              "id": $.u1TodoIds[0],
               "title": "U1-T1",
               "completed": false
             },
             {
-              "id": 2,
+              "id": $.u1TodoIds[1],
               "title": "U1-T2-updated",
               "completed": true
             }
