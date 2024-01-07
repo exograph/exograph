@@ -98,7 +98,7 @@ impl ColumnSpec {
                 );
 
                 let rows = client.query(db_type_query.as_str(), &[]).await?;
-                let row = rows.get(0).unwrap();
+                let row = rows.first().unwrap();
 
                 let mut sql_type: String = row.get("format_type");
                 let dims = {
@@ -144,7 +144,7 @@ impl ColumnSpec {
         let not_null: bool = client
             .query::<str>(db_not_null_query.as_str(), &[])
             .await?
-            .get(0)
+            .first()
             .map(|row| row.get("attnotnull"))
             .unwrap();
 
@@ -192,7 +192,7 @@ impl ColumnSpec {
 
             let rows = client.query(db_query.as_str(), &[]).await?;
 
-            rows.get(0)
+            rows.first()
                 .and_then(|row| row.try_get("column_default").ok())
         };
 

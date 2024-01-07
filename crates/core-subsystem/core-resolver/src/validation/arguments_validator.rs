@@ -353,10 +353,7 @@ impl<'a> ArgumentValidator<'a> {
             &field_arguments,
         )?;
 
-        let map = validated_arguments
-            .into_iter()
-            .map(|(k, v)| (k, v))
-            .collect::<HashMap<_, _>>();
+        let map = validated_arguments.into_iter().collect::<HashMap<_, _>>();
 
         Ok(Val::Object(map))
     }

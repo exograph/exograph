@@ -15,4 +15,3 @@ pub use authenticator::JwtAuthenticator;
 pub use extractor::JwtExtractor;
 
 pub use authenticator::LOCAL_JWT_SECRET;
-pub use authenticator::LOCAL_OIDC_URL;
