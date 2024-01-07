@@ -60,7 +60,7 @@ impl TableDependency {
     /// }
     /// ```
     pub fn from_column_path(paths_list: &[PhysicalColumnPath]) -> Option<Self> {
-        let table_id = paths_list.get(0)?.lead_table_id();
+        let table_id = paths_list.first()?.lead_table_id();
 
         assert!(
             paths_list

@@ -2,16 +2,16 @@ stages:
   - operation: |
       mutation($venue1_id: Int!, $venue2_id: Int!) @unordered {
         c1: createConcert(data: {title: "C1", venue: {id: $venue1_id}, prices: [{value: 10}, {value: 20}]}) {
-          id @bind("c1id")
+          id @bind(name: "c1id")
           prices @unordered {
-            id @bind("p1id")
+            id @bind(name: "p1id")
             value
           }
         }
         c2: createConcert(data: {title: "C2", venue: {id: $venue2_id}, prices: [{value: 100}, {value: 200}]}) {
-          id @bind("c2id")
+          id @bind(name: "c2id")
           prices @unordered {
-            id @bind("p2id")
+            id @bind(name: "p2id")
             value
           }
         }

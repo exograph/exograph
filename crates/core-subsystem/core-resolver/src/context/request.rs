@@ -14,7 +14,7 @@ pub trait Request {
 
     // return the first header
     fn get_header(&self, key: &str) -> Option<String> {
-        self.get_headers(&key.to_lowercase()).get(0).cloned()
+        self.get_headers(&key.to_lowercase()).first().cloned()
     }
 
     // return the IP address used to make the request
