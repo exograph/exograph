@@ -9,12 +9,11 @@
 
 use std::{env, process::exit};
 
+use common::logging_tracing;
 use core_plugin_interface::interface::SubsystemLoader;
 use core_resolver::system_resolver::SystemResolver;
 
 use resolver::create_system_resolver_or_exit;
-
-mod logging_tracing;
 
 /// Initialize the server by:
 /// - Initializing tracing

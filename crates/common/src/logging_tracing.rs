@@ -44,7 +44,7 @@ const EXO_LOG: &str = "EXO_LOG";
 /// Creates a `tracing_subscriber::fmt` layer by default and adds a `tracing_opentelemetry`
 /// layer if OpenTelemetry, exporting traces with `opentelemetry_otlp` if any OpenTelemetry
 /// environment variables are set.
-pub(super) fn init() {
+pub fn init() {
     let fmt_layer = tracing_subscriber::fmt::layer().compact();
     let telemetry_layer =
         create_otlp_tracer().map(|t| tracing_opentelemetry::layer().with_tracer(t));

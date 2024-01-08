@@ -13,6 +13,7 @@ use std::{
 };
 
 use anyhow::Result;
+use common::logging_tracing;
 use tokio::sync::{
     broadcast::{Receiver, Sender},
     Mutex,
@@ -44,6 +45,8 @@ pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    logging_tracing::init();
+
     // register a sigint handler
     ctrlc::set_handler(move || {
         // set SIGINT event when receiving signal
