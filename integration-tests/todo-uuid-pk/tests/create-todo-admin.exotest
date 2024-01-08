@@ -1,0 +1,67 @@
+
+stages:
+  - operation: |
+        mutation createTodo($title: String!, $completed: Boolean!, $userId: Int!) {
+          createTodo(data: { title: $title, completed: $completed, user: {id: $userId} }) {
+            id @bind(name: "newTodoId")
+            title
+            completed
+          }
+        }
+    variable: |
+      {
+        "title": "U1-T3-by-admin",
+        "completed": true,
+        "userId": $.u1Id
+      }
+    auth: |
+      {
+          "role": "admin",
+          "sub": null
+      } 
+    response: |
+      {
+        "data": {
+          "createTodo": {
+            "id": $.newTodoId,
+            "title": "U1-T3-by-admin",
+            "completed": true
+          }
+        }
+      }
+      
+  - operation: |
+      query {
+        todos(orderBy: {id: ASC}) @unordered {
+          id
+          title
+          completed
+        }
+      }
+    auth: |
+      {
+          "sub": $.u1Id,
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "todos": [
+            {
+              "id": $.u1TodoIds[0],
+              "title": "U1-T1",
+              "completed": false
+            },
+            {
+              "id": $.u1TodoIds[1],
+              "title": "U1-T2",
+              "completed": true
+            },
+            {
+              "id": $.newTodoId,
+              "title": "U1-T3-by-admin",
+              "completed": true
+            }
+          ]
+        }
+      }

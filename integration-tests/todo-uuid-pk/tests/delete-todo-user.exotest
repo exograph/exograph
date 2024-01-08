@@ -1,0 +1,80 @@
+
+stages:
+  # First try to delete a todo with a user that owns it
+  - operation: |
+        mutation($id: Int!) {
+          deleteTodo(id: $id) {
+            id
+            title
+            completed
+          }
+        }
+    variable: |
+      {
+        "id": $.u1TodoIds[1]
+      }
+    auth: |
+      {
+          "sub": $.u1Id,
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "deleteTodo": {
+            "id": $.u1TodoIds[1],
+            "title": "U1-T2",
+            "completed": true
+          }
+        }
+      }
+      
+  # Now try to delete a todo that does not belong to the user
+  - operation: |
+        mutation($id: Int!) {
+          deleteTodo(id: $id) {
+            id
+            title
+            completed
+          }
+        }
+    variable: |
+      {
+        "id": $.u1TodoIds[1]
+      }
+    auth: |
+      {
+          "sub": $.u2Id,
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "deleteTodo": null
+        }
+      }      
+  - operation: |
+      query {
+        todos(orderBy: {id: ASC}) @unordered {
+          id
+          title
+          completed
+        }
+      }
+    auth: |
+      {
+          "sub": $.u1Id,
+          "role": null
+      } 
+    response: |
+      {
+        "data": {
+          "todos": [
+            {
+              "id": $.u1TodoIds[0],
+              "title": "U1-T1",
+              "completed": false
+            }
+          ]
+        }
+      }

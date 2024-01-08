@@ -12,6 +12,7 @@ use chrono::prelude::*;
 use chrono::DateTime;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::database_error::DatabaseError;
+use exo_sql::ColumnPath;
 use exo_sql::{
     array_util::{self, ArrayEntry},
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParamContainer,
@@ -57,7 +58,16 @@ pub(crate) fn literal_column(
         .map_err(PostgresExecutionError::CastError)
 }
 
-pub(crate) fn cast_value(
+pub(crate) fn literal_column_path(
+    value: &Val,
+    associated_column: &PhysicalColumn,
+) -> Result<ColumnPath, PostgresExecutionError> {
+    cast_value(value, &associated_column.typ)
+        .map(|value| value.map(ColumnPath::Param).unwrap_or(ColumnPath::Null))
+        .map_err(PostgresExecutionError::CastError)
+}
+
+fn cast_value(
     value: &Val,
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<SQLParamContainer>, CastError> {

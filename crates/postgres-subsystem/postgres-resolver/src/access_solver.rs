@@ -34,6 +34,8 @@ use postgres_model::{
     subsystem::PostgresSubsystem,
 };
 
+use crate::cast;
+
 // Only to get around the orphan rule while implementing AccessSolver
 #[derive(Debug)]
 pub struct AbstractPredicateWrapper(pub AbstractPredicate);
@@ -119,23 +121,23 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
 
         let helper = |column_predicate: ColumnPredicateFn,
                       value_predicate: ValuePredicateFn|
-         -> Option<AbstractPredicate> {
+         -> Result<Option<AbstractPredicate>, AccessSolverError> {
             match (left, right) {
                 (SolvedPrimitiveExpression::Common(None), _)
-                | (_, SolvedPrimitiveExpression::Common(None)) => None,
+                | (_, SolvedPrimitiveExpression::Common(None)) => Ok(None),
 
                 (
                     SolvedPrimitiveExpression::Column(left_col),
                     SolvedPrimitiveExpression::Column(right_col),
-                ) => Some(column_predicate(
+                ) => Ok(Some(column_predicate(
                     to_column_path(&left_col),
                     to_column_path(&right_col),
-                )),
+                ))),
 
                 (
                     SolvedPrimitiveExpression::Common(Some(left_value)),
                     SolvedPrimitiveExpression::Common(Some(right_value)),
-                ) => Some(value_predicate(left_value, right_value)),
+                ) => Ok(Some(value_predicate(left_value, right_value))),
 
                 // The next two need to be handled separately, since we need to pass the left side
                 // and right side to the predicate in the correct order. For example, `age > 18` is
@@ -143,22 +145,31 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 (
                     SolvedPrimitiveExpression::Common(Some(value)),
                     SolvedPrimitiveExpression::Column(column),
-                ) => Some(column_predicate(
-                    literal_column(value),
-                    to_column_path(&column),
-                )),
+                ) => {
+                    let physical_column = column.leaf_column().get_column(&self.database);
+                    Ok(Some(column_predicate(
+                        cast::literal_column_path(&value, physical_column)
+                            .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
+                        to_column_path(&column),
+                    )))
+                }
 
                 (
                     SolvedPrimitiveExpression::Column(column),
                     SolvedPrimitiveExpression::Common(Some(value)),
-                ) => Some(column_predicate(
-                    to_column_path(&column),
-                    literal_column(value),
-                )),
+                ) => {
+                    let physical_column = column.leaf_column().get_column(&self.database);
+
+                    Ok(Some(column_predicate(
+                        to_column_path(&column),
+                        cast::literal_column_path(&value, physical_column)
+                            .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
+                    )))
+                }
             }
         };
 
-        Ok(match op {
+        let access_predicate = match op {
             AccessRelationalOp::Eq(..) => {
                 helper(AbstractPredicate::eq, |left_value, right_value| {
                     eq_values(&left_value, &right_value).into()
@@ -169,8 +180,8 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     neq_values(&left_value, &right_value).into()
                 })
             }
-            // For the next four, we could better optimize cases where values are comparable, but
-            // for now, we generate a predicate and let database handle it
+            // For the next four, we could optimize cases where values are comparable, but
+            // for now, we generate a predicate and let the database handle it
             AccessRelationalOp::Lt(_, _) => {
                 helper(AbstractPredicate::Lt, |left_value, right_value| {
                     AbstractPredicate::Lt(literal_column(left_value), literal_column(right_value))
@@ -198,8 +209,9 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
                 },
             ),
-        }
-        .map(AbstractPredicateWrapper))
+        }?;
+
+        Ok(access_predicate.map(AbstractPredicateWrapper))
     }
 }
 

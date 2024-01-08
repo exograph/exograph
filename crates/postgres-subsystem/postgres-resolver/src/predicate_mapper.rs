@@ -23,12 +23,13 @@ use postgres_model::{
 
 use crate::{
     auth_util::check_retrieve_access,
+    cast::literal_column_path,
     column_path_util::to_column_path,
     sql_mapper::{extract_and_map, SQLMapper},
     util::{get_argument_field, Arguments},
 };
 
-use super::{cast::cast_value, postgres_execution_error::PostgresExecutionError};
+use super::postgres_execution_error::PostgresExecutionError;
 
 struct PredicateParamInput<'a> {
     pub param: &'a PredicateParameter,
@@ -277,18 +278,12 @@ fn operands<'a>(
         .self_column_id();
     let op_physical_column = op_physical_column_id.get_column(&subsystem.database);
 
-    let op_value = cast_value(op_value, &op_physical_column.typ);
+    let op_value = literal_column_path(op_value, op_physical_column)?;
 
-    op_value
-        .map(move |op_value| {
-            (
-                ColumnPath::Physical(
-                    to_column_path(&parent_column_path, &param.column_path_link).unwrap(),
-                ),
-                ColumnPath::Param(op_value.unwrap()),
-            )
-        })
-        .map_err(PostgresExecutionError::CastError)
+    Ok((
+        ColumnPath::Physical(to_column_path(&parent_column_path, &param.column_path_link).unwrap()),
+        op_value,
+    ))
 }
 
 pub async fn compute_predicate<'a>(

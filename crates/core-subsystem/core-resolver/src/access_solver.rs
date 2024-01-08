@@ -33,6 +33,9 @@ pub trait AccessPredicate<'a>:
 pub enum AccessSolverError {
     #[error("{0}")]
     ContextExtraction(#[from] ContextExtractionError),
+
+    #[error("{0}")]
+    Generic(Box<dyn std::error::Error + Send + Sync>),
 }
 
 /// Solve access control logic.
