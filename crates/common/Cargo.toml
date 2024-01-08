@@ -6,6 +6,21 @@ publish = false
 
 [dependencies]
 thiserror.workspace = true
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+tracing-opentelemetry = "0.22"
+opentelemetry = { version = "0.21", default-features = false, features = [
+  "trace",
+] }
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.14", features = [
+  "reqwest-client",
+  "reqwest-rustls",
+  "http-proto",
+  "tls",
+] }
+# Tonic isn't used directly but we need these flags to establish a TLS connection
+tonic = { version = "0.9", features = ["tls", "tls-roots"] }
 
 [lib]
 doctest = false
