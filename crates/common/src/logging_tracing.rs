@@ -38,7 +38,7 @@
 use std::str::FromStr;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
 
-pub const EXO_LOG: &str = "EXO_LOG";
+const EXO_LOG: &str = "EXO_LOG";
 /// Initialize the tracing subscriber.
 ///
 /// Creates a `tracing_subscriber::fmt` layer by default and adds a `tracing_opentelemetry`
