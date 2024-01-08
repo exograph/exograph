@@ -76,6 +76,7 @@ impl From<AccessSolverError> for PostgresExecutionError {
     fn from(error: AccessSolverError) -> Self {
         match error {
             AccessSolverError::ContextExtraction(_) => PostgresExecutionError::Authorization,
+            _ => PostgresExecutionError::Generic(error.to_string()),
         }
     }
 }

@@ -74,6 +74,7 @@ impl From<AccessSolverError> for DenoExecutionError {
     fn from(error: AccessSolverError) -> Self {
         match error {
             AccessSolverError::ContextExtraction(_) => DenoExecutionError::Authorization,
+            _ => DenoExecutionError::Generic(error.to_string()),
         }
     }
 }
