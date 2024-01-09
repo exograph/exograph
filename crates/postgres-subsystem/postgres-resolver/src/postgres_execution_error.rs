@@ -66,7 +66,7 @@ impl PostgresExecutionError {
             // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).
             _ => {
                 error!("Postgres operation failed: {:?}", self);
-                "Postgres operation failed".to_string()
+                "Operation failed".to_string()
             }
         }
     }

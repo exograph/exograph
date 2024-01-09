@@ -20,7 +20,7 @@ response: |
     {
       "errors": [
         {
-            "message": "Postgres operation failed"
+            "message": "Operation failed"
         }
       ]
     }
