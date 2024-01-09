@@ -23,7 +23,7 @@ async fn test_basic_query() {
             "statusCode": 200,
             "headers": {},
             "multiValueHeaders": {},
-            "body": "{\"errors\": [{\"message\":\"Postgres operation failed\"}]}"
+            "body": "{\"errors\": [{\"message\":\"Operation failed\"}]}"
         }),
     )
     .await
