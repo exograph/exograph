@@ -19,16 +19,11 @@ use super::{column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec
 pub struct IndexSpec {
     pub name: String,
     pub columns: HashSet<String>,
-    pub is_unique: bool,
 }
 
 impl IndexSpec {
-    pub fn new(name: String, columns: HashSet<String>, is_unique: bool) -> Self {
-        Self {
-            name,
-            columns,
-            is_unique,
-        }
+    pub fn new(name: String, columns: HashSet<String>) -> Self {
+        Self { name, columns }
     }
 
     pub async fn from_live_db(
@@ -57,21 +52,19 @@ impl IndexSpec {
                     .get::<_, Vec<String>>("column_names")
                     .into_iter()
                     .collect::<HashSet<_>>();
+                let unique: bool = row.get("is_unique");
 
                 // If the columns consists only of primary key columns, then we should not
                 // explicitly create an index for it (the database will create it automatically due
                 // to the pk constraint)
-                if column_names
-                    .iter()
-                    .all(|c| columns.iter().any(|col| col.name == *c && col.is_pk))
+                if unique
+                    || column_names
+                        .iter()
+                        .all(|c| columns.iter().any(|col| col.name == *c && col.is_pk))
                 {
                     None
                 } else {
-                    Some(IndexSpec::new(
-                        row.get("index_name"),
-                        column_names,
-                        row.get("is_unique"),
-                    ))
+                    Some(IndexSpec::new(row.get("index_name"), column_names))
                 }
             })
             .collect::<Vec<_>>();
@@ -90,7 +83,6 @@ impl IndexSpec {
     ) -> Vec<SchemaOp<'a>> {
         if self.name == other.name
             && self.columns == other.columns
-            && self.is_unique == other.is_unique
             && self_table.name == other_table.name
         {
             return vec![];
@@ -116,8 +108,7 @@ impl IndexSpec {
         };
 
         format!(
-            "CREATE {unique}INDEX \"{index_name}\" ON {table_name} ({columns});",
-            unique = if self.is_unique { "UNIQUE " } else { "" },
+            "CREATE INDEX \"{index_name}\" ON {table_name} ({columns});",
             index_name = self.name,
             table_name = table_name.sql_name(),
             columns = sorted_columns

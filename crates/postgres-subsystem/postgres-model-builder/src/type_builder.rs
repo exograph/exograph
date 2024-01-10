@@ -216,7 +216,6 @@ fn expand_type_no_fields(
                     None => indices.push(PhysicalIndex {
                         name: index_name.clone(),
                         columns: HashSet::from_iter([field.column_name.clone()]),
-                        unique: false,
                     }),
                 }
             })

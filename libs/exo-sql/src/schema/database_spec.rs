@@ -90,7 +90,6 @@ impl DatabaseSpec {
                 .map(|index_spec| PhysicalIndex {
                     name: index_spec.name.to_owned(),
                     columns: index_spec.columns.to_owned(),
-                    unique: index_spec.is_unique,
                 })
                 .collect();
         }
@@ -174,7 +173,6 @@ impl DatabaseSpec {
                         .map(|index| IndexSpec {
                             name: index.name,
                             columns: index.columns.into_iter().collect(),
-                            is_unique: index.unique,
                         })
                         .collect(),
                 )
