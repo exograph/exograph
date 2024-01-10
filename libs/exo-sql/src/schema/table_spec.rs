@@ -141,7 +141,7 @@ impl TableSpec {
         let WithIssues {
             issues: indices_issues,
             value: indices,
-        } = IndexSpec::from_live_db(client, &table_name).await?;
+        } = IndexSpec::from_live_db(client, &table_name, &columns).await?;
         issues.extend(indices_issues);
 
         Ok(WithIssues {
