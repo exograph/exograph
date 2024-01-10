@@ -13,7 +13,7 @@ use deadpool_postgres::Client;
 
 use crate::{database_error::DatabaseError, PhysicalTableName};
 
-use super::{issue::WithIssues, op::SchemaOp, table_spec::TableSpec};
+use super::{column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec::TableSpec};
 
 #[derive(Debug, Clone)]
 pub struct IndexSpec {
@@ -34,6 +34,7 @@ impl IndexSpec {
     pub async fn from_live_db(
         client: &Client,
         table_name: &PhysicalTableName,
+        columns: &[ColumnSpec],
     ) -> Result<WithIssues<Vec<IndexSpec>>, DatabaseError> {
         let indices_query = r#"
             SELECT tables.relname as table_name, indices.relname as index_name, array_agg(attr.attname) as column_names, index_info.indisunique as is_unique
@@ -51,14 +52,27 @@ impl IndexSpec {
             .query(indices_query, &[&table_name.name.as_str()])
             .await?
             .iter()
-            .map(|row| {
-                IndexSpec::new(
-                    row.get("index_name"),
-                    row.get::<_, Vec<String>>("column_names")
-                        .into_iter()
-                        .collect::<HashSet<_>>(),
-                    row.get("is_unique"),
-                )
+            .flat_map(|row| {
+                let column_names = row
+                    .get::<_, Vec<String>>("column_names")
+                    .into_iter()
+                    .collect::<HashSet<_>>();
+
+                // If the columns consists only of primary key columns, then we should not
+                // explicitly create an index for it (the database will create it automatically due
+                // to the pk constraint)
+                if column_names
+                    .iter()
+                    .all(|c| columns.iter().any(|col| col.name == *c && col.is_pk))
+                {
+                    None
+                } else {
+                    Some(IndexSpec::new(
+                        row.get("index_name"),
+                        column_names,
+                        row.get("is_unique"),
+                    ))
+                }
             })
             .collect::<Vec<_>>();
 
