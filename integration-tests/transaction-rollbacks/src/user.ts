@@ -31,3 +31,7 @@ export async function registerUser(exograph: any, username: string, email: strin
     // as the user's request failed, all changes should be rolled back from the database at this point
 
 }
+
+export function fail() {
+    throw new Error("always fails");
+}

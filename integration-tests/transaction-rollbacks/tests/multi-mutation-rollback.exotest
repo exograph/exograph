@@ -1,19 +1,21 @@
 stages:
     # attempt to create
     - operation: |
-        mutation ($username: String!, $email: String!) {
-            result: registerUser(username: $username, email: $email)
-        }
-      variable: |
-        {
-            "username": "john",
-            "email": "john@example.org"
+        mutation {
+            u1: createUser(data: {username: "u1", email: "u1.example.com"}) {
+                id
+            }
+            u2: createUser(data: {username: "u2", email: "u2.example.com"}) {
+                id
+            }
+            # The next one always fails
+            fail
         }
       response: |
         {
           "errors": [
             {
-              "message": "some user error"
+              "message": "Internal server error"
             }
           ]
         }

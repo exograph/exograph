@@ -17,4 +17,7 @@ module RegistrationModule {
         username: String,
         email: String
     ): Boolean
+
+    @access(true)
+    export mutation fail(): Boolean
 }
