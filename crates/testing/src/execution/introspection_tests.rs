@@ -23,12 +23,9 @@ use resolver::{create_system_resolver, IntrospectionMode, LOCAL_ALLOW_INTROSPECT
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
 
-use crate::exotest::common::TestResultKind;
+use super::{TestResult, TestResultKind};
 
-use super::{
-    common::TestResult,
-    integration_tests::{run_query, MemoryRequest},
-};
+use super::integration_tests::{run_query, MemoryRequest};
 
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
 const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");

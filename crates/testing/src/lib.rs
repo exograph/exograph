@@ -7,23 +7,23 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-mod exotest;
+pub(crate) mod execution;
+pub(crate) mod loader;
+mod model;
 
-use anyhow::{bail, Context, Error, Result};
-use colored::Colorize;
-
-use exo_sql::testing::db::{EphemeralDatabaseLauncher, EphemeralDatabaseServer};
-use exotest::integration_tests::{build_exo_ir_file, run_testfile};
-use exotest::loader::load_project_dir;
 use futures::FutureExt;
 use std::cmp::min;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::exotest::common::TestResult;
-use crate::exotest::introspection_tests::run_introspection_test;
-use crate::exotest::loader::ProjectTests;
+use anyhow::{bail, Context, Error, Result};
+use colored::Colorize;
+
+use exo_sql::testing::db::{EphemeralDatabaseLauncher, EphemeralDatabaseServer};
+
+use execution::{build_exo_ir_file, run_introspection_test, run_testfile, TestResult};
+use loader::IntegrationTests;
 
 #[cfg(test)]
 use ctor::ctor;
@@ -62,7 +62,7 @@ pub fn run(
     let start_time = std::time::Instant::now();
     let cpus = num_cpus::get();
 
-    let project_tests = load_project_dir(root_directory, pattern)
+    let project_tests = IntegrationTests::load(root_directory, pattern)
         .with_context(|| format!("While loading testfiles from directory {root_directory_str}"))?;
     let number_of_integration_tests = project_tests.len();
 
@@ -85,7 +85,7 @@ pub fn run(
     let ephemeral_server = Arc::new(EphemeralDatabaseLauncher::create_server()?);
 
     // Then build all the model files, spawning the production mode tests once the build completes
-    for ProjectTests {
+    for IntegrationTests {
         project_dir: model_path,
         tests,
     } in project_tests
