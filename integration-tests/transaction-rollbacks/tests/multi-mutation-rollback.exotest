@@ -1,0 +1,35 @@
+stages:
+    # attempt to create
+    - operation: |
+        mutation {
+            u1: createUser(data: {username: "u1", email: "u1.example.com"}) {
+                id
+            }
+            u2: createUser(data: {username: "u2", email: "u2.example.com"}) {
+                id
+            }
+            # The next one always fails
+            fail
+        }
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Internal server error"
+            }
+          ]
+        }
+    
+    # check to make sure queries have been rolled back
+    - operation: |
+        query {
+            users {
+                id
+            }
+        }
+      response: |
+        {
+            "data": {
+                "users": []
+            }
+        }
