@@ -33,9 +33,9 @@ use std::{
     collections::HashMap, ffi::OsStr, io::Write, path::Path, process::Command, time::SystemTime,
 };
 
+use crate::exotest::common::cmd;
 use crate::exotest::common::{TestResult, TestResultKind, TestfileContext};
 use crate::exotest::loader::{ParsedTestfile, TestfileOperation};
-use crate::exotest::{common::cmd, dbutils::run_psql};
 
 use super::{
     assertion::{self, evaluate_using_deno},
@@ -55,6 +55,11 @@ pub(crate) async fn run_testfile(
 ) -> Result<TestResult> {
     let log_prefix = format!("({})\n :: ", testfile.name()).purple();
 
+    let db_instance_name = format!("exotest_{:x}", md5::compute(testfile.name()));
+
+    // create a database
+    let db_instance = ephemeral_database.create_database(&db_instance_name)?;
+
     // iterate through our tests
     let mut ctx = {
         // generate a JWT secret
@@ -63,11 +68,6 @@ pub(crate) async fn run_testfile(
             .take(30)
             .map(char::from)
             .collect();
-
-        let db_instance_name = format!("exotest_{:x}", md5::compute(testfile.name()));
-
-        // create a database
-        let db_instance = ephemeral_database.create_database(&db_instance_name)?;
 
         // create the schema
         println!(
@@ -147,7 +147,6 @@ pub(crate) async fn run_testfile(
         };
 
         TestfileContext {
-            db: db_instance,
             server,
             jwtsecret,
             cookies: HashMap::new(),
@@ -259,137 +258,130 @@ async fn run_operation(
     gql: &TestfileOperation,
     ctx: &mut TestfileContext,
 ) -> Result<OperationResult> {
-    match gql {
-        TestfileOperation::GqlDocument {
-            document,
-            operations_metadata,
-            variables,
-            expected_payload,
-            auth,
-            headers,
-            deno_prelude,
-        } => {
-            let deno_prelude = deno_prelude.clone().unwrap_or_default();
+    let TestfileOperation {
+        document,
+        operations_metadata,
+        variables,
+        expected_payload,
+        auth,
+        headers,
+        deno_prelude,
+    } = gql;
 
-            // process substitutions in query variables section
-            // and extend our collection with the results
-            let variables_map: Map<String, Value> = OptionFuture::from(
-                variables
-                    .as_ref()
-                    .map(|vars| evaluate_using_deno(vars, &deno_prelude, &ctx.testvariables)),
+    let deno_prelude = deno_prelude.clone().unwrap_or_default();
+
+    // process substitutions in query variables section
+    // and extend our collection with the results
+    let variables_map: Map<String, Value> = OptionFuture::from(
+        variables
+            .as_ref()
+            .map(|vars| evaluate_using_deno(vars, &deno_prelude, &ctx.testvariables)),
+    )
+    .await
+    .transpose()?
+    .unwrap_or_else(|| Value::Object(Map::new()))
+    .as_object()
+    .expect("evaluation to finish with a variable map")
+    .clone();
+    ctx.testvariables.extend(variables_map.clone());
+
+    // remove @bind directives from our query
+    // TODO: could we take them out of ExecutableDocument and serialize that instead?
+    let query = Regex::new(r"@bind\(.*\)")?
+        .replace_all(document, "")
+        .to_string();
+    // similarly, remove @unordered directives
+    let query = query.replace("@unordered", "");
+
+    let mut request = MemoryRequest::new(ctx.cookies.clone());
+
+    // add JWT token if specified in testfile
+    if let Some(auth) = auth {
+        let mut auth = evaluate_using_deno(auth, "", &ctx.testvariables).await?;
+        let auth_ref = auth.as_object_mut().unwrap();
+        let epoch_time = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
+
+        // populate token with expiry information
+        auth_ref.insert("iat".to_string(), json!(epoch_time));
+        auth_ref.insert("exp".to_string(), json!(epoch_time + 60 * 60));
+
+        let token = encode(
+            &Header::default(),
+            &auth,
+            &EncodingKey::from_secret(ctx.jwtsecret.as_ref()),
+        )
+        .unwrap();
+        request.add_header("Authorization", &format!("Bearer {token}"));
+    };
+
+    request.add_header("Content-Type", "application/json");
+
+    // add extra headers from testfile
+    let headers = OptionFuture::from(headers.as_ref().map(|headers| async {
+        evaluate_using_deno(headers, &deno_prelude, &ctx.testvariables).await
+    }))
+    .await
+    .transpose()?;
+
+    if let Some(Value::Object(map)) = headers {
+        for (header, value) in map.iter() {
+            request.add_header(
+                header,
+                value.as_str().expect("expected string for header value"),
+            );
+        }
+    }
+
+    let request_context = RequestContext::new(&request, vec![], &ctx.server)?;
+    let operations_payload = OperationsPayload {
+        operation_name: None,
+        query,
+        variables: Some(variables_map),
+    };
+
+    // run the operation
+    let body = run_query(
+        operations_payload,
+        request_context,
+        &ctx.server,
+        &mut ctx.cookies,
+    )
+    .await;
+
+    // resolve testvariables from the result of our current operation
+    // and extend our collection with them
+    let resolved_variables_keys = operations_metadata.bindings.keys().cloned();
+    let resolved_variables_values = operations_metadata
+        .bindings
+        .keys()
+        .map(|name| resolve_testvariable(name, &body, &operations_metadata.bindings))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter();
+    let resolved_variables: HashMap<_, _> = resolved_variables_keys
+        .zip(resolved_variables_values)
+        .collect();
+    ctx.testvariables.extend(resolved_variables);
+
+    match expected_payload {
+        Some(expected_payload) => {
+            // expected response specified - do an assertion
+            match assertion::dynamic_assert_using_deno(
+                expected_payload,
+                body,
+                &deno_prelude,
+                &ctx.testvariables,
+                &operations_metadata.unordered_paths,
             )
             .await
-            .transpose()?
-            .unwrap_or_else(|| Value::Object(Map::new()))
-            .as_object()
-            .expect("evaluation to finish with a variable map")
-            .clone();
-            ctx.testvariables.extend(variables_map.clone());
-
-            // remove @bind directives from our query
-            // TODO: could we take them out of ExecutableDocument and serialize that instead?
-            let query = Regex::new(r"@bind\(.*\)")?
-                .replace_all(document, "")
-                .to_string();
-            // similarly, remove @unordered directives
-            let query = query.replace("@unordered", "");
-
-            let mut request = MemoryRequest::new(ctx.cookies.clone());
-
-            // add JWT token if specified in testfile
-            if let Some(auth) = auth {
-                let mut auth = evaluate_using_deno(auth, "", &ctx.testvariables).await?;
-                let auth_ref = auth.as_object_mut().unwrap();
-                let epoch_time = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
-
-                // populate token with expiry information
-                auth_ref.insert("iat".to_string(), json!(epoch_time));
-                auth_ref.insert("exp".to_string(), json!(epoch_time + 60 * 60));
-
-                let token = encode(
-                    &Header::default(),
-                    &auth,
-                    &EncodingKey::from_secret(ctx.jwtsecret.as_ref()),
-                )
-                .unwrap();
-                request.add_header("Authorization", &format!("Bearer {token}"));
-            };
-
-            request.add_header("Content-Type", "application/json");
-
-            // add extra headers from testfile
-            let headers = OptionFuture::from(headers.as_ref().map(|headers| async {
-                evaluate_using_deno(headers, &deno_prelude, &ctx.testvariables).await
-            }))
-            .await
-            .transpose()?;
-
-            if let Some(Value::Object(map)) = headers {
-                for (header, value) in map.iter() {
-                    request.add_header(
-                        header,
-                        value.as_str().expect("expected string for header value"),
-                    );
-                }
-            }
-
-            let request_context = RequestContext::new(&request, vec![], &ctx.server)?;
-            let operations_payload = OperationsPayload {
-                operation_name: None,
-                query,
-                variables: Some(variables_map),
-            };
-
-            // run the operation
-            let body = run_query(
-                operations_payload,
-                request_context,
-                &ctx.server,
-                &mut ctx.cookies,
-            )
-            .await;
-
-            // resolve testvariables from the result of our current operation
-            // and extend our collection with them
-            let resolved_variables_keys = operations_metadata.bindings.keys().cloned();
-            let resolved_variables_values = operations_metadata
-                .bindings
-                .keys()
-                .map(|name| resolve_testvariable(name, &body, &operations_metadata.bindings))
-                .collect::<Result<Vec<_>>>()?
-                .into_iter();
-            let resolved_variables: HashMap<_, _> = resolved_variables_keys
-                .zip(resolved_variables_values)
-                .collect();
-            ctx.testvariables.extend(resolved_variables);
-
-            match expected_payload {
-                Some(expected_payload) => {
-                    // expected response specified - do an assertion
-                    match assertion::dynamic_assert_using_deno(
-                        expected_payload,
-                        body,
-                        &deno_prelude,
-                        &ctx.testvariables,
-                        &operations_metadata.unordered_paths,
-                    )
-                    .await
-                    {
-                        Ok(()) => Ok(OperationResult::AssertPassed),
-                        Err(e) => Ok(OperationResult::AssertFailed(e)),
-                    }
-                }
-
-                None => {
-                    // don't need to check anything
-
-                    Ok(OperationResult::Finished)
-                }
+            {
+                Ok(()) => Ok(OperationResult::AssertPassed),
+                Err(e) => Ok(OperationResult::AssertFailed(e)),
             }
         }
 
-        TestfileOperation::Sql(query) => {
-            run_psql(query, ctx.db.as_ref()).await?;
+        None => {
+            // don't need to check anything
+
             Ok(OperationResult::Finished)
         }
     }

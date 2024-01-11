@@ -11,7 +11,6 @@ use anyhow::Error;
 
 use colored::Colorize;
 use core_resolver::system_resolver::SystemResolver;
-use exo_sql::testing::db::EphemeralDatabase;
 
 use std::{collections::HashMap, fmt, process::Command};
 
@@ -19,7 +18,6 @@ use std::{collections::HashMap, fmt, process::Command};
 /// When dropped, we will clean them up.
 pub(crate) struct TestfileContext {
     pub server: SystemResolver,
-    pub db: Box<dyn EphemeralDatabase + Send + Sync>,
     pub jwtsecret: String,
     pub cookies: HashMap<String, String>,
     pub testvariables: HashMap<String, serde_json::Value>,
