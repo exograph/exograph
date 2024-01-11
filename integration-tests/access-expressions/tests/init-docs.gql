@@ -1,46 +1,61 @@
-operation: |
-    mutation {
-        doc1: createDoc(data: {content: "doc1", public: true}) {
-            id
+stages:
+    - operation: |
+        mutation {
+            doc1: createDoc(data: {content: "doc1", public: true}) {
+                id
+            }
+            doc2: createDoc(data: {content: "doc2", public: false}) {
+                id
+            }
+            doc3: createDoc(data: {content: "doc3", public: true}) {
+                id
+            }
+            doc4: createDoc(data: {content: "doc4", public: false}) {
+                id
+            }   
+            adminDoc1: createAdminDoc(data: {content: "adminDoc1"}) {
+                id
+            }
+            adminDoc2: createAdminDoc(data: {content: "adminDoc2"}) {
+                id
+            }
+            adminDoc3: createAdminDoc(data: {content: "adminDoc3"}) {
+                id
+            }
+            adminDoc4: createAdminDoc(data: {content: "adminDoc4"}) {
+                id
+            }
+            externalDoc1: createExternalDoc(data: {content: "externalDoc1", externalId: 1}) {
+                id
+            }
+            externalDoc2: createExternalDoc(data: {content: "externalDoc2", externalId: 2}) {
+                id
+            }
+            users: createUsers(data: [{name: "u1"}, {name: "u2"}, {name: "a1"}, {name: "a2"}]) {
+                id @bind(name: "userIds")
+            }
+        }  
+      auth: |
+        {
+            "roles": ["ADMIN", "SUPER_ADMIN"]
         }
-        doc2: createDoc(data: {content: "doc2", public: false}) {
-            id
+    - operation: |
+        mutation($user1Id: Int!, $user2Id: Int!, $user3Id: Int!, $user4Id: Int!) {
+            memberships: createMemberships(data: [{kind: "k1", user: {id: $user1Id}}, {kind: "k1", user: {id: $user2Id}}]) {
+                id
+            }
+            adminNotes: createAdminNotes(data: [{content: "n1_user3", user: {id: $user3Id}}, {content: "n2_user4", user: {id: $user4Id}}]) {
+                id
+            }
         }
-        doc3: createDoc(data: {content: "doc3", public: true}) {
-            id
+      variable: |
+        {
+            "user1Id": $.userIds[0],
+            "user2Id": $.userIds[1],
+            "user3Id": $.userIds[2],
+            "user4Id": $.userIds[3]
         }
-        doc4: createDoc(data: {content: "doc4", public: false}) {
-            id
-        }   
-        adminDoc1: createAdminDoc(data: {content: "adminDoc1"}) {
-            id
-        }
-        adminDoc2: createAdminDoc(data: {content: "adminDoc2"}) {
-            id
-        }
-        adminDoc3: createAdminDoc(data: {content: "adminDoc3"}) {
-            id
-        }
-        adminDoc4: createAdminDoc(data: {content: "adminDoc4"}) {
-            id
-        }
-        users: createUsers(data: [{name: "u1"}, {name: "u2"}, {name: "a1"}, {name: "a2"}]) {
-            id
-        }
-        memberships: createMemberships(data: [{kind: "k1", user: {id: 1}}, {kind: "k1", user: {id: 2}}]) {
-            id
-        }
-        adminNotes: createAdminNotes(data: [{content: "n1_user3", user: {id: 3}}, {content: "n2_user4", user: {id: 4}}]) {
-            id
-        }
-        externalDoc1: createExternalDoc(data: {content: "externalDoc1", externalId: 1}) {
-            id
-        }
-        externalDoc2: createExternalDoc(data: {content: "externalDoc2", externalId: 2}) {
-            id
-        }                    
-    }  
-auth: |
-    {
-        "roles": ["ADMIN", "SUPER_ADMIN"]
-    }
+      auth: |
+        {
+            "roles": ["ADMIN", "SUPER_ADMIN"]
+        }        

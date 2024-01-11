@@ -10,7 +10,6 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
@@ -24,18 +23,14 @@ use crate::exotest::testvariable_bindings::OperationsMetadata;
 use super::testvariable_bindings::build_operations_metadata;
 
 #[derive(Debug, Clone)]
-#[allow(clippy::large_enum_variant)]
-pub enum TestfileOperation {
-    Sql(String),
-    GqlDocument {
-        document: String,
-        operations_metadata: OperationsMetadata,
-        variables: Option<String>,        // stringified
-        expected_payload: Option<String>, // stringified
-        deno_prelude: Option<String>,
-        auth: Option<String>,    // stringified
-        headers: Option<String>, // stringified
-    },
+pub struct TestfileOperation {
+    pub document: String,
+    pub operations_metadata: OperationsMetadata,
+    pub variables: Option<String>,        // stringified
+    pub expected_payload: Option<String>, // stringified
+    pub deno_prelude: Option<String>,
+    pub auth: Option<String>,    // stringified
+    pub headers: Option<String>, // stringified
 }
 
 pub struct ProjectTests {
@@ -80,8 +75,7 @@ impl ParsedTestfile {
 // serde file formats
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct TestfileStage {
-    pub exofile: Option<String>,
+struct TestfileStage {
     pub headers: Option<String>,
     pub deno: Option<String>,
     pub operation: String,
@@ -91,15 +85,14 @@ pub struct TestfileStage {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct TestfileCommon {
-    pub exofile: Option<String>,
+struct TestfileCommon {
     #[serde(default)]
     pub retries: usize,
     pub envs: Option<HashMap<String, String>>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct TestfileSingleStage {
+struct TestfileSingleStage {
     #[serde(flatten)]
     pub common: TestfileCommon,
     #[serde(flatten)]
@@ -107,19 +100,10 @@ pub struct TestfileSingleStage {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct TestfileMultipleStages {
+struct TestfileMultipleStages {
     #[serde(flatten)]
     pub common: TestfileCommon,
     pub stages: Vec<TestfileStage>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct InitFile {
-    pub operation: String,
-    pub variable: Option<String>,
-    pub auth: Option<String>,
-    pub headers: Option<String>,
-    pub deno: Option<String>,
 }
 
 fn collect_exo_projects(root_directory: &Path) -> Vec<PathBuf> {
@@ -208,8 +192,8 @@ fn load_tests_dir(
     let mut init_ops = init_ops.to_owned();
 
     for initfile_path in init_files.iter() {
-        let init_op = construct_operation_from_init_file(initfile_path)?;
-        init_ops.push(init_op);
+        let init_op = parse_testfile(initfile_path, vec![])?;
+        init_ops.extend(init_op.test_operation_stages);
     }
 
     // Parse test files
@@ -289,7 +273,7 @@ Error as a multistage test: {}
                     OperationsMetadata::default()
                 });
 
-            Ok(TestfileOperation::GqlDocument {
+            Ok(TestfileOperation {
                 document: stage.operation,
                 operations_metadata,
                 auth: stage.auth,
@@ -310,39 +294,6 @@ Error as a multistage test: {}
         init_operations: init_ops,
         test_operation_stages: test_operation_sequence,
     })
-}
-
-fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> {
-    match path.extension().unwrap().to_str().unwrap() {
-        "sql" => {
-            let sql = std::fs::read_to_string(path).context("Failed to read SQL file")?;
-
-            Ok(TestfileOperation::Sql(sql))
-        }
-        "gql" => {
-            let file = File::open(path)?;
-            let reader = BufReader::new(file);
-            let deserialized_initfile: InitFile =
-                serde_yaml::from_reader(reader).context(format!("Failed to parse {path:?}"))?;
-
-            // validate GraphQL
-            let gql_document =
-                parse_query(&deserialized_initfile.operation).context("Invalid GraphQL")?;
-
-            Ok(TestfileOperation::GqlDocument {
-                document: deserialized_initfile.operation.clone(),
-                operations_metadata: build_operations_metadata(&gql_document),
-                auth: deserialized_initfile.auth,
-                variables: deserialized_initfile.variable,
-                headers: deserialized_initfile.headers,
-                expected_payload: None,
-                deno_prelude: deserialized_initfile.deno,
-            })
-        }
-        _ => {
-            bail!("Bad extension")
-        }
-    }
 }
 
 // Exograph projects have a src/index.exo file
