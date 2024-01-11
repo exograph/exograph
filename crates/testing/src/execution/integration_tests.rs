@@ -33,14 +33,10 @@ use std::{
     collections::HashMap, ffi::OsStr, io::Write, path::Path, process::Command, time::SystemTime,
 };
 
-use crate::exotest::common::cmd;
-use crate::exotest::common::{TestResult, TestResultKind, TestfileContext};
-use crate::exotest::loader::{ParsedTestfile, TestfileOperation};
+use super::{common::cmd, TestResult, TestResultKind};
+use crate::model::{resolve_testvariable, IntegrationTest, IntegrationTestOperation};
 
-use super::{
-    assertion::{self, evaluate_using_deno},
-    testvariable_bindings::resolve_testvariable,
-};
+use super::assertion::{self, evaluate_using_deno};
 
 #[derive(Serialize)]
 struct ExoPost {
@@ -48,8 +44,17 @@ struct ExoPost {
     variables: Map<String, Value>,
 }
 
+/// Structure to hold open resources associated with a running testfile.
+/// When dropped, we will clean them up.
+struct TestfileContext {
+    pub server: SystemResolver,
+    pub jwtsecret: String,
+    pub cookies: HashMap<String, String>,
+    pub testvariables: HashMap<String, serde_json::Value>,
+}
+
 pub(crate) async fn run_testfile(
-    testfile: &ParsedTestfile,
+    testfile: &IntegrationTest,
     project_dir: &PathBuf,
     ephemeral_database: &dyn EphemeralDatabaseServer,
 ) -> Result<TestResult> {
@@ -176,7 +181,7 @@ pub(crate) async fn run_testfile(
     println!("{log_prefix} Testing ...");
 
     let mut fail = None;
-    for operation in testfile.test_operation_stages.iter() {
+    for operation in testfile.test_operations.iter() {
         let result = run_operation(operation, &mut ctx)
             .await
             .with_context(|| anyhow!("While running tests for {}", testfile.name()));
@@ -255,10 +260,10 @@ impl Request for MemoryRequest {
 }
 
 async fn run_operation(
-    gql: &TestfileOperation,
+    gql: &IntegrationTestOperation,
     ctx: &mut TestfileContext,
 ) -> Result<OperationResult> {
-    let TestfileOperation {
+    let IntegrationTestOperation {
         document,
         operations_metadata,
         variables,

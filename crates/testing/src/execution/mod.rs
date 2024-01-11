@@ -8,8 +8,11 @@
 // by the Apache License, Version 2.0.
 
 mod assertion;
-pub(crate) mod common;
-pub(crate) mod integration_tests;
-pub(crate) mod introspection_tests;
-pub(crate) mod loader;
-mod testvariable_bindings;
+mod common;
+mod integration_tests;
+mod introspection_tests;
+mod result;
+
+pub(crate) use integration_tests::{build_exo_ir_file, run_testfile};
+pub(crate) use introspection_tests::run_introspection_test;
+pub(crate) use result::{TestResult, TestResultKind};

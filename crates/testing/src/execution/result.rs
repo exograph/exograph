@@ -10,18 +10,8 @@
 use anyhow::Error;
 
 use colored::Colorize;
-use core_resolver::system_resolver::SystemResolver;
 
-use std::{collections::HashMap, fmt, process::Command};
-
-/// Structure to hold open resources associated with a running testfile.
-/// When dropped, we will clean them up.
-pub(crate) struct TestfileContext {
-    pub server: SystemResolver,
-    pub jwtsecret: String,
-    pub cookies: HashMap<String, String>,
-    pub testvariables: HashMap<String, serde_json::Value>,
-}
+use std::fmt;
 
 /// The result of running a testfile.
 pub enum TestResultKind {
@@ -119,20 +109,4 @@ impl fmt::Display for TestResult {
             ),
         }
     }
-}
-
-pub(crate) fn cmd(binary_name: &str) -> Command {
-    // Pick up the current executable path and replace the file with the specified binary
-    // This allows us to invoke `target/debug/exo test ...` or `target/release/exo test ...`
-    // without updating the PATH env.
-    // Thus, for the former invocation if the `binary_name` is `exo-server` the command will become
-    // `<full-path-to>/target/debug/exo-server`
-    let mut executable =
-        std::env::current_exe().expect("Could not retrieve the current executable");
-    executable.set_file_name(binary_name);
-    Command::new(
-        executable
-            .to_str()
-            .expect("Could not convert executable path to a string"),
-    )
 }
