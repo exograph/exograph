@@ -18,7 +18,7 @@ stages:
           ]
         }
     
-    # check to make sure queries have been rolled back
+    # ensure mutations have been rolled back
     - operation: |
         query {
             users {
