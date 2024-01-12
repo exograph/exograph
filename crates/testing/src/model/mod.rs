@@ -17,7 +17,7 @@ pub use operations_metadata::{
 
 /// Tests for a particular model
 pub struct TestSuite {
-    /// The directory containing src and tests
+    /// The directory containing src/ and tests/
     pub project_dir: PathBuf,
     pub tests: Vec<IntegrationTest>,
 }
@@ -28,7 +28,7 @@ pub struct IntegrationTest {
     pub retries: usize,
     pub init_operations: Vec<IntegrationTestOperation>,
     pub test_operations: Vec<IntegrationTestOperation>,
-    pub extra_envs: HashMap<String, String>, // extra envvars to set for the entire testfile
+    pub extra_envs: HashMap<String, String>, // extra envvars ti be set when starting the exo server
 }
 
 #[derive(Debug, Clone)]

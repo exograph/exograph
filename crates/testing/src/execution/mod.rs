@@ -8,12 +8,9 @@
 // by the Apache License, Version 2.0.
 
 mod assertion;
-mod common;
 mod integration_test;
 mod introspection_tests;
 mod result;
 mod test_suite;
 
-pub(crate) use integration_test::build_exo_ir_file;
-pub(crate) use introspection_tests::run_introspection_test;
 pub(crate) use result::{TestResult, TestResultKind};
