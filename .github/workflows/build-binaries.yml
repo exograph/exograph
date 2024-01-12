@@ -44,13 +44,13 @@ jobs:
       - name: Clear up some disk space from the runner
         if: ${{ runner.os != 'Windows' }}
         run: |
-          bash ${PWD}/.github/workflows/clear-disk-space.sh      
+          bash ${PWD}/.github/workflows/clear-disk-space.sh
       - name: Install deps
         run: ${{ matrix.deps-script }}
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 20
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
@@ -98,14 +98,14 @@ jobs:
 
   build-aws-lambda:
     runs-on: ubuntu-20.04
-    container: amazonlinux:2
+    container: amazonlinux:2023
     env:
-      ARCH: aws-lambda-linux-2-x86_64
+      ARCH: aws-lambda-linux-2023-x86_64
 
     steps:
       - name: Install packages for building
         run: |
-          yum install -y tar gzip zip unzip gcc make cmake3
+          yum install -y tar gzip zip unzip gcc make
 
           # Install protoc (the yum install version is 2.x, which is too old for grpc needed by opentelemetry)
           curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
@@ -117,13 +117,11 @@ jobs:
           curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none --profile minimal -y
           echo "/github/home/.cargo/bin" >> $GITHUB_PATH
 
-          ln -s /usr/bin/cmake3 /usr/bin/cmake
-
       - uses: actions/checkout@v3
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 20
       - name: Add Rust target
         run: rustup target add x86_64-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2

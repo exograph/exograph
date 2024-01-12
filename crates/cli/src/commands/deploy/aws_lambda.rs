@@ -55,7 +55,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
     }
 
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        let download_file_name = "exograph-aws-lambda-linux-2-x86_64.zip";
+        let download_file_name = "exograph-aws-lambda-linux-2023-x86_64.zip";
         let current_version = env!("CARGO_PKG_VERSION");
         let download_url = format!("https://github.com/exograph/exograph/releases/download/v{current_version}/{download_file_name}");
         let download_dir = home_dir()
@@ -112,7 +112,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
             "<account-id>".yellow(),
             ":role/".blue(),
             "<role>".yellow(),
-            " --runtime=provided.al2 --handler=bootstrap".blue(),
+            " --runtime=provided.al2023 --handler=bootstrap".blue(),
             " --environment \"Variables={EXO_POSTGRES_URL=".blue(),
             "<your-postgres-url>".yellow(),
             "}\"".blue(),

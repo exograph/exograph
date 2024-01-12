@@ -185,7 +185,7 @@ If haven't already done so, run `aws configure` to set up access to your AWS acc
 
 To deploy the function for the first time, run:
 exo schema migrate --apply-to-database --database <your-postgres-url>
-aws lambda create-function --function-name todo --zip-file fileb://target/aws-lambda/function.zip --role arn:aws:iam::<account-id>:role/<role> --runtime=provided.al2 --handler=bootstrap --environment "Variables={EXO_POSTGRES_URL=<your-postgres-url>}"
+aws lambda create-function --function-name todo --zip-file fileb://target/aws-lambda/function.zip --role arn:aws:iam::<account-id>:role/<role> --runtime=provided.al2023 --handler=bootstrap --environment "Variables={EXO_POSTGRES_URL=<your-postgres-url>}"
 
 To deploy a new version of an existing app, run:
 aws lambda update-function-code --function-name todo --zip-file fileb://target/aws-lambda/function.zip
