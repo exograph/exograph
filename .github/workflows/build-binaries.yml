@@ -20,82 +20,82 @@ on:
 
 jobs:
   # Build and packages all the things
-  # build-artifacts:
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       # For these target platforms
-  #       include:
-  #         - os: macos-11
-  #           deps-script: brew install protobuf
-  #           target: x86_64-apple-darwin
-  #           bin_extension: ""
-  #         - os: ubuntu-20.04
-  #           deps-script: sudo apt-get install -y protobuf-compiler
-  #           target: x86_64-unknown-linux-gnu
-  #           bin_extension: ""
-  #         - os: windows-2019
-  #           deps-script: choco install protoc
-  #           target: x86_64-pc-windows-msvc
-  #           bin_extension: ".exe"
+  build-artifacts:
+    strategy:
+      fail-fast: false
+      matrix:
+        # For these target platforms
+        include:
+          - os: macos-11
+            deps-script: brew install protobuf
+            target: x86_64-apple-darwin
+            bin_extension: ""
+          - os: ubuntu-20.04
+            deps-script: sudo apt-get install -y protobuf-compiler
+            target: x86_64-unknown-linux-gnu
+            bin_extension: ""
+          - os: windows-2019
+            deps-script: choco install protoc
+            target: x86_64-pc-windows-msvc
+            bin_extension: ".exe"
 
-  #   runs-on: ${{ matrix.os }}
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Clear up some disk space from the runner
-  #       if: ${{ runner.os != 'Windows' }}
-  #       run: |
-  #         bash ${PWD}/.github/workflows/clear-disk-space.sh
-  #     - name: Install deps
-  #       run: ${{ matrix.deps-script }}
-  #     - name: Setup Node
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 16
-  #     - name: Add Rust target
-  #       run: rustup target add ${{ matrix.target }}
-  #     - uses: Swatinem/rust-cache@v2
-  #       with:
-  #         key: ${{ matrix.target }}
-  #     - name: Build
-  #       run: |
-  #         cargo build -p cli -p server-actix --target ${{ matrix.target }} --release --features not_cross
-  #     - name: Add Postgres to PATH
-  #       run: |
-  #         if [ "$RUNNER_OS" == "Windows" ]; then
-  #           echo "$PGBIN" >> $GITHUB_PATH
-  #         else
-  #           echo "$(pg_config --bindir)" >> $GITHUB_PATH
-  #         fi
-  #       shell: bash
-  #     - name: Test
-  #       env:
-  #         RUST_BACKTRACE: 1
-  #         EXO_RUN_INTROSPECTION_TESTS: true
-  #       run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
-  #     - name: Create zip of binaries
-  #       run: |
-  #         mkdir -p dist
-  #         cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
-  #         cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
-  #         cp LICENSE dist/
-  #         cd dist/
-  #         7z a exograph-${{matrix.target}}.zip *
-  #         cd ..
-  #     - name: Upload Artifacts
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: exograph-${{matrix.target}}.zip
-  #         path: dist/exograph-${{matrix.target}}.zip
-  #     - name: Upload zip to release
-  #       if: startsWith(github.ref, 'refs/tags/')
-  #       uses: svenstaro/upload-release-action@v2
-  #       with:
-  #         repo_token: ${{ secrets.GITHUB_TOKEN }}
-  #         file: dist/exograph-${{matrix.target}}.zip
-  #         asset_name: exograph-${{matrix.target}}.zip
-  #         tag: ${{ github.ref }}
-  #         prerelease: true
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Clear up some disk space from the runner
+        if: ${{ runner.os != 'Windows' }}
+        run: |
+          bash ${PWD}/.github/workflows/clear-disk-space.sh
+      - name: Install deps
+        run: ${{ matrix.deps-script }}
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Build
+        run: |
+          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release --features not_cross
+      - name: Add Postgres to PATH
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            echo "$PGBIN" >> $GITHUB_PATH
+          else
+            echo "$(pg_config --bindir)" >> $GITHUB_PATH
+          fi
+        shell: bash
+      - name: Test
+        env:
+          RUST_BACKTRACE: 1
+          EXO_RUN_INTROSPECTION_TESTS: true
+        run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
+      - name: Create zip of binaries
+        run: |
+          mkdir -p dist
+          cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
+          cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
+          cp LICENSE dist/
+          cd dist/
+          7z a exograph-${{matrix.target}}.zip *
+          cd ..
+      # - name: Upload Artifacts
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: exograph-${{matrix.target}}.zip
+      #     path: dist/exograph-${{matrix.target}}.zip
+      # - name: Upload zip to release
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   uses: svenstaro/upload-release-action@v2
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: dist/exograph-${{matrix.target}}.zip
+      #     asset_name: exograph-${{matrix.target}}.zip
+      #     tag: ${{ github.ref }}
+      #     prerelease: true
 
   build-aws-lambda:
     runs-on: ubuntu-20.04
