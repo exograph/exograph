@@ -16,7 +16,6 @@ on:
     branches: ["main"]
     tags:
       - "*"
-  pull_request:
 
 jobs:
   # Build and packages all the things
@@ -82,20 +81,20 @@ jobs:
           cd dist/
           7z a exograph-${{matrix.target}}.zip *
           cd ..
-      # - name: Upload Artifacts
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: exograph-${{matrix.target}}.zip
-      #     path: dist/exograph-${{matrix.target}}.zip
-      # - name: Upload zip to release
-      #   if: startsWith(github.ref, 'refs/tags/')
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: dist/exograph-${{matrix.target}}.zip
-      #     asset_name: exograph-${{matrix.target}}.zip
-      #     tag: ${{ github.ref }}
-      #     prerelease: true
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: exograph-${{matrix.target}}.zip
+          path: dist/exograph-${{matrix.target}}.zip
+      - name: Upload zip to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/exograph-${{matrix.target}}.zip
+          asset_name: exograph-${{matrix.target}}.zip
+          tag: ${{ github.ref }}
+          prerelease: true
 
   build-aws-lambda:
     runs-on: ubuntu-20.04
@@ -133,23 +132,23 @@ jobs:
           cargo build -p server-aws-lambda --target x86_64-unknown-linux-gnu --release
           mkdir -p dist
           cp target/x86_64-unknown-linux-gnu/release/bootstrap dist/
-      # - name: Create zip of binaries
-      #   run: |
-      #     cp LICENSE dist/
-      #     cd dist/
-      #     zip exograph-${{ env.ARCH }}.zip *
-      #     cd ..
-      # - name: Upload Artifacts
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: exograph-${{ env.ARCH }}.zip
-      #     path: dist/exograph-${{ env.ARCH }}.zip
-      # - name: Upload zip to release
-      #   if: startsWith(github.ref, 'refs/tags/')
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: dist/exograph-${{ env.ARCH }}.zip
-      #     asset_name: exograph-${{ env.ARCH }}.zip
-      #     tag: ${{ github.ref }}
-      #     prerelease: true
+      - name: Create zip of binaries
+        run: |
+          cp LICENSE dist/
+          cd dist/
+          zip exograph-${{ env.ARCH }}.zip *
+          cd ..
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: exograph-${{ env.ARCH }}.zip
+          path: dist/exograph-${{ env.ARCH }}.zip
+      - name: Upload zip to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/exograph-${{ env.ARCH }}.zip
+          asset_name: exograph-${{ env.ARCH }}.zip
+          tag: ${{ github.ref }}
+          prerelease: true
