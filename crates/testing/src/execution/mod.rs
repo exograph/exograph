@@ -9,10 +9,11 @@
 
 mod assertion;
 mod common;
-mod integration_tests;
+mod integration_test;
 mod introspection_tests;
 mod result;
+mod test_suite;
 
-pub(crate) use integration_tests::{build_exo_ir_file, run_testfile};
+pub(crate) use integration_test::build_exo_ir_file;
 pub(crate) use introspection_tests::run_introspection_test;
 pub(crate) use result::{TestResult, TestResultKind};

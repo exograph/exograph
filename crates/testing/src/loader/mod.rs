@@ -8,6 +8,4 @@
 // by the Apache License, Version 2.0.
 
 mod integration_test;
-mod integration_tests;
-
-pub(crate) use integration_tests::IntegrationTests;
+mod test_suite;

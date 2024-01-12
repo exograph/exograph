@@ -15,6 +15,13 @@ pub use operations_metadata::{
     build_operations_metadata, resolve_testvariable, OperationsMetadata,
 };
 
+/// Tests for a particular model
+pub struct TestSuite {
+    /// The directory containing src and tests
+    pub project_dir: PathBuf,
+    pub tests: Vec<IntegrationTest>,
+}
+
 #[derive(Debug, Clone)]
 pub struct IntegrationTest {
     pub testfile_path: PathBuf,
