@@ -16,6 +16,7 @@ use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
 use futures::future::OptionFuture;
+use futures::FutureExt;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
@@ -29,6 +30,8 @@ use unescape::unescape;
 
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
+use std::sync::mpsc::Sender;
+use std::time::Duration;
 use std::{
     collections::HashMap, ffi::OsStr, io::Write, path::Path, process::Command, time::SystemTime,
 };
@@ -54,7 +57,48 @@ struct TestfileContext {
 }
 
 impl IntegrationTest {
-    pub(crate) async fn run(
+    pub async fn run(
+        &self,
+        project_dir: &PathBuf,
+        ephemeral_database: &dyn EphemeralDatabaseServer,
+        tx: Sender<Result<TestResult>>,
+    ) {
+        let mut retries_left = self.retries;
+        let mut pause = 1000;
+        loop {
+            let result =
+                std::panic::AssertUnwindSafe(self.run_no_retry(project_dir, ephemeral_database))
+                    .catch_unwind()
+                    .await;
+
+            if result.is_err() {
+                // Don't retry after a panic
+                retries_left = 0;
+            }
+
+            let result = result.unwrap_or_else(|_| {
+                Err(anyhow::anyhow!(
+                    "Panic during test run: {}",
+                    project_dir.display()
+                ))
+            });
+            let test_succeeded = result
+                .as_ref()
+                .map(|t| t.is_success())
+                .unwrap_or_else(|_| false);
+
+            if retries_left == 0 || test_succeeded {
+                tx.send(result).map_err(|_| ()).unwrap();
+                break;
+            }
+            println!("Test with configured retries failed. Waiting for {pause} ms before retrying");
+            tokio::time::sleep(Duration::from_millis(pause)).await;
+            pause *= 2;
+            retries_left -= 1;
+        }
+    }
+
+    async fn run_no_retry(
         &self,
         project_dir: &PathBuf,
         ephemeral_database: &dyn EphemeralDatabaseServer,
