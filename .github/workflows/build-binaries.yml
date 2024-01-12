@@ -16,7 +16,7 @@ on:
     branches: ["main"]
     tags:
       - "*"
-  pull:
+  pull_request:
 
 jobs:
   # Build and packages all the things
