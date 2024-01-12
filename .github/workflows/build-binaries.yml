@@ -113,11 +113,6 @@ jobs:
           unzip protoc-3.15.8-linux-x86_64.zip -d /root/.local
           echo "/root/.local/bin" >> $GITHUB_PATH
 
-          # Need to install Rust manually (not through yum, which is a bit older version
-          # and since it doesn't install rustup, it doesn't respect rust-toolchain.toml settings)
-          curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none --profile minimal -y
-          echo "/github/home/.cargo/bin" >> $GITHUB_PATH
-
       - uses: actions/checkout@v3
       - name: Setup Node
         uses: actions/setup-node@v3
