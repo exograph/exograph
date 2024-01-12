@@ -3,7 +3,6 @@ use futures::FutureExt;
 use std::{
     path::Path,
     sync::{mpsc::Sender, Arc},
-    time::Duration,
 };
 
 use exo_sql::testing::db::EphemeralDatabaseServer;
@@ -37,7 +36,10 @@ impl TestSuite {
                     let local = tokio::task::LocalSet::new();
                     local.block_on(&runtime, async move {
                         fn report_panic(model_path: &Path) -> Result<TestResult> {
-                            Err(anyhow::anyhow!("Panic during test run: {}", model_path.display()))
+                            Err(anyhow::anyhow!(
+                                "Panic during test run: {}",
+                                model_path.display()
+                            ))
                         }
 
                         if run_introspection_tests {
@@ -51,34 +53,12 @@ impl TestSuite {
                         };
 
                         for test in tests.iter() {
-                            let mut retries = test.retries;
-                            let mut pause = 1000;
-                            loop {
-                                let result = std::panic::AssertUnwindSafe(test.run(
-                                    &project_dir,
-                                    ephemeral_server.as_ref().as_ref()
-                                        as &dyn EphemeralDatabaseServer,
-                                ))
-                                .catch_unwind()
-                                .await;
-
-                                if result.is_err() {
-                                    // Don't retry after a panic
-                                    retries = 0;
-                                }
-
-                                let result = result.unwrap_or_else(|_| report_panic(&project_dir));
-                                let test_succeeded = result.as_ref().map(|t| t.is_success()).unwrap_or_else(|_| false);
-
-                                if retries == 0 || test_succeeded {
-                                    tx.send(result).map_err(|_| ()).unwrap();
-                                    break;
-                                }
-                                println!("Test with configured retries failed. Waiting for {pause} ms before retrying");
-                                tokio::time::sleep(Duration::from_millis(pause)).await;
-                                pause *= 2;
-                                retries -= 1;
-                            }
+                            test.run(
+                                &project_dir,
+                                ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
+                                tx.clone(),
+                            )
+                            .await;
                         }
                     })
                 }
