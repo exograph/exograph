@@ -40,7 +40,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Clear up some disk space from the runner
         if: ${{ runner.os != 'Windows' }}
         run: |
@@ -48,7 +48,7 @@ jobs:
       - name: Install deps
         run: ${{ matrix.deps-script }}
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Add Rust target
@@ -82,7 +82,7 @@ jobs:
           7z a exograph-${{matrix.target}}.zip *
           cd ..
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: exograph-${{matrix.target}}.zip
           path: dist/exograph-${{matrix.target}}.zip
@@ -117,9 +117,9 @@ jobs:
           curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none --profile minimal -y
           echo "/github/home/.cargo/bin" >> $GITHUB_PATH
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Add Rust target
@@ -139,7 +139,7 @@ jobs:
           zip exograph-${{ env.ARCH }}.zip *
           cd ..
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: exograph-${{ env.ARCH }}.zip
           path: dist/exograph-${{ env.ARCH }}.zip
