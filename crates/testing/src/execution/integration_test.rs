@@ -53,162 +53,158 @@ struct TestfileContext {
     pub testvariables: HashMap<String, serde_json::Value>,
 }
 
-pub(crate) async fn run_testfile(
-    testfile: &IntegrationTest,
-    project_dir: &PathBuf,
-    ephemeral_database: &dyn EphemeralDatabaseServer,
-) -> Result<TestResult> {
-    let log_prefix = format!("({})\n :: ", testfile.name()).purple();
+impl IntegrationTest {
+    pub(crate) async fn run(
+        &self,
+        project_dir: &PathBuf,
+        ephemeral_database: &dyn EphemeralDatabaseServer,
+    ) -> Result<TestResult> {
+        let log_prefix = format!("({})\n :: ", self.name()).purple();
 
-    let db_instance_name = format!("exotest_{:x}", md5::compute(testfile.name()));
+        let db_instance_name = format!("exotest_{:x}", md5::compute(self.name()));
 
-    // create a database
-    let db_instance = ephemeral_database.create_database(&db_instance_name)?;
+        // create a database
+        let db_instance = ephemeral_database.create_database(&db_instance_name)?;
 
-    // iterate through our tests
-    let mut ctx = {
-        // generate a JWT secret
-        let jwtsecret: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(30)
-            .map(char::from)
-            .collect();
+        // iterate through our tests
+        let mut ctx = {
+            // generate a JWT secret
+            let jwtsecret: String = rand::thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(30)
+                .map(char::from)
+                .collect();
 
-        // create the schema
-        println!(
-            "{log_prefix} Initializing schema for {} ...",
-            testfile.name()
-        );
+            // create the schema
+            println!("{log_prefix} Initializing schema for {} ...", self.name());
 
-        let migrate_child = cmd("exo")
-            .args([
-                "schema",
-                "migrate",
-                "--database",
-                &db_instance.url(),
-                "--apply-to-database",
-            ])
-            .current_dir(project_dir)
-            .output()?;
+            let migrate_child = cmd("exo")
+                .args([
+                    "schema",
+                    "migrate",
+                    "--database",
+                    &db_instance.url(),
+                    "--apply-to-database",
+                ])
+                .current_dir(project_dir)
+                .output()?;
 
-        if !migrate_child.status.success() {
-            eprintln!("{}", std::str::from_utf8(&migrate_child.stderr).unwrap());
-            bail!("Could not build schema for {}", testfile.name());
-        }
+            if !migrate_child.status.success() {
+                eprintln!("{}", std::str::from_utf8(&migrate_child.stderr).unwrap());
+                bail!("Could not build schema for {}", self.name());
+            }
 
-        // Verify the schema to exercise the verification logic (which in-turn exercises the database introspection logic)
-        let verify_child = cmd("exo")
-            .args(["schema", "verify", "--database", &db_instance.url()])
-            .current_dir(project_dir)
-            .output()?;
+            // Verify the schema to exercise the verification logic (which in-turn exercises the database introspection logic)
+            let verify_child = cmd("exo")
+                .args(["schema", "verify", "--database", &db_instance.url()])
+                .current_dir(project_dir)
+                .output()?;
 
-        if !verify_child.status.success() {
-            eprintln!("{}", std::str::from_utf8(&verify_child.stderr).unwrap());
-            bail!("Could not verify schema for {}", testfile.name());
-        }
+            if !verify_child.status.success() {
+                eprintln!("{}", std::str::from_utf8(&verify_child.stderr).unwrap());
+                bail!("Could not verify schema for {}", self.name());
+            }
 
-        // spawn a exo instance
-        println!("{log_prefix} Initializing exo-server ...");
+            // spawn a exo instance
+            println!("{log_prefix} Initializing exo-server ...");
 
-        let telemetry_on = std::env::vars().any(|(name, _)| name.starts_with("OTEL_"));
-        let mut extra_envs = testfile.extra_envs.clone();
+            let telemetry_on = std::env::vars().any(|(name, _)| name.starts_with("OTEL_"));
+            let mut extra_envs = self.extra_envs.clone();
 
-        if telemetry_on {
-            extra_envs.insert("OTEL_SERVICE_NAME".to_string(), testfile.name());
-        }
+            if telemetry_on {
+                extra_envs.insert("OTEL_SERVICE_NAME".to_string(), self.name());
+            }
 
-        let server = {
-            let static_loaders = server_common::create_static_loaders();
+            let server = {
+                let static_loaders = server_common::create_static_loaders();
 
-            let exo_ir_file = testfile.exo_ir_file_path(project_dir).display().to_string();
-            LOCAL_URL
-                .with(|url| {
-                    // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
-                    url.borrow_mut().replace(format!(
-                        "{}?options=-c%20TimeZone%3DUTC%2B00",
-                        db_instance.url()
-                    ));
+                let exo_ir_file = self.exo_ir_file_path(project_dir).display().to_string();
+                LOCAL_URL
+                    .with(|url| {
+                        // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
+                        url.borrow_mut().replace(format!(
+                            "{}?options=-c%20TimeZone%3DUTC%2B00",
+                            db_instance.url()
+                        ));
 
-                    LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
-                        // Otherwise we get a "too many connections" error
-                        pool_size.borrow_mut().replace(1);
+                        LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
+                            // Otherwise we get a "too many connections" error
+                            pool_size.borrow_mut().replace(1);
 
-                        LOCAL_JWT_SECRET.with(|jwt| {
-                            jwt.borrow_mut().replace(jwtsecret.clone());
+                            LOCAL_JWT_SECRET.with(|jwt| {
+                                jwt.borrow_mut().replace(jwtsecret.clone());
 
-                            LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-                                allow.borrow_mut().replace(IntrospectionMode::Enabled);
+                                LOCAL_ALLOW_INTROSPECTION.with(|allow| {
+                                    allow.borrow_mut().replace(IntrospectionMode::Enabled);
 
-                                LOCAL_ENVIRONMENT.with(|env| {
-                                    env.borrow_mut().replace(extra_envs.clone());
+                                    LOCAL_ENVIRONMENT.with(|env| {
+                                        env.borrow_mut().replace(extra_envs.clone());
 
-                                    create_system_resolver(&exo_ir_file, static_loaders)
+                                        create_system_resolver(&exo_ir_file, static_loaders)
+                                    })
                                 })
                             })
                         })
                     })
-                })
-                .await?
+                    .await?
+            };
+
+            TestfileContext {
+                server,
+                jwtsecret,
+                cookies: HashMap::new(),
+                testvariables: HashMap::new(),
+            }
         };
 
-        TestfileContext {
-            server,
-            jwtsecret,
-            cookies: HashMap::new(),
-            testvariables: HashMap::new(),
-        }
-    };
+        // run the init section
+        println!("{log_prefix} Initializing database...");
+        for operation in self.init_operations.iter() {
+            let result = run_operation(operation, &mut ctx).await.with_context(|| {
+                format!("While initializing database for testfile {}", self.name())
+            })?;
 
-    // run the init section
-    println!("{log_prefix} Initializing database...");
-    for operation in testfile.init_operations.iter() {
-        let result = run_operation(operation, &mut ctx).await.with_context(|| {
-            format!(
-                "While initializing database for testfile {}",
-                testfile.name()
-            )
-        })?;
-
-        match result {
-            OperationResult::Finished => {}
-            OperationResult::AssertFailed(_) | OperationResult::AssertPassed => {
-                panic!("did not expect assertions in setup")
+            match result {
+                OperationResult::Finished => {}
+                OperationResult::AssertFailed(_) | OperationResult::AssertPassed => {
+                    panic!("did not expect assertions in setup")
+                }
             }
         }
-    }
 
-    // run test
-    println!("{log_prefix} Testing ...");
+        // run test
+        println!("{log_prefix} Testing ...");
 
-    let mut fail = None;
-    for operation in testfile.test_operations.iter() {
-        let result = run_operation(operation, &mut ctx)
-            .await
-            .with_context(|| anyhow!("While running tests for {}", testfile.name()));
+        let mut fail = None;
+        for operation in self.test_operations.iter() {
+            let result = run_operation(operation, &mut ctx)
+                .await
+                .with_context(|| anyhow!("While running tests for {}", self.name()));
 
-        match result {
-            Ok(op_result) => match op_result {
-                OperationResult::AssertPassed | OperationResult::Finished => {}
-                OperationResult::AssertFailed(e) => {
-                    fail = Some(TestResultKind::Fail(e));
+            match result {
+                Ok(op_result) => match op_result {
+                    OperationResult::AssertPassed | OperationResult::Finished => {}
+                    OperationResult::AssertFailed(e) => {
+                        fail = Some(TestResultKind::Fail(e));
+                        break;
+                    }
+                },
+
+                Err(e) => {
+                    fail = Some(TestResultKind::SetupFail(e));
                     break;
                 }
-            },
+            };
+        }
 
-            Err(e) => {
-                fail = Some(TestResultKind::SetupFail(e));
-                break;
-            }
-        };
+        let success = fail.unwrap_or(TestResultKind::Success);
+
+        Ok(TestResult {
+            log_prefix: log_prefix.to_string(),
+            result: success,
+        })
+        // implicit ctx drop
     }
-
-    let success = fail.unwrap_or(TestResultKind::Success);
-
-    Ok(TestResult {
-        log_prefix: log_prefix.to_string(),
-        result: success,
-    })
-    // implicit ctx drop
 }
 
 enum OperationResult {

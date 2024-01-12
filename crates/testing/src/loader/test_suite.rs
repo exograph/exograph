@@ -13,19 +13,11 @@ use wildmatch::WildMatch;
 
 use anyhow::Result;
 
-use crate::model::{IntegrationTest, IntegrationTestOperation};
+use crate::model::{IntegrationTest, IntegrationTestOperation, TestSuite};
 
-pub struct IntegrationTests {
-    pub project_dir: PathBuf,
-    pub tests: Vec<IntegrationTest>,
-}
-
-impl IntegrationTests {
+impl TestSuite {
     /// Load and parse testfiles from a given directory and pattern.
-    pub fn load(
-        root_directory: &PathBuf,
-        pattern: &Option<String>,
-    ) -> Result<Vec<IntegrationTests>> {
+    pub fn load(root_directory: &PathBuf, pattern: &Option<String>) -> Result<Vec<TestSuite>> {
         let exo_project_dirs = if is_exoproject_with_tests(root_directory) {
             // If the root directory is an exo project, and it has tests, then we load the tests from it
             // This will be typical for user projects
@@ -39,7 +31,7 @@ impl IntegrationTests {
             .into_iter()
             .map(|exo_project_dir| {
                 let tests = load_tests_dir(&exo_project_dir, &[], pattern)?;
-                Ok(IntegrationTests {
+                Ok(TestSuite {
                     project_dir: exo_project_dir,
                     tests,
                 })
