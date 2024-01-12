@@ -32,14 +32,12 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::time::Duration;
-use std::{
-    collections::HashMap, ffi::OsStr, io::Write, path::Path, process::Command, time::SystemTime,
-};
+use std::{collections::HashMap, time::SystemTime};
 
-use super::{common::cmd, TestResult, TestResultKind};
 use crate::model::{resolve_testvariable, IntegrationTest, IntegrationTestOperation};
 
-use super::assertion::{self, evaluate_using_deno};
+use super::assertion::{dynamic_assert_using_deno, evaluate_using_deno};
+use super::{TestResult, TestResultKind};
 
 #[derive(Serialize)]
 struct ExoPost {
@@ -50,10 +48,10 @@ struct ExoPost {
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
 struct TestfileContext {
-    pub server: SystemResolver,
-    pub jwtsecret: String,
-    pub cookies: HashMap<String, String>,
-    pub testvariables: HashMap<String, serde_json::Value>,
+    server: SystemResolver,
+    jwtsecret: String,
+    cookies: HashMap<String, String>,
+    testvariables: HashMap<String, serde_json::Value>,
 }
 
 impl IntegrationTest {
@@ -410,7 +408,7 @@ async fn run_operation(
     match expected_payload {
         Some(expected_payload) => {
             // expected response specified - do an assertion
-            match assertion::dynamic_assert_using_deno(
+            match dynamic_assert_using_deno(
                 expected_payload,
                 body,
                 &deno_prelude,
@@ -487,71 +485,20 @@ pub async fn run_query(
     }
 }
 
-// Run all scripts of the "build*.sh" form in the same directory as the model
-fn build_prerequisites(directory: &Path) -> Result<()> {
-    let mut build_files = vec![];
+use std::process::Command;
 
-    for dir_entry in directory.join("tests").read_dir()? {
-        let dir_entry = dir_entry?;
-        let path = dir_entry.path();
-
-        if path.is_file() {
-            let file_name = path.file_name().unwrap().to_str().unwrap();
-            if file_name.starts_with("build") && path.extension().unwrap() == "sh" {
-                build_files.push(path);
-            }
-        }
-    }
-
-    build_files.sort();
-
-    for build_file in build_files {
-        run_command(
-            "sh",
-            vec![build_file.to_str().unwrap()],
-            None,
-            &format!("Build script at {} failed to run", build_file.display()),
-        )?
-    }
-
-    Ok(())
-}
-
-pub(crate) fn build_exo_ir_file(path: &Path) -> Result<()> {
-    build_prerequisites(path)?;
-
-    // Use std::env::current_exe() so that we run the same "exo" that invoked us (specifically, avoid using another exo on $PATH)
-    run_command(
-        std::env::current_exe()?.as_os_str().to_str().unwrap(),
-        [OsStr::new("build")],
-        Some(path),
-        "Could not build the exo_ir.",
+pub(crate) fn cmd(binary_name: &str) -> Command {
+    // Pick up the current executable path and replace the file with the specified binary
+    // This allows us to invoke `target/debug/exo test ...` or `target/release/exo test ...`
+    // without updating the PATH env.
+    // Thus, for the former invocation if the `binary_name` is `exo-server` the command will become
+    // `<full-path-to>/target/debug/exo-server`
+    let mut executable =
+        std::env::current_exe().expect("Could not retrieve the current executable");
+    executable.set_file_name(binary_name);
+    Command::new(
+        executable
+            .to_str()
+            .expect("Could not convert executable path to a string"),
     )
-}
-
-// Helper to run a command and return an error if it fails
-fn run_command<I, S>(
-    program: &str,
-    args: I,
-    current_dir: Option<&Path>,
-    failure_message: &str,
-) -> Result<()>
-where
-    I: IntoIterator<Item = S>,
-    S: AsRef<OsStr>,
-{
-    let mut command = Command::new(program);
-    command.args(args);
-    if let Some(current_dir) = current_dir {
-        command.current_dir(current_dir);
-    }
-    let build_child = command.output()?;
-
-    if !build_child.status.success() {
-        std::io::stdout().write_all(&build_child.stdout).unwrap();
-        std::io::stderr().write_all(&build_child.stderr).unwrap();
-        bail!(failure_message.to_string());
-    }
-
-    Ok(())
 }

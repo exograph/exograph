@@ -30,7 +30,7 @@ use super::integration_test::{run_query, MemoryRequest};
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
 const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");
 
-pub(crate) async fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
+pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     let log_prefix = format!("(introspection: {})\n :: ", model_path.display()).purple();
     println!("{log_prefix} Running introspection tests...");
 

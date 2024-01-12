@@ -1,15 +1,19 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use futures::FutureExt;
 use std::{
+    ffi::OsStr,
+    io::Write,
     path::Path,
+    process::Command,
     sync::{mpsc::Sender, Arc},
 };
 
 use exo_sql::testing::db::EphemeralDatabaseServer;
 
-use crate::{execution::run_introspection_test, model::TestSuite};
+use super::introspection_tests::run_introspection_test;
+use crate::model::TestSuite;
 
-use super::{build_exo_ir_file, TestResult};
+use super::TestResult;
 
 impl TestSuite {
     pub fn run(
@@ -19,14 +23,12 @@ impl TestSuite {
         tx: Sender<Result<TestResult>>,
         tasks: crossbeam_channel::Sender<Box<dyn FnOnce() + Send>>,
     ) {
-        let TestSuite { project_dir, tests } = self;
-
-        let project_dir = project_dir.clone();
+        let project_dir = self.project_dir.clone();
         let tx = tx.clone();
         let ephemeral_server = ephemeral_server.clone();
 
         tasks
-            .send(Box::new(move || match build_exo_ir_file(&project_dir) {
+            .send(Box::new(move || match self.build_exo_ir_file() {
                 Ok(()) => {
                     let runtime = tokio::runtime::Builder::new_multi_thread()
                         .worker_threads(2)
@@ -52,7 +54,7 @@ impl TestSuite {
                                 .unwrap();
                         };
 
-                        for test in tests.iter() {
+                        for test in self.tests.iter() {
                             test.run(
                                 &project_dir,
                                 ephemeral_server.as_ref().as_ref() as &dyn EphemeralDatabaseServer,
@@ -74,4 +76,73 @@ impl TestSuite {
             }))
             .unwrap();
     }
+
+    fn build_exo_ir_file(&self) -> Result<()> {
+        self.build_prerequisites()?;
+
+        // Use std::env::current_exe() so that we run the same "exo" that invoked us (specifically, avoid using another exo on $PATH)
+        run_command(
+            std::env::current_exe()?.as_os_str().to_str().unwrap(),
+            [OsStr::new("build")],
+            Some(self.project_dir.as_ref()),
+            "Could not build the exo_ir.",
+        )
+    }
+
+    // Run all scripts of the "build*.sh" form in the same directory as the model
+    fn build_prerequisites(&self) -> Result<()> {
+        let mut build_files = vec![];
+
+        for dir_entry in self.project_dir.join("tests").read_dir()? {
+            let dir_entry = dir_entry?;
+            let path = dir_entry.path();
+
+            if path.is_file() {
+                let file_name = path.file_name().unwrap().to_str().unwrap();
+                if file_name.starts_with("build") && path.extension().unwrap() == "sh" {
+                    build_files.push(path);
+                }
+            }
+        }
+
+        build_files.sort();
+
+        for build_file in build_files {
+            run_command(
+                "sh",
+                vec![build_file.to_str().unwrap()],
+                None,
+                &format!("Build script at {} failed to run", build_file.display()),
+            )?
+        }
+
+        Ok(())
+    }
+}
+
+// Helper to run a command and return an error if it fails
+fn run_command<I, S>(
+    program: &str,
+    args: I,
+    current_dir: Option<&Path>,
+    failure_message: &str,
+) -> Result<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let mut command = Command::new(program);
+    command.args(args);
+    if let Some(current_dir) = current_dir {
+        command.current_dir(current_dir);
+    }
+    let build_child = command.output()?;
+
+    if !build_child.status.success() {
+        std::io::stdout().write_all(&build_child.stdout).unwrap();
+        std::io::stderr().write_all(&build_child.stderr).unwrap();
+        bail!(failure_message.to_string());
+    }
+
+    Ok(())
 }
