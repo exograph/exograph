@@ -155,7 +155,7 @@ pub async fn evaluate_using_deno(
 mod tests {
     use std::collections::{HashMap, HashSet};
 
-    use crate::exotest::assertion::evaluate_using_deno;
+    use crate::execution::assertion::evaluate_using_deno;
 
     use super::dynamic_assert_using_deno;
 

@@ -8,8 +8,9 @@
 // by the Apache License, Version 2.0.
 
 mod assertion;
-pub(crate) mod common;
-pub(crate) mod integration_tests;
-pub(crate) mod introspection_tests;
-pub(crate) mod loader;
-mod testvariable_bindings;
+mod integration_test;
+mod introspection_tests;
+mod result;
+mod test_suite;
+
+pub(crate) use result::{TestResult, TestResultKind};

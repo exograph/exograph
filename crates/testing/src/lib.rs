@@ -7,23 +7,20 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-mod exotest;
+pub(crate) mod execution;
+pub(crate) mod loader;
+mod model;
 
-use anyhow::{bail, Context, Error, Result};
+use std::cmp::min;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use anyhow::{bail, Context, Result};
 use colored::Colorize;
 
-use exo_sql::testing::db::{EphemeralDatabaseLauncher, EphemeralDatabaseServer};
-use exotest::integration_tests::{build_exo_ir_file, run_testfile};
-use exotest::loader::load_project_dir;
-use futures::FutureExt;
-use std::cmp::min;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::time::Duration;
+use exo_sql::testing::db::EphemeralDatabaseLauncher;
 
-use crate::exotest::common::TestResult;
-use crate::exotest::introspection_tests::run_introspection_test;
-use crate::exotest::loader::ProjectTests;
+use model::TestSuite;
 
 #[cfg(test)]
 use ctor::ctor;
@@ -41,13 +38,13 @@ pub fn run(
     pattern: &Option<String>,
     run_introspection_tests: bool,
 ) -> Result<()> {
-    let root_directory_str = root_directory.to_str().unwrap();
     // Make sure deno runtime is initialized in the main thread to work around deno segfault
     // on Linux issue. The tests are run in parallel and will initialize the deno module
     // (and the deno runtime) in child threads, which will cause the crash if we don't do it
     // here first.
     deno_core::JsRuntime::init_platform(None);
 
+    let root_directory_str = root_directory.to_str().unwrap();
     println!(
         "{} {} {} {}",
         "* Running tests in directory".blue().bold(),
@@ -60,13 +57,10 @@ pub fn run(
     );
 
     let start_time = std::time::Instant::now();
-    let cpus = num_cpus::get();
 
-    let project_tests = load_project_dir(root_directory, pattern)
+    let project_tests = TestSuite::load(root_directory, pattern)
         .with_context(|| format!("While loading testfiles from directory {root_directory_str}"))?;
     let number_of_integration_tests = project_tests.len();
-
-    let mut test_results = vec![];
 
     // test introspection for all model files
     if run_introspection_tests {
@@ -75,95 +69,24 @@ pub fn run(
 
     println!("{}", "** Running integration tests".blue().bold());
 
-    // Estimate an optimal pool size
-    let pool_size = min(number_of_integration_tests, cpus * 2);
-
     let (tasks, read_tasks) = crossbeam_channel::unbounded::<Box<dyn FnOnce() + Send>>();
 
     let (tx, rx) = std::sync::mpsc::channel();
 
     let ephemeral_server = Arc::new(EphemeralDatabaseLauncher::create_server()?);
 
-    // Then build all the model files, spawning the production mode tests once the build completes
-    for ProjectTests {
-        project_dir: model_path,
-        tests,
-    } in project_tests
-    {
-        let model_path = model_path.clone();
-        let tx = tx.clone();
-        let ephemeral_server = ephemeral_server.clone();
-
-        tasks
-            .send(Box::new(move || match build_exo_ir_file(&model_path) {
-                Ok(()) => {
-                    let runtime = tokio::runtime::Builder::new_multi_thread()
-                        .worker_threads(2)
-                        .enable_all()
-                        .build()
-                        .unwrap();
-                    let local = tokio::task::LocalSet::new();
-                    local.block_on(&runtime, async move {
-                        fn report_panic(model_path: &Path) -> Result<TestResult, Error> {
-                            Err(anyhow::anyhow!("Panic during test run: {}", model_path.display()))
-                        }
-
-                        if run_introspection_tests {
-                            let result =
-                                std::panic::AssertUnwindSafe(run_introspection_test(&model_path))
-                                    .catch_unwind()
-                                    .await;
-                            tx.send(result.unwrap_or_else(|_| report_panic(&model_path)))
-                                .map_err(|_| ())
-                                .unwrap();
-                        };
-
-                        for test in tests.iter() {
-                            let mut retries = test.retries;
-                            let mut pause = 1000;
-                            loop {
-                                let result = std::panic::AssertUnwindSafe(run_testfile(
-                                    test,
-                                    &model_path,
-                                    ephemeral_server.as_ref().as_ref()
-                                        as &dyn EphemeralDatabaseServer,
-                                ))
-                                .catch_unwind()
-                                .await;
-
-                                if result.is_err() {
-                                    // Don't retry after a panic
-                                    retries = 0;
-                                }
-
-                                let result = result.unwrap_or_else(|_| report_panic(&model_path));
-                                let test_succeeded = result.as_ref().map(|t| t.is_success()).unwrap_or_else(|_| false);
-
-                                if retries == 0 || test_succeeded {
-                                    tx.send(result).map_err(|_| ()).unwrap();
-                                    break;
-                                }
-                                println!("Test with configured retries failed. Waiting for {pause} ms before retrying");
-                                tokio::time::sleep(Duration::from_millis(pause)).await;
-                                pause *= 2;
-                                retries -= 1;
-                            }
-                        }
-                    })
-                }
-                Err(e) => tx
-                    .send(Err(e).with_context(|| {
-                        format!(
-                            "While trying to build exo_ir file for {}",
-                            model_path.display()
-                        )
-                    }))
-                    .map_err(|_| ())
-                    .unwrap(),
-            }))
-            .unwrap();
+    for project_test in project_tests {
+        project_test.run(
+            run_introspection_tests,
+            ephemeral_server.clone(),
+            tx.clone(),
+            tasks.clone(),
+        );
     }
 
+    // Estimate an optimal pool size
+    let cpus = num_cpus::get();
+    let pool_size = min(number_of_integration_tests, cpus * 2);
     for _ in 0..pool_size {
         let my_reader = read_tasks.clone();
         std::thread::spawn(move || {
@@ -174,6 +97,8 @@ pub fn run(
     }
 
     drop(tx);
+
+    let mut test_results = vec![];
 
     {
         let integration_test_results = rx.into_iter();

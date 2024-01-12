@@ -16,6 +16,7 @@ use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
 use futures::future::OptionFuture;
+use futures::FutureExt;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
@@ -29,18 +30,14 @@ use unescape::unescape;
 
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
-use std::{
-    collections::HashMap, ffi::OsStr, io::Write, path::Path, process::Command, time::SystemTime,
-};
+use std::sync::mpsc::Sender;
+use std::time::Duration;
+use std::{collections::HashMap, time::SystemTime};
 
-use crate::exotest::common::cmd;
-use crate::exotest::common::{TestResult, TestResultKind, TestfileContext};
-use crate::exotest::loader::{ParsedTestfile, TestfileOperation};
+use crate::model::{resolve_testvariable, IntegrationTest, IntegrationTestOperation};
 
-use super::{
-    assertion::{self, evaluate_using_deno},
-    testvariable_bindings::resolve_testvariable,
-};
+use super::assertion::{dynamic_assert_using_deno, evaluate_using_deno};
+use super::{TestResult, TestResultKind};
 
 #[derive(Serialize)]
 struct ExoPost {
@@ -48,162 +45,208 @@ struct ExoPost {
     variables: Map<String, Value>,
 }
 
-pub(crate) async fn run_testfile(
-    testfile: &ParsedTestfile,
-    project_dir: &PathBuf,
-    ephemeral_database: &dyn EphemeralDatabaseServer,
-) -> Result<TestResult> {
-    let log_prefix = format!("({})\n :: ", testfile.name()).purple();
+/// Structure to hold open resources associated with a running testfile.
+/// When dropped, we will clean them up.
+struct TestfileContext {
+    server: SystemResolver,
+    jwtsecret: String,
+    cookies: HashMap<String, String>,
+    testvariables: HashMap<String, serde_json::Value>,
+}
 
-    let db_instance_name = format!("exotest_{:x}", md5::compute(testfile.name()));
+impl IntegrationTest {
+    pub async fn run(
+        &self,
+        project_dir: &PathBuf,
+        ephemeral_database: &dyn EphemeralDatabaseServer,
+        tx: Sender<Result<TestResult>>,
+    ) {
+        let mut retries_left = self.retries;
+        let mut pause = 1000;
+        loop {
+            let result =
+                std::panic::AssertUnwindSafe(self.run_no_retry(project_dir, ephemeral_database))
+                    .catch_unwind()
+                    .await;
 
-    // create a database
-    let db_instance = ephemeral_database.create_database(&db_instance_name)?;
+            if result.is_err() {
+                // Don't retry after a panic
+                retries_left = 0;
+            }
 
-    // iterate through our tests
-    let mut ctx = {
-        // generate a JWT secret
-        let jwtsecret: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(30)
-            .map(char::from)
-            .collect();
+            let result = result.unwrap_or_else(|_| {
+                Err(anyhow::anyhow!(
+                    "Panic during test run: {}",
+                    project_dir.display()
+                ))
+            });
+            let test_succeeded = result
+                .as_ref()
+                .map(|t| t.is_success())
+                .unwrap_or_else(|_| false);
 
-        // create the schema
-        println!(
-            "{log_prefix} Initializing schema for {} ...",
-            testfile.name()
-        );
-
-        let migrate_child = cmd("exo")
-            .args([
-                "schema",
-                "migrate",
-                "--database",
-                &db_instance.url(),
-                "--apply-to-database",
-            ])
-            .current_dir(project_dir)
-            .output()?;
-
-        if !migrate_child.status.success() {
-            eprintln!("{}", std::str::from_utf8(&migrate_child.stderr).unwrap());
-            bail!("Could not build schema for {}", testfile.name());
+            if retries_left == 0 || test_succeeded {
+                tx.send(result).map_err(|_| ()).unwrap();
+                break;
+            }
+            println!("Test with configured retries failed. Waiting for {pause} ms before retrying");
+            tokio::time::sleep(Duration::from_millis(pause)).await;
+            pause *= 2;
+            retries_left -= 1;
         }
+    }
 
-        // Verify the schema to exercise the verification logic (which in-turn exercises the database introspection logic)
-        let verify_child = cmd("exo")
-            .args(["schema", "verify", "--database", &db_instance.url()])
-            .current_dir(project_dir)
-            .output()?;
+    async fn run_no_retry(
+        &self,
+        project_dir: &PathBuf,
+        ephemeral_database: &dyn EphemeralDatabaseServer,
+    ) -> Result<TestResult> {
+        let log_prefix = format!("({})\n :: ", self.name()).purple();
 
-        if !verify_child.status.success() {
-            eprintln!("{}", std::str::from_utf8(&verify_child.stderr).unwrap());
-            bail!("Could not verify schema for {}", testfile.name());
-        }
+        let db_instance_name = format!("exotest_{:x}", md5::compute(self.name()));
 
-        // spawn a exo instance
-        println!("{log_prefix} Initializing exo-server ...");
+        // create a database
+        let db_instance = ephemeral_database.create_database(&db_instance_name)?;
 
-        let telemetry_on = std::env::vars().any(|(name, _)| name.starts_with("OTEL_"));
-        let mut extra_envs = testfile.extra_envs.clone();
+        // iterate through our tests
+        let mut ctx = {
+            // generate a JWT secret
+            let jwtsecret: String = rand::thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(30)
+                .map(char::from)
+                .collect();
 
-        if telemetry_on {
-            extra_envs.insert("OTEL_SERVICE_NAME".to_string(), testfile.name());
-        }
+            // create the schema
+            println!("{log_prefix} Initializing schema for {} ...", self.name());
 
-        let server = {
-            let static_loaders = server_common::create_static_loaders();
+            let migrate_child = cmd("exo")
+                .args([
+                    "schema",
+                    "migrate",
+                    "--database",
+                    &db_instance.url(),
+                    "--apply-to-database",
+                ])
+                .current_dir(project_dir)
+                .output()?;
 
-            let exo_ir_file = testfile.exo_ir_file_path(project_dir).display().to_string();
-            LOCAL_URL
-                .with(|url| {
-                    // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
-                    url.borrow_mut().replace(format!(
-                        "{}?options=-c%20TimeZone%3DUTC%2B00",
-                        db_instance.url()
-                    ));
+            if !migrate_child.status.success() {
+                eprintln!("{}", std::str::from_utf8(&migrate_child.stderr).unwrap());
+                bail!("Could not build schema for {}", self.name());
+            }
 
-                    LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
-                        // Otherwise we get a "too many connections" error
-                        pool_size.borrow_mut().replace(1);
+            // Verify the schema to exercise the verification logic (which in-turn exercises the database introspection logic)
+            let verify_child = cmd("exo")
+                .args(["schema", "verify", "--database", &db_instance.url()])
+                .current_dir(project_dir)
+                .output()?;
 
-                        LOCAL_JWT_SECRET.with(|jwt| {
-                            jwt.borrow_mut().replace(jwtsecret.clone());
+            if !verify_child.status.success() {
+                eprintln!("{}", std::str::from_utf8(&verify_child.stderr).unwrap());
+                bail!("Could not verify schema for {}", self.name());
+            }
 
-                            LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-                                allow.borrow_mut().replace(IntrospectionMode::Enabled);
+            // spawn a exo instance
+            println!("{log_prefix} Initializing exo-server ...");
 
-                                LOCAL_ENVIRONMENT.with(|env| {
-                                    env.borrow_mut().replace(extra_envs.clone());
+            let telemetry_on = std::env::vars().any(|(name, _)| name.starts_with("OTEL_"));
+            let mut extra_envs = self.extra_envs.clone();
 
-                                    create_system_resolver(&exo_ir_file, static_loaders)
+            if telemetry_on {
+                extra_envs.insert("OTEL_SERVICE_NAME".to_string(), self.name());
+            }
+
+            let server = {
+                let static_loaders = server_common::create_static_loaders();
+
+                let exo_ir_file = self.exo_ir_file_path(project_dir).display().to_string();
+                LOCAL_URL
+                    .with(|url| {
+                        // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
+                        url.borrow_mut().replace(format!(
+                            "{}?options=-c%20TimeZone%3DUTC%2B00",
+                            db_instance.url()
+                        ));
+
+                        LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
+                            // Otherwise we get a "too many connections" error
+                            pool_size.borrow_mut().replace(1);
+
+                            LOCAL_JWT_SECRET.with(|jwt| {
+                                jwt.borrow_mut().replace(jwtsecret.clone());
+
+                                LOCAL_ALLOW_INTROSPECTION.with(|allow| {
+                                    allow.borrow_mut().replace(IntrospectionMode::Enabled);
+
+                                    LOCAL_ENVIRONMENT.with(|env| {
+                                        env.borrow_mut().replace(extra_envs.clone());
+
+                                        create_system_resolver(&exo_ir_file, static_loaders)
+                                    })
                                 })
                             })
                         })
                     })
-                })
-                .await?
+                    .await?
+            };
+
+            TestfileContext {
+                server,
+                jwtsecret,
+                cookies: HashMap::new(),
+                testvariables: HashMap::new(),
+            }
         };
 
-        TestfileContext {
-            server,
-            jwtsecret,
-            cookies: HashMap::new(),
-            testvariables: HashMap::new(),
-        }
-    };
+        // run the init section
+        println!("{log_prefix} Initializing database...");
+        for operation in self.init_operations.iter() {
+            let result = run_operation(operation, &mut ctx).await.with_context(|| {
+                format!("While initializing database for testfile {}", self.name())
+            })?;
 
-    // run the init section
-    println!("{log_prefix} Initializing database...");
-    for operation in testfile.init_operations.iter() {
-        let result = run_operation(operation, &mut ctx).await.with_context(|| {
-            format!(
-                "While initializing database for testfile {}",
-                testfile.name()
-            )
-        })?;
-
-        match result {
-            OperationResult::Finished => {}
-            OperationResult::AssertFailed(_) | OperationResult::AssertPassed => {
-                panic!("did not expect assertions in setup")
+            match result {
+                OperationResult::Finished => {}
+                OperationResult::AssertFailed(_) | OperationResult::AssertPassed => {
+                    panic!("did not expect assertions in setup")
+                }
             }
         }
-    }
 
-    // run test
-    println!("{log_prefix} Testing ...");
+        // run test
+        println!("{log_prefix} Testing ...");
 
-    let mut fail = None;
-    for operation in testfile.test_operation_stages.iter() {
-        let result = run_operation(operation, &mut ctx)
-            .await
-            .with_context(|| anyhow!("While running tests for {}", testfile.name()));
+        let mut fail = None;
+        for operation in self.test_operations.iter() {
+            let result = run_operation(operation, &mut ctx)
+                .await
+                .with_context(|| anyhow!("While running tests for {}", self.name()));
 
-        match result {
-            Ok(op_result) => match op_result {
-                OperationResult::AssertPassed | OperationResult::Finished => {}
-                OperationResult::AssertFailed(e) => {
-                    fail = Some(TestResultKind::Fail(e));
+            match result {
+                Ok(op_result) => match op_result {
+                    OperationResult::AssertPassed | OperationResult::Finished => {}
+                    OperationResult::AssertFailed(e) => {
+                        fail = Some(TestResultKind::Fail(e));
+                        break;
+                    }
+                },
+
+                Err(e) => {
+                    fail = Some(TestResultKind::SetupFail(e));
                     break;
                 }
-            },
+            };
+        }
 
-            Err(e) => {
-                fail = Some(TestResultKind::SetupFail(e));
-                break;
-            }
-        };
+        let success = fail.unwrap_or(TestResultKind::Success);
+
+        Ok(TestResult {
+            log_prefix: log_prefix.to_string(),
+            result: success,
+        })
+        // implicit ctx drop
     }
-
-    let success = fail.unwrap_or(TestResultKind::Success);
-
-    Ok(TestResult {
-        log_prefix: log_prefix.to_string(),
-        result: success,
-    })
-    // implicit ctx drop
 }
 
 enum OperationResult {
@@ -255,10 +298,10 @@ impl Request for MemoryRequest {
 }
 
 async fn run_operation(
-    gql: &TestfileOperation,
+    gql: &IntegrationTestOperation,
     ctx: &mut TestfileContext,
 ) -> Result<OperationResult> {
-    let TestfileOperation {
+    let IntegrationTestOperation {
         document,
         operations_metadata,
         variables,
@@ -365,7 +408,7 @@ async fn run_operation(
     match expected_payload {
         Some(expected_payload) => {
             // expected response specified - do an assertion
-            match assertion::dynamic_assert_using_deno(
+            match dynamic_assert_using_deno(
                 expected_payload,
                 body,
                 &deno_prelude,
@@ -442,71 +485,20 @@ pub async fn run_query(
     }
 }
 
-// Run all scripts of the "build*.sh" form in the same directory as the model
-fn build_prerequisites(directory: &Path) -> Result<()> {
-    let mut build_files = vec![];
+use std::process::Command;
 
-    for dir_entry in directory.join("tests").read_dir()? {
-        let dir_entry = dir_entry?;
-        let path = dir_entry.path();
-
-        if path.is_file() {
-            let file_name = path.file_name().unwrap().to_str().unwrap();
-            if file_name.starts_with("build") && path.extension().unwrap() == "sh" {
-                build_files.push(path);
-            }
-        }
-    }
-
-    build_files.sort();
-
-    for build_file in build_files {
-        run_command(
-            "sh",
-            vec![build_file.to_str().unwrap()],
-            None,
-            &format!("Build script at {} failed to run", build_file.display()),
-        )?
-    }
-
-    Ok(())
-}
-
-pub(crate) fn build_exo_ir_file(path: &Path) -> Result<()> {
-    build_prerequisites(path)?;
-
-    // Use std::env::current_exe() so that we run the same "exo" that invoked us (specifically, avoid using another exo on $PATH)
-    run_command(
-        std::env::current_exe()?.as_os_str().to_str().unwrap(),
-        [OsStr::new("build")],
-        Some(path),
-        "Could not build the exo_ir.",
+pub(crate) fn cmd(binary_name: &str) -> Command {
+    // Pick up the current executable path and replace the file with the specified binary
+    // This allows us to invoke `target/debug/exo test ...` or `target/release/exo test ...`
+    // without updating the PATH env.
+    // Thus, for the former invocation if the `binary_name` is `exo-server` the command will become
+    // `<full-path-to>/target/debug/exo-server`
+    let mut executable =
+        std::env::current_exe().expect("Could not retrieve the current executable");
+    executable.set_file_name(binary_name);
+    Command::new(
+        executable
+            .to_str()
+            .expect("Could not convert executable path to a string"),
     )
-}
-
-// Helper to run a command and return an error if it fails
-fn run_command<I, S>(
-    program: &str,
-    args: I,
-    current_dir: Option<&Path>,
-    failure_message: &str,
-) -> Result<()>
-where
-    I: IntoIterator<Item = S>,
-    S: AsRef<OsStr>,
-{
-    let mut command = Command::new(program);
-    command.args(args);
-    if let Some(current_dir) = current_dir {
-        command.current_dir(current_dir);
-    }
-    let build_child = command.output()?;
-
-    if !build_child.status.success() {
-        std::io::stdout().write_all(&build_child.stdout).unwrap();
-        std::io::stderr().write_all(&build_child.stderr).unwrap();
-        bail!(failure_message.to_string());
-    }
-
-    Ok(())
 }
