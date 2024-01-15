@@ -137,6 +137,11 @@ function App() {
 function Core(props: { schema: GraphQLSchema | null; fetcher: Fetcher }) {
   const upstreamGraphQLEndpoint = (window as any).exoUpstreamGraphQLEndpoint;
 
+  // GraphiQL loses the persisted headers when the schema is updated (or the playground is manually
+  // reloaded) So, use the current value of the setting in local storage as the initial value
+  const shouldPersistHeaders =
+    localStorage.getItem("graphiql:shouldPersistHeaders") === "true";
+
   return (
     <>
       <GraphiQL
@@ -145,6 +150,8 @@ function Core(props: { schema: GraphQLSchema | null; fetcher: Fetcher }) {
         isHeadersEditorEnabled={true}
         schema={props.schema}
         toolbar={{ additionalContent: <AuthToolbarButton /> }}
+        shouldPersistHeaders={shouldPersistHeaders}
+        showPersistHeadersSettings={true}
       >
         <GraphiQL.Logo>
           <Logo />
