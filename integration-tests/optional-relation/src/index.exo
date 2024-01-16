@@ -1,0 +1,18 @@
+// Notification has an optional event
+@postgres
+module NotificationDatabase {
+  @access(true)
+  type Notification {
+    @pk id: Int = autoIncrement()
+    title: String
+    description: String
+    event: Event?
+  }
+
+  @access(true)
+  type Event {
+    @pk id: Int = autoIncrement()
+    title: String
+    notifications: Set<Notification>?
+  }
+}

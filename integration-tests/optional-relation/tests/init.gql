@@ -1,0 +1,24 @@
+stages:
+    - operation: |
+        mutation {
+            e1: createEvent(data: {title: "E1"}) {
+                id @bind(name: "e1Id")
+            }
+            e2: createEvent(data: {title: "E2"}) {
+                id @bind(name: "e2Id")
+            }
+        }
+    - operation: |
+        mutation($e1Id: Int!, $e2Id: Int!) {
+            n1: createNotification(data: {title: "N1", description: "N1-desc", event: {id: $e1Id}}) {
+                id @bind(name: "n1id")
+            }
+            n2: createNotification(data: {title: "N2", description: "N2-desc", event: {id: $e2Id}}) {
+                id @bind(name: "n2id")
+            }
+        }  
+      variable: |
+        {
+            "e1Id": $.e1Id,
+            "e2Id": $.e2Id
+        }      

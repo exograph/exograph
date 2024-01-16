@@ -1,0 +1,52 @@
+stages:
+  - operation: |
+      mutation resetEvent($eId: Int!) {
+          updateNotification(id: $eId, data: {title: "N1-updated", event: null}) {
+            id
+            event
+          }
+      }
+    variable: |
+      {
+          "eId": $.e1Id,
+      }   
+    response: |
+      {
+        "data": {
+          "updateNotification": {
+            "id": 1,
+            "event": null
+          }
+        }
+      }
+  - operation: |
+      query {
+          notifications @unordered {
+            id
+            title
+            event {
+              id
+              title
+            }
+          }
+      }  
+    response: |
+      {
+        "data": {
+          "notifications": [
+            {
+              "id": $.n1id,
+              "title": "N1-updated",
+              "event": null
+            },
+            {
+              "id": $.n2id,
+              "title": "N2",
+              "event": {
+                "id": $.e2Id,
+                "title": "E2"
+              }
+            }
+          ]
+        }
+      }
