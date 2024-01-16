@@ -3,18 +3,30 @@ module RsvpModule {
   @access(true)
   type Rsvp {
     @pk id: Int = autoIncrement()
-    @unique("one_rsvp_per_user") event: String 
-    @unique("one_rsvp_per_user")  user: User 
+    // Use camelCase for unique constraint name to ensure dealing with either camelCase (here) or snake_case (in `User`)
+    @unique("eventRsvp") event: String
+    @unique("eventRsvp")  user: User
+    count: Int = 1
   }
 
   @access(true)
   type User {
     @pk id: Int = autoIncrement()
     @unique username: String 
-    @unique("unique_email_primary") primary_email_id: String 
-    @unique("unique_email_secondary") secondary_email_id: String? 
-    @unique("unique_email_primary", "unique_email_secondary") email_domain: String 
+    @unique("primary_email") primaryEmailId: String 
+    @unique("secondary_email") secondaryEmailId: String? 
+    @unique("primary_email", "secondary_email") emailDomain: String 
 
     rsvps: Set<Rsvp>?
+    InternalRsvps: Set<InternalRsvp>?
+  }
+
+  @access(true)
+  type InternalRsvp {
+    @pk id: Int = autoIncrement()
+    // Use the same name for unique constraint as in `Rsvp` to test for correct handling of using type names for namespacing
+    @unique("eventRsvp") event: String
+    @unique("eventRsvp")  user: User
+    count: Int = 1
   }
 }

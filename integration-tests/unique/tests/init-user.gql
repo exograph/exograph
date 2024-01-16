@@ -1,16 +1,16 @@
 operation: |
     mutation(
         $username: String!, 
-        $primary_email_id: String!,
-        $secondary_email_id: String!
-        $email_domain: String!,
+        $primaryEmailId: String!,
+        $secondaryEmailId: String!
+        $emailDomain: String!,
         $initial_event_rsvp: String!
     ) {
         createUser(data: {
             username: $username,
-            primary_email_id: $primary_email_id,
-            secondary_email_id: $secondary_email_id,
-            email_domain: $email_domain
+            primaryEmailId: $primaryEmailId,
+            secondaryEmailId: $secondaryEmailId,
+            emailDomain: $emailDomain
             rsvps: [
                 { event: $initial_event_rsvp }
             ]
@@ -23,11 +23,11 @@ variable: |
         "username": "Alice02",
 
         // alice@example.com
-        "primary_email_id": "alice",
+        "primaryEmailId": "alice",
 
         // alice2@example.com
-        "secondary_email_id": "alice2",
+        "secondaryEmailId": "alice2",
 
-        "email_domain": "example.com",
+        "emailDomain": "example.com",
         "initial_event_rsvp": "Concert1"
     }

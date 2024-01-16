@@ -661,9 +661,6 @@ fn compute_column_info(
             },
         };
 
-        let unique_constraint_computed_name =
-            format!("unique_constraint_{}_{}", enclosing_type.name, field.name)
-                .to_ascii_lowercase();
         let unique_constraints = field
             .annotations
             .get("unique")
@@ -673,7 +670,7 @@ fn compute_column_info(
                     AstExpr::StringList(string_list, _) => string_list.clone(),
                     _ => panic!("Not a string nor a string list when specifying unique"),
                 },
-                AstAnnotationParams::None => vec![unique_constraint_computed_name.clone()],
+                AstAnnotationParams::None => vec![field.name.clone()],
                 AstAnnotationParams::Map(_, _) => panic!(),
             })
             .unwrap_or_default();
@@ -778,7 +775,8 @@ fn compute_column_info(
                             _ => {
                                 let unique_constraints =
                                     if matches!(cardinality, Cardinality::ZeroOrOne) {
-                                        vec![unique_constraint_computed_name]
+                                        // Add an explicit unique constraint to enforce one-to-one constraint
+                                        vec![field.name.clone()]
                                     } else {
                                         unique_constraints
                                     };

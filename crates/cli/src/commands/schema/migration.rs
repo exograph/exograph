@@ -1013,16 +1013,16 @@ mod tests {
                     false,
                 ),
                 (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
+                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email", "event_id");"#,
                     false,
                 ),
             ],
             vec![(
-                r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
+                r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email", "event_id");"#,
                 false,
             )],
             vec![(
-                r#"ALTER TABLE "rsvps" DROP CONSTRAINT "email_event_id";"#,
+                r#"ALTER TABLE "rsvps" DROP CONSTRAINT "unique_constraint_rsvp_email_event_id";"#,
                 false,
             )],
         ).await
@@ -1061,7 +1061,7 @@ mod tests {
                     false,
                 ),
                 (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email");"#,
+                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email");"#,
                     false,
                 ),
             ],
@@ -1075,27 +1075,27 @@ mod tests {
                     false,
                 ),
                 (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
+                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email", "event_id");"#,
                     false,
                 ),
             ],
             vec![
                 (
-                    r#"ALTER TABLE "rsvps" DROP CONSTRAINT "email_event_id";"#,
+                    r#"ALTER TABLE "rsvps" DROP CONSTRAINT "unique_constraint_rsvp_email_event_id";"#,
                     false,
                 ),
                 (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
+                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email", "event_id");"#,
                     false,
                 ),
             ],
             vec![
                 (
-                    r#"ALTER TABLE "rsvps" DROP CONSTRAINT "email_event_id";"#,
+                    r#"ALTER TABLE "rsvps" DROP CONSTRAINT "unique_constraint_rsvp_email_event_id";"#,
                     false,
                 ),
                 (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email");"#,
+                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email");"#,
                     false,
                 ),
             ],

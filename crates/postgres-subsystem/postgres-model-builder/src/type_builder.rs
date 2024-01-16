@@ -198,7 +198,7 @@ fn expand_type_no_fields(
         let columns = resolved_type
             .fields
             .iter()
-            .flat_map(|field| create_column(field, table_id, resolved_env))
+            .flat_map(|field| create_column(field, table_id, resolved_type, resolved_env))
             .collect();
         building.database.get_table_mut(table_id).columns = columns;
     }
@@ -646,13 +646,20 @@ fn create_agg_field(
 fn create_column(
     field: &ResolvedField,
     table_id: TableId,
+    resolved_type: &ResolvedCompositeType,
     env: &ResolvedTypeEnv,
 ) -> Option<PhysicalColumn> {
     // Check that the field holds to a self column
     let unique_constraint_name = if !field.self_column {
         return None;
     } else {
-        field.unique_constraints.clone()
+        field
+            .unique_constraints
+            .iter()
+            .map(|constraint| {
+                format!("unique_constraint_{}_{}", resolved_type.name, constraint).to_snake_case()
+            })
+            .collect()
     };
     // split a Optional type into its inner type and the optional marker
     let (typ, optional) = match &field.typ {
