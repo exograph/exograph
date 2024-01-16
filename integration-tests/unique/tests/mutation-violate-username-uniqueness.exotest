@@ -1,9 +1,9 @@
 operation: |
-    mutation($new_username: String!, $new_email_id: String!, $new_email_domain: String!) {
+    mutation($new_username: String!, $new_email_id: String!, $new_emailDomain: String!) {
         createUser(data: {
             username: $new_username,
-            primary_email_id: $new_email_id,
-            email_domain: $new_email_domain
+            primaryEmailId: $new_email_id,
+            emailDomain: $new_emailDomain
         }) {
             id
         }
@@ -14,7 +14,7 @@ variable: |
 
         // another.alice@example.com
         "new_email_id": "another.alice",
-        "new_email_domain": "example.com"
+        "new_emailDomain": "example.com"
     }
 response: |
     {

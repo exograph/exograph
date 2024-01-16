@@ -3,17 +3,18 @@ module RsvpModule {
   @access(true)
   type Rsvp {
     @pk id: Int = autoIncrement()
-    @unique("one_rsvp_per_user") event: String 
-    @unique("one_rsvp_per_user")  user: User 
+    @unique("event_rsvp") event: String 
+    @unique("event_rsvp")  user: User
+    count: Int = 1
   }
 
   @access(true)
   type User {
     @pk id: Int = autoIncrement()
     @unique username: String 
-    @unique("unique_email_primary") primary_email_id: String 
-    @unique("unique_email_secondary") secondary_email_id: String? 
-    @unique("unique_email_primary", "unique_email_secondary") email_domain: String 
+    @unique("primary_email") primaryEmailId: String 
+    @unique("secondary_email") secondaryEmailId: String? 
+    @unique("primary_email", "secondary_email") emailDomain: String 
 
     rsvps: Set<Rsvp>?
   }
