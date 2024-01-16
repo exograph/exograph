@@ -14,8 +14,14 @@
  * limitations under the License.
  */
 
+export type AnyVariables = Record<string, any> | undefined;
+
 export interface Exograph {
-  executeQuery(query: string, variable?: { [key: string]: any }): Promise<any>;
+  executeQuery<T = any>(query: string): Promise<T>;
+  executeQuery<T = any, V extends AnyVariables = AnyVariables>(
+    query: string,
+    variables: V
+  ): Promise<T>;
   addResponseHeader(name: string, value: string): Promise<void>;
   setCookie(cookie: {
     name: string,
@@ -30,8 +36,14 @@ export interface Exograph {
   }): Promise<void>;
 }
 
+export type ContextOverride = Record<string, any> | undefined;
+
 export interface ExographPriv extends Exograph {
-  executeQueryPriv(query: string, variable?: { [key: string]: any }, contextOverride?: { [key: string]: any }): Promise<any>;
+  executeQueryPriv<
+    T = any, 
+    V extends AnyVariables = AnyVariables, 
+    C extends ContextOverride = ContextOverride
+  >(query: string, variables: V, contextOverride: C): Promise<T>;
 }
 
 export type JsonObject = { [Key in string]?: JsonValue };
