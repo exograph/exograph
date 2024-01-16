@@ -39,6 +39,11 @@ export interface Exograph {
 export type ContextOverride = Record<string, any> | undefined;
 
 export interface ExographPriv extends Exograph {
+  executeQueryPriv<T = any>(query: string): Promise<T>;
+  executeQueryPriv<
+    T = any, 
+    V extends AnyVariables = AnyVariables
+  >(query: string, variables: V): Promise<T>;
   executeQueryPriv<
     T = any, 
     V extends AnyVariables = AnyVariables, 
