@@ -148,7 +148,7 @@ fn generate_exograph_imports(
     out_file_dir: &Path,
 ) -> Result<(), ModelBuildingError> {
     fn is_exograph_type(argument: &AstArgument<Typed>) -> bool {
-        let exograph_type_names = ["Exograph", "ExographPriv", "Operation", "ExographError"];
+        let exograph_type_names = ["Exograph", "ExographPriv", "Operation"];
         exograph_type_names.contains(&argument.typ.name().as_str())
     }
 
