@@ -100,16 +100,22 @@ fn compute_update_columns<'a>(
                 let self_column = self_column_id.get_column(&subsystem.database);
                 let foreign_type_pk_field_name =
                     &foreign_pk_field_id.resolve(&subsystem.entity_types).name;
-                get_argument_field(argument, &field.name).map(|argument_value| {
-                    match get_argument_field(argument_value, foreign_type_pk_field_name) {
-                        Some(foreign_type_pk_arg) => {
-                            let value_column =
-                                cast::literal_column(foreign_type_pk_arg, self_column);
-                            (self_column_id, value_column.unwrap())
+
+                match get_argument_field(argument, &field.name) {
+                    Some(Val::Null) => Some((self_column_id, Column::Null)), // `{..., foreign_field: null}` means set the column to null
+                    Some(argument_value) => {
+                        // `{..., foreign_field: { id: 1 }}` means set the column to the id of the nested object
+                        match get_argument_field(argument_value, foreign_type_pk_field_name) {
+                            Some(foreign_type_pk_arg) => {
+                                let value_column =
+                                    cast::literal_column(foreign_type_pk_arg, self_column);
+                                Some((self_column_id, value_column.unwrap()))
+                            }
+                            None => unreachable!("Expected pk argument"), // Validation should have caught this
                         }
-                        None => unreachable!("Expected pk argument"), // Validation should have caught this
                     }
-                })
+                    None => None,
+                }
             }
             PostgresRelation::OneToMany { .. } => None,
         })
