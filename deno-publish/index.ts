@@ -50,6 +50,8 @@ export interface Operation {
   query(): Field;
 }
 
-export declare class ExographError extends Error {
-  constructor(message: string);
+declare global {
+  class ExographError extends Error {
+    constructor(message: string);
+  }
 }
