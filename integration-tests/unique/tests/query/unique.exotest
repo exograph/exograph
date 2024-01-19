@@ -1,0 +1,86 @@
+operation: |
+  query($userId: Int!) @unordered {
+    byUsernameExisting: userByUsername(username: "Alice02") {
+      id
+    }
+    byUsernameNonExisting: userByUsername(username: "non-existing-user") {
+      id
+    }
+
+    userByPrimaryEmailExisting: userByPrimaryEmail(primaryEmailId: "alice", emailDomain: "example.com") {
+      id
+    }
+    userByPrimaryEmailNonExisting: userByPrimaryEmail(primaryEmailId: "non-existing-user", emailDomain: "example.com") {
+      id
+    }
+    userByPrimaryEmailNonExistingDomain: userByPrimaryEmail(primaryEmailId: "alice", emailDomain: "non-existing-domain.com") {
+      id
+    }
+    
+    userBySecondaryEmailExisting: userBySecondaryEmail(secondaryEmailId: "alice2", emailDomain: "example.com") {
+      id
+    }
+    userBySecondaryEmailNonExisting: userBySecondaryEmail(secondaryEmailId: "non-existing-user", emailDomain: "example.com") {
+      id
+    }
+    userBySecondaryEmailNonExistingDomain: userBySecondaryEmail(secondaryEmailId: "alice2", emailDomain: "non-existing-domain.com") {
+      id
+    }
+
+    rsvpByEventRsvpExisting: rsvpByEventRsvp(user: {id: $userId}, event: "Concert1") {
+      id
+    }
+    rsvpByEventRsvpNonExistingUser: rsvpByEventRsvp(user: {id: 100}, event: "Concert1") {
+      id
+    }
+    rsvpByEventRsvpNonExistingEvent: rsvpByEventRsvp(user: {id: $userId}, event: "non-existing-event") {
+      id
+    }
+
+    internalRsvpByEventRsvpExisting: internalRsvpByEventRsvp(user: {id: $userId}, event: "InternalConcert1") {
+      id
+    }
+    internalRsvpByEventRsvpNonExistingUser: internalRsvpByEventRsvp(user: {id: 100}, event: "InternalConcert1") {
+      id
+    }
+    internalRsvpByEventRsvpNonExistingEvent: internalRsvpByEventRsvp(user: {id: $userId}, event: "non-existing-event") {
+      id
+    }
+  }
+variable: |
+  {
+    "userId": $.alice_user_id
+  }
+response: |
+  {
+    "data": {
+      "byUsernameExisting": {
+        "id": $.alice_user_id
+      },
+      "byUsernameNonExisting": null,
+
+      "userByPrimaryEmailExisting": {
+        "id": $.alice_user_id
+      },
+      "userByPrimaryEmailNonExisting": null,
+      "userByPrimaryEmailNonExistingDomain": null,
+
+      "userBySecondaryEmailExisting": {
+        "id": $.alice_user_id
+      },
+      "userBySecondaryEmailNonExisting": null,
+      "userBySecondaryEmailNonExistingDomain": null,
+
+      "rsvpByEventRsvpExisting": {
+        "id": $.alice_rsvp_id[0]
+      },
+      "rsvpByEventRsvpNonExistingUser": null,
+      "rsvpByEventRsvpNonExistingEvent": null,
+
+      "internalRsvpByEventRsvpExisting": {
+        "id": $.alice_internal_rsvp_id[0]
+      },
+      "internalRsvpByEventRsvpNonExistingUser": null,
+      "internalRsvpByEventRsvpNonExistingEvent": null
+    }
+  }

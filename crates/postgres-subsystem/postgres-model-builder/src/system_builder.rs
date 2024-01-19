@@ -26,7 +26,7 @@ use postgres_model::{
     mutation::PostgresMutation,
     order::OrderByParameterType,
     predicate::PredicateParameterType,
-    query::{AggregateQuery, CollectionQuery, PkQuery},
+    query::{AggregateQuery, CollectionQuery, PkQuery, UniqueQuery},
     subsystem::PostgresSubsystem,
     types::{EntityType, MutationType, PostgresPrimitiveType},
 };
@@ -67,6 +67,7 @@ pub fn build(
             pk_queries: building.pk_queries,
             collection_queries: building.collection_queries,
             aggregate_queries: building.aggregate_queries,
+            unique_queries: building.unique_queries,
             database: building.database,
             mutation_types: building.mutation_types.values(),
             mutations: building.mutations,
@@ -121,8 +122,8 @@ fn build_expanded(
     aggregate_type_builder::build_expanded(resolved_env, building)?;
 
     // Finally expand queries, mutations, and module methods
-    query_builder::build_expanded(building);
-    mutation_builder::build_expanded(resolved_env, building)?;
+    query_builder::build_expanded(resolved_env, building);
+    mutation_builder::build_expanded(building)?;
 
     Ok(())
 }
@@ -140,6 +141,7 @@ pub struct SystemContextBuilding {
     pub pk_queries: MappedArena<PkQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
+    pub unique_queries: MappedArena<UniqueQuery>,
 
     pub mutation_types: MappedArena<MutationType>,
     pub mutations: MappedArena<PostgresMutation>,

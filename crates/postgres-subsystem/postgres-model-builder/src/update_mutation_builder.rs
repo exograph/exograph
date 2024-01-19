@@ -33,7 +33,6 @@ use super::{
     query_builder,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
-    type_builder::ResolvedTypeEnv,
 };
 
 pub struct UpdateMutationBuilder;
@@ -56,7 +55,6 @@ impl Builder for UpdateMutationBuilder {
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(
         &self,
-        resolved_env: &ResolvedTypeEnv,
         building: &mut SystemContextBuilding,
     ) -> Result<(), ModelBuildingError> {
         let update_access_is_false = |entity_type: &EntityType| -> bool {
@@ -70,14 +68,9 @@ impl Builder for UpdateMutationBuilder {
         };
         for (_, entity_type) in building.entity_types.iter() {
             if !update_access_is_false(entity_type) {
-                for (existing_id, expanded_type) in self.expanded_data_type(
-                    entity_type,
-                    resolved_env,
-                    building,
-                    Some(entity_type),
-                    None,
-                    false,
-                )? {
+                for (existing_id, expanded_type) in
+                    self.expanded_data_type(entity_type, building, Some(entity_type), None, false)?
+                {
                     building.mutation_types[existing_id] = expanded_type;
                 }
             }
@@ -200,7 +193,6 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
         entity_type: &EntityType,
         field: &PostgresField<EntityType>,
         field_type: &EntityType,
-        resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         container_type: Option<&EntityType>,
@@ -274,7 +266,6 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                 &self
                     .expanded_data_type(
                         field_type,
-                        resolved_env,
                         building,
                         top_level_type,
                         container_type,

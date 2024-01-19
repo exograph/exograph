@@ -9,6 +9,7 @@
 
 use heck::ToLowerCamelCase;
 use heck::ToSnakeCase;
+use heck::ToUpperCamelCase;
 use postgres_model::types::EntityType;
 
 /// A type with both singular and plural versions of itself.
@@ -45,6 +46,10 @@ pub(super) trait ToPostgresQueryName {
     fn collection_query(&self) -> String;
     /// Aggregate query name (e.g. `concertAgg`)
     fn aggregate_query(&self) -> String;
+
+    /// Unique query name (e.g. `concertByTitle`)
+    /// `constraint_name` is the name of the unique constraint in the database (possibly in snake case or camel case)
+    fn unique_query(&self, constraint_name: &str) -> String;
 }
 
 fn to_query(name: &str) -> String {
@@ -62,6 +67,14 @@ impl<T: ToPlural> ToPostgresQueryName for T {
 
     fn aggregate_query(&self) -> String {
         format!("{}Agg", self.collection_query())
+    }
+
+    fn unique_query(&self, constraint_name: &str) -> String {
+        format!(
+            "{}By{}",
+            self.pk_query(),
+            constraint_name.to_upper_camel_case()
+        )
     }
 }
 

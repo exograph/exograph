@@ -31,6 +31,7 @@ use crate::{
 
 use super::postgres_execution_error::PostgresExecutionError;
 
+#[derive(Debug)]
 struct PredicateParamInput<'a> {
     pub param: &'a PredicateParameter,
     pub parent_column_path: Option<PhysicalColumnPath>,
@@ -49,9 +50,46 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_path, op_value_path) =
-                    operands(self.param, argument, self.parent_column_path, subsystem)?;
+                    operands(self.param, argument, &self.parent_column_path, subsystem)?;
 
                 Ok(AbstractPredicate::eq(op_key_path, op_value_path))
+            }
+            PredicateParameterTypeKind::Reference(parameters) => {
+                parameters
+                    .iter()
+                    .try_fold(AbstractPredicate::True, |acc, parameter| {
+                        let arg = get_argument_field(argument, &parameter.name);
+
+                        match arg {
+                            Some(arg) => {
+                                let param_column_id = &self
+                                    .param
+                                    .column_path_link
+                                    .as_ref()
+                                    .unwrap()
+                                    .self_column_id()
+                                    .clone();
+
+                                let param_column_path = ColumnPath::Physical(
+                                    PhysicalColumnPath::leaf(*param_column_id),
+                                );
+
+                                let param_physical_column =
+                                    param_column_id.get_column(&subsystem.database);
+
+                                let op_value = literal_column_path(arg, param_physical_column)?;
+
+                                let new_predicate =
+                                    AbstractPredicate::eq(param_column_path, op_value);
+
+                                Ok(AbstractPredicate::and(acc, new_predicate))
+                            }
+                            None => Err(PostgresExecutionError::Validation(
+                                self.param.name.clone(),
+                                format!("Reference parameter {} is missing", parameter.name),
+                            ))?,
+                        }
+                    })
             }
             PredicateParameterTypeKind::Operator(parameters) => {
                 let predicate =
@@ -64,7 +102,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     let (op_key_column, op_value_column) = operands(
                                         self.param,
                                         op_value,
-                                        self.parent_column_path.clone(),
+                                        &self.parent_column_path,
                                         subsystem,
                                     )
                                     .expect("Could not get operands");
@@ -268,7 +306,7 @@ pub fn predicate_from_name<C: PartialEq + ParamEquality>(
 fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a Val,
-    parent_column_path: Option<PhysicalColumnPath>,
+    parent_column_path: &Option<PhysicalColumnPath>,
     subsystem: &'a PostgresSubsystem,
 ) -> Result<(ColumnPath, ColumnPath), PostgresExecutionError> {
     let op_physical_column_id = param
@@ -281,7 +319,7 @@ fn operands<'a>(
     let op_value = literal_column_path(op_value, op_physical_column)?;
 
     Ok((
-        ColumnPath::Physical(to_column_path(&parent_column_path, &param.column_path_link).unwrap()),
+        ColumnPath::Physical(to_column_path(parent_column_path, &param.column_path_link).unwrap()),
         op_value,
     ))
 }
