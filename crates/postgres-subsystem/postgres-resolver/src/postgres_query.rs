@@ -26,7 +26,9 @@ use exo_sql::{
     AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, Limit, Offset,
     RelationId, SelectionCardinality, SelectionElement,
 };
+use futures::stream::TryStreamExt;
 use futures::StreamExt;
+use postgres_model::query::UniqueQuery;
 use postgres_model::{
     aggregate::AggregateField,
     order::OrderByParameter,
@@ -50,6 +52,41 @@ impl OperationSelectionResolver for PkQuery {
             subsystem,
             request_context,
         )
+        .await?;
+
+        compute_select(
+            predicate,
+            None,
+            None,
+            None,
+            &self.return_type,
+            &field.subfields,
+            subsystem,
+            request_context,
+        )
+        .await
+    }
+}
+
+#[async_trait]
+impl OperationSelectionResolver for UniqueQuery {
+    async fn resolve_select<'a>(
+        &'a self,
+        field: &'a ValidatedField,
+        request_context: &'a RequestContext<'a>,
+        subsystem: &'a PostgresSubsystem,
+    ) -> Result<AbstractSelect, PostgresExecutionError> {
+        let predicate = futures::stream::iter(
+            self.parameters
+                .predicate_params
+                .iter()
+                .map(Ok::<_, PostgresExecutionError>),
+        )
+        .try_fold(AbstractPredicate::True, |acc, p| async {
+            let predicate =
+                compute_predicate(p, &field.arguments, subsystem, request_context).await?;
+            Ok(AbstractPredicate::and(acc, predicate))
+        })
         .await?;
 
         compute_select(

@@ -20,7 +20,6 @@ use crate::shallow::Shallow;
 use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
-    type_builder::ResolvedTypeEnv,
 };
 
 // TODO: Ensure it works for all builders (this one makes the assumption that it is building only input types)
@@ -73,7 +72,6 @@ pub trait Builder {
 
     fn build_expanded(
         &self,
-        resolved_env: &ResolvedTypeEnv,
         building: &mut SystemContextBuilding,
     ) -> Result<(), ModelBuildingError>;
 }

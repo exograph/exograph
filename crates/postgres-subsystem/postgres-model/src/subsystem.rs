@@ -18,7 +18,7 @@ use super::{
 use crate::{
     access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     aggregate::AggregateType,
-    query::{AggregateQuery, CollectionQuery},
+    query::{AggregateQuery, CollectionQuery, UniqueQuery},
     types::{EntityType, MutationType, PostgresPrimitiveType},
 };
 use core_plugin_interface::{
@@ -49,6 +49,7 @@ pub struct PostgresSubsystem {
     pub pk_queries: MappedArena<PkQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
+    pub unique_queries: MappedArena<UniqueQuery>,
 
     // mutation related
     pub mutation_types: SerializableSlab<MutationType>, // create, update, delete input types such as `PersonUpdateInput`
@@ -79,9 +80,15 @@ impl PostgresSubsystem {
             .iter()
             .map(|query| query.1.field_definition(self));
 
+        let unique_queries_defn = self
+            .unique_queries
+            .iter()
+            .map(|(_, query)| query.field_definition(self));
+
         pk_queries_defn
             .chain(collection_queries_defn)
             .chain(aggregate_queries_defn)
+            .chain(unique_queries_defn)
             .collect()
     }
 
@@ -135,6 +142,7 @@ impl Default for PostgresSubsystem {
             pk_queries: MappedArena::default(),
             collection_queries: MappedArena::default(),
             aggregate_queries: MappedArena::default(),
+            unique_queries: MappedArena::default(),
             mutation_types: SerializableSlab::new(),
             mutations: MappedArena::default(),
 

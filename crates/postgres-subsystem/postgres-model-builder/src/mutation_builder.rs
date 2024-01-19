@@ -44,7 +44,6 @@ use super::{
     reference_input_type_builder::ReferenceInputTypeBuilder,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
-    type_builder::ResolvedTypeEnv,
     update_mutation_builder::UpdateMutationBuilder,
 };
 
@@ -70,15 +69,12 @@ pub fn build_shallow(
 }
 
 /// Expand the mutation input types as well as build the mutation
-pub fn build_expanded(
-    resolved_env: &ResolvedTypeEnv,
-    building: &mut SystemContextBuilding,
-) -> Result<(), ModelBuildingError> {
-    ReferenceInputTypeBuilder {}.build_expanded(resolved_env, building)?; // Used by many...
+pub fn build_expanded(building: &mut SystemContextBuilding) -> Result<(), ModelBuildingError> {
+    ReferenceInputTypeBuilder {}.build_expanded(building)?; // Used by many...
 
-    CreateMutationBuilder {}.build_expanded(resolved_env, building)?;
-    UpdateMutationBuilder {}.build_expanded(resolved_env, building)?;
-    DeleteMutationBuilder {}.build_expanded(resolved_env, building)?;
+    CreateMutationBuilder {}.build_expanded(building)?;
+    UpdateMutationBuilder {}.build_expanded(building)?;
+    DeleteMutationBuilder {}.build_expanded(building)?;
 
     Ok(())
 }
@@ -381,7 +377,6 @@ pub trait DataParamBuilder<D> {
     fn expanded_data_type(
         &self,
         entity_type: &EntityType,
-        resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         container_type: Option<&EntityType>,
@@ -403,7 +398,6 @@ pub trait DataParamBuilder<D> {
                         entity_type,
                         field,
                         field_type,
-                        resolved_env,
                         building,
                         top_level_type,
                         Some(entity_type),
@@ -464,7 +458,6 @@ pub trait DataParamBuilder<D> {
         entity_type: &EntityType,
         _field: &PostgresField<EntityType>,
         field_type: &EntityType,
-        resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
         top_level_type: Option<&EntityType>,
         _container_type: Option<&EntityType>,
@@ -486,7 +479,6 @@ pub trait DataParamBuilder<D> {
             // If not already expanded
             self.expanded_data_type(
                 field_type,
-                resolved_env,
                 building,
                 top_level_type,
                 new_container_type,

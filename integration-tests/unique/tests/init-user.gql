@@ -5,29 +5,35 @@ operation: |
         $secondaryEmailId: String!
         $emailDomain: String!,
         $initial_event_rsvp: String!
+        $initial_internal_event_rsvp: String!
     ) {
         createUser(data: {
             username: $username,
             primaryEmailId: $primaryEmailId,
             secondaryEmailId: $secondaryEmailId,
-            emailDomain: $emailDomain
+            emailDomain: $emailDomain,
             rsvps: [
                 { event: $initial_event_rsvp }
+            ],
+            internalRsvps: [
+                { event: $initial_internal_event_rsvp }
             ]
         }) {
             id @bind(name: "alice_user_id")
+            rsvps {
+                id @bind(name: "alice_rsvp_id")
+            }
+            internalRsvps {
+                id @bind(name: "alice_internal_rsvp_id")
+            }
         }
     }
 variable: |
     {
         "username": "Alice02",
-
-        // alice@example.com
         "primaryEmailId": "alice",
-
-        // alice2@example.com
         "secondaryEmailId": "alice2",
-
         "emailDomain": "example.com",
-        "initial_event_rsvp": "Concert1"
+        "initial_event_rsvp": "Concert1",
+        "initial_internal_event_rsvp": "InternalConcert1"
     }

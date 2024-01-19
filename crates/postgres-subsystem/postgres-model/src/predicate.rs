@@ -72,6 +72,7 @@ pub enum PredicateParameterTypeKind {
         field_params: Vec<PredicateParameter>, // {where: {id: .., name: ..}} such as AccountFilter
         logical_op_params: Vec<PredicateParameter>, // logical operator predicates like `and: [{name: ..}, {id: ..}]`
     },
+    Reference(Vec<PredicateParameter>), // {venue: {id: 3}}
 }
 
 impl Parameter for PredicateParameter {
@@ -87,7 +88,8 @@ impl Parameter for PredicateParameter {
 impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
     fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
         match &self.kind {
-            PredicateParameterTypeKind::Operator(parameters) => {
+            PredicateParameterTypeKind::Operator(parameters)
+            | PredicateParameterTypeKind::Reference(parameters) => {
                 let fields = parameters
                     .iter()
                     .map(|parameter| default_positioned(parameter.input_value()))

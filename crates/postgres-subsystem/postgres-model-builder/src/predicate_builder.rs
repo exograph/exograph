@@ -13,6 +13,7 @@ use core_plugin_interface::core_model::{
 };
 use postgres_model::{
     predicate::PredicateParameterTypeWrapper,
+    relation::PostgresRelation,
     types::{EntityType, PostgresPrimitiveType},
 };
 use std::collections::HashMap;
@@ -64,7 +65,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                 );
 
                 // Another one for operators
-                let param_type_name = get_parameter_type_name(&type_name); // For example, IntFilter
+                let param_type_name = get_filter_type_name(&type_name); // For example, IntFilter
                 building.predicate_types.add(
                     &param_type_name,
                     PredicateParameterType {
@@ -74,9 +75,26 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                 );
             }
             ResolvedType::Composite(c @ ResolvedCompositeType { .. }) => {
-                let shallow_type = create_shallow_type(c);
-                let param_type_name = shallow_type.name.clone();
-                building.predicate_types.add(&param_type_name, shallow_type);
+                // Generic filter type
+                {
+                    let shallow_type = PredicateParameterType {
+                        name: get_filter_type_name(&c.name),
+                        kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
+                    };
+                    building
+                        .predicate_types
+                        .add(&shallow_type.name.clone(), shallow_type);
+                }
+                // Unique filter type
+                {
+                    let shallow_type = PredicateParameterType {
+                        name: get_unique_filter_type_name(&c.name),
+                        kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
+                    };
+                    building
+                        .predicate_types
+                        .add(&shallow_type.name.clone(), shallow_type);
+                }
             }
         }
     }
@@ -84,7 +102,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, primitive_type) in building.primitive_types.iter() {
-        let param_type_name = get_parameter_type_name(&primitive_type.name);
+        let param_type_name = get_filter_type_name(&primitive_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
         let new_kind = expand_primitive_type(primitive_type, building);
@@ -92,23 +110,29 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 
     for (_, entity_type) in building.entity_types.iter() {
-        let param_type_name = get_parameter_type_name(&entity_type.name);
-        let existing_param_id = building.predicate_types.get_id(&param_type_name);
+        {
+            let param_type_name = get_filter_type_name(&entity_type.name);
+            let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-        let new_kind = expand_entity_type(entity_type, building);
-        building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
+            let new_kind = expand_entity_type(entity_type, building);
+            building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
+        }
+
+        {
+            let param_type_name = get_unique_filter_type_name(&entity_type.name);
+            let existing_param_id = building.predicate_types.get_id(&param_type_name);
+            let new_kind = expand_unique_type(entity_type, building);
+            building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
+        }
     }
 }
 
-pub fn get_parameter_type_name(type_name: &str) -> String {
+pub fn get_filter_type_name(type_name: &str) -> String {
     format!("{type_name}Filter")
 }
 
-fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType {
-    PredicateParameterType {
-        name: get_parameter_type_name(model.name.as_str()),
-        kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
-    }
+pub fn get_unique_filter_type_name(type_name: &str) -> String {
+    format!("{type_name}UniqueFilter")
 }
 
 fn expand_primitive_type(
@@ -122,7 +146,107 @@ fn expand_entity_type(
     entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
-    create_composite_filter_type_kind(entity_type, &entity_type.name, building)
+    let entity_type_name = &entity_type.name;
+    // populate params for each field
+    let field_params: Vec<PredicateParameter> = entity_type
+        .fields
+        .iter()
+        .map(|field| {
+            let param_type_name = get_filter_type_name(field.typ.name());
+
+            let column_path_link = Some(field.relation.column_path_link(&building.database));
+
+            PredicateParameter {
+                name: field.name.to_string(),
+                typ: FieldType::Optional(Box::new(FieldType::Plain(
+                    PredicateParameterTypeWrapper {
+                        type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
+                        name: param_type_name,
+                    },
+                ))),
+                column_path_link,
+                access: Some(field.access.clone()),
+            }
+        })
+        .collect();
+
+    #[derive(Debug, PartialEq, Eq)]
+    enum LogicalOpModifier {
+        List,     // logical op takes a list of predicates
+        Optional, // logical op takes a single predicate
+    }
+    // populate logical ops predicate parameters
+    let logical_ops = [
+        ("and", LogicalOpModifier::List),
+        ("or", LogicalOpModifier::List),
+        ("not", LogicalOpModifier::Optional),
+    ];
+
+    let logical_op_params = logical_ops
+        .into_iter()
+        .map(|(name, type_modifier)| {
+            let param_type_name = get_filter_type_name(entity_type_name);
+            let param_type_id = building
+                .predicate_types
+                .get_id(&param_type_name)
+                .unwrap_or_else(|| panic!("Could not find predicate type '{param_type_name}'"));
+            let param_type = FieldType::Plain(PredicateParameterTypeWrapper {
+                name: param_type_name,
+                type_id: param_type_id,
+            });
+
+            let param_field_type = if type_modifier == LogicalOpModifier::Optional {
+                FieldType::Optional(Box::new(param_type))
+            } else {
+                FieldType::Optional(Box::new(FieldType::List(Box::new(param_type))))
+            };
+            PredicateParameter {
+                name: name.to_string(),
+                typ: param_field_type,
+                column_path_link: None,
+                access: None,
+            }
+        })
+        .collect();
+
+    PredicateParameterTypeKind::Composite {
+        field_params,
+        logical_op_params,
+    }
+}
+
+fn expand_unique_type(
+    entity_type: &EntityType,
+    building: &SystemContextBuilding,
+) -> PredicateParameterTypeKind {
+    let field_predicates = entity_type
+        .fields
+        .iter()
+        .flat_map(|field| match &field.relation {
+            PostgresRelation::Pk { .. } => {
+                let field_type_name = field.typ.name();
+                let param_type_id = building
+                    .predicate_types
+                    .get_id(field_type_name)
+                    .unwrap_or_else(|| panic!("Could not find predicate type '{field_type_name}'"));
+
+                let param_type = FieldType::Plain(PredicateParameterTypeWrapper {
+                    name: field_type_name.to_owned(),
+                    type_id: param_type_id,
+                });
+
+                Some(PredicateParameter {
+                    name: field.name.clone(),
+                    typ: param_type,
+                    access: Some(field.access.clone()),
+                    column_path_link: None,
+                })
+            }
+            _ => None,
+        })
+        .collect();
+
+    PredicateParameterTypeKind::Reference(field_predicates)
 }
 
 lazy_static! {
@@ -223,77 +347,4 @@ fn create_operator_filter_type_kind(
     } else {
         todo!("{} does not support any operators", primitive_type.name)
     } // type given is not listed in TYPE_OPERATORS?
-}
-
-fn create_composite_filter_type_kind(
-    composite_type: &EntityType,
-    composite_type_name: &str,
-    building: &SystemContextBuilding,
-) -> PredicateParameterTypeKind {
-    // populate params for each field
-    let field_params: Vec<PredicateParameter> = composite_type
-        .fields
-        .iter()
-        .map(|field| {
-            let param_type_name = get_parameter_type_name(field.typ.name());
-
-            let column_path_link = Some(field.relation.column_path_link(&building.database));
-
-            PredicateParameter {
-                name: field.name.to_string(),
-                typ: FieldType::Optional(Box::new(FieldType::Plain(
-                    PredicateParameterTypeWrapper {
-                        type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-                        name: param_type_name,
-                    },
-                ))),
-                column_path_link,
-                access: Some(field.access.clone()),
-            }
-        })
-        .collect();
-
-    #[derive(Debug, PartialEq, Eq)]
-    enum LogicalOpModifier {
-        List,     // logical op takes a list of predicates
-        Optional, // logical op takes a single predicate
-    }
-    // populate logical ops predicate parameters
-    let logical_ops = [
-        ("and", LogicalOpModifier::List),
-        ("or", LogicalOpModifier::List),
-        ("not", LogicalOpModifier::Optional),
-    ];
-
-    let logical_op_params = logical_ops
-        .into_iter()
-        .map(|(name, type_modifier)| {
-            let param_type_name = get_parameter_type_name(composite_type_name);
-            let param_type_id = building
-                .predicate_types
-                .get_id(&param_type_name)
-                .unwrap_or_else(|| panic!("Could not find predicate type '{param_type_name}'"));
-            let param_type = FieldType::Plain(PredicateParameterTypeWrapper {
-                name: param_type_name,
-                type_id: param_type_id,
-            });
-
-            let param_field_type = if type_modifier == LogicalOpModifier::Optional {
-                FieldType::Optional(Box::new(param_type))
-            } else {
-                FieldType::Optional(Box::new(FieldType::List(Box::new(param_type))))
-            };
-            PredicateParameter {
-                name: name.to_string(),
-                typ: param_field_type,
-                column_path_link: None,
-                access: None,
-            }
-        })
-        .collect();
-
-    PredicateParameterTypeKind::Composite {
-        field_params,
-        logical_op_params,
-    }
 }

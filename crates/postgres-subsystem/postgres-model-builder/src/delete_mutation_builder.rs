@@ -28,7 +28,6 @@ use super::{
     query_builder,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
-    type_builder::ResolvedTypeEnv,
 };
 
 pub struct DeleteMutationBuilder;
@@ -46,7 +45,6 @@ impl Builder for DeleteMutationBuilder {
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(
         &self,
-        _resolved_env: &ResolvedTypeEnv,
         building: &mut SystemContextBuilding,
     ) -> Result<(), ModelBuildingError> {
         // Since there are no special input types for deletion, no expansion is needed

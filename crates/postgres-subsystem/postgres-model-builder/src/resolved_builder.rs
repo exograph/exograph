@@ -13,6 +13,8 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
+use std::collections::HashMap;
+
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 
@@ -187,6 +189,21 @@ impl ResolvedCompositeType {
 
     pub fn field_by_column_name(&self, column_name: &str) -> Option<&ResolvedField> {
         self.fields.iter().find(|f| f.column_name == column_name)
+    }
+
+    pub fn unique_constraints(&self) -> HashMap<String, Vec<&ResolvedField>> {
+        let mut unique_constraints: HashMap<String, Vec<&ResolvedField>> = HashMap::new();
+
+        for field in self.fields.iter() {
+            for unique_constraint in field.unique_constraints.iter() {
+                unique_constraints
+                    .entry(unique_constraint.clone())
+                    .or_default()
+                    .push(field);
+            }
+        }
+
+        unique_constraints
     }
 }
 

@@ -25,7 +25,6 @@ use super::{
     naming::ToPostgresTypeNames,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
-    type_builder::ResolvedTypeEnv,
 };
 
 pub struct ReferenceInputTypeBuilder;
@@ -42,7 +41,6 @@ impl Builder for ReferenceInputTypeBuilder {
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(
         &self,
-        _resolved_env: &ResolvedTypeEnv,
         building: &mut SystemContextBuilding,
     ) -> Result<(), ModelBuildingError> {
         for (_, entity_type) in building.entity_types.iter() {

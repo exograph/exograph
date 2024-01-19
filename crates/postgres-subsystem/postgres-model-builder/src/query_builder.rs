@@ -19,14 +19,15 @@ use postgres_model::{
     predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},
     query::{
         AggregateQuery, AggregateQueryParameters, CollectionQuery, CollectionQueryParameters,
-        PkQuery, PkQueryParameters,
+        PkQuery, PkQueryParameters, UniqueQuery, UniqueQueryParameters,
     },
-    types::{EntityType, PostgresPrimitiveType},
+    relation::PostgresRelation,
+    types::{EntityType, PostgresField, PostgresPrimitiveType},
 };
 
 use crate::{
-    aggregate_type_builder::aggregate_type_name, resolved_builder::ResolvedCompositeType,
-    shallow::Shallow,
+    aggregate_type_builder::aggregate_type_name, predicate_builder::get_unique_filter_type_name,
+    resolved_builder::ResolvedCompositeType, shallow::Shallow, type_builder::ResolvedTypeEnv,
 };
 
 use super::{
@@ -41,6 +42,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
             let shallow_query = shallow_pk_query(entity_type_id, c);
             let collection_query = shallow_collection_query(entity_type_id, c);
             let aggregate_query = shallow_aggregate_query(entity_type_id, c);
+            let unique_queries = shallow_unique_queries(entity_type_id, c);
 
             building
                 .pk_queries
@@ -51,11 +53,16 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
             building
                 .aggregate_queries
                 .add(&aggregate_query.name.to_owned(), aggregate_query);
+            for unique_query in unique_queries {
+                building
+                    .unique_queries
+                    .add(&unique_query.name.to_owned(), unique_query);
+            }
         }
     }
 }
 
-pub fn build_expanded(building: &mut SystemContextBuilding) {
+pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (_, entity_type) in building.entity_types.iter() {
         expand_pk_query(
             entity_type,
@@ -75,6 +82,13 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
             &building.predicate_types,
             &mut building.aggregate_queries,
         );
+        expand_unique_queries(
+            entity_type,
+            &building.predicate_types,
+            &mut building.unique_queries,
+            resolved_env,
+            &building.database,
+        );
     }
 }
 
@@ -88,10 +102,12 @@ fn shallow_pk_query(
         parameters: PkQueryParameters {
             predicate_param: PredicateParameter::shallow(),
         },
-        return_type: OperationReturnType::Plain(BaseOperationReturnType {
-            associated_type_id: entity_type_id,
-            type_name: typ.name.clone(),
-        }),
+        return_type: OperationReturnType::Optional(Box::new(OperationReturnType::Plain(
+            BaseOperationReturnType {
+                associated_type_id: entity_type_id,
+                type_name: typ.name.clone(),
+            },
+        ))),
     }
 }
 
@@ -113,16 +129,24 @@ pub fn pk_predicate_param(
     database: &Database,
 ) -> PredicateParameter {
     let pk_field = entity_type.pk_field().unwrap();
-    let param_type_id = predicate_types.get_id(pk_field.typ.name()).unwrap();
+    implicit_equals_predicate_param(pk_field, predicate_types, database)
+}
+
+fn implicit_equals_predicate_param(
+    field: &PostgresField<EntityType>,
+    predicate_types: &MappedArena<PredicateParameterType>,
+    database: &Database,
+) -> PredicateParameter {
+    let param_type_id = predicate_types.get_id(field.typ.name()).unwrap();
     let param_type = PredicateParameterTypeWrapper {
-        name: pk_field.typ.name().to_owned(),
+        name: field.typ.name().to_owned(),
         type_id: param_type_id,
     };
 
     PredicateParameter {
-        name: pk_field.name.to_string(),
+        name: field.name.to_string(),
         typ: FieldType::Plain(param_type),
-        column_path_link: Some(pk_field.relation.column_path_link(database)),
+        column_path_link: Some(field.relation.column_path_link(database)),
         access: None,
     }
 }
@@ -201,6 +225,80 @@ fn expand_aggregate_query(
     existing_query.parameters.predicate_param = predicate_param;
 }
 
+fn shallow_unique_queries(
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    resolved_entity_type: &ResolvedCompositeType,
+) -> Vec<UniqueQuery> {
+    resolved_entity_type
+        .unique_constraints()
+        .keys()
+        .map(|name| UniqueQuery {
+            name: resolved_entity_type.unique_query(name),
+            parameters: UniqueQueryParameters {
+                predicate_params: vec![],
+            },
+            return_type: OperationReturnType::Optional(Box::new(OperationReturnType::Plain(
+                BaseOperationReturnType {
+                    associated_type_id: entity_type_id,
+                    type_name: resolved_entity_type.name.clone(),
+                },
+            ))),
+        })
+        .collect()
+}
+
+pub fn expand_unique_queries(
+    entity_type: &EntityType,
+    predicate_types: &MappedArena<PredicateParameterType>,
+    unique_queries: &mut MappedArena<UniqueQuery>,
+    resolved_env: &ResolvedTypeEnv,
+    database: &Database,
+) {
+    let resolved_type = resolved_env.get_by_key(entity_type.name.as_str()).unwrap();
+
+    if let ResolvedType::Composite(resolved_composite_type) = resolved_type {
+        for (name, fields) in resolved_composite_type.unique_constraints().iter() {
+            let operation_name = entity_type.unique_query(name);
+
+            let predicate_params = fields
+                .iter()
+                .map(|field| {
+                    let entity_field = entity_type.field_by_name(&field.name).unwrap();
+
+                    match entity_field.relation {
+                        PostgresRelation::Pk { .. } | PostgresRelation::Scalar { .. } => {
+                            implicit_equals_predicate_param(entity_field, predicate_types, database)
+                        }
+                        PostgresRelation::ManyToOne { .. } => {
+                            let param_type_name = get_unique_filter_type_name(field.typ.name());
+                            let param_type_id = predicate_types.get_id(&param_type_name).unwrap();
+                            let param_type = PredicateParameterTypeWrapper {
+                                name: param_type_name,
+                                type_id: param_type_id,
+                            };
+
+                            PredicateParameter {
+                                name: field.name.to_string(),
+                                typ: FieldType::Plain(param_type),
+                                column_path_link: Some(
+                                    entity_field.relation.column_path_link(database),
+                                ),
+                                access: None,
+                            }
+                        }
+                        PostgresRelation::OneToMany { .. } => {
+                            panic!("OneToMany relations cannot be used in unique queries")
+                        }
+                    }
+                })
+                .collect();
+
+            let existing_query = &mut unique_queries.get_by_key_mut(&operation_name).unwrap();
+            existing_query.parameters.predicate_params = predicate_params;
+        }
+    }
+}
+
 pub fn limit_param(primitive_types: &MappedArena<PostgresPrimitiveType>) -> LimitParameter {
     let param_type_name = "Int".to_string();
 
@@ -229,7 +327,7 @@ pub fn collection_predicate_param(
     entity_type: &EntityType,
     predicate_types: &MappedArena<PredicateParameterType>,
 ) -> PredicateParameter {
-    let param_type_name = predicate_builder::get_parameter_type_name(&entity_type.name);
+    let param_type_name = predicate_builder::get_filter_type_name(&entity_type.name);
     let param_type_id = predicate_types.get_id(&param_type_name).unwrap();
 
     let param_type = PredicateParameterTypeWrapper {

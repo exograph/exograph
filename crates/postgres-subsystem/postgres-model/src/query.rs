@@ -75,3 +75,20 @@ impl OperationParameters for AggregateQueryParameters {
         vec![&self.predicate_param]
     }
 }
+
+/// Query by unique constrained parameters such as `userByEmail(email: "hello@example.com")` or `userByFirstAndLastName(firstName: "John", lastName: "Doe")`
+pub type UniqueQuery = PostgresOperation<UniqueQueryParameters>;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UniqueQueryParameters {
+    pub predicate_params: Vec<PredicateParameter>,
+}
+
+impl OperationParameters for UniqueQueryParameters {
+    fn introspect(&self) -> Vec<&dyn Parameter> {
+        self.predicate_params
+            .iter()
+            .map(|p| p as &dyn Parameter)
+            .collect()
+    }
+}
