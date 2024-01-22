@@ -226,29 +226,33 @@ type Concert {
 }
 ```
 
-When generating schema, this will set a database uniqueness constraint on the `name` column.
+Here, Exograph will set a database uniqueness constraint on the `name` column in the generated schema.
 
-If you want to mark a specific combination of fields as unique, you can use the `@unique` annotation by specifying a name for the unique constraint. For example, if you want to ensure that the combination of `email_id` and `email_domain` is unique, you can use the `@unique` annotation specifying a name for the unique constraint:
+:::info Uniqueness and queries
+Exograph infers specialized queries to get an entity by unique fields. We will explore this in the [queries](operations/queries.md#unique-constraint-query) section.
+:::
+
+If you want to mark a specific combination of fields as unique, you can use the `@unique` annotation by specifying a name for the unique constraint. For example, if you want to ensure that the combination of `emailId` and `emailDomain` is unique, you can use the `@unique` annotation specifying a name for the unique constraint:
 
 ```exo
 type Person {
   ...
-  @unique("email") email_id: String
-  @unique("email") email_domain: String
+  @unique("email") emailId: String
+  @unique("email") emailDomain: String
 }
 ```
 
-You can pass an array of field names to the `@unique` annotation to specify a unique constraint. For example, if you want to make sure that the combination of `primary_email_id` and `email_domain` as well as the combination `secondary_email_id` and `email_domain` is unique, you can use the `@unique` annotation specifying names for the unique constraint:
+You can pass an array of field names to the `@unique` annotation to specify a unique constraint. For example, if you want to make sure that the combination of `primaryEmailId` and `emailDomain` as well as the combination `secondaryEmailId` and `emailDomain` is unique, you can use the `@unique` annotation specifying names for the unique constraint:
 
 ```exo
 type Person {
-    @unique("unique_email_primary") primary_email_id: String
-    @unique("unique_email_secondary") secondary_email_id: String?
-    @unique("unique_email_primary", "unique_email_secondary") email_domain: String
+    @unique("primary_email") primaryEmailId: String
+    @unique("secondary_email") secondaryEmailId: String?
+    @unique("primary_email", "secondary_email") emailDomain: String
 }
 ```
 
-Since we use the name `unique_email_primary` for the `primary_email_id` and the `email_domain` fields, that combination will be marked unique. We do the same for the `secondary_email_id` and the `email_domain` fields.
+Since we use the name `primary_email` for the `primaryEmailId` and the `emailDomain` fields, that combination will be marked unique. We do the same for the `secondaryEmailId` and the `emailDomain` fields.
 
 ### Index
 

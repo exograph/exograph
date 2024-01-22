@@ -1,16 +1,23 @@
 ---
-sidebar_position: 2
+sidebar_position: 30
 ---
 
 # Queries
 
-Let's explore queries created for Postgres types. We will explore three kinds of queries: single element, collection, and aggregate. We will defer mutations to [the next section](mutations.md).
+Exograph automatically infers a set of queries for each type in a Postgres module. Specifically, it creates queries to:
 
-## Get an entity by the primary key
+- Obtain a single entity by its primary key
+- Obtain a list of entities with optional filtering, ordering, and pagination
+- Obtain aggregate information about the entities
+- Obtain a single entity by any unique constraint
+
+Exograph also infers a set of mutations, which we will defer to [the next section](mutations.md).
+
+## Primary Key Query
 
 When you want to view a single entity, for example, when displaying a particular concert, you can use the query to get the entity by its ID. Exograph creates a query named as the "camelCased" version of the entity type name. For example, if the entity type is `Concert`, the query name will be `concert`, whereas if the entity type is `ShoppingCart`, the query name will be `shoppingCart`.
 
-The query takes one argument: `id`, which is the entity's primary key and returns a single entity. Then you can make queries such as this:
+The query takes one argument: `id`, which is the entity's primary key and returns a single optional entity. Then you can make queries such as this:
 
 ```graphql
 concert(id: 5) {
@@ -19,7 +26,7 @@ concert(id: 5) {
 }
 ```
 
-## Get a list of entities
+## Collection Query
 
 When you want to display a list of entities, for example, when displaying a list of concerts in a given year, you can use the query to get a list of entities. The query to get a list of entities is the "camelCased" version of the pluralized entity type. For example, if the entity type is `Concert`, the query name will be `concerts`, whereas if the entity type is `ShoppingCart`, the query name will be `shoppingCarts`.
 
@@ -133,7 +140,92 @@ concerts(limit: 10, offset: 5) {
 }
 ```
 
-## Aggregate Queries
+## Unique Constraint Query
+
+If a type consists of `@unique` fields, Exograph infers one query per unique constraint. Each such query takes all the fields of the unique constraint as arguments and returns a single optional entity (the same way as the primary key query). Each query follows the naming convention of
+
+```graphql
+<lowerCamelCasedTypeName>By<upperCamelCasedUniqueConstraintName>(<uniqueConstraintFields>): <TypeName>
+```
+
+For example, consider the following type:
+
+```exo
+type Concert {
+  ...
+  @unique name: String
+}
+```
+
+Exograph will infer the `concertByName` query that takes the `name` field as an argument and returns a single optional concert. You can use this query as follows:
+
+```graphql
+concertByName(name: "The Beatles") {
+  ...
+}
+```
+
+If you have marked a combination of fields as unique, Exograph will infer a query that takes all those fields as arguments. For example, consider the following type:
+
+```exo
+type Person {
+  ...
+  @unique("email") emailId: String
+  @unique("email") emailDomain: String
+}
+```
+
+Exograph will infer the `personByEmail` query that takes the `emailId` and `emailDomain` fields as arguments and returns a single optional entity.
+
+You can use this query as follows:
+
+```graphql
+personByEmail(emailId: "john", emailDomain: "example.com") {
+  ...
+}
+```
+
+Similarly, if you have a field with multiple unique constraints, Exograph will infer a query for each unique constraint. For example, consider the following type:
+
+```exo
+type Person {
+    @unique("primary_email") primaryEmailId: String
+    @unique("secondary_email") secondaryEmailId: String?
+    @unique("primary_email", "secondary_email") emailDomain: String
+}
+```
+
+Here, we have two unique constraints. Therefore, Exograph will infer two queries: `personByPrimaryEmail` and `personBySecondaryEmail`, each taking the fields of the corresponding unique constraint as arguments. You can use these queries as follows:
+
+```graphql
+personByPrimaryEmail(primaryEmailId: "alex", emailDomain: "example.com") {
+  ...
+}
+
+personBySecondaryEmail(secondaryEmailId: "alex", emailDomain: "example.com") {
+  ...
+}
+```
+
+If you mark a relation field's "one" side as unique, Exograph will infer a query that takes the primary key as the argument. For example, consider the following type:
+
+```exo
+type Rsvp {
+  ...
+  @unique("registration") concert: Concert // "one" side of the relation
+  @unique("registration") email: String
+}
+```
+
+Exograph will infer a query named `rsvpByRegistration` that takes the `concert` and `email` fields as arguments and returns a single optional entity. You can use this query as follows:
+
+```graphql
+rsvpByRegistration(concert: {id: 5}, email: "john@example.com") {
+  ...
+}
+```
+
+## Aggregate Query
 
 In addition to the queries to get a list of entities, Exograph also provides queries to obtain aggregate information about the entities. For example, if you want to get the total number of concerts, you can use the following query:
 

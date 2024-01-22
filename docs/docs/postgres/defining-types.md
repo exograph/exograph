@@ -57,7 +57,7 @@ In the example above, we have seen how to define fields of scalar types: `Int`, 
 | `LocalDate`\*     | A date type.                                                                                   | `"2021-01-01"`                           |
 | `LocalDateTime`\* | A date and time type.                                                                          | `"2021-07-06T20:08:47"`                  |
 | `LocalTime`\*     | A time type.                                                                                   | `"14:30:15"`                             |
-| `Instant`\*       | A date and time type along with timezone                                                       | `""2021-07-06T20:08:47.1234567-07:00"`   |
+| `Instant`\*       | A date and time type along with timezone                                                       | `"2021-07-06T20:08:47.1234567-07:00"`    |
 | `Json`\*          | A JSON type.                                                                                   | `{"hello": "world"}`                     |
 | `Blob`\*          | An encoded binary data                                                                         | `"iVBORw0KGgoAAAANSUhEUgAAABgAAAAWC..."` |
 
@@ -141,14 +141,14 @@ You may use the `@unique` annotation to mark the combination of the two fields t
 type Performance {
   @pk id: Int = autoIncrement()
   // highlight-next-line
-  @unique("relation") artist: Artist @unique
+  @unique("relation") artist: Artist
   // highlight-next-line
-  @unique("relation") concert: Concert @unique
+  @unique("relation") concert: Concert
   isMainArtist: Boolean
 }
 ```
 
-You may even mark the `isMainArtist` field with the `@unique` annotation if your domain allows an artist to be the main artist for a part of the concert and non-main for the rest. Please see the [uniqueness](customizing-types.md#uniqueness) section for more details on using the `@unique` annotation.
+Please see the [uniqueness](customizing-types.md#uniqueness) section for more details on using the `@unique` annotation.
 
 ### One-to-one relationship
 
