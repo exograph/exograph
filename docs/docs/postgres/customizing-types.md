@@ -29,7 +29,7 @@ type Todo {
 }
 ```
 
-While the `@table` annotation affects the table name associated with the type, it leaves the query and mutation names unchanged. So, in the above example, the [query to get multiple todos](operations/queries.md#get-a-list-of-entities) will still be called `todos`, which is most likely what you want. However, this doesn't work out well in a few cases. For example, consider the following setup:
+While the `@table` annotation affects the table name associated with the type, it leaves the query and mutation names unchanged. So, in the above example, the [query to get multiple todos](operations/queries.md#collection-query) will still be called `todos`, which is most likely what you want. However, this doesn't work out well in a few cases. For example, consider the following setup:
 
 ```exo
 @table("people")

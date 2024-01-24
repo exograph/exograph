@@ -6,7 +6,7 @@ sidebar_position: 0
 
 Exograph files define the model of the backend services in a file with the `.exo` extension. The Exograph language takes inspiration from TypeScript and the GraphQL schema definition language. However, it is not a subset or superset of either (see [FAQ](/faq.md) for more information).
 
-An Exograph file may include four top-level elements: [contexts](context.md), [modules](module.md), [imports](import.md), and of course, [comments](#comments). Most Exograph modules also include [types](type.md), [queries](operation.md#queries), [mutations](operation.md#mutations), and [interceptors](interceptor.md).
+An Exograph file may include four top-level elements: [contexts](context.md), [modules](module.md), [imports](import.md), and of course, [comments](#comments). Most Exograph modules also include [types](type.md), [queries and mutations](operation.md), and [interceptors](interceptor.md).
 
 ## Annotations
 

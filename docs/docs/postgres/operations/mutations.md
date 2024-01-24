@@ -149,7 +149,7 @@ mutation {
 }
 ```
 
-We supplied the `where` argument to filter the concerts to be updated, which is the same as the one used to filter data in the queries in the [earlier section](queries.md#get-a-list-of-entities). The `data` argument supplies the new values for the fields. Here, since all we want is to change the venue, we only provide the `venue` field (thus leaving the other fields as they are).
+We supplied the `where` argument to filter the concerts to be updated, which is the same as the one used to filter data in the queries in the [earlier section](queries.md#collection-query). The `data` argument supplies the new values for the fields. Here, since all we want is to change the venue, we only provide the `venue` field (thus leaving the other fields as they are).
 
 ### Nested updates
 
@@ -183,7 +183,7 @@ There is one more detail to note here. The `performances` added will automatical
 
 ## Deleting data
 
-To delete a single entity by its primary key, Exograph offers the `delete<EntityType>` mutation, which takes the primary key as an argument. To delete multiple entities, Exograph offers the `delete<PluralizedEntityName>` mutation, which takes a `where` argument to filter the entities to be deleted (it is the same `where` argument that is used to filter data in the queries in the [earlier section](queries.md#get-a-list-of-entities)).
+To delete a single entity by its primary key, Exograph offers the `delete<EntityType>` mutation, which takes the primary key as an argument. To delete multiple entities, Exograph offers the `delete<PluralizedEntityName>` mutation, which takes a `where` argument to filter the entities to be deleted (it is the same `where` argument that is used to filter data in the queries in the [earlier section](queries.md#collection-query)).
 
 Given this mutation, you can delete a concert as follows:
 
