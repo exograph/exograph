@@ -14,7 +14,7 @@ Let's build an Exograph app for a concert management service. We will focus on t
 
 We will start by building the model using the "yolo" mode to let us focus on the core concepts. Then, we will introduce the development mode to give a taste of what it is like to develop with Exograph. Finally, we will deploy the app to the cloud using traditional and serverless deployments.
 
-# Creating the Model
+## Creating the Model
 
 Let's start by expressing the concept of `Concert`, `Venue, and their relationship.
 

@@ -48,7 +48,7 @@ When you run `exo yolo` or `exo dev`, Exograph will automatically verify your pr
 
 One way to fix any issues that `schema verify` finds is to perform a migration.
 
-# Migrating the schema
+## Migrating the schema
 
 The `schema migrate` subcommand allows you to migrate the schema of your Exograph project. The migration file produced will have any destructive changes commented out (unless you pass the `--allow-destructive-changes` flag). Therefore, you should examine the migration file and deal with them appropriately. For example, when you rename a column, the migration file will mark (commented out) the deletion of the column with the old name and the addition of the column with the new name. Therefore, if renaming a field was your intention, you should replace those two with a "RENAME COLUMN" statement.
 
