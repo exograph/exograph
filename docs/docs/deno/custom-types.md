@@ -6,7 +6,7 @@ sidebar_position: 2
 
 Often, you need queries/mutations to accept and return custom types. You can define such a type with the `type` keyword.
 
-Let's implement a module that fetches a to-do item from [JSONPlaceholder](https://jsonplaceholder.typicode.com/). We know that the response is a JSON object with the following structure:
+Let's implement a module that fetches a to-do item from [JSON Placeholder](https://jsonplaceholder.typicode.com/). We know that the response is a JSON object with the following structure:
 
 ```json
 {
