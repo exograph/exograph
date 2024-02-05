@@ -355,6 +355,7 @@ impl DenoModule {
                 maybe_binary_npm_command_name: None,
                 enable_op_summary_metrics: false,
                 unstable_features: vec![],
+                node_ipc_fd: None,
             },
             create_params: None,
             extensions,

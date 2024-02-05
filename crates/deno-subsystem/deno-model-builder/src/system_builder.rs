@@ -365,9 +365,15 @@ fn walk_node_resolutions(
                     .expect("Failed to analyze dependes of an ESM NPM module");
 
                 for dep in &analysis.dependencies {
+                    let specifier = match dep {
+                        deno_graph::DependencyDescriptor::Static(dep) => &dep.specifier,
+                        deno_graph::DependencyDescriptor::Dynamic(_) => {
+                            panic!("Dynamic dependencies aren't supported")
+                        }
+                    };
                     let resolved = node_resolver
                         .resolve(
-                            &dep.specifier,
+                            specifier,
                             &esm_specifier,
                             deno_runtime::deno_node::NodeResolutionMode::Execution,
                             &PermissionsContainer::allow_all(),
