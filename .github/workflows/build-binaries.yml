@@ -18,7 +18,7 @@ on:
       - "*"
 
 jobs:
-  # Build and packages all the things
+  # Build and package all the things
   build-artifacts:
     strategy:
       fail-fast: false
@@ -28,6 +28,10 @@ jobs:
           - os: macos-11
             deps-script: brew install protobuf
             target: x86_64-apple-darwin
+            bin_extension: ""
+          - os: macos-14
+            deps-script: brew install protobuf
+            target: aarch64-apple-darwin
             bin_extension: ""
           - os: ubuntu-20.04
             deps-script: sudo apt-get install -y protobuf-compiler
