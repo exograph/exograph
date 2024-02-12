@@ -30,7 +30,7 @@ jobs:
             target: x86_64-apple-darwin
             bin_extension: ""
           - os: macos-14
-            deps-script: brew install protobuf
+            deps-script: brew install protobuf postgresql@14
             target: aarch64-apple-darwin
             bin_extension: ""
           - os: ubuntu-20.04

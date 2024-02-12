@@ -49,7 +49,7 @@ jobs:
             deps-script: brew install protobuf
             target: x86_64-apple-darwin
           - os: macos-14
-            deps-script: brew install protobuf
+            deps-script: brew install protobuf postgresql@14
             target: aarch64-apple-darwin
           - os: windows-2019
             deps-script: choco install protoc
