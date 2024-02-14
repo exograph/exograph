@@ -48,6 +48,9 @@ jobs:
           - os: macos-11
             deps-script: brew install protobuf
             target: x86_64-apple-darwin
+          - os: macos-14
+            deps-script: brew install protobuf postgresql@14
+            target: aarch64-apple-darwin
           - os: windows-2019
             deps-script: choco install protoc
             target: x86_64-pc-windows-msvc
@@ -59,12 +62,20 @@ jobs:
         if: ${{ runner.os != 'Windows' }}
         run: |
           bash ${PWD}/.github/workflows/clear-disk-space.sh
+      - name: Select the latest Xcode version
+        # The default version of Xcode on macos-14 is 15.1, which leads to https://github.com/rust-lang/rust/issues/113783.
+        # So we set up Xcode to use the latest stable version (currently 15.2).
+        # For other macos versions, the latest stable version happens to be the default
+        if: ${{ runner.os == 'macOS' }}
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
       - name: Install deps
         run: ${{ matrix.deps-script }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - name: Add Postgres to PATH
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
