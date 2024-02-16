@@ -21,18 +21,20 @@ module MathModule {
     @access(true)
     query add(a: Int, b: Int): Int
 
-    @access(true)π
+    @access(true)
     query square(a: Int): Int
 }
 ```
 
-The `@deno` annotation of the `MathModule` module specifies that the implementation of the module is in the `math.ts` file. The module declares two queries: `add` and `square`. The `add` query takes two `Int` arguments and returns an `Int` value. The `square` query takes a single `Int` argument and returns an `Int` value.
+The `@deno` annotation of the `MathModule` module specifies that the module implementation is in the `math.ts` file. The module declares two queries: `add` and `square`. The `add` query takes two `Int` arguments and returns an `Int` value. The `square` query takes a single `Int` argument and returns an `Int` value.
 
-Note the `@access` annotation on the queries. It specifies that the query is accessible to all users (by default, queries and mutations aren't accessible to anyone). You can specify a fine-grained access control by using the `@access` annotation as we will see [later](access-control.md).
+Note the `@access` annotation on the queries. It specifies that the query is accessible to all users (by default, queries and mutations aren't accessible to anyone). You can specify a fine-grained access control using the `@access` annotation, as we will see [later](access-control.md).
 
 ## Implementing a module in TypeScript
 
-For each declared query (or mutation), the corresponding TypeScript code must export a function that matches the query name. Each such function must take the same arguments as the query with each type appropriately mapped to the corresponding TypeScript type. For example, if an argument or return type is `Int`, the TypeScript type would be `number`. The function must return a value that matches the return type of the query.
+For each declared query (or mutation), the corresponding TypeScript code must export a function that matches the query name. Each function must take the same arguments as the query, with each argument's type appropriately mapped to the corresponding TypeScript type. For example, if an argument or return type is `Int`, the TypeScript type would be `number`. The function must return a value that matches the return type of the query.
+
+We don't need here, but the functions may be declared `async` and return a `Promise` if they need to perform asynchronous operations. We will explore this in more detail in the next sections.
 
 ```typescript
 export function add(a: number, b: number): number {
@@ -44,7 +46,7 @@ export function square(a: number): number {
 }
 ```
 
-:::note
+:::note Starter JavaScript/TypeScript file
 When you run `exo dev` (or `exo yolo`), Exograph will generate a starter TypeScript file if it doesn't already exist. Exograph doesn't update the file if it already exists, so you must manually do so.
 :::
 
@@ -112,5 +114,3 @@ export function square(a) {
 ```
 
 You can now execute the same queries as before.
-
-So far, we have used only primitive types (`Int`), but often you need to use more complex types. Let's see [how you can do that](custom-types.md).

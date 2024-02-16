@@ -1,10 +1,10 @@
 ---
-sidebar_position: 2
+sidebar_position: 2.1
 ---
 
 # Defining Custom Types
 
-Often, you need queries/mutations to accept and return custom types. You can define such a type with the `type` keyword.
+So far, we have used only primitive types (`Int`, `String`, `Boolean`, etc), but often you need queries and mutations to accept and return custom types. You can define such a type with the `type` keyword.
 
 Let's implement a module that fetches a to-do item from [JSON Placeholder](https://jsonplaceholder.typicode.com/). We know that the response is a JSON object with the following structure:
 

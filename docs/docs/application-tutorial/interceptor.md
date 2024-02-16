@@ -34,7 +34,7 @@ Now rerun any query operation such as `concerts`. You will see the time taken by
 'concerts' took 27.300909 ms
 ```
 
-For fun, try the `sendEmail` mutation. You will see the time taken by the queries made by it.
+For fun, try the `sendNotification` mutation. You will see the time taken by the queries made by it.
 
 ```
 'concert' took 0.9891450000031909 ms

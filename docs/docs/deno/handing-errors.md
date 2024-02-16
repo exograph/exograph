@@ -11,7 +11,7 @@ Normally, if a module implementation throws an error, the Exograph runtime will 
 The `ExographError` type is a subclass of the `Error` type.
 
 ```typescript
-declare class ExographError extends Error {
+class ExographError extends Error {
   constructor(message: string);
 }
 ```
