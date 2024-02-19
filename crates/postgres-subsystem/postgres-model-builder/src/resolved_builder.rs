@@ -725,11 +725,7 @@ fn compute_column_info(
                 match field_base_type.to_typ(types).deref(types) {
                     Type::Composite(field_type) => {
                         let matching_field =
-                            get_matching_field(field, enclosing_type, &field_type, types);
-                        let matching_field = match matching_field {
-                            Ok(matching_field) => matching_field,
-                            Err(err) => return Err(err),
-                        };
+                            get_matching_field(field, enclosing_type, &field_type, types)?;
 
                         let cardinality = field_cardinality(&matching_field.typ);
 
@@ -812,12 +808,8 @@ fn compute_column_info(
                         if let Type::Composite(field_type) = typ.deref(types) {
                             // OneToMany
                             let matching_field =
-                                get_matching_field(field, enclosing_type, &field_type, types);
+                                get_matching_field(field, enclosing_type, &field_type, types)?;
 
-                            let matching_field = match matching_field {
-                                Ok(matching_field) => matching_field,
-                                Err(err) => return Err(err),
-                            };
                             Ok(ColumnInfo {
                                 name: id_column_name(&matching_field.name),
                                 self_column: false,

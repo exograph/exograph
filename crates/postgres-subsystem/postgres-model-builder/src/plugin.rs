@@ -201,7 +201,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     no_params: true,
                     single_params: true,
                     mapped_params: None,
-                }
+                },
             ),
             (
                 "manyToOne",
