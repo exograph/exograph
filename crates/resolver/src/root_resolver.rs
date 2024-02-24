@@ -20,8 +20,8 @@ use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bytes::Bytes;
-use core_resolver::system_resolver::SystemResolutionError;
 use core_resolver::system_resolver::SystemResolver;
+use core_resolver::system_resolver::{SystemResolutionError, TrustedDocumentEnforcement};
 pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
 use futures::Stream;
@@ -37,9 +37,14 @@ pub async fn resolve_in_memory<'a>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
     request_context: RequestContext<'a>,
+    trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
     let response = system_resolver
-        .resolve_operations(operations_payload, &request_context)
+        .resolve_operations(
+            operations_payload,
+            &request_context,
+            trusted_document_enforcement,
+        )
         .await;
 
     let ctx = request_context.get_base_context();
@@ -71,8 +76,15 @@ pub async fn resolve<'a, E: 'static>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
     request_context: RequestContext<'a>,
+    trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> ResponseStream<E> {
-    let response = resolve_in_memory(operations_payload, system_resolver, request_context).await;
+    let response = resolve_in_memory(
+        operations_payload,
+        system_resolver,
+        request_context,
+        trusted_document_enforcement,
+    )
+    .await;
 
     let headers = if let Ok(ref response) = response {
         response

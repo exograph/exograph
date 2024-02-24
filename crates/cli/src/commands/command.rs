@@ -89,6 +89,10 @@ pub(crate) fn default_model_file() -> PathBuf {
     PathBuf::from(DEFAULT_MODEL_FILE)
 }
 
+pub(crate) fn default_trusted_documents_dir() -> PathBuf {
+    PathBuf::from("trusted-documents")
+}
+
 pub(crate) fn ensure_exo_project_dir(dir: &Path) -> Result<(), BuildError> {
     if dir.join(default_model_file()).exists() {
         Ok(())

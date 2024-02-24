@@ -378,6 +378,7 @@ mod tests {
             context_type::ContextSelection,
         },
         interception::InterceptionMap,
+        trusted_documents::TrustedDocuments,
     };
 
     use core_resolver::context::Request;
@@ -492,6 +493,7 @@ mod tests {
             InterceptionMap {
                 map: HashMap::new(),
             },
+            TrustedDocuments::all(),
             Schema::new(vec![], vec![], vec![]),
             None.into(),
             HashMap::new(),

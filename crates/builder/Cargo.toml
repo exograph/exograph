@@ -14,6 +14,7 @@ serde.workspace = true
 codemap.workspace = true
 codemap-diagnostic.workspace = true
 futures.workspace = true
+serde_json.workspace = true
 
 wildmatch.workspace = true
 thiserror.workspace = true

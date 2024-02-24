@@ -1344,10 +1344,13 @@ dependencies = [
 name = "core-plugin-shared"
 version = "0.6.0"
 dependencies = [
+ "base16ct",
  "bincode",
  "bytes",
  "serde",
+ "sha2",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

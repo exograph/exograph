@@ -24,6 +24,7 @@ use core_plugin_interface::interface::SubsystemBuilder;
 
 use crate::commands::command::default_model_file;
 
+use super::command::default_trusted_documents_dir;
 use super::command::ensure_exo_project_dir;
 use super::command::CommandDefinition;
 
@@ -63,6 +64,7 @@ impl Display for BuildError {
 /// Use statically linked builder to avoid dynamic loading for the CLI
 pub(crate) async fn build_system_with_static_builders(
     model: &Path,
+    trusted_documents_dir: &Path,
 ) -> Result<Vec<u8>, ParserError> {
     let static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>> = vec![
         Box::new(postgres_model_builder::PostgresSubsystemBuilder {}),
@@ -70,7 +72,7 @@ pub(crate) async fn build_system_with_static_builders(
         Box::new(wasm_model_builder::WasmSubsystemBuilder {}),
     ];
 
-    builder::build_system(model, static_builders).await
+    builder::build_system(model, trusted_documents_dir, static_builders).await
 }
 
 /// Build exo_ir file
@@ -85,7 +87,9 @@ pub(crate) async fn build(print_message: bool) -> Result<(), BuildError> {
     ensure_exo_project_dir(&PathBuf::from("."))?;
 
     let model: PathBuf = default_model_file();
-    let serialized_system = build_system_with_static_builders(&model)
+    let trusted_documents_dir = default_trusted_documents_dir();
+
+    let serialized_system = build_system_with_static_builders(&model, &trusted_documents_dir)
         .await
         .map_err(BuildError::ParserError)?;
 

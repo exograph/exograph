@@ -14,7 +14,7 @@ use core_plugin_interface::core_resolver::{
     context::RequestContext,
     context_extractor::ContextExtractor,
     exograph_execute_query,
-    system_resolver::{ExographExecuteQueryFn, SystemResolver},
+    system_resolver::{ExographExecuteQueryFn, SystemResolver, TrustedDocumentEnforcement},
     validation::field::ValidatedField,
     value::Val,
     QueryResponse, QueryResponseBody,

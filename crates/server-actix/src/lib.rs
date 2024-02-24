@@ -19,9 +19,12 @@ use actix_web::{
 use url::Url;
 
 use common::env_const::{get_deployment_mode, DeploymentMode};
-use core_resolver::context::{ContextExtractionError, RequestContext};
 use core_resolver::system_resolver::SystemResolver;
 use core_resolver::OperationsPayload;
+use core_resolver::{
+    context::{ContextExtractionError, RequestContext},
+    system_resolver::TrustedDocumentEnforcement,
+};
 use request::ActixRequest;
 use resolver::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use serde_json::Value;
@@ -109,6 +112,7 @@ async fn resolve_locally(
                         operations_payload,
                         system_resolver.as_ref(),
                         request_context,
+                        TrustedDocumentEnforcement::Enforce,
                     )
                     .await;
 

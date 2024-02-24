@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use crate::context::context_extractor::ContextExtractor;
 use crate::context::request::Request;
 use crate::context::{ContextExtractionError, RequestContext};
-use crate::system_resolver::SystemResolver;
+use crate::system_resolver::{SystemResolver, TrustedDocumentEnforcement};
 use crate::OperationsPayload;
 
 pub struct QueryExtractor<'a> {
@@ -44,10 +44,12 @@ impl ContextExtractor for QueryExtractor<'_> {
             .resolve_operations(
                 OperationsPayload {
                     operation_name: None,
-                    query,
+                    query: Some(query),
                     variables: None,
+                    query_hash: None,
                 },
                 request_context,
+                TrustedDocumentEnforcement::DoNotEnforce,
             )
             .await
             .map_err(|e| ContextExtractionError::Generic(e.to_string()))?;

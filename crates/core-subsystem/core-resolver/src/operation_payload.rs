@@ -14,6 +14,41 @@ use serde_json::{Map, Value};
 pub struct OperationsPayload {
     #[serde(rename = "operationName")]
     pub operation_name: Option<String>,
-    pub query: String,
+    pub query: Option<String>,
     pub variables: Option<Map<String, Value>>,
+    pub query_hash: Option<String>,
+}
+
+impl OperationsPayload {
+    pub fn from_json(json: Value) -> Result<Self, serde_json::Error> {
+        #[derive(Debug, Deserialize)]
+        pub struct RawOperationsPayload {
+            #[serde(rename = "operationName")]
+            pub operation_name: Option<String>,
+            pub query: Option<String>,
+            pub variables: Option<Map<String, Value>>,
+            pub extensions: Option<Map<String, Value>>,
+        }
+
+        let raw_payload = serde_json::from_value::<RawOperationsPayload>(json);
+
+        raw_payload.map(|raw_payload| {
+            let query_hash = raw_payload.extensions.as_ref().and_then(|extensions| {
+                extensions
+                    .get("persistedQuery")
+                    .and_then(|persisted_query| {
+                        persisted_query
+                            .get("sha256Hash")
+                            .map(|hash| hash.as_str().unwrap().to_string())
+                    })
+            });
+
+            OperationsPayload {
+                operation_name: raw_payload.operation_name,
+                query: raw_payload.query,
+                variables: raw_payload.variables,
+                query_hash,
+            }
+        })
+    }
 }

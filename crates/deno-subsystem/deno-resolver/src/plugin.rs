@@ -16,7 +16,7 @@ use core_plugin_interface::{
         context::RequestContext,
         exograph_execute_query,
         plugin::{SubsystemResolutionError, SubsystemResolver},
-        system_resolver::SystemResolver,
+        system_resolver::{SystemResolver, TrustedDocumentEnforcement},
         validation::field::ValidatedField,
         InterceptedOperation, QueryResponse, QueryResponseBody,
     },

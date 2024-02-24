@@ -13,14 +13,16 @@ use async_graphql_parser::{
     types::{ExecutableDocument, OperationType},
     Pos,
 };
-use core_plugin_shared::interception::{
-    InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex,
+use common::env_const::{get_deployment_mode, DeploymentMode};
+use core_plugin_shared::{
+    interception::{InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex},
+    trusted_documents::{TrustedDocumentResolutionError, TrustedDocuments},
 };
 use futures::{future::BoxFuture, StreamExt};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use thiserror::Error;
 use tokio::runtime::Handle;
-use tracing::{error, instrument};
+use tracing::{error, instrument, warn};
 
 use crate::{
     context::provider::jwt::JwtAuthenticator,
@@ -37,6 +39,7 @@ use crate::{
 pub type ExographExecuteQueryFn<'a> = dyn Fn(
         String,
         Option<serde_json::Map<String, Value>>,
+        TrustedDocumentEnforcement,
         Value,
     ) -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>>
     + 'a
@@ -50,11 +53,18 @@ pub struct SystemResolver {
     subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
     query_interception_map: InterceptionMap,
     mutation_interception_map: InterceptionMap,
+    trusted_documents: TrustedDocuments,
     schema: Schema,
     pub jwt_authenticator: Arc<Option<JwtAuthenticator>>,
     pub env: HashMap<String, String>,
     normal_query_depth_limit: usize,
     introspection_query_depth_limit: usize,
+}
+
+#[derive(Debug)]
+pub enum TrustedDocumentEnforcement {
+    Enforce,
+    DoNotEnforce,
 }
 
 impl SystemResolver {
@@ -63,16 +73,29 @@ impl SystemResolver {
         subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
+        trusted_documents: TrustedDocuments,
         schema: Schema,
         jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: HashMap<String, String>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
     ) -> Self {
+        // In a non-prod environment, we allow all documents to be trusted
+        let trusted_documents = match get_deployment_mode().unwrap_or(DeploymentMode::Prod) {
+            DeploymentMode::Yolo | DeploymentMode::Dev | DeploymentMode::Playground(_) => {
+                match trusted_documents {
+                    TrustedDocuments::MatchingOnly(mapping) => TrustedDocuments::All(Some(mapping)),
+                    _ => trusted_documents,
+                }
+            }
+            DeploymentMode::Prod => trusted_documents,
+        };
+
         Self {
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
+            trusted_documents,
             schema,
             jwt_authenticator,
             env,
@@ -111,8 +134,24 @@ impl SystemResolver {
         &self,
         operations_payload: OperationsPayload,
         request_context: &RequestContext<'a>,
+        trusted_document_enforcement: TrustedDocumentEnforcement,
     ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
-        let operation = self.validate_operation(operations_payload)?;
+        let query = match trusted_document_enforcement {
+            TrustedDocumentEnforcement::Enforce => self.trusted_documents.resolve(
+                operations_payload.query.as_deref(),
+                operations_payload.query_hash.as_deref(),
+            ),
+            TrustedDocumentEnforcement::DoNotEnforce => self.trusted_documents.resolve_unchecked(
+                operations_payload.query.as_deref(),
+                operations_payload.query_hash.as_deref(),
+            ),
+        }?;
+
+        let operation = self.validate_operation(
+            query,
+            operations_payload.operation_name,
+            operations_payload.variables,
+        )?;
 
         operation
             .resolve_fields(&operation.fields, self, request_context)
@@ -203,17 +242,19 @@ impl SystemResolver {
             .map_err(|e| e.into())
     }
 
-    #[instrument(skip(self, operations_payload))]
+    #[instrument(skip_all)]
     fn validate_operation(
         &self,
-        operations_payload: OperationsPayload,
+        query: &str,
+        operation_name: Option<String>,
+        variables: Option<Map<String, Value>>,
     ) -> Result<ValidatedOperation, ValidationError> {
-        let document = parse_query(operations_payload.query)?;
+        let document = parse_query(query)?;
 
         let document_validator = DocumentValidator::new(
             &self.schema,
-            operations_payload.operation_name,
-            operations_payload.variables,
+            operation_name,
+            variables,
             self.normal_query_depth_limit,
             self.introspection_query_depth_limit,
         );
@@ -227,6 +268,7 @@ macro_rules! exograph_execute_query {
     ($system_resolver:expr, $request_context:expr) => {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,
+               enforce_trusted_documents: TrustedDocumentEnforcement,
                context_override: serde_json::Value| {
             use core_plugin_interface::core_resolver::{OperationsPayload, QueryResponseBody};
             use futures::FutureExt;
@@ -238,10 +280,12 @@ macro_rules! exograph_execute_query {
                     .resolve_operations(
                         OperationsPayload {
                             operation_name: None,
-                            query: query_string,
+                            query: Some(query_string),
                             variables,
+                            query_hash: None,
                         },
                         &new_request_context,
+                        enforce_trusted_documents,
                     )
                     .await?;
 
@@ -271,7 +315,7 @@ macro_rules! exograph_execute_query {
 }
 
 #[instrument(name = "system_resolver::parse_query")]
-fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
+fn parse_query(query: &str) -> Result<ExecutableDocument, ValidationError> {
     async_graphql_parser::parse_query(query).map_err(|error| {
         error!(%error, "Failed to parse query");
         let (message, pos1, pos2) = match error {
@@ -346,6 +390,9 @@ pub enum SystemResolutionError {
         "Attempt to resolve empty interceptor (proceed called from before/after interceptor?)"
     )]
     NoInterceptionTree,
+
+    #[error("{0}")]
+    TrustedDocumentResolution(#[from] TrustedDocumentResolutionError),
 }
 
 impl SystemResolutionError {

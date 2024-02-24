@@ -15,7 +15,7 @@ use futures::future::BoxFuture;
 use serde_json::Value;
 
 use core_plugin_interface::core_resolver::{
-    system_resolver::{ExographExecuteQueryFn, SystemResolutionError},
+    system_resolver::{ExographExecuteQueryFn, SystemResolutionError, TrustedDocumentEnforcement},
     QueryResponse,
 };
 
@@ -76,8 +76,13 @@ impl<'a> CallbackProcessor<RequestFromDenoMessage> for ExoCallbackProcessor<'a, 
                 context_override,
                 response_sender,
             } => {
-                let query_result =
-                    (self.exograph_execute_query)(query_string, variables, context_override).await;
+                let query_result = (self.exograph_execute_query)(
+                    query_string,
+                    variables,
+                    TrustedDocumentEnforcement::Enforce,
+                    context_override,
+                )
+                .await;
                 response_sender
                     .send(ResponseForDenoMessage::ExographExecute(query_result))
                     .ok()
