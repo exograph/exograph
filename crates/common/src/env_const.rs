@@ -30,6 +30,7 @@ pub enum EnvError {
     },
 }
 
+#[derive(Debug)]
 pub enum DeploymentMode {
     Yolo,
     Dev,

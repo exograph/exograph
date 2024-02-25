@@ -10,9 +10,8 @@
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub struct OperationsPayload {
-    #[serde(rename = "operationName")]
     pub operation_name: Option<String>,
     pub query: Option<String>,
     pub variables: Option<Map<String, Value>>,

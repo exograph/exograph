@@ -10,10 +10,9 @@
 use anyhow::{anyhow, bail, Context, Result};
 use colored::Colorize;
 
+use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::context::{Request, RequestContext, LOCAL_JWT_SECRET};
-use core_resolver::system_resolver::{
-    SystemResolutionError, SystemResolver, TrustedDocumentEnforcement,
-};
+use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};

@@ -14,9 +14,12 @@ use async_trait::async_trait;
 use futures::future::BoxFuture;
 use serde_json::Value;
 
-use core_plugin_interface::core_resolver::{
-    system_resolver::{ExographExecuteQueryFn, SystemResolutionError, TrustedDocumentEnforcement},
-    QueryResponse,
+use core_plugin_interface::{
+    core_resolver::{
+        system_resolver::{ExographExecuteQueryFn, SystemResolutionError},
+        QueryResponse,
+    },
+    trusted_documents::TrustedDocumentEnforcement,
 };
 
 use exo_deno::{

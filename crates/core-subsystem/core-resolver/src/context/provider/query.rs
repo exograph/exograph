@@ -8,11 +8,12 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
+use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
 use crate::context::context_extractor::ContextExtractor;
 use crate::context::request::Request;
 use crate::context::{ContextExtractionError, RequestContext};
-use crate::system_resolver::{SystemResolver, TrustedDocumentEnforcement};
+use crate::system_resolver::SystemResolver;
 use crate::OperationsPayload;
 
 pub struct QueryExtractor<'a> {

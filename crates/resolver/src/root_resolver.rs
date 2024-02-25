@@ -13,6 +13,7 @@ use std::{fs::File, io::BufReader, path::Path};
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
+use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::QueryResponse;
 
 use super::system_loader::SystemLoader;
@@ -20,8 +21,8 @@ use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bytes::Bytes;
+use core_resolver::system_resolver::SystemResolutionError;
 use core_resolver::system_resolver::SystemResolver;
-use core_resolver::system_resolver::{SystemResolutionError, TrustedDocumentEnforcement};
 pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
 use futures::Stream;
@@ -76,13 +77,12 @@ pub async fn resolve<'a, E: 'static>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
     request_context: RequestContext<'a>,
-    trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> ResponseStream<E> {
     let response = resolve_in_memory(
         operations_payload,
         system_resolver,
         request_context,
-        trusted_document_enforcement,
+        TrustedDocumentEnforcement::Enforce,
     )
     .await;
 

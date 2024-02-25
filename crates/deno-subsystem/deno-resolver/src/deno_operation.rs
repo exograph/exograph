@@ -9,15 +9,18 @@
 
 use indexmap::IndexMap;
 
-use core_plugin_interface::core_resolver::{
-    access_solver::{AccessSolver, AccessSolverError},
-    context::RequestContext,
-    context_extractor::ContextExtractor,
-    exograph_execute_query,
-    system_resolver::{ExographExecuteQueryFn, SystemResolver, TrustedDocumentEnforcement},
-    validation::field::ValidatedField,
-    value::Val,
-    QueryResponse, QueryResponseBody,
+use core_plugin_interface::{
+    core_resolver::{
+        access_solver::{AccessSolver, AccessSolverError},
+        context::RequestContext,
+        context_extractor::ContextExtractor,
+        exograph_execute_query,
+        system_resolver::{ExographExecuteQueryFn, SystemResolver},
+        validation::field::ValidatedField,
+        value::Val,
+        QueryResponse, QueryResponseBody,
+    },
+    trusted_documents::TrustedDocumentEnforcement,
 };
 
 use deno_model::{

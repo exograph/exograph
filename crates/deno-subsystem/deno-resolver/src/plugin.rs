@@ -16,13 +16,14 @@ use core_plugin_interface::{
         context::RequestContext,
         exograph_execute_query,
         plugin::{SubsystemResolutionError, SubsystemResolver},
-        system_resolver::{SystemResolver, TrustedDocumentEnforcement},
+        system_resolver::SystemResolver,
         validation::field::ValidatedField,
         InterceptedOperation, QueryResponse, QueryResponseBody,
     },
     interception::InterceptorIndex,
     interface::{SubsystemLoader, SubsystemLoadingError},
     system_serializer::SystemSerializer,
+    trusted_documents::TrustedDocumentEnforcement,
 };
 
 use deno_model::{module::ModuleMethod, subsystem::DenoSubsystem};

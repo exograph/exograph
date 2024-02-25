@@ -148,6 +148,7 @@ fn load_trusted_documents(
     trusted_documents_dir: impl AsRef<Path>,
 ) -> Result<TrustedDocuments, ParserError> {
     fn from_file(path: &std::path::Path) -> Result<HashMap<String, String>, ParserError> {
+        println!("\tLoading trusted documents from: {}", path.display());
         let file = File::open(path)?;
         let reader = BufReader::new(file);
         serde_json::from_reader(reader)
@@ -159,19 +160,31 @@ fn load_trusted_documents(
         for entry in std::fs::read_dir(path)? {
             let entry = entry?;
             let path = entry.path();
-            if path.is_file() && path.extension().unwrap() == "json" {
-                let map = from_file(&path)?;
-                trusted_documents_map.extend(map);
+            let map = if path.is_file() && path.extension().unwrap() == "json" {
+                from_file(&path)
             } else if entry.file_type()?.is_dir() {
-                let map = from_dir(&path)?;
-                trusted_documents_map.extend(map);
-            }
+                from_dir(&path)
+            } else {
+                println!("\tIgnoring file: {}", path.display());
+                Ok(HashMap::new())
+            }?;
+            trusted_documents_map.extend(map);
         }
 
-        Ok(trusted_documents_map)
+        if trusted_documents_map.is_empty() {
+            // If the user has created "trusted_documents" directory, but it's empty, return an
+            // error, since no query or mutation will be trusted and thus allowed to run.
+            Err(ParserError::NoTrustedDocuments(path.display().to_string()))
+        } else {
+            Ok(trusted_documents_map)
+        }
     }
 
     if Path::exists(trusted_documents_dir.as_ref()) {
+        println!(
+            "Found trusted documents directory: {}",
+            trusted_documents_dir.as_ref().display()
+        );
         let trusted_documents_map = from_dir(trusted_documents_dir.as_ref())?;
         Ok(TrustedDocuments::from_map(trusted_documents_map, false))
     } else {
