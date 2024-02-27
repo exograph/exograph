@@ -39,7 +39,8 @@ impl CommandDefinition for DevCommandDefinition {
 
     /// Run local exograph server
     async fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        ensure_exo_project_dir(&PathBuf::from("."))?;
+        let root_path = PathBuf::from(".");
+        ensure_exo_project_dir(&root_path)?;
 
         let model: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
@@ -60,7 +61,7 @@ impl CommandDefinition for DevCommandDefinition {
         const PAUSE: &str = "Pause for manual repair";
         const EXIT: &str = "Exit";
 
-        watcher::start_watcher(&model, port, || async {
+        watcher::start_watcher(&root_path, port, || async {
             println!("{}", "\nVerifying new model...".blue().bold());
 
             loop {
