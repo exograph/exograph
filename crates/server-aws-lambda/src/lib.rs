@@ -45,7 +45,7 @@ pub async fn resolve(
         Ok(request_context) => {
             let operations_payload: Option<OperationsPayload> = body
                 .as_str()
-                .and_then(|body_string| OperationsPayload::from_json(body_string).ok());
+                .and_then(|body_string| OperationsPayload::from_json(body_string.into()).ok());
 
             match operations_payload {
                 Some(operations_payload) => {
