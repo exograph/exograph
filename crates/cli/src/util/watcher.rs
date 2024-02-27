@@ -150,6 +150,12 @@ where
         ))) => Err(anyhow!(e)),
         Err(BuildError::UnrecoverableError(e)) => Err(e),
 
+        Err(BuildError::ParserError(ParserError::InvalidTrustedDocumentFormat(message)))
+        | Err(BuildError::ParserError(ParserError::NoTrustedDocuments(message))) => {
+            println!("Error parsing trusted documents: {}", message.red().bold());
+            Ok(None)
+        }
+
         // server encountered a parser error (we don't need to exit the watcher)
         Err(BuildError::ParserError(_)) => Ok(None),
     }
