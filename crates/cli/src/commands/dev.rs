@@ -17,10 +17,12 @@ use common::env_const::{
 use futures::FutureExt;
 use std::path::PathBuf;
 
-use super::command::{get, port_arg, CommandDefinition};
+use super::command::{enforce_trusted_documents_arg, get, port_arg, CommandDefinition};
 use crate::{
     commands::{
-        command::{default_model_file, ensure_exo_project_dir},
+        command::{
+            default_model_file, ensure_exo_project_dir, setup_trusted_documents_enforcement,
+        },
         schema::{migration::Migration, verify::VerificationErrors},
         util::wait_for_enter,
     },
@@ -35,6 +37,7 @@ impl CommandDefinition for DevCommandDefinition {
         Command::new("dev")
             .about("Run exograph server in development mode")
             .arg(port_arg())
+            .arg(enforce_trusted_documents_arg())
     }
 
     /// Run local exograph server
@@ -44,6 +47,8 @@ impl CommandDefinition for DevCommandDefinition {
 
         let model: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
+
+        setup_trusted_documents_enforcement(matches);
 
         println!(
             "{}",

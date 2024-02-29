@@ -13,7 +13,7 @@ use async_graphql_parser::{
     types::{ExecutableDocument, OperationType},
     Pos,
 };
-use common::env_const::{get_deployment_mode, DeploymentMode};
+use common::env_const::{get_deployment_mode, get_enforce_trusted_documents, DeploymentMode};
 use core_plugin_shared::{
     interception::{InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex},
     trusted_documents::{
@@ -79,10 +79,13 @@ impl SystemResolver {
         // In a non-prod environment, we allow all documents to be trusted
         let trusted_documents = match get_deployment_mode().unwrap_or(DeploymentMode::Prod) {
             DeploymentMode::Yolo | DeploymentMode::Dev | DeploymentMode::Playground(_) => {
-                warn!("Trusting all documents in non-prod environment");
-                match trusted_documents {
-                    TrustedDocuments::MatchingOnly(mapping) => TrustedDocuments::All(mapping),
-                    _ => trusted_documents,
+                if get_enforce_trusted_documents() {
+                    trusted_documents
+                } else {
+                    match trusted_documents {
+                        TrustedDocuments::MatchingOnly(mapping) => TrustedDocuments::All(mapping),
+                        _ => trusted_documents,
+                    }
                 }
             }
             DeploymentMode::Prod => trusted_documents,
@@ -400,7 +403,8 @@ impl SystemResolutionError {
         match self {
             SystemResolutionError::Validation(error) => Some(error.to_string()),
             SystemResolutionError::SubsystemResolutionError(error) => error.user_error_message(),
-            SystemResolutionError::TrustedDocumentResolution(_) => {
+            SystemResolutionError::TrustedDocumentResolution(e) => {
+                warn!("Error executing: {e}");
                 Some("Operation not allowed".to_string())
             }
             SystemResolutionError::Delegate(error) => error

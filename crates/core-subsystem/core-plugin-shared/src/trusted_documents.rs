@@ -54,16 +54,26 @@ impl TrustedDocuments {
                     if query_hash == INTROSPECTION_QUERY_HASH {
                         Ok(query)
                     } else {
-                        warn!("Query sent when sending only the query hash would be efficient");
-                        self.get(&query_hash)
-                            .ok_or(TrustedDocumentResolutionError::NotTrusted)
+                        match self.get(&query_hash) {
+                            Some(document) => {
+                                warn!("Query sent when sending only the query hash would be efficient");
+                                Ok(document)
+                            }
+                            None => Err(TrustedDocumentResolutionError::NotTrusted {
+                                hash: None, // the client didn't send the hash
+                                query: Some(query.to_string()),
+                            }),
+                        }
                     }
                 }
             }
             (None, Some(query_hash)) => self.get(query_hash).ok_or(if allow_untrusted {
                 TrustedDocumentResolutionError::NotFound
             } else {
-                TrustedDocumentResolutionError::NotTrusted
+                TrustedDocumentResolutionError::NotTrusted {
+                    hash: Some(query_hash.to_string()),
+                    query: None,
+                }
             }),
             (Some(_), Some(_)) => Err(TrustedDocumentResolutionError::BothPresent),
             (None, None) => Err(TrustedDocumentResolutionError::NonePresent),
@@ -86,8 +96,11 @@ impl TrustedDocuments {
 
 #[derive(Error, Debug, PartialEq)]
 pub enum TrustedDocumentResolutionError {
-    #[error("The document is not trusted")]
-    NotTrusted,
+    #[error("Untrusted document: hash: {hash:?}, query: {query:?}")]
+    NotTrusted {
+        hash: Option<String>,
+        query: Option<String>,
+    },
 
     #[error("The hash present in the query does not match any trusted document")]
     NotFound,
@@ -213,7 +226,10 @@ mod tests {
                 None,
                 TrustedDocumentEnforcement::Enforce
             ),
-            Err(TrustedDocumentResolutionError::NotTrusted)
+            Err(TrustedDocumentResolutionError::NotTrusted {
+                hash: None,
+                query: Some("query3".to_string())
+            })
         );
         assert_eq!(
             trusted_documents_matching_only.resolve(
@@ -221,7 +237,10 @@ mod tests {
                 Some("hash3"),
                 TrustedDocumentEnforcement::Enforce
             ),
-            Err(TrustedDocumentResolutionError::NotTrusted)
+            Err(TrustedDocumentResolutionError::NotTrusted {
+                hash: Some("hash3".to_string()),
+                query: None
+            })
         );
 
         // In enforced mode with all, should be able to resolve by query, but not by hash (there would be no mapping for it)

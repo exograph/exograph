@@ -32,7 +32,8 @@ use common::env_const::{
 };
 
 use super::command::{
-    default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition,
+    default_model_file, enforce_trusted_documents_arg, ensure_exo_project_dir, get, port_arg,
+    setup_trusted_documents_enforcement, CommandDefinition,
 };
 use common::env_const::EXO_OIDC_URL;
 use exo_sql::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
@@ -52,6 +53,7 @@ impl CommandDefinition for YoloCommandDefinition {
         Command::new("yolo")
             .about("Run local exograph server with a temporary database")
             .arg(port_arg())
+            .arg(enforce_trusted_documents_arg())
     }
 
     /// Run local exograph server with a temporary database
@@ -60,6 +62,8 @@ impl CommandDefinition for YoloCommandDefinition {
         ensure_exo_project_dir(&root_path)?;
 
         let port: Option<u32> = get(matches, "port");
+
+        setup_trusted_documents_enforcement(matches);
 
         run(&root_path, port).await
     }

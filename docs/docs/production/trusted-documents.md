@@ -365,6 +365,10 @@ Behind the scenes, the client will send only the hashes of the executable docume
 
 Let's consider how Exograph enforces trusted documents.
 
-During the [build phase](../cli-reference/development/build.md), Exograph parses the content of the `trusted-documents` directory and includes a representation in the `exo_ir` file produced. You do not need anything special during production. Specifically, you do not need the `trusted-documents` directory in the production setup.
+During the [build phase](../cli-reference/development/build.md), Exograph parses the content of the `trusted-documents` directory and includes a representation in the `exo_ir` file produced. You do not need anything special during production. Specifically, you do not need the `trusted-documents` directory in the production environment.
 
-Note that Exograph enforces trusted documents only in production mode. In development mode, Exograph allows any executable document to pass through. This intentional behavior enables you to explore all available APIs through the playground.
+During execution, Exograph enforces the mode in the following way:
+
+- In production mode, Exograph enforces trusted documents. _There is no way to opt out of this behavior_.
+- In [development](../cli-reference/development/dev.md) or [yolo](../cli-reference/development/yolo.md), like in production mode, Exograph enforces trusted documents. This behavior allows testing the client with trusted documents without starting the server in production mode. However, you may opt out of this behavior by passing the `--enforce-trusted-documents=false` option. See the [development](../cli-reference/development/dev.md) and [yolo](../cli-reference/development/yolo.md) pages for more details.
+- In development and yolo mode, Exograph makes an exception to queries its playground makes. The playground may send any executable document, even if it is not in the trusted documents. This behavior helps in exploring new queries and mutations. _This exception is not available in production mode._ Even if you enable introspection (and thus playground) in production, the server will still enforce trusted documents.

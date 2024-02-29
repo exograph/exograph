@@ -19,6 +19,8 @@ exo yolo
 
 By default, it will start the server on port 9876. You can change this by passing the `--port` (or the shorter `-p`) option.
 
+By default, it will enforce [trusted documents](../../production/trusted-documents.md). You can turn this off by passing the `--enforce-trusted-documents=false` option.
+
 ```shell-session
 # shell-command-next-line
 exo yolo --port 8888
