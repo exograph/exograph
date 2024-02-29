@@ -39,7 +39,7 @@ use regex::Regex;
 /// Build a model system from a exo file
 pub async fn build_system(
     model_file: impl AsRef<Path>,
-    trusted_documents_dir: impl AsRef<Path>,
+    trusted_documents_dir: Option<impl AsRef<Path>>,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
 ) -> Result<Vec<u8>, ParserError> {
     let file_content = fs::read_to_string(model_file.as_ref())?;
@@ -47,7 +47,9 @@ pub async fn build_system(
 
     codemap.add_file(model_file.as_ref().display().to_string(), file_content);
 
-    let trusted_documents = load_trusted_documents(trusted_documents_dir)?;
+    let trusted_documents = trusted_documents_dir
+        .map(|dir| load_trusted_documents(dir))
+        .unwrap_or(Ok(TrustedDocuments::all()))?;
 
     build_from_ast_system(
         parser::parse_file(&model_file, &mut codemap),

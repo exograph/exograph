@@ -64,7 +64,7 @@ impl Display for BuildError {
 /// Use statically linked builder to avoid dynamic loading for the CLI
 pub(crate) async fn build_system_with_static_builders(
     model: &Path,
-    trusted_documents_dir: &Path,
+    trusted_documents_dir: Option<&Path>,
 ) -> Result<Vec<u8>, ParserError> {
     let static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>> = vec![
         Box::new(postgres_model_builder::PostgresSubsystemBuilder {}),
@@ -81,7 +81,7 @@ pub(crate) async fn build_system_with_static_builders(
 /// * `model` - exograph model file path
 /// * `output` - output file path
 /// * `print_message` - if true, it will print a message indicating the time it took to build the model. We need this
-///                        to avoid printing the message when building the model through `exo serve`, where we don't want to print the message
+///                        to avoid printing the message when building the model through `exo dev`, where we don't want to print the message
 ///                        upon detecting changes
 pub(crate) async fn build(print_message: bool) -> Result<(), BuildError> {
     ensure_exo_project_dir(&PathBuf::from("."))?;
@@ -89,7 +89,7 @@ pub(crate) async fn build(print_message: bool) -> Result<(), BuildError> {
     let model: PathBuf = default_model_file();
     let trusted_documents_dir = default_trusted_documents_dir();
 
-    let serialized_system = build_system_with_static_builders(&model, &trusted_documents_dir)
+    let serialized_system = build_system_with_static_builders(&model, Some(&trusted_documents_dir))
         .await
         .map_err(BuildError::ParserError)?;
 

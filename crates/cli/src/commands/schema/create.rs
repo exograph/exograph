@@ -40,7 +40,7 @@ impl CommandDefinition for CreateCommandDefinition {
         let model: PathBuf = default_model_file();
         let output: Option<PathBuf> = get(matches, "output");
 
-        let postgres_subsystem = util::create_postgres_system(model).await?;
+        let postgres_subsystem = util::create_postgres_system(model, None).await?;
 
         let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
 

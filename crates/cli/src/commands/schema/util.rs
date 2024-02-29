@@ -15,16 +15,14 @@ use core_plugin_shared::{
 };
 use postgres_model::subsystem::PostgresSubsystem;
 
-use crate::commands::{
-    build::build_system_with_static_builders, command::default_trusted_documents_dir,
-};
+use crate::commands::build::build_system_with_static_builders;
 
 pub(crate) async fn create_postgres_system(
     model_file: impl AsRef<Path>,
+    trusted_documents_dir: Option<&Path>,
 ) -> Result<PostgresSubsystem, ParserError> {
     let serialized_system =
-        build_system_with_static_builders(model_file.as_ref(), &default_trusted_documents_dir())
-            .await?;
+        build_system_with_static_builders(model_file.as_ref(), trusted_documents_dir).await?;
     let system = SerializableSystem::deserialize(serialized_system)?;
 
     deserialize_postgres_subsystem(system)
