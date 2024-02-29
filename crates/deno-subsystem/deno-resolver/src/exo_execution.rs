@@ -82,7 +82,7 @@ impl<'a> CallbackProcessor<RequestFromDenoMessage> for ExoCallbackProcessor<'a, 
                 let query_result = (self.exograph_execute_query)(
                     query_string,
                     variables,
-                    TrustedDocumentEnforcement::Enforce,
+                    TrustedDocumentEnforcement::DoNotEnforce,
                     context_override,
                 )
                 .await;
