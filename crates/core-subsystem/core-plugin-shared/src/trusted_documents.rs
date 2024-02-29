@@ -18,10 +18,6 @@ pub enum TrustedDocumentEnforcement {
     DoNotEnforce,
 }
 
-// Sha256 hash of the introspection query sent by our playground
-const INTROSPECTION_QUERY_HASH: &str =
-    "78a29c072e203fcac696097d2de6c74e48380997c2db17e909ec4ff9db6bbe29";
-
 impl TrustedDocuments {
     pub fn all() -> TrustedDocuments {
         TrustedDocuments::All(HashMap::new())
@@ -50,20 +46,15 @@ impl TrustedDocuments {
                     Ok(query)
                 } else {
                     let query_hash = Self::sha256(query);
-                    // Special case to always allow introspection queries in rare cases where introspection is enabled in production
-                    if query_hash == INTROSPECTION_QUERY_HASH {
-                        Ok(query)
-                    } else {
-                        match self.get(&query_hash) {
-                            Some(document) => {
-                                warn!("Query sent when sending only the query hash would be efficient");
-                                Ok(document)
-                            }
-                            None => Err(TrustedDocumentResolutionError::NotTrusted {
-                                hash: None, // the client didn't send the hash
-                                query: Some(query.to_string()),
-                            }),
+                    match self.get(&query_hash) {
+                        Some(document) => {
+                            warn!("Query sent when sending only the query hash would be efficient");
+                            Ok(document)
                         }
+                        None => Err(TrustedDocumentResolutionError::NotTrusted {
+                            hash: None, // the client didn't send the hash
+                            query: Some(query.to_string()),
+                        }),
                     }
                 }
             }

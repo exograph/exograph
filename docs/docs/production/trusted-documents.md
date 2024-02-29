@@ -361,7 +361,7 @@ export const client = new Client({
 
 Behind the scenes, the client will send only the hashes of the executable document to the server. The server will look up the executable document using the hash and execute it.
 
-## Server enforcement of trusted documents
+## Enforcement of trusted documents
 
 Let's consider how Exograph enforces trusted documents.
 
@@ -369,6 +369,13 @@ During the [build phase](../cli-reference/development/build.md), Exograph parses
 
 During execution, Exograph enforces the mode in the following way:
 
-- In production mode, Exograph enforces trusted documents. _There is no way to opt out of this behavior_.
-- In [development](../cli-reference/development/dev.md) or [yolo](../cli-reference/development/yolo.md), like in production mode, Exograph enforces trusted documents. This behavior allows testing the client with trusted documents without starting the server in production mode. However, you may opt out of this behavior by passing the `--enforce-trusted-documents=false` option. See the [development](../cli-reference/development/dev.md) and [yolo](../cli-reference/development/yolo.md) pages for more details.
-- In development and yolo mode, Exograph makes an exception to queries its playground makes. The playground may send any executable document, even if it is not in the trusted documents. This behavior helps in exploring new queries and mutations. _This exception is not available in production mode._ Even if you enable introspection (and thus playground) in production, the server will still enforce trusted documents.
+- In [development](../cli-reference/development/dev.md) or [yolo](../cli-reference/development/yolo.md) mode:
+
+  - Enforces trusted documents by default. You may opt out of this behavior by passing the `--enforce-trusted-documents=false` option. See the [development](../cli-reference/development/dev.md) and [yolo](../cli-reference/development/yolo.md) for more details.
+  - Makes an exception to queries its playground makes. The playground may send any executable document, even if it is not in the trusted documents. This simplifies exploring new queries and mutations.
+  - Allows typical introspection queries made by tools such as [GraphQL Code Generator](https://the-guild.dev/graphql/codegen). This behavior permits the typical workflow of generating code from the schema and queries to work without any changes.
+
+- In [production](../cli-reference/production/exo-server.md) mode:
+  - Enforces trusted documents. _There is no way to opt out of this behavior_.
+  - Does not make an exception to queries its playground makes.
+  - Allows typical introspection queries made by tools (as long as [introspection is enabled](introspection.md)).

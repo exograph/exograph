@@ -13,7 +13,7 @@ use async_graphql_parser::{
     types::{ExecutableDocument, OperationType},
     Pos,
 };
-use common::env_const::{get_deployment_mode, get_enforce_trusted_documents, DeploymentMode};
+use common::env_const::{get_enforce_trusted_documents, is_production};
 use core_plugin_shared::{
     interception::{InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex},
     trusted_documents::{
@@ -76,19 +76,14 @@ impl SystemResolver {
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
     ) -> Self {
-        // In a non-prod environment, we allow all documents to be trusted
-        let trusted_documents = match get_deployment_mode().unwrap_or(DeploymentMode::Prod) {
-            DeploymentMode::Yolo | DeploymentMode::Dev | DeploymentMode::Playground(_) => {
-                if get_enforce_trusted_documents() {
-                    trusted_documents
-                } else {
-                    match trusted_documents {
-                        TrustedDocuments::MatchingOnly(mapping) => TrustedDocuments::All(mapping),
-                        _ => trusted_documents,
-                    }
-                }
+        let trusted_documents = if is_production() || get_enforce_trusted_documents() {
+            trusted_documents
+        } else {
+            // In a non-prod environment, we let enforcement be overridden by the environment
+            match trusted_documents {
+                TrustedDocuments::MatchingOnly(mapping) => TrustedDocuments::All(mapping),
+                _ => trusted_documents,
             }
-            DeploymentMode::Prod => trusted_documents,
         };
 
         Self {
@@ -140,13 +135,47 @@ impl SystemResolver {
             operations_payload.query.as_deref(),
             operations_payload.query_hash.as_deref(),
             trusted_document_enforcement,
-        )?;
+        );
 
-        let operation = self.validate_operation(
-            query,
-            operations_payload.operation_name,
-            operations_payload.variables,
-        )?;
+        let operation = match query {
+            Ok(query) => self.validate_operation(
+                query,
+                operations_payload.operation_name,
+                operations_payload.variables,
+            )?,
+            // Special handing on introspection queries made by tools to be implicitly trusted
+            // Introspection queries made by the playground and tools such as graphql-codegen send queries as a string
+            // and have top-level field `__schema` (but we also allow `__type` and `__typename` to be more widely useful).
+            Err(TrustedDocumentResolutionError::NotTrusted {
+                hash: None,
+                query: Some(query),
+            }) => {
+                let operation = self.validate_operation(
+                    &query,
+                    operations_payload.operation_name,
+                    operations_payload.variables,
+                )?;
+
+                for field in &operation.fields {
+                    if field.name == "__schema"
+                        || field.name == "__type"
+                        || field.name == "__typename"
+                    {
+                        continue;
+                    }
+                    return Err(TrustedDocumentResolutionError::NotTrusted {
+                        hash: None,
+                        query: Some(query),
+                    }
+                    .into());
+                }
+
+                operation
+            }
+            Err(e) => {
+                return Err(e.into());
+            }
+        };
 
         operation
             .resolve_fields(&operation.fields, self, request_context)

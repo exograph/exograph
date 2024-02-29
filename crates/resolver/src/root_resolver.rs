@@ -13,6 +13,7 @@ use std::{fs::File, io::BufReader, path::Path};
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
+use common::env_const::is_production;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::QueryResponse;
 
@@ -77,12 +78,17 @@ pub async fn resolve<'a, E: 'static>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
     request_context: RequestContext<'a>,
+    playground_request: bool,
 ) -> ResponseStream<E> {
     let response = resolve_in_memory(
         operations_payload,
         system_resolver,
         request_context,
-        TrustedDocumentEnforcement::Enforce,
+        if playground_request && !is_production() {
+            TrustedDocumentEnforcement::DoNotEnforce
+        } else {
+            TrustedDocumentEnforcement::Enforce
+        },
     )
     .await;
 

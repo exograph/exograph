@@ -61,6 +61,13 @@ pub fn get_deployment_mode() -> Result<DeploymentMode, EnvError> {
     }
 }
 
+pub fn is_production() -> bool {
+    match get_deployment_mode() {
+        Ok(DeploymentMode::Prod) | Err(_) => true,
+        _ => false,
+    }
+}
+
 pub fn get_enforce_trusted_documents() -> bool {
     std::env::var(_EXO_ENFORCE_TRUSTED_DOCUMENTS)
         .map(|value| value != "false")

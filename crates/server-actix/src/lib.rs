@@ -95,6 +95,12 @@ async fn resolve_locally(
     body: web::Json<Value>,
     system_resolver: web::Data<SystemResolver>,
 ) -> HttpResponse {
+    let playground_request = req
+        .headers()
+        .get("_exo_playground")
+        .map(|value| value == "true")
+        .unwrap_or(false);
+
     let request = ActixRequest::from_request(req);
     let request_context = RequestContext::new(&request, vec![], system_resolver.as_ref());
 
@@ -109,6 +115,7 @@ async fn resolve_locally(
                         operations_payload,
                         system_resolver.as_ref(),
                         request_context,
+                        playground_request,
                     )
                     .await;
 

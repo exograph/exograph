@@ -39,17 +39,28 @@ function App() {
       input: RequestInfo | URL,
       init?: RequestInit | undefined
     ) => {
+      // Add a special header (`_exo_playground`) to the request to indicate that it's coming from the playground
+      const withPlaygroundHeader: RequestInit | undefined = init
+        ? {
+            ...init,
+            headers: {
+              ...init?.headers,
+              _exo_playground: "true",
+            },
+          }
+        : init;
+
       if (getTokenFn) {
         let authToken = await getTokenFn();
 
         const headers = {
-          ...init?.headers,
+          ...withPlaygroundHeader?.headers,
           Authorization: `Bearer ${authToken}`,
         };
-        const withHeader = { ...init, headers };
+        const withHeader = { ...withPlaygroundHeader, headers };
         return await window.fetch(input, withHeader);
       } else {
-        return await window.fetch(input, init);
+        return await window.fetch(input, withPlaygroundHeader);
       }
     };
 
