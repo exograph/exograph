@@ -21,6 +21,8 @@ use core_plugin_interface::interface::{LibraryLoadingError, SubsystemBuilder};
 use core_plugin_shared::trusted_documents::TrustedDocuments;
 use error::ParserError;
 
+use colored::Colorize;
+
 mod builder;
 pub mod error;
 pub mod parser;
@@ -229,12 +231,32 @@ fn load_trusted_documents(
         }
 
         if trusted_documents_map.is_empty() {
-            // If the user has created "trusted_documents" directory, but it's empty, return an
-            // error, since no query or mutation will be trusted and thus allowed to run.
-            Err(ParserError::NoTrustedDocuments(path.display().to_string()))
-        } else {
-            Ok(trusted_documents_map)
+            // If the user has created "trusted_documents" directory, but it's empty, warn the user,
+            // since no query or mutation will be trusted and thus allowed to run.
+            println!(
+                "{}",
+                format!(
+                    "No trusted documents found in directory: `{}`:",
+                    path.display()
+                )
+                .red()
+            );
+
+            println!(
+                "\t{}",
+                "You will not be able to execute any queries or mutations.".red()
+            );
+
+            println!(
+                "\t{}",
+                format!(
+                    "Either delete the {} directory or add trusted documents to it.",
+                    path.display()
+                )
+                .red()
+            );
         }
+        Ok(trusted_documents_map)
     }
 
     if Path::exists(trusted_documents_dir.as_ref()) {

@@ -33,7 +33,4 @@ pub enum ParserError {
 
     #[error("Invalid trusted document format in file: '{0}'")]
     InvalidTrustedDocumentFormat(String),
-
-    #[error("No trusted documents found in directory: '{0}'. No queries or mutation will be allowed in production mode.")]
-    NoTrustedDocuments(String),
 }

@@ -158,8 +158,7 @@ where
         ))) => Err(anyhow!(e)),
         Err(BuildError::UnrecoverableError(e)) => Err(e),
 
-        Err(BuildError::ParserError(ParserError::InvalidTrustedDocumentFormat(message)))
-        | Err(BuildError::ParserError(ParserError::NoTrustedDocuments(message))) => {
+        Err(BuildError::ParserError(ParserError::InvalidTrustedDocumentFormat(message))) => {
             println!("Error parsing trusted documents: {}", message.red().bold());
             Ok(None)
         }

@@ -825,6 +825,7 @@ dependencies = [
  "cc",
  "codemap",
  "codemap-diagnostic",
+ "colored",
  "core-model",
  "core-model-builder",
  "core-plugin-interface",

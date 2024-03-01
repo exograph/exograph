@@ -379,3 +379,5 @@ During execution, Exograph enforces the mode in the following way:
   - Enforces trusted documents. _There is no way to opt out of this behavior_.
   - Does not make an exception to queries its playground makes.
   - Allows typical introspection queries made by tools (as long as [introspection is enabled](introspection.md)).
+
+In either mode, Exograph implicitly trusts queries and mutations made through the [`Exograph`](../deno/injection.md#the-exograph-object) or [`ExographPriv`](../deno/injection.md#the-exographpriv-object) from a [Deno module](../deno/overview.md). Since those queries and mutations are internal to the server (not a part of the external API surface), they are not subject to the enforcement of trusted documents.

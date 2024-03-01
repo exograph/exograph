@@ -15,7 +15,7 @@ codemap.workspace = true
 codemap-diagnostic.workspace = true
 futures.workspace = true
 serde_json.workspace = true
-
+colored.workspace = true
 wildmatch.workspace = true
 thiserror.workspace = true
 core-model = { path = "../core-subsystem/core-model" }
