@@ -15,7 +15,10 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
-use std::{path::PathBuf, sync::atomic::Ordering};
+use std::{
+    path::{Path, PathBuf},
+    sync::atomic::Ordering,
+};
 
 use crate::{
     commands::{
@@ -29,7 +32,8 @@ use common::env_const::{
 };
 
 use super::command::{
-    default_model_file, ensure_exo_project_dir, get, port_arg, CommandDefinition,
+    default_model_file, enforce_trusted_documents_arg, ensure_exo_project_dir, get, port_arg,
+    setup_trusted_documents_enforcement, CommandDefinition,
 };
 use common::env_const::EXO_OIDC_URL;
 use exo_sql::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
@@ -49,24 +53,29 @@ impl CommandDefinition for YoloCommandDefinition {
         Command::new("yolo")
             .about("Run local exograph server with a temporary database")
             .arg(port_arg())
+            .arg(enforce_trusted_documents_arg())
     }
 
     /// Run local exograph server with a temporary database
     async fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        ensure_exo_project_dir(&PathBuf::from("."))?;
+        let root_path = PathBuf::from(".");
+        ensure_exo_project_dir(&root_path)?;
 
-        let model: PathBuf = default_model_file();
         let port: Option<u32> = get(matches, "port");
 
-        run(&model, port).await
+        setup_trusted_documents_enforcement(matches);
+
+        run(&root_path, port).await
     }
 }
 
-async fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
+async fn run(root_path: &Path, port: Option<u32>) -> Result<()> {
     // make sure we do not exit on SIGINT
     // we spawn processes/containers that need to be cleaned up through drop(),
     // which does not run on a normal SIGINT exit
     crate::EXIT_ON_SIGINT.store(false, Ordering::SeqCst);
+
+    let model: PathBuf = default_model_file();
 
     let db_server = EphemeralDatabaseLauncher::create_server()?;
     let db = db_server.create_database("yolo")?;
@@ -85,9 +94,9 @@ async fn run(model: &PathBuf, port: Option<u32>) -> Result<()> {
         (None, None) => Ok(JWTSecret::Generated(super::util::generate_random_string())),
     }?;
 
-    let prestart_callback = || run_server(model, &jwt_secret, db.as_ref()).boxed();
+    let prestart_callback = || run_server(&model, &jwt_secret, db.as_ref()).boxed();
 
-    watcher::start_watcher(model, port, prestart_callback).await
+    watcher::start_watcher(root_path, port, prestart_callback).await
 }
 
 #[async_recursion]

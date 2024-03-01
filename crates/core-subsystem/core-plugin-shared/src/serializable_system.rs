@@ -9,6 +9,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::trusted_documents::TrustedDocuments;
+
 use super::{
     error::ModelSerializationError, interception::InterceptionMap,
     system_serializer::SystemSerializer,
@@ -22,6 +24,7 @@ pub struct SerializableSystem {
     pub subsystems: Vec<SerializableSubsystem>,
     pub query_interception_map: InterceptionMap,
     pub mutation_interception_map: InterceptionMap,
+    pub trusted_documents: TrustedDocuments,
 }
 
 /// File header data for exo_ir files.
@@ -154,6 +157,7 @@ mod test {
             subsystems: vec![],
             query_interception_map,
             mutation_interception_map,
+            trusted_documents: super::TrustedDocuments::all(),
         }
     }
 

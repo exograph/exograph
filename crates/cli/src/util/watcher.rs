@@ -18,44 +18,52 @@ use futures::{future::BoxFuture, FutureExt};
 use notify_debouncer_mini::notify::RecursiveMode;
 use tokio::process::Child;
 
-use crate::commands::build::{build, BuildError};
+use crate::commands::{
+    build::{build, BuildError},
+    command::default_trusted_documents_dir,
+};
 
 /// Starts a watcher that will rebuild and serve model files with every change.
 /// Takes a callback that will be called before the start of each server.
 pub async fn start_watcher<'a, F>(
-    model_path: &Path,
+    root_path: &Path,
     server_port: Option<u32>,
     prestart_callback: F,
 ) -> Result<()>
 where
     F: Fn() -> BoxFuture<'a, Result<()>>,
 {
-    let parent_dir = model_path.parent().ok_or_else(|| {
-        anyhow!(
-            "Could not get parent directory of {}",
-            model_path.to_string_lossy()
-        )
-    })?;
-
     // start watcher
     println!(
         "Watching the {} directory for changes...",
-        &parent_dir.display().to_string().cyan().bold(),
+        if &root_path.display().to_string() == "." {
+            "current".to_owned()
+        } else {
+            root_path.display().to_string()
+        }
+        .cyan()
+        .bold(),
     );
+
+    let canonical_root_path = root_path
+        .canonicalize()
+        .context("Failed to canonicalize path")?;
 
     let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::channel(1);
     let mut debouncer =
-        notify_debouncer_mini::new_debouncer(Duration::from_millis(200), None, move |res| {
+        notify_debouncer_mini::new_debouncer(Duration::from_millis(200), move |res| {
             let _ = watcher_tx.blocking_send(res);
         })?;
     debouncer
         .watcher()
-        .watch(parent_dir, RecursiveMode::Recursive)?;
+        .watch(root_path, RecursiveMode::Recursive)?;
 
     // Given a path, determine if the model should be rebuilt and the server restarted.
-    fn should_restart(path: &Path) -> bool {
-        !matches!(path.extension().and_then(|e| e.to_str()), Some("exo_ir"))
-    }
+    let should_restart = |path: &Path| -> bool {
+        path.strip_prefix(&canonical_root_path)
+            .map(|p| p.starts_with("src") || p.starts_with(default_trusted_documents_dir()))
+            .unwrap_or(false)
+    };
 
     let mut server = build_and_start_server(server_port, &prestart_callback).await?;
 
@@ -149,6 +157,11 @@ where
             ModelBuildingError::Generic(e),
         ))) => Err(anyhow!(e)),
         Err(BuildError::UnrecoverableError(e)) => Err(e),
+
+        Err(BuildError::ParserError(ParserError::InvalidTrustedDocumentFormat(message))) => {
+            println!("Error parsing trusted documents: {}", message.red().bold());
+            Ok(None)
+        }
 
         // server encountered a parser error (we don't need to exit the watcher)
         Err(BuildError::ParserError(_)) => Ok(None),

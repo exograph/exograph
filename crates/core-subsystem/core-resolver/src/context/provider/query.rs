@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
+use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
 use crate::context::context_extractor::ContextExtractor;
 use crate::context::request::Request;
@@ -44,10 +45,12 @@ impl ContextExtractor for QueryExtractor<'_> {
             .resolve_operations(
                 OperationsPayload {
                     operation_name: None,
-                    query,
+                    query: Some(query),
                     variables: None,
+                    query_hash: None,
                 },
                 request_context,
+                TrustedDocumentEnforcement::DoNotEnforce,
             )
             .await
             .map_err(|e| ContextExtractionError::Generic(e.to_string()))?;

@@ -187,7 +187,7 @@ async fn extract_db_schema(
 }
 
 async fn extract_model_schema(model_path: &PathBuf) -> Result<DatabaseSpec, ParserError> {
-    let postgres_subsystem = util::create_postgres_system(model_path).await?;
+    let postgres_subsystem = util::create_postgres_system(model_path, None).await?;
 
     Ok(DatabaseSpec::from_database(postgres_subsystem.database))
 }

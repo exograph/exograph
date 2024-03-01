@@ -137,11 +137,12 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
     let operations_payload = OperationsPayload {
         operation_name: None,
         query: if let Value::String(s) = query {
-            s
+            Some(s)
         } else {
             panic!("expected string")
         },
         variables: None,
+        query_hash: None,
     };
 
     let result = run_query(

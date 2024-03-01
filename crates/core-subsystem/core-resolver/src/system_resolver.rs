@@ -13,14 +13,18 @@ use async_graphql_parser::{
     types::{ExecutableDocument, OperationType},
     Pos,
 };
-use core_plugin_shared::interception::{
-    InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex,
+use common::env_const::{get_enforce_trusted_documents, is_production};
+use core_plugin_shared::{
+    interception::{InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex},
+    trusted_documents::{
+        TrustedDocumentEnforcement, TrustedDocumentResolutionError, TrustedDocuments,
+    },
 };
 use futures::{future::BoxFuture, StreamExt};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use thiserror::Error;
 use tokio::runtime::Handle;
-use tracing::{error, instrument};
+use tracing::{error, instrument, warn};
 
 use crate::{
     context::provider::jwt::JwtAuthenticator,
@@ -37,6 +41,7 @@ use crate::{
 pub type ExographExecuteQueryFn<'a> = dyn Fn(
         String,
         Option<serde_json::Map<String, Value>>,
+        TrustedDocumentEnforcement,
         Value,
     ) -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>>
     + 'a
@@ -50,6 +55,7 @@ pub struct SystemResolver {
     subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
     query_interception_map: InterceptionMap,
     mutation_interception_map: InterceptionMap,
+    trusted_documents: TrustedDocuments,
     schema: Schema,
     pub jwt_authenticator: Arc<Option<JwtAuthenticator>>,
     pub env: HashMap<String, String>,
@@ -63,16 +69,28 @@ impl SystemResolver {
         subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
+        trusted_documents: TrustedDocuments,
         schema: Schema,
         jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: HashMap<String, String>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
     ) -> Self {
+        let trusted_documents = if is_production() || get_enforce_trusted_documents() {
+            trusted_documents
+        } else {
+            // In a non-prod environment, we let enforcement be overridden by the environment
+            match trusted_documents {
+                TrustedDocuments::MatchingOnly(mapping) => TrustedDocuments::All(mapping),
+                _ => trusted_documents,
+            }
+        };
+
         Self {
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
+            trusted_documents,
             schema,
             jwt_authenticator,
             env,
@@ -111,8 +129,53 @@ impl SystemResolver {
         &self,
         operations_payload: OperationsPayload,
         request_context: &RequestContext<'a>,
+        trusted_document_enforcement: TrustedDocumentEnforcement,
     ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
-        let operation = self.validate_operation(operations_payload)?;
+        let query = self.trusted_documents.resolve(
+            operations_payload.query.as_deref(),
+            operations_payload.query_hash.as_deref(),
+            trusted_document_enforcement,
+        );
+
+        let operation = match query {
+            Ok(query) => self.validate_operation(
+                query,
+                operations_payload.operation_name,
+                operations_payload.variables,
+            )?,
+            // Special handing on introspection queries made by tools to be implicitly trusted
+            // Introspection queries made by the playground and tools such as graphql-codegen send queries as a string
+            // and have top-level field `__schema` (but we also allow `__type` and `__typename` to be more widely useful).
+            Err(TrustedDocumentResolutionError::NotTrusted {
+                hash: None,
+                query: Some(query),
+            }) => {
+                let operation = self.validate_operation(
+                    &query,
+                    operations_payload.operation_name,
+                    operations_payload.variables,
+                )?;
+
+                for field in &operation.fields {
+                    if field.name == "__schema"
+                        || field.name == "__type"
+                        || field.name == "__typename"
+                    {
+                        continue;
+                    }
+                    return Err(TrustedDocumentResolutionError::NotTrusted {
+                        hash: None,
+                        query: Some(query),
+                    }
+                    .into());
+                }
+
+                operation
+            }
+            Err(e) => {
+                return Err(e.into());
+            }
+        };
 
         operation
             .resolve_fields(&operation.fields, self, request_context)
@@ -203,17 +266,19 @@ impl SystemResolver {
             .map_err(|e| e.into())
     }
 
-    #[instrument(skip(self, operations_payload))]
+    #[instrument(skip_all)]
     fn validate_operation(
         &self,
-        operations_payload: OperationsPayload,
+        query: &str,
+        operation_name: Option<String>,
+        variables: Option<Map<String, Value>>,
     ) -> Result<ValidatedOperation, ValidationError> {
-        let document = parse_query(operations_payload.query)?;
+        let document = parse_query(query)?;
 
         let document_validator = DocumentValidator::new(
             &self.schema,
-            operations_payload.operation_name,
-            operations_payload.variables,
+            operation_name,
+            variables,
             self.normal_query_depth_limit,
             self.introspection_query_depth_limit,
         );
@@ -227,6 +292,7 @@ macro_rules! exograph_execute_query {
     ($system_resolver:expr, $request_context:expr) => {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,
+               enforce_trusted_documents: TrustedDocumentEnforcement,
                context_override: serde_json::Value| {
             use core_plugin_interface::core_resolver::{OperationsPayload, QueryResponseBody};
             use futures::FutureExt;
@@ -238,10 +304,12 @@ macro_rules! exograph_execute_query {
                     .resolve_operations(
                         OperationsPayload {
                             operation_name: None,
-                            query: query_string,
+                            query: Some(query_string),
                             variables,
+                            query_hash: None,
                         },
                         &new_request_context,
+                        enforce_trusted_documents,
                     )
                     .await?;
 
@@ -271,7 +339,7 @@ macro_rules! exograph_execute_query {
 }
 
 #[instrument(name = "system_resolver::parse_query")]
-fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
+fn parse_query(query: &str) -> Result<ExecutableDocument, ValidationError> {
     async_graphql_parser::parse_query(query).map_err(|error| {
         error!(%error, "Failed to parse query");
         let (message, pos1, pos2) = match error {
@@ -346,6 +414,9 @@ pub enum SystemResolutionError {
         "Attempt to resolve empty interceptor (proceed called from before/after interceptor?)"
     )]
     NoInterceptionTree,
+
+    #[error("{0}")]
+    TrustedDocumentResolution(#[from] TrustedDocumentResolutionError),
 }
 
 impl SystemResolutionError {
@@ -361,6 +432,10 @@ impl SystemResolutionError {
         match self {
             SystemResolutionError::Validation(error) => Some(error.to_string()),
             SystemResolutionError::SubsystemResolutionError(error) => error.user_error_message(),
+            SystemResolutionError::TrustedDocumentResolution(e) => {
+                warn!("Error executing: {e}");
+                Some("Operation not allowed".to_string())
+            }
             SystemResolutionError::Delegate(error) => error
                 .downcast_ref::<SystemResolutionError>()
                 .map(|error| error.user_error_message()),

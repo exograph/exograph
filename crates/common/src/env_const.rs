@@ -17,6 +17,7 @@ pub const EXO_CHECK_CONNECTION_ON_STARTUP: &str = "EXO_CHECK_CONNECTION_ON_START
 pub const EXO_SERVER_PORT: &str = "EXO_SERVER_PORT";
 
 pub const _EXO_DEPLOYMENT_MODE: &str = "_EXO_DEPLOYMENT_MODE"; // "yolo", "dev", "playground" or "prod" (default)
+pub const _EXO_ENFORCE_TRUSTED_DOCUMENTS: &str = "_EXO_ENFORCE_TRUSTED_DOCUMENTS";
 
 pub const _EXO_UPSTREAM_ENDPOINT_URL: &str = "_EXO_UPSTREAM_ENDPOINT_URL";
 
@@ -30,6 +31,7 @@ pub enum EnvError {
     },
 }
 
+#[derive(Debug)]
 pub enum DeploymentMode {
     Yolo,
     Dev,
@@ -57,4 +59,17 @@ pub fn get_deployment_mode() -> Result<DeploymentMode, EnvError> {
             message: "Must be one of 'yolo', 'dev', 'playground', or 'prod'".to_string(),
         }),
     }
+}
+
+pub fn is_production() -> bool {
+    match get_deployment_mode() {
+        Ok(DeploymentMode::Prod) | Err(_) => true,
+        _ => false,
+    }
+}
+
+pub fn get_enforce_trusted_documents() -> bool {
+    std::env::var(_EXO_ENFORCE_TRUSTED_DOCUMENTS)
+        .map(|value| value != "false")
+        .unwrap_or(true)
 }

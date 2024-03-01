@@ -67,6 +67,7 @@ impl SystemLoader {
             subsystems,
             query_interception_map,
             mutation_interception_map,
+            trusted_documents,
         } = serialized_system;
 
         fn get_loader(
@@ -124,6 +125,7 @@ impl SystemLoader {
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
+            trusted_documents,
             schema,
             Arc::new(authenticator),
             LOCAL_ENVIRONMENT.with(|f| {

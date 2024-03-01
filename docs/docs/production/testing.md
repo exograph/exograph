@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 3
 ---
 
 # Testing
@@ -216,11 +216,6 @@ Note the quotes around `*user*` to avoid shell expansion.
 ## Initializing seed data
 
 As discussed in the [example](#example) section, it is often a good idea to seed the database with some data before running the tests. Exograph provides a way through "gql" files. You can write files with names starting with `init` and with the `.gql` extension. Exograph will execute these files before running tests. If you have multiple matching files, Exograph will execute them in alphabetically sorted order. For example, if you have `init-1.gql` and `init-2.gql`, `init-1.gql` will be executed first.
-
-<!-- -
-TODO: Through SQL files: If you need more direct control over your initial database state, you can write files with names starting in `init` and with the `.sql` extension. Exograph will execute them before running tests. Like the .gql files, they will be executed in alphabetical order.
-
-If you have both `gql` and `sql` files, they will be alphabetically sorted and executed in that order. -->
 
 ## Arranging tests in folders
 

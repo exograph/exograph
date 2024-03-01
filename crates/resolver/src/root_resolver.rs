@@ -13,6 +13,8 @@ use std::{fs::File, io::BufReader, path::Path};
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
+use common::env_const::is_production;
+use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::QueryResponse;
 
 use super::system_loader::SystemLoader;
@@ -37,9 +39,14 @@ pub async fn resolve_in_memory<'a>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
     request_context: RequestContext<'a>,
+    trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
     let response = system_resolver
-        .resolve_operations(operations_payload, &request_context)
+        .resolve_operations(
+            operations_payload,
+            &request_context,
+            trusted_document_enforcement,
+        )
         .await;
 
     let ctx = request_context.get_base_context();
@@ -71,8 +78,19 @@ pub async fn resolve<'a, E: 'static>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
     request_context: RequestContext<'a>,
+    playground_request: bool,
 ) -> ResponseStream<E> {
-    let response = resolve_in_memory(operations_payload, system_resolver, request_context).await;
+    let response = resolve_in_memory(
+        operations_payload,
+        system_resolver,
+        request_context,
+        if playground_request && !is_production() {
+            TrustedDocumentEnforcement::DoNotEnforce
+        } else {
+            TrustedDocumentEnforcement::Enforce
+        },
+    )
+    .await;
 
     let headers = if let Ok(ref response) = response {
         response

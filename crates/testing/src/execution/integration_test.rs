@@ -10,6 +10,7 @@
 use anyhow::{anyhow, bail, Context, Result};
 use colored::Colorize;
 
+use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::context::{Request, RequestContext, LOCAL_JWT_SECRET};
 use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
@@ -378,8 +379,9 @@ async fn run_operation(
     let request_context = RequestContext::new(&request, vec![], &ctx.server)?;
     let operations_payload = OperationsPayload {
         operation_name: None,
-        query,
+        query: Some(query),
         variables: Some(variables_map),
+        query_hash: None,
     };
 
     // run the operation
@@ -436,7 +438,13 @@ pub async fn run_query(
     server: &SystemResolver,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
-    let res = resolve_in_memory(operations_payload, server, request_context).await;
+    let res = resolve_in_memory(
+        operations_payload,
+        server,
+        request_context,
+        TrustedDocumentEnforcement::Enforce,
+    )
+    .await;
 
     match res {
         Ok(res) => {

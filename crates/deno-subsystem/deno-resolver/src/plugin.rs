@@ -23,6 +23,7 @@ use core_plugin_interface::{
     interception::InterceptorIndex,
     interface::{SubsystemLoader, SubsystemLoadingError},
     system_serializer::SystemSerializer,
+    trusted_documents::TrustedDocumentEnforcement,
 };
 
 use deno_model::{module::ModuleMethod, subsystem::DenoSubsystem};

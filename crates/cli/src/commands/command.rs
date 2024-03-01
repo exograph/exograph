@@ -12,6 +12,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
+use colored::Colorize;
+use common::env_const::_EXO_ENFORCE_TRUSTED_DOCUMENTS;
 
 use super::build::BuildError;
 
@@ -89,6 +91,10 @@ pub(crate) fn default_model_file() -> PathBuf {
     PathBuf::from(DEFAULT_MODEL_FILE)
 }
 
+pub(crate) fn default_trusted_documents_dir() -> PathBuf {
+    PathBuf::from("trusted-documents")
+}
+
 pub(crate) fn ensure_exo_project_dir(dir: &Path) -> Result<(), BuildError> {
     if dir.join(default_model_file()).exists() {
         Ok(())
@@ -136,4 +142,29 @@ pub fn port_arg() -> Arg {
         .required(false)
         .value_parser(clap::value_parser!(u32))
         .num_args(1)
+}
+
+pub(crate) fn enforce_trusted_documents_arg() -> Arg {
+    Arg::new("enforce-trusted-documents")
+        .help("Enforce trusted documents")
+        .long_help("If set, the server will enforce that all documents are trusted.")
+        .long("enforce-trusted-documents")
+        .default_value("true")
+        .required(false)
+}
+
+pub(crate) fn setup_trusted_documents_enforcement(matches: &ArgMatches) {
+    let enforce_trusted_documents: bool = get::<String>(matches, "enforce-trusted-documents")
+        .map(|value| value != "false")
+        .unwrap_or(false);
+
+    if !enforce_trusted_documents {
+        println!(
+            "{}",
+            "Trusting all documents due to --enforce-trusted-documents=false"
+                .red()
+                .bold()
+        );
+        std::env::set_var(_EXO_ENFORCE_TRUSTED_DOCUMENTS, "false");
+    }
 }

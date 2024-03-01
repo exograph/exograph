@@ -95,13 +95,19 @@ async fn resolve_locally(
     body: web::Json<Value>,
     system_resolver: web::Data<SystemResolver>,
 ) -> HttpResponse {
+    let playground_request = req
+        .headers()
+        .get("_exo_playground")
+        .map(|value| value == "true")
+        .unwrap_or(false);
+
     let request = ActixRequest::from_request(req);
     let request_context = RequestContext::new(&request, vec![], system_resolver.as_ref());
 
     match request_context {
         Ok(request_context) => {
             let operations_payload: Result<OperationsPayload, _> =
-                serde_json::from_value(body.into_inner());
+                OperationsPayload::from_json(body.into_inner());
 
             match operations_payload {
                 Ok(operations_payload) => {
@@ -109,6 +115,7 @@ async fn resolve_locally(
                         operations_payload,
                         system_resolver.as_ref(),
                         request_context,
+                        playground_request,
                     )
                     .await;
 

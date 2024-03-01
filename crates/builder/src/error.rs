@@ -30,4 +30,7 @@ pub enum ParserError {
 
     #[error("{0}")]
     Generic(String),
+
+    #[error("Invalid trusted document format in file: '{0}'")]
+    InvalidTrustedDocumentFormat(String),
 }

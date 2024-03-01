@@ -43,16 +43,24 @@ pub async fn resolve(
 
     match request_context {
         Ok(request_context) => {
-            let operations_payload: Option<OperationsPayload> = body
+            let operations_payload_json: Option<Value> = body
                 .as_str()
                 .and_then(|body_string| serde_json::from_str(body_string).ok());
 
+            let operations_payload = match operations_payload_json {
+                Some(operations_payload_json) => {
+                    OperationsPayload::from_json(operations_payload_json)
+                }
+                None => return Ok(error_msg("Invalid query payload", 400)),
+            };
+
             match operations_payload {
-                Some(operations_payload) => {
+                Ok(operations_payload) => {
                     let (stream, headers) = resolver::resolve::<Error>(
                         operations_payload,
                         &system_resolver,
                         request_context,
+                        false,
                     )
                     .await;
 
@@ -92,7 +100,7 @@ pub async fn resolve(
                     }))
                 }
 
-                None => Ok(error_msg("Invalid query payload", 400)),
+                _ => Ok(error_msg("Invalid query payload", 400)),
             }
         }
 
