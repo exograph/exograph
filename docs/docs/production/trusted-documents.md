@@ -176,7 +176,7 @@ There may be an overlap of trusted documents between clients. For example, the `
 
 ## Example
 
-Let's walk through an example of how to set up trusted documents for a typical client application. We will consider two popular GraphQL client libraries: Apollo Client and URQL. See the complete application here: [Apollo version](https://github.com/exograph/examples/tree/main/todo-with-nextjs) and [URQL version](https://github.com/exograph/examples/tree/main/todo-with-nextjs-urql).
+Let's walk through an example of how to set up trusted documents for a typical client application. We will consider two popular GraphQL client libraries: Apollo Client and URQL. See the complete application here: [Apollo version](https://github.com/exograph/examples/tree/main/todo-with-nextjs-apollo-trusted-documents) and [URQL version](https://github.com/exograph/examples/tree/main/todo-with-nextjs-urql-trusted-documents).
 
 ### Creating trusted documents
 
