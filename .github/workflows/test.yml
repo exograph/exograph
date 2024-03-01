@@ -46,7 +46,7 @@ jobs:
             deps-script: sudo apt-get install -y protobuf-compiler
             target: x86_64-unknown-linux-gnu
           - os: macos-13
-            deps-script: brew install protobuf
+            deps-script: brew install protobuf postgresql@14
             target: x86_64-apple-darwin
           - os: macos-14
             deps-script: brew install protobuf postgresql@14
