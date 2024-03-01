@@ -25,7 +25,7 @@ jobs:
       matrix:
         # For these target platforms
         include:
-          - os: macos-12
+          - os: macos-13
             deps-script: brew install protobuf
             target: x86_64-apple-darwin
             bin_extension: ""
