@@ -442,7 +442,7 @@ pub async fn run_query(
         operations_payload,
         server,
         request_context,
-        TrustedDocumentEnforcement::Enforce,
+        TrustedDocumentEnforcement::DoNotEnforce,
     )
     .await;
 
