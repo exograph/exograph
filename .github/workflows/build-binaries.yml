@@ -26,7 +26,7 @@ jobs:
         # For these target platforms
         include:
           - os: macos-13
-            deps-script: brew install protobuf
+            deps-script: brew install protobuf postgresql@14
             target: x86_64-apple-darwin
             bin_extension: ""
           - os: macos-14
