@@ -87,7 +87,7 @@ impl<'a> ArgumentValidator<'a> {
             .filter_map(|argument_definition| {
                 let argument_name = &argument_definition.name.node;
                 // Stray arguments tracking: 2. Remove the argument being processed
-                let argument_value = field_arguments.remove(argument_name);
+                let argument_value = field_arguments.shift_remove(argument_name);
 
                 self.validate_argument(argument_definition, argument_value)
                     .map(|argument_value| {
