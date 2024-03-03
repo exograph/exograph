@@ -21,12 +21,12 @@ not_cross = ["server-common/not_cross"]
 
 [dependencies]
 async-trait.workspace = true
-actix-web = { version = "4.4.1", default-features = false, features = [
+actix-web = { version = "4.5.1", default-features = false, features = [
   "macros",
   "cookies",
 ] }
 actix-cors = "0.7.0"
-actix-files = "0.6.2"
+actix-files = "0.6.5"
 thiserror.workspace = true
 
 serde_json = { workspace = true, features = ["preserve_order"] }
