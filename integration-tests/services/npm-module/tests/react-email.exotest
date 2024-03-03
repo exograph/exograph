@@ -1,0 +1,10 @@
+operation: |
+  query {
+    formatReactEmail(name: "Alex")
+  }
+response: |
+  {
+    "data": {
+      "formatReactEmail": ""
+    }
+  }

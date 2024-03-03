@@ -1,0 +1,10 @@
+operation: |
+  query {
+    formatJsxEmail(name: "Alex")
+  }
+response: |
+  {
+    "data": {
+      "formatJsxEmail": ""
+    }
+  }

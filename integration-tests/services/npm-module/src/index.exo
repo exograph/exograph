@@ -6,3 +6,15 @@ module TodoDatabase {
   @access(true)
   query color_by_name(name: String): String
 }
+
+@deno("react-email-formatting.tsx")
+module ReactEmailService {
+  @access(true)
+  query formatReactEmail(name: String): String
+}
+
+@deno("jsx-email-formatting.tsx")
+module JsxEmailService {
+  @access(true)
+  query formatJsxEmail(name: String): String
+}
