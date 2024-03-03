@@ -214,6 +214,7 @@ impl DenoModule {
         let worker_options = WorkerOptions {
             startup_snapshot: Some(crate::deno_snapshot()),
             extensions,
+            origin_storage_dir: Some(std::env::temp_dir()),
             ..Default::default()
         };
 
