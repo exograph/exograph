@@ -16,6 +16,7 @@ use deno_core::error::AnyError;
 use deno_core::resolve_import;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
+use deno_core::ModuleSourceCode;
 use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
 use deno_core::ResolutionKind;
@@ -154,8 +155,11 @@ impl ModuleLoader for TypescriptLoader {
                 source
             };
 
-            let module =
-                ModuleSource::new(module_type, source.to_string()?.into(), &module_specifier);
+            let module = ModuleSource::new(
+                module_type,
+                ModuleSourceCode::String(source.to_string()?.into()),
+                &module_specifier,
+            );
 
             Ok(module)
         }

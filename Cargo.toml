@@ -59,14 +59,14 @@ codemap = "0.1.3"
 codemap-diagnostic = "0.1.1"
 ctor = "0.2.6"
 #deno = { git = "https://github.com/exograph/deno.git", branch = "patched_1_38_5" }
-deno = "1.39.1"
-deno_ast = "0.31.6"
-deno_core = "0.239.0"
+deno = "1.39.3"
+deno_ast = "1.0.1"
+deno_core = "0.245.0"
 #deno_fs = { git = "https://github.com/exograph/deno.git", branch = "patched_1_38_5" }
-deno_fs = "0.39.0"
-deno_graph = "=0.62.0"
+deno_fs = "0.41.0"
+deno_graph = "=0.63.3"
 #deno_runtime = { git = "https://github.com/exograph/deno.git", branch = "patched_1_38_5" }
-deno_runtime = "0.137.0"
+deno_runtime = "0.139.0"
 #deno_virtual_fs = { git = "https://github.com/exograph/deno.git", branch = "patched_1_38_5" }
 deno_virtual_fs = "1.38.2"
 deno_semver = "0.5.1"

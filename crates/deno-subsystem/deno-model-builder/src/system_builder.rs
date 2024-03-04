@@ -353,8 +353,8 @@ fn walk_node_resolutions(
                     ),
                 );
 
-                let store = parsed_source_cache.as_store();
-                let analyzer = module_info_cache.as_module_analyzer(None, &*store);
+                let parser = parsed_source_cache.as_capturing_parser();
+                let analyzer = module_info_cache.as_module_analyzer(&parser);
 
                 let analysis = analyzer
                     .analyze(

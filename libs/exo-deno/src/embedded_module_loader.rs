@@ -119,7 +119,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
 
                 let module_source = ModuleSource::new_with_redirect(
                     module_type,
-                    script.into(),
+                    deno_core::ModuleSourceCode::String(script.into()),
                     &module_specifier,
                     &final_specifier,
                 );
@@ -154,10 +154,17 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 // cache result for later
                 let mut map = source_code_map.borrow_mut();
 
+                let source_code = match module_source.code {
+                    deno_core::ModuleSourceCode::String(ref code) => code.as_str().to_string(),
+                    deno_core::ModuleSourceCode::Bytes(ref bytes) => {
+                        String::from_utf8(bytes.to_vec())?
+                    }
+                };
+
                 map.insert(
                     module_specifier.clone(),
                     ResolvedModule::Module(
-                        module_source.code.as_str().to_string(),
+                        source_code.as_str().to_string(),
                         module_source.module_type,
                         module_specifier,
                         false,
