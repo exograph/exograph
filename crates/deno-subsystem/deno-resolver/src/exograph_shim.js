@@ -9,7 +9,7 @@
 
 ({
     executeQuery: async function (query_string, variables) {
-        const result = await Deno[Deno.internal].core.opAsync("op_exograph_execute_query", query_string, variables);
+        const result = await Deno[Deno.internal].core.ops.op_exograph_execute_query(query_string, variables);
         return result;
     },
 

@@ -28,9 +28,7 @@ mod typescript_module_loader;
 pub use deno_core;
 
 #[cfg(not(feature = "cross"))]
-static RUNTIME_SNAPSHOT: &[u8] =
-  include_bytes!(concat!(env!("OUT_DIR"), "/RUNTIME_SNAPSHOT.bin"));
-
+static RUNTIME_SNAPSHOT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/RUNTIME_SNAPSHOT.bin"));
 
 pub(crate) fn deno_snapshot() -> Option<deno_core::Snapshot> {
     #[cfg(feature = "cross")]
