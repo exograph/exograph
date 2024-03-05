@@ -510,6 +510,8 @@ impl DenoModule {
         };
 
         {
+            #[allow(deprecated)]
+            // Deno's code also uses the deprecated function in their tests. We will reconsider this when their code remove this function.
             let value = runtime.resolve_value(global).await.map_err(|err| {
                 // got some AnyError from Deno internals...
                 error!(%err);
@@ -829,7 +831,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "opAsync has been removed from Deno. Fix later."]
     async fn test_register_async_ops() {
         deno_core::extension!(test, ops = [async_rust_impl],);
         let mut deno_module = DenoModule::new(
