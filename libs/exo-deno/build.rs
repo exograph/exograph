@@ -1,7 +1,7 @@
 #[cfg(not(feature = "cross"))]
 fn main() {
-    use std::path::PathBuf;
     use deno_runtime::ops::bootstrap::SnapshotOptions;
+    use std::path::PathBuf;
 
     let snapshot_options = SnapshotOptions {
         deno_version: deno::version::deno().to_string(),

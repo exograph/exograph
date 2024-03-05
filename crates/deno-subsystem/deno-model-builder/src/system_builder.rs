@@ -29,7 +29,8 @@ use deno::{
 };
 use deno_ast::{MediaType, ParseParams, SourceTextInfo};
 use deno_graph::{
-    Module, ModuleAnalyzer, ModuleEntryRef, ModuleGraph, ModuleSpecifier, WalkOptions,
+    DependencyDescriptor, DynamicArgument, Module, ModuleAnalyzer, ModuleEntryRef, ModuleGraph,
+    ModuleSpecifier, WalkOptions,
 };
 use deno_model::{
     interceptor::Interceptor,
@@ -362,14 +363,20 @@ fn walk_node_resolutions(
                         Arc::from(loaded.code.as_str()),
                         MediaType::JavaScript,
                     )
-                    .expect("Failed to analyze dependes of an ESM NPM module");
+                    .expect("Failed to analyze dependencies of an ESM NPM module");
 
                 for dep in &analysis.dependencies {
                     let specifier = match dep {
-                        deno_graph::DependencyDescriptor::Static(dep) => &dep.specifier,
-                        deno_graph::DependencyDescriptor::Dynamic(_) => {
-                            panic!("Dynamic dependencies aren't supported")
-                        }
+                        DependencyDescriptor::Static(dep) => &dep.specifier,
+                        DependencyDescriptor::Dynamic(dep) => match &dep.argument {
+                            DynamicArgument::String(s) => s,
+                            DynamicArgument::Template(t) => {
+                                panic!("Dynamic dependencies with template aren't supported: {t:?}")
+                            }
+                            DynamicArgument::Expr => {
+                                panic!("Dynamic dependencies with expression aren't supported")
+                            }
+                        },
                     };
                     let resolved = node_resolver
                         .resolve(
