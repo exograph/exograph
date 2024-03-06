@@ -61,7 +61,7 @@ ctor = "0.2.6"
 #deno = { git = "https://github.com/exograph/deno.git", branch = "patched_1_38_5" }
 deno = "1.40.2"
 deno_ast = "0.32.0"
-deno_core = "0.255.0"
+deno_core = "0.256.0"
 #deno_fs = { git = "https://github.com/exograph/deno.git", branch = "patched_1_38_5" }
 deno_fs = "0.45.0"
 deno_graph = "=0.63.6"

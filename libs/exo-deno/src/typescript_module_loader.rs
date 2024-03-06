@@ -21,11 +21,9 @@ use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
 use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
-use futures::FutureExt;
 use include_dir::Dir;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::pin::Pin;
 
 /// Loads TypeScript and TypeScript-compatible files by either downloading them
 /// or reading them off disk.
@@ -49,7 +47,7 @@ impl ModuleLoader for TypescriptLoader {
         _maybe_referrer: Option<&ModuleSpecifier>,
         _is_dyn_import: bool,
         _requested_module_type: RequestedModuleType,
-    ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
+    ) -> deno_core::ModuleLoadResponse {
         enum Code<'a> {
             Slice(&'a [u8]),
             Vec(Vec<u8>),
@@ -166,6 +164,6 @@ impl ModuleLoader for TypescriptLoader {
             Ok(module)
         }
 
-        futures::future::ready(load(module_specifier, embedded_dirs)).boxed_local()
+        deno_core::ModuleLoadResponse::Sync(load(module_specifier, embedded_dirs))
     }
 }
