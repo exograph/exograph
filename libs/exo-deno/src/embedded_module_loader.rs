@@ -14,6 +14,7 @@ use deno_core::url::Url;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
+use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
 use deno_runtime::deno_node::NodeResolver;
 use deno_runtime::permissions::PermissionsContainer;
@@ -67,6 +68,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
         module_specifier: &ModuleSpecifier,
         maybe_referrer: Option<&ModuleSpecifier>,
         is_dynamic: bool,
+        _requested_module_type: RequestedModuleType,
     ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
         let borrowed_map = self.source_code_map.borrow();
 
@@ -148,7 +150,12 @@ impl ModuleLoader for EmbeddedModuleLoader {
 
                 // use the configured loader to load the script from an external source
                 let module_source = loader
-                    .load(&module_specifier, maybe_referrer.as_ref(), is_dynamic)
+                    .load(
+                        &module_specifier,
+                        maybe_referrer.as_ref(),
+                        is_dynamic,
+                        RequestedModuleType::None,
+                    )
                     .await?;
 
                 // cache result for later
@@ -165,7 +172,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
                     module_specifier.clone(),
                     ResolvedModule::Module(
                         source_code.as_str().to_string(),
-                        module_source.module_type,
+                        module_source.module_type.clone(),
                         module_specifier,
                         false,
                     ),

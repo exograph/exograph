@@ -19,6 +19,7 @@ use deno_core::ModuleSource;
 use deno_core::ModuleSourceCode;
 use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
+use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
 use futures::FutureExt;
 use include_dir::Dir;
@@ -47,6 +48,7 @@ impl ModuleLoader for TypescriptLoader {
         module_specifier: &ModuleSpecifier,
         _maybe_referrer: Option<&ModuleSpecifier>,
         _is_dyn_import: bool,
+        _requested_module_type: RequestedModuleType,
     ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
         enum Code<'a> {
             Slice(&'a [u8]),

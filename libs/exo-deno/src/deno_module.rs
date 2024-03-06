@@ -356,6 +356,8 @@ impl DenoModule {
                 enable_op_summary_metrics: false,
                 unstable_features: vec![],
                 node_ipc_fd: None,
+                disable_deprecated_api_warning: false,
+                verbose_deprecated_api_warning: false,
             },
             create_params: None,
             extensions,
