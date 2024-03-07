@@ -22,9 +22,9 @@ use core_plugin_interface::{
 use deno::{
     args::CliOptions,
     cache::{ModuleInfoCache, ParsedSourceCache},
-    module_loader::NpmModuleLoader,
     node::CliCjsCodeAnalyzer,
     npm::ManagedCliNpmResolver,
+    resolver::NpmModuleLoader,
     CliFactory, Flags, PathBuf,
 };
 use deno_ast::{MediaType, ParseParams, SourceTextInfo};
