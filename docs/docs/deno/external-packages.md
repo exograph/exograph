@@ -48,7 +48,7 @@ async function sendEmail(
 }
 ```
 
-We will replace the `console.log` statement with an email server. We will accomplish this in two ways: using the SMTP protocol and a provider-specific API. For the implementation, we will assume:
+We will replace the `console.log` statement with logic to send emails through a server. We will accomplish this in two ways: using the SMTP protocol and a provider-specific API. For the implementation, we will assume:
 - The `to` array contains the recipients' email addresses, so we will use the `bcc` field to send the email to multiple recipients. 
 - The necessary environment variables have been set (you could add a check for those and throw an error if they aren't).
 
