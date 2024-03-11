@@ -604,10 +604,11 @@ mod tests {
 
     use deno_core::op2;
     use serde_json::json;
+    use test_log::test;
 
     use super::*;
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn test_direct_sync() {
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
@@ -790,19 +791,28 @@ mod tests {
 
     #[op2]
     #[string]
-    fn rust_impl(#[string] arg: String) -> Result<String, AnyError> {
+    fn op_rust_impl(#[string] arg: String) -> Result<String, AnyError> {
         Ok(format!("Register Op: {arg}"))
     }
 
     #[op2(async)]
     #[string]
-    async fn async_rust_impl(#[string] arg: String) -> Result<String, AnyError> {
+    async fn op_async_rust_impl(#[string] arg: String) -> Result<String, AnyError> {
         Ok(format!("Register Async Op: {arg}"))
     }
 
+    deno_core::extension!(
+    test,
+    ops = [op_rust_impl, op_async_rust_impl],
+    esm_entry_point = "ext:test/_init.js",
+    esm = [
+        dir "src/test_js",
+        "_init.js",
+        "through_rust.js" with_specifier "test:through_rust",
+    ]);
+
     #[tokio::test]
     async fn test_register_sync_ops() {
-        deno_core::extension!(test, ops = [rust_impl],);
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
                 Path::new("src")
@@ -813,7 +823,7 @@ mod tests {
             "deno_module",
             vec![],
             vec![],
-            vec![test::init_ops()],
+            vec![test::init_ops_and_esm()],
             DenoModuleSharedState::default(),
             None,
             None,
@@ -834,7 +844,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_async_ops() {
-        deno_core::extension!(test, ops = [async_rust_impl],);
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
                 Path::new("src")
@@ -845,7 +854,7 @@ mod tests {
             "deno_module",
             vec![],
             vec![],
-            vec![test::init_ops()],
+            vec![test::init_ops_and_esm()],
             DenoModuleSharedState::default(),
             None,
             None,

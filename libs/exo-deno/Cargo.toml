@@ -46,3 +46,4 @@ tempfile.workspace = true
 
 [dev-dependencies]
 ctor.workspace = true
+test-log.workspace = true
