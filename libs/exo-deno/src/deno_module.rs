@@ -808,7 +808,7 @@ mod tests {
     esm = [
         dir "src/test_js",
         "_init.js",
-        "through_rust.js" with_specifier "test:through_rust",
+        "test:through_rust" = "through_rust.js",
     ]);
 
     #[tokio::test]

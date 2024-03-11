@@ -129,7 +129,7 @@ deno_core::extension!(
     esm = [
         dir "extension",
         "__init.js",
-        "exograph.js" with_specifier "exograph:ops"
+         "exograph:ops" = "exograph.js",
     ]
 );
 
