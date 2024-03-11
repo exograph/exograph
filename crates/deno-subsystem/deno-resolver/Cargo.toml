@@ -31,8 +31,8 @@ not_cross = ["exo-deno/not_cross"]
 
 [dev-dependencies]
 tokio.workspace = true
+test-log.workspace = true
 builder = { path = "../../builder" }
-
 
 [lib]
 crate-type = ["lib"]

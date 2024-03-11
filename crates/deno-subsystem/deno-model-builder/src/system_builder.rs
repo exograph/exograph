@@ -435,7 +435,7 @@ fn walk_module_graph(
         match maybe_module {
             ModuleEntryRef::Module(m) => {
                 let maybe_serializable_module = match m {
-                    Module::Esm(e) => Some((
+                    Module::Js(e) => Some((
                         e.source.to_string(),
                         MediaType::from_specifier(specifier),
                         specifier.clone(),

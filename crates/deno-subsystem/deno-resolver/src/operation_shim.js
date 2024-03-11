@@ -9,12 +9,12 @@
 
 ({
     name: function () {
-        return Deno[Deno.internal].core.ops.op_operation_name()
+        return ExographOperation.name()
     },
     proceed: async function () {
-        return await Deno[Deno.internal].core.ops.op_operation_proceed()
+        return await ExographOperation.proceed()
     },
     query: function () {
-        return Deno[Deno.internal].core.ops.op_operation_query()
+        return ExographOperation.query()
     }
 })

@@ -7,9 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-({
-    executeQueryPriv: async function (query_string, variables, context_override) {
-        const result = await ExographExtension.executeQueryPriv(query_string, variables, context_override);
-        return result;
-    },
-})
+import { exograph_version } from "exograph:ops";
+
+export function exographVersion() {
+    return exograph_version()
+}
