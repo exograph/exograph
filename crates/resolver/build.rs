@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if !std::process::Command::new(npm)
         .arg("run")
-        .arg("prod-build")
+        .arg("build")
         .current_dir(graphiql_folder_path)
         .spawn()?
         .wait()?

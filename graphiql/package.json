@@ -2,6 +2,13 @@
   "name": "exograph-playground",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 9876",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "@auth0/auth0-react": "^2.2.3",
     "@clerk/clerk-react": "^4.28.0",
@@ -15,30 +22,19 @@
     "graphql-ws": "^5.14.2",
     "jose": "^5.1.0",
     "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "typescript": "^4.9.5"
-  },
-  "devDependencies": {
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "react-app-rewired": "^2.2.1",
-    "react-scripts": "5.0.1"
-  },
-  "overrides": {
-    "react": "18.2.0",
     "react-dom": "18.2.0"
   },
-  "scripts": {
-    "start": "react-app-rewired start",
-    "dev-build": "react-app-rewired build",
-    "prod-build": "cross-env GENERATE_SOURCEMAP=false react-app-rewired build",
-    "test": "react-app-rewired test",
-    "eject": "react-app-rewired eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app"
-    ]
+  "devDependencies": {
+    "@types/react": "^18.2.65",
+    "@types/react-dom": "^18.2.21",
+    "@typescript-eslint/eslint-plugin": "^7.2.0",
+    "@typescript-eslint/parser": "^7.2.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "typescript": "^5.4.2",
+    "vite": "^5.1.6"
   },
   "browserslist": {
     "production": [
