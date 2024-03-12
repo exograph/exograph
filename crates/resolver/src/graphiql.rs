@@ -13,7 +13,7 @@ use std::path::Path;
 
 use crate::root_resolver::{get_endpoint_http_path, get_playground_http_path};
 
-static GRAPHIQL_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/build");
+static GRAPHIQL_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/dist");
 
 pub fn get_asset_bytes<P: AsRef<Path>>(file_name: P) -> Option<Vec<u8>> {
     let enable_introspection_live_update =
