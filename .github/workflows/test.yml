@@ -91,11 +91,11 @@ jobs:
           key: ${{ matrix.target }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build
-        run: cargo build --target ${{ matrix.target }} --features not_cross
+        run: cargo build --target ${{ matrix.target }}
       - name: Run tests
         env:
           RUST_BACKTRACE: 1
-        run: cargo test --workspace --target ${{ matrix.target }} --features not_cross
+        run: cargo test --workspace --target ${{ matrix.target }}
       - name: Run integration tests
         env:
           RUST_BACKTRACE: 1

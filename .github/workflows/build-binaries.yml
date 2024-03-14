@@ -70,7 +70,7 @@ jobs:
           key: ${{ matrix.target }}
       - name: Build
         run: |
-          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release --features not_cross
+          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release
       - name: Add Postgres to PATH
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
