@@ -8,13 +8,13 @@
 // by the Apache License, Version 2.0.
 
 ({
-  name: function () {
-      return Deno[Deno.internal].core.ops.op_operation_name()
-  },
-  proceed: async function () {
-      return await Deno[Deno.internal].core.opAsync("op_operation_proceed")
-  },
-  query: function () {
-      return Deno[Deno.internal].core.ops.op_operation_query()
-  }
+    name: function () {
+        return ExographOperation.name()
+    },
+    proceed: async function () {
+        return await ExographOperation.proceed()
+    },
+    query: function () {
+        return ExographOperation.query()
+    }
 })

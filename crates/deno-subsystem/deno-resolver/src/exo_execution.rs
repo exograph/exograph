@@ -121,22 +121,29 @@ pub fn process_call_context(
         .unwrap_or_else(|_| panic!("Failed to setup interceptor"));
 }
 
+// We provide a set of Exograph functionality accessible via this Deno extension
+deno_core::extension!(
+    exograph,
+    ops = [
+        super::exograph_ops::op_exograph_execute_query,
+        super::exograph_ops::op_exograph_execute_query_priv,
+        super::exograph_ops::op_exograph_add_header,
+        super::exograph_ops::op_exograph_version,
+        super::exograph_ops::op_operation_name,
+        super::exograph_ops::op_operation_query,
+        super::exograph_ops::op_operation_proceed,
+    ],
+    esm_entry_point = "ext:exograph/__init.js",
+    esm = [
+        dir "extension",
+        "__init.js",
+         "exograph:ops" = "exograph.js",
+    ]
+);
+
 pub fn exo_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
     fn create_extensions() -> Vec<Extension> {
-        // we provide a set of Exograph functionality through custom Deno ops,
-        // create a Deno extension that provides these ops
-        deno_core::extension!(
-            exograph,
-            ops = [
-                super::exograph_ops::op_exograph_execute_query,
-                super::exograph_ops::op_exograph_execute_query_priv,
-                super::exograph_ops::op_exograph_add_header,
-                super::exograph_ops::op_operation_name,
-                super::exograph_ops::op_operation_query,
-                super::exograph_ops::op_operation_proceed,
-            ],
-        );
-        vec![exograph::init_ops()]
+        vec![exograph::init_ops_and_esm()]
     }
 
     DenoExecutorConfig::new(
@@ -148,4 +155,46 @@ pub fn exo_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
         process_call_context,
         DenoModuleSharedState::default(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use test_log::test;
+
+    use super::exograph;
+    use exo_deno::{DenoModule, DenoModuleSharedState, UserCode};
+
+    #[test(tokio::test)]
+    async fn test_call_version_op() {
+        println!("Initializing deno module");
+
+        let mut deno_module = DenoModule::new(
+            UserCode::LoadFromFs(
+                Path::new("src")
+                    .join("test_js")
+                    .join("test_exograph_extension.js")
+                    .to_owned(),
+            ),
+            "deno_module",
+            vec![],
+            vec![],
+            vec![exograph::init_ops_and_esm()],
+            DenoModuleSharedState::default(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+        let ret_value = deno_module
+            .execute_function("exographVersion", vec![])
+            .await
+            .unwrap();
+        assert_eq!(
+            ret_value,
+            serde_json::Value::String(env!("CARGO_PKG_VERSION").into())
+        );
+    }
 }

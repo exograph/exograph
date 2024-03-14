@@ -13,8 +13,6 @@ default = [
   "static-deno-resolver",
   "static-wasm-resolver",
 ]
-cross = ["exo-deno/cross"]
-not_cross = ["exo-deno/not_cross"]
 
 [dependencies]
 anyhow.workspace = true

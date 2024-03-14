@@ -22,14 +22,15 @@ use core_plugin_interface::{
 use deno::{
     args::CliOptions,
     cache::{ModuleInfoCache, ParsedSourceCache},
-    module_loader::NpmModuleLoader,
     node::CliCjsCodeAnalyzer,
     npm::ManagedCliNpmResolver,
+    resolver::NpmModuleLoader,
     CliFactory, Flags, PathBuf,
 };
 use deno_ast::{MediaType, ParseParams, SourceTextInfo};
 use deno_graph::{
-    Module, ModuleAnalyzer, ModuleEntryRef, ModuleGraph, ModuleSpecifier, WalkOptions,
+    DependencyDescriptor, DynamicArgument, Module, ModuleAnalyzer, ModuleEntryRef, ModuleGraph,
+    ModuleSpecifier, WalkOptions,
 };
 use deno_model::{
     interceptor::Interceptor,
@@ -135,6 +136,7 @@ fn process_script(
                 None,
                 None,
                 None,
+                false,
             )
             .unwrap();
             let factory = CliFactory::from_cli_options(Arc::new(cli_options));
@@ -144,20 +146,28 @@ fn process_script(
                     e
                 ))
             })?;
-            let mut loader = module_graph_builder.create_graph_loader();
-            let graph = module_graph_builder
-                .create_graph_with_loader(
-                    deno_graph::GraphKind::CodeOnly,
-                    vec![root_clone],
-                    &mut loader,
-                )
-                .await
-                .map_err(|e| {
+            let graph = {
+                let module_graph_creator = factory.module_graph_creator().await.map_err(|e| {
                     ModelBuildingError::Generic(format!(
-                        "While trying to create Deno graph: {:?}",
+                        "While trying to create Deno graph creator: {:?}",
                         e
                     ))
                 })?;
+                let mut loader = module_graph_builder.create_graph_loader();
+                module_graph_creator
+                    .create_graph_with_loader(
+                        deno_graph::GraphKind::CodeOnly,
+                        vec![root_clone],
+                        &mut loader,
+                    )
+                    .await
+                    .map_err(|e| {
+                        ModelBuildingError::Generic(format!(
+                            "While trying to create Deno graph: {:?}",
+                            e
+                        ))
+                    })?
+            };
 
             let node_resolver = factory.node_resolver().await.unwrap();
             let npm_resolver = factory.npm_resolver().await.unwrap();
@@ -353,8 +363,8 @@ fn walk_node_resolutions(
                     ),
                 );
 
-                let store = parsed_source_cache.as_store();
-                let analyzer = module_info_cache.as_module_analyzer(None, &*store);
+                let parser = parsed_source_cache.as_capturing_parser();
+                let analyzer = module_info_cache.as_module_analyzer(&parser);
 
                 let analysis = analyzer
                     .analyze(
@@ -362,12 +372,24 @@ fn walk_node_resolutions(
                         Arc::from(loaded.code.as_str()),
                         MediaType::JavaScript,
                     )
-                    .expect("Failed to analyze dependes of an ESM NPM module");
+                    .expect("Failed to analyze dependencies of an ESM NPM module");
 
                 for dep in &analysis.dependencies {
+                    let specifier = match dep {
+                        DependencyDescriptor::Static(dep) => &dep.specifier,
+                        DependencyDescriptor::Dynamic(dep) => match &dep.argument {
+                            DynamicArgument::String(s) => s,
+                            DynamicArgument::Template(t) => {
+                                panic!("Dynamic dependencies with template aren't supported: {t:?}")
+                            }
+                            DynamicArgument::Expr => {
+                                panic!("Dynamic dependencies with expression aren't supported")
+                            }
+                        },
+                    };
                     let resolved = node_resolver
                         .resolve(
-                            &dep.specifier,
+                            specifier,
                             &esm_specifier,
                             deno_runtime::deno_node::NodeResolutionMode::Execution,
                             &PermissionsContainer::allow_all(),
@@ -422,7 +444,7 @@ fn walk_module_graph(
         match maybe_module {
             ModuleEntryRef::Module(m) => {
                 let maybe_serializable_module = match m {
-                    Module::Esm(e) => Some((
+                    Module::Js(e) => Some((
                         e.source.to_string(),
                         MediaType::from_specifier(specifier),
                         specifier.clone(),
@@ -491,7 +513,7 @@ fn walk_module_graph(
 
                     let transpiled = if should_transpile {
                         let parsed = deno_ast::parse_module(ParseParams {
-                            specifier: specifier.to_string(),
+                            specifier: specifier.clone(),
                             text_info: SourceTextInfo::from_string(module_source),
                             media_type,
                             capture_tokens: false,

@@ -9,10 +9,6 @@ repository = "https://github.com/exograph/exograph"
 name = "exo"
 path = "src/main.rs"
 
-[features]
-cross = ["testing/cross"]
-not_cross = ["testing/not_cross"]
-
 [dependencies]
 colored.workspace = true
 tokio.workspace = true

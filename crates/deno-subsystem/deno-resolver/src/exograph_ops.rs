@@ -98,6 +98,12 @@ pub async fn op_exograph_execute_query_priv(
 
 #[op2]
 #[string]
+pub fn op_exograph_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
+#[op2]
+#[string]
 pub fn op_operation_name(state: &mut OpState) -> Result<String, AnyError> {
     // try to read the intercepted operation name out of Deno's GothamStorage
     if let Some(InterceptedOperationInfo { name, .. }) = state.borrow() {
