@@ -128,9 +128,14 @@ fn new_param(
     let (param_type_name, param_type_id) =
         order_by_param_type(entity_type_name, is_primitive, order_by_types);
 
-    OrderByParameter {
-        name: name.to_string(),
+    let base_param = FieldType::Plain(OrderByParameterTypeWrapper {
+        name: param_type_name,
+        type_id: param_type_id,
+    });
 
+    let wrapped_type = if is_primitive {
+        base_param
+    } else {
         // Specifying ModelTypeModifier::List allows queries such as:
         // order_by: [{name: ASC}, {id: DESC}]
         // Using a List is the only way to maintain ordering within a parameter value
@@ -141,12 +146,12 @@ fn new_param(
         // Here the user intention is the same as the query above, but we cannot honor that intention
         // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
         // TODO: When executing, check for the unsupported version (more than one attributes in an array element) and return an error
-        typ: FieldType::Optional(Box::new(FieldType::List(Box::new(FieldType::Plain(
-            OrderByParameterTypeWrapper {
-                name: param_type_name,
-                type_id: param_type_id,
-            },
-        ))))),
+        FieldType::List(Box::new(base_param))
+    };
+
+    OrderByParameter {
+        name: name.to_string(),
+        typ: FieldType::Optional(Box::new(wrapped_type)),
         column_path_link,
         access,
     }
