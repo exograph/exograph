@@ -12,100 +12,100 @@ name: Build Binaries
 
 on:
   push:
-    branches: ["main", "ci-fix-aws-build"]
+    branches: ["main"]
     tags:
       - "*"
 
 jobs:
   # Build and package all the things
-  # build-artifacts:
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       # For these target platforms
-  #       include:
-  #         - os: macos-13
-  #           deps-script: HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install protobuf postgresql@14
-  #           target: x86_64-apple-darwin
-  #           bin_extension: ""
-  #         - os: macos-14
-  #           deps-script: brew install protobuf postgresql@14
-  #           target: aarch64-apple-darwin
-  #           bin_extension: ""
-  #         - os: ubuntu-20.04
-  #           deps-script: sudo apt-get install -y protobuf-compiler
-  #           target: x86_64-unknown-linux-gnu
-  #           bin_extension: ""
-  #         - os: windows-2019
-  #           deps-script: choco install protoc
-  #           target: x86_64-pc-windows-msvc
-  #           bin_extension: ".exe"
+  build-artifacts:
+    strategy:
+      fail-fast: false
+      matrix:
+        # For these target platforms
+        include:
+          - os: macos-13
+            deps-script: HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install protobuf postgresql@14
+            target: x86_64-apple-darwin
+            bin_extension: ""
+          - os: macos-14
+            deps-script: brew install protobuf postgresql@14
+            target: aarch64-apple-darwin
+            bin_extension: ""
+          - os: ubuntu-20.04
+            deps-script: sudo apt-get install -y protobuf-compiler
+            target: x86_64-unknown-linux-gnu
+            bin_extension: ""
+          - os: windows-2019
+            deps-script: choco install protoc
+            target: x86_64-pc-windows-msvc
+            bin_extension: ".exe"
 
-  #   runs-on: ${{ matrix.os }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Clear up some disk space from the runner
-  #       if: ${{ runner.os != 'Windows' }}
-  #       run: |
-  #         bash ${PWD}/.github/workflows/clear-disk-space.sh
-  #     - name: Select the latest Xcode version
-  #       # The default version of Xcode on macos-14 is 15.1, which leads to https://github.com/rust-lang/rust/issues/113783.
-  #       # So we set up Xcode to use the latest stable version (currently 15.2).
-  #       # For other macos versions, the latest stable version happens to be the default
-  #       if: ${{ runner.os == 'macOS' }}
-  #       uses: maxim-lobanov/setup-xcode@v1
-  #       with:
-  #         xcode-version: latest-stable
-  #     - name: Install deps
-  #       run: ${{ matrix.deps-script }}
-  #     - name: Setup Node
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #     - name: Add Rust target
-  #       run: rustup target add ${{ matrix.target }}
-  #     - uses: Swatinem/rust-cache@v2
-  #       with:
-  #         key: ${{ matrix.target }}
-  #     - name: Build
-  #       run: |
-  #         cargo build -p cli -p server-actix --target ${{ matrix.target }} --release
-  #     - name: Add Postgres to PATH
-  #       run: |
-  #         if [ "$RUNNER_OS" == "Windows" ]; then
-  #           echo "$PGBIN" >> $GITHUB_PATH
-  #         else
-  #           echo "$(pg_config --bindir)" >> $GITHUB_PATH
-  #         fi
-  #       shell: bash
-  #     - name: Test
-  #       env:
-  #         RUST_BACKTRACE: 1
-  #         EXO_RUN_INTROSPECTION_TESTS: true
-  #       run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
-  #     - name: Create zip of binaries
-  #       run: |
-  #         mkdir -p dist
-  #         cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
-  #         cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
-  #         cp LICENSE dist/
-  #         cd dist/
-  #         7z a exograph-${{matrix.target}}.zip *
-  #         cd ..
-  #     - name: Upload Artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: exograph-${{matrix.target}}.zip
-  #         path: dist/exograph-${{matrix.target}}.zip
-  #     - name: Upload zip to release
-  #       if: startsWith(github.ref, 'refs/tags/')
-  #       uses: svenstaro/upload-release-action@v2
-  #       with:
-  #         repo_token: ${{ secrets.GITHUB_TOKEN }}
-  #         file: dist/exograph-${{matrix.target}}.zip
-  #         asset_name: exograph-${{matrix.target}}.zip
-  #         tag: ${{ github.ref }}
-  #         prerelease: true
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clear up some disk space from the runner
+        if: ${{ runner.os != 'Windows' }}
+        run: |
+          bash ${PWD}/.github/workflows/clear-disk-space.sh
+      - name: Select the latest Xcode version
+        # The default version of Xcode on macos-14 is 15.1, which leads to https://github.com/rust-lang/rust/issues/113783.
+        # So we set up Xcode to use the latest stable version (currently 15.2).
+        # For other macos versions, the latest stable version happens to be the default
+        if: ${{ runner.os == 'macOS' }}
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Install deps
+        run: ${{ matrix.deps-script }}
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Build
+        run: |
+          cargo build -p cli -p server-actix --target ${{ matrix.target }} --release
+      - name: Add Postgres to PATH
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            echo "$PGBIN" >> $GITHUB_PATH
+          else
+            echo "$(pg_config --bindir)" >> $GITHUB_PATH
+          fi
+        shell: bash
+      - name: Test
+        env:
+          RUST_BACKTRACE: 1
+          EXO_RUN_INTROSPECTION_TESTS: true
+        run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
+      - name: Create zip of binaries
+        run: |
+          mkdir -p dist
+          cp target/${{matrix.target}}/release/exo${{matrix.bin_extension}} dist/
+          cp target/${{matrix.target}}/release/exo-server${{matrix.bin_extension}} dist/
+          cp LICENSE dist/
+          cd dist/
+          7z a exograph-${{matrix.target}}.zip *
+          cd ..
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: exograph-${{matrix.target}}.zip
+          path: dist/exograph-${{matrix.target}}.zip
+      - name: Upload zip to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/exograph-${{matrix.target}}.zip
+          asset_name: exograph-${{matrix.target}}.zip
+          tag: ${{ github.ref }}
+          prerelease: true
 
   build-aws-lambda:
     runs-on: ubuntu-20.04
@@ -116,7 +116,7 @@ jobs:
     steps:
       - name: Install packages for building
         run: |
-          yum install -y tar gzip zip unzip gcc make cmake
+          yum install -y tar gzip zip unzip gcc make
 
           # Install protoc (the yum install version is 2.x, which is too old for grpc needed by opentelemetry)
           curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
