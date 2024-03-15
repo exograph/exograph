@@ -7,6 +7,6 @@ export function rust_impl(value) {
     return op_rust_impl(value);
 }
 
-export function async_rust_impl(value) {
+export async function async_rust_impl(value) {
     return op_async_rust_impl(value);
 }

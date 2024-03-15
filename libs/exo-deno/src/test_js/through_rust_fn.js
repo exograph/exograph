@@ -12,6 +12,6 @@ export function syncUsingRegisteredFunction(value) {
   return rust_impl(value)
 }
 
-export function asyncUsingRegisteredFunction(value) {
+export async function asyncUsingRegisteredFunction(value) {
   return async_rust_impl(value)
 }
