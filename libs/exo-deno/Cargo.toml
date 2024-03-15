@@ -10,11 +10,11 @@ doctest = false
 [features]
 default = []
 typescript-loader = ["dep:deno_ast"]
-cross = [
-  "deno_runtime/dont_create_runtime_snapshot",
-  "deno_runtime/__runtime_js_sources",
-]
-not_cross = ["deno_runtime/include_js_files_for_snapshotting"]
+
+[build-dependencies]
+deno.workspace = true
+deno_core.workspace = true
+deno_runtime = { workspace = true, features = ["include_js_files_for_snapshotting"] }
 
 [dependencies]
 thiserror.workspace = true
@@ -40,3 +40,4 @@ tempfile.workspace = true
 
 [dev-dependencies]
 ctor.workspace = true
+test-log.workspace = true

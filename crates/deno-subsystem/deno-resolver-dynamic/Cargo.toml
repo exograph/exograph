@@ -8,12 +8,6 @@ publish = false
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 deno-resolver = { path = "../deno-resolver" }
 
-[features]
-cross = ["deno-resolver/cross"]
-not_cross = ["deno-resolver/not_cross"]
-
-[dev-dependencies]
-
 [lib]
 crate-type = ["cdylib"]
 doctest = false

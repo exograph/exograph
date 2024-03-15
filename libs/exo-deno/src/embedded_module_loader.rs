@@ -14,13 +14,13 @@ use deno_core::url::Url;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
+use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
 use deno_runtime::deno_node::NodeResolver;
 use deno_runtime::permissions::PermissionsContainer;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::pin::Pin;
 use std::rc::Rc;
 
 use include_dir::Dir;
@@ -67,7 +67,8 @@ impl ModuleLoader for EmbeddedModuleLoader {
         module_specifier: &ModuleSpecifier,
         maybe_referrer: Option<&ModuleSpecifier>,
         is_dynamic: bool,
-    ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
+        _requested_module_type: RequestedModuleType,
+    ) -> deno_core::ModuleLoadResponse {
         let borrowed_map = self.source_code_map.borrow();
 
         #[allow(unused_mut)]
@@ -119,11 +120,12 @@ impl ModuleLoader for EmbeddedModuleLoader {
 
                 let module_source = ModuleSource::new_with_redirect(
                     module_type,
-                    script.into(),
+                    deno_core::ModuleSourceCode::String(script.into()),
                     &module_specifier,
                     &final_specifier,
                 );
-                async move { Ok(module_source) }.boxed_local()
+                // TODO: Can we use Sync here?
+                deno_core::ModuleLoadResponse::Async(async move { Ok(module_source) }.boxed_local())
             } else {
                 panic!()
             }
@@ -139,7 +141,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
 
             let maybe_referrer = maybe_referrer.cloned();
 
-            async move {
+            let module_load_future = async move {
                 #[cfg(feature = "typescript-loader")]
                 let loader = crate::typescript_module_loader::TypescriptLoader { embedded_dirs };
 
@@ -147,26 +149,43 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 let loader = deno_core::FsModuleLoader;
 
                 // use the configured loader to load the script from an external source
-                let module_source = loader
-                    .load(&module_specifier, maybe_referrer.as_ref(), is_dynamic)
-                    .await?;
+                let module_load_response = loader.load(
+                    &module_specifier,
+                    maybe_referrer.as_ref(),
+                    is_dynamic,
+                    _requested_module_type,
+                );
+
+                let module_source = match module_load_response {
+                    deno_core::ModuleLoadResponse::Sync(module_source) => module_source?,
+                    deno_core::ModuleLoadResponse::Async(module_load_future) => {
+                        module_load_future.await?
+                    }
+                };
 
                 // cache result for later
                 let mut map = source_code_map.borrow_mut();
 
+                let source_code = match module_source.code {
+                    deno_core::ModuleSourceCode::String(ref code) => code.as_str().to_string(),
+                    deno_core::ModuleSourceCode::Bytes(ref bytes) => {
+                        String::from_utf8(bytes.to_vec())?
+                    }
+                };
+
                 map.insert(
                     module_specifier.clone(),
                     ResolvedModule::Module(
-                        module_source.code.as_str().to_string(),
-                        module_source.module_type,
+                        source_code.as_str().to_string(),
+                        module_source.module_type.clone(),
                         module_specifier,
                         false,
                     ),
                 );
 
                 Ok(module_source)
-            }
-            .boxed_local()
+            };
+            deno_core::ModuleLoadResponse::Async(module_load_future.boxed_local())
         }
     }
 }

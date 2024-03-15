@@ -9,7 +9,7 @@
 
 ({
     executeQueryPriv: async function (query_string, variables, context_override) {
-        const result = await Deno[Deno.internal].core.opAsync("op_exograph_execute_query_priv", query_string, variables, context_override);
+        const result = await ExographExtension.executeQueryPriv(query_string, variables, context_override);
         return result;
     },
 })

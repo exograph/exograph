@@ -9,12 +9,12 @@
 
 ({
     executeQuery: async function (query_string, variables) {
-        const result = await Deno[Deno.internal].core.opAsync("op_exograph_execute_query", query_string, variables);
+        const result = await ExographExtension.executeQuery(query_string, variables);
         return result;
     },
 
     addResponseHeader: function (header, value) {
-        return Deno[Deno.internal].core.ops.op_exograph_add_header(header, value)
+        return ExographExtension.addResponseHeader(header, value)
     },
 
     setCookie: function (
@@ -51,6 +51,6 @@
             cookieString += `; SameSite=${cookie.sameSite}`
         }
 
-        return Deno[Deno.internal].core.ops.op_exograph_add_header("Set-Cookie", cookieString)
+        return ExographExtension.addResponseHeader("Set-Cookie", cookieString)
     }
 })
