@@ -33,43 +33,6 @@ globalThis.ExographExtension = ({
         return op_exograph_add_header(header, value)
     },
 
-    setCookie: function (
-        cookie
-    ) {
-        // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
-        let cookieString = `${encodeURIComponent(cookie.name)}=${encodeURIComponent(cookie.value)}`;
-
-        if (cookie.expires) {
-            cookieString += `; Expires=${cookie.expires.toUTCString()}`
-        }
-
-        if (cookie.maxAge) {
-            cookieString += `; Max-Age=${cookie.maxAge}`
-        }
-
-        if (cookie.domain) {
-            cookieString += `; Domain=${cookie.domain}`
-        }
-
-        if (cookie.path) {
-            cookieString += `; Path=${cookie.path}`
-        }
-
-        if (cookie.secure) {
-            cookieString += `; Secure`
-        }
-
-        if (cookie.httpOnly) {
-            cookieString += `; HttpOnly`
-        }
-
-        if (cookie.sameSite) {
-            cookieString += `; SameSite=${cookie.sameSite}`
-        }
-
-        return op_exograph_add_header("Set-Cookie", cookieString)
-    },
-
     executeQueryPriv: async function (query_string, variables, context_override) {
         const result = await op_exograph_execute_query_priv(query_string, variables, context_override);
         return result;
