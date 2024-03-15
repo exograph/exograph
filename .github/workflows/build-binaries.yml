@@ -1,11 +1,10 @@
 # Workflow to build binaries for all platforms, and if it is a release-tagged, upload them to the release
 # Performs:
-# - Build binaries for all platforms as well as aws-lambda (but not aarch64-apple-darwin, which is done outside of CI until Github supports this platform)
+# - Build binaries for all platforms as well as aws-lambda
 # - Run integration tests on all platforms
 # - Upload binaries to release if it is a release-tagged commit (but as a pre-release)
 
 # After this workflow is run:
-# - Build aarch64-apple-darwin binaries on a Mac and upload them to the release
 # - Using the Github UI (or the `gh` cli), promote this to a release
 # - (This, in turn, will trigger the build-docker workflow)
 
@@ -117,7 +116,7 @@ jobs:
     steps:
       - name: Install packages for building
         run: |
-          yum install -y tar gzip zip unzip gcc make
+          yum install -y tar gzip zip unzip gcc make cmake
 
           # Install protoc (the yum install version is 2.x, which is too old for grpc needed by opentelemetry)
           curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
