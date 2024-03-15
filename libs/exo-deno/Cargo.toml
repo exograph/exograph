@@ -19,7 +19,7 @@ deno_runtime = { workspace = true, features = ["include_js_files_for_snapshottin
 [dependencies]
 thiserror.workspace = true
 async-trait.workspace = true
-deno_runtime = { workspace = true }
+deno_runtime.workspace = true
 deno_core.workspace = true
 deno_fs.workspace = true
 deno_virtual_fs.workspace = true
