@@ -54,8 +54,18 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
         name: type_name.to_owned(),
         kind: OrderByParameterTypeKind::Primitive,
     };
-
     building.order_by_types.add(&type_name, primitive_type);
+
+    let vector_ordering_type_name = "VectorOrdering".to_string();
+    let vector_ordering_type = {
+        OrderByParameterType {
+            name: vector_ordering_type_name.to_owned(),
+            kind: OrderByParameterTypeKind::Vector,
+        }
+    };
+    building
+        .order_by_types
+        .add(&vector_ordering_type_name, vector_ordering_type);
 
     for (_, typ) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(ResolvedCompositeType { .. }) = typ {
@@ -79,7 +89,9 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 }
 
 fn get_parameter_type_name(entity_type_name: &str, is_primitive: bool) -> String {
-    if is_primitive {
+    if entity_type_name == "Vector" {
+        "VectorOrdering".to_string()
+    } else if is_primitive {
         "Ordering".to_string()
     } else {
         format!("{}Ordering", &entity_type_name)

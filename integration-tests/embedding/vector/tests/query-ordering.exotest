@@ -1,6 +1,6 @@
 operation: |
   query {
-      documents @unordered {
+      documents(orderBy: {contentVector: {value: "[0.9,0.8,0.1]", order: ASC}}, limit: 2) {
           id
           title
           content
@@ -22,18 +22,6 @@ response: |
           "title": "motorcycle",
           "content": "Motorcycle",
           "contentVector": "[0.8,0.5,0.1]"
-        },
-        {
-          "id": 3,
-          "title": "dog",
-          "content": "Dog",
-          "contentVector": "[0.1,0.1,0.9]"
-        },
-        {
-          "id": 4,
-          "title": "elephant",
-          "content": "Elephant",
-          "contentVector": "[0.6,0.9,0.9]"
         }
       ]
     }

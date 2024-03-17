@@ -116,6 +116,9 @@ async fn order_by_pair<'a>(
                 )),
             }
         }
+        OrderByParameterTypeKind::Vector => {
+            todo!("Vector order by not implemented")
+        }
         _ => Err(PostgresExecutionError::Validation(
             parameter_name.into(),
             "Invalid primitive order by parameter".into(),
