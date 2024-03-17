@@ -29,6 +29,8 @@ types:
     - - ~
       - Primitive: Uuid
     - - ~
+      - Primitive: Vector
+    - - ~
       - Primitive: Exograph
     - - ~
       - Primitive: ExographPriv
@@ -64,10 +66,10 @@ types:
                                                     - Identifier:
                                                         - self
                                                         - Reference:
-                                                            index: 15
+                                                            index: 16
                                                             generation: ~
                                                     - Reference:
-                                                        index: 15
+                                                        index: 16
                                                         generation: ~
                                                 - Identifier:
                                                     - role
@@ -86,10 +88,10 @@ types:
                                                     - Identifier:
                                                         - self
                                                         - Reference:
-                                                            index: 15
+                                                            index: 16
                                                             generation: ~
                                                     - Reference:
-                                                        index: 15
+                                                        index: 16
                                                         generation: ~
                                                 - Identifier:
                                                     - role
@@ -108,16 +110,16 @@ types:
                                             - Identifier:
                                                 - self
                                                 - Reference:
-                                                    index: 15
+                                                    index: 16
                                                     generation: ~
                                             - Reference:
-                                                index: 15
+                                                index: 16
                                                 generation: ~
                                         - Identifier:
                                             - doc
                                             - Defer
                                         - Reference:
-                                            index: 16
+                                            index: 17
                                             generation: ~
                                     - Identifier:
                                         - is_public
@@ -174,7 +176,6 @@ types:
     - ~
     - ~
     - ~
-    - ~
   map:
     Blob:
       index: 10
@@ -186,13 +187,13 @@ types:
       index: 3
       generation: ~
     Doc:
-      index: 16
+      index: 17
       generation: ~
     Exograph:
-      index: 12
+      index: 13
       generation: ~
     ExographPriv:
-      index: 13
+      index: 14
       generation: ~
     Float:
       index: 2
@@ -216,16 +217,19 @@ types:
       index: 5
       generation: ~
     Operation:
-      index: 14
+      index: 15
       generation: ~
     String:
       index: 4
       generation: ~
     User:
-      index: 15
+      index: 16
       generation: ~
     Uuid:
       index: 11
+      generation: ~
+    Vector:
+      index: 12
       generation: ~
 modules:
   values:
@@ -264,10 +268,10 @@ modules:
                                                       - Identifier:
                                                           - self
                                                           - Reference:
-                                                              index: 15
+                                                              index: 16
                                                               generation: ~
                                                       - Reference:
-                                                          index: 15
+                                                          index: 16
                                                           generation: ~
                                                   - Identifier:
                                                       - role
@@ -286,10 +290,10 @@ modules:
                                                       - Identifier:
                                                           - self
                                                           - Reference:
-                                                              index: 15
+                                                              index: 16
                                                               generation: ~
                                                       - Reference:
-                                                          index: 15
+                                                          index: 16
                                                           generation: ~
                                                   - Identifier:
                                                       - role
@@ -308,16 +312,16 @@ modules:
                                               - Identifier:
                                                   - self
                                                   - Reference:
-                                                      index: 15
+                                                      index: 16
                                                       generation: ~
                                               - Reference:
-                                                  index: 15
+                                                  index: 16
                                                   generation: ~
                                           - Identifier:
                                               - doc
                                               - Defer
                                           - Reference:
-                                              index: 16
+                                              index: 17
                                               generation: ~
                                       - Identifier:
                                           - is_public
@@ -368,4 +372,3 @@ modules:
     UserModule:
       index: 0
       generation: ~
-

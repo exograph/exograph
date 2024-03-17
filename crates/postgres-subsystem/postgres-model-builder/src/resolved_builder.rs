@@ -180,6 +180,9 @@ pub enum ResolvedTypeHint {
     DateTime {
         precision: usize,
     },
+    Vector {
+        size: usize,
+    },
 }
 
 impl ResolvedCompositeType {
@@ -583,12 +586,23 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
         }
     };
 
+    let size_hint = {
+        let size_annotation = field
+            .annotations
+            .get("size")
+            .map(|p| p.as_single().as_number() as usize);
+
+        // None if there is no size annotation
+        size_annotation.map(|size| ResolvedTypeHint::Vector { size })
+    };
+
     let primitive_hints = vec![
         int_hint,
         float_hint,
         number_hint,
         string_hint,
         datetime_hint,
+        size_hint,
     ];
 
     let explicit_dbtype_hint = field

@@ -53,6 +53,9 @@ pub enum ColumnTypeSpec {
     Json,
     Blob,
     Uuid,
+    Vector {
+        size: usize,
+    },
     Array {
         typ: Box<ColumnTypeSpec>,
     },
@@ -101,6 +104,7 @@ impl ColumnSpec {
                 let row = rows.first().unwrap();
 
                 let mut sql_type: String = row.get("format_type");
+
                 let dims = {
                     // depending on the version of postgres, the type of `attndims` is either `i16`
                     // or `i32` (postgres type is `int2`` or `int4``), so try both
@@ -353,6 +357,12 @@ impl ColumnTypeSpec {
     pub fn from_string(s: &str) -> Result<ColumnTypeSpec, DatabaseError> {
         let s = s.to_uppercase();
 
+        let vector_re = Regex::new(r"VECTOR\((\d+)\)").unwrap();
+        if let Some(captures) = vector_re.captures(&s) {
+            let size = captures.get(1).unwrap().as_str().parse().unwrap();
+            return Ok(ColumnTypeSpec::Vector { size });
+        }
+
         match s.find('[') {
             // If the type contains `[`, then it's an array type
             Some(idx) => {
@@ -481,6 +491,7 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Json => PhysicalColumnType::Json,
             ColumnTypeSpec::Blob => PhysicalColumnType::Blob,
             ColumnTypeSpec::Uuid => PhysicalColumnType::Uuid,
+            ColumnTypeSpec::Vector { size } => PhysicalColumnType::Vector { size: *size },
             ColumnTypeSpec::Array { typ } => PhysicalColumnType::Array {
                 typ: Box::new(typ.to_database_type()),
             },
@@ -565,6 +576,7 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Json => ("Json".to_string(), "".to_string()),
             ColumnTypeSpec::Blob => ("Blob".to_string(), "".to_string()),
             ColumnTypeSpec::Uuid => ("Uuid".to_string(), "".to_string()),
+            ColumnTypeSpec::Vector { size } => ("Vector".to_string(), format!(" @size({size})")),
 
             ColumnTypeSpec::Array { typ } => {
                 let (data_type, annotations) = typ.to_model();
@@ -711,6 +723,12 @@ impl ColumnTypeSpec {
                 post_statements: vec![],
             },
 
+            Self::Vector { size } => SchemaStatement {
+                statement: format!("Vector({size})"),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
             Self::Array { typ } => {
                 // 'unwrap' nested arrays all the way to the underlying primitive type
 
@@ -785,6 +803,7 @@ impl ColumnTypeSpec {
             PhysicalColumnType::Json => ColumnTypeSpec::Json,
             PhysicalColumnType::Blob => ColumnTypeSpec::Blob,
             PhysicalColumnType::Uuid => ColumnTypeSpec::Uuid,
+            PhysicalColumnType::Vector { size } => ColumnTypeSpec::Vector { size },
             PhysicalColumnType::Array { typ } => ColumnTypeSpec::Array {
                 typ: Box::new(ColumnTypeSpec::from_physical(*typ)),
             },

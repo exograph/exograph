@@ -932,6 +932,12 @@ fn determine_column_type<'a>(
                 },
                 _ => panic!(),
             },
+
+            ResolvedTypeHint::Vector { size } => {
+                assert!(matches!(pt, PrimitiveType::Vector));
+
+                PhysicalColumnType::Vector { size: *size }
+            }
         }
     } else {
         match pt {
@@ -959,6 +965,7 @@ fn determine_column_type<'a>(
             PrimitiveType::Json => PhysicalColumnType::Json,
             PrimitiveType::Blob => PhysicalColumnType::Blob,
             PrimitiveType::Uuid => PhysicalColumnType::Uuid,
+            PrimitiveType::Vector => PhysicalColumnType::Vector { size: 1536 },
             PrimitiveType::Array(_)
             | PrimitiveType::Exograph
             | PrimitiveType::ExographPriv

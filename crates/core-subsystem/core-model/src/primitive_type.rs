@@ -25,6 +25,7 @@ pub enum PrimitiveType {
     Json,
     Blob,
     Uuid,
+    Vector,
     // TODO: This should not be a primitive type, but a type with modifier or some variation of it
     /// An array version of a primitive type.
     Array(Box<PrimitiveType>),
@@ -55,6 +56,7 @@ impl PrimitiveType {
             PrimitiveType::Json => "Json".to_owned(),
             PrimitiveType::Blob => "Blob".to_owned(),
             PrimitiveType::Uuid => "Uuid".to_owned(),
+            PrimitiveType::Vector => "Vector".to_owned(),
             PrimitiveType::Exograph => "Exograph".to_owned(),
             PrimitiveType::ExographPriv => "ExographPriv".to_owned(),
             PrimitiveType::Interception(name) => name.to_owned(),

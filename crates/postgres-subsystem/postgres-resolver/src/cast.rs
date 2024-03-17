@@ -18,6 +18,7 @@ use exo_sql::{
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParamContainer,
 };
 use pg_bigdecimal::{BigDecimal, PgNumeric};
+use pgvector::Vector;
 
 use std::str::FromStr;
 
@@ -147,6 +148,23 @@ fn cast_string(
             };
 
             SQLParamContainer::new(decimal)
+        }
+
+        PhysicalColumnType::Vector { size } => {
+            let parsed: Vec<_> = serde_json::from_str(string).map_err(|e| {
+                CastError::Generic(format!("Could not parse {string} as a vector {e}"))
+            })?;
+
+            if parsed.len() != *size {
+                return Err(CastError::Generic(format!(
+                    "Expected vector of size {size}, got {}",
+                    parsed.len()
+                )));
+            }
+
+            let vector = Vector::from(parsed);
+
+            SQLParamContainer::new(vector)
         }
 
         PhysicalColumnType::Timestamp { .. }

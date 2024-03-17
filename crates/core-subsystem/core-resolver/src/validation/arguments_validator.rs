@@ -244,6 +244,7 @@ impl<'a> ArgumentValidator<'a> {
                 "LocalDateTime",
                 "Instant",
                 "Uuid",
+                "Vector",
                 "Blob",
                 "Json",
             ],

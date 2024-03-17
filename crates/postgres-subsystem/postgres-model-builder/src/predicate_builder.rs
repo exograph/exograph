@@ -303,6 +303,8 @@ lazy_static! {
             Some(vec!["eq", "neq"])
         );
 
+        supported_operators.insert("Vector", Some(vec!["similar"]));
+
         supported_operators.insert("Exograph", None);
         supported_operators.insert("ExographPriv", None);
         supported_operators.insert("Operation", None); // TODO: Re-examine if this is the best way (for both injected and interception)

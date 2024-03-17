@@ -159,6 +159,15 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 },
             ),
             (
+                "size",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: false,
+                    single_params: true,
+                    mapped_params: None,
+                },
+            ),
+            (
                 "doublePrecision",
                 AnnotationSpec {
                     targets: &[AnnotationTarget::Field],
