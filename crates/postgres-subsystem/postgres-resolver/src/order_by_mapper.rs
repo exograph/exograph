@@ -9,6 +9,7 @@
 
 use async_trait::async_trait;
 use futures::future::join_all;
+use pgvector::Vector;
 
 use crate::{
     auth_util::check_retrieve_access, column_path_util::to_column_path,
@@ -16,7 +17,10 @@ use crate::{
 };
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
-use exo_sql::{AbstractOrderBy, AbstractPredicate, Ordering, PhysicalColumnPath};
+use exo_sql::{
+    AbstractOrderBy, AbstractOrderByExpr, AbstractPredicate, ColumnPath, Ordering,
+    PhysicalColumnPath, SQLParamContainer, VectorDistanceOperator,
+};
 use postgres_model::{
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
     subsystem::PostgresSubsystem,
@@ -88,7 +92,7 @@ async fn order_by_pair<'a>(
     subsystem: &'a PostgresSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractOrderBy, PostgresExecutionError> {
-    let parameter = match &typ.kind {
+    match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
             match parameters.iter().find(|p| p.name == parameter_name) {
                 Some(parameter) => {
@@ -108,7 +112,68 @@ async fn order_by_pair<'a>(
                         return Err(PostgresExecutionError::Authorization);
                     }
 
-                    Ok(parameter)
+                    let base_param_type =
+                        &subsystem.order_by_types[parameter.typ.innermost().type_id];
+
+                    // If this is a leaf node ({something: ASC} kind), then resolve the ordering. If not, then recurse with a new parent column path.
+                    let new_column_path =
+                        to_column_path(&parent_column_path, &parameter.column_path_link);
+
+                    match &base_param_type.kind {
+                        OrderByParameterTypeKind::Primitive => {
+                            let new_column_path = new_column_path.unwrap();
+                            ordering(parameter_value).map(|ordering| {
+                                AbstractOrderBy(vec![(
+                                    AbstractOrderByExpr::Column(new_column_path),
+                                    ordering,
+                                )])
+                            })
+                        }
+                        OrderByParameterTypeKind::Vector => match parameter_value {
+                            Val::Object(elems) => {
+                                let new_column_path = new_column_path.unwrap();
+
+                                // These unwraps are safe, since the validation of the parameter type guarantees that these keys exist.
+                                let value = elems.get("value").unwrap();
+                                let order = elems.get("order").unwrap();
+
+                                let value_vec: Vec<f32> = match value {
+                                    Val::String(s) => serde_json::from_str(s).map_err(|e| {
+                                        PostgresExecutionError::Generic(e.to_string())
+                                    }),
+                                    _ => Err(PostgresExecutionError::Validation(
+                                        parameter_name.into(),
+                                        "Invalid vector order by parameter".into(),
+                                    )),
+                                }?;
+
+                                ordering(order).map(|ordering| {
+                                    AbstractOrderBy(vec![(
+                                        AbstractOrderByExpr::VectorDistance(
+                                            ColumnPath::Physical(new_column_path),
+                                            ColumnPath::Param(SQLParamContainer::new(
+                                                Vector::from(value_vec),
+                                            )),
+                                            VectorDistanceOperator::Cosine,
+                                        ),
+                                        ordering,
+                                    )])
+                                })
+                            }
+                            _ => Err(PostgresExecutionError::Validation(
+                                parameter_name.into(),
+                                "Invalid vector order by parameter".into(),
+                            )),
+                        },
+                        OrderByParameterTypeKind::Composite { .. } => {
+                            OrderByParameterInput {
+                                param: parameter,
+                                parent_column_path: new_column_path,
+                            }
+                            .to_sql(parameter_value, subsystem, request_context)
+                            .await
+                        }
+                    }
                 }
                 None => Err(PostgresExecutionError::Validation(
                     parameter_name.into(),
@@ -116,29 +181,10 @@ async fn order_by_pair<'a>(
                 )),
             }
         }
-        OrderByParameterTypeKind::Vector => {
-            todo!("Vector order by not implemented")
-        }
         _ => Err(PostgresExecutionError::Validation(
             parameter_name.into(),
-            "Invalid primitive order by parameter".into(),
+            "Invalid primitive or vector order by parameter".into(),
         )),
-    }?;
-
-    let base_param_type = &subsystem.order_by_types[parameter.typ.innermost().type_id];
-
-    // If this is a leaf node ({something: ASC} kind), then resolve the ordering. If not, then recurse with a new parent column path.
-    let new_column_path = to_column_path(&parent_column_path, &parameter.column_path_link);
-    if matches!(base_param_type.kind, OrderByParameterTypeKind::Primitive) {
-        let new_column_path = new_column_path.unwrap();
-        ordering(parameter_value).map(|ordering| AbstractOrderBy(vec![(new_column_path, ordering)]))
-    } else {
-        OrderByParameterInput {
-            param: parameter,
-            parent_column_path: new_column_path,
-        }
-        .to_sql(parameter_value, subsystem, request_context)
-        .await
     }
 }
 

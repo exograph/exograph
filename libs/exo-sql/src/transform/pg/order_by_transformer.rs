@@ -8,9 +8,10 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    sql::order::{OrderBy, OrderByElement},
+    asql::order_by::AbstractOrderByExpr,
+    sql::order::{OrderBy, OrderByElement, OrderByElementExpr, VectorDistanceOperand},
     transform::transformer::OrderByTransformer,
-    AbstractOrderBy,
+    AbstractOrderBy, ColumnPath,
 };
 
 use super::Postgres;
@@ -28,9 +29,29 @@ impl OrderByTransformer for Postgres {
             order_by
                 .0
                 .iter()
-                .map(|(path, ordering)| {
-                    let (column_id, table_alias) = (path.leaf_column(), path.alias());
-                    OrderByElement::new(column_id, *ordering, table_alias)
+                .map(|(expr, ordering)| match expr {
+                    AbstractOrderByExpr::Column(path) => {
+                        let (column_id, table_alias) = (path.leaf_column(), path.alias());
+                        OrderByElement::new(column_id, *ordering, table_alias)
+                    }
+                    AbstractOrderByExpr::VectorDistance(lhs, rhs, op) => {
+                        fn to_column(column_path: &ColumnPath) -> VectorDistanceOperand {
+                            match column_path {
+                                ColumnPath::Physical(path) => {
+                                    VectorDistanceOperand::PhysicalColumn(path.leaf_column())
+                                }
+                                ColumnPath::Param(value) => {
+                                    VectorDistanceOperand::Param(value.clone())
+                                }
+                                _ => panic!("Expected physical column path or a parameter"),
+                            }
+                        }
+                        let lhs_column = to_column(lhs);
+                        let rhs_column = to_column(rhs);
+                        let expr = OrderByElementExpr::VectorDistance(lhs_column, rhs_column, *op);
+
+                        OrderByElement(expr, *ordering, None)
+                    }
                 })
                 .collect(),
         )

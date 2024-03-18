@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{ColumnId, Database};
+use crate::{ColumnId, Database, SQLParamContainer};
 
 use super::{ExpressionBuilder, SQLBuilder};
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -16,27 +16,87 @@ pub enum Ordering {
     Desc,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct OrderByElement(pub ColumnId, pub Ordering, pub Option<String>);
+#[derive(Debug, PartialEq)]
+pub struct OrderByElement(pub OrderByElementExpr, pub Ordering, pub Option<String>);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
+pub enum VectorDistanceOperand {
+    PhysicalColumn(ColumnId),
+    Param(SQLParamContainer),
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum VectorDistanceOperator {
+    L2,
+    Cosine,
+    InnerProduct,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum OrderByElementExpr {
+    Column(ColumnId),
+    VectorDistance(
+        VectorDistanceOperand,
+        VectorDistanceOperand,
+        VectorDistanceOperator,
+    ),
+}
+
+#[derive(Debug, PartialEq)]
 pub struct OrderBy(pub Vec<OrderByElement>);
 
 impl OrderByElement {
     pub fn new(column_id: ColumnId, ordering: Ordering, table_alias: Option<String>) -> Self {
-        Self(column_id, ordering, table_alias)
+        Self(OrderByElementExpr::Column(column_id), ordering, table_alias)
     }
 }
 
 impl ExpressionBuilder for OrderByElement {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
-        let column = self.0.get_column(database);
-        match self.2 {
-            Some(ref table_alias) => {
-                builder.push_column_with_table_alias(&column.name, table_alias);
+        match &self.0 {
+            OrderByElementExpr::Column(column_id) => {
+                let column = column_id.get_column(database);
+                match self.2 {
+                    Some(ref table_alias) => {
+                        builder.push_column_with_table_alias(&column.name, table_alias);
+                    }
+                    None => {
+                        column.build(database, builder);
+                    }
+                }
             }
-            None => {
-                column.build(database, builder);
+            OrderByElementExpr::VectorDistance(lhs, rhs, op) => {
+                fn push_column(
+                    operand: &VectorDistanceOperand,
+                    table_alias: Option<&String>,
+                    database: &Database,
+                    builder: &mut SQLBuilder,
+                ) {
+                    match operand {
+                        VectorDistanceOperand::PhysicalColumn(column_id) => match table_alias {
+                            Some(ref table_alias) => {
+                                builder.push_column_with_table_alias(
+                                    &column_id.get_column(database).name,
+                                    table_alias,
+                                );
+                            }
+                            None => {
+                                column_id.get_column(database).build(database, builder);
+                            }
+                        },
+                        VectorDistanceOperand::Param(param) => {
+                            builder.push_param(param.param());
+                        }
+                    }
+                }
+
+                push_column(lhs, self.2.as_ref(), database, builder);
+                match op {
+                    VectorDistanceOperator::L2 => builder.push_str("<->"),
+                    VectorDistanceOperator::Cosine => builder.push_str("<=>"),
+                    VectorDistanceOperator::InnerProduct => builder.push_str("<#>"),
+                }
+                push_column(rhs, self.2.as_ref(), database, builder);
             }
         }
         builder.push_space();

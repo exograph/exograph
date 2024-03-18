@@ -156,6 +156,7 @@ mod tests {
     use crate::{
         asql::{
             column_path::{ColumnPath, PhysicalColumnPath},
+            order_by::AbstractOrderByExpr,
             predicate::AbstractPredicate,
             selection::{
                 AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement,
@@ -536,7 +537,10 @@ mod tests {
                         SelectionElement::Physical(concerts_id_column),
                     )]),
                     predicate: Predicate::True,
-                    order_by: Some(AbstractOrderBy(vec![(concert_name_path, Ordering::Asc)])),
+                    order_by: Some(AbstractOrderBy(vec![(
+                        AbstractOrderByExpr::Column(concert_name_path),
+                        Ordering::Asc,
+                    )])),
                     offset: None,
                     limit: None,
                 };
@@ -613,7 +617,10 @@ mod tests {
                         SelectionElement::Physical(concerts_id_column),
                     )]),
                     predicate: Predicate::True,
-                    order_by: Some(AbstractOrderBy(vec![(venues_name_path, Ordering::Asc)])),
+                    order_by: Some(AbstractOrderBy(vec![(
+                        AbstractOrderByExpr::Column(venues_name_path),
+                        Ordering::Asc,
+                    )])),
                     offset: None,
                     limit: None,
                 };

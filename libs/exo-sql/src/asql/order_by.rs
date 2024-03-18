@@ -7,16 +7,37 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::sql::order::Ordering;
+use crate::{
+    sql::order::{Ordering, VectorDistanceOperator},
+    ColumnPath,
+};
 
 use super::column_path::PhysicalColumnPath;
 
 /// Represents an abstract order-by clause
 #[derive(Debug)]
-pub struct AbstractOrderBy(pub Vec<(PhysicalColumnPath, Ordering)>);
+pub struct AbstractOrderBy(pub Vec<(AbstractOrderByExpr, Ordering)>);
+
+#[derive(Debug)]
+pub enum AbstractOrderByExpr {
+    Column(PhysicalColumnPath),
+    VectorDistance(ColumnPath, ColumnPath, VectorDistanceOperator),
+}
 
 impl AbstractOrderBy {
     pub fn column_paths(&self) -> Vec<&PhysicalColumnPath> {
-        self.0.iter().map(|(path, _)| path).collect()
+        self.0
+            .iter()
+            .flat_map(|(expr, _)| match expr {
+                AbstractOrderByExpr::Column(path) => vec![path],
+                AbstractOrderByExpr::VectorDistance(lhs, rhs, _) => [lhs, rhs]
+                    .iter()
+                    .filter_map(|path| match path {
+                        ColumnPath::Physical(path) => Some(path),
+                        _ => None,
+                    })
+                    .collect(),
+            })
+            .collect()
     }
 }
