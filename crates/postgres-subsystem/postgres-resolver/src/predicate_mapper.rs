@@ -269,6 +269,29 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                     }
                 }
             }
+            PredicateParameterTypeKind::Vector => {
+                let value = argument.get("value").unwrap();
+
+                let value_vec: Vec<f32> = match value {
+                    Val::String(s) => serde_json::from_str(s)
+                        .map_err(|e| PostgresExecutionError::Generic(e.to_string())),
+                    _ => Err(PostgresExecutionError::Validation(
+                        "value".into(),
+                        "Invalid vector order by parameter".into(),
+                    )),
+                }?;
+                let distance = argument.get("distance").unwrap();
+
+                // subsystem.predicate_types.get(i)
+
+                // operands(param, distance, parent_column_path, subsystem);
+
+                todo!(
+                    "Vector type not supported yet. Argument: {:?} {:?}",
+                    value_vec,
+                    distance
+                )
+            }
         }
     }
 

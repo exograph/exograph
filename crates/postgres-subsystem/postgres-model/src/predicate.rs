@@ -8,7 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use crate::{access::Access, subsystem::PostgresSubsystem};
-use async_graphql_parser::types::{InputObjectType, Type, TypeDefinition, TypeKind};
+use async_graphql_parser::types::{
+    InputObjectType, InputValueDefinition, Type, TypeDefinition, TypeKind,
+};
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
@@ -68,6 +70,7 @@ impl Named for PredicateParameterTypeWrapper {
 pub enum PredicateParameterTypeKind {
     ImplicitEqual,                     // {id: 3}
     Operator(Vec<PredicateParameter>), // {lt: ..,gt: ..} such as IntFilter
+    Vector, // {similar: <vector-value>, distance: {<operator such as lt/gt>: <value>}}
     Composite {
         field_params: Vec<PredicateParameter>, // {where: {id: .., name: ..}} such as AccountFilter
         logical_op_params: Vec<PredicateParameter>, // logical operator predicates like `and: [{name: ..}, {id: ..}]`
@@ -128,6 +131,35 @@ impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
                 directives: vec![],
                 kind: TypeKind::Scalar,
             },
+            PredicateParameterTypeKind::Vector => {
+                let fields = vec![
+                    InputValueDefinition {
+                        description: None,
+                        name: default_positioned_name("value"),
+                        ty: default_positioned(Type::new("Vector").unwrap()),
+                        default_value: None,
+                        directives: vec![],
+                    },
+                    InputValueDefinition {
+                        description: None,
+                        name: default_positioned_name("distance"),
+                        ty: default_positioned(Type::new("FloatFilter").unwrap()),
+                        default_value: None,
+                        directives: vec![],
+                    },
+                ]
+                .into_iter()
+                .map(default_positioned)
+                .collect();
+
+                TypeDefinition {
+                    extend: false,
+                    description: None,
+                    name: default_positioned_name(&self.name),
+                    directives: vec![],
+                    kind: TypeKind::InputObject(InputObjectType { fields }),
+                }
+            }
         }
     }
 }

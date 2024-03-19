@@ -98,6 +98,13 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
             }
         }
     }
+    building.predicate_types.add(
+        "VectorFilterArg",
+        PredicateParameterType {
+            name: "VectorFilterArg".to_string(),
+            kind: PredicateParameterTypeKind::Vector,
+        },
+    );
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
@@ -303,7 +310,7 @@ lazy_static! {
             Some(vec!["eq", "neq"])
         );
 
-        supported_operators.insert("Vector", Some(vec!["similar"]));
+        supported_operators.insert("Vector", Some(vec!["similar", "eq", "neq"]));
 
         supported_operators.insert("Exograph", None);
         supported_operators.insert("ExographPriv", None);
@@ -318,15 +325,18 @@ fn create_operator_filter_type_kind(
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     let parameter_constructor = |operator: &&str| {
-        let predicate_param_type_id = building
-            .predicate_types
-            .get_id(&primitive_type.name)
-            .unwrap();
+        // For Vector's similar operation, we need to use the VectorFilterArg type (which has two fields: value and distance)
+        let operand_type = if operator == &"similar" && primitive_type.name == "Vector" {
+            "VectorFilterArg"
+        } else {
+            primitive_type.name.as_str()
+        };
+        let predicate_param_type_id = building.predicate_types.get_id(operand_type).unwrap();
 
         PredicateParameter {
             name: operator.to_string(),
             typ: FieldType::Optional(Box::new(FieldType::Plain(PredicateParameterTypeWrapper {
-                name: primitive_type.name.to_owned(),
+                name: operand_type.to_owned(),
                 type_id: predicate_param_type_id,
             }))),
             column_path_link: None,
