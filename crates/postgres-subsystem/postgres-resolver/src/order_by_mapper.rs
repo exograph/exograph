@@ -135,7 +135,9 @@ async fn order_by_pair<'a>(
 
                                 // These unwraps are safe, since the validation of the parameter type guarantees that these keys exist.
                                 let value = elems.get("value").unwrap();
-                                let order = elems.get("order").unwrap();
+
+                                let default_order = Val::String("ASC".to_owned());
+                                let order = elems.get("order").unwrap_or(&default_order);
 
                                 let value_vec: Vec<f32> = match value {
                                     Val::String(s) => serde_json::from_str(s).map_err(|e| {

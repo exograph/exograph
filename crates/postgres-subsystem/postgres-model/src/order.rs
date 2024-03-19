@@ -11,8 +11,8 @@ use crate::{access::Access, subsystem::PostgresSubsystem};
 
 use async_graphql_parser::{
     types::{
-        EnumType, EnumValueDefinition, InputObjectType, InputValueDefinition, Type, TypeDefinition,
-        TypeKind,
+        BaseType, EnumType, EnumValueDefinition, InputObjectType, InputValueDefinition, Type,
+        TypeDefinition, TypeKind,
     },
     Pos, Positioned,
 };
@@ -134,7 +134,10 @@ impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
                         name: default_positioned_name("order"),
                         directives: vec![],
                         default_value: None,
-                        ty: default_positioned(Type::new("Ordering").unwrap()),
+                        ty: default_positioned(Type {
+                            base: BaseType::Named(Name::new("Ordering")),
+                            nullable: true,
+                        }),
                     },
                 ]
                 .into_iter()
