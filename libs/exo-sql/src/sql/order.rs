@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use super::vector::VectorDistanceOperator;
 use crate::{ColumnId, Database, SQLParamContainer};
 
 use super::{ExpressionBuilder, SQLBuilder};
@@ -23,13 +24,6 @@ pub struct OrderByElement(pub OrderByElementExpr, pub Ordering, pub Option<Strin
 pub enum VectorDistanceOperand {
     PhysicalColumn(ColumnId),
     Param(SQLParamContainer),
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum VectorDistanceOperator {
-    L2,
-    Cosine,
-    InnerProduct,
 }
 
 #[derive(Debug, PartialEq)]
@@ -91,11 +85,9 @@ impl ExpressionBuilder for OrderByElement {
                 }
 
                 push_column(lhs, self.2.as_ref(), database, builder);
-                match op {
-                    VectorDistanceOperator::L2 => builder.push_str("<->"),
-                    VectorDistanceOperator::Cosine => builder.push_str("<=>"),
-                    VectorDistanceOperator::InnerProduct => builder.push_str("<#>"),
-                }
+                builder.push_space();
+                op.build(database, builder);
+                builder.push_space();
                 push_column(rhs, self.2.as_ref(), database, builder);
             }
         }

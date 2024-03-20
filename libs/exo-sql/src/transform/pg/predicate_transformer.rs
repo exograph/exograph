@@ -97,6 +97,20 @@ fn to_join_predicate(
             ConcretePredicate::JsonMatchAllKeys(compute_leaf_column(l), compute_leaf_column(r))
         }
 
+        AbstractPredicate::VectorDistance(
+            c1,
+            c2,
+            distance_op,
+            numeric_comparator_op,
+            threshold,
+        ) => ConcretePredicate::VectorDistance(
+            compute_leaf_column(c1),
+            compute_leaf_column(c2),
+            *distance_op,
+            *numeric_comparator_op,
+            compute_leaf_column(threshold),
+        ),
+
         AbstractPredicate::And(l, r) => ConcretePredicate::and(
             to_join_predicate(l, selection_level, database),
             to_join_predicate(r, selection_level, database),
@@ -298,6 +312,9 @@ fn attempt_subselect_predicate(
         AbstractPredicate::JsonMatchAllKeys(l, r) => {
             binary_operator(l, r, AbstractPredicate::JsonMatchAllKeys)
         }
+
+        AbstractPredicate::VectorDistance(_, _, _, _, _) => None,
+
         AbstractPredicate::And(l, r) => logical_binary_op(l, r, AbstractPredicate::And),
         AbstractPredicate::Or(l, r) => logical_binary_op(l, r, AbstractPredicate::Or),
         AbstractPredicate::Not(p) => attempt_subselect_predicate(p)

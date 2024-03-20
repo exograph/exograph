@@ -28,6 +28,8 @@ values:
   - - ~
     - Primitive: Uuid
   - - ~
+    - Primitive: Vector
+  - - ~
     - Primitive: Exograph
   - - ~
     - Primitive: ExographPriv
@@ -117,10 +119,10 @@ values:
                                 - Identifier:
                                     - AuthContext
                                     - Reference:
-                                        index: 15
+                                        index: 16
                                         generation: ~
                                 - Reference:
-                                    index: 15
+                                    index: 16
                                     generation: ~
                             - Identifier:
                                 - role
@@ -137,10 +139,10 @@ values:
                           - Identifier:
                               - self
                               - Reference:
-                                  index: 16
+                                  index: 17
                                   generation: ~
                           - Reference:
-                              index: 16
+                              index: 17
                               generation: ~
                       - Identifier:
                           - public
@@ -285,10 +287,9 @@ values:
   - ~
   - ~
   - ~
-  - ~
 map:
   Artist:
-    index: 17
+    index: 18
     generation: ~
   Blob:
     index: 10
@@ -297,16 +298,16 @@ map:
     index: 0
     generation: ~
   Concert:
-    index: 15
+    index: 16
     generation: ~
   Decimal:
     index: 3
     generation: ~
   Exograph:
-    index: 12
+    index: 13
     generation: ~
   ExographPriv:
-    index: 13
+    index: 14
     generation: ~
   Float:
     index: 2
@@ -330,7 +331,7 @@ map:
     index: 5
     generation: ~
   Operation:
-    index: 14
+    index: 15
     generation: ~
   String:
     index: 4
@@ -338,7 +339,9 @@ map:
   Uuid:
     index: 11
     generation: ~
-  Venue:
-    index: 16
+  Vector:
+    index: 12
     generation: ~
-
+  Venue:
+    index: 17
+    generation: ~

@@ -13,9 +13,11 @@ use futures::{StreamExt, TryStreamExt};
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
-    AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, PhysicalColumnPath, Predicate,
+    AbstractPredicate, CaseSensitivity, ColumnPath, NumericComparator, ParamEquality,
+    PhysicalColumnPath, Predicate, SQLParamContainer, VectorDistanceOperator,
 };
 use futures::future::try_join_all;
+use pgvector::Vector;
 use postgres_model::{
     predicate::{PredicateParameter, PredicateParameterTypeKind},
     subsystem::PostgresSubsystem,
@@ -23,7 +25,7 @@ use postgres_model::{
 
 use crate::{
     auth_util::check_retrieve_access,
-    cast::literal_column_path,
+    cast::{cast_value, literal_column_path},
     column_path_util::to_column_path,
     sql_mapper::{extract_and_map, SQLMapper},
     util::{get_argument_field, Arguments},
@@ -92,13 +94,81 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                     })
             }
             PredicateParameterTypeKind::Operator(parameters) => {
-                let predicate =
-                    parameters
-                        .iter()
-                        .fold(AbstractPredicate::True, |acc, parameter| {
-                            let arg = get_argument_field(argument, &parameter.name);
-                            let new_predicate = match arg {
-                                Some(op_value) => {
+                parameters
+                    .iter()
+                    .try_fold(AbstractPredicate::True, |acc, parameter| {
+                        let arg = get_argument_field(argument, &parameter.name);
+                        let new_predicate = match arg {
+                            Some(op_value) => {
+                                let arg_parameter_type =
+                                    &subsystem.predicate_types[parameter.typ.innermost().type_id];
+
+                                if matches!(
+                                    arg_parameter_type.kind,
+                                    PredicateParameterTypeKind::Vector
+                                ) {
+                                    let value = op_value.get("value").unwrap();
+                                    let value_vec: Vec<f32> = match value {
+                                        Val::String(s) => serde_json::from_str(s).map_err(|e| {
+                                            PostgresExecutionError::Generic(e.to_string())
+                                        }),
+                                        _ => Err(PostgresExecutionError::Validation(
+                                            "value".into(),
+                                            "Invalid vector order by parameter".into(),
+                                        )),
+                                    }
+                                    .unwrap();
+
+                                    let distance = op_value.get("distance").unwrap();
+                                    match distance {
+                                        Val::Object(map) => {
+                                            assert!(map.len() == 1);
+                                            let operator = map.keys().next().unwrap();
+                                            let threshold = map.values().next().unwrap();
+
+                                            let distance_comparator = match operator.as_str() {
+                                                "eq" => Ok(NumericComparator::Eq),
+                                                "neq" => Ok(NumericComparator::Neq),
+                                                "lt" => Ok(NumericComparator::Lt),
+                                                "lte" => Ok(NumericComparator::Lte),
+                                                "gt" => Ok(NumericComparator::Gt),
+                                                "gte" => Ok(NumericComparator::Gte),
+                                                _ => Err(PostgresExecutionError::Validation(
+                                                    "distance".into(),
+                                                    "Invalid distance operator".into(),
+                                                )),
+                                            }?;
+
+                                            let threshold = cast_value(
+                                                threshold,
+                                                &exo_sql::PhysicalColumnType::Float {
+                                                    bits: exo_sql::FloatBits::_53,
+                                                },
+                                            )?
+                                            .unwrap();
+                                            let target_vector =
+                                                SQLParamContainer::new(Vector::from(value_vec));
+
+                                            Ok(AbstractPredicate::VectorDistance(
+                                                ColumnPath::Physical(
+                                                    to_column_path(
+                                                        &self.parent_column_path,
+                                                        &self.param.column_path_link,
+                                                    )
+                                                    .unwrap(),
+                                                ),
+                                                ColumnPath::Param(target_vector),
+                                                VectorDistanceOperator::Cosine,
+                                                distance_comparator,
+                                                ColumnPath::Param(threshold),
+                                            ))
+                                        }
+                                        _ => Err(PostgresExecutionError::Validation(
+                                            "distance".into(),
+                                            "Invalid distance parameter".into(),
+                                        )),
+                                    }
+                                } else {
                                     let (op_key_column, op_value_column) = operands(
                                         self.param,
                                         op_value,
@@ -107,19 +177,19 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     )
                                     .expect("Could not get operands");
 
-                                    predicate_from_name(
+                                    Ok(predicate_from_name(
                                         &parameter.name,
                                         op_key_column,
                                         op_value_column,
-                                    )
+                                    ))
                                 }
-                                None => AbstractPredicate::True,
-                            };
+                            }
+                            None => Ok(AbstractPredicate::True),
+                        };
 
-                            AbstractPredicate::and(acc, new_predicate)
-                        });
-
-                Ok(predicate)
+                        new_predicate
+                            .map(|new_predicate| AbstractPredicate::and(acc, new_predicate))
+                    })
             }
             PredicateParameterTypeKind::Composite {
                 field_params,
@@ -269,29 +339,10 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                     }
                 }
             }
-            PredicateParameterTypeKind::Vector => {
-                let value = argument.get("value").unwrap();
-
-                let value_vec: Vec<f32> = match value {
-                    Val::String(s) => serde_json::from_str(s)
-                        .map_err(|e| PostgresExecutionError::Generic(e.to_string())),
-                    _ => Err(PostgresExecutionError::Validation(
-                        "value".into(),
-                        "Invalid vector order by parameter".into(),
-                    )),
-                }?;
-                let distance = argument.get("distance").unwrap();
-
-                // subsystem.predicate_types.get(i)
-
-                // operands(param, distance, parent_column_path, subsystem);
-
-                todo!(
-                    "Vector type not supported yet. Argument: {:?} {:?}",
-                    value_vec,
-                    distance
-                )
-            }
+            PredicateParameterTypeKind::Vector => Err(PostgresExecutionError::Validation(
+                self.param.name.clone(),
+                "Vector argument not expected in this context".into(),
+            )),
         }
     }
 

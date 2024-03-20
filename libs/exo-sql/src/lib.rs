@@ -69,10 +69,11 @@ pub use sql::{
     },
     limit::Limit,
     offset::Offset,
-    order::{Ordering, VectorDistanceOperator},
+    order::Ordering,
     physical_column::{ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
     physical_table::{PhysicalIndex, PhysicalTable, PhysicalTableName},
-    predicate::{CaseSensitivity, ParamEquality, Predicate},
+    predicate::{CaseSensitivity, NumericComparator, ParamEquality, Predicate},
     relation::{ManyToOne, ManyToOneId, OneToMany, OneToManyId, RelationId},
+    vector::VectorDistanceOperator,
     SQLBytes, SQLParam, SQLParamContainer,
 };

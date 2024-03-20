@@ -36,6 +36,9 @@ impl AbstractPredicate {
             | AbstractPredicate::JsonMatchKey(l, r)
             | AbstractPredicate::JsonMatchAnyKey(l, r)
             | AbstractPredicate::JsonMatchAllKeys(l, r) => vec![l, r],
+
+            AbstractPredicate::VectorDistance(c1, c2, _, _, c3) => vec![c1, c2, c3],
+
             AbstractPredicate::And(l, r) | AbstractPredicate::Or(l, r) => {
                 let mut result = l.column_paths();
                 result.extend(r.column_paths());

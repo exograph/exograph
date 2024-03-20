@@ -68,7 +68,7 @@ pub(crate) fn literal_column_path(
         .map_err(PostgresExecutionError::CastError)
 }
 
-fn cast_value(
+pub(crate) fn cast_value(
     value: &Val,
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<SQLParamContainer>, CastError> {
