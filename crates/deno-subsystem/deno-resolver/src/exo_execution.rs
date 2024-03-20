@@ -137,7 +137,7 @@ deno_core::extension!(
     esm = [
         dir "extension",
         "__init.js",
-         "exograph:ops" = "exograph.js",
+         "exograph:ops.js" = "exograph.js",
     ]
 );
 
@@ -167,8 +167,6 @@ mod tests {
 
     #[test(tokio::test)]
     async fn test_call_version_op() {
-        println!("Initializing deno module");
-
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(
                 Path::new("src")

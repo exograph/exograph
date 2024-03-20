@@ -359,6 +359,7 @@ impl DenoModule {
                 verbose_deprecated_api_warning: false,
                 argv0: None,
                 future: false,
+                close_on_idle: false,
             },
             create_params: None,
             extensions,
@@ -436,14 +437,17 @@ impl DenoModule {
         let runtime = &mut worker.js_runtime;
 
         let func_value = runtime
-            .execute_script("", format!("mod.{function_name}").into())
+            .execute_script(
+                "",
+                deno_core::FastString::from(format!("mod.{function_name}")),
+            )
             .map_err(DenoInternalError::Any)?;
 
         let shim_objects: HashMap<_, _> = {
             let shim_objects_vals: Vec<_> = self
                 .shim_object_names
                 .iter()
-                .map(|name| runtime.execute_script("", name.clone().into()))
+                .map(|name| runtime.execute_script("", deno_core::FastString::from(name.clone())))
                 .collect::<Result<_, _>>()
                 .map_err(DenoInternalError::Any)?;
             self.shim_object_names
@@ -809,7 +813,7 @@ mod tests {
         esm = [
             dir "src/test_js",
             "_init.js",
-            "test:through_rust" = "through_rust.js",
+            "test:through_rust.js" = "through_rust.js",
         ]
     );
 
