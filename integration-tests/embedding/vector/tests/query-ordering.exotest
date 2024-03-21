@@ -5,7 +5,7 @@ operation: |
       content
       contentVector
   }
-  query findDocs($searchVector: Vector!) {
+  query findDocs($searchVector: [Float!]) {
       top: documents(orderBy: {contentVector: {value: $searchVector, order: ASC}}, limit: 1) {
           ...DocumentInfo
       }
