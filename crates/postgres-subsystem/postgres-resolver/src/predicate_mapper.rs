@@ -17,7 +17,6 @@ use exo_sql::{
     PhysicalColumnPath, Predicate, SQLParamContainer, VectorDistanceOperator,
 };
 use futures::future::try_join_all;
-use pgvector::Vector;
 use postgres_model::{
     predicate::{PredicateParameter, PredicateParameterTypeKind},
     subsystem::PostgresSubsystem,
@@ -28,7 +27,7 @@ use crate::{
     cast::{cast_value, literal_column_path},
     column_path_util::to_column_path,
     sql_mapper::{extract_and_map, SQLMapper},
-    util::{get_argument_field, Arguments},
+    util::{get_argument_field, to_pg_vector, Arguments},
 };
 
 use super::postgres_execution_error::PostgresExecutionError;
@@ -108,16 +107,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     PredicateParameterTypeKind::Vector
                                 ) {
                                     let value = op_value.get("value").unwrap();
-                                    let value_vec: Vec<f32> = match value {
-                                        Val::String(s) => serde_json::from_str(s).map_err(|e| {
-                                            PostgresExecutionError::Generic(e.to_string())
-                                        }),
-                                        _ => Err(PostgresExecutionError::Validation(
-                                            "value".into(),
-                                            "Invalid vector order by parameter".into(),
-                                        )),
-                                    }
-                                    .unwrap();
+                                    let vector_value = to_pg_vector(value, &parameter.name)?;
 
                                     let distance = op_value.get("distance").unwrap();
                                     match distance {
@@ -147,7 +137,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                             )?
                                             .unwrap();
                                             let target_vector =
-                                                SQLParamContainer::new(Vector::from(value_vec));
+                                                SQLParamContainer::new(vector_value);
 
                                             Ok(AbstractPredicate::VectorDistance(
                                                 ColumnPath::Physical(

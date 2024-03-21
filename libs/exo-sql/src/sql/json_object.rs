@@ -68,6 +68,11 @@ impl ExpressionBuilder for JsonObjectElement {
                     builder.push_str("::text");
                 }
 
+                PhysicalColumnType::Vector { .. } => {
+                    self.value.build(database, builder);
+                    builder.push_str("::real[]");
+                }
+
                 _ => self.value.build(database, builder),
             }
         } else {

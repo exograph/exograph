@@ -9,6 +9,7 @@
 
 use indexmap::IndexMap;
 
+use pgvector::Vector;
 use postgres_model::types::EntityType;
 
 use core_plugin_interface::core_model::types::OperationReturnType;
@@ -18,6 +19,8 @@ use postgres_model::{
     query::{CollectionQuery, PkQuery},
     subsystem::PostgresSubsystem,
 };
+
+use crate::postgres_execution_error::PostgresExecutionError;
 
 pub type Arguments = IndexMap<String, Val>;
 
@@ -37,6 +40,30 @@ pub(crate) fn get_argument_field<'a>(argument_value: &'a Val, field_name: &str) 
         Val::Object(value) => value.get(field_name),
         _ => None,
     }
+}
+
+pub(super) fn to_pg_vector(
+    value: &Val,
+    parameter_name: &str,
+) -> Result<Vector, PostgresExecutionError> {
+    let vec_value: Vec<f32> = match value {
+        Val::List(vector) => vector
+            .iter()
+            .map(|v| match v {
+                Val::Number(n) => Ok(n.as_f64().unwrap() as f32),
+                _ => Err(PostgresExecutionError::Validation(
+                    parameter_name.into(),
+                    "Invalid vector parameter: element is not of float type".into(),
+                )),
+            })
+            .collect(),
+        _ => Err(PostgresExecutionError::Validation(
+            parameter_name.into(),
+            "Invalid vector parameter: must be a list of floats".into(),
+        )),
+    }?;
+
+    Ok(Vector::from(vec_value))
 }
 
 ///

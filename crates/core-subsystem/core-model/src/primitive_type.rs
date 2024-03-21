@@ -9,6 +9,8 @@
 
 use std::fmt::{Display, Formatter};
 
+use async_graphql_parser::types::{BaseType, Type};
+use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -68,5 +70,15 @@ impl PrimitiveType {
 impl Display for PrimitiveType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.name())
+    }
+}
+
+pub fn vector_introspection_type(optional: bool) -> Type {
+    Type {
+        base: BaseType::List(Box::new(Type {
+            base: BaseType::Named(Name::new("Float")),
+            nullable: false,
+        })),
+        nullable: optional,
     }
 }

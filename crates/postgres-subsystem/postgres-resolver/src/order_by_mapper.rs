@@ -9,11 +9,10 @@
 
 use async_trait::async_trait;
 use futures::future::join_all;
-use pgvector::Vector;
 
 use crate::{
     auth_util::check_retrieve_access, column_path_util::to_column_path,
-    postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper,
+    postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper, util::to_pg_vector,
 };
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
@@ -139,23 +138,13 @@ async fn order_by_pair<'a>(
                                 let default_order = Val::String("ASC".to_owned());
                                 let order = elems.get("order").unwrap_or(&default_order);
 
-                                let value_vec: Vec<f32> = match value {
-                                    Val::String(s) => serde_json::from_str(s).map_err(|e| {
-                                        PostgresExecutionError::Generic(e.to_string())
-                                    }),
-                                    _ => Err(PostgresExecutionError::Validation(
-                                        parameter_name.into(),
-                                        "Invalid vector order by parameter".into(),
-                                    )),
-                                }?;
+                                let vector_value = to_pg_vector(value, parameter_name)?;
 
                                 ordering(order).map(|ordering| {
                                     AbstractOrderBy(vec![(
                                         AbstractOrderByExpr::VectorDistance(
                                             ColumnPath::Physical(new_column_path),
-                                            ColumnPath::Param(SQLParamContainer::new(
-                                                Vector::from(value_vec),
-                                            )),
+                                            ColumnPath::Param(SQLParamContainer::new(vector_value)),
                                             VectorDistanceOperator::Cosine,
                                         ),
                                         ordering,

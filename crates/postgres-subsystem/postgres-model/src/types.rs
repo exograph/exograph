@@ -15,8 +15,9 @@ use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, P
 use crate::relation::OneToManyRelation;
 use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
-    FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
+    BaseType, FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
+use async_graphql_value::Name;
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
 use core_plugin_interface::core_model::context_type::ContextSelection;
 use core_plugin_interface::core_model::{
@@ -258,6 +259,26 @@ impl TypeDefinitionProvider<PostgresSubsystem> for MutationType {
 impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
     fn field_definition(&self, system: &PostgresSubsystem) -> FieldDefinition {
         let field_type = default_positioned((&self.typ).into());
+
+        // Special case for Vector. Even though it is a "scalar" from the perspective of the
+        // database, it is a list of floats from the perspective of the GraphQL schema.
+        if self.typ.base_type().name() == "Vector" {
+            let base_list_type = BaseType::List(Box::new(Type {
+                base: BaseType::Named(Name::new("Float")),
+                nullable: false,
+            }));
+
+            return FieldDefinition {
+                description: None,
+                name: default_positioned_name(&self.name),
+                arguments: vec![],
+                ty: default_positioned(Type {
+                    base: base_list_type,
+                    nullable: matches!(self.typ, FieldType::Optional(_)),
+                }),
+                directives: vec![],
+            };
+        }
 
         let arguments = match self.relation {
             PostgresRelation::Pk { .. }

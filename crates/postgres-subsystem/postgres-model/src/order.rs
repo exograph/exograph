@@ -19,6 +19,7 @@ use async_graphql_parser::{
 use async_graphql_value::Name;
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
+    primitive_type::vector_introspection_type,
     type_normalization::{
         default_positioned, default_positioned_name, InputValueProvider, Parameter,
         TypeDefinitionProvider,
@@ -127,7 +128,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
                         name: default_positioned_name("value"),
                         directives: vec![],
                         default_value: None,
-                        ty: default_positioned(Type::new("Vector").unwrap()),
+                        ty: default_positioned(vector_introspection_type(false)),
                     },
                     InputValueDefinition {
                         description: None,

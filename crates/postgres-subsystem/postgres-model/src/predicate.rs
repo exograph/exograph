@@ -13,6 +13,7 @@ use async_graphql_parser::types::{
 };
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
+    primitive_type::vector_introspection_type,
     type_normalization::{
         default_positioned, default_positioned_name, InputValueProvider, Parameter,
         TypeDefinitionProvider,
@@ -136,7 +137,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
                     InputValueDefinition {
                         description: None,
                         name: default_positioned_name("value"),
-                        ty: default_positioned(Type::new("Vector").unwrap()),
+                        ty: default_positioned(vector_introspection_type(false)),
                         default_value: None,
                         directives: vec![],
                     },
