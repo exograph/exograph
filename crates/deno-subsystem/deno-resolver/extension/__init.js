@@ -1,3 +1,3 @@
-import * as exograph from "exograph:ops";
+import * as exograph from "exograph:ops.js";
 
 exograph;

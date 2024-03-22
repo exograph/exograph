@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import { exograph_version } from "exograph:ops";
+import { exograph_version } from "exograph:ops.js";
 
 export function exographVersion() {
     return exograph_version()
