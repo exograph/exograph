@@ -11,16 +11,16 @@ fi
 GIT_TAG=$(git describe --tags $(git rev-list --tags --max-count=1) --match 'v*[0-9].*[0-9].*[0-9]')
 
 # Verify that the tag is in the correct format
-if ! echo $GIT_TAG | grep -Eq "^v[0-9]+\.[0-9]+\.[0-9]+(\-[0-9a-z]+\-[0-9a-z]+)?$"; then
+if ! echo $GIT_TAG | grep -Eq "^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-z]+-[0-9a-z]+)?$"; then
   echo "Error: Git tag is not in the correct vX.Y.Z(-REV-HASH)? format." 1>&2
   echo "Current tag is $GIT_TAG." 1>&2
   exit 1
 fi
 
 # Extract the current major, minor, and patch version numbers
-MAJOR=$(echo $GIT_TAG | sed -E 's/^v([0-9]+)\.[0-9]+\.[0-9]+(\-[0-9a-z]+\-[0-9a-z]+)?$/\1/')
-MINOR=$(echo $GIT_TAG | sed -E 's/^v[0-9]+\.([0-9]+)\.[0-9]+(\-[0-9a-z]+\-[0-9a-z]+)?$/\1/')
-PATCH=$(echo $GIT_TAG | sed -E 's/^v[0-9]+\.[0-9]+\.([0-9]+)(\-[0-9a-z]+\-[0-9a-z]+)?$/\1/')
+MAJOR=$(echo $GIT_TAG | sed -E 's/^v([0-9]+)\.[0-9]+\.[0-9]+(-[0-9a-z]+-[0-9a-z]+)?$/\1/')
+MINOR=$(echo $GIT_TAG | sed -E 's/^v[0-9]+\.([0-9]+)\.[0-9]+(-[0-9a-z]+-[0-9a-z]+)?$/\1/')
+PATCH=$(echo $GIT_TAG | sed -E 's/^v[0-9]+\.[0-9]+\.([0-9]+)(-[0-9a-z]+-[0-9a-z]+)?$/\1/')
 
 echo "Current version is $MAJOR.$MINOR.$PATCH"
 
@@ -56,7 +56,7 @@ echo "Bumping version to $NEW_VERSION"
 git checkout -b "$NEW_BRANCH"
 
 # Modify Cargo.toml to use the current version
-sed -i '' -e "s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
+sed -i "s/^version = .*/version = \"$NEW_VERSION\"/" Cargo.toml
 
 cargo build
 
