@@ -16,7 +16,7 @@
 
 <br/>
 
-[Exograph](https://exograph.dev) is a declarative way to create flexible, secure, and performant backends that provide GraphQL query and mutation APIs. Exograph lets you focus on your domain model and business logic, freeing you to pursue more creative work on your application. Furthermore, it offers tooling to support all stages of the development lifecycle, from development to deployment to maintenance.
+[Exograph](https://exograph.dev) is a declarative way to create flexible, secure, and performant backends that provide GraphQL query and mutation APIs. Exograph lets you focus on your domain model and business logic, freeing you to pursue more creative work on your application.
 
 # Installation
 
@@ -32,4 +32,4 @@ Check out the [Exograph examples repository](https://github.com/exograph/example
 
 # Development
 
-If you would like to build Exograph locally, please see the [DEVELOPMENT.md](DEVELOPMENT.md) file for instructions.
+If you would like to build Exograph locally, please see the [DEVELOPMENT.md](DEVELOPMENT.md).
