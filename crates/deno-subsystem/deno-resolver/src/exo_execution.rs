@@ -171,7 +171,7 @@ mod tests {
         let extension = exograph::init_ops_and_esm();
         let init_file = extension
             .esm_files
-            .get(0)
+            .first()
             .expect("There should be at least one esm file in the extension");
 
         assert!(matches!(
