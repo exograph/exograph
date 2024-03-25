@@ -32,4 +32,4 @@ Check out the [Exograph examples repository](https://github.com/exograph/example
 
 # Development
 
-If you would like to build Exograph locally, please see the [DEVELOPMENT.md](DEVELOPMENT.md).
+If you would like to build Exograph locally, please see [DEVELOPMENT.md](DEVELOPMENT.md).
