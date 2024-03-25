@@ -165,6 +165,21 @@ mod tests {
     use super::exograph;
     use exo_deno::{DenoModule, DenoModuleSharedState, UserCode};
 
+    #[test]
+    #[allow(deprecated)]
+    fn check_extension_esm_is_embedded() {
+        let extension = exograph::init_ops_and_esm();
+        let init_file = extension
+            .esm_files
+            .first()
+            .expect("There should be at least one esm file in the extension");
+
+        assert!(matches!(
+            init_file.code,
+            deno_core::ExtensionFileSourceCode::IncludedInBinary(_)
+        ));
+    }
+
     #[test(tokio::test)]
     async fn test_call_version_op() {
         let mut deno_module = DenoModule::new(
