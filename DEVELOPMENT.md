@@ -1,6 +1,6 @@
 This file describes how to build Exograph locally (for example, to contribute to the project).
 
-## Prerequisites
+# Prerequisites
 
 Must have:
 
@@ -13,11 +13,11 @@ Nice to have:
 
 - cargo-watch (`cargo install cargo-watch`)
 
-## Installing the vscode extension
+# Installing the vscode extension
 
 Follow the instructions in [Exograph VSCode Extension repo](https://github.com/exograph/vscode-extension).
 
-## Building
+# Building
 
 Build the `exo` and `exo-server` binaries:
 
@@ -45,23 +45,23 @@ cargo build --no-default-features --features static-deno-resolver
 cargo build --no-default-features --features static-wasm-resolver
 ```
 
-## Running tests
+# Running tests
 
-### Unit tests
+## Unit tests
 
 ```sh
 cargo build && cargo test
 ```
 
-### Integration tests
+## Integration tests
 
 ```sh
 cargo build && EXO_RUN_INTROSPECTION_TESTS=true cargo run --bin exo test integration-tests
 ```
 
-## Testing the setup
+# Testing the setup
 
-### Yolo mode
+## Yolo mode
 
 ```sh
 cd integration-tests/basic-model-no-auth
@@ -70,7 +70,7 @@ cargo run --bin exo yolo
 
 You will see URLs for the GraphQL playground and GraphQL endpoint. You can use the playground to run queries and mutations against the endpoint.
 
-### Dev mode
+## Dev mode
 
 1. Switch to an example Exograph project directory (such as `integration-tests/basic-model-no-auth`)
 
@@ -98,6 +98,6 @@ EXO_JWT_SECRET="abcd" EXO_POSTGRES_URL=postgresql://localhost:5432/concerts-db E
 
 Please see [CLI Reference](https://exograph.dev/docs/cli-reference/environment) for options such as setting paths for the GraphQL playground and query endpoint.
 
-## Logging, tracing, and telemetry
+# Logging, tracing, and telemetry
 
 The code is instrumented using the [tracing](https://crates.io/crates/tracing) framework and will output log events to the console by default. For more details, including setting logging levels and using OpenTelemetry, see the [Exograph telemetry documentation](https://exograph.dev/docs/production/telemetry).

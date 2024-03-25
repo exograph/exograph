@@ -29,3 +29,7 @@ For more information, see the [Exograph documentation](https://exograph.dev/docs
 # Examples
 
 Check out the [Exograph examples repository](https://github.com/exograph/examples) for sample projects to explore how Exograph fits into technologies such as [Next.js](https://nextjs.org/), [Apollo](https://www.apollographql.com/docs/react/), [Urql](https://formidable.com/open-source/urql/), [Auth0](https://auth0.com), [Clerk](https://clerk.com), [Tailwind](https://tailwindcss.com/), and more.
+
+# Development
+
+If you would like to build Exograph locally, please see the [DEVELOPMENT.md](DEVELOPMENT.md) file for instructions.
