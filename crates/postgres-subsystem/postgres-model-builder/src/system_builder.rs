@@ -118,7 +118,7 @@ fn build_expanded(
     // Which is then used to expand query and query parameters (the order is unimportant) but must be executed
     // after running type_builder::build_expanded (since they depend on expanded PostgresTypes (note the next ones do not access resolved_types))
     order_by_type_builder::build_expanded(resolved_env, building);
-    predicate_builder::build_expanded(building);
+    predicate_builder::build_expanded(resolved_env, building);
     aggregate_type_builder::build_expanded(resolved_env, building)?;
 
     // Finally expand queries, mutations, and module methods

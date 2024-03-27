@@ -20,7 +20,7 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named},
 };
-use exo_sql::ColumnPathLink;
+use exo_sql::{ColumnPathLink, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -41,6 +41,8 @@ pub struct PredicateParameter {
     /// ```
     pub column_path_link: Option<ColumnPathLink>,
     pub access: Option<Access>,
+    // TODO: Generalize this to support more than just vector distance functions
+    pub vector_distance_function: Option<VectorDistanceFunction>,
 }
 
 /// Thw wrapper around PredicateParameterType to be able to satisfy the Named trait, without cloning the parameter type.

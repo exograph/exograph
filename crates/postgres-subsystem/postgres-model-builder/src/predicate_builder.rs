@@ -18,7 +18,7 @@ use postgres_model::{
 };
 use std::collections::HashMap;
 
-use crate::shallow::Shallow;
+use crate::{resolved_builder::ResolvedTypeHint, shallow::Shallow, type_builder::ResolvedTypeEnv};
 
 use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
@@ -37,6 +37,7 @@ impl Shallow for PredicateParameter {
             typ: FieldType::Plain(PredicateParameterTypeWrapper::shallow()),
             column_path_link: None,
             access: None,
+            vector_distance_function: None,
         }
     }
 }
@@ -107,7 +108,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
     );
 }
 
-pub fn build_expanded(building: &mut SystemContextBuilding) {
+pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (_, primitive_type) in building.primitive_types.iter() {
         let param_type_name = get_filter_type_name(&primitive_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
@@ -121,7 +122,12 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
             let param_type_name = get_filter_type_name(&entity_type.name);
             let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-            let new_kind = expand_entity_type(entity_type, building);
+            let resolved_type = resolved_env
+                .resolved_types
+                .get_by_key(&entity_type.name)
+                .unwrap();
+
+            let new_kind = expand_entity_type(resolved_type, entity_type, building);
             building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
         }
 
@@ -150,6 +156,7 @@ fn expand_primitive_type(
 }
 
 fn expand_entity_type(
+    resolved_type: &ResolvedType,
     entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
@@ -163,6 +170,13 @@ fn expand_entity_type(
 
             let column_path_link = Some(field.relation.column_path_link(&building.database));
 
+            let resolved_field = resolved_type
+                .as_composite()
+                .fields
+                .iter()
+                .find(|f| f.name == field.name)
+                .unwrap();
+
             PredicateParameter {
                 name: field.name.to_string(),
                 typ: FieldType::Optional(Box::new(FieldType::Plain(
@@ -173,6 +187,14 @@ fn expand_entity_type(
                 ))),
                 column_path_link,
                 access: Some(field.access.clone()),
+                vector_distance_function: resolved_field.type_hint.as_ref().and_then(|hint| {
+                    match hint {
+                        ResolvedTypeHint::Vector {
+                            distance_function, ..
+                        } => *distance_function,
+                        _ => None,
+                    }
+                }),
             }
         })
         .collect();
@@ -212,6 +234,7 @@ fn expand_entity_type(
                 typ: param_field_type,
                 column_path_link: None,
                 access: None,
+                vector_distance_function: None,
             }
         })
         .collect();
@@ -247,6 +270,7 @@ fn expand_unique_type(
                     typ: param_type,
                     access: Some(field.access.clone()),
                     column_path_link: None,
+                    vector_distance_function: None,
                 })
             }
             _ => None,
@@ -341,6 +365,7 @@ fn create_operator_filter_type_kind(
             }))),
             column_path_link: None,
             access: None,
+            vector_distance_function: None,
         }
     };
 

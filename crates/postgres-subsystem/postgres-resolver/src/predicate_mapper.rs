@@ -14,7 +14,7 @@ use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractPredicate, CaseSensitivity, ColumnPath, NumericComparator, ParamEquality,
-    PhysicalColumnPath, Predicate, SQLParamContainer, VectorDistanceFunction,
+    PhysicalColumnPath, Predicate, SQLParamContainer,
 };
 use futures::future::try_join_all;
 use postgres_model::{
@@ -148,7 +148,9 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                                     .unwrap(),
                                                 ),
                                                 ColumnPath::Param(target_vector),
-                                                VectorDistanceFunction::Cosine,
+                                                self.param
+                                                    .vector_distance_function
+                                                    .unwrap_or_default(),
                                                 distance_comparator,
                                                 ColumnPath::Param(threshold),
                                             ))
