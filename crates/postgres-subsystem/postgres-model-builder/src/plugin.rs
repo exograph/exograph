@@ -159,7 +159,16 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 },
             ),
             (
-                "size",
+                "size", // vector size
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: false,
+                    single_params: true,
+                    mapped_params: None,
+                },
+            ),
+            (
+                "distanceFunction", // vector distance function
                 AnnotationSpec {
                     targets: &[AnnotationTarget::Field],
                     no_params: false,

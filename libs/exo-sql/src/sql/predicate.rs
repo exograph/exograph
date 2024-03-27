@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{Database, VectorDistanceOperator};
+use crate::{Database, VectorDistanceFunction};
 
 use super::{column::Column, ExpressionBuilder, SQLBuilder};
 
@@ -56,7 +56,7 @@ where
     JsonMatchAnyKey(C, C),
     JsonMatchAllKeys(C, C),
 
-    VectorDistance(C, C, VectorDistanceOperator, NumericComparator, C),
+    VectorDistance(C, C, VectorDistanceFunction, NumericComparator, C),
 
     // Prefer Predicate::and(), which simplifies the clause
     And(Box<Predicate<C>>, Box<Predicate<C>>),

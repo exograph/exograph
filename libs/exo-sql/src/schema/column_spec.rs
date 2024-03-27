@@ -576,7 +576,7 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Json => ("Json".to_string(), "".to_string()),
             ColumnTypeSpec::Blob => ("Blob".to_string(), "".to_string()),
             ColumnTypeSpec::Uuid => ("Uuid".to_string(), "".to_string()),
-            ColumnTypeSpec::Vector { size } => ("Vector".to_string(), format!(" @size({size})")),
+            ColumnTypeSpec::Vector { size } => ("Vector".to_string(), format!("@size({size})",)),
 
             ColumnTypeSpec::Array { typ } => {
                 let (data_type, annotations) = typ.to_model();
@@ -723,7 +723,7 @@ impl ColumnTypeSpec {
                 post_statements: vec![],
             },
 
-            Self::Vector { size } => SchemaStatement {
+            Self::Vector { size, .. } => SchemaStatement {
                 statement: format!("Vector({size})"),
                 pre_statements: vec![],
                 post_statements: vec![],

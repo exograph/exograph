@@ -37,7 +37,7 @@ use core_plugin_interface::{
         },
     },
 };
-use exo_sql::PhysicalTableName;
+use exo_sql::{PhysicalTableName, VectorDistanceFunction};
 
 use super::{
     access_builder::{build_access, ResolvedAccess},
@@ -181,7 +181,8 @@ pub enum ResolvedTypeHint {
         precision: usize,
     },
     Vector {
-        size: usize,
+        size: Option<usize>,
+        distance_function: Option<VectorDistanceFunction>,
     },
 }
 
@@ -333,6 +334,7 @@ fn resolve(
                                             type_hint: build_type_hint(
                                                 field,
                                                 &typechecked_system.types,
+                                                errors,
                                             ),
                                             unique_constraints,
                                             indices,
@@ -462,7 +464,11 @@ fn resolve_field_default_type(
     }
 }
 
-fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option<ResolvedTypeHint> {
+fn build_type_hint(
+    field: &AstField<Typed>,
+    types: &MappedArena<Type>,
+    errors: &mut Vec<Diagnostic>,
+) -> Option<ResolvedTypeHint> {
     ////
     // Part 1: parse out and validate hints for each primitive
     ////
@@ -491,7 +497,20 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
                 (false, true, false) => Some(32),
                 (false, false, true) => Some(64),
                 (false, false, false) => None,
-                _ => panic!("Cannot have more than one of @bits16, @bits32, @bits64"),
+                _ => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: "Cannot have more than one of @bits16, @bits32, @bits64"
+                            .to_string(),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: field.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                    None
+                }
             };
 
             if bits_hint.is_some() || range_hint.is_some() {
@@ -518,7 +537,20 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
                 (true, false) => Some(24),
                 (false, true) => Some(53),
                 (false, false) => None,
-                _ => panic!("Cannot have both @singlePrecision and @doublePrecision"),
+                _ => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: "Cannot have both @singlePrecision and @doublePrecision"
+                            .to_string(),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: field.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                    None
+                }
             };
 
             bits_hint.map(|bits| ResolvedTypeHint::Float { bits })
@@ -541,7 +573,16 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
                 .map(|p| p.as_single().as_number() as usize);
 
             if scale_hint.is_some() && precision_hint.is_none() {
-                panic!("@scale is not allowed without specifying @precision")
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: "@scale is not allowed without specifying @precision".to_string(),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: field.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                });
             }
 
             Some(ResolvedTypeHint::Decimal {
@@ -586,14 +627,37 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
         }
     };
 
-    let size_hint = {
-        let size_annotation = field
+    let vector_hint = if field.typ.get_underlying_typename(types).unwrap() == "Vector" {
+        let size = field
             .annotations
             .get("size")
             .map(|p| p.as_single().as_number() as usize);
 
-        // None if there is no size annotation
-        size_annotation.map(|size| ResolvedTypeHint::Vector { size })
+        let distance_function = field.annotations.get("distanceFunction").and_then(|p| {
+            match VectorDistanceFunction::from_model_string(p.as_single().as_string().as_str()) {
+                Some(distance_function) => Some(distance_function),
+                None => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: r#"Invalid distance function specified. Must be either "cosine", "l2", or "ip""#.to_string(),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: field.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                    None
+                },
+            }
+        });
+
+        Some(ResolvedTypeHint::Vector {
+            size,
+            distance_function,
+        })
+    } else {
+        None
     };
 
     let primitive_hints = vec![
@@ -602,7 +666,7 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
         number_hint,
         string_hint,
         datetime_hint,
-        size_hint,
+        vector_hint,
     ];
 
     let explicit_dbtype_hint = field
@@ -626,14 +690,32 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
     let valid_primitive_hints_exist = number_of_valid_primitive_hints > 0;
 
     if explicit_dbtype_hint.is_some() && valid_primitive_hints_exist {
-        panic!(
-            "Cannot specify both @dbtype and a primitive specific hint for {}",
-            field.name
-        )
+        errors.push(Diagnostic {
+            level: Level::Error,
+            message: format!(
+                "Cannot specify both @dbtype and a primitive specific hint for {}",
+                field.name
+            ),
+            code: Some("C000".to_string()),
+            spans: vec![SpanLabel {
+                span: field.span,
+                style: SpanStyle::Primary,
+                label: None,
+            }],
+        });
     }
 
     if number_of_valid_primitive_hints > 1 {
-        panic!("Conflicting type hints specified for {}", field.name)
+        errors.push(Diagnostic {
+            level: Level::Error,
+            message: format!("Conflicting type hints specified for {}", field.name),
+            code: Some("C000".to_string()),
+            spans: vec![SpanLabel {
+                span: field.span,
+                style: SpanStyle::Primary,
+                label: None,
+            }],
+        });
     }
 
     ////
@@ -643,10 +725,22 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
     if explicit_dbtype_hint.is_some() {
         explicit_dbtype_hint
     } else if number_of_valid_primitive_hints == 1 {
-        primitive_hints
-            .into_iter()
-            .find(|hint| hint.is_some())
-            .unwrap()
+        match primitive_hints.into_iter().find(|hint| hint.is_some()) {
+            Some(Some(hint)) => Some(hint),
+            _ => {
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: "Could not find a valid hint".to_string(),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: field.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                });
+                None
+            }
+        }
     } else {
         None
     }

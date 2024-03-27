@@ -74,6 +74,6 @@ pub use sql::{
     physical_table::{PhysicalIndex, PhysicalTable, PhysicalTableName},
     predicate::{CaseSensitivity, NumericComparator, ParamEquality, Predicate},
     relation::{ManyToOne, ManyToOneId, OneToMany, OneToManyId, RelationId},
-    vector::VectorDistanceOperator,
+    vector::{VectorDistanceFunction, DEFAULT_VECTOR_SIZE},
     SQLBytes, SQLParam, SQLParamContainer,
 };

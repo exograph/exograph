@@ -5,6 +5,6 @@ module DocumentDatabase {
     @pk id: Int = autoIncrement()
     title: String
     content: String
-    @index @size(3) contentVector: Vector?
+    @distanceFunction("l2") @index @size(3) contentVector: Vector?
   }
 }

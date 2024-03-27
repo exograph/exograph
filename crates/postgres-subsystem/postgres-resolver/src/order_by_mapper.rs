@@ -18,7 +18,7 @@ use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
     AbstractOrderBy, AbstractOrderByExpr, AbstractPredicate, ColumnPath, Ordering,
-    PhysicalColumnPath, SQLParamContainer, VectorDistanceOperator,
+    PhysicalColumnPath, SQLParamContainer, VectorDistanceFunction,
 };
 use postgres_model::{
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
@@ -145,7 +145,7 @@ async fn order_by_pair<'a>(
                                         AbstractOrderByExpr::VectorDistance(
                                             ColumnPath::Physical(new_column_path),
                                             ColumnPath::Param(SQLParamContainer::new(vector_value)),
-                                            VectorDistanceOperator::Cosine,
+                                            VectorDistanceFunction::Cosine,
                                         ),
                                         ordering,
                                     )])

@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{sql::order::Ordering, ColumnPath, VectorDistanceOperator};
+use crate::{sql::order::Ordering, ColumnPath, VectorDistanceFunction};
 
 use super::column_path::PhysicalColumnPath;
 
@@ -18,7 +18,7 @@ pub struct AbstractOrderBy(pub Vec<(AbstractOrderByExpr, Ordering)>);
 #[derive(Debug)]
 pub enum AbstractOrderByExpr {
     Column(PhysicalColumnPath),
-    VectorDistance(ColumnPath, ColumnPath, VectorDistanceOperator),
+    VectorDistance(ColumnPath, ColumnPath, VectorDistanceFunction),
 }
 
 impl AbstractOrderBy {

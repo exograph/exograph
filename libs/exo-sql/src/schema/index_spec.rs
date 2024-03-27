@@ -12,7 +12,7 @@ use std::collections::HashSet;
 use deadpool_postgres::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::{database_error::DatabaseError, PhysicalTableName, VectorDistanceOperator};
+use crate::{database_error::DatabaseError, PhysicalTableName, VectorDistanceFunction};
 
 use super::{column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec::TableSpec};
 
@@ -26,7 +26,7 @@ pub struct IndexSpec {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum IndexKind {
     HNWS {
-        distance_function: Option<VectorDistanceOperator>,
+        distance_function: Option<VectorDistanceFunction>,
         params: Option<HNWSParams>,
     },
 }
@@ -116,7 +116,7 @@ impl IndexSpec {
                                 let operator_classes: Vec<String> =
                                     row.get::<_, Vec<String>>("index_opclasses");
                                 let distance_function =
-                                    VectorDistanceOperator::from_db_string(&operator_classes[0]);
+                                    VectorDistanceFunction::from_db_string(&operator_classes[0]);
 
                                 Some(IndexKind::HNWS {
                                     distance_function,
@@ -191,7 +191,7 @@ impl IndexSpec {
 
                 let distance_function_str = distance_function
                     .as_ref()
-                    .unwrap_or(&VectorDistanceOperator::Cosine)
+                    .unwrap_or(&VectorDistanceFunction::default())
                     .index_kind_str();
                 let params_str = params
                     .as_ref()

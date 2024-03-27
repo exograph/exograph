@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::vector::VectorDistanceOperator;
+use super::vector::VectorDistanceFunction;
 use crate::{ColumnId, Database, SQLParamContainer};
 
 use super::{ExpressionBuilder, SQLBuilder};
@@ -32,7 +32,7 @@ pub enum OrderByElementExpr {
     VectorDistance(
         VectorDistanceOperand,
         VectorDistanceOperand,
-        VectorDistanceOperator,
+        VectorDistanceFunction,
     ),
 }
 
