@@ -1339,6 +1339,57 @@ mod tests {
         .await
     }
 
+    #[tokio::test]
+    async fn vector_indexes_default_distance_function() {
+        assert_changes(
+            r#"
+            @postgres
+            module DocumentDatabase {
+              @access(true)
+              type Document {
+                @pk id: Int = autoIncrement()
+                title: String
+                content: String
+                @size(3) contentVector: Vector?
+              }
+            }
+            "#,
+            r#"
+            @postgres
+            module DocumentDatabase {
+              @access(true)
+              type Document {
+                @pk id: Int = autoIncrement()
+                title: String
+                content: String
+                @index @size(3) contentVector: Vector?
+              }
+            }
+            "#,
+            vec![
+                (r#"CREATE EXTENSION "vector";"#, false), 
+                (r#"CREATE TABLE "documents" (
+                 |    "id" SERIAL PRIMARY KEY,
+                 |    "title" TEXT NOT NULL,
+                 |    "content" TEXT NOT NULL,
+                 |    "content_vector" Vector(3)
+                 |);"#, false)],
+            vec![
+                (r#"CREATE EXTENSION "vector";"#, false), 
+                (r#"CREATE TABLE "documents" (
+                 |    "id" SERIAL PRIMARY KEY,
+                 |    "title" TEXT NOT NULL,
+                 |    "content" TEXT NOT NULL,
+                 |    "content_vector" Vector(3)
+                 |);"#, false), 
+                (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)
+            ],
+            vec![(r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)],
+            vec![(r#"DROP INDEX "document_contentvector_idx";"#, false)],
+        )
+        .await
+    }
+
     async fn compute_spec(model: &str) -> DatabaseSpec {
         let postgres_subsystem =
             util::create_postgres_system_from_str(model, "test.exo".to_string())

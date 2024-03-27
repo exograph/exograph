@@ -5,6 +5,6 @@ module DocumentDatabase {
     @pk id: Int = autoIncrement()
     title: String
     content: String
-    @size(3) contentVector: Vector?
+    @index @size(3) contentVector: Vector?
   }
 }

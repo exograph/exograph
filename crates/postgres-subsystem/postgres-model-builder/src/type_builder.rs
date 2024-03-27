@@ -29,8 +29,8 @@ use core_plugin_interface::{
 };
 
 use exo_sql::{
-    ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalIndex,
-    PhysicalTable, TableId,
+    schema::index_spec::IndexKind, ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn,
+    PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId, VectorDistanceOperator,
 };
 
 use heck::ToSnakeCase;
@@ -216,6 +216,14 @@ fn expand_type_no_fields(
                     None => indices.push(PhysicalIndex {
                         name: index_name.clone(),
                         columns: HashSet::from_iter([field.column_name.clone()]),
+                        index_kind: if field.typ.innermost().type_name == "Vector" {
+                            Some(IndexKind::HNWS {
+                                distance_function: Some(VectorDistanceOperator::Cosine),
+                                params: None,
+                            })
+                        } else {
+                            None
+                        },
                     }),
                 }
             })
