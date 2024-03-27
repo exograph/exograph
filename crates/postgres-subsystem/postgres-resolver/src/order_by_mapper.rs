@@ -145,7 +145,9 @@ async fn order_by_pair<'a>(
                                         AbstractOrderByExpr::VectorDistance(
                                             ColumnPath::Physical(new_column_path),
                                             ColumnPath::Param(SQLParamContainer::new(vector_value)),
-                                            VectorDistanceFunction::Cosine,
+                                            parameter
+                                                .vector_distance_function
+                                                .unwrap_or(VectorDistanceFunction::default()),
                                         ),
                                         ordering,
                                     )])
