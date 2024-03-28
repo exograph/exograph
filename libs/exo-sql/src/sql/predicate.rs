@@ -9,7 +9,7 @@
 
 use crate::{Database, VectorDistanceFunction};
 
-use super::{column::Column, ExpressionBuilder, SQLBuilder};
+use super::{column::Column, vector::VectorDistance, ExpressionBuilder, SQLBuilder};
 
 /// Case sensitivity for string predicates.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -243,11 +243,7 @@ impl ExpressionBuilder for ConcretePredicate {
                 numeric_comp_op,
                 numeric_value,
             ) => {
-                column1.build(database, builder);
-                builder.push_space();
-                distance_op.build(database, builder);
-                builder.push_space();
-                column2.build(database, builder);
+                VectorDistance::new(column1, column2, *distance_op).build(database, builder);
                 builder.push_space();
                 match numeric_comp_op {
                     NumericComparator::Eq => builder.push_str("="),

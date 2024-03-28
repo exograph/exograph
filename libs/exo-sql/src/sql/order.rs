@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use super::vector::VectorDistanceFunction;
-use crate::{ColumnId, Database, SQLParamContainer};
+use crate::{sql::vector::VectorDistance, ColumnId, Database, SQLParamContainer};
 
 use super::{ExpressionBuilder, SQLBuilder};
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -59,36 +59,9 @@ impl ExpressionBuilder for OrderByElement {
                     }
                 }
             }
-            OrderByElementExpr::VectorDistance(lhs, rhs, op) => {
-                fn push_column(
-                    operand: &VectorDistanceOperand,
-                    table_alias: Option<&String>,
-                    database: &Database,
-                    builder: &mut SQLBuilder,
-                ) {
-                    match operand {
-                        VectorDistanceOperand::PhysicalColumn(column_id) => match table_alias {
-                            Some(ref table_alias) => {
-                                builder.push_column_with_table_alias(
-                                    &column_id.get_column(database).name,
-                                    table_alias,
-                                );
-                            }
-                            None => {
-                                column_id.get_column(database).build(database, builder);
-                            }
-                        },
-                        VectorDistanceOperand::Param(param) => {
-                            builder.push_param(param.param());
-                        }
-                    }
-                }
-
-                push_column(lhs, self.2.as_ref(), database, builder);
-                builder.push_space();
-                op.build(database, builder);
-                builder.push_space();
-                push_column(rhs, self.2.as_ref(), database, builder);
+            OrderByElementExpr::VectorDistance(lhs, rhs, function) => {
+                VectorDistance::new((lhs, self.2.as_ref()), (rhs, self.2.as_ref()), *function)
+                    .build(database, builder);
             }
         }
         builder.push_space();
@@ -105,6 +78,27 @@ impl ExpressionBuilder for OrderBy {
     fn build(&self, database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("ORDER BY ");
         builder.push_elems(database, &self.0, ", ");
+    }
+}
+
+impl ExpressionBuilder for (&VectorDistanceOperand, Option<&String>) {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
+        match &self.0 {
+            VectorDistanceOperand::PhysicalColumn(column_id) => {
+                let column = column_id.get_column(database);
+                match &self.1 {
+                    Some(table_alias) => {
+                        builder.push_column_with_table_alias(&column.name, table_alias);
+                    }
+                    None => {
+                        column.build(database, builder);
+                    }
+                }
+            }
+            VectorDistanceOperand::Param(param) => {
+                builder.push_param(param.param());
+            }
+        }
     }
 }
 

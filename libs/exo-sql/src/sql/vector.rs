@@ -6,6 +6,31 @@ use super::{ExpressionBuilder, SQLBuilder};
 
 pub const DEFAULT_VECTOR_SIZE: usize = 1536;
 
+pub struct VectorDistance<C>
+where
+    C: ExpressionBuilder,
+{
+    lhs: C,
+    rhs: C,
+    function: VectorDistanceFunction,
+}
+
+impl<C: ExpressionBuilder> VectorDistance<C> {
+    pub fn new(lhs: C, rhs: C, function: VectorDistanceFunction) -> Self {
+        Self { lhs, rhs, function }
+    }
+}
+
+impl<C: ExpressionBuilder> ExpressionBuilder for VectorDistance<C> {
+    fn build(&self, database: &Database, builder: &mut SQLBuilder) {
+        self.lhs.build(database, builder);
+        builder.push_space();
+        self.function.build(database, builder);
+        builder.push_space();
+        self.rhs.build(database, builder);
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize, Hash, Eq, Default)]
 pub enum VectorDistanceFunction {
     L2,
