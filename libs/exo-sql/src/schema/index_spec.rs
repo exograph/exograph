@@ -20,15 +20,17 @@ use super::{column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec
 pub struct IndexSpec {
     pub name: String,
     pub columns: HashSet<String>,
-    pub index_kind: Option<IndexKind>, // None means the database default index type
+    pub index_kind: IndexKind,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub enum IndexKind {
     HNWS {
-        distance_function: Option<VectorDistanceFunction>,
+        distance_function: VectorDistanceFunction,
         params: Option<HNWSParams>,
     },
+    #[default]
+    DatabaseDefault,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -76,7 +78,7 @@ GROUP BY
 "#;
 
 impl IndexSpec {
-    pub fn new(name: String, columns: HashSet<String>, index_kind: Option<IndexKind>) -> Self {
+    pub fn new(name: String, columns: HashSet<String>, index_kind: IndexKind) -> Self {
         Self {
             name,
             columns,
@@ -108,7 +110,7 @@ impl IndexSpec {
                         .iter()
                         .all(|c| columns.iter().any(|col| col.name == *c && col.is_pk))
                 {
-                    None
+                    Ok::<_, DatabaseError>(None)
                 } else {
                     let index_kind =
                         match row.get::<_, String>("index_method").to_lowercase().as_str() {
@@ -116,22 +118,23 @@ impl IndexSpec {
                                 let operator_classes: Vec<String> =
                                     row.get::<_, Vec<String>>("index_opclasses");
                                 let distance_function =
-                                    VectorDistanceFunction::from_db_string(&operator_classes[0]);
+                                    VectorDistanceFunction::from_db_string(&operator_classes[0])?;
 
-                                Some(IndexKind::HNWS {
+                                Ok::<_, DatabaseError>(IndexKind::HNWS {
                                     distance_function,
                                     params: None,
                                 })
                             }
-                            _ => None,
-                        };
-                    Some(IndexSpec::new(
+                            _ => Ok(IndexKind::default()),
+                        }?;
+                    Ok(Some(IndexSpec::new(
                         row.get("index_name"),
                         column_names,
                         index_kind,
-                    ))
+                    )))
                 }
             })
+            .flatten()
             .collect::<Vec<_>>();
 
         Ok(WithIssues {
@@ -153,6 +156,8 @@ impl IndexSpec {
         {
             return vec![];
         }
+
+        println!("Index diff: {:?} -> {:?}", self, other);
 
         vec![
             SchemaOp::DeleteIndex {
@@ -180,19 +185,16 @@ impl IndexSpec {
             .join(", ");
 
         let index_spec_str = match &self.index_kind {
-            Some(IndexKind::HNWS {
+            IndexKind::HNWS {
                 distance_function,
                 params,
-            }) => {
+            } => {
                 assert!(
                     self.columns.len() == 1,
                     "Vector index must have exactly one column"
                 );
 
-                let distance_function_str = distance_function
-                    .as_ref()
-                    .unwrap_or(&VectorDistanceFunction::default())
-                    .index_kind_str();
+                let distance_function_str = distance_function.index_kind_str();
                 let params_str = params
                     .as_ref()
                     .map(|p| {
@@ -207,7 +209,7 @@ impl IndexSpec {
                     columns_str, distance_function_str, params_str
                 )
             }
-            None => format!("({})", columns_str),
+            _ => format!("({})", columns_str),
         };
 
         format!(

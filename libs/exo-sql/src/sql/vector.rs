@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::Database;
+use crate::{database_error::DatabaseError, Database};
 
 use super::{ExpressionBuilder, SQLBuilder};
 
@@ -48,12 +48,14 @@ impl VectorDistanceFunction {
         }
     }
 
-    pub fn from_model_string(s: &str) -> Option<Self> {
+    pub fn from_model_string(s: &str) -> Result<Self, DatabaseError> {
         match s {
-            "l2" => Some(VectorDistanceFunction::L2),
-            "cosine" => Some(VectorDistanceFunction::Cosine),
-            "ip" => Some(VectorDistanceFunction::InnerProduct),
-            _ => None,
+            "l2" => Ok(VectorDistanceFunction::L2),
+            "cosine" => Ok(VectorDistanceFunction::Cosine),
+            "ip" => Ok(VectorDistanceFunction::InnerProduct),
+            _ => Err(DatabaseError::Generic(format!(
+                r#"Unknown vector distance function: {s}. Must be either "cosine", "l2", or "ip""#,
+            ))),
         }
     }
 
@@ -65,12 +67,14 @@ impl VectorDistanceFunction {
         }
     }
 
-    pub fn from_db_string(s: &str) -> Option<Self> {
+    pub fn from_db_string(s: &str) -> Result<Self, DatabaseError> {
         match s {
-            "vector_l2_ops" => Some(VectorDistanceFunction::L2),
-            "vector_cosine_ops" => Some(VectorDistanceFunction::Cosine),
-            "vector_ip_ops" => Some(VectorDistanceFunction::InnerProduct),
-            _ => None,
+            "vector_l2_ops" => Ok(VectorDistanceFunction::L2),
+            "vector_cosine_ops" => Ok(VectorDistanceFunction::Cosine),
+            "vector_ip_ops" => Ok(VectorDistanceFunction::InnerProduct),
+            _ => Err(DatabaseError::Generic(format!(
+                r#"Unknown vector distance function: {s}. Must be either "vector_cosine_ops", "vector_l2_ops", or "vector_ip_ops""#,
+            ))),
         }
     }
 }

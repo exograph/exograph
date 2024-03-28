@@ -76,7 +76,7 @@ pub struct PhysicalTable {
 pub struct PhysicalIndex {
     pub name: String,
     pub columns: HashSet<String>,
-    pub index_kind: Option<IndexKind>, // None means the database default index type
+    pub index_kind: IndexKind,
 }
 
 /// The derived implementation of `Debug` is quite verbose, so we implement it manually

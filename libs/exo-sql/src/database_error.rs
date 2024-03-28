@@ -37,6 +37,9 @@ pub enum DatabaseError {
 
     #[error("{0}")]
     BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("{0}")]
+    Generic(String),
 }
 
 impl DatabaseError {

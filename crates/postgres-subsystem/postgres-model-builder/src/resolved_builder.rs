@@ -635,11 +635,11 @@ fn build_type_hint(
 
         let distance_function = field.annotations.get("distanceFunction").and_then(|p| {
             match VectorDistanceFunction::from_model_string(p.as_single().as_string().as_str()) {
-                Some(distance_function) => Some(distance_function),
-                None => {
+                Ok(distance_function) => Some(distance_function),
+                Err(e) => {
                     errors.push(Diagnostic {
                         level: Level::Error,
-                        message: r#"Invalid distance function specified. Must be either "cosine", "l2", or "ip""#.to_string(),
+                        message: e.to_string(),
                         code: Some("C000".to_string()),
                         spans: vec![SpanLabel {
                             span: field.span,
@@ -648,7 +648,7 @@ fn build_type_hint(
                         }],
                     });
                     None
-                },
+                }
             }
         });
 

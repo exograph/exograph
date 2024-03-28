@@ -30,7 +30,8 @@ use core_plugin_interface::{
 
 use exo_sql::{
     schema::index_spec::IndexKind, ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn,
-    PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId, DEFAULT_VECTOR_SIZE,
+    PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId, VectorDistanceFunction,
+    DEFAULT_VECTOR_SIZE,
 };
 
 use heck::ToSnakeCase;
@@ -213,27 +214,26 @@ fn expand_type_no_fields(
                     Some(existing_index) => {
                         existing_index.columns.insert(field.column_name.clone());
                     }
-                    None => {
-                        let distance_function = match field.type_hint {
-                            Some(ResolvedTypeHint::Vector {
-                                distance_function, ..
-                            }) => distance_function,
-                            _ => None,
-                        };
+                    None => indices.push(PhysicalIndex {
+                        name: index_name.clone(),
+                        columns: HashSet::from_iter([field.column_name.clone()]),
+                        index_kind: if field.typ.innermost().type_name == "Vector" {
+                            let distance_function = match field.type_hint {
+                                Some(ResolvedTypeHint::Vector {
+                                    distance_function, ..
+                                }) => distance_function,
+                                _ => None,
+                            }
+                            .unwrap_or(VectorDistanceFunction::default());
 
-                        indices.push(PhysicalIndex {
-                            name: index_name.clone(),
-                            columns: HashSet::from_iter([field.column_name.clone()]),
-                            index_kind: if field.typ.innermost().type_name == "Vector" {
-                                Some(IndexKind::HNWS {
-                                    distance_function,
-                                    params: None,
-                                })
-                            } else {
-                                None
-                            },
-                        })
-                    }
+                            IndexKind::HNWS {
+                                distance_function,
+                                params: None,
+                            }
+                        } else {
+                            IndexKind::default()
+                        },
+                    }),
                 }
             })
         });
