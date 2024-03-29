@@ -73,12 +73,16 @@ impl Display for PrimitiveType {
     }
 }
 
+pub fn vector_introspection_base_type() -> BaseType {
+    BaseType::List(Box::new(Type {
+        base: BaseType::Named(Name::new("Float")),
+        nullable: false,
+    }))
+}
+
 pub fn vector_introspection_type(optional: bool) -> Type {
     Type {
-        base: BaseType::List(Box::new(Type {
-            base: BaseType::Named(Name::new("Float")),
-            nullable: false,
-        })),
+        base: vector_introspection_base_type(),
         nullable: optional,
     }
 }

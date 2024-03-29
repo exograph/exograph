@@ -15,11 +15,11 @@ use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, P
 use crate::relation::OneToManyRelation;
 use crate::subsystem::PostgresSubsystem;
 use async_graphql_parser::types::{
-    BaseType, FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
+    FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
-use async_graphql_value::Name;
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
 use core_plugin_interface::core_model::context_type::ContextSelection;
+use core_plugin_interface::core_model::primitive_type::vector_introspection_base_type;
 use core_plugin_interface::core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
@@ -262,11 +262,9 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
 
         // Special case for Vector. Even though it is a "scalar" from the perspective of the
         // database, it is a list of floats from the perspective of the GraphQL schema.
+        // TODO: This should be handled in a more general way (probably best done with https://github.com/exograph/exograph/issues/603)
         if self.typ.base_type().name() == "Vector" {
-            let base_list_type = BaseType::List(Box::new(Type {
-                base: BaseType::Named(Name::new("Float")),
-                nullable: false,
-            }));
+            let base_list_type = vector_introspection_base_type();
 
             return FieldDefinition {
                 description: None,
