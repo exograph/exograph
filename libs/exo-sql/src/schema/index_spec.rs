@@ -157,8 +157,6 @@ impl IndexSpec {
             return vec![];
         }
 
-        println!("Index diff: {:?} -> {:?}", self, other);
-
         vec![
             SchemaOp::DeleteIndex {
                 index: self,

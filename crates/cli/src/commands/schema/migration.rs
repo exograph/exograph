@@ -1253,7 +1253,7 @@ mod tests {
                 module LogModule {
                     type Log {
                         @pk id: Int
-                        level: String
+                        level: String?
                         message: String
                         owner: User
                     }
@@ -1290,7 +1290,7 @@ mod tests {
                 (
                     r#"CREATE TABLE "logs" (
                     |    "id" INT PRIMARY KEY,
-                    |    "level" TEXT NOT NULL,
+                    |    "level" TEXT,
                     |    "message" TEXT NOT NULL,
                     |    "owner_id" INT NOT NULL
                     |);"#,
@@ -1307,10 +1307,6 @@ mod tests {
             ],
             vec![
                 (r#"CREATE SCHEMA "auth";"#, false),
-                (
-                    r#"ALTER TABLE "logs" ALTER COLUMN "level" SET NOT NULL;"#,
-                    false,
-                ),
                 (r#"DROP TABLE "users" CASCADE;"#, true),
                 (
                     r#"CREATE TABLE "auth"."users" (
@@ -1321,10 +1317,6 @@ mod tests {
                 ),
             ],
             vec![
-                (
-                    r#"ALTER TABLE "logs" ALTER COLUMN "level" DROP NOT NULL;"#,
-                    false,
-                ),
                 (r#"DROP TABLE "auth"."users" CASCADE;"#, true),
                 (
                     r#"CREATE TABLE "users" (
@@ -1334,6 +1326,66 @@ mod tests {
                     false,
                 ),
                 ("DROP SCHEMA \"auth\" CASCADE;", true),
+            ],
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn introduce_vector_field() {
+        assert_changes(
+            r#"
+            @postgres
+            module DocumentDatabase {
+              @access(true)
+              type Document {
+                @pk id: Int = autoIncrement()
+                content: String
+              }
+            }
+            "#,
+            r#"
+            @postgres
+            module DocumentDatabase {
+              @access(true)
+              type Document {
+                @pk id: Int = autoIncrement()
+                content: String
+                contentVector: Vector?
+              }
+            }
+            "#,
+            vec![(
+                r#"CREATE TABLE "documents" (
+                 |    "id" SERIAL PRIMARY KEY,
+                 |    "content" TEXT NOT NULL
+                 |);"#,
+                false,
+            )],
+            vec![
+                (r#"CREATE EXTENSION "vector";"#, false),
+                (
+                    r#"CREATE TABLE "documents" (
+                 |    "id" SERIAL PRIMARY KEY,
+                 |    "content" TEXT NOT NULL,
+                 |    "content_vector" Vector(1536)
+                 |);"#,
+                    false,
+                ),
+            ],
+            vec![
+                ("CREATE EXTENSION \"vector\";", false),
+                (
+                    "ALTER TABLE \"documents\" ADD \"content_vector\" Vector(1536);",
+                    false,
+                ),
+            ],
+            vec![
+                (
+                    "ALTER TABLE \"documents\" DROP COLUMN \"content_vector\";",
+                    true,
+                ),
+                ("DROP EXTENSION \"vector\";", true),
             ],
         )
         .await
@@ -1386,6 +1438,138 @@ mod tests {
             ],
             vec![(r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)],
             vec![(r#"DROP INDEX "document_contentvector_idx";"#, false)],
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn vector_indexes_distance_function_change() {
+        assert_changes(
+            r#"
+            @postgres
+            module DocumentDatabase {
+              @access(true)
+              type Document {
+                @pk id: Int = autoIncrement()
+                title: String
+                content: String
+                @size(3) @index contentVector: Vector?
+              }
+            }
+            "#,
+            r#"
+            @postgres
+            module DocumentDatabase {
+              @access(true)
+              type Document {
+                @pk id: Int = autoIncrement()
+                title: String
+                content: String
+                @distanceFunction("l2") @index @size(3) contentVector: Vector?
+              }
+            }
+            "#,
+            vec![
+                (r#"CREATE EXTENSION "vector";"#, false), 
+                (r#"CREATE TABLE "documents" (
+                 |    "id" SERIAL PRIMARY KEY,
+                 |    "title" TEXT NOT NULL,
+                 |    "content" TEXT NOT NULL,
+                 |    "content_vector" Vector(3)
+                 |);"#, false),
+                 (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)
+            ],     
+            vec![
+                (r#"CREATE EXTENSION "vector";"#, false), 
+                (r#"CREATE TABLE "documents" (
+                 |    "id" SERIAL PRIMARY KEY,
+                 |    "title" TEXT NOT NULL,
+                 |    "content" TEXT NOT NULL,
+                 |    "content_vector" Vector(3)
+                 |);"#, false), 
+                (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_l2_ops);"#, false)
+            ],
+            vec![
+                (r#"DROP INDEX "document_contentvector_idx";"#, false), 
+                (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_l2_ops);"#, false)],
+            vec![
+                (r#"DROP INDEX "document_contentvector_idx";"#, false), 
+                (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)],
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn vector_size_change() {
+        assert_changes(
+            r#"
+            @postgres
+            module DocumentDatabase {
+              @access(true)
+              type Document {
+                @pk id: Int = autoIncrement()
+                title: String
+                content: String
+                @size(3) contentVector: Vector?
+              }
+            }
+            "#,
+            r#"
+            @postgres
+            module DocumentDatabase {
+              @access(true)
+              type Document {
+                @pk id: Int = autoIncrement()
+                title: String
+                content: String
+                @size(4) contentVector: Vector?
+              }
+            }
+            "#,
+            vec![
+                (r#"CREATE EXTENSION "vector";"#, false),
+                (
+                    r#"CREATE TABLE "documents" (
+                 |    "id" SERIAL PRIMARY KEY,
+                 |    "title" TEXT NOT NULL,
+                 |    "content" TEXT NOT NULL,
+                 |    "content_vector" Vector(3)
+                 |);"#,
+                    false,
+                ),
+            ],
+            vec![
+                (r#"CREATE EXTENSION "vector";"#, false),
+                (
+                    r#"CREATE TABLE "documents" (
+                 |    "id" SERIAL PRIMARY KEY,
+                 |    "title" TEXT NOT NULL,
+                 |    "content" TEXT NOT NULL,
+                 |    "content_vector" Vector(4)
+                 |);"#,
+                    false,
+                ),
+            ],
+            vec![
+                (
+                    "ALTER TABLE \"documents\" DROP COLUMN \"content_vector\";",
+                    true,
+                ),
+                (
+                    "ALTER TABLE \"documents\" ADD \"content_vector\" Vector(4);",
+                    false,
+                ),
+            ],
+            vec![
+                (
+                    "ALTER TABLE \"documents\" DROP COLUMN \"content_vector\";",
+                    true,
+                ),
+                (
+                    "ALTER TABLE \"documents\" ADD \"content_vector\" Vector(3);",
+                    false,
+                ),
+            ],
         )
         .await
     }

@@ -22,7 +22,7 @@ use deadpool_postgres::Client;
 use regex::Regex;
 use std::collections::HashSet;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ColumnSpec {
     pub name: String,
     pub typ: ColumnTypeSpec,
@@ -259,14 +259,17 @@ impl ColumnSpec {
         let is_pk_same = self.is_pk == new.is_pk;
         let is_auto_increment_same = self.is_auto_increment == new.is_auto_increment;
         let is_nullable_same = self.is_nullable == new.is_nullable;
-        let _unique_constraints_same = self.unique_constraints == new.unique_constraints;
         let default_value_same = self.default_value == new.default_value;
 
         if !(table_name_same && column_name_same) {
             panic!("Diffing columns must have the same table name and column name");
         }
 
-        if !(type_same || is_pk_same || is_auto_increment_same) {
+        // If the column type differs only in reference type, that is taken care by table-level migration
+        if (!type_same && !self.differs_only_in_reference_column(new))
+            || !is_pk_same
+            || !is_auto_increment_same
+        {
             changes.push(SchemaOp::DeleteColumn {
                 table: self_table,
                 column: self,
@@ -274,7 +277,7 @@ impl ColumnSpec {
             changes.push(SchemaOp::CreateColumn {
                 table: new_table,
                 column: new,
-            });
+            })
         } else if !is_nullable_same {
             if new.is_nullable && !self.is_nullable {
                 // drop NOT NULL constraint
@@ -347,6 +350,23 @@ impl ColumnSpec {
             is_nullable: column.is_nullable,
             unique_constraints: column.unique_constraints,
             default_value: column.default_value,
+        }
+    }
+
+    fn differs_only_in_reference_column(&self, new: &Self) -> bool {
+        match (&self.typ, &new.typ) {
+            (ColumnTypeSpec::ColumnReference { .. }, ColumnTypeSpec::ColumnReference { .. }) => {
+                (self.typ != new.typ) && {
+                    Self {
+                        typ: ColumnTypeSpec::Int { bits: IntBits::_16 },
+                        ..self.clone()
+                    } == Self {
+                        typ: ColumnTypeSpec::Int { bits: IntBits::_16 },
+                        ..new.clone()
+                    }
+                }
+            }
+            _ => false,
         }
     }
 }
