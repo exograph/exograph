@@ -1478,7 +1478,7 @@ mod tests {
                  |    "content_vector" Vector(3)
                  |);"#, false),
                  (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)
-            ],     
+            ],
             vec![
                 (r#"CREATE EXTENSION "vector";"#, false), 
                 (r#"CREATE TABLE "documents" (

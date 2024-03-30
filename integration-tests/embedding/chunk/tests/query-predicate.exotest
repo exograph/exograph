@@ -1,0 +1,96 @@
+operation: |
+  fragment TodoInfo on Todo {
+      id
+      title
+      description
+      chunks {
+          chunk
+          chunkVector
+      }
+  }
+  query {
+      now: todos(where: {chunks: {chunkVector:{similar: {value: [1,1], distance:{lt: 0.4}}}}}) {
+        ...TodoInfo
+      }
+      soon: todos(where: {chunks: {chunkVector:{similar: {value: [0.5, 0.5], distance:{lt: 0.4}}}}}) {
+        ...TodoInfo
+      }
+      someday: todos(where: {chunks: {chunkVector:{similar: {value: [0,0], distance:{lt: 0.5}}}}}) {
+        ...TodoInfo
+      }
+      
+  }
+response: |
+  {
+    "data": {
+      "now": [
+        {
+          "id": 3,
+          "title": "Prepare for the meeting",
+          "description": "Need to show customers a demo next week. I don't want to mess this up!",
+          "chunks": [
+            {
+              "chunk": "It is all working fine",
+              "chunkVector": [
+                0.9,
+                0.9
+              ]
+            },
+            {
+              "chunk": "But could use some refactoring for new features",
+              "chunkVector": [
+                0.9,
+                0.9
+              ]
+            }
+          ]
+        }
+      ],
+      "soon": [
+        {
+          "id": 2,
+          "title": "Refactor the validation logic",
+          "description": "It is all working fine. But could use some refactoring for new features",
+          "chunks": [
+            {
+              "chunk": "It is all working fine",
+              "chunkVector": [
+                0.1,
+                0.1
+              ]
+            },
+            {
+              "chunk": "But could use some refactoring for new features",
+              "chunkVector": [
+                0.4,
+                0.2
+              ]
+            }
+          ]
+        }
+      ],
+      "someday": [
+        {
+          "id": 2,
+          "title": "Refactor the validation logic",
+          "description": "It is all working fine. But could use some refactoring for new features",
+          "chunks": [
+            {
+              "chunk": "It is all working fine",
+              "chunkVector": [
+                0.1,
+                0.1
+              ]
+            },
+            {
+              "chunk": "But could use some refactoring for new features",
+              "chunkVector": [
+                0.4,
+                0.2
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
