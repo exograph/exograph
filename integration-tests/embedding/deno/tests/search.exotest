@@ -1,0 +1,50 @@
+operation: |
+  query($searchString: String!) {
+      searchDocuments(searchString: $searchString) @unordered {
+          id
+          title
+          content
+          contentVector
+      }      
+  }
+variable: |
+  {
+    searchString: "Truck"
+  }
+response: |
+  {
+    "data": {
+      "searchDocuments": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [
+            0.9,
+            0.8,
+            0.1
+          ]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [
+            0.8,
+            0.5,
+            0.1
+          ]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [
+            0.6,
+            0.9,
+            0.9
+          ]
+        }
+      ]
+    }
+  }

@@ -1,0 +1,15 @@
+operation: |
+    mutation {
+        t1: createDocument(data: {title: "car", content: "Car"}) {
+            id @bind(name: "d1id")
+        }
+        t2: createDocument(data: {title: "motorcycle", content: "Motorcycle"}) {
+            id @bind(name: "d2id")
+        }
+        t3: createDocument(data: {title: "dog", content: "Dog"}) {
+            id @bind(name: "d3id")
+        }
+        t4: createDocument(data: {title: "elephant", content: "Elephant"}) {
+            id @bind(name: "d4id")
+        }
+    }

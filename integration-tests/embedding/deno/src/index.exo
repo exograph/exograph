@@ -1,0 +1,29 @@
+// Content vector is manually computed 3-dimensional vector to represent [Transporation, Heavy, Animal]
+
+@postgres
+module DocumentDatabase {
+  @access(true)
+  type Document {
+    @pk id: Int = autoIncrement()
+    title: String
+    content: String
+    @distanceFunction("cosine") @index @size(3) contentVector: Vector?
+  }
+}
+
+@deno("embedding.ts")
+module DocumentEmbedding {
+  @access(true)
+  type DocumentResult {
+    id: Int
+    title: String
+    content: String
+    contentVector: Vector?
+  }
+
+  @around("mutation createDocument*")
+  interceptor amendEmbedding(operation: Operation, exograph: Exograph)
+
+  @access(true)
+  query searchDocuments(searchString: String, @inject exograph: Exograph): Set<DocumentResult>
+}
