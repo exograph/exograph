@@ -22,7 +22,10 @@ module DocumentEmbedding {
   }
 
   @around("mutation createDocument*")
-  interceptor amendEmbedding(operation: Operation, exograph: Exograph)
+  interceptor createEmbedding(operation: Operation, exograph: Exograph)
+
+  @around("mutation updateDocument*")
+  interceptor updateEmbedding(operation: Operation, exograph: Exograph)
 
   @access(true)
   query searchDocuments(searchString: String, @inject exograph: Exograph): Set<DocumentResult>

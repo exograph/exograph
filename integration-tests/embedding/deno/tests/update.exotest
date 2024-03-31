@@ -1,0 +1,59 @@
+stages:
+    - operation: |
+        mutation {
+            updateDocument(id: 1, data: {title: "truck", content: "Truck"}) {
+                id
+                title
+                content
+            }
+        }
+      response: |
+        {
+            "data": {
+                "updateDocument": {
+                    "id": 1,
+                    "title": "truck",
+                    "content": "Truck"
+                }
+            }
+        }
+    - operation: |
+        query {
+            documents @unordered {
+                id
+                title
+                content
+                contentVector
+            }
+        }
+      response: |
+        {
+            "data": {
+                "documents": [
+                    {
+                        "id": 1,
+                        "title": "truck",
+                        "content": "Truck",
+                        "contentVector": [0.9, 0.95, 0.1]
+                    },
+                    {
+                        "id": 2,
+                        "title": "motorcycle",
+                        "content": "Motorcycle",
+                        "contentVector": [0.8,0.5,0.1]
+                    },
+                    {
+                        "id": 3,
+                        "title": "dog",
+                        "content": "Dog",
+                        "contentVector": [0.1,0.1,0.9]
+                    },
+                    {
+                        "id": 4,
+                        "title": "elephant",
+                        "content": "Elephant",
+                        "contentVector": [0.6,0.9,0.9]
+                    }
+                ]
+            }
+        }
