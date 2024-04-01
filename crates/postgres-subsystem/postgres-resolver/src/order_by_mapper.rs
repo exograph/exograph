@@ -133,7 +133,7 @@ async fn order_by_pair<'a>(
                                 let new_column_path = new_column_path.unwrap();
 
                                 // These unwraps are safe, since the validation of the parameter type guarantees that these keys exist.
-                                let value = elems.get("value").unwrap();
+                                let value = elems.get("distanceTo").unwrap();
 
                                 let default_order = Val::String("ASC".to_owned());
                                 let order = elems.get("order").unwrap_or(&default_order);

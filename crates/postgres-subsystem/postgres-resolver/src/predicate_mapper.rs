@@ -106,7 +106,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     arg_parameter_type.kind,
                                     PredicateParameterTypeKind::Vector
                                 ) {
-                                    let value = op_value.get("value").unwrap();
+                                    let value = op_value.get("distanceTo").unwrap();
                                     let vector_value = to_pg_vector(value, &parameter.name)?;
 
                                     let distance = op_value.get("distance").unwrap();

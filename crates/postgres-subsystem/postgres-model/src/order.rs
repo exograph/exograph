@@ -127,7 +127,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
                 let fields = vec![
                     InputValueDefinition {
                         description: None,
-                        name: default_positioned_name("value"),
+                        name: default_positioned_name("distanceTo"),
                         directives: vec![],
                         default_value: None,
                         ty: default_positioned(vector_introspection_type(false)),

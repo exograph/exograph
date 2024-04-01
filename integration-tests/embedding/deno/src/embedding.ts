@@ -16,7 +16,7 @@ function getEmbedding(content: string): number[] {
 
 const SEARCH_QUERY = `
 		query($searchVector: [Float!]!) {
-			documents(where: {contentVector: {similar: {value: $searchVector, distance: {lt: 0.5}}}}, orderBy: {contentVector: {value: $searchVector, order: ASC}}) {
+			documents(where: {contentVector: {similar: {distanceTo: $searchVector, distance: {lt: 0.5}}}}, orderBy: {contentVector: {distanceTo: $searchVector, order: ASC}}) {
 				id
 				title
 				content

@@ -138,7 +138,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
                 let fields = vec![
                     InputValueDefinition {
                         description: None,
-                        name: default_positioned_name("value"),
+                        name: default_positioned_name("distanceTo"),
                         ty: default_positioned(vector_introspection_type(false)),
                         default_value: None,
                         directives: vec![],

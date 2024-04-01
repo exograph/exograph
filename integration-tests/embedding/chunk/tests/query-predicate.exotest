@@ -9,13 +9,13 @@ operation: |
       }
   }
   query {
-      now: todos(where: {chunks: {chunkVector:{similar: {value: [1,1], distance:{lt: 0.4}}}}}) {
+      now: todos(where: {chunks: {chunkVector:{similar: {distanceTo: [1,1], distance:{lt: 0.4}}}}}) {
         ...TodoInfo
       }
-      soon: todos(where: {chunks: {chunkVector:{similar: {value: [0.5, 0.5], distance:{lt: 0.4}}}}}) {
+      soon: todos(where: {chunks: {chunkVector:{similar: {distanceTo: [0.5, 0.5], distance:{lt: 0.4}}}}}) {
         ...TodoInfo
       }
-      someday: todos(where: {chunks: {chunkVector:{similar: {value: [0,0], distance:{lt: 0.5}}}}}) {
+      someday: todos(where: {chunks: {chunkVector:{similar: {distanceTo: [0,0], distance:{lt: 0.5}}}}}) {
         ...TodoInfo
       }
       
