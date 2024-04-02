@@ -10,7 +10,7 @@
 use std::fmt::Debug;
 
 use tokio_postgres::{GenericClient, Row, Transaction};
-use tracing::{debug, error, instrument};
+use tracing::{error, info, instrument};
 
 use crate::{
     database_error::DatabaseError,
@@ -180,7 +180,7 @@ impl<'a> ConcreteTransactionStep<'a> {
 
         let params: Vec<_> = params.iter().map(|p| p.as_pg()).collect();
 
-        debug!("Executing SQL operation: {}", stmt);
+        info!("Executing SQL operation: {}", stmt);
 
         client.query(&stmt, &params[..]).await.map_err(|e| {
             error!("Failed to execute query: {e:?}");

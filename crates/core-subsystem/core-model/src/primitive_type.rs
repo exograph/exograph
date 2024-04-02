@@ -9,6 +9,8 @@
 
 use std::fmt::{Display, Formatter};
 
+use async_graphql_parser::types::{BaseType, Type};
+use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -25,6 +27,7 @@ pub enum PrimitiveType {
     Json,
     Blob,
     Uuid,
+    Vector,
     // TODO: This should not be a primitive type, but a type with modifier or some variation of it
     /// An array version of a primitive type.
     Array(Box<PrimitiveType>),
@@ -55,6 +58,7 @@ impl PrimitiveType {
             PrimitiveType::Json => "Json".to_owned(),
             PrimitiveType::Blob => "Blob".to_owned(),
             PrimitiveType::Uuid => "Uuid".to_owned(),
+            PrimitiveType::Vector => "Vector".to_owned(),
             PrimitiveType::Exograph => "Exograph".to_owned(),
             PrimitiveType::ExographPriv => "ExographPriv".to_owned(),
             PrimitiveType::Interception(name) => name.to_owned(),
@@ -66,5 +70,19 @@ impl PrimitiveType {
 impl Display for PrimitiveType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.name())
+    }
+}
+
+pub fn vector_introspection_base_type() -> BaseType {
+    BaseType::List(Box::new(Type {
+        base: BaseType::Named(Name::new("Float")),
+        nullable: false,
+    }))
+}
+
+pub fn vector_introspection_type(optional: bool) -> Type {
+    Type {
+        base: vector_introspection_base_type(),
+        nullable: optional,
     }
 }

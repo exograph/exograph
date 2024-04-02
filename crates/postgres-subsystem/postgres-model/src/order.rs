@@ -10,12 +10,16 @@
 use crate::{access::Access, subsystem::PostgresSubsystem};
 
 use async_graphql_parser::{
-    types::{EnumType, EnumValueDefinition, InputObjectType, Type, TypeDefinition, TypeKind},
+    types::{
+        BaseType, EnumType, EnumValueDefinition, InputObjectType, InputValueDefinition, Type,
+        TypeDefinition, TypeKind,
+    },
     Pos, Positioned,
 };
 use async_graphql_value::Name;
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
+    primitive_type::vector_introspection_type,
     type_normalization::{
         default_positioned, default_positioned_name, InputValueProvider, Parameter,
         TypeDefinitionProvider,
@@ -23,7 +27,7 @@ use core_plugin_interface::core_model::{
     types::{FieldType, Named},
 };
 
-use exo_sql::ColumnPathLink;
+use exo_sql::{ColumnPathLink, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -40,6 +44,8 @@ pub struct OrderByParameter {
     /// ```
     pub column_path_link: Option<ColumnPathLink>,
     pub access: Option<Access>,
+    // TODO: Generalize this to support more than just vector distance functions
+    pub vector_distance_function: Option<VectorDistanceFunction>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -57,6 +63,7 @@ pub struct OrderByParameterType {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum OrderByParameterTypeKind {
     Primitive,
+    Vector,
     Composite { parameters: Vec<OrderByParameter> },
 }
 
@@ -116,6 +123,38 @@ impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
                         .collect(),
                 }),
             },
+            OrderByParameterTypeKind::Vector => {
+                let fields = vec![
+                    InputValueDefinition {
+                        description: None,
+                        name: default_positioned_name("distanceTo"),
+                        directives: vec![],
+                        default_value: None,
+                        ty: default_positioned(vector_introspection_type(false)),
+                    },
+                    InputValueDefinition {
+                        description: None,
+                        name: default_positioned_name("order"),
+                        directives: vec![],
+                        default_value: None,
+                        ty: default_positioned(Type {
+                            base: BaseType::Named(Name::new("Ordering")),
+                            nullable: true,
+                        }),
+                    },
+                ]
+                .into_iter()
+                .map(default_positioned)
+                .collect();
+
+                TypeDefinition {
+                    extend: false,
+                    description: None,
+                    name: default_positioned_name(&self.name),
+                    directives: vec![],
+                    kind: TypeKind::InputObject(InputObjectType { fields }),
+                }
+            }
         }
     }
 }

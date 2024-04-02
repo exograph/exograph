@@ -1,0 +1,22 @@
+// For emeddings, we will assume manual process to create a two-dimensional vector [importance, urgency]
+// This should make tests easier to write and understand
+
+@postgres
+module DocumentDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    description: String
+    chunks: Set<Chunk>?
+  }
+
+  @access(true)
+  type Chunk {
+    @pk id: Int = autoIncrement()
+    todo: Todo
+    chunk: String
+    @distanceFunction("l2") @index @size(2) chunkVector: Vector?
+  }
+}
+

@@ -22,6 +22,7 @@ base64 = "0.13"
 chrono.workspace = true
 pg_bigdecimal = "0.1.4"
 uuid = "1.1.2"
+pgvector = { version = "0.3", features = ["postgres"] }
 
 exo-sql = { path = "../../../libs/exo-sql" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }

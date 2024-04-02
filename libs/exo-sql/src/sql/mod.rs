@@ -24,6 +24,7 @@ pub mod order;
 pub mod physical_column;
 pub mod predicate;
 pub mod relation;
+pub mod vector;
 
 pub use sql_bytes::SQLBytes;
 pub use sql_param::SQLParam;

@@ -148,6 +148,7 @@ fn implicit_equals_predicate_param(
         typ: FieldType::Plain(param_type),
         column_path_link: Some(field.relation.column_path_link(database)),
         access: None,
+        vector_distance_function: None,
     }
 }
 
@@ -284,6 +285,7 @@ pub fn expand_unique_queries(
                                     entity_field.relation.column_path_link(database),
                                 ),
                                 access: None,
+                                vector_distance_function: None,
                             }
                         }
                         PostgresRelation::OneToMany { .. } => {
@@ -340,6 +342,7 @@ pub fn collection_predicate_param(
         typ: FieldType::Optional(Box::new(FieldType::Plain(param_type))),
         column_path_link: None,
         access: None,
+        vector_distance_function: None,
     }
 }
 

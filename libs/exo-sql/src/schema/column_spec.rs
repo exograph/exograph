@@ -22,7 +22,7 @@ use deadpool_postgres::Client;
 use regex::Regex;
 use std::collections::HashSet;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ColumnSpec {
     pub name: String,
     pub typ: ColumnTypeSpec,
@@ -53,6 +53,9 @@ pub enum ColumnTypeSpec {
     Json,
     Blob,
     Uuid,
+    Vector {
+        size: usize,
+    },
     Array {
         typ: Box<ColumnTypeSpec>,
     },
@@ -101,6 +104,7 @@ impl ColumnSpec {
                 let row = rows.first().unwrap();
 
                 let mut sql_type: String = row.get("format_type");
+
                 let dims = {
                     // depending on the version of postgres, the type of `attndims` is either `i16`
                     // or `i32` (postgres type is `int2`` or `int4``), so try both
@@ -255,14 +259,17 @@ impl ColumnSpec {
         let is_pk_same = self.is_pk == new.is_pk;
         let is_auto_increment_same = self.is_auto_increment == new.is_auto_increment;
         let is_nullable_same = self.is_nullable == new.is_nullable;
-        let _unique_constraints_same = self.unique_constraints == new.unique_constraints;
         let default_value_same = self.default_value == new.default_value;
 
         if !(table_name_same && column_name_same) {
             panic!("Diffing columns must have the same table name and column name");
         }
 
-        if !(type_same || is_pk_same || is_auto_increment_same) {
+        // If the column type differs only in reference type, that is taken care by table-level migration
+        if (!type_same && !self.differs_only_in_reference_column(new))
+            || !is_pk_same
+            || !is_auto_increment_same
+        {
             changes.push(SchemaOp::DeleteColumn {
                 table: self_table,
                 column: self,
@@ -270,7 +277,7 @@ impl ColumnSpec {
             changes.push(SchemaOp::CreateColumn {
                 table: new_table,
                 column: new,
-            });
+            })
         } else if !is_nullable_same {
             if new.is_nullable && !self.is_nullable {
                 // drop NOT NULL constraint
@@ -345,6 +352,23 @@ impl ColumnSpec {
             default_value: column.default_value,
         }
     }
+
+    fn differs_only_in_reference_column(&self, new: &Self) -> bool {
+        match (&self.typ, &new.typ) {
+            (ColumnTypeSpec::ColumnReference { .. }, ColumnTypeSpec::ColumnReference { .. }) => {
+                (self.typ != new.typ) && {
+                    Self {
+                        typ: ColumnTypeSpec::Int { bits: IntBits::_16 },
+                        ..self.clone()
+                    } == Self {
+                        typ: ColumnTypeSpec::Int { bits: IntBits::_16 },
+                        ..new.clone()
+                    }
+                }
+            }
+            _ => false,
+        }
+    }
 }
 
 impl ColumnTypeSpec {
@@ -352,6 +376,12 @@ impl ColumnTypeSpec {
     /// a database schema to a Exograph model.
     pub fn from_string(s: &str) -> Result<ColumnTypeSpec, DatabaseError> {
         let s = s.to_uppercase();
+
+        let vector_re = Regex::new(r"VECTOR\((\d+)\)").unwrap();
+        if let Some(captures) = vector_re.captures(&s) {
+            let size = captures.get(1).unwrap().as_str().parse().unwrap();
+            return Ok(ColumnTypeSpec::Vector { size });
+        }
 
         match s.find('[') {
             // If the type contains `[`, then it's an array type
@@ -481,6 +511,7 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Json => PhysicalColumnType::Json,
             ColumnTypeSpec::Blob => PhysicalColumnType::Blob,
             ColumnTypeSpec::Uuid => PhysicalColumnType::Uuid,
+            ColumnTypeSpec::Vector { size } => PhysicalColumnType::Vector { size: *size },
             ColumnTypeSpec::Array { typ } => PhysicalColumnType::Array {
                 typ: Box::new(typ.to_database_type()),
             },
@@ -565,6 +596,7 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Json => ("Json".to_string(), "".to_string()),
             ColumnTypeSpec::Blob => ("Blob".to_string(), "".to_string()),
             ColumnTypeSpec::Uuid => ("Uuid".to_string(), "".to_string()),
+            ColumnTypeSpec::Vector { size } => ("Vector".to_string(), format!("@size({size})",)),
 
             ColumnTypeSpec::Array { typ } => {
                 let (data_type, annotations) = typ.to_model();
@@ -711,6 +743,12 @@ impl ColumnTypeSpec {
                 post_statements: vec![],
             },
 
+            Self::Vector { size, .. } => SchemaStatement {
+                statement: format!("Vector({size})"),
+                pre_statements: vec![],
+                post_statements: vec![],
+            },
+
             Self::Array { typ } => {
                 // 'unwrap' nested arrays all the way to the underlying primitive type
 
@@ -785,6 +823,7 @@ impl ColumnTypeSpec {
             PhysicalColumnType::Json => ColumnTypeSpec::Json,
             PhysicalColumnType::Blob => ColumnTypeSpec::Blob,
             PhysicalColumnType::Uuid => ColumnTypeSpec::Uuid,
+            PhysicalColumnType::Vector { size } => ColumnTypeSpec::Vector { size },
             PhysicalColumnType::Array { typ } => ColumnTypeSpec::Array {
                 typ: Box::new(ColumnTypeSpec::from_physical(*typ)),
             },

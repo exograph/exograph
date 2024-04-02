@@ -28,6 +28,8 @@ values:
   - - ~
     - Primitive: Uuid
   - - ~
+    - Primitive: Vector
+  - - ~
     - Primitive: Exograph
   - - ~
     - Primitive: ExographPriv
@@ -255,7 +257,6 @@ values:
   - ~
   - ~
   - ~
-  - ~
 map:
   Blob:
     index: 10
@@ -264,16 +265,16 @@ map:
     index: 0
     generation: ~
   Concert:
-    index: 15
+    index: 16
     generation: ~
   Decimal:
     index: 3
     generation: ~
   Exograph:
-    index: 12
+    index: 13
     generation: ~
   ExographPriv:
-    index: 13
+    index: 14
     generation: ~
   Float:
     index: 2
@@ -297,7 +298,7 @@ map:
     index: 5
     generation: ~
   Operation:
-    index: 14
+    index: 15
     generation: ~
   String:
     index: 4
@@ -305,7 +306,9 @@ map:
   Uuid:
     index: 11
     generation: ~
-  Venue:
-    index: 16
+  Vector:
+    index: 12
     generation: ~
-
+  Venue:
+    index: 17
+    generation: ~

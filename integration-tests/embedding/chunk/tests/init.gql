@@ -1,0 +1,33 @@
+operation: |
+    mutation {
+        t1: createTodo(data: 
+            {title: "Alex's birthday", 
+             description: "Need to buy a gift next month. But what will he like?", 
+             chunks: [
+                {chunk: "Need to buy a gift next month", chunkVector: [0.8, 0.1]}, 
+                {chunk: "But what will he like?", chunkVector: [0.8, 0.2]}
+            ]
+        }) {
+            id @bind(name: "t1id")
+        }
+        t2: createTodo(data: 
+            {title: "Refactor the validation logic", 
+             description: "It is all working fine. But could use some refactoring for new features", 
+             chunks: [
+                {chunk: "It is all working fine", chunkVector: [0.1, 0.1]}, 
+                {chunk: "But could use some refactoring for new features", chunkVector: [0.4, 0.2]}
+            ]
+        }) {
+            id @bind(name: "t2id")
+        }
+        t3: createTodo(data: 
+            {title: "Prepare for the meeting", 
+             description: "Need to show customers a demo next week. I don't want to mess this up!", 
+             chunks: [
+                {chunk: "It is all working fine", chunkVector: [0.9, 0.9]}, 
+                {chunk: "But could use some refactoring for new features", chunkVector: [0.9, 0.9]}
+            ]
+        }) {
+            id @bind(name: "t3id")
+        }
+    }

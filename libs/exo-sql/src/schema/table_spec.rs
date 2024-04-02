@@ -162,6 +162,9 @@ impl TableSpec {
             if let ColumnTypeSpec::Uuid = col_spec.typ {
                 required_extensions.insert("pgcrypto".to_string());
             }
+            if let ColumnTypeSpec::Vector { .. } = col_spec.typ {
+                required_extensions.insert("vector".to_string());
+            }
         }
 
         required_extensions

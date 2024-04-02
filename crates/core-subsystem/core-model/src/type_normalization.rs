@@ -9,11 +9,14 @@
 
 use async_graphql_parser::{
     types::{
-        EnumValueDefinition, FieldDefinition, InputValueDefinition, Type, TypeDefinition, TypeKind,
+        BaseType, EnumValueDefinition, FieldDefinition, InputValueDefinition, Type, TypeDefinition,
+        TypeKind,
     },
     Pos, Positioned,
 };
 use async_graphql_value::Name;
+
+use crate::primitive_type::vector_introspection_type;
 
 pub trait FieldDefinitionProvider<S> {
     fn field_definition(&self, system: &S) -> FieldDefinition;
@@ -49,9 +52,22 @@ pub trait Parameter {
     fn typ(&self) -> Type;
 }
 
+fn innermost_typename(typ: &Type) -> &str {
+    match &typ.base {
+        BaseType::Named(name) => name.as_str(),
+        BaseType::List(inner) => innermost_typename(inner),
+    }
+}
+
 impl<T: Parameter> InputValueProvider for T {
     fn input_value(&self) -> InputValueDefinition {
-        let field_type = default_positioned(self.typ());
+        let vector_adjusted_type = if innermost_typename(&self.typ()) == "Vector" {
+            vector_introspection_type(self.typ().nullable)
+        } else {
+            self.typ()
+        };
+
+        let field_type = default_positioned(vector_adjusted_type);
 
         InputValueDefinition {
             description: None,
@@ -66,7 +82,16 @@ impl<T: Parameter> InputValueProvider for T {
 // TODO: Dedup from above
 impl InputValueProvider for &dyn Parameter {
     fn input_value(&self) -> InputValueDefinition {
-        let field_type = default_positioned(self.typ());
+        // Special case for Vector. Even though it is a "scalar" from the perspective of the
+        // database, it is a list of floats from the perspective of the GraphQL schema.
+        // TODO: This should be handled in a more general way (probably best done with https://github.com/exograph/exograph/issues/603)
+        let vector_adjusted_type = if self.typ().to_string() == "Vector" {
+            vector_introspection_type(false)
+        } else {
+            self.typ()
+        };
+
+        let field_type = default_positioned(vector_adjusted_type);
 
         InputValueDefinition {
             description: None,

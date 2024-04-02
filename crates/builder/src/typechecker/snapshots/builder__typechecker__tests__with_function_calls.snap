@@ -29,6 +29,8 @@ types:
     - - ~
       - Primitive: Uuid
     - - ~
+      - Primitive: Vector
+    - - ~
       - Primitive: Exograph
     - - ~
       - Primitive: ExographPriv
@@ -125,17 +127,17 @@ types:
                                     - Identifier:
                                         - self
                                         - Reference:
-                                            index: 16
+                                            index: 17
                                             generation: ~
                                     - Reference:
-                                        index: 16
+                                        index: 17
                                         generation: ~
                                 - Identifier:
                                     - documentUsers
                                     - Defer
                                 - Set:
                                     Reference:
-                                      index: 17
+                                      index: 18
                                       generation: ~
                             - HofCall:
                                 name:
@@ -155,10 +157,10 @@ types:
                                                             - Identifier:
                                                                 - AuthContext
                                                                 - Reference:
-                                                                    index: 15
+                                                                    index: 16
                                                                     generation: ~
                                                             - Reference:
-                                                                index: 15
+                                                                index: 16
                                                                 generation: ~
                                                         - Identifier:
                                                             - role
@@ -177,10 +179,10 @@ types:
                                                             - Identifier:
                                                                 - du
                                                                 - Reference:
-                                                                    index: 17
+                                                                    index: 18
                                                                     generation: ~
                                                             - Reference:
-                                                                index: 17
+                                                                index: 18
                                                                 generation: ~
                                                         - Identifier:
                                                             - userId
@@ -194,10 +196,10 @@ types:
                                                             - Identifier:
                                                                 - AuthContext
                                                                 - Reference:
-                                                                    index: 15
+                                                                    index: 16
                                                                     generation: ~
                                                             - Reference:
-                                                                index: 15
+                                                                index: 16
                                                                 generation: ~
                                                         - Identifier:
                                                             - id
@@ -213,10 +215,10 @@ types:
                                                 - Identifier:
                                                     - du
                                                     - Reference:
-                                                        index: 17
+                                                        index: 18
                                                         generation: ~
                                                 - Reference:
-                                                    index: 17
+                                                    index: 18
                                                     generation: ~
                                             - Identifier:
                                                 - write
@@ -236,17 +238,17 @@ types:
                                     - Identifier:
                                         - self
                                         - Reference:
-                                            index: 16
+                                            index: 17
                                             generation: ~
                                     - Reference:
-                                        index: 16
+                                        index: 17
                                         generation: ~
                                 - Identifier:
                                     - documentUsers
                                     - Defer
                                 - Set:
                                     Reference:
-                                      index: 17
+                                      index: 18
                                       generation: ~
                             - HofCall:
                                 name:
@@ -266,10 +268,10 @@ types:
                                                             - Identifier:
                                                                 - AuthContext
                                                                 - Reference:
-                                                                    index: 15
+                                                                    index: 16
                                                                     generation: ~
                                                             - Reference:
-                                                                index: 15
+                                                                index: 16
                                                                 generation: ~
                                                         - Identifier:
                                                             - role
@@ -288,10 +290,10 @@ types:
                                                             - Identifier:
                                                                 - du
                                                                 - Reference:
-                                                                    index: 17
+                                                                    index: 18
                                                                     generation: ~
                                                             - Reference:
-                                                                index: 17
+                                                                index: 18
                                                                 generation: ~
                                                         - Identifier:
                                                             - userId
@@ -305,10 +307,10 @@ types:
                                                             - Identifier:
                                                                 - AuthContext
                                                                 - Reference:
-                                                                    index: 15
+                                                                    index: 16
                                                                     generation: ~
                                                             - Reference:
-                                                                index: 15
+                                                                index: 16
                                                                 generation: ~
                                                         - Identifier:
                                                             - id
@@ -324,10 +326,10 @@ types:
                                                 - Identifier:
                                                     - du
                                                     - Reference:
-                                                        index: 17
+                                                        index: 18
                                                         generation: ~
                                                 - Reference:
-                                                    index: 17
+                                                    index: 18
                                                     generation: ~
                                             - Identifier:
                                                 - read
@@ -411,10 +413,9 @@ types:
     - ~
     - ~
     - ~
-    - ~
   map:
     AuthContext:
-      index: 15
+      index: 16
       generation: ~
     Blob:
       index: 10
@@ -426,16 +427,16 @@ types:
       index: 3
       generation: ~
     Document:
-      index: 16
-      generation: ~
-    DocumentUser:
       index: 17
       generation: ~
+    DocumentUser:
+      index: 18
+      generation: ~
     Exograph:
-      index: 12
+      index: 13
       generation: ~
     ExographPriv:
-      index: 13
+      index: 14
       generation: ~
     Float:
       index: 2
@@ -459,13 +460,16 @@ types:
       index: 5
       generation: ~
     Operation:
-      index: 14
+      index: 15
       generation: ~
     String:
       index: 4
       generation: ~
     Uuid:
       index: 11
+      generation: ~
+    Vector:
+      index: 12
       generation: ~
 modules:
   values:
@@ -531,17 +535,17 @@ modules:
                                       - Identifier:
                                           - self
                                           - Reference:
-                                              index: 16
+                                              index: 17
                                               generation: ~
                                       - Reference:
-                                          index: 16
+                                          index: 17
                                           generation: ~
                                   - Identifier:
                                       - documentUsers
                                       - Defer
                                   - Set:
                                       Reference:
-                                        index: 17
+                                        index: 18
                                         generation: ~
                               - HofCall:
                                   name:
@@ -561,10 +565,10 @@ modules:
                                                               - Identifier:
                                                                   - AuthContext
                                                                   - Reference:
-                                                                      index: 15
+                                                                      index: 16
                                                                       generation: ~
                                                               - Reference:
-                                                                  index: 15
+                                                                  index: 16
                                                                   generation: ~
                                                           - Identifier:
                                                               - role
@@ -583,10 +587,10 @@ modules:
                                                               - Identifier:
                                                                   - du
                                                                   - Reference:
-                                                                      index: 17
+                                                                      index: 18
                                                                       generation: ~
                                                               - Reference:
-                                                                  index: 17
+                                                                  index: 18
                                                                   generation: ~
                                                           - Identifier:
                                                               - userId
@@ -600,10 +604,10 @@ modules:
                                                               - Identifier:
                                                                   - AuthContext
                                                                   - Reference:
-                                                                      index: 15
+                                                                      index: 16
                                                                       generation: ~
                                                               - Reference:
-                                                                  index: 15
+                                                                  index: 16
                                                                   generation: ~
                                                           - Identifier:
                                                               - id
@@ -619,10 +623,10 @@ modules:
                                                   - Identifier:
                                                       - du
                                                       - Reference:
-                                                          index: 17
+                                                          index: 18
                                                           generation: ~
                                                   - Reference:
-                                                      index: 17
+                                                      index: 18
                                                       generation: ~
                                               - Identifier:
                                                   - write
@@ -642,17 +646,17 @@ modules:
                                       - Identifier:
                                           - self
                                           - Reference:
-                                              index: 16
+                                              index: 17
                                               generation: ~
                                       - Reference:
-                                          index: 16
+                                          index: 17
                                           generation: ~
                                   - Identifier:
                                       - documentUsers
                                       - Defer
                                   - Set:
                                       Reference:
-                                        index: 17
+                                        index: 18
                                         generation: ~
                               - HofCall:
                                   name:
@@ -672,10 +676,10 @@ modules:
                                                               - Identifier:
                                                                   - AuthContext
                                                                   - Reference:
-                                                                      index: 15
+                                                                      index: 16
                                                                       generation: ~
                                                               - Reference:
-                                                                  index: 15
+                                                                  index: 16
                                                                   generation: ~
                                                           - Identifier:
                                                               - role
@@ -694,10 +698,10 @@ modules:
                                                               - Identifier:
                                                                   - du
                                                                   - Reference:
-                                                                      index: 17
+                                                                      index: 18
                                                                       generation: ~
                                                               - Reference:
-                                                                  index: 17
+                                                                  index: 18
                                                                   generation: ~
                                                           - Identifier:
                                                               - userId
@@ -711,10 +715,10 @@ modules:
                                                               - Identifier:
                                                                   - AuthContext
                                                                   - Reference:
-                                                                      index: 15
+                                                                      index: 16
                                                                       generation: ~
                                                               - Reference:
-                                                                  index: 15
+                                                                  index: 16
                                                                   generation: ~
                                                           - Identifier:
                                                               - id
@@ -730,10 +734,10 @@ modules:
                                                   - Identifier:
                                                       - du
                                                       - Reference:
-                                                          index: 17
+                                                          index: 18
                                                           generation: ~
                                                   - Reference:
-                                                      index: 17
+                                                      index: 18
                                                       generation: ~
                                               - Identifier:
                                                   - read
@@ -812,4 +816,3 @@ modules:
     DocsDatabase:
       index: 0
       generation: ~
-

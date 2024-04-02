@@ -25,19 +25,28 @@ jobs:
         # For these target platforms
         include:
           - os: macos-13
-            deps-script: HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install protobuf postgresql@14
+            deps-script: HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install protobuf postgresql@14 pgvector
             target: x86_64-apple-darwin
             bin_extension: ""
           - os: macos-14
-            deps-script: brew install protobuf postgresql@14
+            deps-script: brew install protobuf postgresql@14 pgvector
             target: aarch64-apple-darwin
             bin_extension: ""
           - os: ubuntu-20.04
-            deps-script: sudo apt-get install -y protobuf-compiler
+            deps-script: |
+              sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+              sudo apt-get install -y protobuf-compiler postgresql-14-pgvector
             target: x86_64-unknown-linux-gnu
             bin_extension: ""
           - os: windows-2019
-            deps-script: choco install protoc
+            deps-script: |
+              choco install protoc
+              set "PGROOT=C:\Program Files\PostgreSQL\14"
+              cd $env:RUNNER_TEMP
+              git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
+              cd pgvector
+              nmake /F Makefile.win
+              nmake /F Makefile.win install
             target: x86_64-pc-windows-msvc
             bin_extension: ".exe"
 
@@ -56,6 +65,7 @@ jobs:
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+      - uses: ilammy/msvc-dev-cmd@v1
       - name: Install deps
         run: ${{ matrix.deps-script }}
       - name: Setup Node

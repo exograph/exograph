@@ -1,0 +1,345 @@
+operation: |
+  fragment DocumentInfo on Document {
+      id
+      title
+      content
+      contentVector
+  }
+  query findDocs($searchVector: [Float!]) {
+      top: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: ASC}}, limit: 1) {
+          ...DocumentInfo
+      }
+      top_implicit_asc: documents(orderBy: {contentVector: {distanceTo: $searchVector}}, limit: 1) {
+          ...DocumentInfo
+      }
+      bottom: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: DESC}}, limit: 1) {
+          ...DocumentInfo
+      }
+      top2: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: ASC}}, limit: 2) {
+          ...DocumentInfo
+      }
+      top2_implicit_asc: documents(orderBy: {contentVector: {distanceTo: $searchVector}}, limit: 2) {
+          ...DocumentInfo
+      }
+      bottom2: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: DESC}}, limit: 2) {
+          ...DocumentInfo
+      }
+      top3: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: ASC}}, limit: 3) {
+          ...DocumentInfo
+      }
+      top3_implicit_asc: documents(orderBy: {contentVector: {distanceTo: $searchVector}}, limit: 3) {
+          ...DocumentInfo
+      }
+      bottom3: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: DESC}}, limit: 3) {
+          ...DocumentInfo
+      }
+      top4: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: ASC}}, limit: 4) {
+          ...DocumentInfo
+      }
+      top4_implicit_asc: documents(orderBy: {contentVector: {distanceTo: $searchVector}}, limit: 4) {
+          ...DocumentInfo
+      }
+      bottom4: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: DESC}}, limit: 4) {
+          ...DocumentInfo
+      }
+      top5: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: ASC}}, limit: 5) {
+          ...DocumentInfo
+      }
+      top5_implicit_asc: documents(orderBy: {contentVector: {distanceTo: $searchVector}}, limit: 5) {
+          ...DocumentInfo
+      }
+      bottom5: documents(orderBy: {contentVector: {distanceTo: $searchVector, order: DESC}}, limit: 5) {
+          ...DocumentInfo
+      }
+  }
+variable: | 
+  {
+    "searchVector": [0.95, 0.85, 0.15]
+  }
+response: |
+  {
+    "data": {
+      "top": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        }
+      ],
+      "top_implicit_asc": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        }
+      ],      
+      "bottom": [
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [0.1,0.1,0.9]
+        }
+      ],
+      "top2": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        }
+      ],
+      "top2_implicit_asc": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        }
+      ],
+      "bottom2": [
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [0.1,0.1,0.9]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        }
+      ],      
+      "top3": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        }
+      ],
+      "top3_implicit_asc": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        }
+      ],
+      "bottom3": [
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [0.1,0.1,0.9]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        }
+      ],      
+      "top4": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        },
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [0.1,0.1,0.9]
+        }
+      ],
+      "top4_implicit_asc": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        },
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [0.1,0.1,0.9]
+        }
+      ],
+      "bottom4": [
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [0.1,0.1,0.9]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        },
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        }
+      ],
+      "top5": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        },
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [0.1,0.1,0.9]
+        }
+      ],
+      "top5_implicit_asc": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        },
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [0.1,0.1,0.9]
+        }
+      ],
+      "bottom5": [
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [0.1,0.1,0.9]
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [0.6,0.9,0.9]
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [0.8,0.5,0.1]
+        },
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [0.9,0.8,0.1]
+        }
+      ]
+    }
+  }

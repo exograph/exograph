@@ -12,7 +12,7 @@ use crate::{
     sql::predicate::ConcretePredicate,
     transform::{pg::selection_level::SelectionLevel, transformer::PredicateTransformer},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, Database,
-    Selection, SelectionElement,
+    NumericComparator, Selection, SelectionElement, VectorDistanceFunction,
 };
 
 use super::Postgres;
@@ -96,6 +96,20 @@ fn to_join_predicate(
         AbstractPredicate::JsonMatchAllKeys(l, r) => {
             ConcretePredicate::JsonMatchAllKeys(compute_leaf_column(l), compute_leaf_column(r))
         }
+
+        AbstractPredicate::VectorDistance(
+            c1,
+            c2,
+            distance_op,
+            numeric_comparator_op,
+            threshold,
+        ) => ConcretePredicate::VectorDistance(
+            compute_leaf_column(c1),
+            compute_leaf_column(c2),
+            *distance_op,
+            *numeric_comparator_op,
+            compute_leaf_column(threshold),
+        ),
 
         AbstractPredicate::And(l, r) => ConcretePredicate::and(
             to_join_predicate(l, selection_level, database),
@@ -217,28 +231,28 @@ fn leaf_column(
 fn attempt_subselect_predicate(
     predicate: &AbstractPredicate,
 ) -> Option<(RelationLink, AbstractPredicate)> {
+    fn split(cp: &ColumnPath) -> Option<(RelationLink, ColumnPath)> {
+        match cp {
+            ColumnPath::Physical(physical_path) => {
+                let (head, tail) = physical_path.split_head();
+                match (head, tail) {
+                    // If the tail is non-empty, the head will be a relation link (but the way we have expressed ColumnPath, we can't express that in the type system)
+                    // TODO: Fix the type to express this
+                    (ColumnPathLink::Relation(link), Some(tail)) => {
+                        Some((link.clone(), ColumnPath::Physical(tail.clone())))
+                    }
+                    _ => None,
+                }
+            }
+            ColumnPath::Param(_) | ColumnPath::Null => None,
+        }
+    }
+
     fn binary_operator(
         l: &ColumnPath,
         r: &ColumnPath,
         constructor: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
     ) -> Option<(RelationLink, AbstractPredicate)> {
-        fn split(cp: &ColumnPath) -> Option<(RelationLink, ColumnPath)> {
-            match cp {
-                ColumnPath::Physical(physical_path) => {
-                    let (head, tail) = physical_path.split_head();
-                    match (head, tail) {
-                        // If the tail is non-empty, the head will be a relation link (but the way we have expressed ColumnPath, we can't express that in the type system)
-                        // TODO: Fix the type system to express this
-                        (ColumnPathLink::Relation(link), Some(tail)) => {
-                            Some((link.clone(), ColumnPath::Physical(tail.clone())))
-                        }
-                        _ => None,
-                    }
-                }
-                ColumnPath::Param(_) | ColumnPath::Null => None,
-            }
-        }
-
         match split(l) {
             Some((l_link, l_tail)) => match split(r) {
                 Some((r_link, r_tail)) => {
@@ -249,6 +263,96 @@ fn attempt_subselect_predicate(
                 None => Some((l_link, constructor(l_tail, r.clone()))),
             },
             None => split(r).map(|(r_link, r_tail)| (r_link, constructor(l.clone(), r_tail))),
+        }
+    }
+
+    fn vector_distance_subselect_predicate(
+        l: &ColumnPath,
+        r: &ColumnPath,
+        distance_function: &VectorDistanceFunction,
+        comparator: &NumericComparator,
+        comparator_path: &ColumnPath,
+    ) -> Option<(RelationLink, AbstractPredicate)> {
+        match (split(l), split(r), split(comparator_path)) {
+            (None, None, None) => None,
+            (None, None, Some((c_link, c_tail))) => Some((
+                c_link,
+                AbstractPredicate::VectorDistance(
+                    l.clone(),
+                    r.clone(),
+                    *distance_function,
+                    *comparator,
+                    c_tail,
+                ),
+            )),
+            (None, Some((r_link, r_tail)), None) => Some((
+                r_link,
+                AbstractPredicate::VectorDistance(
+                    l.clone(),
+                    r_tail,
+                    *distance_function,
+                    *comparator,
+                    comparator_path.clone(),
+                ),
+            )),
+            (None, Some((r_link, r_tail)), Some((c_link, c_tail))) => {
+                (r_link == c_link).then_some((
+                    r_link,
+                    AbstractPredicate::VectorDistance(
+                        l.clone(),
+                        r_tail,
+                        *distance_function,
+                        *comparator,
+                        c_tail,
+                    ),
+                ))
+            }
+            (Some((l_link, l_tail)), None, None) => Some((
+                l_link,
+                AbstractPredicate::VectorDistance(
+                    l_tail,
+                    r.clone(),
+                    *distance_function,
+                    *comparator,
+                    comparator_path.clone(),
+                ),
+            )),
+            (Some((l_link, l_tail)), None, Some((c_link, c_tail))) => {
+                (l_link == c_link).then_some((
+                    l_link,
+                    AbstractPredicate::VectorDistance(
+                        l_tail,
+                        r.clone(),
+                        *distance_function,
+                        *comparator,
+                        c_tail,
+                    ),
+                ))
+            }
+            (Some((l_link, l_tail)), Some((r_link, r_tail)), None) => {
+                (l_link == r_link).then_some((
+                    l_link,
+                    AbstractPredicate::VectorDistance(
+                        l_tail,
+                        r_tail,
+                        *distance_function,
+                        *comparator,
+                        comparator_path.clone(),
+                    ),
+                ))
+            }
+            (Some((l_link, l_tail)), Some((r_link, r_tail)), Some((c_link, c_tail))) => {
+                (l_link == r_link && r_link == c_link).then_some((
+                    l_link,
+                    AbstractPredicate::VectorDistance(
+                        l_tail,
+                        r_tail,
+                        *distance_function,
+                        *comparator,
+                        c_tail,
+                    ),
+                ))
+            }
         }
     }
 
@@ -298,6 +402,17 @@ fn attempt_subselect_predicate(
         AbstractPredicate::JsonMatchAllKeys(l, r) => {
             binary_operator(l, r, AbstractPredicate::JsonMatchAllKeys)
         }
+
+        AbstractPredicate::VectorDistance(l, r, distance_function, comparator, comparator_path) => {
+            vector_distance_subselect_predicate(
+                l,
+                r,
+                distance_function,
+                comparator,
+                comparator_path,
+            )
+        }
+
         AbstractPredicate::And(l, r) => logical_binary_op(l, r, AbstractPredicate::And),
         AbstractPredicate::Or(l, r) => logical_binary_op(l, r, AbstractPredicate::Or),
         AbstractPredicate::Not(p) => attempt_subselect_predicate(p)

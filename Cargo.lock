@@ -6035,6 +6035,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pgvector"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1f4c0c07ceb64a0020f2f0e610cfe51122d2e72723499f0154877b7c76c8c31"
+dependencies = [
+ "bytes",
+ "postgres",
+]
+
+[[package]]
 name = "phf"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6272,6 +6282,7 @@ dependencies = [
  "indexmap 2.2.5",
  "maybe-owned",
  "pg_bigdecimal",
+ "pgvector",
  "postgres-model",
  "postgres-types",
  "resolver",

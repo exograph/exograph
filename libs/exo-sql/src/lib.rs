@@ -50,7 +50,7 @@ pub use asql::{
     database_executor::{DatabaseExecutor, TransactionHolder},
     delete::AbstractDelete,
     insert::{AbstractInsert, ColumnValuePair, InsertionElement, InsertionRow, NestedInsertion},
-    order_by::AbstractOrderBy,
+    order_by::{AbstractOrderBy, AbstractOrderByExpr},
     predicate::AbstractPredicate,
     select::AbstractSelect,
     selection::{AliasedSelectionElement, Selection, SelectionCardinality, SelectionElement},
@@ -72,7 +72,8 @@ pub use sql::{
     order::Ordering,
     physical_column::{ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
     physical_table::{PhysicalIndex, PhysicalTable, PhysicalTableName},
-    predicate::{CaseSensitivity, ParamEquality, Predicate},
+    predicate::{CaseSensitivity, NumericComparator, ParamEquality, Predicate},
     relation::{ManyToOne, ManyToOneId, OneToMany, OneToManyId, RelationId},
+    vector::{VectorDistanceFunction, DEFAULT_VECTOR_SIZE},
     SQLBytes, SQLParam, SQLParamContainer,
 };

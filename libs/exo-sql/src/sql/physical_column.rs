@@ -89,6 +89,9 @@ pub enum PhysicalColumnType {
     Json,
     Blob,
     Uuid,
+    Vector {
+        size: usize,
+    },
     Array {
         typ: Box<PhysicalColumnType>,
     },
@@ -139,6 +142,7 @@ impl PhysicalColumnType {
             PhysicalColumnType::Json => "Json".to_string(),
             PhysicalColumnType::Blob => "Blob".to_string(),
             PhysicalColumnType::Uuid => "Uuid".to_string(),
+            PhysicalColumnType::Vector { size } => format!("Vector of size {:?}", size),
             PhysicalColumnType::Array { typ } => format!("Array of {:?}", typ),
             PhysicalColumnType::Float { bits } => format!("Float of size {:?} bits", bits),
             PhysicalColumnType::Numeric { precision, scale } => {

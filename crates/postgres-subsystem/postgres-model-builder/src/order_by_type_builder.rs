@@ -20,7 +20,10 @@ use postgres_model::{
     types::{EntityType, PostgresField, PostgresPrimitiveType, PostgresType},
 };
 
-use crate::shallow::Shallow;
+use crate::{
+    resolved_builder::{ResolvedField, ResolvedTypeHint},
+    shallow::Shallow,
+};
 
 use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
@@ -35,6 +38,7 @@ impl Shallow for OrderByParameter {
             typ: FieldType::Plain(OrderByParameterTypeWrapper::shallow()),
             column_path_link: None,
             access: None,
+            vector_distance_function: None,
         }
     }
 }
@@ -54,8 +58,18 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
         name: type_name.to_owned(),
         kind: OrderByParameterTypeKind::Primitive,
     };
-
     building.order_by_types.add(&type_name, primitive_type);
+
+    let vector_ordering_type_name = "VectorOrdering".to_string();
+    let vector_ordering_type = {
+        OrderByParameterType {
+            name: vector_ordering_type_name.to_owned(),
+            kind: OrderByParameterTypeKind::Vector,
+        }
+    };
+    building
+        .order_by_types
+        .add(&vector_ordering_type_name, vector_ordering_type);
 
     for (_, typ) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(ResolvedCompositeType { .. }) = typ {
@@ -66,20 +80,27 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
     }
 }
 
-pub fn build_expanded(building: &mut SystemContextBuilding) {
+pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (_, entity_type) in building.entity_types.iter() {
         let param_type_name = get_parameter_type_name(&entity_type.name, false);
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
+        let resolved_type = resolved_env
+            .resolved_types
+            .get_by_key(&entity_type.name)
+            .unwrap();
+
         if let Some(existing_param_id) = existing_param_id {
-            let new_kind = expand_type(entity_type, building);
+            let new_kind = expand_type(resolved_type, entity_type, building);
             building.order_by_types[existing_param_id].kind = new_kind;
         }
     }
 }
 
 fn get_parameter_type_name(entity_type_name: &str, is_primitive: bool) -> String {
-    if is_primitive {
+    if entity_type_name == "Vector" {
+        "VectorOrdering".to_string()
+    } else if is_primitive {
         "Ordering".to_string()
     } else {
         format!("{}Ordering", &entity_type_name)
@@ -97,6 +118,7 @@ fn create_shallow_type(typ: &ResolvedType) -> OrderByParameterType {
 }
 
 fn expand_type(
+    resolved_type: &ResolvedType,
     entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> OrderByParameterTypeKind {
@@ -104,7 +126,14 @@ fn expand_type(
         .fields
         .iter()
         .flat_map(|field| {
+            let resolved_field = resolved_type
+                .as_composite()
+                .fields
+                .iter()
+                .find(|f| f.name == field.name)
+                .unwrap();
             new_field_param(
+                resolved_field,
                 field,
                 &building.primitive_types,
                 &building.entity_types,
@@ -124,6 +153,7 @@ fn new_param(
     column_path_link: Option<ColumnPathLink>,
     order_by_types: &MappedArena<OrderByParameterType>,
     access: Option<Access>,
+    type_hint: Option<&ResolvedTypeHint>,
 ) -> OrderByParameter {
     let (param_type_name, param_type_id) =
         order_by_param_type(entity_type_name, is_primitive, order_by_types);
@@ -154,10 +184,17 @@ fn new_param(
         typ: FieldType::Optional(Box::new(wrapped_type)),
         column_path_link,
         access,
+        vector_distance_function: type_hint.and_then(|hint| match hint {
+            ResolvedTypeHint::Vector {
+                distance_function, ..
+            } => *distance_function,
+            _ => None,
+        }),
     }
 }
 
 pub fn new_field_param(
+    resolved_field: &ResolvedField,
     entity_field: &PostgresField<EntityType>,
     primitive_types: &MappedArena<PostgresPrimitiveType>,
     entity_types: &MappedArena<EntityType>,
@@ -189,6 +226,7 @@ pub fn new_field_param(
         column_path_link,
         order_by_types,
         Some(entity_field.access.clone()),
+        resolved_field.type_hint.as_ref(),
     ))
 }
 
@@ -203,6 +241,7 @@ pub fn new_root_param(
         is_primitive,
         None,
         order_by_types,
+        None,
         None,
     )
 }

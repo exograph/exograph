@@ -18,12 +18,12 @@ use exo_sql::{
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParamContainer,
 };
 use pg_bigdecimal::{BigDecimal, PgNumeric};
+use pgvector::Vector;
 
 use std::str::FromStr;
 
-use thiserror::Error;
-
 use super::postgres_execution_error::PostgresExecutionError;
+use thiserror::Error;
 
 const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
@@ -67,7 +67,7 @@ pub(crate) fn literal_column_path(
         .map_err(PostgresExecutionError::CastError)
 }
 
-fn cast_value(
+pub(crate) fn cast_value(
     value: &Val,
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<SQLParamContainer>, CastError> {
@@ -87,19 +87,46 @@ fn cast_list(
     elems: &[Val],
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<SQLParamContainer>, CastError> {
-    fn array_entry(elem: &Val) -> ArrayEntry<Val> {
-        match elem {
-            Val::List(elems) => ArrayEntry::List(elems),
-            _ => ArrayEntry::Single(elem),
+    match destination_type {
+        PhysicalColumnType::Vector { size } => {
+            if elems.len() != *size {
+                return Err(CastError::Generic(format!(
+                    "Expected vector of size {size}, got {}",
+                    elems.len()
+                )));
+            }
+
+            let vec_value: Result<Vec<f32>, PostgresExecutionError> = elems
+                .iter()
+                .map(|v| match v {
+                    Val::Number(n) => Ok(n.as_f64().unwrap() as f32),
+                    _ => Err(PostgresExecutionError::CastError(CastError::Generic(
+                        "Invalid vector parameter: element is not of float type".into(),
+                    ))),
+                })
+                .collect();
+
+            let vec_value = vec_value.map_err(|e| CastError::Generic(e.to_string()))?;
+            Ok(Some(SQLParamContainer::new(Vector::from(vec_value))))
+        }
+        _ => {
+            fn array_entry(elem: &Val) -> ArrayEntry<Val> {
+                match elem {
+                    Val::List(elems) => ArrayEntry::List(elems),
+                    _ => ArrayEntry::Single(elem),
+                }
+            }
+
+            let cast_value_with_error =
+                |value: &Val| -> Result<Option<SQLParamContainer>, DatabaseError> {
+                    cast_value(value, destination_type)
+                        .map_err(|error| DatabaseError::BoxedError(error.into()))
+                };
+
+            array_util::to_sql_param(elems, array_entry, &cast_value_with_error)
+                .map_err(CastError::Postgres)
         }
     }
-
-    let cast_value_with_error = |value: &Val| -> Result<Option<SQLParamContainer>, DatabaseError> {
-        cast_value(value, destination_type).map_err(|error| DatabaseError::BoxedError(error.into()))
-    };
-
-    array_util::to_sql_param(elems, array_entry, &cast_value_with_error)
-        .map_err(CastError::Postgres)
 }
 
 fn cast_number(
@@ -147,6 +174,23 @@ fn cast_string(
             };
 
             SQLParamContainer::new(decimal)
+        }
+
+        PhysicalColumnType::Vector { size } => {
+            let parsed: Vec<_> = serde_json::from_str(string).map_err(|e| {
+                CastError::Generic(format!("Could not parse {string} as a vector {e}"))
+            })?;
+
+            if parsed.len() != *size {
+                return Err(CastError::Generic(format!(
+                    "Expected vector of size {size}, got {}",
+                    parsed.len()
+                )));
+            }
+
+            let vector = Vector::from(parsed);
+
+            SQLParamContainer::new(vector)
         }
 
         PhysicalColumnType::Timestamp { .. }

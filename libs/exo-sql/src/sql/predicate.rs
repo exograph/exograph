@@ -7,15 +7,25 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::Database;
+use crate::{Database, VectorDistanceFunction};
 
-use super::{column::Column, ExpressionBuilder, SQLBuilder};
+use super::{column::Column, vector::VectorDistance, ExpressionBuilder, SQLBuilder};
 
 /// Case sensitivity for string predicates.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum CaseSensitivity {
     Sensitive,
     Insensitive,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
+pub enum NumericComparator {
+    Eq,
+    Neq,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
 }
 
 /// A predicate is a boolean expression that can be used in a WHERE clause.
@@ -45,6 +55,8 @@ where
     JsonMatchKey(C, C),
     JsonMatchAnyKey(C, C),
     JsonMatchAllKeys(C, C),
+
+    VectorDistance(C, C, VectorDistanceFunction, NumericComparator, C),
 
     // Prefer Predicate::and(), which simplifies the clause
     And(Box<Predicate<C>>, Box<Predicate<C>>),
@@ -223,6 +235,28 @@ impl ExpressionBuilder for ConcretePredicate {
             ConcretePredicate::JsonMatchAllKeys(column1, column2) => {
                 relational_combine(column1, column2, "?&", database, builder)
             }
+
+            ConcretePredicate::VectorDistance(
+                column1,
+                column2,
+                distance_op,
+                numeric_comp_op,
+                numeric_value,
+            ) => {
+                VectorDistance::new(column1, column2, *distance_op).build(database, builder);
+                builder.push_space();
+                match numeric_comp_op {
+                    NumericComparator::Eq => builder.push_str("="),
+                    NumericComparator::Neq => builder.push_str("<>"),
+                    NumericComparator::Lt => builder.push_str("<"),
+                    NumericComparator::Lte => builder.push_str("<="),
+                    NumericComparator::Gt => builder.push_str(">"),
+                    NumericComparator::Gte => builder.push_str(">="),
+                }
+                builder.push_space();
+                numeric_value.build(database, builder);
+            }
+
             ConcretePredicate::And(predicate1, predicate2) => {
                 logical_combine(predicate1, predicate2, "AND", database, builder)
             }

@@ -18,7 +18,7 @@ use postgres_model::{
 };
 use std::collections::HashMap;
 
-use crate::shallow::Shallow;
+use crate::{resolved_builder::ResolvedTypeHint, shallow::Shallow, type_builder::ResolvedTypeEnv};
 
 use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
@@ -37,6 +37,7 @@ impl Shallow for PredicateParameter {
             typ: FieldType::Plain(PredicateParameterTypeWrapper::shallow()),
             column_path_link: None,
             access: None,
+            vector_distance_function: None,
         }
     }
 }
@@ -98,9 +99,16 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
             }
         }
     }
+    building.predicate_types.add(
+        "VectorFilterArg",
+        PredicateParameterType {
+            name: "VectorFilterArg".to_string(),
+            kind: PredicateParameterTypeKind::Vector,
+        },
+    );
 }
 
-pub fn build_expanded(building: &mut SystemContextBuilding) {
+pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (_, primitive_type) in building.primitive_types.iter() {
         let param_type_name = get_filter_type_name(&primitive_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
@@ -114,7 +122,12 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
             let param_type_name = get_filter_type_name(&entity_type.name);
             let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-            let new_kind = expand_entity_type(entity_type, building);
+            let resolved_type = resolved_env
+                .resolved_types
+                .get_by_key(&entity_type.name)
+                .unwrap();
+
+            let new_kind = expand_entity_type(resolved_type, entity_type, building);
             building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
         }
 
@@ -143,6 +156,7 @@ fn expand_primitive_type(
 }
 
 fn expand_entity_type(
+    resolved_type: &ResolvedType,
     entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
@@ -156,6 +170,13 @@ fn expand_entity_type(
 
             let column_path_link = Some(field.relation.column_path_link(&building.database));
 
+            let resolved_field = resolved_type
+                .as_composite()
+                .fields
+                .iter()
+                .find(|f| f.name == field.name)
+                .unwrap();
+
             PredicateParameter {
                 name: field.name.to_string(),
                 typ: FieldType::Optional(Box::new(FieldType::Plain(
@@ -166,6 +187,14 @@ fn expand_entity_type(
                 ))),
                 column_path_link,
                 access: Some(field.access.clone()),
+                vector_distance_function: resolved_field.type_hint.as_ref().and_then(|hint| {
+                    match hint {
+                        ResolvedTypeHint::Vector {
+                            distance_function, ..
+                        } => *distance_function,
+                        _ => None,
+                    }
+                }),
             }
         })
         .collect();
@@ -205,6 +234,7 @@ fn expand_entity_type(
                 typ: param_field_type,
                 column_path_link: None,
                 access: None,
+                vector_distance_function: None,
             }
         })
         .collect();
@@ -240,6 +270,7 @@ fn expand_unique_type(
                     typ: param_type,
                     access: Some(field.access.clone()),
                     column_path_link: None,
+                    vector_distance_function: None,
                 })
             }
             _ => None,
@@ -303,6 +334,8 @@ lazy_static! {
             Some(vec!["eq", "neq"])
         );
 
+        supported_operators.insert("Vector", Some(vec!["similar", "eq", "neq"]));
+
         supported_operators.insert("Exograph", None);
         supported_operators.insert("ExographPriv", None);
         supported_operators.insert("Operation", None); // TODO: Re-examine if this is the best way (for both injected and interception)
@@ -316,19 +349,23 @@ fn create_operator_filter_type_kind(
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     let parameter_constructor = |operator: &&str| {
-        let predicate_param_type_id = building
-            .predicate_types
-            .get_id(&primitive_type.name)
-            .unwrap();
+        // For Vector's similar operation, we need to use the VectorFilterArg type (which has two fields: value and distance)
+        let operand_type = if operator == &"similar" && primitive_type.name == "Vector" {
+            "VectorFilterArg"
+        } else {
+            primitive_type.name.as_str()
+        };
+        let predicate_param_type_id = building.predicate_types.get_id(operand_type).unwrap();
 
         PredicateParameter {
             name: operator.to_string(),
             typ: FieldType::Optional(Box::new(FieldType::Plain(PredicateParameterTypeWrapper {
-                name: primitive_type.name.to_owned(),
+                name: operand_type.to_owned(),
                 type_id: predicate_param_type_id,
             }))),
             column_path_link: None,
             access: None,
+            vector_distance_function: None,
         }
     };
 
