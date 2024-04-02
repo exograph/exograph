@@ -54,10 +54,12 @@ Through the GraphQL API, the `Vector` type surfaces as a float array (`[Float!]`
 To insert a document and its vector representation, you can use the following mutation:
 
 ```graphql
-mutation($title: String!, $content: String!, contentVector: [Float!]!) {
-    createDocument(data: {title: $title, content: $content, contentVector: $contentVector}) {
-        id
-    }
+mutation ($title: String!, $content: String!, $contentVector: [Float!]!) {
+  createDocument(
+    data: { title: $title, content: $content, contentVector: $contentVector }
+  ) {
+    id
+  }
 }
 ```
 
@@ -80,10 +82,10 @@ Typically, however, for other systems, you would use the mutation to insert the 
 Exograph extends its update mutations to accept vector fields. To update the vector representation of a document, you can use the following mutation:
 
 ```graphql
-mutation($id: Int!, contentVector: [Float!]!) {
-    updateDocument(id: $id, data: {contentVector: $contentVector}) {
-        id
-    }
+mutation ($id: Int!, $contentVector: [Float!]!) {
+  updateDocument(id: $id, data: { contentVector: $contentVector }) {
+    id
+  }
 }
 ```
 
@@ -100,7 +102,11 @@ As you may have noticed, there isn't much difference between mutation APIs for a
 
 ### Querying entities
 
-Now, we can query our documents. A common query with embedding is to retrieve the top matching documents. You can do it in Exograph with the following query:
+Now, we can query our documents. Exograph's support for embeddings extends normal queries to include vector-based filtering and ordering, so once you have familiarized yourself with Exograph's querying capabilities, you can start using embeddings pretty easily.
+
+#### Retrieving top matching documents
+
+A common query with embedding is to retrieve the top matching documents. You can do it in Exograph with the following query:
 
 ```graphql
 query topThreeSimilar($searchVector: [Float!]!) {
@@ -115,7 +121,11 @@ query topThreeSimilar($searchVector: [Float!]!) {
 }
 ```
 
-Limiting the number of documents is often sufficient for a typical search or RAG application. However, you can also use the `similar` operator to filter documents based on the distance from the search vector:
+Here, the `orderBy` clause for the vector field accepts a `distanceTo` operator to specify the target vector and an `order` to specify the sorting order. Exograph will automatically use the distance function specified for the field using the `@distanceFunction` annotation (see [Customizing Embeddings](#customizing-embeddings)).
+
+#### Filtering based on distance
+
+Limiting the number of documents is often sufficient for a typical search or RAG application. However, sometimes you want to ensure that you retrieve only documents within a certain distance. For this, you can also use the `similar` operator to filter documents based on the distance from the search vector:
 
 ```graphql
 query similar($searchVector: [Float!]!) {
@@ -132,6 +142,10 @@ query similar($searchVector: [Float!]!) {
   }
 }
 ```
+
+The `similar` operator accepts a `distanceTo` operator to specify the target vector and a `distance` operator to specify the distance condition. The `distance` operator allows you to specify the comparison operator (`lt`, `lte`, `gt`, `gte`, `eq`) and the distance value. Similar to the `orderBy` clause, Exograph will automatically use the distance function specified for the field.
+
+#### Combining filters and ordering
 
 You can combine the `orderBy` and `where` clauses to return the top three similar documents only if they are within a certain distance:
 
@@ -155,15 +169,23 @@ query topThreeSimilarDocumentsWithThreshold(
 }
 ```
 
-You can combine vector-based queries with other fields to filter and order based on other criteria. For example, you can filter based on the document's title and order based on the distance from the search vector:
+#### Combining other fields with vector-based queries
+
+You can combine vector-based queries with other fields to filter and order based on other criteria. For example, you can filter based on the document's title along with a similarity filter and order based on the distance from the search vector:
 
 ```graphql
 query topThreeSimilarDocumentsWithTitle(
   $searchVector: [Float!]!
   $title: String!
+  $threshold: Float!
 ) {
   documents(
-    where: { title: { eq: $title } }
+    where: {
+      title: { eq: $title }
+      contentVector: {
+        similar: { distanceTo: $searchVector, distance: { lt: $threshold } }
+      }
+    }
     orderBy: { contentVector: { distanceTo: $searchVector, order: ASC } }
     limit: 3
   ) {
@@ -173,6 +195,8 @@ query topThreeSimilarDocumentsWithTitle(
   }
 }
 ```
+
+Here, we filter documents based on title equality and similarity to the search vector and order them based on the distance from the search vector.
 
 These filtering and ordering capabilities make it easy to focus on the business logic of your application and let Exograph handle the details of querying and sorting based on vector similarity.
 
