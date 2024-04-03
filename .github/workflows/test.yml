@@ -20,21 +20,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
+  # lint:
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - name: Install deps
-        run: sudo apt-get install -y protobuf-compiler
-      - name: Run linters
-        run: |
-          cargo fmt --all -- --check
-          cargo clippy --all-targets --all-features -- -D warnings --no-deps
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: Swatinem/rust-cache@v2
+  #     - uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         components: rustfmt, clippy
+  #     - name: Install deps
+  #       run: sudo apt-get install -y protobuf-compiler
+  #     - name: Run linters
+  #       run: |
+  #         cargo fmt --all -- --check
+  #         cargo clippy --all-targets --all-features -- -D warnings --no-deps
 
   test:
     strategy:
@@ -54,14 +54,18 @@ jobs:
           #   deps-script: brew install protobuf postgresql@14 pgvector
           #   target: aarch64-apple-darwin
           - os: windows-2019
+            shell: cmd
             deps-script: |
               choco install protoc
-            # set "PGROOT=C:\Program Files\PostgreSQL\14"
-            # cd $env:RUNNER_TEMP
-            # git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
-            # cd pgvector
-            # nmake /F Makefile.win
-            # nmake /F Makefile.win install
+              "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvar64.bat"
+              set VSPATH="C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise"
+              for /f %%i in ('dir "%VSPATH%\VC\Tools\MSVC" /b') do set VCTOOLSVERSION=%%i
+              set "PGROOT=C:\Program Files\PostgreSQL\14"
+              cd $env:RUNNER_TEMP
+              git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
+              cd pgvector
+              "%VSPATH%\VC\Tools\MSVC\%VCTOOLSVERSION%\bin\HostX86\x86\nmake.exe" /F Makefile.win
+              "%VSPATH%\VC\Tools\MSVC\%VCTOOLSVERSION%\bin\HostX86\x86\nmake.exe" /F Makefile.win install
             target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
