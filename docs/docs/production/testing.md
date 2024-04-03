@@ -22,7 +22,7 @@ So we recommend that you focus your testing efforts on the following:
 
 - **Deno modules**: If you have anything but simple Deno code, you should test those. Since you are writing JavaScript/TypeScript code there, there is room for bugs. In addition to declarative testing through Exograph, you may also write unit tests for that code.
 
-## Declarative Testing Example
+## Example
 
 You write Exograph tests in "exotest" files. It is a YAML file with sections describing GraphQL operations and expected results. Let's explore this by writing a simple test to ensure that a non-admin user can see only published venues.
 

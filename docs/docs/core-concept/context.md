@@ -18,8 +18,8 @@ Each field in a context type carries an annotation that denotes the source of th
 
 You can use context types in a few ways:
 
-- In [access control expressions](#access-control-expressions): You can refer to context fields in access control expressions.
-- As [injected dependencies](#injected-dependencies): You can declare injected arguments of the context types in queries and mutations defined in [modules](#modules) and in [interceptors](#interceptors).
+- In [access control expressions](/postgres/access-control.md): You can refer to context fields in access control expressions.
+- As [injected dependencies](/deno/injection.md): You can declare injected arguments of the context types in queries and mutations defined in [modules](/deno/defining-modules.md) and in [interceptors](/deno/interceptor.md).
 - As [default values](/postgres/customizing-types.md#default-value): You can use context fields as default values for fields in types.
 
 Exograph supports several annotations to specify the source of the value of a field in a context type.

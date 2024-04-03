@@ -4,7 +4,7 @@ sidebar_position: 30
 
 # Sending Notifications
 
-Let's create a module to send emails to announce a new concert. We will keep things simple by printing the email to the console instead of using an email server. Later, when we dive deeper into Deno support, we will [integrate with an email server using npm package](../deno/external-packages#example).
+Let's create a module to send emails to announce a new concert. We will keep things simple by printing the email to the console instead of using an email server. Later, when we dive deeper into Deno support, we will [integrate with an email server using npm package](../deno/external-packages#example-sending-emails).
 
 We will use TypeScript to define the module (the other choice would be JavaScript).
 
