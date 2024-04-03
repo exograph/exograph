@@ -22,9 +22,9 @@ use crate::database_error::DatabaseError;
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
-    pub static LOCAL_URL: RefCell<Option<String>> = RefCell::new(None);
-    pub static LOCAL_CONNECTION_POOL_SIZE: RefCell<Option<usize>> = RefCell::new(None);
-    pub static LOCAL_CHECK_CONNECTION_ON_STARTUP: RefCell<Option<bool>> = RefCell::new(None);
+    pub static LOCAL_URL: RefCell<Option<String>> = const { RefCell::new(None) };
+    pub static LOCAL_CONNECTION_POOL_SIZE: RefCell<Option<usize>> = const { RefCell::new(None) };
+    pub static LOCAL_CHECK_CONNECTION_ON_STARTUP: RefCell<Option<bool>> = const { RefCell::new(None) };
 }
 
 pub struct DatabaseClient {

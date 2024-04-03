@@ -78,8 +78,7 @@ impl<'a> DenoOperation<'a> {
             .unwrap_or(ModuleAccessPredicate::False);
 
         // deny if either access check fails
-        Ok(!(matches!(type_level_access, false)
-            || matches!(method_level_access, ModuleAccessPredicate::False)))
+        Ok(type_level_access && !matches!(method_level_access, ModuleAccessPredicate::False))
     }
 
     async fn resolve_deno(&self) -> Result<QueryResponse, DenoExecutionError> {
