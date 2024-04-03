@@ -208,7 +208,7 @@ context AuthContext {
 
 ### Using the `self` object
 
-You can use the `self` object to refer to the accessed object. We've already seen an example in the [A Quick Example](#quick-example) section. Let's take a look at another example. Consider the following exo file:
+You can use the `self` object to refer to the accessed object. We've already seen an example in the [A Quick Example](#a-quick-example) section. Let's take a look at another example. Consider the following exo file:
 
 ```exo
 context AuthContext {
