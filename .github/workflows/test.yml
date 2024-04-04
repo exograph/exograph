@@ -60,7 +60,7 @@ jobs:
               cd $env:RUNNER_TEMP
               git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
               cd pgvector
-              call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" && ^
+              cmd call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" && ^
               nmake /NOLOGO /F Makefile.win && ^
               nmake /NOLOGO /F Makefile.win install
             target: x86_64-pc-windows-msvc
@@ -81,8 +81,6 @@ jobs:
         with:
           xcode-version: latest-stable
       - name: Install deps
-        if: ${{ runner.os == 'Windows' }}
-        shell: cmd
         run: ${{ matrix.deps-script }}
       - name: Setup Node
         uses: actions/setup-node@v4
