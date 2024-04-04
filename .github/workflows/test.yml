@@ -60,9 +60,7 @@ jobs:
               cd $env:RUNNER_TEMP
               git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
               cd pgvector
-              cmd call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" && ^
-              nmake /NOLOGO /F Makefile.win && ^
-              nmake /NOLOGO /F Makefile.win install
+              Start-Process -FilePath $env:GITHUB_WORKSPACE\.github\workflows\install-pgvector.bat -Wait
             target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
