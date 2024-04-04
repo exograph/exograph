@@ -38,15 +38,16 @@ jobs:
               sudo apt-get install -y protobuf-compiler postgresql-14-pgvector
             target: x86_64-unknown-linux-gnu
             bin_extension: ""
-          - os: windows-2019
+          - os: windows-2022
             deps-script: |
               choco install protoc
               set "PGROOT=C:\Program Files\PostgreSQL\14"
               cd $env:RUNNER_TEMP
               git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
               cd pgvector
-              nmake /F Makefile.win
-              nmake /F Makefile.win install
+              call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" && ^
+              nmake /NOLOGO /F Makefile.win && ^
+              nmake /NOLOGO /F Makefile.win install
             target: x86_64-pc-windows-msvc
             bin_extension: ".exe"
 
@@ -65,8 +66,9 @@ jobs:
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
-      - uses: ilammy/msvc-dev-cmd@v1
       - name: Install deps
+        if: ${{ runner.os == 'Windows' }}
+        shell: cmd
         run: ${{ matrix.deps-script }}
       - name: Setup Node
         uses: actions/setup-node@v4
