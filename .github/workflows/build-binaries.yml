@@ -41,13 +41,7 @@ jobs:
           - os: windows-2022
             deps-script: |
               choco install protoc
-              set "PGROOT=C:\Program Files\PostgreSQL\14"
-              cd $env:RUNNER_TEMP
-              git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
-              cd pgvector
-              call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-              nmake /NOLOGO /F Makefile.win
-              nmake /NOLOGO /F Makefile.win install
+              Start-Process -FilePath $env:GITHUB_WORKSPACE\.github\workflows\install-pgvector.bat -Wait
             target: x86_64-pc-windows-msvc
             bin_extension: ".exe"
 
@@ -68,7 +62,6 @@ jobs:
           xcode-version: latest-stable
       - name: Install deps
         run: ${{ matrix.deps-script }}
-        shell: ${{ runner.os == 'Windows' && 'cmd' || 'bash' }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
