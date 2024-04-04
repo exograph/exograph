@@ -53,20 +53,18 @@ jobs:
           # - os: macos-14
           #   deps-script: brew install protobuf postgresql@14 pgvector
           #   target: aarch64-apple-darwin
-          - os: windows-2019
-            shell: cmd
+          - os: windows-2022
             deps-script: |
               choco install protoc
-              "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvar64.bat"
-              set VSPATH="C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise"
-              for /f %%i in ('dir "%VSPATH%\VC\Tools\MSVC" /b') do set VCTOOLSVERSION=%%i
               set "PGROOT=C:\Program Files\PostgreSQL\14"
               cd $env:RUNNER_TEMP
               git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
               cd pgvector
-              "%VSPATH%\VC\Tools\MSVC\%VCTOOLSVERSION%\bin\HostX86\x86\nmake.exe" /F Makefile.win
-              "%VSPATH%\VC\Tools\MSVC\%VCTOOLSVERSION%\bin\HostX86\x86\nmake.exe" /F Makefile.win install
+              call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" && ^
+              nmake /NOLOGO /F Makefile.win && ^
+              nmake /NOLOGO /F Makefile.win install
             target: x86_64-pc-windows-msvc
+            shell: cmd
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -85,6 +83,8 @@ jobs:
           xcode-version: latest-stable
       # - uses: ilammy/msvc-dev-cmd@v1
       - name: Install deps
+        if: ${{ runner.os == 'Windows' }}
+        shell: cmd
         run: ${{ matrix.deps-script }}
       - name: Setup Node
         uses: actions/setup-node@v4
