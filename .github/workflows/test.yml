@@ -53,7 +53,7 @@ jobs:
           - os: macos-14
             deps-script: brew install protobuf postgresql@14 pgvector
             target: aarch64-apple-darwin
-          - os: windows-2022
+          - os: windows-2019
             deps-script: |
               choco install protoc
               Start-Process -FilePath $env:GITHUB_WORKSPACE\.github\workflows\install-pgvector.bat -Wait
