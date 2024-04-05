@@ -1,0 +1,9 @@
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    description: String?
+  }
+}
