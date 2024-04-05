@@ -12,10 +12,13 @@ import GraphiQL from "graphiql";
 import { Fetcher, createGraphiQLFetcher } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
-import "graphiql/graphiql.min.css";
 import { AuthContext, AuthContextProvider } from "./AuthContext";
 import { Logo } from "./Logo";
 import { AuthToolbarButton } from "./auth";
+import { explorerPlugin } from "@graphiql/plugin-explorer";
+
+import "graphiql/graphiql.css";
+import "@graphiql/plugin-explorer/dist/style.css";
 
 const enableSchemaLiveUpdate = (window as any).enableSchemaLiveUpdate;
 
@@ -153,10 +156,13 @@ function Core(props: { schema: GraphQLSchema | null; fetcher: Fetcher }) {
   const shouldPersistHeaders =
     localStorage.getItem("graphiql:shouldPersistHeaders") === "true";
 
+  const explorer = explorerPlugin({ showAttribution: false });
+
   return (
     <>
       <GraphiQL
         fetcher={props.fetcher}
+        plugins={[explorer]}
         defaultEditorToolsVisibility={true}
         isHeadersEditorEnabled={true}
         schema={props.schema}
