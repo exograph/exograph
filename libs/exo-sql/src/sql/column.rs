@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::{ColumnId, Database, ParamEquality, PhysicalTableName};
+use crate::{ColumnId, Database, ParamEquality, PhysicalColumnType, PhysicalTableName};
 
 use super::{
     json_agg::JsonAgg, json_object::JsonObject, select::Select, transaction::TransactionStepId,
@@ -101,6 +101,12 @@ impl ExpressionBuilder for Column {
                 let column = column_id.get_column(database);
                 column.build(database, builder);
                 builder.push(')');
+                if matches!(column.typ, PhysicalColumnType::Vector { .. })
+                    && function_name != "count"
+                {
+                    // For vectors, we need to cast the result to a real array (otherwise it will be a string)
+                    builder.push_str("::real[]");
+                }
             }
             Column::Param(value) => builder.push_param(value.param()),
             Column::ArrayParam { param, wrapper } => {

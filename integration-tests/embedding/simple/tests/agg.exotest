@@ -19,13 +19,13 @@ response: |
       "all": {
         "contentVector": {
           "count": 4,
-          "avg": "[0.6,0.575,0.5]"
+          "avg": [0.6,0.575,0.5]
         }
       },
       "one_and_two": {
         "contentVector": {
           "count": 2,
-          "avg": "[0.85,0.65,0.1]"
+          "avg": [0.85,0.65,0.1]
         }
       }
     }
