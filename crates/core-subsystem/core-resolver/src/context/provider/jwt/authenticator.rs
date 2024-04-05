@@ -15,8 +15,8 @@ use super::oidc::Oidc;
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
-    pub static LOCAL_JWT_SECRET: RefCell<Option<String>> = RefCell::new(None);
-    pub static LOCAL_OIDC_URL: RefCell<Option<String>> = RefCell::new(None);
+    pub static LOCAL_JWT_SECRET: RefCell<Option<String>> =  const { RefCell::new(None) };
+    pub static LOCAL_OIDC_URL: RefCell<Option<String>> =  const {RefCell::new(None) };
 }
 
 /// Authenticator with information about how to validate JWT tokens

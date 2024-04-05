@@ -28,8 +28,8 @@ use tracing::debug;
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
-    pub static LOCAL_ALLOW_INTROSPECTION: RefCell<Option<IntrospectionMode>> = RefCell::new(None);
-    pub static LOCAL_ENVIRONMENT: RefCell<Option<std::collections::HashMap<String, String>>> = RefCell::new(None);
+    pub static LOCAL_ALLOW_INTROSPECTION: RefCell<Option<IntrospectionMode>> =  const { RefCell::new(None) };
+    pub static LOCAL_ENVIRONMENT: RefCell<Option<std::collections::HashMap<String, String>>> =  const {RefCell::new(None) };
 }
 
 pub type StaticLoaders = Vec<Box<dyn SubsystemLoader>>;
