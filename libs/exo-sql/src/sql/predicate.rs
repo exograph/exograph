@@ -174,10 +174,20 @@ impl ExpressionBuilder for ConcretePredicate {
             ConcretePredicate::True => builder.push_str("TRUE"),
             ConcretePredicate::False => builder.push_str("FALSE"),
             ConcretePredicate::Eq(column1, column2) => {
-                relational_combine(column1, column2, "=", database, builder)
+                if column2 == &Column::Null {
+                    column1.build(database, builder);
+                    builder.push_str(" IS NULL");
+                } else {
+                    relational_combine(column1, column2, "=", database, builder)
+                }
             }
             ConcretePredicate::Neq(column1, column2) => {
-                relational_combine(column1, column2, "<>", database, builder)
+                if column2 == &Column::Null {
+                    column1.build(database, builder);
+                    builder.push_str(" IS NOT NULL");
+                } else {
+                    relational_combine(column1, column2, "<>", database, builder)
+                }
             }
             ConcretePredicate::Lt(column1, column2) => {
                 relational_combine(column1, column2, "<", database, builder)

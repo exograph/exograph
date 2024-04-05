@@ -1,0 +1,15 @@
+operation: |
+    mutation {
+        t1: createTodo(data: {title: "T1", description: "T1 description"}) {
+            id @bind(name: "t1id")
+        }
+        t2: createTodo(data: {title: "T2"}) {
+            id @bind(name: "t2id")
+        }
+        t3: createTodo(data: {title: "T3", description: "T3 description"}) {
+            id @bind(name: "t3id")
+        }
+        t4: createTodo(data: {title: "T4"}) {
+            id @bind(name: "t4id")
+        }
+    }

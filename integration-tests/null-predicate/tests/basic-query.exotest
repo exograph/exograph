@@ -1,0 +1,42 @@
+operation: |
+  query {
+      with_null_description: todos(where: {description: {eq: null}}) @unordered {
+          id
+          title
+          description
+      }
+      with_not_null_description: todos(where: {description: {neq: null}}) @unordered {
+          id
+          title
+          description
+      }
+  }
+response: |
+  {
+    "data": {
+      "with_null_description": [
+        {
+          "id": 2,
+          "title": "T2",
+          "description": null
+        },
+        {
+          "id": 4,
+          "title": "T4",
+          "description": null
+        }
+      ],
+      "with_not_null_description": [
+        {
+          "id": 1,
+          "title": "T1",
+          "description": "T1 description"
+        },
+        {
+          "id": 3,
+          "title": "T3",
+          "description": "T3 description"
+        }
+      ]
+    }
+  }
