@@ -173,5 +173,7 @@ lazy_static! {
 
         ("String",
                 vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None)]),
+
+        ("Vector", vec![(ScalarAggregateFieldKind::Avg, None)])
     ]);
 }
