@@ -9,11 +9,11 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::{ColumnId, Database, ParamEquality, PhysicalColumnType, PhysicalTableName};
+use crate::{ColumnId, Database, ParamEquality, PhysicalTableName};
 
 use super::{
-    json_agg::JsonAgg, json_object::JsonObject, select::Select, transaction::TransactionStepId,
-    ExpressionBuilder, SQLBuilder, SQLParamContainer,
+    function::Function, json_agg::JsonAgg, json_object::JsonObject, select::Select,
+    transaction::TransactionStepId, ExpressionBuilder, SQLBuilder, SQLParamContainer,
 };
 
 /// A column-like concept covering any usage where a database table column could be used. For
@@ -54,11 +54,8 @@ pub enum Column {
     Star(Option<PhysicalTableName>),
     /// A null value
     Null,
-    /// A function applied to a column. For example, `count(*)` or `lower(first_name)`.
-    Function {
-        function_name: String,
-        column_id: ColumnId,
-    },
+    /// A function applied to a column. For example, `count(id)` or `lower(first_name)`.
+    Function(Function),
 }
 
 #[derive(Debug, PartialEq)]
@@ -92,21 +89,8 @@ impl ExpressionBuilder for Column {
                     _ => column.build(database, builder),
                 }
             }
-            Column::Function {
-                function_name,
-                column_id,
-            } => {
-                builder.push_str(function_name);
-                builder.push('(');
-                let column = column_id.get_column(database);
-                column.build(database, builder);
-                builder.push(')');
-                if matches!(column.typ, PhysicalColumnType::Vector { .. })
-                    && function_name != "count"
-                {
-                    // For vectors, we need to cast the result to a real array (otherwise it will be a string)
-                    builder.push_str("::real[]");
-                }
+            Column::Function(function) => {
+                function.build(database, builder);
             }
             Column::Param(value) => builder.push_param(value.param()),
             Column::ArrayParam { param, wrapper } => {

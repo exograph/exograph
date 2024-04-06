@@ -67,6 +67,7 @@ pub use sql::{
     database_client::{
         DatabaseClient, LOCAL_CHECK_CONNECTION_ON_STARTUP, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL,
     },
+    function::Function,
     limit::Limit,
     offset::Offset,
     order::Ordering,

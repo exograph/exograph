@@ -86,13 +86,7 @@ impl SelectionElement {
     ) -> Column {
         match self {
             SelectionElement::Physical(column_id) => Column::physical(*column_id, None),
-            SelectionElement::Function {
-                function_name,
-                column_id,
-            } => Column::Function {
-                function_name: function_name.clone(),
-                column_id: *column_id,
-            },
+            SelectionElement::Function(function) => Column::Function(function.clone()),
             SelectionElement::Constant(s) => Column::Constant(s.clone()),
             SelectionElement::Object(elements) => {
                 let elements = elements

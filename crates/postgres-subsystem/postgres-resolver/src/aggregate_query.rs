@@ -118,10 +118,10 @@ async fn map_field<'content>(
                         let selection_elem = if subfield.name == "__typename" {
                             SelectionElement::Constant(model_field_agg_type.clone())
                         } else {
-                            SelectionElement::Function {
+                            SelectionElement::Function(exo_sql::Function::Named {
                                 function_name: subfield.name.to_string(),
                                 column_id: *column_id,
-                            }
+                            })
                         };
                         (subfield.output_name(), selection_elem)
                     })
