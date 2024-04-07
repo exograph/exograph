@@ -1,0 +1,42 @@
+# Query only fields that are allowed for all users, so that tests succeed only due to `orderBy`
+stages:
+  - operation: |
+      {
+          documents(orderBy: {contentVector: {distanceTo: [0.95, 0.85, 0.15], order: ASC}}, limit: 1) {
+            id
+            title
+            content
+          }
+      }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "data": {
+          documents: [
+            {
+              "id": 1,
+              "title": "car",
+              "content": "Car"
+            }
+          ]
+        }
+      }
+  - operation: |
+      {
+          documents(orderBy: {contentVector: {distanceTo: [0.95, 0.85, 0.15], order: ASC}}, limit: 1) {
+            id
+            title
+            content
+          }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

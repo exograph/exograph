@@ -232,7 +232,20 @@ async fn check_selection_access<'a>(
                         )
                         .await
                     }
-                    None => Ok(AbstractPredicate::True),
+                    None => {
+                        match return_type.vector_distance_field_by_name(&selection_field.name) {
+                            Some(vector_distance_field) => {
+                                check_retrieve_access(
+                                    &subsystem.database_access_expressions
+                                        [vector_distance_field.access.read],
+                                    subsystem,
+                                    request_context,
+                                )
+                                .await
+                            }
+                            None => Ok(AbstractPredicate::True),
+                        }
+                    }
                 }?;
 
                 if field_access_predicate == AbstractPredicate::False {

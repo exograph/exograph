@@ -1,0 +1,19 @@
+context AuthContext {
+  @jwt role: String
+}
+
+// Content vector is manually computed 3-dimensional vector to represent [Transporation, Heavy, Animal]
+@postgres
+module DocumentDatabase {
+  @access(true)
+  type Document {
+    @pk id: Int = autoIncrement()
+    title: String
+    content: String
+
+    @access(query=AuthContext.role == "admin", mutation=AuthContext.role == "super-admin")
+    @size(3)
+    contentVector: Vector?
+  }
+}
+

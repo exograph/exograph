@@ -1,0 +1,10 @@
+operation: |
+    mutation {
+        createDocument(data: {title: "car", content: "Car", contentVector: [0.9, 0.8, 0.1]}) {
+            id @bind(name: "d1id")
+        }
+    }
+auth: |
+    {
+        "role": "super-admin"
+    }

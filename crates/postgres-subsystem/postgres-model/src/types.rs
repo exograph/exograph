@@ -14,6 +14,7 @@ use crate::aggregate::AggregateField;
 use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, PkQuery};
 use crate::relation::OneToManyRelation;
 use crate::subsystem::PostgresSubsystem;
+use crate::vector_distance::VectorDistanceField;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
@@ -77,6 +78,7 @@ pub struct EntityType {
 
     pub fields: Vec<PostgresField<EntityType>>,
     pub agg_fields: Vec<AggregateField>,
+    pub vector_distance_fields: Vec<VectorDistanceField>,
     pub table_id: SerializableSlabIndex<PhysicalTable>,
     pub pk_query: SerializableSlabIndex<PkQuery>,
     pub collection_query: SerializableSlabIndex<CollectionQuery>,
@@ -158,6 +160,12 @@ impl EntityType {
     pub fn aggregate_field_by_name(&self, name: &str) -> Option<&AggregateField> {
         self.agg_fields.iter().find(|field| field.name == name)
     }
+
+    pub fn vector_distance_field_by_name(&self, name: &str) -> Option<&VectorDistanceField> {
+        self.vector_distance_fields
+            .iter()
+            .find(|field| field.name == name)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -207,7 +215,10 @@ impl TypeDefinitionProvider<PostgresSubsystem> for PostgresPrimitiveType {
 impl TypeDefinitionProvider<PostgresSubsystem> for EntityType {
     fn type_definition(&self, system: &PostgresSubsystem) -> TypeDefinition {
         let EntityType {
-            fields, agg_fields, ..
+            fields,
+            agg_fields,
+            vector_distance_fields,
+            ..
         } = self;
 
         let kind = {
@@ -219,7 +230,14 @@ impl TypeDefinitionProvider<PostgresSubsystem> for EntityType {
                 .iter()
                 .map(|field| default_positioned(field.field_definition(system)));
 
-            let fields = entity.chain(agg_fields).collect();
+            let vector_distance_fields = vector_distance_fields
+                .iter()
+                .map(|field| default_positioned(field.field_definition(system)));
+
+            let fields = entity
+                .chain(agg_fields)
+                .chain(vector_distance_fields)
+                .collect();
 
             TypeKind::Object(ObjectType {
                 implements: vec![],

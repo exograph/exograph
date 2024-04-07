@@ -1,0 +1,72 @@
+operation: |
+  query {
+      documents @unordered {
+          id
+          title
+          content
+          contentVector
+          # The next two will be the same due to the use of "cosine" distance
+          fromHalf: contentVectorDistance(to: [0.5, 0.5, 0.5])
+          fromOne: contentVectorDistance(to: [1, 1, 1])
+          fromCar: contentVectorDistance(to: [0.9, 0.8, 0.1])
+      }
+  }
+response: |
+  {
+    "data": {
+      "documents": [
+        {
+          "id": 1,
+          "title": "car",
+          "content": "Car",
+          "contentVector": [
+            0.9,
+            0.8,
+            0.1
+          ],
+          "fromHalf": 0.13992667332571118,
+          "fromOne": 0.13992667332571118,
+          "fromCar": 0
+        },
+        {
+          "id": 2,
+          "title": "motorcycle",
+          "content": "Motorcycle",
+          "contentVector": [
+            0.8,
+            0.5,
+            0.1
+          ],
+          "fromHalf": 0.14798716420740832,
+          "fromOne": 0.14798716420740832,
+          "fromCar": 0.014218275500932798
+        },
+        {
+          "id": 3,
+          "title": "dog",
+          "content": "Dog",
+          "contentVector": [
+            0.1,
+            0.1,
+            0.9
+          ],
+          "fromHalf": 0.30290330230544305,
+          "fromOne": 0.30290330230544305,
+          "fromCar": 0.7638119751254798
+        },
+        {
+          "id": 4,
+          "title": "elephant",
+          "content": "Elephant",
+          "contentVector": [
+            0.6,
+            0.9,
+            0.9
+          ],
+          "fromHalf": 0.015268008134867062,
+          "fromOne": 0.015268008134867062,
+          "fromCar": 0.2059921864612234
+        }
+      ]
+    }
+  }

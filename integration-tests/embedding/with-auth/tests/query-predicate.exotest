@@ -1,0 +1,42 @@
+# Query only fields that are allowed for all users, so that tests succeed only due to `where`
+stages:
+  - operation: |
+      {
+          documents(where: {contentVector: {similar: {distanceTo: [0.95, 0.85, 0.15], distance: {lt: 0.5}}}}) @unordered {
+              id
+              title
+              content
+          }
+      }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": 1,
+              "title": "car",
+              "content": "Car"
+            }
+          ]
+        }
+      }
+  - operation: |
+      {
+          documents(where: {contentVector: {similar: {distanceTo: [0.95, 0.85, 0.15], distance: {lt: 0.5}}}}) @unordered {
+              id
+              title
+              content
+          }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
