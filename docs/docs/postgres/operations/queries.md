@@ -259,7 +259,7 @@ concertsAgg(where: { date: { gte: "2020-01-01", lt: "2021-01-01" } }) {
 }
 ```
 
-Exograph provides the `count` aggregate for any field type, `sum`, `avg`, `max`, `min` for numeric field types, and `min`, `max` for string fields. For example, if you wanted to know the total number of tickets sold for all concerts, you could use the following query:
+Exograph provides the `count` aggregate for any field type, `sum`, `avg`, `max`, `min` for numeric field types, `min`, `max` for string fields, and `avg` for [vector](../embeddings) fields. For example, if you wanted to know the total number of tickets sold for all concerts, you could use the following query:
 
 ```graphql
 concertsAgg {
