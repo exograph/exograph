@@ -1,0 +1,97 @@
+stages:
+  # User is admin, so they can see the contentVector and contentVectorDistance fields
+  - operation: |
+        query {
+            documents @unordered {
+                id
+                title
+                content
+                contentVector
+                contentVectorDistance(to: [0.5, 0.5, 0.5])
+            }
+        }
+    auth: |
+        {
+            "role": "admin"
+        }
+    deno: |
+      function approximatelyEqual(actual, expected) {
+        const epsilon = expected * 0.0001;
+        if (Math.abs(actual - expected) > epsilon) {
+          throw new Error(`Expected ${expected}, but got ${actual}`);
+        } else {
+          return true;
+        }
+      }           
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": 1,
+              "title": "car",
+              "content": "Car",
+              "contentVector": [0.9,0.8,0.1],
+              "contentVectorDistance": (actual) => approximatelyEqual(actual, 0.13992667332571118)
+            }
+          ]
+        }
+      }
+  # User is not admin, so they can't see the contentVector and contentVectorDistance fields
+  # Test for contentVector
+  - operation: |
+        query {
+            documents @unordered {
+                id
+                title
+                content
+                contentVector
+            }
+        }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # Test for contentVectorDistance
+  - operation: |
+        query {
+            documents @unordered {
+                id
+                title
+                content
+                contentVectorDistance(to: [0.5, 0.5, 0.5])
+            }
+        }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  # User is not admin, but asking for only authorized fields
+  - operation: |
+        query {
+            documents @unordered {
+                id
+                title
+                content
+            }
+        }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": 1,
+              "title": "car",
+              "content": "Car"
+            }
+          ]
+        }
+      }

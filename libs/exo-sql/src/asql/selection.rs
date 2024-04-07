@@ -9,7 +9,7 @@
 
 //! Support for selecting columns in a table, including json aggregates
 
-use crate::{ColumnId, RelationId};
+use crate::{sql::function::Function, ColumnId, RelationId};
 
 use super::select::AbstractSelect;
 
@@ -48,14 +48,11 @@ pub enum SelectionElement {
     /// A column in the table
     Physical(ColumnId),
     /// A function such as `SUM(price)`
-    Function {
-        function_name: String,
-        column_id: ColumnId,
-    },
+    Function(Function),
     /// A json object such as `{"name": "concerts"."name", "price": "concerts"."price"}`
     Object(Vec<(String, SelectionElement)>),
     /// A constant such as `"hello"` (useful to supply it to database and get back the same value). Useful for `__typename` field.
     Constant(String),
-    /// A subselect such as `... FROM (SELECT * FROM table)`
+    /// A subselect such as `... (SELECT * FROM table)`
     SubSelect(RelationId, AbstractSelect),
 }

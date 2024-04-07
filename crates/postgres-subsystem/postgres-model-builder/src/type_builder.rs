@@ -46,6 +46,7 @@ use postgres_model::{
         get_field_id, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
         TypeIndex,
     },
+    vector_distance::{VectorDistanceField, VectorDistanceType},
 };
 
 use super::{
@@ -146,13 +147,19 @@ fn create_shallow_type(
     building: &mut SystemContextBuilding,
 ) {
     match resolved_type {
-        ResolvedType::Primitive(_) => {
+        ResolvedType::Primitive(pt) => {
             building.primitive_types.add(
                 &resolved_type.name(),
                 PostgresPrimitiveType {
                     name: resolved_type.name(),
                 },
             );
+            if matches!(pt, PrimitiveType::Vector) {
+                let vector_distance_type = VectorDistanceType::new("VectorDistance".to_string());
+                building
+                    .vector_distance_types
+                    .add("VectorDistance", vector_distance_type);
+            }
         }
         ResolvedType::Composite(_) => {
             let typ = EntityType {
@@ -160,6 +167,7 @@ fn create_shallow_type(
                 plural_name: resolved_type.plural_name(),
                 fields: vec![],
                 agg_fields: vec![],
+                vector_distance_fields: vec![],
                 table_id: SerializableSlabIndex::shallow(),
                 pk_query: SerializableSlabIndex::shallow(),
                 collection_query: SerializableSlabIndex::shallow(),
@@ -331,9 +339,18 @@ fn expand_type_fields(
         })
         .collect();
 
+    let vector_distance_fields = resolved_type
+        .fields
+        .iter()
+        .flat_map(|field| {
+            create_vector_distance_field(field, &existing_type_id, building, resolved_env)
+        })
+        .collect();
+
     let existing_type = &mut building.entity_types[existing_type_id];
     existing_type.fields = entity_fields;
     existing_type.agg_fields = agg_fields;
+    existing_type.vector_distance_fields = vector_distance_fields;
 }
 
 // Expand dynamic default values (pre-condition: all type fields have been populated)
@@ -657,6 +674,38 @@ fn create_agg_field(
             },
             relation,
         })
+    }
+}
+
+fn create_vector_distance_field(
+    field: &ResolvedField,
+    type_id: &SerializableSlabIndex<EntityType>,
+    building: &SystemContextBuilding,
+    env: &ResolvedTypeEnv,
+) -> Option<VectorDistanceField> {
+    match field.type_hint {
+        Some(ResolvedTypeHint::Vector {
+            size,
+            distance_function,
+        }) => {
+            let self_type = &building.entity_types[*type_id];
+            let self_table_id = &self_type.table_id;
+            let column_id = building
+                .database
+                .get_column_id(*self_table_id, &field.column_name)
+                .unwrap();
+
+            let access = compute_access(&field.access, *type_id, env, building).unwrap();
+
+            Some(VectorDistanceField {
+                name: format!("{}Distance", field.name),
+                column_id,
+                size: size.unwrap_or(DEFAULT_VECTOR_SIZE),
+                distance_function: distance_function.unwrap_or(VectorDistanceFunction::default()),
+                access,
+            })
+        }
+        _ => None,
     }
 }
 

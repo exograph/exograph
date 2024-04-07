@@ -12,6 +12,7 @@ use super::{
     auth_util::check_access, postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLOperationKind, util::Arguments,
 };
+use crate::util::to_pg_vector;
 use crate::{
     operation_resolver::OperationSelectionResolver, order_by_mapper::OrderByParameterInput,
     sql_mapper::extract_and_map,
@@ -23,12 +24,13 @@ use core_plugin_interface::core_resolver::{
     context::RequestContext, validation::field::ValidatedField,
 };
 use exo_sql::{
-    AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, Limit, Offset,
-    RelationId, SelectionCardinality, SelectionElement,
+    AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, Function, Limit,
+    Offset, RelationId, SQLParamContainer, SelectionCardinality, SelectionElement,
 };
 use futures::stream::TryStreamExt;
 use futures::StreamExt;
 use postgres_model::query::UniqueQuery;
+use postgres_model::vector_distance::VectorDistanceField;
 use postgres_model::{
     aggregate::AggregateField,
     order::OrderByParameter,
@@ -225,8 +227,19 @@ async fn map_field<'content>(
                 map_persistent_field(entity_field, field, subsystem, request_context).await?
             }
             None => {
-                let agg_field = return_type.aggregate_field_by_name(&field.name).unwrap();
-                map_aggregate_field(agg_field, field, subsystem, request_context).await?
+                let agg_field = return_type.aggregate_field_by_name(&field.name);
+                match agg_field {
+                    Some(agg_field) => {
+                        map_aggregate_field(agg_field, field, subsystem, request_context).await?
+                    }
+                    None => {
+                        let vector_distance_field = return_type
+                            .vector_distance_field_by_name(&field.name)
+                            .unwrap();
+
+                        map_vector_distance_field(vector_distance_field, field).await?
+                    }
+                }
             }
         }
     };
@@ -343,4 +356,23 @@ async fn map_aggregate_field<'content>(
             "Validation error: Aggregate is supported only for one-to-many".to_string(),
         ))
     }
+}
+
+async fn map_vector_distance_field<'content>(
+    vector_distance_field: &VectorDistanceField,
+    field: &'content ValidatedField,
+) -> Result<SelectionElement, PostgresExecutionError> {
+    let to_arg = field.arguments.get("to").ok_or_else(|| {
+        PostgresExecutionError::Generic(
+            "Missing 'to' argument for vector distance field".to_string(),
+        )
+    })?;
+
+    let to_vector_value = to_pg_vector(to_arg, "to")?;
+
+    Ok(SelectionElement::Function(Function::VectorDistance {
+        column_id: vector_distance_field.column_id,
+        distance_function: vector_distance_field.distance_function,
+        target: SQLParamContainer::new(to_vector_value),
+    }))
 }

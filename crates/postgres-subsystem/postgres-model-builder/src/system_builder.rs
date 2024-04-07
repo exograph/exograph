@@ -29,6 +29,7 @@ use postgres_model::{
     query::{AggregateQuery, CollectionQuery, PkQuery, UniqueQuery},
     subsystem::PostgresSubsystem,
     types::{EntityType, MutationType, PostgresPrimitiveType},
+    vector_distance::VectorDistanceType,
 };
 
 use exo_sql::Database;
@@ -134,7 +135,7 @@ pub struct SystemContextBuilding {
     pub entity_types: MappedArena<EntityType>,
 
     pub aggregate_types: MappedArena<AggregateType>,
-
+    pub vector_distance_types: MappedArena<VectorDistanceType>,
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
 
