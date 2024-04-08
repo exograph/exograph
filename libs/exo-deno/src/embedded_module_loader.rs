@@ -123,6 +123,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
                     deno_core::ModuleSourceCode::String(script.into()),
                     &module_specifier,
                     &final_specifier,
+                    None,
                 );
                 // TODO: Can we use Sync here?
                 deno_core::ModuleLoadResponse::Async(async move { Ok(module_source) }.boxed_local())

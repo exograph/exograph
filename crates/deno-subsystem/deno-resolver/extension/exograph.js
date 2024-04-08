@@ -14,7 +14,7 @@ const {
     op_operation_name,
     op_operation_query,
     op_operation_proceed,
-} = Deno.core.ensureFastOps();
+} = Deno.core.ops;
 
 export function exograph_version() {
     return op_exograph_version();
