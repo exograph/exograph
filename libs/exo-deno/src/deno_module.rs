@@ -359,7 +359,6 @@ impl DenoModule {
                 verbose_deprecated_api_warning: false,
                 argv0: None,
                 future: false,
-                close_on_idle: false,
             },
             create_params: None,
             extensions,

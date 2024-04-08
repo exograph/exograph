@@ -159,6 +159,7 @@ impl ModuleLoader for TypescriptLoader {
                 module_type,
                 ModuleSourceCode::String(source.to_string()?.into()),
                 &module_specifier,
+                None,
             );
 
             Ok(module)

@@ -264,7 +264,7 @@ fn walk_node_resolutions(
             let loaded_rewritten = code_translator
                 .translate_cjs_to_esm(
                     &cjs_specifier,
-                    Some(loaded.code.as_str()),
+                    Some(loaded.code.to_string()),
                     &PermissionsContainer::allow_all(),
                 )
                 .unwrap();
