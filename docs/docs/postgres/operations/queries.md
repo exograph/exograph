@@ -15,9 +15,9 @@ Exograph also infers a set of mutations, which we will defer to [the next sectio
 
 ## Primary Key Query
 
-When you want to view a single entity, for example, when displaying a particular concert, you can use the query to get the entity by its ID. Exograph creates a query named as the "camelCased" version of the entity type name. For example, if the entity type is `Concert`, the query name will be `concert`, whereas if the entity type is `ShoppingCart`, the query name will be `shoppingCart`.
+When you want to view a single entity, for example, when displaying a particular concert, you can use the query to get the entity by its ID. Exograph creates a query named the "camelCased" version of the entity type name. For example, if the entity type is `Concert`, the query name will be `concert`, whereas if the entity type is `ShoppingCart`, the query name will be `shoppingCart`.
 
-The query takes one argument: `id`, which is the entity's primary key and returns a single optional entity. Then you can make queries such as this:
+The query takes one argument: `id`, the entity's primary key, and returns a single optional entity. Then you can make queries such as this:
 
 ```graphql
 concert(id: 5) {
@@ -34,7 +34,7 @@ Recall from the discussion of the [`@plural`](../customizing-types.md#pluralizat
 
 Each query takes four arguments, all of which are optional:
 
-- `where`: a filter expression that is used to filter the list of entities
+- `where`: an expression to filter the list of entities
 - `orderBy`: a list of fields to order the list of entities
 - `limit`: the maximum number of entities to return
 - `offset`: the number of entities to skip
@@ -108,11 +108,15 @@ For numeric fields as well as date fields, you can also use the following operat
 For string fields, you can also use the following operators:
 
 - `like`: To compare a string field to a pattern. The pattern can contain the `%` character, which matches any sequence of characters. For example, the pattern `%concert%` matches any string that contains the word "concert".
-- `ilike`: Similar to `like`, but match the pattern ignoring the case.
+- `ilike`: Similar to `like`, but matches the pattern, ignoring the case.
 - `startWith`: The string field starts with the given pattern (it is a shortcut to using `like` along with a pattern that ends with a `%`).
 - `endWith`: The string field ends with the given pattern (a shortcut to using `like` along with a pattern that starts with a `%`).
 
-In Postgres, the JSON fields are useful to store arbitrary data without precise control over its schema. In a way, such fields allow treating the database as a document store. Exograph offers a few operators to match against the content of such fields. Let's assume that you want to keep some metadata about your concerts, and you have a `metadata` JSON field with the current value in the database as `{"a": 1, "b}`. You can use the following operators:
+:::note The `Vector` type
+The `Vector` scalar type gets special treatment in Exograph. You can use the `similar` operator to filter documents based on the distance from the search vector. We will explore this in more detail in the [Embeddings](../embeddings) section.
+:::
+
+In Postgres, the JSON fields are useful for storing arbitrary data without precise control over its schema. In a way, such fields enable treating the database as a document store. Exograph offers a few operators to match against the content of such fields. Let's assume that you want to keep some metadata about your concerts, and you have a `metadata` JSON field with the current value in the database as `{"a": 1, "b}`. You can use the following operators:
 
 | Operator       | Description                                                                            | Matching Examples                                                                       | Non-matching Examples                                                                 |
 | -------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -124,15 +128,19 @@ In Postgres, the JSON fields are useful to store arbitrary data without precise 
 
 ### `orderBy`
 
-The `orderBy` expression is a list of fields to order the list of entities. It will apply the ordering in the provided sequence. For example, the following expression will return all concerts ordered by the `date` field in descending order, and then by the `title` field in ascending order:
+The `orderBy` expression is a list of fields to order the list of entities. It will apply the ordering in the provided sequence. For example, the following expression will return all concerts ordered by the `date` field in descending order and then by the `title` field in ascending order:
 
 ```graphql
 orderBy: [{ date: DESC }, { title: ASC }]
 ```
 
+:::note The `Vector` type
+The `Vector` scalar type gets special treatment in Exograph. You can sort documents based on the distance from the search vector. We will explore this in more detail in the [Embeddings](../embeddings) section.
+:::
+
 ### `limit` and `offset`
 
-The `limit` and `offset` parameters are used to paginate the list of entities. Each of them takes an integer value. For example, the following expression will return the first ten concerts after skipping the first 5:
+The `limit` and `offset` parameters enable paginating the list of entities. Each of them takes an integer value. For example, the following expression will return the first ten concerts after skipping the first 5:
 
 ```graphql
 concerts(limit: 10, offset: 5) {

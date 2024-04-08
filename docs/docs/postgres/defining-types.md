@@ -60,8 +60,14 @@ In the example above, we have seen how to define fields of scalar types: `Int`, 
 | `Instant`\*       | A date and time type along with timezone                                                       | `"2021-07-06T20:08:47.1234567-07:00"`    |
 | `Json`\*          | A JSON type.                                                                                   | `{"hello": "world"}`                     |
 | `Blob`\*          | An encoded binary data                                                                         | `"iVBORw0KGgoAAAANSUhEUgAAABgAAAAWC..."` |
+| `Vector`\#        | A vector type.                                                                                 | `[1.0, 2.0, 3.0]`                        |
 
-`*` Accepted and returned as a string through the GraphQL API but stored as the corresponding type in the database.
+`*` Accepted and returned as a string through the GraphQL API but stored as the corresponding type in the database.  
+`#` Accepted and returned as a float array through the GraphQL API but stored as the corresponding type in the database.
+
+:::note The `Vector` type
+The `Vector` type is somewhat different than the other scalar types in the way it supports filtering and ordering, which we will explore in the [embeddings](embeddings/overview.md) section.
+:::
 
 Besides the plain scalar types, Exograph also supports Arrays of scalar types. For example, you can define a field of type `Array<String>` to store a list of strings.
 

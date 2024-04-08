@@ -7,6 +7,7 @@ Must have:
 - [Rustup](https://rustup.rs/)
 - [Protobuf-compiler version 3.x](https://grpc.io/docs/protoc-installation/)
 - [Postgres 12 or above](https://www.postgresql.org/)
+- [pgvector](https://github.com/pgvector/pgvector)
 - [Node 16 or above](https://nodejs.org/en)
 
 Nice to have:
