@@ -3,15 +3,15 @@ import type { Exograph, Operation } from '../generated/exograph.d.ts';
 type Vector = number[]
 
 const VECTOR_MAPPING = new Map<string, Vector>([
-	["Car", [0.9, 0.8, 0.1]],
-	["Motorcycle", [0.8, 0.5, 0.1]],
-	["Dog", [0.1, 0.1, 0.9]],
-	["Elephant", [0.6, 0.9, 0.9]],
-	["Truck", [0.9, 0.95, 0.1]],
+	["car", [0.9, 0.8, 0.1]],
+	["motorcycle", [0.8, 0.5, 0.1]],
+	["dog", [0.1, 0.1, 0.9]],
+	["elephant", [0.6, 0.9, 0.9]],
+	["truck", [0.9, 0.95, 0.1]],
 ]);
 
-function getEmbedding(content: string): number[] {
-	return VECTOR_MAPPING.get(content) || [0.5, 0.5, 0.5];
+export function getEmbedding(searchString: string): number[] {
+	return VECTOR_MAPPING.get(searchString.toLowerCase()) || [0.5, 0.5, 0.5];
 }
 
 const SEARCH_QUERY = `
@@ -48,6 +48,10 @@ export async function createEmbedding(operation: Operation, exograph: Exograph) 
 
 export async function updateEmbedding(operation: Operation, exograph: Exograph) {
 	return await syncEmbedding(operation, exograph);
+}
+
+export async function searchDocumentsByVector(searchVector: number[], exograph: Exograph): Promise<DocumentResult[]> {
+	return (await exograph.executeQuery(SEARCH_QUERY, { searchVector })).documents;
 }
 
 export async function syncEmbedding(operation: Operation, exograph: Exograph) {
