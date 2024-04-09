@@ -13,14 +13,6 @@ module DocumentDatabase {
 
 @deno("embedding.ts")
 module DocumentEmbedding {
-  @access(true)
-  type DocumentResult {
-    id: Int
-    title: String
-    content: String
-    contentVector: Vector?
-  }
-
   @around("mutation createDocument*")
   interceptor createEmbedding(operation: Operation, exograph: Exograph)
 
@@ -28,11 +20,11 @@ module DocumentEmbedding {
   interceptor updateEmbedding(operation: Operation, exograph: Exograph)
 
   @access(true)
-  query searchDocuments(searchString: String, @inject exograph: Exograph): Set<DocumentResult>
+  query searchDocuments(searchString: String, @inject exograph: Exograph): Set<DocumentDatabase.Document>
 
   // A pass-through query to ensure that we can use the `Vector` type in Deno queries
   @access(true)
-  query searchDocumentsByVector(searchVector: Vector, @inject exograph: Exograph): Set<DocumentResult>
+  query searchDocumentsByVector(searchVector: Vector, @inject exograph: Exograph): Set<DocumentDatabase.Document>
 
   // To ensure that we can use the `Vector` as a return type in Deno queries
   @access(true)
