@@ -82,10 +82,24 @@ impl<T: Clone> FieldType<T> {
 impl<T: Named> From<&FieldType<T>> for Type {
     fn from(ft: &FieldType<T>) -> Self {
         match ft {
-            FieldType::Plain(base) => Type {
-                base: BaseType::Named(Name::new(base.name())),
-                nullable: false,
-            },
+            FieldType::Plain(base) => {
+                let base_name = base.name();
+
+                if base_name == "Vector" {
+                    Type {
+                        base: BaseType::List(Box::new(Type {
+                            base: BaseType::Named(Name::new("Float")),
+                            nullable: false,
+                        })),
+                        nullable: false,
+                    }
+                } else {
+                    Type {
+                        base: BaseType::Named(Name::new(base_name)),
+                        nullable: false,
+                    }
+                }
+            }
             FieldType::Optional(underlying) => {
                 let Type { base, nullable } = underlying.as_ref().into();
 

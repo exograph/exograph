@@ -29,4 +29,12 @@ module DocumentEmbedding {
 
   @access(true)
   query searchDocuments(searchString: String, @inject exograph: Exograph): Set<DocumentResult>
+
+  // A pass-through query to ensure that we can use the `Vector` type in Deno queries
+  @access(true)
+  query searchDocumentsByVector(searchVector: Vector, @inject exograph: Exograph): Set<DocumentResult>
+
+  // To ensure that we can use the `Vector` as a return type in Deno queries
+  @access(true)
+  query getEmbedding(searchString: String, @inject exograph: Exograph): Vector
 }
