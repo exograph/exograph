@@ -16,14 +16,14 @@ use super::{Type, Typed};
 impl AstFieldType<Typed> {
     pub fn get_underlying_typename(&self, types: &MappedArena<Type>) -> Option<String> {
         match &self {
-            AstFieldType::Plain(_, _, _, _) => self.to_typ(types).get_underlying_typename(types),
+            AstFieldType::Plain(_, _, _, _, _) => self.to_typ(types).get_underlying_typename(types),
             AstFieldType::Optional(underlying) => underlying.get_underlying_typename(types),
         }
     }
 
     pub fn to_typ(&self, types: &MappedArena<Type>) -> Type {
         match &self {
-            AstFieldType::Plain(name, params, ok, _) => {
+            AstFieldType::Plain(_module, name, params, ok, _) => {
                 if !ok {
                     Type::Error
                 } else {

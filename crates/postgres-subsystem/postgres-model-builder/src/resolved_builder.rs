@@ -855,7 +855,7 @@ fn compute_column_info(
         };
 
         match field_base_type {
-            AstFieldType::Plain(_, _, _, _) => {
+            AstFieldType::Plain(_, _, _, _, _) => {
                 match field_base_type.to_typ(types).deref(types) {
                     Type::Composite(field_type) => {
                         let matching_field =
@@ -1120,7 +1120,7 @@ fn field_cardinality(field_type: &AstFieldType<Typed>) -> Cardinality {
                 Cardinality::ZeroOrOne
             }
         }
-        AstFieldType::Plain(name, ..) => {
+        AstFieldType::Plain(_, name, ..) => {
             if name == "Set" {
                 Cardinality::Unbounded
             } else {

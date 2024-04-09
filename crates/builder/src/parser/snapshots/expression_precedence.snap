@@ -15,6 +15,7 @@ modules:
           - name: bar
             typ:
               Plain:
+                - ~
                 - Baz
                 - []
                 - ~

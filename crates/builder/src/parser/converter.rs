@@ -381,14 +381,25 @@ fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Un
     let mut cursor = node.walk();
 
     match first_child.kind() {
-        "term" => AstFieldType::Plain(
-            first_child.utf8_text(source).unwrap().to_string(),
-            node.children_by_field_name("type_param", &mut cursor)
-                .map(|p| convert_type(p, source, source_span))
-                .collect(),
-            (),
-            span_from_node(source_span, first_child),
-        ),
+        "field_term" => {
+            let module_name = first_child
+                .child_by_field_name("module")
+                .map(|n| n.utf8_text(source).unwrap().to_string());
+            let type_name = first_child
+                .child_by_field_name("name")
+                .map(|n| n.utf8_text(source).unwrap().to_string())
+                .unwrap();
+
+            AstFieldType::Plain(
+                module_name,
+                type_name,
+                node.children_by_field_name("type_param", &mut cursor)
+                    .map(|p| convert_type(p, source, source_span))
+                    .collect(),
+                (),
+                span_from_node(source_span, first_child),
+            )
+        }
         "optional_field_type" => AstFieldType::Optional(Box::new(convert_type(
             first_child.child_by_field_name("inner").unwrap(),
             source,

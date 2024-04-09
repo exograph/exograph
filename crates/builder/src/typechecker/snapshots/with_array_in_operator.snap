@@ -45,8 +45,10 @@ types:
             - name: roles
               typ:
                 Plain:
+                  - ~
                   - Array
                   - - Plain:
+                        - ~
                         - String
                         - []
                         - true
@@ -67,6 +69,7 @@ types:
             - name: content
               typ:
                 Plain:
+                  - ~
                   - String
                   - []
                   - true
@@ -187,6 +190,7 @@ modules:
               - name: content
                 typ:
                   Plain:
+                    - ~
                     - String
                     - []
                     - true

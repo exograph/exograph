@@ -17,6 +17,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grammar_file = dir.path().join("parser.c");
     let mut f = std::fs::File::create(grammar_file)?;
 
+    println!(
+        "cargo:rerun-if-changed={}",
+        PathBuf::from("./grammar/grammar.js").display()
+    );
+
     let grammar = generate::load_grammar_file(&PathBuf::from("./grammar/grammar.js"))?;
     let (grammar_name, grammar_c) = generate::generate_parser_for_grammar(&grammar)?;
     f.write_all(grammar_c.as_bytes())?;

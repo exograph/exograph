@@ -176,6 +176,7 @@ pub struct AstArgument<T: NodeTypedness> {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstFieldType<T: NodeTypedness> {
     Plain(
+        Option<String>, // module name (None implies the current module)
         String,
         Vec<AstFieldType<T>>, // type parameters (for example, `Concert` for `Set<Concert>`)
         T::Type,
@@ -191,13 +192,13 @@ impl<T: NodeTypedness> AstFieldType<T> {
     pub fn name(&self) -> String {
         match self {
             AstFieldType::Optional(underlying) => underlying.name(),
-            AstFieldType::Plain(base_type, _, _, _) => base_type.clone(),
+            AstFieldType::Plain(_, base_type, _, _, _) => base_type.clone(),
         }
     }
 
     pub fn span(&self) -> Span {
         match self {
-            AstFieldType::Plain(_, _, _, span) => *span,
+            AstFieldType::Plain(_, _, _, _, span) => *span,
             AstFieldType::Optional(underlying) => underlying.span(),
         }
     }

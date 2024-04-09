@@ -15,6 +15,7 @@ modules:
           - name: id
             typ:
               Plain:
+                - ~
                 - Int
                 - []
                 - ~
@@ -29,6 +30,7 @@ modules:
           - name: title
             typ:
               Plain:
+                - ~
                 - String
                 - []
                 - ~
@@ -37,6 +39,7 @@ modules:
           - name: venue
             typ:
               Plain:
+                - ~
                 - Venue
                 - []
                 - ~
@@ -59,6 +62,7 @@ modules:
           - name: id
             typ:
               Plain:
+                - ~
                 - Int
                 - []
                 - ~
@@ -73,6 +77,7 @@ modules:
           - name: name
             typ:
               Plain:
+                - ~
                 - String
                 - []
                 - ~
@@ -81,8 +86,10 @@ modules:
           - name: concerts
             typ:
               Plain:
+                - ~
                 - Set
                 - - Plain:
+                      - ~
                       - Concert
                       - []
                       - ~

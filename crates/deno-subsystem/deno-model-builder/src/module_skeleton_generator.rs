@@ -464,8 +464,8 @@ trait TypeScriptType {
 impl TypeScriptType for AstFieldType<Typed> {
     fn typescript_type(&self) -> String {
         match self {
-            AstFieldType::Optional(tpe) => format!("{} | undefined", tpe.typescript_type()),
-            AstFieldType::Plain(name, ..) => typescript_base_type(name),
+            AstFieldType::Optional(tpe) => format!("{}?", tpe.typescript_type()),
+            AstFieldType::Plain(_, name, ..) => typescript_base_type(name),
         }
     }
 }

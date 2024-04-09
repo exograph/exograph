@@ -119,9 +119,10 @@ module.exports = grammar({
         ")"
       )
     ),
+    field_term: $ => seq(optional(seq(field("module", $.term), ".")), field("name", $.term)),
     field_type: $ => choice(
       $.optional_field_type,
-      seq($.term, optional(seq("<", commaSep(field("type_param", $.field_type)), ">")))
+      seq($.field_term, optional(seq("<", commaSep(field("type_param", $.field_type)), ">")))
     ),
     optional_field_type: $ => seq(field("inner", $.field_type), "?"),
     expression: $ => choice(

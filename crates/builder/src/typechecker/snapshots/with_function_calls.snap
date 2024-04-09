@@ -45,6 +45,7 @@ types:
             - name: id
               typ:
                 Plain:
+                  - ~
                   - String
                   - []
                   - true
@@ -60,6 +61,7 @@ types:
             - name: role
               typ:
                 Plain:
+                  - ~
                   - String
                   - []
                   - true
@@ -79,6 +81,7 @@ types:
             - name: id
               typ:
                 Plain:
+                  - ~
                   - Int
                   - []
                   - true
@@ -95,6 +98,7 @@ types:
             - name: content
               typ:
                 Plain:
+                  - ~
                   - String
                   - []
                   - true
@@ -104,8 +108,10 @@ types:
             - name: documentUsers
               typ:
                 Plain:
+                  - ~
                   - Set
                   - - Plain:
+                        - ~
                         - DocumentUser
                         - []
                         - true
@@ -349,6 +355,7 @@ types:
             - name: id
               typ:
                 Plain:
+                  - ~
                   - Int
                   - []
                   - true
@@ -365,6 +372,7 @@ types:
             - name: document
               typ:
                 Plain:
+                  - ~
                   - Document
                   - []
                   - true
@@ -374,6 +382,7 @@ types:
             - name: userId
               typ:
                 Plain:
+                  - ~
                   - String
                   - []
                   - true
@@ -383,6 +392,7 @@ types:
             - name: read
               typ:
                 Plain:
+                  - ~
                   - Boolean
                   - []
                   - true
@@ -392,6 +402,7 @@ types:
             - name: write
               typ:
                 Plain:
+                  - ~
                   - Boolean
                   - []
                   - true
@@ -487,6 +498,7 @@ modules:
               - name: id
                 typ:
                   Plain:
+                    - ~
                     - Int
                     - []
                     - true
@@ -503,6 +515,7 @@ modules:
               - name: content
                 typ:
                   Plain:
+                    - ~
                     - String
                     - []
                     - true
@@ -512,8 +525,10 @@ modules:
               - name: documentUsers
                 typ:
                   Plain:
+                    - ~
                     - Set
                     - - Plain:
+                          - ~
                           - DocumentUser
                           - []
                           - true
@@ -755,6 +770,7 @@ modules:
               - name: id
                 typ:
                   Plain:
+                    - ~
                     - Int
                     - []
                     - true
@@ -771,6 +787,7 @@ modules:
               - name: document
                 typ:
                   Plain:
+                    - ~
                     - Document
                     - []
                     - true
@@ -780,6 +797,7 @@ modules:
               - name: userId
                 typ:
                   Plain:
+                    - ~
                     - String
                     - []
                     - true
@@ -789,6 +807,7 @@ modules:
               - name: read
                 typ:
                   Plain:
+                    - ~
                     - Boolean
                     - []
                     - true
@@ -798,6 +817,7 @@ modules:
               - name: write
                 typ:
                   Plain:
+                    - ~
                     - Boolean
                     - []
                     - true

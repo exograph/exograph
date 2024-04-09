@@ -45,6 +45,7 @@ types:
             - name: doc
               typ:
                 Plain:
+                  - ~
                   - Doc
                   - []
                   - true
@@ -138,6 +139,7 @@ types:
             - name: role
               typ:
                 Plain:
+                  - ~
                   - String
                   - []
                   - true
@@ -154,6 +156,7 @@ types:
             - name: is_public
               typ:
                 Plain:
+                  - ~
                   - Boolean
                   - []
                   - true
@@ -247,6 +250,7 @@ modules:
               - name: doc
                 typ:
                   Plain:
+                    - ~
                     - Doc
                     - []
                     - true
@@ -340,6 +344,7 @@ modules:
               - name: role
                 typ:
                   Plain:
+                    - ~
                     - String
                     - []
                     - true
@@ -354,6 +359,7 @@ modules:
               - name: is_public
                 typ:
                   Plain:
+                    - ~
                     - Boolean
                     - []
                     - true
