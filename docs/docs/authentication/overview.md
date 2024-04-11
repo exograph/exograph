@@ -1,7 +1,9 @@
 ---
-title: Overview
-sidebar_position: 10
+sidebar_position: 0
+slug: /authentication
 ---
+
+# Overview
 
 In a typical Exograph application, the model declares a context to capture the user's identity and uses it to specify access control rules, etc. Earlier, when discussing the [context](/core-concept/context.md#jwt-token) concept, we briefly looked at the `@jwt` annotation. Let's take a closer look at this annotation and how to configure JWT authentication.
 

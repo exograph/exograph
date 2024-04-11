@@ -1,5 +1,6 @@
 ---
-sidebar_position: 10
+sidebar_position: 0
+slug: /postgres/operations
 ---
 
 # Overview
