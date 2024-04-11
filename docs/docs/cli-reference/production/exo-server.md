@@ -1,3 +1,8 @@
+---
+title: exo-server
+slug: /cli-reference/production
+---
+
 # exo-server
 
 While `exo dev` command is appropriate for development, it is unsuitable for production since it does more work than necessary, such as watching files for changes and verifying the schema. For production, you should use the `exo build` command to generate a production build of your schema and then use the `exo-server` to serve it.

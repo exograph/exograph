@@ -1,5 +1,6 @@
 ---
-sidebar_position: 1
+sidebar_position: 0
+slug: /cli-reference
 ---
 
 # Overview
