@@ -1155,14 +1155,60 @@ fn extract_table_annotation(
 #[cfg(test)]
 mod tests {
     use codemap::CodeMap;
+    use multiplatform_test::multiplatform_test;
 
     use super::*;
     use builder::{load_subsystem_builders, parser, typechecker};
     use std::fs::File;
 
-    #[test]
+    fn create_resolved_system(src: &str) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
+        let mut codemap = CodeMap::new();
+        let subsystem_builders = load_subsystem_builders(vec![
+            Box::new(crate::PostgresSubsystemBuilder {}),
+            #[cfg(not(target_family = "wasm"))]
+            Box::new(deno_model_builder::DenoSubsystemBuilder {}),
+        ])
+        .unwrap();
+        let parsed = parser::parse_str(src, &mut codemap, "input.exo")
+            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
+        let typechecked_system = typechecker::build(&subsystem_builders, parsed)
+            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
+
+        build(&typechecked_system)
+    }
+
+    macro_rules! assert_resolved {
+        ($src:expr, $fn_name:expr) => {
+            let resolved = create_resolved_system($src).unwrap();
+            insta::with_settings!({sort_maps => true, prepend_module_to_snapshot => false}, {
+                #[cfg(target_family = "wasm")]
+                {
+                    let expected = include_str!(concat!("./snapshots/", $fn_name, ".snap"));
+                    let split_expected = expected.split("---\n").skip(2).collect::<Vec<&str>>().join("---");
+                    let serialized = insta::_macro_support::serialize_value(
+                        &resolved,
+                        insta::_macro_support::SerializationFormat::Yaml,
+                        insta::_macro_support::SnapshotLocation::File
+                    );
+                    assert_eq!(split_expected, serialized);
+                }
+
+                #[cfg(not(target_family = "wasm"))]
+                {
+
+                    insta::assert_yaml_snapshot!(resolved)
+                }
+            })
+        };
+    }
+
+    #[cfg(not(target_family = "wasm"))]
+    #[multiplatform_test]
     fn with_annotations() {
-        let src = r#"
+        File::create("bar.js").unwrap();
+
+        assert_resolved!(
+            r#"
         @postgres
         module ConcertModule {
             @table("custom_concerts")
@@ -1191,21 +1237,16 @@ mod tests {
             export query qux(@inject exograph: Exograph, x: Int, y: String): Int
             mutation quuz(): String
         }
-        "#;
-
-        File::create("bar.js").unwrap();
-
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
+        "#,
+            "with_annotations"
+        );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_defaults() {
         // Note the swapped order between @pk and @dbtype to assert that our parsing logic permits any order
-        let src = r#"
+        assert_resolved!(
+            r#"
         @postgres
         module ConcertModule {
             type Concert {
@@ -1222,18 +1263,15 @@ mod tests {
               concerts: Set<Concert> 
             }        
         }
-        "#;
-
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
+        "#,
+            "with_defaults"
+        );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_optional_fields() {
-        let src = r#"
+        assert_resolved!(
+            r#"
         @postgres
         module ConcertModule {
             type Concert {
@@ -1250,18 +1288,18 @@ mod tests {
               concerts: Set<Concert>?
             }    
         }
-        "#;
-
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
+        "#,
+            "with_optional_fields"
+        );
     }
 
-    #[test]
+    #[cfg(not(target_family = "wasm"))]
+    #[multiplatform_test]
     fn with_access() {
-        let src = r#"
+        File::create("logger.js").unwrap();
+
+        assert_resolved!(
+            r#"
         context AuthContext {
             @jwt("role") role: String 
         }
@@ -1294,20 +1332,15 @@ mod tests {
             @access(AuthContext.role == "ROLE_ADMIN")
             export query log(@inject exograph: Exograph): Boolean
         }
-        "#;
-
-        File::create("logger.js").unwrap();
-
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
+        "#,
+            "with_access"
+        );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_access_default_values() {
-        let src = r#"
+        assert_resolved!(
+            r#"
         context AuthContext {
             @jwt role: String
         }
@@ -1321,18 +1354,15 @@ mod tests {
               public: Boolean
             }      
         }
-        "#;
-
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
+        "#,
+            "with_access_default_values"
+        );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn field_name_variations() {
-        let src = r#"
+        assert_resolved!(
+            r#"
         @postgres
         module EntityModule {
             type Entity {
@@ -1343,18 +1373,15 @@ mod tests {
               PUBLIC2: Boolean
               foo123: Int
             }
-        }"#;
-
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
+        }"#,
+            "field_name_variations"
+        );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn column_names_for_non_standard_relational_field_names() {
-        let src = r#"
+        assert_resolved!(
+            r#"
         @postgres
         module ConcertModule {
             type Concert {
@@ -1371,16 +1398,12 @@ mod tests {
               published: Boolean
             }             
         }
-        "#;
-
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
+        "#,
+            "column_names_for_non_standard_relational_field_names"
+        );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_multiple_matching_field_no_column_annotation() {
         let src = r#"
         @postgres
@@ -1410,9 +1433,10 @@ mod tests {
         assert!(resolved.is_err());
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_multiple_matching_field_with_column_annotation() {
-        let src = r#"
+        assert_resolved!(
+            r#"
         @postgres
         module ConcertModule {
             type Concert {
@@ -1429,18 +1453,15 @@ mod tests {
                 @column("main") main_events: Set<Concert> 
             }  
         }
-        "#;
-
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
+        "#,
+            "with_multiple_matching_field_with_column_annotation"
+        );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_camel_case_model_and_fields() {
-        let src = r#"
+        assert_resolved!(
+            r#"
         @postgres
         module ConcertModule {
             type ConcertInfo {
@@ -1448,19 +1469,16 @@ mod tests {
                 mainTitle: String 
             }
         }
-        "#;
-
-        // Both type and fields names are camel case, but the table and column should be defaulted to snake case
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
+        "#,
+            "with_camel_case_model_and_fields"
+        );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn non_public_schema() {
-        let src = r#"
+        // Both type and fields names are camel case, but the table and column should be defaulted to snake case
+        assert_resolved!(
+            r#"
         @postgres
         module Db {
             @table(schema="auth") // let the table name be derived from the type name
@@ -1475,24 +1493,8 @@ mod tests {
                 name: String 
             }
         }
-        "#;
-
-        // Both type and fields names are camel case, but the table and column should be defaulted to snake case
-        let resolved = create_resolved_system(src).unwrap();
-
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(resolved);
-        });
-    }
-
-    fn create_resolved_system(src: &str) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
-        let mut codemap = CodeMap::new();
-        let subsystem_builders = load_subsystem_builders(vec![]).unwrap();
-        let parsed = parser::parse_str(src, &mut codemap, "input.exo")
-            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
-        let typechecked_system = typechecker::build(&subsystem_builders, parsed)
-            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
-
-        build(&typechecked_system)
+        "#,
+            "non_public_schema"
+        );
     }
 }

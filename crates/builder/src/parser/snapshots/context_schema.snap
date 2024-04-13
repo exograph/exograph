@@ -1,6 +1,6 @@
 ---
 source: crates/builder/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(),\n        r#\"\n            context AuthUser {\n                @jwt(\"sub\") id: Int \n                @jwt roles: Array<String> \n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.exo\")).unwrap()"
+expression: to_check
 ---
 types:
   - name: AuthUser
@@ -35,4 +35,3 @@ types:
     annotations: []
 modules: []
 imports: []
-
