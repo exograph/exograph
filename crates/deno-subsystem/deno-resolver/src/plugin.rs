@@ -51,7 +51,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
     }
 
     async fn init(
-        &self,
+        &mut self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
         deno_core::JsRuntime::init_platform(None);
