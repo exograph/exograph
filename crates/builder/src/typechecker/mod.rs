@@ -447,6 +447,7 @@ pub mod test_support {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[cfg(test)]
 mod tests {
     use super::test_support::{build, parse_sorted};

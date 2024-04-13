@@ -323,22 +323,23 @@ mod tests {
     use crate::schema::test_helper::{int_column, json_column, pk_column, string_column};
     use crate::{schema::database_spec::DatabaseSpec, sql::SQLParamContainer};
     use crate::{ColumnId, PhysicalTableName};
+    use multiplatform_test::multiplatform_test;
 
     use super::*;
 
-    #[test]
+    #[multiplatform_test]
     fn true_predicate() {
         let database = Database::default();
         assert_binding!(ConcretePredicate::True.to_sql(&database), "TRUE");
     }
 
-    #[test]
+    #[multiplatform_test]
     fn false_predicate() {
         let database = Database::default();
         assert_binding!(ConcretePredicate::False.to_sql(&database), "FALSE");
     }
 
-    #[test]
+    #[multiplatform_test]
     fn eq_predicate() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("people", None),
@@ -360,7 +361,7 @@ mod tests {
         assert_binding!(predicate.to_sql(&database), r#""people"."age" = $1"#, 5);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn and_predicate() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("people", None),
@@ -394,7 +395,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn string_predicates() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("videos", None),
@@ -459,7 +460,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn json_predicates() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("card", None),
