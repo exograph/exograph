@@ -17,7 +17,9 @@ use core_plugin_interface::{
 use exo_sql::{DatabaseClient, DatabaseExecutor};
 use postgres_model::subsystem::PostgresSubsystem;
 
-pub struct PostgresSubsystemLoader {}
+pub struct PostgresSubsystemLoader {
+    pub existing_client: Option<DatabaseClient>,
+}
 
 #[async_trait]
 impl SubsystemLoader for PostgresSubsystemLoader {
@@ -26,18 +28,32 @@ impl SubsystemLoader for PostgresSubsystemLoader {
     }
 
     async fn init(
-        &self,
+        &mut self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
         let subsystem = PostgresSubsystem::deserialize(serialized_subsystem)?;
 
-        let database_client = DatabaseClient::from_env(None)
-            .await
-            .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?;
+        let id = self.id();
+
+        let database_client = if let Some(existing) = self.existing_client.take() {
+            existing
+        } else {
+            #[cfg(feature = "network")]
+            {
+                DatabaseClient::from_env(None)
+                    .await
+                    .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?
+            }
+
+            #[cfg(not(feature = "network"))]
+            {
+                panic!("Postgres URL feature is not enabled");
+            }
+        };
         let executor = DatabaseExecutor { database_client };
 
         Ok(Box::new(PostgresSubsystemResolver {
-            id: self.id(),
+            id,
             subsystem,
             executor,
         }))

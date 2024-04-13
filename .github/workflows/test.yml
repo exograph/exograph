@@ -34,7 +34,7 @@ jobs:
       - name: Run linters
         run: |
           cargo fmt --all -- --check
-          cargo clippy --all-targets --all-features -- -D warnings --no-deps
+          cargo clippy --all-targets -- -D warnings --no-deps
 
   test:
     strategy:
@@ -98,3 +98,39 @@ jobs:
           EXO_RUN_INTROSPECTION_TESTS: true
         run: target/${{ matrix.target }}/debug/exo test integration-tests
         shell: bash
+
+  test-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clear up some disk space from the runner
+        run: |
+          bash ${PWD}/.github/workflows/clear-disk-space.sh
+
+      - name: Add target
+        run: rustup target add wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm32-unknown-unknown
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Get wasm-bindgen version
+        id: wasm-bindgen-version
+        run: echo "VERSION=$(cargo pkgid wasm-bindgen-shared | cut -d '@' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Install WebAssembly test runner
+        run: cargo install wasm-bindgen-cli@${{ steps.wasm-bindgen-version.outputs.VERSION }}
+
+      - name: Run tests
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
+          RUST_BACKTRACE: 1
+        run: cargo test --workspace --target wasm32-unknown-unknown \
+              --exclude cli \
+              --exclude postgres-resolver-dynamic \
+              --exclude deno-model --exclude deno-model --exclude deno-model-builder-dynamic --exclude deno-resolver --exclude deno-resolver-dynamic \
+              --exclude wasm-model --exclude wasm-model-builder --exclude wasm-model-builder-dynamic --exclude wasm-resolver --exclude wasm-resolver-dynamic \
+              --exclude server-common --exclude server-actix --exclude server-aws-lambda \
+              --exclude testing \
+              --exclude exo-deno --exclude exo-wasm

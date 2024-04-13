@@ -14,7 +14,7 @@ use std::{
 
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use tree_sitter::Node;
+use tree_sitter_c2rust::Node;
 
 use crate::{
     ast::ast_types::{AstSystem, Untyped},
