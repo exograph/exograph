@@ -111,9 +111,11 @@ pub enum LibraryLoadingError {
     #[error("Library not found at {0}")]
     LibraryNotFound(PathBuf),
 
+    #[cfg(not(target_family = "wasm"))]
     #[error("Error while loading subsystem library: {0}")]
     LibraryLoadingError(#[from] libloading::Error),
 
+    #[cfg(not(target_family = "wasm"))]
     #[error("Error while loading symbol {0} from library: {0}")]
     SymbolLoadingError(String, libloading::Error),
 

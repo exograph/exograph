@@ -6297,14 +6297,18 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
+ "deno-model-builder",
  "exo-sql",
  "heck",
  "insta",
  "lazy_static",
+ "multiplatform_test",
  "postgres-model",
  "serde",
  "tokio",
  "typed-generational-arena",
+ "wasm-bindgen-test",
+ "wasm-bindgen-test-macro",
 ]
 
 [[package]]

@@ -16,6 +16,7 @@ pub enum SubsystemCheckError {
     #[error("Subsystem has an incompatible interface version. Expected: `{0}`, found `{1}`")]
     Incompatible(String, String),
 
+    #[cfg(not(target_family = "wasm"))]
     #[error("Could not load Exograph interface version symbol: {0}")]
     SymbolLoadingError(#[from] libloading::Error),
 
