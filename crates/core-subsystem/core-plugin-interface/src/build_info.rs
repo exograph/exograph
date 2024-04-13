@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+#[cfg(not(target_family = "wasm"))]
 use std::ffi::{c_char, CStr};
 use thiserror::Error;
 
@@ -43,6 +44,7 @@ pub fn interface_version() -> String {
     )
 }
 
+#[cfg(not(target_family = "wasm"))]
 /// Checks the interface version of the library against our version to make sure the
 /// library is compatible.
 pub(crate) fn check_subsystem_library(

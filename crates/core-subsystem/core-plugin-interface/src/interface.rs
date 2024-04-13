@@ -7,10 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{
-    env::current_exe,
-    path::{Path, PathBuf},
-};
+use std::path::PathBuf;
+
+#[cfg(not(target_family = "wasm"))]
+use std::{env::current_exe, path::Path};
 
 use crate::core_model_builder::{
     builder::system_builder::BaseModelSystem, error::ModelBuildingError, plugin::SubsystemBuild,
@@ -92,7 +92,7 @@ pub trait SubsystemLoader {
 
     /// Loads and initializes the subsystem, producing a [SubsystemResolver].
     async fn init(
-        &self,
+        &mut self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError>;
 }
@@ -124,6 +124,7 @@ pub enum LibraryLoadingError {
     CheckFailed(#[from] SubsystemCheckError),
 }
 
+#[cfg(not(target_family = "wasm"))]
 /// Loads a constructor function from a subsystem library and invokes it.
 /// Returns the resultant object.
 ///
@@ -163,6 +164,7 @@ fn load_subsystem_library<T: ?Sized>(
     Ok(boxed_obj)
 }
 
+#[cfg(not(target_family = "wasm"))]
 /// Loads a subsystem builder from a dynamic library.
 pub fn load_subsystem_builder(
     library_path: &Path,
@@ -170,6 +172,7 @@ pub fn load_subsystem_builder(
     load_subsystem_library(library_path, "__exograph_subsystem_builder")
 }
 
+#[cfg(not(target_family = "wasm"))]
 /// Loads a subsystem loader from a dynamic library.
 pub fn load_subsystem_loader(
     library_name: &str,
