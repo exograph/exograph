@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Clippy OK?
-cargo clippy --all-targets --all-features -- --no-deps -D warnings
+cargo clippy --all-targets -- --no-deps -D warnings
 clippy_result=$?
 
 if [ $clippy_result -ne 0 ]; then

@@ -15,6 +15,7 @@ mod request;
 mod request_context;
 mod user_request_context;
 
+#[cfg(feature = "jwt")]
 pub use provider::jwt::{JwtAuthenticator, LOCAL_JWT_SECRET};
 
 pub use error::ContextExtractionError;

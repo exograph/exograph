@@ -428,9 +428,11 @@ mod tests {
         AbstractPredicate, ColumnPath, PhysicalColumnPath,
     };
 
+    use multiplatform_test::multiplatform_test;
+
     use super::*;
 
-    #[test]
+    #[multiplatform_test]
     fn non_nested_predicate() {
         TestSetup::with_setup(
             |TestSetup {
@@ -474,7 +476,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn nested_op_predicate() {
         test_nested_op_predicate(AbstractPredicate::Eq, |l, r| format!("{l} = {r}"));
         test_nested_op_predicate(AbstractPredicate::Neq, |l, r| format!("{l} <> {r}"));
@@ -514,7 +516,7 @@ mod tests {
         test_nested_op_predicate(AbstractPredicate::JsonMatchKey, |l, r| format!("{l} ? {r}"));
     }
 
-    #[test]
+    #[multiplatform_test]
     fn test_and() {
         TestSetup::with_setup(
             move |TestSetup {
