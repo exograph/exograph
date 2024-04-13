@@ -13,6 +13,7 @@ use std::{fs::File, io::BufReader, path::Path};
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
+#[cfg(not(target_family = "wasm"))]
 use common::env_const::is_production;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::QueryResponse;
@@ -80,11 +81,16 @@ pub async fn resolve<'a, E: 'static>(
     request_context: RequestContext<'a>,
     playground_request: bool,
 ) -> ResponseStream<E> {
+    #[cfg(not(target_family = "wasm"))]
+    let is_production = is_production();
+    #[cfg(target_family = "wasm")]
+    let is_production = !playground_request;
+
     let response = resolve_in_memory(
         operations_payload,
         system_resolver,
         request_context,
-        if playground_request && !is_production() {
+        if playground_request && !is_production {
             TrustedDocumentEnforcement::DoNotEnforce
         } else {
             TrustedDocumentEnforcement::Enforce
