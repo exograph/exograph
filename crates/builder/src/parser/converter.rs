@@ -15,7 +15,7 @@ use std::{collections::HashMap, path::Path};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model_builder::ast::ast_types::{FieldSelectionElement, Identifier};
-use tree_sitter::{Node, Tree, TreeCursor};
+use tree_sitter_c2rust::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
 use crate::ast::ast_types::{
@@ -26,7 +26,7 @@ use crate::ast::ast_types::{
 use crate::error::ParserError;
 
 pub fn parse(input: &str) -> Option<Tree> {
-    let mut parser = tree_sitter::Parser::new();
+    let mut parser = tree_sitter_c2rust::Parser::new();
     parser.set_language(sitter_ffi::language()).unwrap();
     parser.parse(input, None)
 }
@@ -668,6 +668,7 @@ fn text_child(node: Node, source: &[u8], child_name: &str) -> String {
         .to_string()
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[cfg(test)]
 mod tests {
     use codemap::CodeMap;

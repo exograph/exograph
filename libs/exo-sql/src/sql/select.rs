@@ -108,9 +108,11 @@ mod tests {
         PhysicalTableName,
     };
 
+    use multiplatform_test::multiplatform_test;
+
     use super::*;
 
-    #[test]
+    #[multiplatform_test]
     fn json_object() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName {

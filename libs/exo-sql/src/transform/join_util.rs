@@ -103,7 +103,9 @@ mod tests {
         PhysicalColumnPath,
     };
 
-    #[test]
+    use multiplatform_test::multiplatform_test;
+
+    #[multiplatform_test]
     fn single_level_join() {
         TestSetup::with_setup(
             |TestSetup {
@@ -134,7 +136,7 @@ mod tests {
         )
     }
 
-    #[test]
+    #[multiplatform_test]
     fn multi_level_join() {
         TestSetup::with_setup(
             |TestSetup {
