@@ -170,7 +170,9 @@ mod tests {
     use super::AbstractSelect;
     use crate::sql::ExpressionBuilder;
 
-    #[test]
+    use multiplatform_test::multiplatform_test;
+
+    #[multiplatform_test]
     fn simple_selection() {
         TestSetup::with_setup(
             |TestSetup {
@@ -200,7 +202,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn simple_predicate() {
         TestSetup::with_setup(
             |TestSetup {
@@ -236,7 +238,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn non_nested_json() {
         TestSetup::with_setup(
             |TestSetup {
@@ -269,7 +271,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn nested_many_to_one_json() {
         // {
         //     id: 5,
@@ -337,7 +339,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn nested_one_to_many_json() {
         TestSetup::with_setup(
             |TestSetup {
@@ -399,7 +401,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn nested_one_to_many_with_predicate() {
         // venues { concert(where: {venue: {id: {eq: 2}}} )}
         TestSetup::with_setup(
@@ -470,7 +472,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn nested_predicate() {
         TestSetup::with_setup(
             |TestSetup {
@@ -518,7 +520,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn simple_order_by() {
         TestSetup::with_setup(
             |TestSetup {
@@ -554,7 +556,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_predicate_limit_and_offset() {
         TestSetup::with_setup(
             |TestSetup {
@@ -594,7 +596,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn nested_order_by() {
         TestSetup::with_setup(
             |TestSetup {
