@@ -57,7 +57,9 @@ mod tests {
         Column,
     };
 
-    #[test]
+    use multiplatform_test::multiplatform_test;
+
+    #[multiplatform_test]
     fn basic_join() {
         let database = DatabaseSpec::new(vec![
             TableSpec::new(

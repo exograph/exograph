@@ -13,7 +13,7 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 async-trait.workspace = true
 tokio.workspace = true
 
-core-resolver = { path = "../../core-subsystem/core-resolver" }
+core-resolver = { path = "../../core-subsystem/core-resolver", default-features = false }
 core-model = { path = "../../core-subsystem/core-model" }
 core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 
