@@ -7,12 +7,15 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+
+use std::sync::Arc;
 
 use async_graphql_parser::{
     types::{ExecutableDocument, OperationType},
     Pos,
 };
+#[cfg(not(target_family = "wasm"))]
 use common::env_const::{get_enforce_trusted_documents, is_production};
 use core_plugin_shared::{
     interception::{InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex},
@@ -26,8 +29,10 @@ use thiserror::Error;
 use tokio::runtime::Handle;
 use tracing::{error, instrument, warn};
 
+#[cfg(feature = "jwt")]
+use crate::context::provider::jwt::JwtAuthenticator;
+
 use crate::{
-    context::provider::jwt::JwtAuthenticator,
     context::RequestContext,
     introspection::definition::schema::Schema,
     plugin::{subsystem_resolver::SubsystemResolver, SubsystemResolutionError},
@@ -57,6 +62,7 @@ pub struct SystemResolver {
     mutation_interception_map: InterceptionMap,
     trusted_documents: TrustedDocuments,
     schema: Schema,
+    #[cfg(feature = "jwt")]
     pub jwt_authenticator: Arc<Option<JwtAuthenticator>>,
     pub env: HashMap<String, String>,
     normal_query_depth_limit: usize,
@@ -71,11 +77,13 @@ impl SystemResolver {
         mutation_interception_map: InterceptionMap,
         trusted_documents: TrustedDocuments,
         schema: Schema,
-        jwt_authenticator: Arc<Option<JwtAuthenticator>>,
+        #[cfg(feature = "jwt")] jwt_authenticator: Arc<Option<JwtAuthenticator>>,
+        #[cfg(not(feature = "jwt"))] jwt_authenticator: Arc<Option<()>>,
         env: HashMap<String, String>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
     ) -> Self {
+        #[cfg(not(target_family = "wasm"))]
         let trusted_documents = if is_production() || get_enforce_trusted_documents() {
             trusted_documents
         } else {
@@ -86,12 +94,16 @@ impl SystemResolver {
             }
         };
 
+        #[cfg(not(feature = "jwt"))]
+        assert!(jwt_authenticator.is_none());
+
         Self {
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
             trusted_documents,
             schema,
+            #[cfg(feature = "jwt")]
             jwt_authenticator,
             env,
             normal_query_depth_limit,

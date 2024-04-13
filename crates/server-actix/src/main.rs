@@ -33,7 +33,7 @@ enum ServerError {
     #[error("{0}")]
     Io(#[from] std::io::Error),
     #[error("{0}")]
-    EnvError(#[from] common::env_const::EnvError),
+    EnvError(#[from] common::EnvError),
 }
 
 // A custom `Debug` implementation for `ServerError` (that delegate to the `Display` impl), so that
