@@ -1,6 +1,6 @@
 ---
 source: crates/builder/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(),\n        r#\"\n            @postgres\n            module TestModule{            \n                type Foo {\n                    @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n                    bar: Baz\n                }\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.exo\")).unwrap()"
+expression: to_check
 ---
 types: []
 modules:
@@ -71,4 +71,3 @@ modules:
     interceptors: []
     base_exofile: input.exo
 imports: []
-

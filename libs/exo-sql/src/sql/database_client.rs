@@ -7,16 +7,31 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{cell::RefCell, env, fs::File, io::BufReader};
+use std::cell::RefCell;
 
+#[cfg(feature = "postgres-url")]
+use std::{env, fs::File, io::BufReader};
+
+#[cfg(feature = "postgres-url")]
 use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_POSTGRES_PASSWORD,
     EXO_POSTGRES_URL, EXO_POSTGRES_USER,
 };
+
+#[cfg(feature = "deadpool")]
 use deadpool_postgres::{Client, Manager, ManagerConfig, Pool, RecyclingMethod};
+#[cfg(not(feature = "deadpool"))]
+use tokio_postgres::Client;
+
+#[cfg(feature = "tls")]
 use rustls::{Certificate, RootCertStore};
+#[cfg(feature = "tls")]
 use rustls_native_certs::load_native_certs;
-use tokio_postgres::{config::SslMode, Config};
+
+#[cfg(feature = "postgres-url")]
+use tokio_postgres::config::SslMode;
+
+use tokio_postgres::Config;
 
 use crate::database_error::DatabaseError;
 
@@ -28,9 +43,19 @@ thread_local! {
 }
 
 pub struct DatabaseClient {
+    #[cfg(feature = "deadpool")]
     pool: Pool,
+    #[cfg(not(feature = "deadpool"))]
+    client: std::sync::Mutex<
+        Box<
+            dyn Fn() -> std::pin::Pin<
+                    Box<dyn std::future::Future<Output = Result<Client, DatabaseError>> + Send>,
+                > + Send,
+        >,
+    >,
 }
 
+#[cfg(feature = "postgres-url")]
 struct SslConfig {
     mode: SslMode,
     root_cert_path: Option<String>,
@@ -38,6 +63,7 @@ struct SslConfig {
 
 impl<'a> DatabaseClient {
     // pool_size_override useful when we want to explicitly control the pool size (for example, to 1, when importing database schema)
+    #[cfg(feature = "postgres-url")]
     pub async fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
         let url = LOCAL_URL
             .with(|f| f.borrow().clone())
@@ -71,10 +97,50 @@ impl<'a> DatabaseClient {
         Self::from_helper(pool_size, check_connection, &url, user, password).await
     }
 
+    #[cfg(feature = "postgres-url")]
     pub async fn from_db_url(url: &str) -> Result<Self, DatabaseError> {
         Self::from_helper(1, true, url, None, None).await
     }
 
+    #[cfg(all(not(feature = "deadpool"), not(feature = "tls")))]
+    pub async fn from_socket<
+        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+    >(
+        check_connection: bool,
+        stream_creator: impl Fn() -> S + Send + 'static,
+        user: Option<String>,
+        password: Option<String>,
+    ) -> Result<Self, DatabaseError> {
+        let mut config = Config::default();
+
+        if let Some(user) = &user {
+            config.user(user);
+        }
+        if let Some(password) = &password {
+            config.password(password);
+        }
+
+        let db = Self {
+            client: std::sync::Mutex::new(Box::new(move || {
+                let stream = stream_creator();
+                let my_config_clone = config.clone();
+                Box::pin(async move {
+                    Ok(my_config_clone
+                        .connect_raw(stream, tokio_postgres::NoTls)
+                        .await?
+                        .0)
+                })
+            })),
+        };
+
+        if check_connection {
+            let _ = db.get_client().await?;
+        }
+
+        Ok(db)
+    }
+
+    #[cfg(feature = "postgres-url")]
     async fn from_helper(
         pool_size: usize,
         check_connection: bool,
@@ -98,62 +164,84 @@ impl<'a> DatabaseClient {
             config.password(password);
         }
 
+        #[cfg(feature = "deadpool")]
         let manager_config = ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
         };
 
+        #[cfg(feature = "deadpool")]
         let manager = match ssl_config {
             Some(SslConfig {
                 mode,
                 root_cert_path: cert_path,
             }) => {
-                config.ssl_mode(mode);
+                #[cfg(feature = "tls")]
+                {
+                    config.ssl_mode(mode);
 
-                let tls = {
-                    let mut root_store = RootCertStore::empty();
+                    let tls = {
+                        let mut root_store = RootCertStore::empty();
 
-                    // If the cert path is provided, use it. Otherwise, use the native certs.
-                    match cert_path {
-                        Some(cert_path) => {
-                            let cert_file = File::open(&cert_path).map_err(|e| {
-                                DatabaseError::Config(format!(
-                                    "Failed to open certificate file '{}': {}",
-                                    cert_path, e
-                                ))
-                            })?;
-                            let mut buf = BufReader::new(cert_file);
-                            rustls_pemfile::certs(&mut buf)
-                                .collect::<Result<Vec<_>, _>>()
-                                .map_err(|_| DatabaseError::Config("Invalid certificate".into()))?
-                                .into_iter()
-                                .map(|cert| root_store.add(&Certificate(cert.to_vec())))
-                                .collect::<Result<Vec<_>, _>>()?;
-                        }
-                        None => {
-                            for cert in load_native_certs()? {
-                                root_store.add(&Certificate(cert.to_vec()))?;
+                        // If the cert path is provided, use it. Otherwise, use the native certs.
+                        match cert_path {
+                            Some(cert_path) => {
+                                let cert_file = File::open(&cert_path).map_err(|e| {
+                                    DatabaseError::Config(format!(
+                                        "Failed to open certificate file '{}': {}",
+                                        cert_path, e
+                                    ))
+                                })?;
+                                let mut buf = BufReader::new(cert_file);
+                                rustls_pemfile::certs(&mut buf)
+                                    .collect::<Result<Vec<_>, _>>()
+                                    .map_err(|_| {
+                                        DatabaseError::Config("Invalid certificate".into())
+                                    })?
+                                    .into_iter()
+                                    .map(|cert| root_store.add(&Certificate(cert.to_vec())))
+                                    .collect::<Result<Vec<_>, _>>()?;
+                            }
+                            None => {
+                                for cert in load_native_certs()? {
+                                    root_store.add(&Certificate(cert.to_vec()))?;
+                                }
                             }
                         }
-                    }
 
-                    let config = rustls::ClientConfig::builder()
-                        .with_safe_defaults()
-                        .with_root_certificates(root_store)
-                        .with_no_client_auth();
-                    tokio_postgres_rustls::MakeRustlsConnect::new(config)
-                };
+                        let config = rustls::ClientConfig::builder()
+                            .with_safe_defaults()
+                            .with_root_certificates(root_store)
+                            .with_no_client_auth();
+                        tokio_postgres_rustls::MakeRustlsConnect::new(config)
+                    };
 
-                Manager::from_config(config, tls, manager_config)
+                    Manager::from_config(config, tls, manager_config)
+                }
+
+                #[cfg(not(feature = "tls"))]
+                {
+                    panic!("TLS support is not enabled")
+                }
             }
             None => Manager::from_config(config, tokio_postgres::NoTls, manager_config),
         };
 
+        #[cfg(feature = "deadpool")]
         let pool = Pool::builder(manager)
             .max_size(pool_size)
             .build()
             .expect("Failed to create DB pool");
 
+        #[cfg(feature = "deadpool")]
         let db = Self { pool };
+
+        #[cfg(not(feature = "deadpool"))]
+        let db = Self {
+            client: std::sync::Mutex::new(Box::new(move || {
+                let config_clone = config.clone();
+                Box::pin(async move { Ok(config_clone.connect(tokio_postgres::NoTls).await?.0) })
+            })),
+        };
 
         if check_connection {
             let _ = db.get_client().await?;
@@ -163,9 +251,22 @@ impl<'a> DatabaseClient {
     }
 
     pub async fn get_client(&self) -> Result<Client, DatabaseError> {
-        Ok(self.pool.get().await?)
+        #[cfg(feature = "deadpool")]
+        {
+            Ok(self.pool.get().await?)
+        }
+
+        #[cfg(not(feature = "deadpool"))]
+        {
+            let fut = {
+                let guard = (self.client).lock().unwrap();
+                guard()
+            };
+            Ok(fut.await?)
+        }
     }
 
+    #[cfg(feature = "postgres-url")]
     fn create_ssl_config(url: &str) -> Result<(String, Option<SslConfig>), DatabaseError> {
         let url = url::Url::parse(url)
             .map_err(|_| DatabaseError::Config("Invalid database URL".into()))?;
