@@ -106,6 +106,7 @@ impl<'a> DocumentValidator<'a> {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -729,7 +730,7 @@ mod tests {
 
         let subsystem_id = "postgres";
         let subsystem_library_name = format!("{subsystem_id}_resolver_dynamic");
-        let loader =
+        let mut loader =
             core_plugin_interface::interface::load_subsystem_loader(&subsystem_library_name)
                 .unwrap();
 

@@ -118,9 +118,11 @@ mod tests {
         AbstractPredicate, AbstractSelect, ColumnPath, PhysicalColumnPath,
     };
 
+    use multiplatform_test::multiplatform_test;
+
     use super::*;
 
-    #[test]
+    #[multiplatform_test]
     fn delete_all() {
         TestSetup::with_setup(
             |TestSetup {
@@ -154,7 +156,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn non_nested_predicate() {
         TestSetup::with_setup(
             |TestSetup {
@@ -196,7 +198,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn nested_predicate() {
         TestSetup::with_setup(
             |TestSetup {

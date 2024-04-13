@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-postgres-resolver = { path = "../postgres-resolver" }
+postgres-resolver = { path = "../postgres-resolver", features = ["network", "bigdecimal", "vector"] }
 
 [dev-dependencies]
 

@@ -26,9 +26,11 @@ pub enum DatabaseError {
     #[error("Unable to load native certificates: {0}")]
     NativeCerts(#[from] std::io::Error),
 
+    #[cfg(feature = "tls")]
     #[error("SSL: {0}")]
     Ssl(#[from] rustls::Error),
 
+    #[cfg(feature = "deadpool")]
     #[error("Pool: {0}")]
     Pool(#[from] deadpool_postgres::PoolError),
 

@@ -35,7 +35,7 @@ impl SubsystemLoader for WasmSubsystemLoader {
     }
 
     async fn init(
-        &self,
+        &mut self,
         serialized_subsystem: Vec<u8>,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
         let subsystem = WasmSubsystem::deserialize(serialized_subsystem)?;

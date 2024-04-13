@@ -9,7 +9,10 @@
 
 use std::collections::{HashMap, HashSet};
 
+#[cfg(feature = "deadpool")]
 use deadpool_postgres::Client;
+#[cfg(not(feature = "deadpool"))]
+use tokio_postgres::Client;
 
 use crate::database_error::DatabaseError;
 use crate::{PhysicalTable, PhysicalTableName};
