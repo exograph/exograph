@@ -97,7 +97,7 @@ impl SystemSerializer for SerializableSystem {
             }
         }
         let header_len = {
-            let mut header_len = [0_u8; 8];
+            let mut header_len = [0_u8; std::mem::size_of::<usize>()];
             reader
                 .read_exact(&mut header_len)
                 .map_err(|e| error("Failed to read exograph header size", Some(e)))?;
@@ -145,6 +145,7 @@ mod test {
     use super::SerializableSystem;
     use crate::{interception::InterceptionMap, system_serializer::SystemSerializer};
     use std::collections::HashMap;
+    use multiplatform_test::multiplatform_test;
 
     fn mk_system() -> SerializableSystem {
         let query_interception_map = InterceptionMap {
@@ -161,7 +162,7 @@ mod test {
         }
     }
 
-    #[test]
+    #[multiplatform_test]
     fn serialize_deserialize_ok() {
         let system = mk_system();
         let bytes = system.serialize().expect("System should serialize");
@@ -169,7 +170,7 @@ mod test {
             .expect("Deserialization should succeed");
     }
 
-    #[test]
+    #[multiplatform_test]
     fn deserialize_different_version() {
         let system = mk_system();
         let mut header = super::Header::new(vec![]);

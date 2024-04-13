@@ -15,7 +15,7 @@ async-graphql-value.workspace = true
 async-graphql-parser.workspace = true
 codemap-diagnostic.workspace = true
 core-model-builder = { path = "../core-model-builder" }
-core-resolver = { path = "../core-resolver" }
+core-resolver = { path = "../core-resolver", default-features = false }
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
 
