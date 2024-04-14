@@ -227,6 +227,7 @@ impl SystemResolver {
             futures::stream::iter(self.subsystem_resolvers.iter()).then(|resolver| async {
                 resolver
                     .resolve_cdylib(
+                        #[cfg(not(target_family = "wasm"))]
                         Handle::current(),
                         operation,
                         operation_type,
