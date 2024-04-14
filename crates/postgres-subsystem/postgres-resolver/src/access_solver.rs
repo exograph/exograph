@@ -734,7 +734,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn basic_eq() {
         test_relational_op(
             &test_system().await,
@@ -748,7 +749,8 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn basic_neq() {
         test_relational_op(
             &test_system().await,
@@ -762,7 +764,8 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn basic_lt() {
         test_relational_op(
             &test_system().await,
@@ -776,7 +779,8 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn basic_lte() {
         test_relational_op(
             &test_system().await,
@@ -790,7 +794,8 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn basic_gt() {
         test_relational_op(
             &test_system().await,
@@ -804,7 +809,8 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn basic_gte() {
         test_relational_op(
             &test_system().await,
@@ -960,7 +966,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn basic_and() {
         test_logical_op(
             &test_system().await,
@@ -975,7 +982,8 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn basic_or() {
         test_logical_op(
             &test_system().await,
@@ -990,7 +998,8 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn basic_not() {
         let test_system = test_system().await;
         let TestSystem {
@@ -1060,7 +1069,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn context_only() {
         // Scenario: AuthContext.role == "ROLE_ADMIN"
 
@@ -1086,7 +1096,8 @@ mod tests {
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn context_and_dynamic() {
         // Scenario: AuthContext.role == "ROLE_ADMIN" || self.published
 
@@ -1128,7 +1139,8 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn context_compared_with_dynamic() {
         // Scenario: AuthContext.user_id == self.owner_id
 
@@ -1169,7 +1181,8 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn varied_rule_for_roles() {
         // Scenario: AuthContext.role == "ROLE_ADMIN" || (AuthContext.role == "ROLE_USER" && self.published == true)
 
@@ -1249,7 +1262,8 @@ mod tests {
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn top_level_boolean_literal() {
         let test_system = test_system().await;
         let TestSystem {
@@ -1271,7 +1285,8 @@ mod tests {
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn top_level_boolean_column() {
         // Scenario: self.published
 
@@ -1296,7 +1311,8 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn top_level_boolean_context() {
         // Scenario: AuthContext.is_admin
 
@@ -1322,7 +1338,8 @@ mod tests {
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn missing_context_independent_expressions() {
         let test_system = test_system().await;
         let TestSystem {
@@ -1407,7 +1424,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn missing_context_expressions_with_an_or() {
         let test_system = test_system().await;
         let TestSystem {

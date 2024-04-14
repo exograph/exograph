@@ -10,7 +10,10 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
-use common::env_const::{EnvError, EXO_INTROSPECTION};
+#[cfg(not(target_family = "wasm"))]
+use common::env_const::EXO_INTROSPECTION;
+use common::EnvError;
+#[cfg(feature = "jwt")]
 use core_resolver::context::JwtAuthenticator;
 use introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
@@ -87,14 +90,22 @@ impl SystemLoader {
                 debug!("Using static loader for {}", subsystem_id);
                 Ok(loader)
             } else {
-                // Otherwise try to load a dynamic loader
-                debug!("Using dynamic loader for {}", subsystem_id);
-                let subsystem_library_name = format!("{subsystem_id}_resolver_dynamic");
+                #[cfg(not(target_family = "wasm"))]
+                {
+                    // Otherwise try to load a dynamic loader
+                    debug!("Using dynamic loader for {}", subsystem_id);
+                    let subsystem_library_name = format!("{subsystem_id}_resolver_dynamic");
 
-                let loader = core_plugin_interface::interface::load_subsystem_loader(
-                    &subsystem_library_name,
-                )?;
-                Ok(loader)
+                    let loader = core_plugin_interface::interface::load_subsystem_loader(
+                        &subsystem_library_name,
+                    )?;
+                    Ok(loader)
+                }
+
+                #[cfg(target_family = "wasm")]
+                {
+                    panic!("Dynamic loading is not supported on WASM");
+                }
             }
         }
 
@@ -102,7 +113,7 @@ impl SystemLoader {
 
         let mut subsystem_resolvers = vec![];
         for serialized_subsystem in subsystems {
-            let loader = get_loader(&mut static_loaders, serialized_subsystem.id)?;
+            let mut loader = get_loader(&mut static_loaders, serialized_subsystem.id)?;
             let resolver = loader
                 .init(serialized_subsystem.serialized_subsystem)
                 .await
@@ -117,9 +128,13 @@ impl SystemLoader {
 
         let (normal_query_depth_limit, introspection_query_depth_limit) = query_depth_limits()?;
 
+        #[cfg(feature = "jwt")]
         let authenticator = JwtAuthenticator::new_from_env()
             .await
             .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
+
+        #[cfg(not(feature = "jwt"))]
+        let authenticator = None;
 
         Ok(SystemResolver::new(
             subsystem_resolvers,
@@ -168,23 +183,33 @@ pub enum IntrospectionMode {
 
 pub fn introspection_mode() -> Result<IntrospectionMode, EnvError> {
     LOCAL_ALLOW_INTROSPECTION.with(|f| {
-        f.borrow()
-            .map(Ok)
-            .unwrap_or_else(|| match std::env::var(EXO_INTROSPECTION).ok() {
-                Some(e) => match e.to_lowercase().as_str() {
-                    "true" | "enabled" | "1" => Ok(IntrospectionMode::Enabled),
-                    "false" | "disabled" => Ok(IntrospectionMode::Disabled),
-                    "only" => Ok(IntrospectionMode::Only),
-                    _ => Err(EnvError::InvalidEnum {
-                        env_key: EXO_INTROSPECTION,
-                        env_value: e,
-                        message: "Must be set to either true, enabled, 1, false, disabled, or only"
-                            .to_string(),
-                    }),
-                },
+        #[allow(clippy::unnecessary_lazy_evaluations)]
+        f.borrow().map(Ok).unwrap_or_else(|| {
+            #[cfg(not(target_family = "wasm"))]
+            {
+                match std::env::var(EXO_INTROSPECTION).ok() {
+                    Some(e) => match e.to_lowercase().as_str() {
+                        "true" | "enabled" | "1" => Ok(IntrospectionMode::Enabled),
+                        "false" | "disabled" => Ok(IntrospectionMode::Disabled),
+                        "only" => Ok(IntrospectionMode::Only),
+                        _ => Err(EnvError::InvalidEnum {
+                            env_key: EXO_INTROSPECTION,
+                            env_value: e,
+                            message:
+                                "Must be set to either true, enabled, 1, false, disabled, or only"
+                                    .to_string(),
+                        }),
+                    },
 
-                None => Ok(IntrospectionMode::Disabled),
-            })
+                    None => Ok(IntrospectionMode::Disabled),
+                }
+            }
+
+            #[cfg(target_family = "wasm")]
+            {
+                Ok(IntrospectionMode::Disabled)
+            }
+        })
     })
 }
 

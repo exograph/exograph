@@ -1,4 +1,4 @@
-use thiserror::Error;
+use super::EnvError;
 
 pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
 pub const EXO_INTROSPECTION_LIVE_UPDATE: &str = "EXO_INTROSPECTION_LIVE_UPDATE";
@@ -20,16 +20,6 @@ pub const _EXO_DEPLOYMENT_MODE: &str = "_EXO_DEPLOYMENT_MODE"; // "yolo", "dev",
 pub const _EXO_ENFORCE_TRUSTED_DOCUMENTS: &str = "_EXO_ENFORCE_TRUSTED_DOCUMENTS";
 
 pub const _EXO_UPSTREAM_ENDPOINT_URL: &str = "_EXO_UPSTREAM_ENDPOINT_URL";
-
-#[derive(Error, Debug)]
-pub enum EnvError {
-    #[error("Invalid env value {env_value} for {env_key}: {message}")]
-    InvalidEnum {
-        env_key: &'static str,
-        env_value: String,
-        message: String,
-    },
-}
 
 #[derive(Debug)]
 pub enum DeploymentMode {

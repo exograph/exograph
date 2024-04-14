@@ -429,7 +429,10 @@ pub mod test_support {
     pub fn build(src: &str) -> Result<TypecheckedSystem, ParserError> {
         let mut codemap = CodeMap::new();
         let parsed = parse_str(src, &mut codemap, "input.exo")?;
-        let subsystem_builders = load_subsystem_builders(vec![]).unwrap();
+        let subsystem_builders = load_subsystem_builders(vec![Box::new(
+            postgres_model_builder::PostgresSubsystemBuilder {},
+        )])
+        .unwrap();
         super::build(&subsystem_builders, parsed)
     }
 
@@ -450,18 +453,36 @@ pub mod test_support {
 #[cfg(test)]
 mod tests {
     use super::test_support::{build, parse_sorted};
+    use multiplatform_test::multiplatform_test;
 
     // Due to a change in insta version 1.12, test names (hence the snapshot names) get derived
     // from the surrounding function, so we must use a macro instead of a helper function.
     macro_rules! assert_typechecking {
-        ($src:expr) => {
-            insta::with_settings!({sort_maps => true}, {
-                insta::assert_yaml_snapshot!(build($src).unwrap())
-            });
+        ($src:expr, $fn_name:expr) => {
+            let built = build($src).unwrap();
+            insta::with_settings!({sort_maps => true, prepend_module_to_snapshot => false}, {
+                #[cfg(target_family = "wasm")]
+                {
+                    let expected = include_str!(concat!("./snapshots/", $fn_name, ".snap"));
+                    let split_expected = expected.split("---\n").skip(2).collect::<Vec<&str>>().join("---");
+                    let serialized = insta::_macro_support::serialize_value(
+                        &built,
+                        insta::_macro_support::SerializationFormat::Yaml,
+                        insta::_macro_support::SnapshotLocation::File
+                    );
+                    assert_eq!(split_expected, serialized);
+                }
+
+                #[cfg(not(target_family = "wasm"))]
+                {
+
+                    insta::assert_yaml_snapshot!(built)
+                }
+            })
         };
     }
 
-    #[test]
+    #[multiplatform_test]
     fn simple() {
         let src = r#"
         @postgres
@@ -478,10 +499,10 @@ mod tests {
         }
         "#;
 
-        assert_typechecking!(src);
+        assert_typechecking!(src, "simple");
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_auth_context_use_in_field_annotation() {
         let src = r#"
         context AuthContext {
@@ -497,10 +518,10 @@ mod tests {
         }
         "#;
 
-        assert_typechecking!(src);
+        assert_typechecking!(src, "with_auth_context_use_in_field_annotation");
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_array_in_operator() {
         let src = r#"
         context AuthContext {
@@ -515,10 +536,10 @@ mod tests {
         }
         "#;
 
-        assert_typechecking!(src);
+        assert_typechecking!(src, "with_array_in_operator");
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_auth_context_use_in_type_annotation() {
         let src = r#"
         context AuthContext {
@@ -535,10 +556,10 @@ mod tests {
         }
         "#;
 
-        assert_typechecking!(src);
+        assert_typechecking!(src, "with_auth_context_use_in_type_annotation");
     }
 
-    #[test]
+    #[multiplatform_test]
     fn with_function_calls() {
         let src = r#"
         context AuthContext {
@@ -568,10 +589,10 @@ mod tests {
         }
         "#;
 
-        assert_typechecking!(src);
+        assert_typechecking!(src, "with_function_calls");
     }
 
-    #[test]
+    #[multiplatform_test]
     fn insignificant_whitespace() {
         let typical = r#"
         @postgres
@@ -604,7 +625,7 @@ mod tests {
         assert_eq!(typical_parsed, with_whitespace_parsed);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn unknown_annotation() {
         let src = r#"
         @postgres
@@ -618,7 +639,7 @@ mod tests {
         assert_err(src);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn duplicate_annotation() {
         let src = r#"
         @postgres
@@ -633,7 +654,7 @@ mod tests {
         assert_err(src);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn duplicate_plugin_annotations() {
         let src = r#"
         @postgres
@@ -648,7 +669,7 @@ mod tests {
         assert_err(src);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn no_plugin_annotation() {
         let src = r#"
         moduleerModule {
@@ -660,7 +681,7 @@ mod tests {
         assert_err(src);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn type_at_root() {
         let src_model = r#"
         type User {
@@ -670,7 +691,7 @@ mod tests {
         assert_err(src_model);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn context_in_a_module() {
         let src_model = r#"
         @postgres
@@ -684,7 +705,7 @@ mod tests {
         assert_err(src_model);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn invalid_annotation_parameter_type() {
         let expected_none = r#"
         @postgres
@@ -718,7 +739,7 @@ mod tests {
         assert_err(expected_map);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn duplicate_annotation_mapped_param() {
         let src = r#"
         @postgres
@@ -732,7 +753,7 @@ mod tests {
         assert_err(src);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn unknown_annotation_mapped_param() {
         let src = r#"
         @postgres
@@ -746,7 +767,7 @@ mod tests {
         assert_err(src);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn invalid_annotation_target() {
         let model = r#"
         @postgres
@@ -770,7 +791,7 @@ mod tests {
         assert_err(field);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn multiple_types() {
         let model = r#"
         @deno("test.ts")
@@ -790,7 +811,7 @@ mod tests {
         assert_err(model);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn multiple_same_named_modules() {
         let model = r#"
         @deno("foo.js")
@@ -807,7 +828,7 @@ mod tests {
         assert_err(model);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn multiple_same_named_operations() {
         let model = r#"
         @deno("foo.js")
@@ -821,7 +842,7 @@ mod tests {
         assert_err(model);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn multiple_same_named_typess() {
         let model = r#"
         @deno("foo.js")
@@ -840,7 +861,7 @@ mod tests {
         assert_err(model);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn multiple_same_named_types() {
         let model = r#"
         @postgres
@@ -859,7 +880,7 @@ mod tests {
         assert_err(model);
     }
 
-    #[test]
+    #[multiplatform_test]
     fn multiple_same_named_model_and_types() {
         let model = r#"
         @deno("foo.js")
