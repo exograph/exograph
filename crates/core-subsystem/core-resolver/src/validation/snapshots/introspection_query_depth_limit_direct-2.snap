@@ -1,10 +1,9 @@
 ---
 source: crates/core-subsystem/core-resolver/src/validation/document_validator.rs
-assertion_line: 636
 expression: validator.validate(create_query_document(query))
 ---
 Err(
     SelectionSetTooDeep(
-        Pos(14:25),
+        Pos(5:25),
     ),
 )

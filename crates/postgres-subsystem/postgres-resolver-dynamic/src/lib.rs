@@ -21,4 +21,6 @@ use postgres_resolver::PostgresSubsystemLoader;
 //
 // Also, see the caution in the comment for `export_subsystem_loader!`
 
-core_plugin_interface::export_subsystem_loader!(PostgresSubsystemLoader {});
+core_plugin_interface::export_subsystem_loader!(PostgresSubsystemLoader {
+    existing_client: None,
+});

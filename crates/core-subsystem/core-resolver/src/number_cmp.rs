@@ -75,8 +75,9 @@ fn compare_f64_u64(left: f64, right: u64) -> Option<std::cmp::Ordering> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use multiplatform_test::multiplatform_test;
 
-    #[test]
+    #[multiplatform_test]
     fn test_number_eq() {
         let one_u64: Number = Number::from(1u64);
         let one_i64: Number = Number::from(1i64);
@@ -94,7 +95,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[multiplatform_test]
     fn test_number_lt() {
         let min_u64 = Number::from(u64::MIN);
         let min_i64 = Number::from(i64::MIN);

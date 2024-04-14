@@ -9,11 +9,13 @@
 
 use std::{
     collections::HashMap,
-    env::current_exe,
     fs::{self, File},
     io::BufReader,
     path::Path,
 };
+
+#[cfg(not(target_family = "wasm"))]
+use std::env::current_exe;
 
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
@@ -36,8 +38,10 @@ use core_model_builder::{
     },
     error::ModelBuildingError,
 };
+#[cfg(not(target_family = "wasm"))]
 use regex::Regex;
 
+#[cfg(not(target_family = "wasm"))]
 /// Build a model system from a exo file
 pub async fn build_system(
     model_file: impl AsRef<Path>,
@@ -67,6 +71,7 @@ pub async fn build_system(
 pub async fn build_system_from_str(
     model_str: &str,
     file_name: String,
+    static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
 ) -> Result<Vec<u8>, ParserError> {
     let mut codemap = CodeMap::new();
     codemap.add_file(file_name.clone(), model_str.to_string());
@@ -75,7 +80,7 @@ pub async fn build_system_from_str(
         parser::parse_str(model_str, &mut codemap, &file_name),
         TrustedDocuments::all(),
         codemap,
-        vec![],
+        static_builders,
     )
     .await
 }
@@ -83,35 +88,41 @@ pub async fn build_system_from_str(
 pub fn load_subsystem_builders(
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
 ) -> Result<Vec<Box<dyn SubsystemBuilder + Send + Sync>>, LibraryLoadingError> {
-    let mut dir = current_exe()?;
-    dir.pop();
-
-    let pattern = format!(
-        "{}(.+)_model_builder_dynamic\\{}",
-        std::env::consts::DLL_PREFIX,
-        std::env::consts::DLL_SUFFIX
-    );
-    let pattern = Regex::new(&pattern).unwrap();
-
+    #[allow(unused_mut)]
     let mut subsystem_builders = static_builders;
 
-    for entry in dir.read_dir()?.flatten() {
-        if let Some(file_name) = entry.file_name().to_str() {
-            let captures = pattern.captures(file_name);
-            if let Some(captures) = captures {
-                let subsystem_id = captures.get(1).unwrap().as_str();
+    #[cfg(not(target_family = "wasm"))]
+    {
+        let mut dir = current_exe()?;
+        dir.pop();
 
-                // First see if we have already loaded a static builder
-                let builder = subsystem_builders
-                    .iter()
-                    .find(|builder| builder.id() == subsystem_id);
+        let pattern = format!(
+            "{}(.+)_model_builder_dynamic\\{}",
+            std::env::consts::DLL_PREFIX,
+            std::env::consts::DLL_SUFFIX
+        );
+        let pattern = Regex::new(&pattern).unwrap();
 
-                if builder.is_none() {
-                    // Then try to load a dynamic builder
-                    subsystem_builders.push(
-                        core_plugin_interface::interface::load_subsystem_builder(&entry.path())?,
-                    );
-                };
+        for entry in dir.read_dir()?.flatten() {
+            if let Some(file_name) = entry.file_name().to_str() {
+                let captures = pattern.captures(file_name);
+                if let Some(captures) = captures {
+                    let subsystem_id = captures.get(1).unwrap().as_str();
+
+                    // First see if we have already loaded a static builder
+                    let builder = subsystem_builders
+                        .iter()
+                        .find(|builder| builder.id() == subsystem_id);
+
+                    if builder.is_none() {
+                        // Then try to load a dynamic builder
+                        subsystem_builders.push(
+                            core_plugin_interface::interface::load_subsystem_builder(
+                                &entry.path(),
+                            )?,
+                        );
+                    };
+                }
             }
         }
     }
