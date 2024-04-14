@@ -20,8 +20,13 @@ exo-sql = { path = "../../../libs/exo-sql" }
 
 [dev-dependencies]
 insta.workspace = true
+wasm-bindgen-test.workspace = true
+wasm-bindgen-test-macro.workspace = true
+multiplatform_test.workspace = true
 builder = { path = "../../builder" }
 
+[target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
+deno-model-builder = { path = "../../deno-subsystem/deno-model-builder" }
 
 [lib]
 crate-type = ["lib"]

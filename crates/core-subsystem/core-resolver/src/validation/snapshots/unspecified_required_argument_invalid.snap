@@ -3,11 +3,8 @@ source: crates/core-subsystem/core-resolver/src/validation/document_validator.rs
 expression: validator.validate(create_query_document(query))
 ---
 Err(
-    MergeFields(
-        "t",
-        [
-            Pos(4:21),
-            Pos(6:21),
-        ],
+    RequiredArgumentNotFound(
+        "id",
+        Pos(3:17),
     ),
 )
