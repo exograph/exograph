@@ -36,7 +36,9 @@ pub async fn init() -> SystemResolver {
 pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {
     vec![
         #[cfg(feature = "static-postgres-resolver")]
-        Box::new(postgres_resolver::PostgresSubsystemLoader {}),
+        Box::new(postgres_resolver::PostgresSubsystemLoader {
+            existing_client: None,
+        }),
         #[cfg(feature = "static-deno-resolver")]
         Box::new(deno_resolver::DenoSubsystemLoader {}),
         #[cfg(feature = "static-wasm-resolver")]

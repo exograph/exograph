@@ -110,15 +110,35 @@ impl<'a> DocumentValidator<'a> {
 mod tests {
     use super::*;
 
-    use std::env;
-
     use async_graphql_parser::parse_query;
-    use common::env_const::{EXO_CHECK_CONNECTION_ON_STARTUP, EXO_POSTGRES_URL};
     use core_plugin_shared::{
         serializable_system::SerializableSystem, system_serializer::SystemSerializer,
     };
+    use exo_sql::DatabaseClient;
 
-    #[tokio::test]
+    macro_rules! assert_debug {
+        ($src:expr, $fn_name:expr) => {
+            insta::with_settings!({prepend_module_to_snapshot => false}, {
+                #[cfg(target_family = "wasm")]
+                {
+                    let value = $src;
+                    let expected = include_str!(concat!("./snapshots/", $fn_name, ".snap"));
+                    let split_expected = expected.split("---\n").skip(2).collect::<Vec<&str>>().join("---");
+                    let serialized = std::format!("{:#?}", value);
+                    assert_eq!(split_expected, serialized + "\n");
+                }
+
+                #[cfg(not(target_family = "wasm"))]
+                {
+
+                    insta::assert_debug_snapshot!($src)
+                }
+            })
+        };
+    }
+
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn argument_valid() {
         let schema = create_test_schema().await;
 
@@ -137,10 +157,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "argument_valid"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn with_operation_name_valid() {
         let schema = create_test_schema().await;
 
@@ -159,10 +183,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "with_operation_name_valid"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn stray_argument_invalid() {
         let schema = create_test_schema().await;
 
@@ -181,10 +209,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "stray_argument_invalid"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn unspecified_required_argument_invalid() {
         let schema = create_test_schema().await;
 
@@ -203,10 +235,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "unspecified_required_argument_invalid"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn variable_resolution_valid() {
         let schema = create_test_schema().await;
 
@@ -233,10 +269,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "variable_resolution_valid"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn variable_resolution_invalid() {
         let schema = create_test_schema().await;
 
@@ -256,10 +296,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "variable_resolution_invalid"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn invalid_subfield() {
         let schema = create_test_schema().await;
 
@@ -275,10 +319,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "invalid_subfield"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn aliases_valid() {
         let schema = create_test_schema().await;
 
@@ -293,10 +341,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "aliases_valid"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn mergeable_leaf_fields() {
         let schema = create_test_schema().await;
 
@@ -314,10 +366,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "mergeable_leaf_fields"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn mergeable_leaf_fields_with_alias() {
         let schema = create_test_schema().await;
 
@@ -335,10 +391,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "mergeable_leaf_fields_with_alias"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn unmergeable_leaf_fields_all_aliases() {
         let schema = create_test_schema().await;
 
@@ -354,10 +414,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "unmergeable_leaf_fields_all_aliases"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn unmergeable_leaf_fields_mixed_aliases() {
         let schema = create_test_schema().await;
 
@@ -373,10 +437,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "unmergeable_leaf_fields_mixed_aliases"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn mergeable_non_leaf_fields() {
         let schema = create_test_schema().await;
 
@@ -402,10 +470,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "mergeable_non_leaf_fields"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn unmergeable_non_leaf_fields() {
         let schema = create_test_schema().await;
 
@@ -427,10 +499,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "unmergeable_non_leaf_fields"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn mergeable_non_leaf_fields_with_alias() {
         let schema = create_test_schema().await;
 
@@ -456,10 +532,14 @@ mod tests {
             }
         "#;
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "mergeable_non_leaf_fields_with_alias"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn multi_operations_valid() {
         let schema = create_test_schema().await;
 
@@ -481,14 +561,21 @@ mod tests {
 
         let validator = DocumentValidator::new(&schema, Some("concert1".to_string()), None, 10, 10);
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "multi_operations_valid"
+        );
 
         let validator = DocumentValidator::new(&schema, Some("concert2".to_string()), None, 10, 10);
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "multi_operations_valid-2"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn multi_operations_no_operation_name_invalid() {
         let schema = create_test_schema().await;
 
@@ -510,10 +597,14 @@ mod tests {
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "multi_operations_no_operation_name_invalid"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn multi_operations_mismatched_operation_name_invalid() {
         let schema = create_test_schema().await;
 
@@ -535,10 +626,14 @@ mod tests {
 
         let validator = DocumentValidator::new(&schema, Some("foo".to_string()), None, 10, 10);
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "multi_operations_mismatched_operation_name_invalid"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn fragment_recursion_direct() {
         let schema = create_test_schema().await;
 
@@ -556,10 +651,14 @@ mod tests {
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "fragment_recursion_direct"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn fragment_recursion_indirect() {
         let schema = create_test_schema().await;
 
@@ -581,10 +680,14 @@ mod tests {
 
         let validator = DocumentValidator::new(&schema, None, None, 10, 10);
 
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "fragment_recursion_indirect"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn query_depth_limit_direct() {
         let schema = create_test_schema().await;
 
@@ -607,14 +710,21 @@ mod tests {
 
         // valid
         let validator = DocumentValidator::new(&schema, None, None, 6, usize::MAX);
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "query_depth_limit_direct"
+        );
 
         // invalid: one level too deep
         let validator = DocumentValidator::new(&schema, None, None, 5, usize::MAX);
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "query_depth_limit_direct-2"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn query_depth_limit_through_fragment() {
         let schema = create_test_schema().await;
 
@@ -639,14 +749,21 @@ mod tests {
 
         // valid
         let validator = DocumentValidator::new(&schema, None, None, 6, usize::MAX);
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "query_depth_limit_through_fragment"
+        );
 
         // invalid: one level too deep
         let validator = DocumentValidator::new(&schema, None, None, 5, usize::MAX);
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "query_depth_limit_through_fragment-2"
+        );
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn introspection_query_depth_limit_direct() {
         let schema = create_test_schema().await;
 
@@ -663,11 +780,17 @@ mod tests {
 
         // valid
         let validator = DocumentValidator::new(&schema, None, None, usize::MAX, 3);
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "introspection_query_depth_limit_direct"
+        );
 
         // invalid: one level too deep
         let validator = DocumentValidator::new(&schema, None, None, usize::MAX, 2);
-        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+        assert_debug!(
+            validator.validate(create_query_document(query)),
+            "introspection_query_depth_limit_direct-2"
+        );
     }
 
     fn create_variables(variables: &str) -> Map<String, Value> {
@@ -722,16 +845,18 @@ mod tests {
         model_str: &str,
         file_name: String,
     ) -> Box<dyn core_plugin_interface::core_resolver::plugin::SubsystemResolver> {
-        let serialized_system = builder::build_system_from_str(model_str, file_name)
-            .await
-            .unwrap();
+        let serialized_system = builder::build_system_from_str(
+            model_str,
+            file_name,
+            vec![Box::new(
+                postgres_model_builder::PostgresSubsystemBuilder {},
+            )],
+        )
+        .await
+        .unwrap();
         let system = SerializableSystem::deserialize(serialized_system).unwrap();
 
         let subsystem_id = "postgres";
-        let subsystem_library_name = format!("{subsystem_id}_resolver_dynamic");
-        let loader =
-            core_plugin_interface::interface::load_subsystem_loader(&subsystem_library_name)
-                .unwrap();
 
         let subsystem = system
             .subsystems
@@ -740,18 +865,32 @@ mod tests {
             .unwrap()
             .serialized_subsystem;
 
-        // Set the EXO_POSTGRES_URL to avoid failure of `loader::init` later. Since we are not actually
-        // connecting to a database, this is fine (we are only interested get queries, mutations, and types
-        // to build the schema)
-        env::set_var(
-            EXO_POSTGRES_URL,
-            "postgres://postgres:postgres@localhost:5432/exo_test",
-        );
+        // Since we are not actually connecting to a database, this is fine
+        // (we are only interested get queries, mutations, and types to build the schema)
+        #[cfg(target_family = "wasm")]
+        let client = DatabaseClient::from_socket(
+            false, // check connection
+            || tokio::io::duplex(0).0,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
 
-        env::set_var(EXO_CHECK_CONNECTION_ON_STARTUP, "false");
-        loader
-            .init(subsystem)
-            .await
-            .expect("Failed to initialize postgres subsystem")
+        #[cfg(not(target_family = "wasm"))]
+        let client = DatabaseClient::from_db_url(
+            "postgres://postgres:postgres@localhost:5432/exo_test",
+            false,
+        )
+        .await
+        .unwrap();
+
+        use core_plugin_interface::interface::SubsystemLoader;
+        postgres_resolver::PostgresSubsystemLoader {
+            existing_client: Some(client),
+        }
+        .init(subsystem)
+        .await
+        .expect("Failed to initialize postgres subsystem")
     }
 }

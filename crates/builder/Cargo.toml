@@ -8,7 +8,7 @@ publish = false
 test-context = []
 
 [dependencies]
-tree-sitter.workspace = true
+tree-sitter-c2rust.workspace = true
 regex.workspace = true
 serde.workspace = true
 codemap.workspace = true
@@ -30,8 +30,13 @@ tree-sitter-cli.workspace = true
 tempfile.workspace = true
 
 [dev-dependencies]
-insta.workspace = true
+postgres-model-builder = { path = "../postgres-subsystem/postgres-model-builder" }
 serde_json.workspace = true
+serde_yaml.workspace = true
+wasm-bindgen-test.workspace = true
+wasm-bindgen-test-macro.workspace = true
+multiplatform_test.workspace = true
+insta.workspace = true
 
 [lib]
 doctest = false
