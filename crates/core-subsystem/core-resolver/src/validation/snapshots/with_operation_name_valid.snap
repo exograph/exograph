@@ -1,10 +1,12 @@
 ---
-source: resolver/src/graphql/validation/document_validator.rs
+source: crates/core-subsystem/core-resolver/src/validation/document_validator.rs
 expression: validator.validate(create_query_document(query))
 ---
 Ok(
     ValidatedOperation {
-        name: None,
+        name: Some(
+            "ConcertById",
+        ),
         typ: Query,
         fields: [
             ValidatedField {
@@ -34,34 +36,30 @@ Ok(
                         arguments: {},
                         subfields: [],
                     },
-                ],
-            },
-            ValidatedField {
-                alias: None,
-                name: Name(
-                    "venue",
-                ),
-                arguments: {
-                    "id": Number(
-                        Number(2),
-                    ),
-                },
-                subfields: [
                     ValidatedField {
                         alias: None,
                         name: Name(
-                            "id",
+                            "venue",
                         ),
                         arguments: {},
-                        subfields: [],
-                    },
-                    ValidatedField {
-                        alias: None,
-                        name: Name(
-                            "name",
-                        ),
-                        arguments: {},
-                        subfields: [],
+                        subfields: [
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "id",
+                                ),
+                                arguments: {},
+                                subfields: [],
+                            },
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "name",
+                                ),
+                                arguments: {},
+                                subfields: [],
+                            },
+                        ],
                     },
                 ],
             },

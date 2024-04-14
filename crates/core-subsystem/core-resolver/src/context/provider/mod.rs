@@ -11,5 +11,6 @@ pub(crate) mod cookie;
 pub(crate) mod environment;
 pub(crate) mod header;
 pub(crate) mod ip;
+#[cfg(feature = "jwt")]
 pub(crate) mod jwt;
 pub(crate) mod query;

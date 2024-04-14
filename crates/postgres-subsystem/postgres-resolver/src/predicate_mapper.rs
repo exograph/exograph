@@ -27,8 +27,11 @@ use crate::{
     cast::{cast_value, literal_column_path},
     column_path_util::to_column_path,
     sql_mapper::{extract_and_map, SQLMapper},
-    util::{get_argument_field, to_pg_vector, Arguments},
+    util::{get_argument_field, Arguments},
 };
+
+#[cfg(feature = "pgvector")]
+use crate::util::to_pg_vector;
 
 use super::postgres_execution_error::PostgresExecutionError;
 
@@ -106,59 +109,69 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     arg_parameter_type.kind,
                                     PredicateParameterTypeKind::Vector
                                 ) {
-                                    let value = op_value.get("distanceTo").unwrap();
-                                    let vector_value = to_pg_vector(value, &parameter.name)?;
+                                    #[cfg(feature = "pgvector")]
+                                    {
+                                        let value = op_value.get("distanceTo").unwrap();
+                                        let vector_value = to_pg_vector(value, &parameter.name)?;
 
-                                    let distance = op_value.get("distance").unwrap();
-                                    match distance {
-                                        Val::Object(map) => {
-                                            assert!(map.len() == 1);
-                                            let operator = map.keys().next().unwrap();
-                                            let threshold = map.values().next().unwrap();
+                                        let distance = op_value.get("distance").unwrap();
+                                        match distance {
+                                            Val::Object(map) => {
+                                                assert!(map.len() == 1);
+                                                let operator = map.keys().next().unwrap();
+                                                let threshold = map.values().next().unwrap();
 
-                                            let distance_comparator = match operator.as_str() {
-                                                "eq" => Ok(NumericComparator::Eq),
-                                                "neq" => Ok(NumericComparator::Neq),
-                                                "lt" => Ok(NumericComparator::Lt),
-                                                "lte" => Ok(NumericComparator::Lte),
-                                                "gt" => Ok(NumericComparator::Gt),
-                                                "gte" => Ok(NumericComparator::Gte),
-                                                _ => Err(PostgresExecutionError::Validation(
-                                                    "distance".into(),
-                                                    "Invalid distance operator".into(),
-                                                )),
-                                            }?;
+                                                let distance_comparator = match operator.as_str() {
+                                                    "eq" => Ok(NumericComparator::Eq),
+                                                    "neq" => Ok(NumericComparator::Neq),
+                                                    "lt" => Ok(NumericComparator::Lt),
+                                                    "lte" => Ok(NumericComparator::Lte),
+                                                    "gt" => Ok(NumericComparator::Gt),
+                                                    "gte" => Ok(NumericComparator::Gte),
+                                                    _ => Err(PostgresExecutionError::Validation(
+                                                        "distance".into(),
+                                                        "Invalid distance operator".into(),
+                                                    )),
+                                                }?;
 
-                                            let threshold = cast_value(
-                                                threshold,
-                                                &exo_sql::PhysicalColumnType::Float {
-                                                    bits: exo_sql::FloatBits::_53,
-                                                },
-                                            )?
-                                            .unwrap();
-                                            let target_vector =
-                                                SQLParamContainer::new(vector_value);
+                                                let threshold = cast_value(
+                                                    threshold,
+                                                    &exo_sql::PhysicalColumnType::Float {
+                                                        bits: exo_sql::FloatBits::_53,
+                                                    },
+                                                )?
+                                                .unwrap();
+                                                let target_vector =
+                                                    SQLParamContainer::new(vector_value);
 
-                                            Ok(AbstractPredicate::VectorDistance(
-                                                ColumnPath::Physical(
-                                                    to_column_path(
-                                                        &self.parent_column_path,
-                                                        &self.param.column_path_link,
-                                                    )
-                                                    .unwrap(),
-                                                ),
-                                                ColumnPath::Param(target_vector),
-                                                self.param
-                                                    .vector_distance_function
-                                                    .unwrap_or_default(),
-                                                distance_comparator,
-                                                ColumnPath::Param(threshold),
-                                            ))
+                                                Ok(AbstractPredicate::VectorDistance(
+                                                    ColumnPath::Physical(
+                                                        to_column_path(
+                                                            &self.parent_column_path,
+                                                            &self.param.column_path_link,
+                                                        )
+                                                        .unwrap(),
+                                                    ),
+                                                    ColumnPath::Param(target_vector),
+                                                    self.param
+                                                        .vector_distance_function
+                                                        .unwrap_or_default(),
+                                                    distance_comparator,
+                                                    ColumnPath::Param(threshold),
+                                                ))
+                                            }
+                                            _ => Err(PostgresExecutionError::Validation(
+                                                "distance".into(),
+                                                "Invalid distance parameter".into(),
+                                            )),
                                         }
-                                        _ => Err(PostgresExecutionError::Validation(
-                                            "distance".into(),
-                                            "Invalid distance parameter".into(),
-                                        )),
+                                    }
+
+                                    #[cfg(not(feature = "pgvector"))]
+                                    {
+                                        Err(PostgresExecutionError::Generic(
+                                            "Vectors are not supported in this build".into(),
+                                        ))
                                     }
                                 } else {
                                     let (op_key_column, op_value_column) = operands(

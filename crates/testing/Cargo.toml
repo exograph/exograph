@@ -21,7 +21,7 @@ deno_core.workspace = true
 num_cpus = "1.13.1"
 serde.workspace = true
 jsonwebtoken.workspace = true
-serde_yaml = "0.9.4"
+serde_yaml.workspace = true
 serde_json.workspace = true
 tokio-postgres.workspace = true
 rand.workspace = true
@@ -34,11 +34,11 @@ wildmatch.workspace = true
 include_dir.workspace = true
 unescape = "0.1.0"
 
-exo-sql = { path = "../../libs/exo-sql" }
+exo-sql = { path = "../../libs/exo-sql", features = [ "deadpool", "tls", "postgres-url", "testing" ] }
 exo-deno = { path = "../../libs/exo-deno", features = ["typescript-loader"] }
 
 core-resolver = { path = "../core-subsystem/core-resolver" }
-resolver = { path = "../resolver" }
+resolver = { path = "../resolver", features = ["jwt"] }
 
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 

@@ -21,7 +21,7 @@ pub(crate) async fn create_postgres_system_from_str(
     model_str: &str,
     file_name: String,
 ) -> Result<PostgresSubsystem, ModelSerializationError> {
-    let serialized_system = builder::build_system_from_str(model_str, file_name)
+    let serialized_system = builder::build_system_from_str(model_str, file_name, vec![])
         .await
         .unwrap();
     let system = SerializableSystem::deserialize(serialized_system)?;
