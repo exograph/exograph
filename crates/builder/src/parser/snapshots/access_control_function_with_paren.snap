@@ -1,6 +1,6 @@
 ---
 source: crates/builder/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(),\n        r#\"\n            @postgres\n            module TestModule {\n                @access(self.concerts.some(c => c.id == 1))\n                type Venue {\n                    concerts: Set<Concert>?\n                }\n\n                type Concert {\n                    @pk id: Int = autoIncrement()\n                    venue: Venue\n                }\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.exo\")).unwrap()"
+expression: "convert_root(parsed.root_node(),\n        r#\"\n            @postgres\n            module TestModule {\n                @access(self.concerts.some((c) => c.id == 1))\n                type Venue {\n                    concerts: Set<Concert>?\n                }\n\n                type Concert {\n                    @pk id: Int = autoIncrement()\n                    venue: Venue\n                }\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.exo\")).unwrap()"
 ---
 types: []
 modules:
@@ -94,4 +94,3 @@ modules:
     interceptors: []
     base_exofile: input.exo
 imports: []
-

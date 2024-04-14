@@ -33,7 +33,14 @@ pub(crate) async fn create_postgres_system_from_str(
     model_str: &str,
     file_name: String,
 ) -> Result<PostgresSubsystem, ParserError> {
-    let serialized_system = builder::build_system_from_str(model_str, file_name).await?;
+    let serialized_system = builder::build_system_from_str(
+        model_str,
+        file_name,
+        vec![Box::new(
+            postgres_model_builder::PostgresSubsystemBuilder {},
+        )],
+    )
+    .await?;
     let system = SerializableSystem::deserialize(serialized_system)?;
 
     deserialize_postgres_subsystem(system)
