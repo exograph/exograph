@@ -4,20 +4,25 @@ version.workspace = true
 edition.workspace = true
 publish = false
 
+[features]
+default = []
+tls = ["rustls", "tokio-postgres-rustls", "rustls-native-certs", "rustls-pemfile", "tokio-postgres/runtime"]
+postgres-url = ["deadpool-postgres/runtime"]
+testing = ["which", "tempfile"]
+
 [dependencies]
 bytes.workspace = true
 tokio-postgres = { workspace = true, features = [
-  "runtime",
   "with-chrono-0_4",
   "with-serde_json-1",
   "with-uuid-1",
-] }
-rustls = "0.21.9"
-tokio-postgres-rustls = "0.10.0"
-rustls-native-certs = "0.7.0"
-rustls-pemfile = "2.0.0"
+], default-features = false }
+rustls = { version = "0.21.9", optional = true }
+tokio-postgres-rustls = { version = "0.10.0", optional = true }
+rustls-native-certs = { version = "0.7.0", optional = true }
+rustls-pemfile = { version = "2.0.0", optional = true }
 postgres_array = "0.11.1"
-deadpool-postgres = "0.11"
+deadpool-postgres = { git = "https://github.com/exograph/deadpool.git", branch = "expose-connect-trait", default-features = false, features = ["rt_tokio_1"] }
 chrono.workspace = true
 regex.workspace = true
 serde.workspace = true
@@ -30,15 +35,28 @@ tracing.workspace = true
 typed-generational-arena.workspace = true
 url = "2.2.2"
 
-which.workspace = true
+which = { workspace = true, optional = true }
 rand.workspace = true
-tempfile.workspace = true
+tempfile = { workspace = true, optional = true }
 urlencoding = "2.1.2"
 
 common = { path = "../../crates/common" } # Until we remove database_client's dependency on env vars
 
+[target.'cfg(target_family = "wasm")'.dependencies.tokio-postgres]
+workspace = true
+features = [
+  "js",
+  "with-chrono-0_4",
+  "with-serde_json-1",
+  "with-uuid-1",
+]
+default-features = false
+
 [dev-dependencies]
 serde_json.workspace = true
+wasm-bindgen-test.workspace = true
+wasm-bindgen-test-macro.workspace = true
+multiplatform_test.workspace = true
 
 [lib]
 doctest = false

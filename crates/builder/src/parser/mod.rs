@@ -7,14 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::Path;
+
+#[cfg(not(target_family = "wasm"))]
+use std::{fs, path::PathBuf};
 
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use tree_sitter::Node;
+use tree_sitter_c2rust::Node;
 
 use crate::{
     ast::ast_types::{AstSystem, Untyped},
@@ -30,6 +30,7 @@ fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
     source_span.subspan(node.start_byte() as u64, node.end_byte() as u64)
 }
 
+#[cfg(not(target_family = "wasm"))]
 /// Parse a file and return the AST
 ///
 /// # Arguments
@@ -43,6 +44,7 @@ pub fn parse_file(
     _parse_file(input_file, codemap, &mut already_parsed)
 }
 
+#[cfg(not(target_family = "wasm"))]
 /// Parse a file and return the AST.
 ///
 /// Takes care of dealing with potentially recursive imports.

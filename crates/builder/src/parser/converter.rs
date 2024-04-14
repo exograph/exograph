@@ -8,14 +8,16 @@
 // by the Apache License, Version 2.0.
 
 use std::convert::TryInto;
+#[cfg(not(target_family = "wasm"))]
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::{collections::HashMap, path::Path};
 
 use codemap::Span;
+#[cfg(not(target_family = "wasm"))]
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model_builder::ast::ast_types::{FieldSelectionElement, Identifier};
-use tree_sitter::{Node, Tree, TreeCursor};
+use tree_sitter_c2rust::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
 use crate::ast::ast_types::{
@@ -26,7 +28,7 @@ use crate::ast::ast_types::{
 use crate::error::ParserError;
 
 pub fn parse(input: &str) -> Option<Tree> {
-    let mut parser = tree_sitter::Parser::new();
+    let mut parser = tree_sitter_c2rust::Parser::new();
     parser.set_language(sitter_ffi::language()).unwrap();
     parser.parse(input, None)
 }
@@ -55,7 +57,7 @@ pub fn convert_root(
             let imports = node
                 .children(&mut cursor)
                 .filter(|n| n.kind() == "declaration")
-                .map(|c| {
+                .map(|c| -> Result<Option<PathBuf>, ParserError> {
                     let first_child = c.child(0).unwrap();
 
                     if first_child.kind() == "import" {
@@ -70,59 +72,71 @@ pub fn convert_root(
                         import_path.pop();
                         import_path.push(path_str);
 
-                        fn compute_diagnosis(
-                            import_path: PathBuf,
-                            source_span: Span,
-                            node: Node,
-                        ) -> ParserError {
-                            ParserError::Diagnosis(vec![Diagnostic {
-                                level: Level::Error,
-                                message: format!(
-                                    "File not found {}",
-                                    import_path.to_string_lossy()
-                                ),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: span_from_node(source_span, node),
-                                    style: SpanStyle::Primary,
-                                    label: None,
-                                }],
-                            }])
+                        #[cfg(not(target_family = "wasm"))]
+                        {
+                            fn compute_diagnosis(
+                                import_path: PathBuf,
+                                source_span: Span,
+                                node: Node,
+                            ) -> ParserError {
+                                ParserError::Diagnosis(vec![Diagnostic {
+                                    level: Level::Error,
+                                    message: format!(
+                                        "File not found {}",
+                                        import_path.to_string_lossy()
+                                    ),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: span_from_node(source_span, node),
+                                        style: SpanStyle::Primary,
+                                        label: None,
+                                    }],
+                                }])
+                            }
+
+                            let check_existence =
+                                |import_path: PathBuf| -> Result<Option<PathBuf>, ParserError> {
+                                    match import_path.canonicalize() {
+                                        Ok(path) if path.is_file() => Ok(Some(path)),
+                                        _ => Err(compute_diagnosis(
+                                            import_path,
+                                            source_span,
+                                            first_child,
+                                        )),
+                                    }
+                                };
+
+                            // Resolve the import path
+                            // 1. If the path exists and it is a file, return the path
+                            // 2. If the path exists and it is a directory, check for <path>/index.exo
+                            // 3. If the path doesn't exist, check for <path>.exo
+                            match import_path.canonicalize() {
+                                Ok(path) if path.is_file() => Ok(Some(path)),
+                                Ok(path) if path.is_dir() => {
+                                    // If the path is a directory, try to find <directory>/index.exo
+                                    let with_index_exo = path.join("index.exo");
+                                    check_existence(with_index_exo)
+                                }
+                                _ => {
+                                    // If no extension is given, try if a file with the same name but with ".exo" extension exists.
+                                    if import_path.extension() == Some(OsStr::new("exo")) {
+                                        // Already has the .exo extension, so further checks are not necessary (it is a failure since the file does not exist).
+                                        Err(compute_diagnosis(
+                                            import_path,
+                                            source_span,
+                                            first_child,
+                                        ))
+                                    } else {
+                                        let with_extension = import_path.with_extension("exo");
+                                        check_existence(with_extension)
+                                    }
+                                }
+                            }
                         }
 
-                        let check_existence =
-                            |import_path: PathBuf| -> Result<Option<PathBuf>, ParserError> {
-                                match import_path.canonicalize() {
-                                    Ok(path) if path.is_file() => Ok(Some(path)),
-                                    _ => Err(compute_diagnosis(
-                                        import_path,
-                                        source_span,
-                                        first_child,
-                                    )),
-                                }
-                            };
-
-                        // Resolve the import path
-                        // 1. If the path exists and it is a file, return the path
-                        // 2. If the path exists and it is a directory, check for <path>/index.exo
-                        // 3. If the path doesn't exist, check for <path>.exo
-                        match import_path.canonicalize() {
-                            Ok(path) if path.is_file() => Ok(Some(path)),
-                            Ok(path) if path.is_dir() => {
-                                // If the path is a directory, try to find <directory>/index.exo
-                                let with_index_exo = path.join("index.exo");
-                                check_existence(with_index_exo)
-                            }
-                            _ => {
-                                // If no extension is given, try if a file with the same name but with ".exo" extension exists.
-                                if import_path.extension() == Some(OsStr::new("exo")) {
-                                    // Already has the .exo extension, so further checks are not necessary (it is a failure since the file does not exist).
-                                    Err(compute_diagnosis(import_path, source_span, first_child))
-                                } else {
-                                    let with_extension = import_path.with_extension("exo");
-                                    check_existence(with_extension)
-                                }
-                            }
+                        #[cfg(target_family = "wasm")]
+                        {
+                            panic!("Imports are not supported on WebAssembly")
                         }
                     } else {
                         Ok(None)
@@ -671,29 +685,56 @@ fn text_child(node: Node, source: &[u8], child_name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use codemap::CodeMap;
+    use multiplatform_test::multiplatform_test;
 
     use super::*;
 
     // Due to a change in insta version 1.12, test names (hence the snapshot names) get derived
     // from the surrounding method, so we must use a macro instead of a helper function.
     macro_rules! parsing_test {
-        ($src:literal) => {
+        ($src:literal, $fn_name:expr) => {
             let mut codemap = CodeMap::new();
             let file_span = codemap
                 .add_file("input.exo".to_string(), $src.to_string())
                 .span;
             let parsed = parse($src).unwrap();
-            insta::assert_yaml_snapshot!(convert_root(
-                parsed.root_node(),
-                $src.as_bytes(),
-                file_span,
-                Path::new("input.exo")
-            )
-            .unwrap());
+
+            insta::with_settings!({prepend_module_to_snapshot => false}, {
+                #[cfg(target_family = "wasm")]
+                {
+                    let to_check = convert_root(
+                        parsed.root_node(),
+                        $src.as_bytes(),
+                        file_span,
+                        Path::new("input.exo")
+                    )
+                    .unwrap();
+
+                    let expected = include_str!(concat!("./snapshots/", $fn_name, ".snap"));
+                    let split_expected = expected.split("---\n").skip(2).collect::<Vec<&str>>().join("---");
+                    let serialized = insta::_macro_support::serialize_value(
+                        &to_check,
+                        insta::_macro_support::SerializationFormat::Yaml,
+                        insta::_macro_support::SnapshotLocation::File
+                    );
+                    assert_eq!(split_expected, serialized);
+                }
+
+                #[cfg(not(target_family = "wasm"))]
+                {
+
+                    insta::assert_yaml_snapshot!(convert_root(
+                        parsed.root_node(),
+                        $src.as_bytes(),
+                        file_span,
+                        Path::new("input.exo")
+                    ).unwrap())
+                }
+            })
         };
     }
 
-    #[test]
+    #[multiplatform_test]
     fn expression_precedence() {
         parsing_test!(
             r#"
@@ -704,11 +745,12 @@ mod tests {
                     bar: Baz
                 }
             }
-        "#
+        "#,
+            "expression_precedence"
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn bb_schema() {
         parsing_test!(
             r#"
@@ -736,11 +778,12 @@ mod tests {
                     /*here */ @column("venueid") /* and here */ concerts: Set<Concert /* here too! */> 
                 }
             }
-        "#
+        "#,
+            "bb_schema"
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn context_schema() {
         parsing_test!(
             r#"
@@ -748,11 +791,12 @@ mod tests {
                 @jwt("sub") id: Int 
                 @jwt roles: Array<String> 
             }
-        "#
+        "#,
+            "context_schema"
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn access_control_function_without_paren() {
         parsing_test!(
             r#"
@@ -768,11 +812,12 @@ mod tests {
                     venue: Venue
                 }
             }
-        "#
+        "#,
+            "access_control_function_without_paren"
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn access_control_function_with_paren() {
         parsing_test!(
             r#"
@@ -788,7 +833,8 @@ mod tests {
                     venue: Venue
                 }
             }
-        "#
+        "#,
+            "access_control_function_with_paren"
         );
     }
 }

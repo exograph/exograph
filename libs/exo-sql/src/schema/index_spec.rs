@@ -10,6 +10,7 @@
 use std::collections::HashSet;
 
 use deadpool_postgres::Client;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{database_error::DatabaseError, PhysicalTableName, VectorDistanceFunction};

@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use deadpool_postgres::Transaction;
+
 use std::sync::atomic::AtomicBool;
 
 use crate::{

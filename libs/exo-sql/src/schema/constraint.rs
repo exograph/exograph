@@ -10,6 +10,7 @@
 use std::collections::HashSet;
 
 use deadpool_postgres::Client;
+
 use lazy_static::lazy_static;
 use regex::Regex;
 

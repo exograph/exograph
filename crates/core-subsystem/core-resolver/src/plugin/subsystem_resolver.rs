@@ -37,7 +37,7 @@ pub trait SubsystemResolver: Sync {
     /// Shim method for `resolve`
     async fn resolve_cdylib<'a>(
         &'a self,
-        _handle: Handle,
+        #[cfg(not(target_family = "wasm"))] _handle: Handle,
         operation: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext,

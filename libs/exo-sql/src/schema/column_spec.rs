@@ -18,9 +18,10 @@ use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
 use super::statement::SchemaStatement;
 use super::table_spec::TableSpec;
-use deadpool_postgres::Client;
 use regex::Regex;
 use std::collections::HashSet;
+
+use deadpool_postgres::Client;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnSpec {
