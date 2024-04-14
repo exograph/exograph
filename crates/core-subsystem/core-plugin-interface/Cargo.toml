@@ -8,7 +8,6 @@ publish = false
 built = "0.6"
 
 [dependencies]
-libloading = "0.7.3"
 thiserror.workspace = true
 async-trait.workspace = true
 async-graphql-value.workspace = true
@@ -18,6 +17,9 @@ core-model-builder = { path = "../core-model-builder" }
 core-resolver = { path = "../core-resolver" }
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+libloading = "0.7.3"
 
 [dev-dependencies]
 
