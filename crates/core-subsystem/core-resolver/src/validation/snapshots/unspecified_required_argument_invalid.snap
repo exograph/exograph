@@ -1,0 +1,10 @@
+---
+source: crates/core-subsystem/core-resolver/src/validation/document_validator.rs
+expression: value
+---
+Err(
+    RequiredArgumentNotFound(
+        "id",
+        Pos(3:17),
+    ),
+)

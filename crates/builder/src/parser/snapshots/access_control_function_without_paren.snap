@@ -1,0 +1,96 @@
+---
+source: crates/builder/src/parser/converter.rs
+expression: to_check
+---
+types: []
+modules:
+  - name: TestModule
+    annotations:
+      - name: postgres
+        params: None
+    types:
+      - name: Venue
+        kind: Type
+        fields:
+          - name: concerts
+            typ:
+              Optional:
+                Plain:
+                  - Set
+                  - - Plain:
+                        - Concert
+                        - []
+                        - ~
+                  - ~
+            annotations: []
+            default_value: ~
+        annotations:
+          - name: access
+            params:
+              Single:
+                - FieldSelection:
+                    Select:
+                      - Select:
+                          - Single:
+                              - Identifier:
+                                  - self
+                                  - ~
+                              - ~
+                          - Identifier:
+                              - concerts
+                              - ~
+                          - ~
+                      - HofCall:
+                          name:
+                            - some
+                          param_name:
+                            - c
+                          expr:
+                            RelationalOp:
+                              Eq:
+                                - FieldSelection:
+                                    Select:
+                                      - Single:
+                                          - Identifier:
+                                              - c
+                                              - ~
+                                          - ~
+                                      - Identifier:
+                                          - id
+                                          - ~
+                                      - ~
+                                - NumberLiteral:
+                                    - 1
+                                - ~
+                          typ: ~
+                      - ~
+      - name: Concert
+        kind: Type
+        fields:
+          - name: id
+            typ:
+              Plain:
+                - Int
+                - []
+                - ~
+            annotations:
+              - name: pk
+                params: None
+            default_value:
+              kind:
+                Function:
+                  - autoIncrement
+                  - []
+          - name: venue
+            typ:
+              Plain:
+                - Venue
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+        annotations: []
+    methods: []
+    interceptors: []
+    base_exofile: input.exo
+imports: []

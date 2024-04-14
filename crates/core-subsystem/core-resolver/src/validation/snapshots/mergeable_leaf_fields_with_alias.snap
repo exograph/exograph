@@ -1,0 +1,53 @@
+---
+source: crates/core-subsystem/core-resolver/src/validation/document_validator.rs
+expression: value
+---
+Ok(
+    ValidatedOperation {
+        name: None,
+        typ: Query,
+        fields: [
+            ValidatedField {
+                alias: None,
+                name: Name(
+                    "concerts",
+                ),
+                arguments: {},
+                subfields: [
+                    ValidatedField {
+                        alias: Some(
+                            Name(
+                                "t",
+                            ),
+                        ),
+                        name: Name(
+                            "title",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "id",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                    ValidatedField {
+                        alias: Some(
+                            Name(
+                                "tt",
+                            ),
+                        ),
+                        name: Name(
+                            "title",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                ],
+            },
+        ],
+    },
+)

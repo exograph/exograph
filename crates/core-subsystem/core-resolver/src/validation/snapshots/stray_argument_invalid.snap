@@ -1,0 +1,13 @@
+---
+source: crates/core-subsystem/core-resolver/src/validation/document_validator.rs
+expression: value
+---
+Err(
+    StrayArguments(
+        [
+            "foo",
+        ],
+        "concert",
+        Pos(3:17),
+    ),
+)

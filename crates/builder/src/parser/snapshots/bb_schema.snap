@@ -1,0 +1,106 @@
+---
+source: crates/builder/src/parser/converter.rs
+expression: to_check
+---
+types: []
+modules:
+  - name: TestModule
+    annotations:
+      - name: postgres
+        params: None
+    types:
+      - name: Concert
+        kind: Type
+        fields:
+          - name: id
+            typ:
+              Plain:
+                - Int
+                - []
+                - ~
+            annotations:
+              - name: pk
+                params: None
+            default_value:
+              kind:
+                Function:
+                  - autoIncrement
+                  - []
+          - name: title
+            typ:
+              Plain:
+                - String
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+          - name: venue
+            typ:
+              Plain:
+                - Venue
+                - []
+                - ~
+            annotations:
+              - name: column
+                params:
+                  Single:
+                    - StringLiteral:
+                        - venueid
+            default_value: ~
+        annotations:
+          - name: table
+            params:
+              Single:
+                - StringLiteral:
+                    - concerts
+      - name: Venue
+        kind: Type
+        fields:
+          - name: id
+            typ:
+              Plain:
+                - Int
+                - []
+                - ~
+            annotations:
+              - name: pk
+                params: None
+            default_value:
+              kind:
+                Function:
+                  - autoIncrement
+                  - []
+          - name: name
+            typ:
+              Plain:
+                - String
+                - []
+                - ~
+            annotations: []
+            default_value: ~
+          - name: concerts
+            typ:
+              Plain:
+                - Set
+                - - Plain:
+                      - Concert
+                      - []
+                      - ~
+                - ~
+            annotations:
+              - name: column
+                params:
+                  Single:
+                    - StringLiteral:
+                        - venueid
+            default_value: ~
+        annotations:
+          - name: table
+            params:
+              Single:
+                - StringLiteral:
+                    - venues
+    methods: []
+    interceptors: []
+    base_exofile: input.exo
+imports: []

@@ -1,0 +1,73 @@
+---
+source: crates/builder/src/parser/converter.rs
+expression: to_check
+---
+types: []
+modules:
+  - name: TestModule
+    annotations:
+      - name: postgres
+        params: None
+    types:
+      - name: Foo
+        kind: Type
+        fields:
+          - name: bar
+            typ:
+              Plain:
+                - Baz
+                - []
+                - ~
+            annotations:
+              - name: column
+                params:
+                  Single:
+                    - StringLiteral:
+                        - custom_column
+              - name: access
+                params:
+                  Single:
+                    - LogicalOp:
+                        Or:
+                          - RelationalOp:
+                              Eq:
+                                - LogicalOp:
+                                    Not:
+                                      - FieldSelection:
+                                          Select:
+                                            - Single:
+                                                - Identifier:
+                                                    - self
+                                                    - ~
+                                                - ~
+                                            - Identifier:
+                                                - role
+                                                - ~
+                                            - ~
+                                      - ~
+                                - StringLiteral:
+                                    - role_admin
+                                - ~
+                          - RelationalOp:
+                              Eq:
+                                - FieldSelection:
+                                    Select:
+                                      - Single:
+                                          - Identifier:
+                                              - self
+                                              - ~
+                                          - ~
+                                      - Identifier:
+                                          - role
+                                          - ~
+                                      - ~
+                                - StringLiteral:
+                                    - role_superuser
+                                - ~
+                          - ~
+            default_value: ~
+        annotations: []
+    methods: []
+    interceptors: []
+    base_exofile: input.exo
+imports: []

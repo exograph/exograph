@@ -10,9 +10,11 @@
 use async_trait::async_trait;
 use futures::future::join_all;
 
+#[cfg(feature = "pgvector")]
+use crate::util::to_pg_vector;
 use crate::{
     auth_util::check_retrieve_access, column_path_util::to_column_path,
-    postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper, util::to_pg_vector,
+    postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper,
 };
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
@@ -130,28 +132,40 @@ async fn order_by_pair<'a>(
                         }
                         OrderByParameterTypeKind::Vector => match parameter_value {
                             Val::Object(elems) => {
-                                let new_column_path = new_column_path.unwrap();
+                                #[cfg(feature = "pgvector")]
+                                {
+                                    let new_column_path = new_column_path.unwrap();
 
-                                // These unwraps are safe, since the validation of the parameter type guarantees that these keys exist.
-                                let value = elems.get("distanceTo").unwrap();
+                                    // These unwraps are safe, since the validation of the parameter type guarantees that these keys exist.
+                                    let value = elems.get("distanceTo").unwrap();
 
-                                let default_order = Val::String("ASC".to_owned());
-                                let order = elems.get("order").unwrap_or(&default_order);
+                                    let default_order = Val::String("ASC".to_owned());
+                                    let order = elems.get("order").unwrap_or(&default_order);
 
-                                let vector_value = to_pg_vector(value, parameter_name)?;
+                                    let vector_value = to_pg_vector(value, parameter_name)?;
 
-                                ordering(order).map(|ordering| {
-                                    AbstractOrderBy(vec![(
-                                        AbstractOrderByExpr::VectorDistance(
-                                            ColumnPath::Physical(new_column_path),
-                                            ColumnPath::Param(SQLParamContainer::new(vector_value)),
-                                            parameter
-                                                .vector_distance_function
-                                                .unwrap_or(VectorDistanceFunction::default()),
-                                        ),
-                                        ordering,
-                                    )])
-                                })
+                                    ordering(order).map(|ordering| {
+                                        AbstractOrderBy(vec![(
+                                            AbstractOrderByExpr::VectorDistance(
+                                                ColumnPath::Physical(new_column_path),
+                                                ColumnPath::Param(SQLParamContainer::new(
+                                                    vector_value,
+                                                )),
+                                                parameter
+                                                    .vector_distance_function
+                                                    .unwrap_or(VectorDistanceFunction::default()),
+                                            ),
+                                            ordering,
+                                        )])
+                                    })
+                                }
+
+                                #[cfg(not(feature = "pgvector"))]
+                                {
+                                    Err(PostgresExecutionError::Generic(
+                                        "Vectors are not supported in this build".into(),
+                                    ))
+                                }
                             }
                             _ => Err(PostgresExecutionError::Validation(
                                 parameter_name.into(),
