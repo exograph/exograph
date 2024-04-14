@@ -26,6 +26,7 @@ pub enum DatabaseError {
     #[error("Unable to load native certificates: {0}")]
     NativeCerts(#[from] std::io::Error),
 
+    #[cfg(feature = "tls")]
     #[error("SSL: {0}")]
     Ssl(#[from] rustls::Error),
 

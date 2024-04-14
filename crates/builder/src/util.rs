@@ -41,15 +41,16 @@ pub fn join_strings(strs: &[impl AsRef<str>], last_sep: Option<&'static str>) ->
 #[cfg(test)]
 mod tests {
     use super::join_strings;
+    use multiplatform_test::multiplatform_test;
 
-    #[test]
+    #[multiplatform_test]
     fn join_strings_no_last_sep() {
         assert!(join_strings(&["a"], None) == "a");
         assert!(join_strings(&["a", "b"], None) == "a, b");
         assert!(join_strings(&["a", "b", "c"], None) == "a, b, c");
     }
 
-    #[test]
+    #[multiplatform_test]
     fn join_strings_with_last_sep() {
         assert!(join_strings(&["a"], Some("or")) == "a");
         assert!(join_strings(&["a", "b"], Some("or")) == "a or b");

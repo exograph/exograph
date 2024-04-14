@@ -12,6 +12,7 @@ use super::{
     auth_util::check_access, postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLOperationKind, util::Arguments,
 };
+#[cfg(feature = "pgvector")]
 use crate::util::to_pg_vector;
 use crate::{
     operation_resolver::OperationSelectionResolver, order_by_mapper::OrderByParameterInput,
@@ -24,12 +25,15 @@ use core_plugin_interface::core_resolver::{
     context::RequestContext, validation::field::ValidatedField,
 };
 use exo_sql::{
-    AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, Function, Limit,
-    Offset, RelationId, SQLParamContainer, SelectionCardinality, SelectionElement,
+    AbstractOrderBy, AbstractPredicate, AbstractSelect, AliasedSelectionElement, Limit, Offset,
+    RelationId, SelectionCardinality, SelectionElement,
 };
+#[cfg(feature = "pgvector")]
+use exo_sql::{Function, SQLParamContainer};
 use futures::stream::TryStreamExt;
 use futures::StreamExt;
 use postgres_model::query::UniqueQuery;
+#[cfg(feature = "pgvector")]
 use postgres_model::vector_distance::VectorDistanceField;
 use postgres_model::{
     aggregate::AggregateField,
@@ -233,11 +237,21 @@ async fn map_field<'content>(
                         map_aggregate_field(agg_field, field, subsystem, request_context).await?
                     }
                     None => {
-                        let vector_distance_field = return_type
-                            .vector_distance_field_by_name(&field.name)
-                            .unwrap();
+                        #[cfg(feature = "pgvector")]
+                        {
+                            let vector_distance_field = return_type
+                                .vector_distance_field_by_name(&field.name)
+                                .unwrap();
 
-                        map_vector_distance_field(vector_distance_field, field).await?
+                            map_vector_distance_field(vector_distance_field, field).await?
+                        }
+
+                        #[cfg(not(feature = "pgvector"))]
+                        {
+                            return Err(PostgresExecutionError::Generic(
+                                "Vectors are not supported in this build".into(),
+                            ));
+                        }
                     }
                 }
             }
@@ -358,6 +372,7 @@ async fn map_aggregate_field<'content>(
     }
 }
 
+#[cfg(feature = "pgvector")]
 async fn map_vector_distance_field<'content>(
     vector_distance_field: &VectorDistanceField,
     field: &'content ValidatedField,
