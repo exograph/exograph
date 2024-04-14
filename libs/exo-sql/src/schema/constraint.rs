@@ -9,7 +9,11 @@
 
 use std::collections::HashSet;
 
+#[cfg(feature = "deadpool")]
 use deadpool_postgres::Client;
+#[cfg(not(feature = "deadpool"))]
+use tokio_postgres::Client;
+
 use lazy_static::lazy_static;
 use regex::Regex;
 

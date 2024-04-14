@@ -1,24 +1,22 @@
 ---
-source: resolver/src/graphql/validation/document_validator.rs
+source: crates/core-subsystem/core-resolver/src/validation/document_validator.rs
 expression: validator.validate(create_query_document(query))
 ---
 Ok(
     ValidatedOperation {
-        name: None,
+        name: Some(
+            "concert2",
+        ),
         typ: Query,
         fields: [
             ValidatedField {
-                alias: Some(
-                    Name(
-                        "firstConcert",
-                    ),
-                ),
+                alias: None,
                 name: Name(
                     "concert",
                 ),
                 arguments: {
                     "id": Number(
-                        Number(1),
+                        Number(2),
                     ),
                 },
                 subfields: [

@@ -5,7 +5,9 @@ edition.workspace = true
 publish = false
 
 [features]
+default = []
 test-context = []
+jwt = ["jsonwebtoken", "reqwest", "oidc-jwt-validator"]
 
 [dependencies]
 async-graphql-parser.workspace = true
@@ -16,9 +18,9 @@ async-trait.workspace = true
 bytes.workspace = true
 futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
-jsonwebtoken.workspace = true
-reqwest.workspace = true
-oidc-jwt-validator = "0.2.3"
+jsonwebtoken = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+oidc-jwt-validator = { version = "0.2.3", optional = true }
 serde.workspace = true
 thiserror.workspace = true
 cookie = "0.16"
@@ -34,9 +36,17 @@ common = { path = "../../common" }
 
 [dev-dependencies]
 insta.workspace = true
+postgres-model-builder = { path = "../../postgres-subsystem/postgres-model-builder" }
+postgres-resolver = { path = "../../postgres-subsystem/postgres-resolver" }
+wasm-bindgen-test.workspace = true
+wasm-bindgen-test-macro.workspace = true
+multiplatform_test.workspace = true
 
 builder = { path = "../../builder", features = ["test-context"] }
 core-plugin-interface = { path = "../core-plugin-interface" }
+
+[target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
+exo-sql = { path = "../../../libs/exo-sql", features = ["postgres-url"] }
 
 [lib]
 doctest = false

@@ -15,6 +15,7 @@
 mod root_resolver;
 mod system_loader;
 
+#[cfg(not(target_family = "wasm"))]
 pub mod graphiql;
 pub use root_resolver::{
     create_system_resolver, create_system_resolver_from_serialized_bytes,

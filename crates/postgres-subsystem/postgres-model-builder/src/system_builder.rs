@@ -213,7 +213,8 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn optional_fields() {
         let src = r#"
             @postgres
@@ -267,7 +268,8 @@ mod tests {
         assert!(venues_address.is_nullable);
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn one_to_one() {
         let src = r#"
         @postgres
@@ -300,7 +302,8 @@ mod tests {
         assert!(!users_membership.is_nullable);
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn access_false() {
         let src = r#"
         @postgres
@@ -319,7 +322,8 @@ mod tests {
         assert!(!mutation_type_names.contains("TodoUpdateInput"));
         assert!(!mutation_type_names.contains("TodoCreationInput"));
     }
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn access_false_mutation() {
         let src = r#"
         @postgres
@@ -339,7 +343,8 @@ mod tests {
         assert!(!mutation_type_names.contains("TodoCreationInput"));
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn access_false_create_mutation() {
         let src = r#"
         @postgres
@@ -359,7 +364,8 @@ mod tests {
         assert!(!mutation_type_names.contains("TodoCreationInput"));
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn access_false_delete_mutation() {
         let src = r#"
         @postgres
@@ -377,7 +383,8 @@ mod tests {
         assert!(system.mutations.get_by_key("deleteTodos").is_none());
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn access_false_update_mutation() {
         let src = r#"
         @postgres
@@ -405,7 +412,8 @@ mod tests {
             .collect::<HashSet<String>>()
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn type_hint_annotations() {
         let src = r#"
             @postgres

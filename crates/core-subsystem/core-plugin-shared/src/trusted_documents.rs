@@ -106,8 +106,9 @@ pub enum TrustedDocumentResolutionError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use multiplatform_test::multiplatform_test;
 
-    #[test]
+    #[multiplatform_test]
     fn trusted_documents_resolve() {
         let mut map = HashMap::new();
 
