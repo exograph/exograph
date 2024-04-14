@@ -7,7 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+#[cfg(feature = "deadpool")]
 use deadpool_postgres::Transaction;
+#[cfg(not(feature = "deadpool"))]
+use tokio_postgres::Transaction;
+
 use std::sync::atomic::AtomicBool;
 
 use crate::{
@@ -56,7 +60,10 @@ impl DatabaseExecutor {
 
 #[derive(Default)]
 pub struct TransactionHolder {
+    #[cfg(feature = "deadpool")]
     client: Option<*mut deadpool_postgres::Client>,
+    #[cfg(not(feature = "deadpool"))]
+    client: Option<*mut tokio_postgres::Client>,
     transaction: Option<*mut Transaction<'static>>,
     finalized: AtomicBool,
 }
@@ -109,7 +116,14 @@ impl TransactionHolder {
                 // first, grab a client if none are available
                 {
                     let client_owned = unsafe {
-                        let mut client_owned: Option<*mut deadpool_postgres::Client> = None;
+                        #[cfg(feature = "deadpool")]
+                        let mut client_owned: Option<
+                            *mut deadpool_postgres::Client,
+                        > = None;
+                        #[cfg(not(feature = "deadpool"))]
+                        let mut client_owned: Option<
+                            *mut tokio_postgres::Client,
+                        > = None;
                         std::mem::swap(&mut self.client, &mut client_owned);
                         client_owned.map(|ptr| Box::from_raw(ptr))
                     };

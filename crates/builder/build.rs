@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::env;
 use std::io::Write;
 use std::path::PathBuf;
 use tree_sitter_cli::generate;
@@ -27,8 +28,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     parser_file.write_all(tree_sitter::PARSER_HEADER.as_bytes())?;
     drop(parser_file);
 
+    let sysroot_dir = dir.path().join("sysroot");
+    if env::var("TARGET").unwrap().starts_with("wasm32") {
+        std::fs::create_dir(&sysroot_dir).unwrap();
+        let mut stdint = std::fs::File::create(sysroot_dir.join("stdint.h")).unwrap();
+        stdint
+            .write_all(include_bytes!("wasm-sysroot/stdint.h"))
+            .unwrap();
+        drop(stdint);
+
+        let mut stdlib = std::fs::File::create(sysroot_dir.join("stdlib.h")).unwrap();
+        stdlib
+            .write_all(include_bytes!("wasm-sysroot/stdlib.h"))
+            .unwrap();
+        drop(stdlib);
+
+        let mut stdio = std::fs::File::create(sysroot_dir.join("stdio.h")).unwrap();
+        stdio
+            .write_all(include_bytes!("wasm-sysroot/stdio.h"))
+            .unwrap();
+        drop(stdio);
+
+        let mut stdbool = std::fs::File::create(sysroot_dir.join("stdbool.h")).unwrap();
+        stdbool
+            .write_all(include_bytes!("wasm-sysroot/stdbool.h"))
+            .unwrap();
+        drop(stdbool);
+    }
+
     cc::Build::new()
         .include(&dir)
+        .include(&sysroot_dir)
         .file(dir.path().join("parser.c"))
         .compile(&grammar_name);
 

@@ -198,8 +198,9 @@ impl ToTableName for str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use multiplatform_test::multiplatform_test;
 
-    #[test]
+    #[multiplatform_test]
     fn table_names() {
         assert_eq!("concerts", "Concert".table_name(None));
         assert_eq!(
