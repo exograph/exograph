@@ -9,6 +9,7 @@
 
 use indexmap::IndexMap;
 
+#[cfg(feature = "pgvector")]
 use pgvector::Vector;
 use postgres_model::types::EntityType;
 
@@ -20,6 +21,7 @@ use postgres_model::{
     subsystem::PostgresSubsystem,
 };
 
+#[cfg(feature = "pgvector")]
 use crate::postgres_execution_error::PostgresExecutionError;
 
 pub type Arguments = IndexMap<String, Val>;
@@ -42,6 +44,7 @@ pub(crate) fn get_argument_field<'a>(argument_value: &'a Val, field_name: &str) 
     }
 }
 
+#[cfg(feature = "pgvector")]
 pub(super) fn to_pg_vector(
     value: &Val,
     parameter_name: &str,
