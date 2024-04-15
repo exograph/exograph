@@ -209,7 +209,7 @@ pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
 
 pub async fn open_database(database: Option<&str>) -> Result<DatabaseClient, DatabaseError> {
     if let Some(database) = database {
-        Ok(DatabaseClient::from_db_url(database).await?)
+        Ok(DatabaseClient::from_db_url(database, true).await?)
     } else {
         Ok(DatabaseClient::from_env(Some(1)).await?)
     }

@@ -287,9 +287,11 @@ mod tests {
         PhysicalColumnPath,
     };
 
+    use multiplatform_test::multiplatform_test;
+
     use super::*;
 
-    #[test]
+    #[multiplatform_test]
     fn simple_update() {
         TestSetup::with_setup(
             |TestSetup {
@@ -342,7 +344,7 @@ mod tests {
         )
     }
 
-    #[test]
+    #[multiplatform_test]
     fn nested_update() {
         TestSetup::with_setup(
             |TestSetup {

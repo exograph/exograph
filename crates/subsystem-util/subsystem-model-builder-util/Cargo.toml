@@ -18,5 +18,8 @@ subsystem-model-util = { path = "../subsystem-model-util" }
 [dev-dependencies]
 builder = { path = "../../builder" }
 
+[target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
+deno-model-builder = { path = "../../deno-subsystem/deno-model-builder" }
+
 [lib]
 doctest = false

@@ -11,9 +11,12 @@ thiserror.workspace = true
 bytes.workspace = true
 tracing.workspace = true
 sha2 = "0.10"
-base16ct = "0.2"
+base16ct = { version = "0.2", features = ["alloc"] }
 
 [dev-dependencies]
+wasm-bindgen-test.workspace = true
+wasm-bindgen-test-macro.workspace = true
+multiplatform_test.workspace = true
 
 [lib]
 doctest = false

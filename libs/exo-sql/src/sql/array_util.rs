@@ -112,6 +112,7 @@ fn process_array<T>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use multiplatform_test::multiplatform_test;
 
     // Emulate just sufficient ConstValue in async-graphql
     enum Element {
@@ -140,7 +141,7 @@ mod tests {
         array.iter().map(|e| format!("{e:?}")).collect()
     }
 
-    #[test]
+    #[multiplatform_test]
     fn single_dimensional() {
         let elems = vec![1, 2, 3];
 
@@ -162,7 +163,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn two_dimensional() {
         let elems = vec![
             Element::List(vec![
@@ -204,7 +205,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn three_dimensional() {
         let elems = vec![
             Element::List(vec![Element::List(vec![

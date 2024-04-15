@@ -109,7 +109,9 @@ mod test {
     use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
     use crate::PhysicalTableName;
 
-    #[test]
+    use multiplatform_test::multiplatform_test;
+
+    #[multiplatform_test]
     fn single() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("people", None),
@@ -132,7 +134,7 @@ mod test {
         );
     }
 
-    #[test]
+    #[multiplatform_test]
     fn multiple() {
         let database = DatabaseSpec::new(vec![TableSpec::new(
             PhysicalTableName::new("people", None),
