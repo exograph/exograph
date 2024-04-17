@@ -7,9 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import React, { useState, useRef, useContext, useMemo } from "react";
+import React, { useState, useRef, useContext } from "react";
 import GraphiQL from "graphiql";
-import { Fetcher, createGraphiQLFetcher } from "@graphiql/toolkit";
+import {
+  Fetcher,
+  FetcherOpts,
+  FetcherParams,
+  createGraphiQLFetcher,
+} from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
 import { AuthContext, AuthContextProvider } from "./AuthContext";
@@ -17,85 +22,93 @@ import { Logo } from "./Logo";
 import { AuthToolbarButton } from "./auth";
 import { explorerPlugin } from "@graphiql/plugin-explorer";
 
+import "./index.css";
 import "graphiql/graphiql.css";
 import "@graphiql/plugin-explorer/dist/style.css";
 
 const enableSchemaLiveUpdate = (window as any).enableSchemaLiveUpdate;
 
-export function AppWithAuth() {
+const urlFetcher: Fetcher = createGraphiQLFetcher({
+  url: (window as any).exoGraphQLEndpoint,
+});
+
+export function AppWithAuth({ fetcher = urlFetcher }: { fetcher?: Fetcher }) {
   return (
     <AuthContextProvider>
-      <App />
+      <App fetcher={fetcher} />
     </AuthContextProvider>
   );
 }
 
-function App() {
+function App({ fetcher }: { fetcher: Fetcher }) {
+  const { getTokenFn } = useContext(AuthContext);
+
+  const dataFetcher: Fetcher = async (
+    graphQLParams: FetcherParams,
+    opts?: FetcherOpts
+  ) => {
+    // Add a special header (`_exo_playground`) to the request to indicate that it's coming from the playground
+    let additionalHeaders: Record<string, any> = {
+      _exo_playground: "true",
+    };
+
+    if (getTokenFn) {
+      let authToken = await getTokenFn();
+
+      additionalHeaders = {
+        ...additionalHeaders,
+        Authorization: `Bearer ${authToken}`,
+      };
+    }
+    return fetcher(graphQLParams, {
+      ...opts,
+      headers: { ...opts?.headers, ...additionalHeaders },
+    });
+  };
+
+  const schemaFetcher: Fetcher = (
+    graphQLParams: FetcherParams,
+    opts?: FetcherOpts
+  ) => {
+    const additionalHeaders: Record<string, any> = {
+      _exo_operation_kind: "schema_query",
+    };
+
+    return fetcher(graphQLParams, {
+      ...opts,
+      headers: { ...opts?.headers, ...additionalHeaders },
+    });
+  };
+
+  const upstreamGraphQLEndpoint = (window as any).exoUpstreamGraphQLEndpoint;
+
+  return (
+    <SchemaFetchingCore
+      fetcher={dataFetcher}
+      schemaFetcher={schemaFetcher}
+      upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
+    />
+  );
+}
+
+function SchemaFetchingCore({
+  schemaFetcher,
+  fetcher,
+  upstreamGraphQLEndpoint,
+}: {
+  schemaFetcher: Fetcher;
+  fetcher: Fetcher;
+  upstreamGraphQLEndpoint?: string;
+}) {
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
     null
   );
   const networkErrorCount = useRef(0);
-  const { getTokenFn } = useContext(AuthContext);
-
-  const fetcher = useMemo(() => {
-    const authHeaderFetch = async (
-      input: RequestInfo | URL,
-      init?: RequestInit | undefined
-    ) => {
-      // Add a special header (`_exo_playground`) to the request to indicate that it's coming from the playground
-      const withPlaygroundHeader: RequestInit | undefined = init
-        ? {
-            ...init,
-            headers: {
-              ...init?.headers,
-              _exo_playground: "true",
-            },
-          }
-        : init;
-
-      if (getTokenFn) {
-        let authToken = await getTokenFn();
-
-        const headers = {
-          ...withPlaygroundHeader?.headers,
-          Authorization: `Bearer ${authToken}`,
-        };
-        const withHeader = { ...withPlaygroundHeader, headers };
-        return await window.fetch(input, withHeader);
-      } else {
-        return await window.fetch(input, withPlaygroundHeader);
-      }
-    };
-
-    return createGraphiQLFetcher({
-      url: (window as any).exoGraphQLEndpoint,
-      fetch: authHeaderFetch,
-    });
-  }, [getTokenFn]);
-
-  const schemaFetcher = useMemo(() => {
-    const schemaFetch = async (
-      input: RequestInfo | URL,
-      init?: RequestInit | undefined
-    ) => {
-      const headers = {
-        ...init?.headers,
-        // This is a special header that tells the server that the current operation is a schema query
-        // This is used in playground mode to resolve such request locally (and not forward it to the upstream server)
-        _exo_operation_kind: "schema_query",
-      };
-      const withHeader = { ...init, headers };
-      return await window.fetch(input, withHeader);
-    };
-
-    return createGraphiQLFetcher({
-      url: (window as any).exoGraphQLEndpoint,
-      fetch: schemaFetch,
-    });
-  }, []);
 
   async function fetchAndSetSchema() {
+    console.log("Fetching schema...");
     const schema = await fetchSchema(schemaFetcher);
+    console.log("Schema fetched ", schema);
 
     // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
     if (networkErrorCount.current >= 3) {
@@ -125,9 +138,21 @@ function App() {
 
   if (schema === null) {
     overlay = null; // Loading, but let's not show any overlay (we could consider showing with a delay to avoid a flash of the overlay)
-    core = <Core schema={null} fetcher={fetcher} />;
+    core = (
+      <Core
+        schema={null}
+        fetcher={fetcher}
+        upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
+      />
+    );
   } else if (typeof schema == "string") {
-    core = <Core schema={null} fetcher={fetcher} />;
+    core = (
+      <Core
+        schema={null}
+        fetcher={fetcher}
+        upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
+      />
+    );
     if (schema === "EmptySchema") {
       overlay = <EmptySchema />;
     } else if (schema === "InvalidSchema") {
@@ -137,7 +162,13 @@ function App() {
     }
   } else {
     overlay = null;
-    core = <Core schema={schema} fetcher={fetcher} />;
+    core = (
+      <Core
+        schema={schema}
+        fetcher={fetcher}
+        upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
+      />
+    );
   }
 
   return (
@@ -148,9 +179,15 @@ function App() {
   );
 }
 
-function Core(props: { schema: GraphQLSchema | null; fetcher: Fetcher }) {
-  const upstreamGraphQLEndpoint = (window as any).exoUpstreamGraphQLEndpoint;
-
+function Core({
+  schema,
+  fetcher,
+  upstreamGraphQLEndpoint,
+}: {
+  schema: GraphQLSchema | null;
+  fetcher: Fetcher;
+  upstreamGraphQLEndpoint?: string;
+}) {
   // GraphiQL loses the persisted headers when the schema is updated (or the playground is manually
   // reloaded) So, use the current value of the setting in local storage as the initial value
   const shouldPersistHeaders =
@@ -161,11 +198,11 @@ function Core(props: { schema: GraphQLSchema | null; fetcher: Fetcher }) {
   return (
     <>
       <GraphiQL
-        fetcher={props.fetcher}
+        fetcher={fetcher}
         plugins={[explorer]}
         defaultEditorToolsVisibility={true}
         isHeadersEditorEnabled={true}
-        schema={props.schema}
+        schema={schema}
         toolbar={{ additionalContent: <AuthToolbarButton /> }}
         shouldPersistHeaders={shouldPersistHeaders}
         showPersistHeadersSettings={true}

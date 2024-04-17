@@ -17,44 +17,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap()
             .join("graphiql");
 
-        println!(
-            "cargo:rerun-if-changed={}",
-            graphiql_folder_path.join("src").display()
-        );
-        println!(
-            "cargo:rerun-if-changed={}",
-            graphiql_folder_path.join("public").display()
-        );
-        println!(
-            "cargo:rerun-if-changed={}",
-            graphiql_folder_path.join("package.json").display()
-        );
-        println!(
-            "cargo:rerun-if-changed={}",
-            graphiql_folder_path.join("package-lock.json").display()
-        );
+        let graphiql_lib_path = graphiql_folder_path.join("lib");
+        let graphiql_app_path = graphiql_folder_path.join("app");
 
         let npm = which::which("npm").map_err(|e| format!("Failed to find npm: {}", e))?;
 
-        if !std::process::Command::new(npm.clone())
-            .arg("ci")
-            .current_dir(&graphiql_folder_path)
-            .spawn()?
-            .wait()?
-            .success()
-        {
-            panic!("Failed to install graphiql dependencies");
-        }
+        for sub_folder in &[&graphiql_lib_path, &graphiql_app_path] {
+            for dependent_path in &[
+                "src",
+                "public",
+                "package.json",
+                "package-lock.json",
+                "tsconfig.json",
+                "index.html",
+                "vite.config.js",
+            ] {
+                println!(
+                    "cargo:rerun-if-changed={}",
+                    sub_folder.join(dependent_path).display()
+                );
 
-        if !std::process::Command::new(npm)
-            .arg("run")
-            .arg("build")
-            .current_dir(graphiql_folder_path)
-            .spawn()?
-            .wait()?
-            .success()
-        {
-            panic!("Failed to build graphiql");
+                if !std::process::Command::new(npm.clone())
+                    .arg("ci")
+                    .current_dir(sub_folder)
+                    .spawn()?
+                    .wait()?
+                    .success()
+                {
+                    panic!("Failed to install graphiql dependencies");
+                }
+
+                if !std::process::Command::new(npm.clone())
+                    .arg("run")
+                    .arg("build")
+                    .current_dir(sub_folder)
+                    .spawn()?
+                    .wait()?
+                    .success()
+                {
+                    panic!("Failed to build graphiql");
+                }
+            }
         }
     }
 
