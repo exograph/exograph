@@ -1,0 +1,44 @@
+{
+  "name": "exograph-playground-lib",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "public"
+  ],
+  "scripts": {
+    "build": "tsc --p ./tsconfig.json && cp src/*.css dist/",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "@auth0/auth0-react": "^2.2.4",
+    "@clerk/clerk-react": "^4.30.10",
+    "@clerk/themes": "^1.7.12",
+    "@codemirror/lang-json": "^6.0.1",
+    "@graphiql/toolkit": "^0.9.1",
+    "@graphiql/plugin-explorer": "^2.0.0",
+    "@uiw/codemirror-themes": "^4.21.25",
+    "@uiw/react-codemirror": "^4.21.25",
+    "cross-env": "^7.0.3",
+    "graphiql": "3.2.0",
+    "graphql-ws": "^5.16.0",
+    "jose": "^5.2.4"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@types/react": "^18.2.79",
+    "@types/react-dom": "^18.2.25",
+    "@typescript-eslint/eslint-plugin": "^7.7.0",
+    "@typescript-eslint/parser": "^7.7.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "typescript": "^5.4.4"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ESNext", 
+    "module": "ESNext", 
+    "incremental": true,
+    "declaration": true,
+    "outDir": "dist",
+    "esModuleInterop": true, 
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx", 
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "ESNext"],
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+  },
+  "include": [
+    "src"
+  ]
+}

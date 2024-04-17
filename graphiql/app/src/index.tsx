@@ -9,7 +9,8 @@
 
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { AppWithAuth } from "./App";
+
+import { AppWithAuth } from "exograph-playground-lib";
 
 const container = document.getElementById("root");
 const root = createRoot(container as HTMLElement);

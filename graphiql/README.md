@@ -18,8 +18,18 @@ When working solely on the UI aspect of the playground, you can get faster itera
 3. Add `window.exoGraphQLEndpoint = "http://localhost:9876/graphql";`
 4. When exploring OIDC, add `window.exoOidcUrl = "<provider>";`
 
-Then, from the `graphiql` directory, run:
+Then, from the `graphiql/lib` directory, run:
 
 ```
-npm run start
+npm run build
+```
+
+And from the `graphiql/app` directory, run:
+
+```
+npm run dev
+```
+
+```
+
 ```
