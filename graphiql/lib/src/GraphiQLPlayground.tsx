@@ -9,12 +9,7 @@
 
 import React, { useState, useRef, useContext } from "react";
 import GraphiQL from "graphiql";
-import {
-  Fetcher,
-  FetcherOpts,
-  FetcherParams,
-  createGraphiQLFetcher,
-} from "@graphiql/toolkit";
+import { Fetcher, FetcherOpts, FetcherParams } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
 import { AuthContext, AuthContextProvider } from "./AuthContext";
@@ -26,21 +21,38 @@ import "./index.css";
 import "graphiql/graphiql.css";
 import "@graphiql/plugin-explorer/dist/style.css";
 
-const enableSchemaLiveUpdate = (window as any).enableSchemaLiveUpdate;
+interface GraphiQLPlaygroundProps extends _GraphiQLPlaygroundProps {
+  oidcUrl?: string;
+}
 
-const urlFetcher: Fetcher = createGraphiQLFetcher({
-  url: (window as any).exoGraphQLEndpoint,
-});
+interface _GraphiQLPlaygroundProps {
+  fetcher: Fetcher;
+  upstreamGraphQLEndpoint?: string;
+  enableSchemaLiveUpdate: boolean;
+}
 
-export function AppWithAuth({ fetcher = urlFetcher }: { fetcher?: Fetcher }) {
+export function GraphiQLPlayground({
+  fetcher,
+  oidcUrl,
+  upstreamGraphQLEndpoint,
+  enableSchemaLiveUpdate,
+}: GraphiQLPlaygroundProps) {
   return (
-    <AuthContextProvider>
-      <App fetcher={fetcher} />
+    <AuthContextProvider oidcUrl={oidcUrl}>
+      <_GraphiQLPlayground
+        fetcher={fetcher}
+        upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
+        enableSchemaLiveUpdate={enableSchemaLiveUpdate}
+      />
     </AuthContextProvider>
   );
 }
 
-function App({ fetcher }: { fetcher: Fetcher }) {
+function _GraphiQLPlayground({
+  fetcher,
+  upstreamGraphQLEndpoint,
+  enableSchemaLiveUpdate,
+}: _GraphiQLPlaygroundProps) {
   const { getTokenFn } = useContext(AuthContext);
 
   const dataFetcher: Fetcher = async (
@@ -80,13 +92,12 @@ function App({ fetcher }: { fetcher: Fetcher }) {
     });
   };
 
-  const upstreamGraphQLEndpoint = (window as any).exoUpstreamGraphQLEndpoint;
-
   return (
     <SchemaFetchingCore
       fetcher={dataFetcher}
       schemaFetcher={schemaFetcher}
       upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
+      enableSchemaLiveUpdate={enableSchemaLiveUpdate}
     />
   );
 }
@@ -95,10 +106,12 @@ function SchemaFetchingCore({
   schemaFetcher,
   fetcher,
   upstreamGraphQLEndpoint,
+  enableSchemaLiveUpdate,
 }: {
   schemaFetcher: Fetcher;
   fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
+  enableSchemaLiveUpdate: boolean;
 }) {
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
     null
@@ -106,9 +119,7 @@ function SchemaFetchingCore({
   const networkErrorCount = useRef(0);
 
   async function fetchAndSetSchema() {
-    console.log("Fetching schema...");
     const schema = await fetchSchema(schemaFetcher);
-    console.log("Schema fetched ", schema);
 
     // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
     if (networkErrorCount.current >= 3) {
@@ -133,11 +144,11 @@ function SchemaFetchingCore({
     fetchAndSetSchema();
   }
 
-  let overlay = null;
+  let errorMessage = null;
   let core = null;
 
   if (schema === null) {
-    overlay = null; // Loading, but let's not show any overlay (we could consider showing with a delay to avoid a flash of the overlay)
+    errorMessage = null; // Loading, but let's not show any error (we could consider showing with a delay to avoid a flash of the overlay)
     core = (
       <Core
         schema={null}
@@ -154,14 +165,13 @@ function SchemaFetchingCore({
       />
     );
     if (schema === "EmptySchema") {
-      overlay = <EmptySchema />;
+      errorMessage = <EmptySchema />;
     } else if (schema === "InvalidSchema") {
-      overlay = <InvalidSchema />;
+      errorMessage = <InvalidSchema />;
     } else if (networkErrorCount.current >= 3) {
-      overlay = <NetworkError />;
+      errorMessage = <NetworkError />;
     }
   } else {
-    overlay = null;
     core = (
       <Core
         schema={schema}
@@ -172,10 +182,10 @@ function SchemaFetchingCore({
   }
 
   return (
-    <>
-      {overlay && <Overlay>{overlay}</Overlay>}
+    <div style={{ position: "relative", height: "100%" }}>
+      {errorMessage && <Overlay>{errorMessage}</Overlay>}
       {core}
-    </>
+    </div>
   );
 }
 

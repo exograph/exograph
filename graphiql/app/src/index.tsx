@@ -10,8 +10,27 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 
-import { AppWithAuth } from "exograph-playground-lib";
+import {
+  GraphiQLPlayground,
+  Fetcher,
+  createGraphiQLFetcher,
+} from "exograph-playground-lib";
+
+const urlFetcher: Fetcher = createGraphiQLFetcher({
+  url: (window as any).exoGraphQLEndpoint,
+});
 
 const container = document.getElementById("root");
 const root = createRoot(container as HTMLElement);
-root.render(<AppWithAuth />);
+root.render(
+  <GraphiQLPlayground
+    fetcher={urlFetcher}
+    oidcUrl={(window as any).exoOidcUrl as string | undefined}
+    upstreamGraphQLEndpoint={
+      (window as any).exoUpstreamGraphQLEndpoint as string | undefined
+    }
+    enableSchemaLiveUpdate={
+      ((window as any).enableSchemaLiveUpdate as boolean) || false
+    }
+  />
+);

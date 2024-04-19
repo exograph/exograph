@@ -17,8 +17,8 @@
     "@clerk/clerk-react": "^4.30.10",
     "@clerk/themes": "^1.7.12",
     "@codemirror/lang-json": "^6.0.1",
-    "@graphiql/toolkit": "^0.9.1",
     "@graphiql/plugin-explorer": "^2.0.0",
+    "@graphiql/toolkit": "^0.9.1",
     "@uiw/codemirror-themes": "^4.21.25",
     "@uiw/react-codemirror": "^4.21.25",
     "cross-env": "^7.0.3",
@@ -39,6 +39,6 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
-    "typescript": "^5.4.4"
+    "typescript": "^5.4.5"
   }
 }
