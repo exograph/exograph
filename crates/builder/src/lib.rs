@@ -19,7 +19,7 @@ use std::{
 use std::env::current_exe;
 
 use codemap::CodeMap;
-use codemap_diagnostic::{ColorConfig, Emitter};
+use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level};
 use core_plugin_interface::interface::{LibraryLoadingError, SubsystemBuilder};
 use core_plugin_shared::trusted_documents::TrustedDocuments;
 use error::ParserError;
@@ -42,6 +42,7 @@ use core_model_builder::{
 };
 #[cfg(not(target_family = "wasm"))]
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 #[cfg(not(target_family = "wasm"))]
 /// Build a model system from a exo file
@@ -59,13 +60,19 @@ pub async fn build_system(
         .map(|dir| load_trusted_documents(dir))
         .unwrap_or(Ok(TrustedDocuments::all()))?;
 
-    build_from_ast_system(
+    match build_from_ast_system(
         parser::parse_file(&model_file, &mut codemap),
         trusted_documents,
-        codemap,
         static_builders,
     )
     .await
+    {
+        Ok(bytes) => Ok(bytes),
+        Err(err) => {
+            StderrReporter {}.emit(&codemap, &err);
+            Err(err)
+        }
+    }
 }
 
 // Can we expose this only for testing purposes?
@@ -75,16 +82,37 @@ pub async fn build_system_from_str(
     file_name: String,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
 ) -> Result<Vec<u8>, ParserError> {
+    build_system_from_str_with_reporting(
+        model_str,
+        file_name,
+        static_builders,
+        &mut StderrReporter {},
+    )
+    .await
+}
+
+pub async fn build_system_from_str_with_reporting(
+    model_str: &str,
+    file_name: String,
+    static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
+    reporter: &mut impl ErrorReporter,
+) -> Result<Vec<u8>, ParserError> {
     let mut codemap = CodeMap::new();
     codemap.add_file(file_name.clone(), model_str.to_string());
 
-    build_from_ast_system(
+    match build_from_ast_system(
         parser::parse_str(model_str, &mut codemap, &file_name),
         TrustedDocuments::all(),
-        codemap,
         static_builders,
     )
     .await
+    {
+        Ok(bytes) => Ok(bytes),
+        Err(err) => {
+            reporter.emit(&codemap, &err);
+            Err(err)
+        }
+    }
 }
 
 pub fn load_subsystem_builders(
@@ -135,30 +163,18 @@ pub fn load_subsystem_builders(
 async fn build_from_ast_system(
     ast_system: Result<AstSystem<Untyped>, ParserError>,
     trusted_documents: TrustedDocuments,
-    codemap: CodeMap,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
 ) -> Result<Vec<u8>, ParserError> {
     let subsystem_builders = load_subsystem_builders(static_builders)
         .map_err(|e| ParserError::Generic(format!("{e}")))?;
 
-    let ast_system = ast_system.map_err(|err| {
-        emit_diagnostics(&err, &codemap);
-        err
-    })?;
+    let ast_system = ast_system?;
 
-    let typechecked_system =
-        typechecker::build(&subsystem_builders, ast_system).map_err(|err| {
-            emit_diagnostics(&err, &codemap);
-            err
-        })?;
+    let typechecked_system = typechecker::build(&subsystem_builders, ast_system)?;
 
     builder::build(&subsystem_builders, typechecked_system, trusted_documents)
         .await
-        .map_err(|err| {
-            let err = err.into();
-            emit_diagnostics(&err, &codemap);
-            err
-        })
+        .map_err(|err| err.into())
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -285,14 +301,112 @@ fn load_trusted_documents(
     }
 }
 
-fn emit_diagnostics(err: &ParserError, codemap: &CodeMap) {
-    let mut emitter = Emitter::stderr(ColorConfig::Always, Some(codemap));
+pub trait ErrorReporter {
+    fn emit(&mut self, codemap: &CodeMap, err: &ParserError);
+}
+
+struct StderrReporter;
+
+impl ErrorReporter for StderrReporter {
+    fn emit(&mut self, codemap: &CodeMap, err: &ParserError) {
+        let mut emitter = Emitter::stderr(ColorConfig::Always, Some(codemap));
+        emit_diagnostics(err, &mut emitter, codemap, None);
+    }
+}
+
+/// Collect diagnostics and display string from the parser so an external reporter can use them
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct ExternalReporter {
+    diagnostics: Vec<report::Diagnostic>,
+    #[serde(rename = "displayString")]
+    display_string: String,
+}
+
+impl ErrorReporter for ExternalReporter {
+    fn emit(&mut self, codemap: &CodeMap, err: &ParserError) {
+        let mut buffer: Vec<u8> = vec![];
+        {
+            let mut emitter = Emitter::vec(&mut buffer, Some(codemap));
+            emit_diagnostics(err, &mut emitter, codemap, Some(&mut self.diagnostics));
+        }
+        self.display_string = String::from_utf8(buffer).unwrap();
+    }
+}
+
+pub mod report {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct Diagnostic {
+        pub spans: Vec<Span>,
+        pub message: String,
+        #[serde(rename = "isError")]
+        pub is_error: bool,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct Span {
+        #[serde(rename = "fileName")]
+        pub file_name: String,
+        pub start: Position,
+        pub end: Position,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct Position {
+        pub line: usize,
+        pub column: usize,
+    }
+}
+
+fn emit_diagnostics(
+    err: &ParserError,
+    emitter: &mut Emitter,
+    codemap: &CodeMap,
+    report_collector: Option<&mut Vec<report::Diagnostic>>,
+) {
+    fn collect_diagnostics(
+        diagnostics: &[Diagnostic],
+        codemap: &CodeMap,
+        report_collector: Option<&mut Vec<report::Diagnostic>>,
+    ) {
+        if let Some(report_collector) = report_collector {
+            diagnostics.iter().for_each(|diagnostic| {
+                let report_spans = diagnostic
+                    .spans
+                    .iter()
+                    .map(|span_label| {
+                        let span_loc = codemap.look_up_span(span_label.span);
+                        report::Span {
+                            file_name: span_loc.file.name().to_string(),
+                            start: report::Position {
+                                line: span_loc.begin.line,
+                                column: span_loc.begin.column,
+                            },
+                            end: report::Position {
+                                line: span_loc.end.line,
+                                column: span_loc.end.column,
+                            },
+                        }
+                    })
+                    .collect();
+
+                report_collector.push(report::Diagnostic {
+                    spans: report_spans,
+                    message: diagnostic.message.clone(),
+                    is_error: diagnostic.level == Level::Error,
+                });
+            });
+        }
+    }
 
     match err {
         ParserError::Diagnosis(diagnostics) => {
+            collect_diagnostics(diagnostics, codemap, report_collector);
             emitter.emit(diagnostics);
         }
         ParserError::ModelBuildingError(ModelBuildingError::Diagnosis(diagnostics)) => {
+            collect_diagnostics(diagnostics, codemap, report_collector);
             emitter.emit(diagnostics);
         }
         ParserError::ModelBuildingError(ModelBuildingError::ExternalResourceParsing(e)) => {
