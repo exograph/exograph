@@ -10,6 +10,7 @@
 pub mod access;
 pub mod aggregate;
 pub mod limit_offset;
+pub mod migration;
 pub mod mutation;
 pub mod operation;
 pub mod order;

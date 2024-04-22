@@ -10,6 +10,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Command;
+use postgres_model::migration::Migration;
 use std::{io::Write, path::PathBuf};
 
 use exo_sql::schema::database_spec::DatabaseSpec;
@@ -21,7 +22,7 @@ use crate::{
     util::open_file_for_output,
 };
 
-use super::{migration::Migration, util};
+use super::util;
 
 pub(super) struct CreateCommandDefinition {}
 
@@ -47,7 +48,7 @@ impl CommandDefinition for CreateCommandDefinition {
         // Creating the schema from the model is the same as migrating from an empty database.
         let migrations = Migration::from_schemas(
             &DatabaseSpec::new(vec![]),
-            &DatabaseSpec::from_database(postgres_subsystem.database),
+            &DatabaseSpec::from_database(&postgres_subsystem.database),
         );
         migrations.write(&mut buffer, true)?;
 
