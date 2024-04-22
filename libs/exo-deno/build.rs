@@ -13,4 +13,7 @@ fn main() {
     let snapshot_path = o.join("RUNTIME_SNAPSHOT.bin");
 
     deno_runtime::snapshot::create_runtime_snapshot(snapshot_path, snapshot_options);
+
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-env-changed=TARGET");
 }
