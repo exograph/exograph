@@ -14,7 +14,9 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
+use exo_sql::DatabaseClient;
 use futures::FutureExt;
+use postgres_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use super::command::{enforce_trusted_documents_arg, get, port_arg, CommandDefinition};
@@ -23,7 +25,7 @@ use crate::{
         command::{
             default_model_file, ensure_exo_project_dir, setup_trusted_documents_enforcement,
         },
-        schema::{migration::Migration, verify::VerificationErrors},
+        schema::{migrate::open_database, util},
         util::wait_for_enter,
     },
     util::watcher,
@@ -68,17 +70,19 @@ impl CommandDefinition for DevCommandDefinition {
 
         watcher::start_watcher(&root_path, port, || async {
             println!("{}", "\nVerifying new model...".blue().bold());
+            let db_client = open_database(None).await?;
 
             loop {
-                let verification_result = Migration::verify(None, &model).await;
+                let postgres_subsystem = util::create_postgres_system(&model, None).await?;
+                let verification_result = Migration::verify(&db_client, &postgres_subsystem).await;
 
                 match verification_result {
                     Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
-                        let migrations = Migration::from_db_and_model(None, &model).await?;
+                        let migrations = Migration::from_db_and_model(&db_client, &postgres_subsystem).await?;
 
                         // If migrations are safe to apply, let's go ahead with those
                         if !migrations.has_destructive_changes() {
-                            if apply_migration(&migrations).await? {
+                            if apply_migration(&db_client, &migrations).await? {
                                 break Ok(());
                             } else {
                                 // Migration failed, perhaps due to adding a non-nullable column and table already had rows
@@ -107,7 +111,7 @@ impl CommandDefinition for DevCommandDefinition {
                                     continue;
                                 }
 
-                                if apply_migration(&migrations).await? {
+                                if apply_migration(&db_client, &migrations).await? {
                                     break Ok(());
                                 } else {
                                     continue;
@@ -139,9 +143,9 @@ impl CommandDefinition for DevCommandDefinition {
     }
 }
 
-async fn apply_migration(migrations: &Migration) -> Result<bool> {
+async fn apply_migration(db_client: &DatabaseClient, migrations: &Migration) -> Result<bool> {
     println!("{}", "Applying migration...".blue().bold());
-    let result = migrations.apply(None, true).await;
+    let result = migrations.apply(db_client, true).await;
     match result {
         Ok(_) => {
             println!("{}", "Migration successful!".green().bold());

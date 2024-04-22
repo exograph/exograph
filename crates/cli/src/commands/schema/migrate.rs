@@ -10,6 +10,8 @@
 use std::{io, path::PathBuf};
 
 use anyhow::anyhow;
+use exo_sql::{database_error::DatabaseError, DatabaseClient};
+use postgres_model::migration::Migration;
 
 use crate::{
     commands::command::{
@@ -19,7 +21,7 @@ use crate::{
     util::open_file_for_output,
 };
 
-use super::migration::Migration;
+use super::util;
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command};
@@ -65,13 +67,15 @@ impl CommandDefinition for MigrateCommandDefinition {
             ));
         }
 
-        let migrations = Migration::from_db_and_model(database.as_deref(), &model).await?;
+        let postgres_subsystem = util::create_postgres_system(&model, None).await?;
+        let db_client = open_database(database.as_deref()).await?;
+        let migrations = Migration::from_db_and_model(&db_client, &postgres_subsystem).await?;
 
         if apply_to_database {
             if migrations.has_destructive_changes() {
                 Err(anyhow!("Migration contains destructive changes"))
             } else {
-                migrations.apply(database.as_deref(), false).await?;
+                migrations.apply(&db_client, false).await?;
                 Ok(())
             }
         } else {
@@ -79,5 +83,13 @@ impl CommandDefinition for MigrateCommandDefinition {
             migrations.write(&mut buffer, allow_destructive_changes)?;
             Ok(())
         }
+    }
+}
+
+pub async fn open_database(database: Option<&str>) -> Result<DatabaseClient, DatabaseError> {
+    if let Some(database) = database {
+        Ok(DatabaseClient::from_db_url(database, true).await?)
+    } else {
+        Ok(DatabaseClient::from_env(Some(1)).await?)
     }
 }
