@@ -154,7 +154,7 @@ impl DatabaseSpec {
         database
     }
 
-    pub fn from_database(database: Database) -> DatabaseSpec {
+    pub fn from_database(database: &Database) -> DatabaseSpec {
         let tables = database
             .tables()
             .into_iter()
@@ -165,7 +165,7 @@ impl DatabaseSpec {
                         .columns
                         .clone()
                         .into_iter()
-                        .map(|c| ColumnSpec::from_physical(c, &database))
+                        .map(|c| ColumnSpec::from_physical(c, database))
                         .collect(),
                     table
                         .indices

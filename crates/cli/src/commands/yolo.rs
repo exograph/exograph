@@ -15,6 +15,7 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
+use postgres_model::migration::{self, Migration};
 use std::{
     path::{Path, PathBuf},
     sync::atomic::Ordering,
@@ -22,7 +23,7 @@ use std::{
 
 use crate::{
     commands::{
-        schema::migration::{self, Migration},
+        schema::{migrate::open_database, util},
         util::wait_for_enter,
     },
     util::watcher,
@@ -142,12 +143,15 @@ async fn run_server(
         }
     };
 
+    let db_client = open_database(None).await?;
+
     // generate migrations for current database
-    let migrations = Migration::from_db_and_model(None, model).await?;
+    let postgres_subystem = util::create_postgres_system(model, None).await?;
+    let migrations = Migration::from_db_and_model(&db_client, &postgres_subystem).await?;
 
     // execute migration
     println!("Applying migrations...");
-    let result = migrations.apply(None, true).await;
+    let result = migrations.apply(&db_client, true).await;
 
     const CONTINUE: &str = "Continue with old schema";
     const REBUILD: &str = "Rebuild Postgres schema (wipe out all data)";
@@ -158,13 +162,14 @@ async fn run_server(
         println!("Error while applying migration: {e}");
         let options = vec![CONTINUE, REBUILD, PAUSE, EXIT];
         let ans = inquire::Select::new("Choose an option:", options).prompt()?;
+        let db_client = open_database(None).await?;
 
         match ans {
             CONTINUE => {
                 println!("Continuing with old incompatible schema...");
             }
             REBUILD => {
-                migration::wipe_database(None).await?;
+                migration::wipe_database(&db_client).await?;
                 run_server(model, jwt_secret, db).await?;
             }
             PAUSE => {
