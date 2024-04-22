@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("cargo:rerun-if-env-changed=TARGET");
     if !std::env::var("TARGET").unwrap().starts_with("wasm") {
         // TODO: Simplify this once https://github.com/rust-lang/cargo/pull/12158 lands
         let graphiql_folder_path = std::env::current_dir()?
@@ -32,31 +33,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "index.html",
                 "vite.config.js",
             ] {
-                println!(
-                    "cargo:rerun-if-changed={}",
-                    sub_folder.join(dependent_path).display()
-                );
-
-                if !std::process::Command::new(npm.clone())
-                    .arg("ci")
-                    .current_dir(sub_folder)
-                    .spawn()?
-                    .wait()?
-                    .success()
-                {
-                    panic!("Failed to install graphiql dependencies");
+                if sub_folder.join(dependent_path).exists() {
+                    println!(
+                        "cargo:rerun-if-changed={}",
+                        sub_folder.join(dependent_path).display()
+                    );
                 }
+            }
 
-                if !std::process::Command::new(npm.clone())
-                    .arg("run")
-                    .arg("build")
-                    .current_dir(sub_folder)
-                    .spawn()?
-                    .wait()?
-                    .success()
-                {
-                    panic!("Failed to build graphiql");
-                }
+            if !std::process::Command::new(npm.clone())
+                .arg("ci")
+                .current_dir(sub_folder)
+                .spawn()?
+                .wait()?
+                .success()
+            {
+                panic!("Failed to install graphiql dependencies");
+            }
+
+            if !std::process::Command::new(npm.clone())
+                .arg("run")
+                .arg("build")
+                .current_dir(sub_folder)
+                .spawn()?
+                .wait()?
+                .success()
+            {
+                panic!("Failed to build graphiql");
             }
         }
     }
