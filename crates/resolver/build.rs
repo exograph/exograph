@@ -36,27 +36,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "cargo:rerun-if-changed={}",
                     sub_folder.join(dependent_path).display()
                 );
+            }
 
-                if !std::process::Command::new(npm.clone())
-                    .arg("ci")
-                    .current_dir(sub_folder)
-                    .spawn()?
-                    .wait()?
-                    .success()
-                {
-                    panic!("Failed to install graphiql dependencies");
-                }
+            if !std::process::Command::new(npm.clone())
+                .arg("ci")
+                .current_dir(sub_folder)
+                .spawn()?
+                .wait()?
+                .success()
+            {
+                panic!("Failed to install graphiql dependencies");
+            }
 
-                if !std::process::Command::new(npm.clone())
-                    .arg("run")
-                    .arg("build")
-                    .current_dir(sub_folder)
-                    .spawn()?
-                    .wait()?
-                    .success()
-                {
-                    panic!("Failed to build graphiql");
-                }
+            if !std::process::Command::new(npm.clone())
+                .arg("run")
+                .arg("build")
+                .current_dir(sub_folder)
+                .spawn()?
+                .wait()?
+                .success()
+            {
+                panic!("Failed to build graphiql");
             }
         }
     }
