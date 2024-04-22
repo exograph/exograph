@@ -9,16 +9,15 @@
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use builder::error::ParserError;
 use clap::Command;
-use exo_sql::database_error::DatabaseError;
-use std::{fmt::Display, path::PathBuf};
+use postgres_model::migration::{Migration, VerificationErrors};
+use std::path::PathBuf;
 
 use crate::commands::command::{
     database_arg, default_model_file, ensure_exo_project_dir, get, CommandDefinition,
 };
 
-use super::migration::Migration;
+use super::{migrate::open_database, util};
 
 pub(super) struct VerifyCommandDefinition {}
 
@@ -38,7 +37,9 @@ impl CommandDefinition for VerifyCommandDefinition {
         let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
 
-        let verification_result = Migration::verify(database.as_deref(), &model).await;
+        let db_client = open_database(database.as_deref()).await?;
+        let postgres_subsystem = util::create_postgres_system(&model, None).await?;
+        let verification_result = Migration::verify(&db_client, &postgres_subsystem).await;
 
         match &verification_result {
             Ok(()) => eprintln!("This model is compatible with the database schema!"),
@@ -51,39 +52,5 @@ impl CommandDefinition for VerifyCommandDefinition {
         }
 
         verification_result.map_err(|_| anyhow!("Incompatible model."))
-    }
-}
-
-pub enum VerificationErrors {
-    PostgresError(DatabaseError),
-    ParserError(ParserError),
-    ModelNotCompatible(Vec<String>),
-}
-
-impl From<DatabaseError> for VerificationErrors {
-    fn from(e: DatabaseError) -> Self {
-        VerificationErrors::PostgresError(e)
-    }
-}
-
-impl From<ParserError> for VerificationErrors {
-    fn from(e: ParserError) -> Self {
-        VerificationErrors::ParserError(e)
-    }
-}
-
-impl Display for VerificationErrors {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            VerificationErrors::PostgresError(e) => write!(f, "Postgres error: {e}"),
-            VerificationErrors::ParserError(e) => write!(f, "Error while parsing model: {e}"),
-            VerificationErrors::ModelNotCompatible(e) => {
-                for error in e.iter() {
-                    writeln!(f, "- {error}")?
-                }
-
-                Ok(())
-            }
-        }
     }
 }

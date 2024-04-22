@@ -7,26 +7,50 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::path::PathBuf;
+use std::fmt::Display;
 
-use builder::error::ParserError;
+use super::subsystem::PostgresSubsystem;
 use exo_sql::{
     database_error::DatabaseError,
     schema::{database_spec::DatabaseSpec, issue::WithIssues, op::SchemaOp, spec::diff},
     DatabaseClient,
 };
 
-use super::{util, verify::VerificationErrors};
-
 #[derive(Debug)]
-pub(crate) struct Migration {
+pub struct Migration {
     pub statements: Vec<MigrationStatement>,
 }
 
 #[derive(Debug)]
-pub(crate) struct MigrationStatement {
+pub struct MigrationStatement {
     pub statement: String,
     pub is_destructive: bool,
+}
+
+pub enum VerificationErrors {
+    PostgresError(DatabaseError),
+    ModelNotCompatible(Vec<String>),
+}
+
+impl From<DatabaseError> for VerificationErrors {
+    fn from(e: DatabaseError) -> Self {
+        VerificationErrors::PostgresError(e)
+    }
+}
+
+impl Display for VerificationErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VerificationErrors::PostgresError(e) => write!(f, "Postgres error: {e}"),
+            VerificationErrors::ModelNotCompatible(e) => {
+                for error in e.iter() {
+                    writeln!(f, "- {error}")?
+                }
+
+                Ok(())
+            }
+        }
+    }
 }
 
 impl Migration {
@@ -81,16 +105,16 @@ impl Migration {
     }
 
     pub async fn from_db_and_model(
-        db_url: Option<&str>,
-        model_path: &PathBuf,
-    ) -> Result<Self, anyhow::Error> {
-        let old_schema = extract_db_schema(db_url).await?;
+        database: &DatabaseClient,
+        postgres_subsystem: &PostgresSubsystem,
+    ) -> Result<Self, DatabaseError> {
+        let old_schema = extract_db_schema(database).await?;
 
         for issue in &old_schema.issues {
             eprintln!("{issue}");
         }
 
-        let database_spec = extract_model_schema(model_path).await?;
+        let database_spec = DatabaseSpec::from_database(&postgres_subsystem.database);
 
         Ok(Migration::from_schemas(&old_schema.value, &database_spec))
     }
@@ -102,16 +126,16 @@ impl Migration {
     }
 
     pub async fn verify(
-        db_url: Option<&str>,
-        model_path: &PathBuf,
+        database: &DatabaseClient,
+        postgres_subsystem: &PostgresSubsystem,
     ) -> Result<(), VerificationErrors> {
-        let old_schema = extract_db_schema(db_url).await?;
+        let old_schema = extract_db_schema(database).await?;
 
         for issue in &old_schema.issues {
             eprintln!("{issue}");
         }
 
-        let new_schema = extract_model_schema(model_path).await?;
+        let new_schema = DatabaseSpec::from_database(&postgres_subsystem.database);
 
         let diff = diff(&old_schema.value, &new_schema);
 
@@ -126,10 +150,9 @@ impl Migration {
 
     pub async fn apply(
         &self,
-        db_url: Option<&str>,
+        database: &DatabaseClient,
         allow_destructive_changes: bool,
     ) -> Result<(), anyhow::Error> {
-        let database = open_database(db_url).await?;
         let mut client = database.get_client().await?;
         let transaction = client.transaction().await?;
         for MigrationStatement {
@@ -178,22 +201,14 @@ impl MigrationStatement {
 }
 
 async fn extract_db_schema(
-    db_url: Option<&str>,
+    database: &DatabaseClient,
 ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
-    let database = open_database(db_url).await?;
     let client = database.get_client().await?;
 
     DatabaseSpec::from_live_database(&client).await
 }
 
-async fn extract_model_schema(model_path: &PathBuf) -> Result<DatabaseSpec, ParserError> {
-    let postgres_subsystem = util::create_postgres_system(model_path, None).await?;
-
-    Ok(DatabaseSpec::from_database(postgres_subsystem.database))
-}
-
-pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
-    let database = open_database(db_url).await?;
+pub async fn wipe_database(database: &DatabaseClient) -> Result<(), DatabaseError> {
     let client = database.get_client().await?;
     client
         .execute("DROP SCHEMA public CASCADE", &[])
@@ -207,22 +222,16 @@ pub async fn wipe_database(db_url: Option<&str>) -> Result<(), DatabaseError> {
     Ok(())
 }
 
-pub async fn open_database(database: Option<&str>) -> Result<DatabaseClient, DatabaseError> {
-    if let Some(database) = database {
-        Ok(DatabaseClient::from_db_url(database, true).await?)
-    } else {
-        Ok(DatabaseClient::from_env(Some(1)).await?)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::commands::schema::util;
-
     use super::*;
+    use core_plugin_interface::{
+        error::ModelSerializationError, serializable_system::SerializableSystem,
+    };
     use stripmargin::StripMargin;
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn add_model() {
         assert_changes(
             "",
@@ -258,7 +267,8 @@ mod tests {
         .await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn add_field() {
         assert_changes(
             r#"
@@ -304,7 +314,8 @@ mod tests {
         .await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn add_relation_and_related_model() {
         assert_changes(
             r#"
@@ -385,7 +396,8 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn add_relation_field() {
         assert_changes(
             r#"
@@ -467,7 +479,8 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn update_relation_optionality() {
         // venue: Venue <-> venue: Venue?
         assert_changes(
@@ -547,7 +560,8 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn add_indices() {
         assert_changes(
             r#"
@@ -639,7 +653,8 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn modify_multi_column_indices() {
         assert_changes(
             r#"
@@ -743,7 +758,8 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn add_indices_non_public_schemas() {
         assert_changes(
             r#"
@@ -878,7 +894,8 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn one_to_one_constraints() {
         assert_changes(
             r#"
@@ -970,7 +987,8 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn multi_column_unique_constraint() {
         assert_changes(
             r#"
@@ -1028,7 +1046,8 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn multi_column_unique_constraint_participation_change() {
         assert_changes(
             r#"
@@ -1102,7 +1121,8 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn default_value_change() {
         assert_changes(
             r#"
@@ -1177,7 +1197,8 @@ mod tests {
         .await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn not_null() {
         assert_changes(
             r#"
@@ -1228,7 +1249,8 @@ mod tests {
         .await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn non_public_schema() {
         assert_changes(
             r#"
@@ -1331,7 +1353,8 @@ mod tests {
         .await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn introduce_vector_field() {
         assert_changes(
             r#"
@@ -1391,7 +1414,8 @@ mod tests {
         .await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn vector_indexes_default_distance_function() {
         assert_changes(
             r#"
@@ -1442,7 +1466,8 @@ mod tests {
         .await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn vector_indexes_distance_function_change() {
         assert_changes(
             r#"
@@ -1499,7 +1524,8 @@ mod tests {
         .await
     }
 
-    #[tokio::test]
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn vector_size_change() {
         assert_changes(
             r#"
@@ -1574,13 +1600,53 @@ mod tests {
         .await
     }
 
-    async fn compute_spec(model: &str) -> DatabaseSpec {
-        let postgres_subsystem =
-            util::create_postgres_system_from_str(model, "test.exo".to_string())
-                .await
-                .unwrap();
+    async fn create_postgres_system_from_str(
+        model_str: &str,
+        file_name: String,
+    ) -> Result<PostgresSubsystem, ModelSerializationError> {
+        use core_plugin_interface::system_serializer::SystemSerializer;
 
-        DatabaseSpec::from_database(postgres_subsystem.database)
+        let serialized_system = builder::build_system_from_str(
+            model_str,
+            file_name,
+            vec![Box::new(
+                postgres_model_builder::PostgresSubsystemBuilder {},
+            )],
+        )
+        .await
+        .unwrap();
+        let system = SerializableSystem::deserialize(serialized_system)?;
+
+        deserialize_postgres_subsystem(system)
+    }
+
+    fn deserialize_postgres_subsystem(
+        system: SerializableSystem,
+    ) -> Result<PostgresSubsystem, ModelSerializationError> {
+        use core_plugin_interface::system_serializer::SystemSerializer;
+
+        system
+            .subsystems
+            .into_iter()
+            .find_map(|subsystem| {
+                if subsystem.id == "postgres" {
+                    Some(PostgresSubsystem::deserialize(
+                        subsystem.serialized_subsystem,
+                    ))
+                } else {
+                    None
+                }
+            })
+            // If there is no database subsystem in the serialized system, create an empty one
+            .unwrap_or_else(|| Ok(PostgresSubsystem::default()))
+    }
+
+    async fn compute_spec(model: &str) -> DatabaseSpec {
+        let postgres_subsystem = create_postgres_system_from_str(model, "test.exo".to_string())
+            .await
+            .unwrap();
+
+        DatabaseSpec::from_database(&postgres_subsystem.database)
     }
 
     async fn assert_changes(
