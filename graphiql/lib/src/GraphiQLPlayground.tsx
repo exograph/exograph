@@ -7,7 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import React, { useState, useRef, useContext, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useContext,
+  useEffect,
+  useCallback,
+} from "react";
 import GraphiQL from "graphiql";
 import { Fetcher, FetcherOpts, FetcherParams } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
@@ -127,31 +133,48 @@ function SchemaFetchingCore({
   );
   const networkErrorCount = useRef(0);
 
-  async function fetchAndSetSchema() {
-    const schema = await fetchSchema(schemaFetcher);
+  const fetchAndSetSchema = useCallback(async () => {
+    const fetchedSchema = await fetchSchema(schemaFetcher);
 
     // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
     if (networkErrorCount.current >= 3) {
       setSchema("NetworkError");
-      return;
-    } else if (schema === "NetworkError") {
+    } else if (fetchedSchema === "NetworkError") {
       // let the old schema stay in place
       networkErrorCount.current += 1;
     } else {
       // Reset the counter when there is no network error
+      setSchema(fetchedSchema);
+    }
+  }, [setSchema, schemaFetcher]);
+
+  const isSchemaValid: boolean = schema !== null && typeof schema !== "string";
+
+  useEffect(() => {
+    if (isSchemaValid) {
       networkErrorCount.current = 0;
-      setSchema(schema);
     }
+  }, [isSchemaValid]);
 
-    if (enableSchemaLiveUpdate) {
-      // Schedule another fetch in 2 seconds only if there was no network error while fetching the schema
-      setTimeout(fetchAndSetSchema, 2000);
+  // Fetch schema only if needed (when the schema is not loaded or is invalid)
+  useEffect(() => {
+    (async () => {
+      if (!isSchemaValid) {
+        await fetchAndSetSchema();
+      }
+    })();
+  }, [fetchAndSetSchema, isSchemaValid]);
+
+  useEffect(() => {
+    if (
+      !enableSchemaLiveUpdate ||
+      (schema === "NetworkError" && networkErrorCount.current >= 3)
+    ) {
+      return;
     }
-  }
-
-  if (schema === null) {
-    fetchAndSetSchema();
-  }
+    const intervalId = setInterval(fetchAndSetSchema, 2000);
+    return () => clearInterval(intervalId);
+  }, [enableSchemaLiveUpdate, schema, fetchAndSetSchema]);
 
   let errorMessage = null;
   let core = null;
@@ -180,7 +203,14 @@ function SchemaFetchingCore({
     } else if (schema === "InvalidSchema") {
       errorMessage = <InvalidSchema />;
     } else if (networkErrorCount.current >= 3) {
-      errorMessage = <NetworkError />;
+      errorMessage = (
+        <NetworkError
+          onReload={() => {
+            networkErrorCount.current = 0;
+            setSchema(null);
+          }}
+        />
+      );
     }
   } else {
     core = (
@@ -300,17 +330,14 @@ function EmptySchema() {
   );
 }
 
-function NetworkError() {
+function NetworkError({ onReload: onRetry }: { onReload: () => void }) {
   return (
     <ErrorMessage
       title="Network error"
       message="Please ensure that the server is running."
     >
-      <button
-        className="graphiql-button reload-btn"
-        onClick={() => window.location.reload()}
-      >
-        Reload
+      <button className="graphiql-button reload-btn" onClick={() => onRetry()}>
+        Retry
       </button>
     </ErrorMessage>
   );
