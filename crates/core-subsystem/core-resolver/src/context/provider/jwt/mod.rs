@@ -9,6 +9,7 @@
 
 mod authenticator;
 mod extractor;
+#[cfg(feature = "oidc")]
 mod oidc;
 
 pub use authenticator::JwtAuthenticator;

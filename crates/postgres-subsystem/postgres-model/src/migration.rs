@@ -1604,9 +1604,7 @@ mod tests {
         model_str: &str,
         file_name: String,
     ) -> Result<PostgresSubsystem, ModelSerializationError> {
-        use core_plugin_interface::system_serializer::SystemSerializer;
-
-        let serialized_system = builder::build_system_from_str(
+        let system = builder::build_system_from_str(
             model_str,
             file_name,
             vec![Box::new(
@@ -1615,7 +1613,6 @@ mod tests {
         )
         .await
         .unwrap();
-        let system = SerializableSystem::deserialize(serialized_system)?;
 
         deserialize_postgres_subsystem(system)
     }

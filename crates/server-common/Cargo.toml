@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 common = { path = "../common", features = ["opentelemetry"] }
-resolver = { path = "../resolver", features = ["jwt"] }
+resolver = { path = "../resolver", features = ["oidc"] }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 postgres-resolver = { path = "../postgres-subsystem/postgres-resolver", features = ["network", "bigdecimal", "vector"], optional = true }

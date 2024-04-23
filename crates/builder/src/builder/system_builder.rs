@@ -13,7 +13,6 @@ use core_model_builder::typechecker::typ::TypecheckedSystem;
 use core_plugin_interface::interface::SubsystemBuilder;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
 use core_plugin_shared::serializable_system::SerializableSystem;
-use core_plugin_shared::system_serializer::SystemSerializer;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
 
 /// Build a [ModelSystem] given an [AstSystem].
@@ -37,7 +36,7 @@ pub async fn build(
     subsystem_builders: &[Box<dyn SubsystemBuilder + Send + Sync>],
     typechecked_system: TypecheckedSystem,
     trusted_documents: TrustedDocuments,
-) -> Result<Vec<u8>, ModelBuildingError> {
+) -> Result<SerializableSystem, ModelBuildingError> {
     let base_system = core_model_builder::builder::system_builder::build(&typechecked_system)?;
 
     let mut subsystem_interceptions = vec![];
@@ -81,12 +80,10 @@ pub async fn build(
         OperationKind::Mutation,
     );
 
-    let system = SerializableSystem {
+    Ok(SerializableSystem {
         subsystems,
         query_interception_map,
         mutation_interception_map,
         trusted_documents,
-    };
-
-    system.serialize().map_err(ModelBuildingError::Serialize)
+    })
 }

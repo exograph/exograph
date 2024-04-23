@@ -11,6 +11,8 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use builder::error::ParserError;
 use clap::{ArgMatches, Command};
+use core_plugin_shared::serializable_system::SerializableSystem;
+use core_plugin_shared::system_serializer::SystemSerializer;
 
 use std::error::Error;
 use std::fmt::Display;
@@ -65,7 +67,7 @@ impl Display for BuildError {
 pub(crate) async fn build_system_with_static_builders(
     model: &Path,
     trusted_documents_dir: Option<&Path>,
-) -> Result<Vec<u8>, ParserError> {
+) -> Result<SerializableSystem, ParserError> {
     let static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>> = vec![
         Box::new(postgres_model_builder::PostgresSubsystemBuilder {}),
         Box::new(deno_model_builder::DenoSubsystemBuilder {}),
@@ -99,7 +101,9 @@ pub(crate) async fn build(print_message: bool) -> Result<(), BuildError> {
     })?;
 
     let mut out_file = BufWriter::new(File::create(&exo_ir_file_name).unwrap());
-    out_file.write_all(&serialized_system).unwrap();
+    let serialized = SystemSerializer::serialize(&serialized_system)
+        .map_err(|e| BuildError::ParserError(e.into()))?;
+    out_file.write_all(&serialized).unwrap();
 
     if print_message {
         println!("Exograph IR file {} created", exo_ir_file_name.display());

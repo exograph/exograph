@@ -21,7 +21,9 @@ use std::env::current_exe;
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level};
 use core_plugin_interface::interface::{LibraryLoadingError, SubsystemBuilder};
-use core_plugin_shared::trusted_documents::TrustedDocuments;
+use core_plugin_shared::{
+    serializable_system::SerializableSystem, trusted_documents::TrustedDocuments,
+};
 use error::ParserError;
 
 #[cfg(not(target_family = "wasm"))]
@@ -50,7 +52,7 @@ pub async fn build_system(
     model_file: impl AsRef<Path>,
     trusted_documents_dir: Option<impl AsRef<Path>>,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
-) -> Result<Vec<u8>, ParserError> {
+) -> Result<SerializableSystem, ParserError> {
     let file_content = fs::read_to_string(model_file.as_ref())?;
     let mut codemap = CodeMap::new();
 
@@ -81,7 +83,7 @@ pub async fn build_system_from_str(
     model_str: &str,
     file_name: String,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
-) -> Result<Vec<u8>, ParserError> {
+) -> Result<SerializableSystem, ParserError> {
     build_system_from_str_with_reporting(
         model_str,
         file_name,
@@ -96,7 +98,7 @@ pub async fn build_system_from_str_with_reporting(
     file_name: String,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
     reporter: &mut impl ErrorReporter,
-) -> Result<Vec<u8>, ParserError> {
+) -> Result<SerializableSystem, ParserError> {
     let mut codemap = CodeMap::new();
     codemap.add_file(file_name.clone(), model_str.to_string());
 
@@ -164,7 +166,7 @@ async fn build_from_ast_system(
     ast_system: Result<AstSystem<Untyped>, ParserError>,
     trusted_documents: TrustedDocuments,
     static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>>,
-) -> Result<Vec<u8>, ParserError> {
+) -> Result<SerializableSystem, ParserError> {
     let subsystem_builders = load_subsystem_builders(static_builders)
         .map_err(|e| ParserError::Generic(format!("{e}")))?;
 
@@ -172,9 +174,7 @@ async fn build_from_ast_system(
 
     let typechecked_system = typechecker::build(&subsystem_builders, ast_system)?;
 
-    builder::build(&subsystem_builders, typechecked_system, trusted_documents)
-        .await
-        .map_err(|err| err.into())
+    Ok(builder::build(&subsystem_builders, typechecked_system, trusted_documents).await?)
 }
 
 #[cfg(not(target_family = "wasm"))]

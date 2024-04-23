@@ -6,6 +6,7 @@ publish = false
 
 [features]
 jwt = ["core-resolver/jwt"]
+oidc = ["jwt", "core-resolver/oidc"]
 
 [dependencies]
 async-recursion.workspace = true

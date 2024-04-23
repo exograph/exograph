@@ -38,7 +38,7 @@ exo-sql = { path = "../../libs/exo-sql", features = [ "tls", "postgres-url", "te
 exo-deno = { path = "../../libs/exo-deno", features = ["typescript-loader"] }
 
 core-resolver = { path = "../core-subsystem/core-resolver" }
-resolver = { path = "../resolver", features = ["jwt"] }
+resolver = { path = "../resolver", features = ["oidc"] }
 
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 

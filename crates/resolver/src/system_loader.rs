@@ -49,20 +49,10 @@ impl SystemLoader {
         let serialized_system = SerializableSystem::deserialize_reader(read)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
-        Self::process(serialized_system, static_loaders).await
+        Self::load_from_system(serialized_system, static_loaders).await
     }
 
-    pub async fn load_from_bytes(
-        bytes: Vec<u8>,
-        static_loaders: StaticLoaders,
-    ) -> Result<SystemResolver, SystemLoadingError> {
-        let serialized_system = SerializableSystem::deserialize(bytes)
-            .map_err(SystemLoadingError::ModelSerializationError)?;
-
-        Self::process(serialized_system, static_loaders).await
-    }
-
-    async fn process(
+    pub async fn load_from_system(
         serialized_system: SerializableSystem,
         mut static_loaders: StaticLoaders,
     ) -> Result<SystemResolver, SystemLoadingError> {

@@ -111,9 +111,6 @@ mod tests {
     use super::*;
 
     use async_graphql_parser::parse_query;
-    use core_plugin_shared::{
-        serializable_system::SerializableSystem, system_serializer::SystemSerializer,
-    };
     use exo_sql::DatabaseClient;
 
     macro_rules! assert_debug {
@@ -845,7 +842,7 @@ mod tests {
         model_str: &str,
         file_name: String,
     ) -> Box<dyn core_plugin_interface::core_resolver::plugin::SubsystemResolver> {
-        let serialized_system = builder::build_system_from_str(
+        let system = builder::build_system_from_str(
             model_str,
             file_name,
             vec![Box::new(
@@ -854,7 +851,6 @@ mod tests {
         )
         .await
         .unwrap();
-        let system = SerializableSystem::deserialize(serialized_system).unwrap();
 
         let subsystem_id = "postgres";
 
