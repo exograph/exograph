@@ -7,7 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import React, { useState, useRef, useContext, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useContext,
+  useEffect,
+  useCallback,
+} from "react";
 import GraphiQL from "graphiql";
 import { Fetcher, FetcherOpts, FetcherParams } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
@@ -31,6 +37,7 @@ interface _GraphiQLPlaygroundProps {
   fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
+  schemaId?: number;
   theme?: Theme;
 }
 
@@ -39,6 +46,7 @@ export function GraphiQLPlayground({
   oidcUrl,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  schemaId,
   theme,
 }: GraphiQLPlaygroundProps) {
   return (
@@ -47,6 +55,7 @@ export function GraphiQLPlayground({
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         enableSchemaLiveUpdate={enableSchemaLiveUpdate}
+        schemaId={schemaId}
         theme={theme}
       />
     </AuthContextProvider>
@@ -57,6 +66,7 @@ function _GraphiQLPlayground({
   fetcher,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  schemaId,
   theme,
 }: _GraphiQLPlaygroundProps) {
   const { getTokenFn } = useContext(AuthContext);
@@ -104,6 +114,7 @@ function _GraphiQLPlayground({
       schemaFetcher={schemaFetcher}
       upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
       enableSchemaLiveUpdate={enableSchemaLiveUpdate}
+      schemaId={schemaId}
       theme={theme}
     />
   );
@@ -114,12 +125,14 @@ function SchemaFetchingCore({
   fetcher,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  schemaId,
   theme,
 }: {
   schemaFetcher: Fetcher;
   fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
+  schemaId?: number;
   theme?: Theme;
 }) {
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
@@ -127,31 +140,57 @@ function SchemaFetchingCore({
   );
   const networkErrorCount = useRef(0);
 
-  async function fetchAndSetSchema() {
-    const schema = await fetchSchema(schemaFetcher);
-
-    // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
-    if (networkErrorCount.current >= 3) {
-      setSchema("NetworkError");
-      return;
-    } else if (schema === "NetworkError") {
-      // let the old schema stay in place
-      networkErrorCount.current += 1;
-    } else {
-      // Reset the counter when there is no network error
-      networkErrorCount.current = 0;
-      setSchema(schema);
-    }
+  const fetchAndSetSchema = useCallback(async () => {
+    const fetchedSchema = await fetchSchema(schemaFetcher);
 
     if (enableSchemaLiveUpdate) {
-      // Schedule another fetch in 2 seconds only if there was no network error while fetching the schema
-      setTimeout(fetchAndSetSchema, 2000);
+      // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
+      if (networkErrorCount.current >= 3) {
+        setSchema("NetworkError");
+      } else if (fetchedSchema === "NetworkError") {
+        // let the old schema stay in place
+        networkErrorCount.current += 1;
+      } else {
+        // Reset the counter when there is no network error
+        setSchema(fetchedSchema);
+      }
+    } else {
+      setSchema(fetchedSchema);
     }
-  }
+  }, [setSchema, schemaFetcher, enableSchemaLiveUpdate]);
 
-  if (schema === null) {
-    fetchAndSetSchema();
-  }
+  const unrecoverableNetworkError =
+    schema === "NetworkError" &&
+    (networkErrorCount.current >= 3 || !enableSchemaLiveUpdate);
+
+  // Reset the schema when the schemaId changes (another effect will re-fetch the schema)
+  useEffect(() => {
+    setSchema(null);
+  }, [schemaId]);
+
+  // Reset the network error count when the schema is loaded
+  useEffect(() => {
+    if (schema !== null && typeof schema !== "string") {
+      networkErrorCount.current = 0;
+    }
+  }, [schema]);
+
+  // Fetch schema only if needed (when the schema is not loaded or is invalid)
+  useEffect(() => {
+    (async () => {
+      if (!(schema !== null && typeof schema !== "string")) {
+        await fetchAndSetSchema();
+      }
+    })();
+  }, [fetchAndSetSchema, schema]);
+
+  useEffect(() => {
+    if (!enableSchemaLiveUpdate || unrecoverableNetworkError) {
+      return;
+    }
+    const intervalId = setInterval(fetchAndSetSchema, 2000);
+    return () => clearInterval(intervalId);
+  }, [enableSchemaLiveUpdate, schema, fetchAndSetSchema]);
 
   let errorMessage = null;
   let core = null;
@@ -179,8 +218,15 @@ function SchemaFetchingCore({
       errorMessage = <EmptySchema />;
     } else if (schema === "InvalidSchema") {
       errorMessage = <InvalidSchema />;
-    } else if (networkErrorCount.current >= 3) {
-      errorMessage = <NetworkError />;
+    } else if (unrecoverableNetworkError) {
+      errorMessage = (
+        <NetworkError
+          onRetry={() => {
+            networkErrorCount.current = 0;
+            setSchema(null);
+          }}
+        />
+      );
     }
   } else {
     core = (
@@ -300,17 +346,14 @@ function EmptySchema() {
   );
 }
 
-function NetworkError() {
+function NetworkError({ onRetry }: { onRetry: () => void }) {
   return (
     <ErrorMessage
       title="Network error"
       message="Please ensure that the server is running."
     >
-      <button
-        className="graphiql-button reload-btn"
-        onClick={() => window.location.reload()}
-      >
-        Reload
+      <button className="graphiql-button reload-btn" onClick={() => onRetry()}>
+        Retry
       </button>
     </ErrorMessage>
   );
