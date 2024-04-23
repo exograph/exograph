@@ -37,6 +37,7 @@ interface _GraphiQLPlaygroundProps {
   fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
+  schemaId?: number;
   theme?: Theme;
 }
 
@@ -45,6 +46,7 @@ export function GraphiQLPlayground({
   oidcUrl,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  schemaId,
   theme,
 }: GraphiQLPlaygroundProps) {
   return (
@@ -53,6 +55,7 @@ export function GraphiQLPlayground({
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         enableSchemaLiveUpdate={enableSchemaLiveUpdate}
+        schemaId={schemaId}
         theme={theme}
       />
     </AuthContextProvider>
@@ -63,6 +66,7 @@ function _GraphiQLPlayground({
   fetcher,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  schemaId,
   theme,
 }: _GraphiQLPlaygroundProps) {
   const { getTokenFn } = useContext(AuthContext);
@@ -110,6 +114,7 @@ function _GraphiQLPlayground({
       schemaFetcher={schemaFetcher}
       upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
       enableSchemaLiveUpdate={enableSchemaLiveUpdate}
+      schemaId={schemaId}
       theme={theme}
     />
   );
@@ -120,12 +125,14 @@ function SchemaFetchingCore({
   fetcher,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  schemaId,
   theme,
 }: {
   schemaFetcher: Fetcher;
   fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
+  schemaId?: number;
   theme?: Theme;
 }) {
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
@@ -136,40 +143,49 @@ function SchemaFetchingCore({
   const fetchAndSetSchema = useCallback(async () => {
     const fetchedSchema = await fetchSchema(schemaFetcher);
 
-    // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
-    if (networkErrorCount.current >= 3) {
-      setSchema("NetworkError");
-    } else if (fetchedSchema === "NetworkError") {
-      // let the old schema stay in place
-      networkErrorCount.current += 1;
+    if (enableSchemaLiveUpdate) {
+      // Ignore network errors for 3 consecutive fetches (to avoid failing when the server is restarting during development or the network is flaky)
+      if (networkErrorCount.current >= 3) {
+        setSchema("NetworkError");
+      } else if (fetchedSchema === "NetworkError") {
+        // let the old schema stay in place
+        networkErrorCount.current += 1;
+      } else {
+        // Reset the counter when there is no network error
+        setSchema(fetchedSchema);
+      }
     } else {
-      // Reset the counter when there is no network error
       setSchema(fetchedSchema);
     }
-  }, [setSchema, schemaFetcher]);
+  }, [setSchema, schemaFetcher, enableSchemaLiveUpdate]);
 
-  const isSchemaValid: boolean = schema !== null && typeof schema !== "string";
+  const unrecoverableNetworkError =
+    schema === "NetworkError" &&
+    (networkErrorCount.current >= 3 || !enableSchemaLiveUpdate);
 
+  // Reset the schema when the schemaId changes (another effect will re-fetch the schema)
   useEffect(() => {
-    if (isSchemaValid) {
+    setSchema(null);
+  }, [schemaId]);
+
+  // Reset the network error count when the schema is loaded
+  useEffect(() => {
+    if (schema !== null && typeof schema !== "string") {
       networkErrorCount.current = 0;
     }
-  }, [isSchemaValid]);
+  }, [schema]);
 
   // Fetch schema only if needed (when the schema is not loaded or is invalid)
   useEffect(() => {
     (async () => {
-      if (!isSchemaValid) {
+      if (!(schema !== null && typeof schema !== "string")) {
         await fetchAndSetSchema();
       }
     })();
-  }, [fetchAndSetSchema, isSchemaValid]);
+  }, [fetchAndSetSchema, schema]);
 
   useEffect(() => {
-    if (
-      !enableSchemaLiveUpdate ||
-      (schema === "NetworkError" && networkErrorCount.current >= 3)
-    ) {
+    if (!enableSchemaLiveUpdate || unrecoverableNetworkError) {
       return;
     }
     const intervalId = setInterval(fetchAndSetSchema, 2000);
@@ -202,10 +218,10 @@ function SchemaFetchingCore({
       errorMessage = <EmptySchema />;
     } else if (schema === "InvalidSchema") {
       errorMessage = <InvalidSchema />;
-    } else if (networkErrorCount.current >= 3) {
+    } else if (unrecoverableNetworkError) {
       errorMessage = (
         <NetworkError
-          onReload={() => {
+          onRetry={() => {
             networkErrorCount.current = 0;
             setSchema(null);
           }}
@@ -330,7 +346,7 @@ function EmptySchema() {
   );
 }
 
-function NetworkError({ onReload: onRetry }: { onReload: () => void }) {
+function NetworkError({ onRetry }: { onRetry: () => void }) {
   return (
     <ErrorMessage
       title="Network error"
