@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-import React, { useState, useRef, useContext } from "react";
+import React, { useState, useRef, useContext, useEffect } from "react";
 import GraphiQL from "graphiql";
 import { Fetcher, FetcherOpts, FetcherParams } from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
@@ -20,6 +20,8 @@ import { explorerPlugin } from "@graphiql/plugin-explorer";
 import "./index.css";
 import "graphiql/graphiql.css";
 import "@graphiql/plugin-explorer/dist/style.css";
+import { useTheme as useGraphiqlTheme } from "@graphiql/react";
+import { Theme, useTheme } from "./theme";
 
 interface GraphiQLPlaygroundProps extends _GraphiQLPlaygroundProps {
   oidcUrl?: string;
@@ -29,6 +31,7 @@ interface _GraphiQLPlaygroundProps {
   fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
+  theme?: Theme;
 }
 
 export function GraphiQLPlayground({
@@ -36,6 +39,7 @@ export function GraphiQLPlayground({
   oidcUrl,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  theme,
 }: GraphiQLPlaygroundProps) {
   return (
     <AuthContextProvider oidcUrl={oidcUrl}>
@@ -43,6 +47,7 @@ export function GraphiQLPlayground({
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         enableSchemaLiveUpdate={enableSchemaLiveUpdate}
+        theme={theme}
       />
     </AuthContextProvider>
   );
@@ -52,6 +57,7 @@ function _GraphiQLPlayground({
   fetcher,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  theme,
 }: _GraphiQLPlaygroundProps) {
   const { getTokenFn } = useContext(AuthContext);
 
@@ -98,6 +104,7 @@ function _GraphiQLPlayground({
       schemaFetcher={schemaFetcher}
       upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
       enableSchemaLiveUpdate={enableSchemaLiveUpdate}
+      theme={theme}
     />
   );
 }
@@ -107,11 +114,13 @@ function SchemaFetchingCore({
   fetcher,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  theme,
 }: {
   schemaFetcher: Fetcher;
   fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
+  theme?: Theme;
 }) {
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
     null
@@ -154,6 +163,7 @@ function SchemaFetchingCore({
         schema={null}
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
+        theme={theme}
       />
     );
   } else if (typeof schema == "string") {
@@ -162,6 +172,7 @@ function SchemaFetchingCore({
         schema={null}
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
+        theme={theme}
       />
     );
     if (schema === "EmptySchema") {
@@ -177,6 +188,7 @@ function SchemaFetchingCore({
         schema={schema}
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
+        theme={theme}
       />
     );
   }
@@ -193,10 +205,12 @@ function Core({
   schema,
   fetcher,
   upstreamGraphQLEndpoint,
+  theme,
 }: {
   schema: GraphQLSchema | null;
   fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
+  theme?: Theme;
 }) {
   // GraphiQL loses the persisted headers when the schema is updated (or the playground is manually
   // reloaded) So, use the current value of the setting in local storage as the initial value
@@ -204,6 +218,14 @@ function Core({
     localStorage.getItem("graphiql:shouldPersistHeaders") === "true";
 
   const explorer = explorerPlugin({ showAttribution: false });
+
+  const { setTheme: setGraphiqlTheme } = useGraphiqlTheme();
+  const storedTheme = useTheme();
+  const effectiveTheme = theme || storedTheme;
+
+  useEffect(() => {
+    setGraphiqlTheme(effectiveTheme);
+  }, [setGraphiqlTheme, effectiveTheme]);
 
   return (
     <>
@@ -218,7 +240,7 @@ function Core({
         showPersistHeadersSettings={true}
       >
         <GraphiQL.Logo>
-          <Logo />
+          <Logo theme={effectiveTheme} />
         </GraphiQL.Logo>
         {upstreamGraphQLEndpoint && (
           <GraphiQL.Footer>

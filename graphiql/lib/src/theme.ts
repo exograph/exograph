@@ -1,8 +1,17 @@
-
-import { useTheme as useGraphiqlTheme } from "@graphiql/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark';
+
+export function useTheme(): Theme {
+  const graphiqlTheme = useGraphiqlTheme();
+  const browserTheme = useBrowserTheme();
+
+  // Fallback to the browser's theme if GraphiQL's theme is set to "System" (which will make `graphiqlTheme` as null)
+  if (!graphiqlTheme) {
+    return browserTheme;
+  }
+  return graphiqlTheme;
+}
 
 function useBrowserTheme(): Theme {
   const mql = useRef(window.matchMedia("(prefers-color-scheme: dark)")).current;
@@ -24,13 +33,27 @@ function useBrowserTheme(): Theme {
   return theme;
 };
 
-export function useTheme(): Theme {
-  const graphiqlTheme = useGraphiqlTheme().theme;
-  const browserTheme = useBrowserTheme();
+// Detect changes to GraphiQL's theme based on the class of the body element (the useTheme from GraphiQL doesn't work for resetting logo)
+function useGraphiqlTheme(): Theme | null {
+  const [theme, setTheme] = useState<Theme | null>(localStorage.getItem("graphiql:theme") as Theme | null);
 
-  // Fallback to the browser's theme if GraphiQL's theme is set to "System" (which will make `graphiqlTheme` as null)
-  if (graphiqlTheme === null) {
-    return browserTheme;
-  }
-  return graphiqlTheme;
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const bodyClass = document.body.classList;
+      if (bodyClass.contains("graphiql-light")) {
+        setTheme("light");
+      } else if (bodyClass.contains("graphiql-dark")) {
+        setTheme("dark");
+      } else {
+        setTheme(null);
+      }
+    });
+    observer.observe(document.body, { attributeFilter: ["class"] })
+
+    return () => { observer.disconnect() }
+
+  }, []);
+
+  return theme;
+
 }
