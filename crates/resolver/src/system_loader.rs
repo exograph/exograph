@@ -13,7 +13,6 @@ use std::sync::Arc;
 #[cfg(not(target_family = "wasm"))]
 use common::env_const::EXO_INTROSPECTION;
 use common::EnvError;
-#[cfg(feature = "jwt")]
 use core_resolver::context::JwtAuthenticator;
 use introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
@@ -118,13 +117,9 @@ impl SystemLoader {
 
         let (normal_query_depth_limit, introspection_query_depth_limit) = query_depth_limits()?;
 
-        #[cfg(feature = "jwt")]
         let authenticator = JwtAuthenticator::new_from_env()
             .await
             .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
-
-        #[cfg(not(feature = "jwt"))]
-        let authenticator = None;
 
         Ok(SystemResolver::new(
             subsystem_resolvers,

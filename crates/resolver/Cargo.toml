@@ -5,8 +5,7 @@ edition.workspace = true
 publish = false
 
 [features]
-jwt = ["core-resolver/jwt"]
-oidc = ["jwt", "core-resolver/oidc"]
+oidc = ["core-resolver/oidc"]
 
 [dependencies]
 async-recursion.workspace = true
