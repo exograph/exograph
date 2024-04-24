@@ -1,6 +1,8 @@
 use std::cell::RefCell;
+#[cfg(not(target_family = "wasm"))]
 use std::env;
 
+#[cfg(not(target_family = "wasm"))]
 use common::env_const::{EXO_JWT_SECRET, EXO_OIDC_URL};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde_json::Value;
@@ -11,11 +13,13 @@ use tracing::error;
 use crate::context::error::ContextExtractionError;
 use crate::context::request::Request;
 
+#[cfg(feature = "oidc")]
 use super::oidc::Oidc;
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
     pub static LOCAL_JWT_SECRET: RefCell<Option<String>> =  const { RefCell::new(None) };
+    #[cfg(feature = "oidc")]
     pub static LOCAL_OIDC_URL: RefCell<Option<String>> =  const {RefCell::new(None) };
 }
 
@@ -23,6 +27,7 @@ thread_local! {
 /// It can be either a secret or a OIDC url
 pub enum JwtAuthenticator {
     Secret(String),
+    #[cfg(feature = "oidc")]
     Oidc(Oidc),
 }
 
@@ -51,22 +56,37 @@ pub enum JwtConfigurationError {
 impl JwtAuthenticator {
     pub async fn new_from_env() -> Result<Option<Self>, JwtConfigurationError> {
         let secret = LOCAL_JWT_SECRET.with(|local_jwt_secret| {
-            local_jwt_secret
-                .borrow()
-                .clone()
-                .or_else(|| env::var(EXO_JWT_SECRET).ok())
+            local_jwt_secret.borrow().clone().or_else(|| {
+                #[cfg(not(target_family = "wasm"))]
+                {
+                    env::var(EXO_JWT_SECRET).ok()
+                }
+
+                #[cfg(target_family = "wasm")]
+                {
+                    None
+                }
+            })
         });
 
+        #[cfg(feature = "oidc")]
         let oidc_url =
             LOCAL_OIDC_URL.with(|url| url.borrow().clone().or_else(|| env::var(EXO_OIDC_URL).ok()));
 
+        #[cfg(not(feature = "oidc"))]
+        let oidc_url: Option<String> = None;
+
         match (secret, oidc_url) {
             (Some(secret), None) => Ok(Some(JwtAuthenticator::Secret(secret))),
+            #[cfg(feature = "oidc")]
             (None, Some(oidc_url)) => Ok(Some(JwtAuthenticator::Oidc(Oidc::new(oidc_url).await?))),
+            #[cfg(feature = "oidc")]
             (Some(_), Some(_)) => {
                 Err(JwtConfigurationError::InvalidSetup(format!("Both {EXO_JWT_SECRET} and {EXO_OIDC_URL} are set. Only one of them can be set at a time")))
             }
             (None, None) => Ok(None),
+            #[cfg(not(feature = "oidc"))]
+            (_, Some(_)) => unreachable!()
         }
     }
 
@@ -88,6 +108,7 @@ impl JwtAuthenticator {
             )
             .map_err(map_jwt_error)?
             .claims),
+            #[cfg(feature = "oidc")]
             JwtAuthenticator::Oidc(oidc) => oidc.validate(token).await.map_err(|err| match err {
                 oidc_jwt_validator::ValidationError::ValidationFailed(err) => map_jwt_error(err),
                 err => {

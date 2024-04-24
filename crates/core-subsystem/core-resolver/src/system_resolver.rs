@@ -29,7 +29,6 @@ use thiserror::Error;
 use tokio::runtime::Handle;
 use tracing::{error, instrument, warn};
 
-#[cfg(feature = "jwt")]
 use crate::context::provider::jwt::JwtAuthenticator;
 
 use crate::{
@@ -62,7 +61,6 @@ pub struct SystemResolver {
     mutation_interception_map: InterceptionMap,
     trusted_documents: TrustedDocuments,
     schema: Schema,
-    #[cfg(feature = "jwt")]
     pub jwt_authenticator: Arc<Option<JwtAuthenticator>>,
     pub env: HashMap<String, String>,
     normal_query_depth_limit: usize,
@@ -77,8 +75,7 @@ impl SystemResolver {
         mutation_interception_map: InterceptionMap,
         trusted_documents: TrustedDocuments,
         schema: Schema,
-        #[cfg(feature = "jwt")] jwt_authenticator: Arc<Option<JwtAuthenticator>>,
-        #[cfg(not(feature = "jwt"))] jwt_authenticator: Arc<Option<()>>,
+        jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: HashMap<String, String>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
@@ -94,16 +91,12 @@ impl SystemResolver {
             }
         };
 
-        #[cfg(not(feature = "jwt"))]
-        assert!(jwt_authenticator.is_none());
-
         Self {
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
             trusted_documents,
             schema,
-            #[cfg(feature = "jwt")]
             jwt_authenticator,
             env,
             normal_query_depth_limit,

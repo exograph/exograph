@@ -13,7 +13,6 @@ use std::sync::Arc;
 #[cfg(not(target_family = "wasm"))]
 use common::env_const::EXO_INTROSPECTION;
 use common::EnvError;
-#[cfg(feature = "jwt")]
 use core_resolver::context::JwtAuthenticator;
 use introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
@@ -49,20 +48,10 @@ impl SystemLoader {
         let serialized_system = SerializableSystem::deserialize_reader(read)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
-        Self::process(serialized_system, static_loaders).await
+        Self::load_from_system(serialized_system, static_loaders).await
     }
 
-    pub async fn load_from_bytes(
-        bytes: Vec<u8>,
-        static_loaders: StaticLoaders,
-    ) -> Result<SystemResolver, SystemLoadingError> {
-        let serialized_system = SerializableSystem::deserialize(bytes)
-            .map_err(SystemLoadingError::ModelSerializationError)?;
-
-        Self::process(serialized_system, static_loaders).await
-    }
-
-    async fn process(
+    pub async fn load_from_system(
         serialized_system: SerializableSystem,
         mut static_loaders: StaticLoaders,
     ) -> Result<SystemResolver, SystemLoadingError> {
@@ -128,13 +117,9 @@ impl SystemLoader {
 
         let (normal_query_depth_limit, introspection_query_depth_limit) = query_depth_limits()?;
 
-        #[cfg(feature = "jwt")]
         let authenticator = JwtAuthenticator::new_from_env()
             .await
             .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
-
-        #[cfg(not(feature = "jwt"))]
-        let authenticator = None;
 
         Ok(SystemResolver::new(
             subsystem_resolvers,

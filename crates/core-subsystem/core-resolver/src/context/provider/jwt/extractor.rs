@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+#[cfg(not(target_family = "wasm"))]
 use common::env_const::{EXO_JWT_SECRET, EXO_OIDC_URL};
 use serde_json::Value;
 use tokio::sync::OnceCell;
@@ -33,6 +34,10 @@ impl JwtExtractor {
         if let Some(jwt_authenticator) = self.jwt_authenticator.as_ref() {
             jwt_authenticator.extract_authentication(request).await
         } else {
+            #[cfg(target_family = "wasm")]
+            warn!("JWT secret or OIDC URL is not set, not parsing JWT tokens");
+
+            #[cfg(not(target_family = "wasm"))]
             warn!(
                 "{} or {} is not set, not parsing JWT tokens",
                 EXO_JWT_SECRET, EXO_OIDC_URL

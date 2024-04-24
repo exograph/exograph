@@ -12,7 +12,7 @@
 use std::sync::Arc;
 
 use ::common::env_const::{EXO_CHECK_CONNECTION_ON_STARTUP, EXO_POSTGRES_URL};
-use resolver::create_system_resolver_from_serialized_bytes;
+use resolver::create_system_resolver_from_system;
 use serde_json::Value;
 use server_aws_lambda::resolve;
 use server_common::create_static_loaders;
@@ -31,7 +31,7 @@ pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
         .await
         .unwrap();
     let system_resolver = Arc::new(
-        create_system_resolver_from_serialized_bytes(model_system, create_static_loaders())
+        create_system_resolver_from_system(model_system, create_static_loaders())
             .await
             .unwrap(),
     );

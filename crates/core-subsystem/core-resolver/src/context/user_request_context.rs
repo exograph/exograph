@@ -15,7 +15,6 @@ use exo_sql::TransactionHolder;
 
 use crate::{system_resolver::SystemResolver, value::Val};
 
-#[cfg(feature = "jwt")]
 use super::provider::jwt::JwtExtractor;
 use super::provider::{
     cookie::CookieExtractor, environment::EnvironmentContextExtractor, header::HeaderExtractor,
@@ -52,7 +51,6 @@ impl<'a> UserRequestContext<'a> {
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
             Box::new(CookieExtractor::new()),
-            #[cfg(feature = "jwt")]
             Box::new(JwtExtractor::new(system_resolver.jwt_authenticator.clone())),
         ];
 

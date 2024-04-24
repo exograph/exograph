@@ -15,6 +15,7 @@ use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
 #[cfg(not(target_family = "wasm"))]
 use common::env_const::is_production;
+use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::QueryResponse;
 
@@ -201,11 +202,11 @@ pub async fn create_system_resolver(
     }
 }
 
-pub async fn create_system_resolver_from_serialized_bytes(
-    bytes: Vec<u8>,
+pub async fn create_system_resolver_from_system(
+    system: SerializableSystem,
     static_loaders: StaticLoaders,
 ) -> Result<SystemResolver, SystemLoadingError> {
-    SystemLoader::load_from_bytes(bytes, static_loaders).await
+    SystemLoader::load_from_system(system, static_loaders).await
 }
 
 pub async fn create_system_resolver_or_exit(

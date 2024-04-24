@@ -7,7 +7,7 @@ publish = false
 [features]
 default = []
 test-context = []
-jwt = ["jsonwebtoken", "reqwest", "oidc-jwt-validator"]
+oidc = ["reqwest", "oidc-jwt-validator"]
 
 [dependencies]
 async-graphql-parser.workspace = true
@@ -18,7 +18,7 @@ async-trait.workspace = true
 bytes.workspace = true
 futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
-jsonwebtoken = { workspace = true, optional = true }
+jsonwebtoken = { workspace = true }
 reqwest = { workspace = true, optional = true }
 oidc-jwt-validator = { version = "0.2.3", optional = true }
 serde.workspace = true
@@ -48,4 +48,3 @@ core-plugin-interface = { path = "../core-plugin-interface" }
 
 [lib]
 doctest = false
-
