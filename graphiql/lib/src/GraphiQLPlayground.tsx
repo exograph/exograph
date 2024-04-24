@@ -28,9 +28,11 @@ import "graphiql/graphiql.css";
 import "@graphiql/plugin-explorer/dist/style.css";
 import { useTheme as useGraphiqlTheme } from "@graphiql/react";
 import { Theme, useTheme } from "./theme";
+import { JwtSecret } from "./auth/secret";
 
 interface GraphiQLPlaygroundProps extends _GraphiQLPlaygroundProps {
   oidcUrl?: string;
+  jwtSecret?: JwtSecret;
 }
 
 interface _GraphiQLPlaygroundProps {
@@ -44,13 +46,14 @@ interface _GraphiQLPlaygroundProps {
 export function GraphiQLPlayground({
   fetcher,
   oidcUrl,
+  jwtSecret,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
   schemaId,
   theme,
 }: GraphiQLPlaygroundProps) {
   return (
-    <AuthContextProvider oidcUrl={oidcUrl}>
+    <AuthContextProvider oidcUrl={oidcUrl} jwtSecret={jwtSecret}>
       <_GraphiQLPlayground
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}

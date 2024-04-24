@@ -3,27 +3,32 @@ const defaultClaims = `{
   "name": "Jordan Taylor"
 }`;
 
+export class JwtSecret {
+  constructor(readonly value: string, readonly readOnly: boolean) {
+    this.value = value;
+    this.readOnly = readOnly;
+  }
+
+  static default(): JwtSecret {
+    return new JwtSecret("", false);
+  }
+}
+
 export class SecretConfig {
-  private _secret: string;
-  get secret(): string {
-    return this._secret;
+  constructor(readonly secret: JwtSecret, readonly claims: string) {
+    this.secret = secret;
+    this.claims = claims;
   }
 
-  private _claims: string;
-  get claims(): string {
-    return this._claims;
-  }
-
-  constructor(secret: string, claims: string) {
-    this._secret = secret;
-    this._claims = claims;
+  updated(value: string, claims: string): SecretConfig {
+    return new SecretConfig(new JwtSecret(value, this.secret.readOnly), claims);
   }
 
   canSignIn(): boolean {
     return !!this.secret && !!this.claims;
   }
 
-  static loadConfig(): SecretConfig {
-    return new SecretConfig("", defaultClaims);
+  static loadConfig(secret: JwtSecret): SecretConfig {
+    return new SecretConfig(secret || JwtSecret.default(), defaultClaims);
   }
 }

@@ -4,7 +4,9 @@ import { SignInPanel } from "./SignInPanel";
 import { AuthConfigProvider } from "./AuthConfigProvider";
 import { UserIcon } from "./UserIcon";
 
-export class ClerkAuthPlugin implements AuthPlugin {
+export class ClerkAuthPlugin implements AuthPlugin<undefined> {
+  config = undefined;
+
   getAuthConfigProvider(): React.ComponentType<{ children: ReactNode }> {
     return AuthConfigProvider;
   }

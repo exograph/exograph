@@ -6,7 +6,6 @@ import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 
 import { tags } from "@lezer/highlight";
-import { SecretConfig } from "./SecretConfig";
 import { AuthConfigContext } from "./AuthConfigProvider";
 import { SecretAuthContext } from "./SecretAuthProvider";
 
@@ -17,11 +16,9 @@ export function SignInPanel(props: { onDone: () => void }) {
   const { config, setConfig } = useContext(AuthConfigContext);
   const { setSignedIn } = useContext(SecretAuthContext);
 
-  const [jwtSecret, setJwtSecret] = useState(config.secret);
+  const [jwtSecret, setJwtSecret] = useState(config.secret.value);
   const [claims, setClaims] = useState(config.claims || "");
-  const [claimsError, setClaimsError] = useState<string | undefined>(
-    undefined
-  );
+  const [claimsError, setClaimsError] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     try {
@@ -36,10 +33,17 @@ export function SignInPanel(props: { onDone: () => void }) {
   const enableSignIn = !claimsError && jwtSecret && claims ? true : false;
 
   function onSignIn() {
-    setConfig(new SecretConfig(jwtSecret, claims));
+    setConfig(config.updated(jwtSecret, claims));
     setSignedIn(true);
     props.onDone();
   }
+
+  const secretStyleAdditions = config.secret.readOnly
+    ? {
+        backgroundColor: "lightgray",
+        cursor: "not-allowed",
+      }
+    : {};
 
   return (
     <div
@@ -51,9 +55,13 @@ export function SignInPanel(props: { onDone: () => void }) {
     >
       <div style={labelStyle}>Secret</div>
       <CodeMirror
-        style={codeMirrorStyle}
+        style={{
+          ...codeMirrorStyle,
+          ...secretStyleAdditions,
+        }}
         placeholder={"EXO_JWT_SECRET value"}
         value={jwtSecret}
+        editable={!config.secret.readOnly}
         basicSetup={{
           lineNumbers: false,
           foldGutter: false,

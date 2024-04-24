@@ -14,7 +14,8 @@ export const AuthConfigContext = React.createContext<AuthConfig>(
 );
 
 export function AuthConfigProvider(props: { children: React.ReactNode }) {
-  const [config, setConfig] = useState(SecretConfig.loadConfig());
+  const { plugin } = useContext(AuthContext);
+  const [config, setConfig] = useState(SecretConfig.loadConfig(plugin.config));
 
   return (
     <AuthConfigContext.Provider
@@ -37,13 +38,15 @@ function ContextInitializer(props: { children: React.ReactNode }) {
     useContext(AuthContext);
 
   useEffect(() => {
-    const secret = config.secret;
     const claims = config.claims;
 
     setTokenFn &&
       setTokenFn(
         signedIn
-          ? () => Promise.resolve(createJwtToken(JSON.parse(claims), secret))
+          ? () =>
+              Promise.resolve(
+                createJwtToken(JSON.parse(claims), config.secret.value)
+              )
           : undefined
       );
     setIsSignedIn && setIsSignedIn(signedIn);
