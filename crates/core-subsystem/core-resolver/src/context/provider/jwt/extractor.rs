@@ -35,9 +35,7 @@ impl JwtExtractor {
             jwt_authenticator.extract_authentication(request).await
         } else {
             #[cfg(target_family = "wasm")]
-            warn!(
-                "JWT secret or OIDC URL is not set, not parsing JWT tokens"
-            );
+            warn!("JWT secret or OIDC URL is not set, not parsing JWT tokens");
 
             #[cfg(not(target_family = "wasm"))]
             warn!(

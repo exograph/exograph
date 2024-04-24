@@ -56,20 +56,17 @@ pub enum JwtConfigurationError {
 impl JwtAuthenticator {
     pub async fn new_from_env() -> Result<Option<Self>, JwtConfigurationError> {
         let secret = LOCAL_JWT_SECRET.with(|local_jwt_secret| {
-            local_jwt_secret
-                .borrow()
-                .clone()
-                .or_else(|| {
-                    #[cfg(not(target_family = "wasm"))]
-                    {
-                        env::var(EXO_JWT_SECRET).ok()
-                    }
+            local_jwt_secret.borrow().clone().or_else(|| {
+                #[cfg(not(target_family = "wasm"))]
+                {
+                    env::var(EXO_JWT_SECRET).ok()
+                }
 
-                    #[cfg(target_family = "wasm")]
-                    {
-                        None
-                    }
-                })
+                #[cfg(target_family = "wasm")]
+                {
+                    None
+                }
+            })
         });
 
         #[cfg(feature = "oidc")]
