@@ -3,6 +3,7 @@ import { ClerkAuthPlugin } from "./auth/clerk";
 import { SecretAuthPlugin } from "./auth/secret";
 import { Auth0AuthPlugin } from "./auth/auth0";
 import { AuthPlugin } from "./AuthPlugin";
+import { JwtSecret } from "./auth/secret/SecretConfig";
 
 type GetToken = () => Promise<string | null>;
 
@@ -14,8 +15,8 @@ export function updateLocalStorage(key: string, value?: string): void {
   }
 }
 
-type AuthContextType = {
-  plugin: AuthPlugin;
+type AuthContextType<C> = {
+  plugin: AuthPlugin<C>;
 
   getTokenFn?: GetToken;
   setTokenFn?: (getToken: GetToken | undefined) => void;
@@ -30,15 +31,17 @@ type AuthContextType = {
   setUserInfo?: (userInfo?: string) => void;
 };
 
-export const AuthContext = createContext<AuthContextType>(
-  null as any as AuthContextType
+export const AuthContext = createContext<AuthContextType<any>>(
+  null as any as AuthContextType<any>
 );
 
 export function AuthContextProvider({
   oidcUrl,
+  jwtSecret,
   children,
 }: {
   oidcUrl?: string;
+  jwtSecret?: JwtSecret;
   children: React.ReactNode;
 }) {
   const [isSignedIn, setIsSignedIn] = useState<boolean | undefined>(false);
@@ -54,16 +57,12 @@ export function AuthContextProvider({
       ? "clerk"
       : "secret";
 
-  const plugin: AuthPlugin =
+  const plugin: AuthPlugin<any> =
     authenticatorType === "clerk"
       ? new ClerkAuthPlugin()
       : authenticatorType === "auth0"
       ? new Auth0AuthPlugin()
-      : new SecretAuthPlugin();
-
-  const defaultContext: AuthContextType = {
-    plugin,
-  };
+      : new SecretAuthPlugin(jwtSecret);
 
   const setTokenFnCb = useCallback(
     (f: GetToken | undefined) => {
@@ -84,7 +83,7 @@ export function AuthContextProvider({
       value={{
         isSignedIn,
         setIsSignedIn,
-        plugin: defaultContext.plugin,
+        plugin,
         getTokenFn,
         setTokenFn: setTokenFnCb,
         getSignOutFn,
