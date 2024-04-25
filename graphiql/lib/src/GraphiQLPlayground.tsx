@@ -40,6 +40,7 @@ interface _GraphiQLPlaygroundProps {
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
   schemaId?: number;
+  initialQuery?: string;
   theme?: Theme;
 }
 
@@ -50,6 +51,7 @@ export function GraphiQLPlayground({
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
   schemaId,
+  initialQuery,
   theme,
 }: GraphiQLPlaygroundProps) {
   return (
@@ -59,6 +61,7 @@ export function GraphiQLPlayground({
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         enableSchemaLiveUpdate={enableSchemaLiveUpdate}
         schemaId={schemaId}
+        initialQuery={initialQuery}
         theme={theme}
       />
     </AuthContextProvider>
@@ -70,6 +73,7 @@ function _GraphiQLPlayground({
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
   schemaId,
+  initialQuery,
   theme,
 }: _GraphiQLPlaygroundProps) {
   const { getTokenFn } = useContext(AuthContext);
@@ -118,6 +122,7 @@ function _GraphiQLPlayground({
       upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
       enableSchemaLiveUpdate={enableSchemaLiveUpdate}
       schemaId={schemaId}
+      initialQuery={initialQuery}
       theme={theme}
     />
   );
@@ -129,6 +134,7 @@ function SchemaFetchingCore({
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
   schemaId,
+  initialQuery,
   theme,
 }: {
   schemaFetcher: Fetcher;
@@ -136,6 +142,7 @@ function SchemaFetchingCore({
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
   schemaId?: number;
+  initialQuery?: string;
   theme?: Theme;
 }) {
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
@@ -203,6 +210,7 @@ function SchemaFetchingCore({
     core = (
       <Core
         schema={null}
+        initialQuery={initialQuery}
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         theme={theme}
@@ -212,6 +220,7 @@ function SchemaFetchingCore({
     core = (
       <Core
         schema={null}
+        initialQuery={initialQuery}
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         theme={theme}
@@ -235,6 +244,7 @@ function SchemaFetchingCore({
     core = (
       <Core
         schema={schema}
+        initialQuery={initialQuery}
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         theme={theme}
@@ -252,20 +262,17 @@ function SchemaFetchingCore({
 
 function Core({
   schema,
+  initialQuery,
   fetcher,
   upstreamGraphQLEndpoint,
   theme,
 }: {
   schema: GraphQLSchema | null;
+  initialQuery?: string;
   fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
   theme?: Theme;
 }) {
-  // GraphiQL loses the persisted headers when the schema is updated (or the playground is manually
-  // reloaded) So, use the current value of the setting in local storage as the initial value
-  const shouldPersistHeaders =
-    localStorage.getItem("graphiql:shouldPersistHeaders") === "true";
-
   const explorer = explorerPlugin({ showAttribution: false });
 
   const { setTheme: setGraphiqlTheme } = useGraphiqlTheme();
@@ -280,12 +287,12 @@ function Core({
     <>
       <GraphiQL
         fetcher={fetcher}
+        query={initialQuery}
         plugins={[explorer]}
         defaultEditorToolsVisibility={true}
         isHeadersEditorEnabled={true}
         schema={schema}
         toolbar={{ additionalContent: <AuthToolbarButton /> }}
-        shouldPersistHeaders={shouldPersistHeaders}
         showPersistHeadersSettings={true}
       >
         <GraphiQL.Logo>
