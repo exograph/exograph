@@ -35,7 +35,7 @@ function useBrowserTheme(): Theme {
 
 // Detect changes to GraphiQL's theme based on the class of the body element (the useTheme from GraphiQL doesn't work for resetting logo)
 function useGraphiqlTheme(): Theme | null {
-  const [theme, setTheme] = useState<Theme | null>(localStorage.getItem("graphiql:theme") as Theme | null);
+  const [theme, setTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
