@@ -13,9 +13,15 @@ import React, {
   useContext,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 import GraphiQL from "graphiql";
-import { Fetcher, FetcherOpts, FetcherParams } from "@graphiql/toolkit";
+import {
+  Fetcher,
+  FetcherOpts,
+  FetcherParams,
+  createLocalStorage,
+} from "@graphiql/toolkit";
 import { GraphQLSchema } from "graphql";
 import { fetchSchema, SchemaError } from "./schema";
 import { AuthContext, AuthContextProvider } from "./AuthContext";
@@ -35,13 +41,10 @@ interface GraphiQLPlaygroundProps extends _GraphiQLPlaygroundProps {
   jwtSecret?: JwtSecret;
 }
 
-interface _GraphiQLPlaygroundProps {
-  fetcher: Fetcher;
+interface _GraphiQLPlaygroundProps extends GraphiQLPassThroughProps {
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
   schemaId?: number;
-  initialQuery?: string;
-  theme?: Theme;
 }
 
 export function GraphiQLPlayground({
@@ -53,6 +56,7 @@ export function GraphiQLPlayground({
   schemaId,
   initialQuery,
   theme,
+  storageKey,
 }: GraphiQLPlaygroundProps) {
   return (
     <AuthContextProvider oidcUrl={oidcUrl} jwtSecret={jwtSecret}>
@@ -63,9 +67,17 @@ export function GraphiQLPlayground({
         schemaId={schemaId}
         initialQuery={initialQuery}
         theme={theme}
+        storageKey={storageKey}
       />
     </AuthContextProvider>
   );
+}
+
+interface GraphiQLPassThroughProps {
+  fetcher: Fetcher;
+  initialQuery?: string;
+  theme?: Theme;
+  storageKey?: string;
 }
 
 function _GraphiQLPlayground({
@@ -75,6 +87,7 @@ function _GraphiQLPlayground({
   schemaId,
   initialQuery,
   theme,
+  storageKey,
 }: _GraphiQLPlaygroundProps) {
   const { getTokenFn } = useContext(AuthContext);
 
@@ -124,6 +137,7 @@ function _GraphiQLPlayground({
       schemaId={schemaId}
       initialQuery={initialQuery}
       theme={theme}
+      storageKey={storageKey}
     />
   );
 }
@@ -136,15 +150,13 @@ function SchemaFetchingCore({
   schemaId,
   initialQuery,
   theme,
+  storageKey,
 }: {
   schemaFetcher: Fetcher;
-  fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
   schemaId?: number;
-  initialQuery?: string;
-  theme?: Theme;
-}) {
+} & GraphiQLPassThroughProps) {
   const [schema, setSchema] = useState<GraphQLSchema | SchemaError | null>(
     null
   );
@@ -214,6 +226,7 @@ function SchemaFetchingCore({
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         theme={theme}
+        storageKey={storageKey}
       />
     );
   } else if (typeof schema == "string") {
@@ -224,6 +237,7 @@ function SchemaFetchingCore({
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         theme={theme}
+        storageKey={storageKey}
       />
     );
     if (schema === "EmptySchema") {
@@ -248,6 +262,7 @@ function SchemaFetchingCore({
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         theme={theme}
+        storageKey={storageKey}
       />
     );
   }
@@ -266,13 +281,11 @@ function Core({
   fetcher,
   upstreamGraphQLEndpoint,
   theme,
+  storageKey,
 }: {
-  schema: GraphQLSchema | null;
-  initialQuery?: string;
-  fetcher: Fetcher;
   upstreamGraphQLEndpoint?: string;
-  theme?: Theme;
-}) {
+  schema: GraphQLSchema | null;
+} & GraphiQLPassThroughProps) {
   const explorer = explorerPlugin({ showAttribution: false });
 
   const { setTheme: setGraphiqlTheme } = useGraphiqlTheme();
@@ -282,6 +295,12 @@ function Core({
   useEffect(() => {
     setGraphiqlTheme(effectiveTheme);
   }, [setGraphiqlTheme, effectiveTheme]);
+
+  const storage = useMemo(() => {
+    return createLocalStorage({
+      namespace: `exograph-playground:${storageKey || ""}`,
+    });
+  }, [storageKey]);
 
   return (
     <>
@@ -294,6 +313,7 @@ function Core({
         schema={schema}
         toolbar={{ additionalContent: <AuthToolbarButton /> }}
         showPersistHeadersSettings={true}
+        storage={storage}
       >
         <GraphiQL.Logo>
           <Logo theme={effectiveTheme} />
