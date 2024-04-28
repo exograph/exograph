@@ -15,13 +15,14 @@ use exo_sql::{
     schema::{database_spec::DatabaseSpec, issue::WithIssues, op::SchemaOp, spec::diff},
     DatabaseClient,
 };
+use serde::Serialize;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Migration {
     pub statements: Vec<MigrationStatement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct MigrationStatement {
     pub statement: String,
     pub is_destructive: bool,
