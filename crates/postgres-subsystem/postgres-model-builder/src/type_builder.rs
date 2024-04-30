@@ -116,19 +116,19 @@ pub(super) fn build_expanded(
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_type_fields(c, building, resolved_env, false);
+            expand_type_fields(c, building, resolved_env, false)?;
         }
     }
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_type_fields(c, building, resolved_env, true);
+            expand_type_fields(c, building, resolved_env, true)?;
         }
     }
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_dynamic_default_values(c, building, resolved_env);
+            expand_dynamic_default_values(c, building, resolved_env)?;
         }
     }
 
@@ -308,10 +308,10 @@ fn expand_type_fields(
     building: &mut SystemContextBuilding,
     resolved_env: &ResolvedTypeEnv,
     expand_relations: bool,
-) {
+) -> Result<(), ModelBuildingError> {
     let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
 
-    let entity_fields = resolved_type
+    let entity_fields: Result<Vec<_>, _> = resolved_type
         .fields
         .iter()
         .map(|field| {
@@ -324,6 +324,7 @@ fn expand_type_fields(
             )
         })
         .collect();
+    let entity_fields = entity_fields?;
 
     let agg_fields = resolved_type
         .fields
@@ -351,6 +352,8 @@ fn expand_type_fields(
     existing_type.fields = entity_fields;
     existing_type.agg_fields = agg_fields;
     existing_type.vector_distance_fields = vector_distance_fields;
+
+    Ok(())
 }
 
 // Expand dynamic default values (pre-condition: all type fields have been populated)
@@ -358,7 +361,7 @@ fn expand_dynamic_default_values(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
     resolved_env: &ResolvedTypeEnv,
-) {
+) -> Result<(), ModelBuildingError> {
     fn matches(
         field_type: &FieldType<PostgresFieldType<EntityType>>,
         context_type: &FieldType<PrimitiveType>,
@@ -392,53 +395,51 @@ fn expand_dynamic_default_values(
                     .find(|field| field.name == resolved_field.name)
                     .unwrap();
 
-                let dynamic_default_value =
-                    resolved_field
-                        .default_value
-                        .as_ref()
-                        .and_then(|default_value| match default_value {
-                            ResolvedFieldDefault::Value(expr) => match expr.as_ref() {
-                                AstExpr::FieldSelection(selection) => {
-                                    let (context_selection, context_type) = get_context(
-                                        &selection.context_path(),
-                                        resolved_env.contexts,
-                                    );
+                let dynamic_default_value = match resolved_field.default_value.as_ref() {
+                    Some(ResolvedFieldDefault::Value(expr)) => match expr.as_ref() {
+                        AstExpr::FieldSelection(selection) => {
+                            let (context_selection, context_type) =
+                                get_context(&selection.context_path(), resolved_env.contexts);
 
-                                    match entity_field.relation {
-                                        PostgresRelation::Scalar { .. } => {
-                                            let field_type = &entity_field.typ;
-                                            if !matches(field_type, context_type) {
-                                                // TODO: Convert this an other panics into errors
-                                                panic!(
-                                                "Type of default value does not match field type"
-                                            )
-                                            }
-
-                                            Some(context_selection)
-                                        }
-                                        PostgresRelation::ManyToOne(ManyToOneRelation {
-                                            foreign_pk_field_id: foreign_field_id,
-                                            ..
-                                        }) => {
-                                            let foreign_type_pk = &foreign_field_id
-                                                .resolve(building.entity_types.values_ref())
-                                                .typ;
-
-                                            if !matches(foreign_type_pk, context_type) {
-                                                panic!(
-                                                "Type of default value does not match field type"
-                                            )
-                                            }
-
-                                            Some(context_selection)
-                                        }
-                                        _ => panic!("Invalid relation type for default value"),
+                            match entity_field.relation {
+                                PostgresRelation::Scalar { .. } => {
+                                    let field_type = &entity_field.typ;
+                                    if !matches(field_type, context_type) {
+                                        Err(ModelBuildingError::Generic(
+                                            "Type of default value does not match field type"
+                                                .to_string(),
+                                        ))
+                                    } else {
+                                        Ok(Some(context_selection))
                                     }
                                 }
-                                _ => None,
-                            },
-                            _ => None,
-                        });
+                                PostgresRelation::ManyToOne(ManyToOneRelation {
+                                    foreign_pk_field_id: foreign_field_id,
+                                    ..
+                                }) => {
+                                    let foreign_type_pk = &foreign_field_id
+                                        .resolve(building.entity_types.values_ref())
+                                        .typ;
+
+                                    if !matches(foreign_type_pk, context_type) {
+                                        Err(ModelBuildingError::Generic(
+                                            "Type of default value does not match field type"
+                                                .to_string(),
+                                        ))
+                                    } else {
+                                        Ok(Some(context_selection))
+                                    }
+                                }
+                                _ => Err(ModelBuildingError::Generic(
+                                    "Invalid relation type for default value".to_string(),
+                                )),
+                            }
+                        }
+                        _ => Ok(None),
+                    },
+                    _ => Ok(None),
+                };
+
                 dynamic_default_value.map(|value| (resolved_field.name.clone(), value))
             })
             .collect::<Vec<_>>()
@@ -453,8 +454,10 @@ fn expand_dynamic_default_values(
                 .iter_mut()
                 .find(|field| field.name == field_name)
                 .unwrap();
-            existing_field.dynamic_default_value = Some(value);
+            existing_field.dynamic_default_value = value;
         });
+
+    Ok(())
 }
 
 // Expand access expressions (pre-condition: all type fields have been populated)
@@ -599,7 +602,7 @@ fn create_persistent_field(
     building: &SystemContextBuilding,
     env: &ResolvedTypeEnv,
     expand_foreign_relations: bool,
-) -> PostgresField<EntityType> {
+) -> Result<PostgresField<EntityType>, ModelBuildingError> {
     let base_field_type = {
         let ResolvedFieldType {
             type_name,
@@ -623,16 +626,16 @@ fn create_persistent_field(
 
     let relation = create_relation(field, *type_id, building, env, expand_foreign_relations);
 
-    let access = compute_access(&field.access, *type_id, env, building).unwrap();
+    let access = compute_access(&field.access, *type_id, env, building)?;
 
-    PostgresField {
+    Ok(PostgresField {
         name: field.name.to_owned(),
         typ: field.typ.wrap(base_field_type),
         relation,
         access,
         has_default_value: field.default_value.is_some(),
         dynamic_default_value: None,
-    }
+    })
 }
 
 fn create_agg_field(

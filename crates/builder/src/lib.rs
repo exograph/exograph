@@ -412,8 +412,20 @@ fn emit_diagnostics(
         ParserError::ModelBuildingError(ModelBuildingError::ExternalResourceParsing(e)) => {
             // This is an error in a JavaScript/TypeScript file, so we
             // have emit it directly to stderr (can't use the emitter, which is tied to exo sources)
-            eprintln!("{}", e)
+            emitter.emit(&[Diagnostic {
+                level: Level::Error,
+                code: None,
+                message: e.to_string(),
+                spans: vec![],
+            }]);
         }
-        _ => {}
+        _ => {
+            emitter.emit(&[Diagnostic {
+                level: Level::Error,
+                code: None,
+                message: format!("{err}"),
+                spans: vec![],
+            }]);
+        }
     }
 }
