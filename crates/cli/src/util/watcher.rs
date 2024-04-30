@@ -13,7 +13,6 @@ use anyhow::{anyhow, Context, Result};
 use builder::error::ParserError;
 use colored::Colorize;
 use common::env_const::EXO_SERVER_PORT;
-use core_model_builder::error::ModelBuildingError;
 use futures::{future::BoxFuture, FutureExt};
 use notify_debouncer_mini::notify::RecursiveMode;
 use tokio::process::Child;
@@ -152,18 +151,11 @@ where
         }
 
         // server encountered an unrecoverable error while building
-        Err(BuildError::ParserError(ParserError::Generic(e)))
-        | Err(BuildError::ParserError(ParserError::ModelBuildingError(
-            ModelBuildingError::Generic(e),
-        ))) => Err(anyhow!(e)),
         Err(BuildError::UnrecoverableError(e)) => Err(e),
-
         Err(BuildError::ParserError(ParserError::InvalidTrustedDocumentFormat(message))) => {
             println!("Error parsing trusted documents: {}", message.red().bold());
             Ok(None)
         }
-
-        // server encountered a parser error (we don't need to exit the watcher)
-        Err(BuildError::ParserError(_)) => Ok(None),
+        _ => Ok(None), // server encountered a parser error (we don't need to exit the watcher)
     }
 }
