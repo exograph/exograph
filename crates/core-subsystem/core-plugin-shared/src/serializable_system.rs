@@ -96,13 +96,20 @@ impl SystemSerializer for SerializableSystem {
                 return Err(error("Invalid exograph file prefix", None));
             }
         }
+        // Serialize header len as u64 to make exo_ir platform independent (32-bit vs 64-bit systems)
         let header_len = {
-            let mut header_len = [0_u8; std::mem::size_of::<usize>()];
+            let mut header_len = [0_u8; std::mem::size_of::<u64>()];
             reader
                 .read_exact(&mut header_len)
                 .map_err(|e| error("Failed to read exograph header size", Some(e)))?;
-            usize::from_le_bytes(header_len)
+            u64::from_le_bytes(header_len)
         };
+        let header_len = header_len.try_into().map_err(|_| {
+            error(
+                "Failed to convert the exo_ir file header size to usize",
+                None,
+            )
+        })?;
         // Check the header
         let mut header_bytes = vec![0_u8; header_len];
         reader
@@ -128,7 +135,13 @@ fn serialize_header_and_system(
     system: &SerializableSystem,
 ) -> Result<Vec<u8>, ModelSerializationError> {
     let header: Vec<u8> = bincode::serialize(header).map_err(ModelSerializationError::Serialize)?;
-    let header_len: Vec<u8> = header.len().to_le_bytes().to_vec();
+    let header_len: u64 = u64::try_from(header.len()).map_err(|e| {
+        ModelSerializationError::Serialize(Box::new(bincode::ErrorKind::Custom(format!(
+            "Failed to convert header len to u64 {e:?}"
+        ))))
+    })?;
+
+    let header_len: Vec<u8> = header_len.to_le_bytes().to_vec();
     let system = bincode::serialize(system).map_err(ModelSerializationError::Serialize)?;
     Ok([PREFIX_TAG.to_vec(), header_len, header, system].concat())
 }
