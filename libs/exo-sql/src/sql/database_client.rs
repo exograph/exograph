@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{cell::RefCell, future::Future, pin::Pin};
+use std::cell::RefCell;
 
 #[cfg(feature = "postgres-url")]
 use std::{env, fs::File, io::BufReader};
@@ -31,7 +31,7 @@ use rustls_native_certs::load_native_certs;
 #[cfg(feature = "postgres-url")]
 use tokio_postgres::config::SslMode;
 
-use tokio_postgres::{tls::TlsConnect, Config};
+use tokio_postgres::Config;
 
 use crate::database_error::DatabaseError;
 
@@ -40,52 +40,6 @@ thread_local! {
     pub static LOCAL_URL: RefCell<Option<String>> = const { RefCell::new(None) };
     pub static LOCAL_CONNECTION_POOL_SIZE: RefCell<Option<usize>> = const { RefCell::new(None) };
     pub static LOCAL_CHECK_CONNECTION_ON_STARTUP: RefCell<Option<bool>> = const { RefCell::new(None) };
-}
-
-struct ClientGetter<
-    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
-    T: TlsConnect<S> + Send + Sync + Clone,
-    F: Fn() -> S + Send + Sync + 'static,
->(F, T);
-
-impl<
-        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
-        T: TlsConnect<S> + Send + Sync + Clone,
-        F: Fn() -> S + Send + Sync + 'static,
-    > Connect for ClientGetter<S, T, F>
-where
-    <T as TlsConnect<S>>::Stream: Send + 'static,
-    <T as TlsConnect<S>>::Future: Send,
-{
-    fn connect(
-        &self,
-        pg_config: &Config,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = Result<
-                        (tokio_postgres::Client, tokio::task::JoinHandle<()>),
-                        tokio_postgres::Error,
-                    >,
-                > + Send
-                + '_,
-        >,
-    > {
-        let stream = self.0();
-        let config = pg_config.clone();
-        let tls_copy = self.1.clone();
-
-        Box::pin(async move {
-            let fut = config.connect_raw(stream, tls_copy);
-            let (client, connection) = fut.await?;
-            let conn_task = tokio::task::spawn(async move {
-                if let Err(e) = connection.await {
-                    tracing::warn!(target: "deadpool.postgres", "Connection error: {}", e);
-                }
-            });
-            Ok((client, conn_task))
-        })
-    }
 }
 
 pub struct DatabaseClient {
