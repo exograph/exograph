@@ -6,7 +6,13 @@ publish = false
 
 [features]
 default = []
-tls = ["rustls", "tokio-postgres-rustls", "rustls-native-certs", "rustls-pemfile", "tokio-postgres/runtime"]
+tls = [
+  "rustls",
+  "tokio-postgres-rustls",
+  "rustls-native-certs",
+  "rustls-pemfile",
+  "tokio-postgres/runtime",
+]
 postgres-url = ["deadpool-postgres/runtime"]
 testing = ["which", "tempfile"]
 
@@ -44,12 +50,7 @@ common = { path = "../../crates/common" } # Until we remove database_client's de
 
 [target.'cfg(target_family = "wasm")'.dependencies.tokio-postgres]
 workspace = true
-features = [
-  "js",
-  "with-chrono-0_4",
-  "with-serde_json-1",
-  "with-uuid-1",
-]
+features = ["js", "with-chrono-0_4", "with-serde_json-1", "with-uuid-1"]
 default-features = false
 
 [dev-dependencies]
