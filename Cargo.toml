@@ -10,6 +10,7 @@ members = [
   "crates/resolver",
   "crates/server-actix",
   "crates/server-aws-lambda",
+  "crates/server-cf-worker",
   "crates/server-common",
   "crates/testing",
   "crates/core-subsystem/*",
@@ -110,6 +111,9 @@ multiplatform_test = "0.0.0"
 debug = 1
 
 [profile.release]
-lto = "thin"
+lto = true
 codegen-units = 1
 strip = true
+
+[profile.release.package.server-cf-worker]
+opt-level = "s" # optimize for size in release builds
