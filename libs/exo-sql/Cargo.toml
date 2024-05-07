@@ -13,7 +13,7 @@ tls = [
   "rustls-pemfile",
   "tokio-postgres/runtime",
 ]
-postgres-url = ["deadpool-postgres/runtime"]
+postgres-url = ["tokio-postgres/runtime"]
 testing = ["which", "tempfile"]
 
 [dependencies]

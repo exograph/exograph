@@ -90,7 +90,7 @@ thiserror = "1.0.31"
 tracing = "0.1"
 tokio = "1"
 tokio-postgres = { version = "0.7.10", default-features = false }
-deadpool-postgres = { git = "https://github.com/exograph/deadpool.git", branch = "expose-connect-trait", default-features = false }
+deadpool-postgres = { version = "0.13.2", default-features = false }
 tree-sitter = "0.20.10"
 tree-sitter-c2rust = "0.20.11-pre.1"
 tree-sitter-cli = "0.20.8"
