@@ -53,7 +53,7 @@ impl CommandDefinition for CfWorkerCommandDefinition {
         );
         println!("\t- Run: {}", "npx wrangler dev".blue());
         println!(
-            "\t- In a separate terminal run (adjust the port to one printed by the earlier command):\n\t\t{}",
+            "\t- In another terminal, run the command using the url printed earlier:\n\t\t{}",
             "exo playground --endpoint http://localhost:8787".blue()
         );
         println!("\t{}", "- Try running queries in the playground".purple());

@@ -4,3 +4,7 @@ exograph.d.ts
 
 .wrangler/
 node_modules
+
+# Ignore Cloudflare Workers files generated during cli testing
+wrangler.toml
+.dev.vars
