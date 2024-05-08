@@ -2,3 +2,5 @@
 contexts.d.ts
 exograph.d.ts
 
+.wrangler/
+node_modules
