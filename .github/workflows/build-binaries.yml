@@ -15,6 +15,7 @@ on:
     branches: ["main"]
     tags:
       - "*"
+  pull_request: # temporary to test cf-worker build without merging
 
 jobs:
   # Build and package all the things
