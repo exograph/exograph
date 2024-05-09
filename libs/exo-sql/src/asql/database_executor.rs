@@ -7,13 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use deadpool_postgres::Transaction;
 use std::sync::atomic::AtomicBool;
 
 use crate::{
     database_error::DatabaseError,
     sql::{
-        database_client::DatabaseClient,
+        database_client::{DatabaseClient, TransactionWrapper},
+        database_client_manager::DatabaseClientManager,
         transaction::{TransactionScript, TransactionStepResult},
     },
     transform::{pg::Postgres, transformer::OperationTransformer},
@@ -23,7 +23,7 @@ use crate::{
 use super::abstract_operation::AbstractOperation;
 
 pub struct DatabaseExecutor {
-    pub database_client: DatabaseClient,
+    pub database_client: DatabaseClientManager,
 }
 
 impl DatabaseExecutor {
@@ -56,8 +56,8 @@ impl DatabaseExecutor {
 
 #[derive(Default)]
 pub struct TransactionHolder {
-    client: Option<*mut deadpool_postgres::Client>,
-    transaction: Option<*mut Transaction<'static>>,
+    client: Option<*mut DatabaseClient>,
+    transaction: Option<*mut TransactionWrapper<'static>>,
     finalized: AtomicBool,
 }
 
@@ -89,7 +89,7 @@ impl TransactionHolder {
     pub async fn with_tx(
         &mut self,
         database: &Database,
-        client: &DatabaseClient,
+        client: &DatabaseClientManager,
         work: TransactionScript<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
         if self.finalized.load(std::sync::atomic::Ordering::SeqCst) {
@@ -109,7 +109,7 @@ impl TransactionHolder {
                 // first, grab a client if none are available
                 {
                     let client_owned = unsafe {
-                        let mut client_owned: Option<*mut deadpool_postgres::Client> = None;
+                        let mut client_owned: Option<*mut DatabaseClient> = None;
                         std::mem::swap(&mut self.client, &mut client_owned);
                         client_owned.map(|ptr| Box::from_raw(ptr))
                     };
@@ -138,7 +138,7 @@ impl TransactionHolder {
     pub async fn finalize(&mut self, commit: bool) -> Result<(), tokio_postgres::Error> {
         // SAFETY: this should always be de-referenceable when it is a Some(_)
         let tx_owned = unsafe {
-            let mut tx_owned: Option<*mut Transaction> = None;
+            let mut tx_owned: Option<*mut TransactionWrapper> = None;
             std::mem::swap(&mut self.transaction, &mut tx_owned);
             tx_owned.map(|ptr| Box::from_raw(ptr))
         };

@@ -9,9 +9,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use deadpool_postgres::Client;
-
 use crate::database_error::DatabaseError;
+use crate::sql::database_client::DatabaseClient;
 use crate::{PhysicalTable, PhysicalTableName};
 
 use super::column_spec::{ColumnSpec, ColumnTypeSpec};
@@ -63,7 +62,7 @@ impl TableSpec {
 
     /// Creates a new table specification from an SQL table.
     pub(super) async fn from_live_db(
-        client: &Client,
+        client: &DatabaseClient,
         table_name: PhysicalTableName,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         // Query to get a list of columns in the table

@@ -9,11 +9,10 @@
 
 use std::collections::HashSet;
 
-use deadpool_postgres::Client;
-
 use crate::{
-    database_error::DatabaseError, schema::column_spec::ColumnSpec, Database, ManyToOne,
-    PhysicalColumn, PhysicalIndex, PhysicalTableName, TableId,
+    database_error::DatabaseError, schema::column_spec::ColumnSpec,
+    sql::database_client::DatabaseClient, Database, ManyToOne, PhysicalColumn, PhysicalIndex,
+    PhysicalTableName, TableId,
 };
 
 use super::{
@@ -186,7 +185,7 @@ impl DatabaseSpec {
 
     /// Creates a new schema specification from an SQL database.
     pub async fn from_live_database(
-        client: &Client,
+        client: &DatabaseClient,
     ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
         const SCHEMAS_QUERY: &str =
             "SELECT DISTINCT table_schema FROM information_schema.tables WHERE table_schema != 'information_schema' AND table_schema != 'pg_catalog'";

@@ -111,7 +111,7 @@ mod tests {
     use super::*;
 
     use async_graphql_parser::parse_query;
-    use exo_sql::DatabaseClient;
+    use exo_sql::DatabaseClientManager;
 
     macro_rules! assert_debug {
         ($src:expr, $fn_name:expr) => {
@@ -886,7 +886,7 @@ mod tests {
 
         // Since we are not actually connecting to a database, this is fine
         // (we are only interested get queries, mutations, and types to build the schema)
-        let client = DatabaseClient::from_connect(
+        let client = DatabaseClientManager::from_connect(
             1,
             false,
             deadpool_postgres::tokio_postgres::Config::new(),

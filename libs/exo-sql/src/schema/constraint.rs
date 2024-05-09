@@ -9,11 +9,12 @@
 
 use std::collections::HashSet;
 
-use deadpool_postgres::Client;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::{database_error::DatabaseError, PhysicalTableName};
+use crate::{
+    database_error::DatabaseError, sql::database_client::DatabaseClient, PhysicalTableName,
+};
 
 pub(super) struct PrimaryKeyConstraint {
     pub(super) _constraint_name: String,
@@ -49,7 +50,7 @@ lazy_static! {
 
 impl Constraints {
     pub(super) async fn from_live_db(
-        client: &Client,
+        client: &DatabaseClient,
         table_name: &PhysicalTableName,
     ) -> Result<Constraints, DatabaseError> {
         // Query to get a list of constraints in the table (primary key and foreign key constraints)
