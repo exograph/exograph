@@ -11,8 +11,8 @@ use std::collections::HashSet;
 
 use crate::{
     database_error::DatabaseError, schema::column_spec::ColumnSpec,
-    sql::database_client::DatabaseClient, Database, ManyToOne, PhysicalColumn, PhysicalIndex,
-    PhysicalTableName, TableId,
+    sql::connect::database_client::DatabaseClient, Database, ManyToOne, PhysicalColumn,
+    PhysicalIndex, PhysicalTableName, TableId,
 };
 
 use super::{

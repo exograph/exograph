@@ -10,7 +10,7 @@
 use std::fmt::Write;
 
 use crate::database_error::DatabaseError;
-use crate::sql::database_client::DatabaseClient;
+use crate::sql::connect::database_client::DatabaseClient;
 use crate::{
     Database, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalTableName,
 };

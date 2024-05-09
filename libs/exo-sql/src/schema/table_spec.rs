@@ -10,7 +10,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::database_error::DatabaseError;
-use crate::sql::database_client::DatabaseClient;
+use crate::sql::connect::database_client::DatabaseClient;
 use crate::{PhysicalTable, PhysicalTableName};
 
 use super::column_spec::{ColumnSpec, ColumnTypeSpec};

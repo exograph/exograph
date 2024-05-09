@@ -12,8 +12,10 @@ use std::sync::atomic::AtomicBool;
 use crate::{
     database_error::DatabaseError,
     sql::{
-        database_client::{DatabaseClient, TransactionWrapper},
-        database_client_manager::DatabaseClientManager,
+        connect::{
+            database_client::{DatabaseClient, TransactionWrapper},
+            database_client_manager::DatabaseClientManager,
+        },
         transaction::{TransactionScript, TransactionStepResult},
     },
     transform::{pg::Postgres, transformer::OperationTransformer},
