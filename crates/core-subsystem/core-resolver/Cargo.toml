@@ -38,7 +38,7 @@ common = { path = "../../common" }
 insta.workspace = true
 postgres-model-builder = { path = "../../postgres-subsystem/postgres-model-builder" }
 postgres-resolver = { path = "../../postgres-subsystem/postgres-resolver" }
-deadpool-postgres.workspace = true
+tokio-postgres.workspace = true
 wasm-bindgen-test.workspace = true
 wasm-bindgen-test-macro.workspace = true
 multiplatform_test.workspace = true

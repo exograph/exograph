@@ -14,11 +14,11 @@ use core_plugin_interface::{
     interface::{SubsystemLoader, SubsystemLoadingError},
     system_serializer::SystemSerializer,
 };
-use exo_sql::{DatabaseClient, DatabaseExecutor};
+use exo_sql::{DatabaseClientManager, DatabaseExecutor};
 use postgres_model::subsystem::PostgresSubsystem;
 
 pub struct PostgresSubsystemLoader {
-    pub existing_client: Option<DatabaseClient>,
+    pub existing_client: Option<DatabaseClientManager>,
 }
 
 #[async_trait]
@@ -38,7 +38,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         } else {
             #[cfg(feature = "network")]
             {
-                DatabaseClient::from_env(None)
+                DatabaseClientManager::from_env(None)
                     .await
                     .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?
             }

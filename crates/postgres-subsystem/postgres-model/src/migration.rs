@@ -13,7 +13,7 @@ use super::subsystem::PostgresSubsystem;
 use exo_sql::{
     database_error::DatabaseError,
     schema::{database_spec::DatabaseSpec, issue::WithIssues, op::SchemaOp, spec::diff},
-    DatabaseClient,
+    DatabaseClientManager,
 };
 use serde::Serialize;
 
@@ -106,7 +106,7 @@ impl Migration {
     }
 
     pub async fn from_db_and_model(
-        database: &DatabaseClient,
+        database: &DatabaseClientManager,
         postgres_subsystem: &PostgresSubsystem,
     ) -> Result<Self, DatabaseError> {
         let old_schema = extract_db_schema(database).await?;
@@ -127,7 +127,7 @@ impl Migration {
     }
 
     pub async fn verify(
-        database: &DatabaseClient,
+        database: &DatabaseClientManager,
         postgres_subsystem: &PostgresSubsystem,
     ) -> Result<(), VerificationErrors> {
         let old_schema = extract_db_schema(database).await?;
@@ -151,7 +151,7 @@ impl Migration {
 
     pub async fn apply(
         &self,
-        database: &DatabaseClient,
+        database: &DatabaseClientManager,
         allow_destructive_changes: bool,
     ) -> Result<(), anyhow::Error> {
         let mut client = database.get_client().await?;
@@ -202,14 +202,14 @@ impl MigrationStatement {
 }
 
 async fn extract_db_schema(
-    database: &DatabaseClient,
+    database: &DatabaseClientManager,
 ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
     let client = database.get_client().await?;
 
     DatabaseSpec::from_live_database(&client).await
 }
 
-pub async fn wipe_database(database: &DatabaseClient) -> Result<(), DatabaseError> {
+pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), DatabaseError> {
     let client = database.get_client().await?;
     client
         .execute("DROP SCHEMA public CASCADE", &[])

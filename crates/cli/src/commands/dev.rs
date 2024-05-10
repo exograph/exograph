@@ -14,7 +14,7 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
-use exo_sql::DatabaseClient;
+use exo_sql::DatabaseClientManager;
 use futures::FutureExt;
 use postgres_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
@@ -143,7 +143,10 @@ impl CommandDefinition for DevCommandDefinition {
     }
 }
 
-async fn apply_migration(db_client: &DatabaseClient, migrations: &Migration) -> Result<bool> {
+async fn apply_migration(
+    db_client: &DatabaseClientManager,
+    migrations: &Migration,
+) -> Result<bool> {
     println!("{}", "Applying migration...".blue().bold());
     let result = migrations.apply(db_client, true).await;
     match result {

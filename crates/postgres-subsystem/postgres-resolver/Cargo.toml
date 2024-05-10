@@ -5,7 +5,12 @@ edition.workspace = true
 publish = false
 
 [features]
-network = ["exo-sql/tls", "exo-sql/postgres-url", "exo-sql/testing"]
+network = [
+    "exo-sql/tls",
+    "exo-sql/postgres-url",
+    "exo-sql/testing",
+    "exo-sql/pool",
+]
 bigdecimal = ["pg_bigdecimal"]
 vector = ["pgvector"]
 
