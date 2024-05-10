@@ -5,7 +5,7 @@ edition.workspace = true
 publish = false
 
 [features]
-default = []
+default = ["pool"]
 tls = [
   "rustls",
   "tokio-postgres-rustls",
@@ -15,9 +15,11 @@ tls = [
 ]
 postgres-url = ["tokio-postgres/runtime"]
 testing = ["which", "tempfile"]
+pool = ["deadpool-postgres"]
 
 [dependencies]
 bytes.workspace = true
+futures.workspace = true
 tokio-postgres = { workspace = true, features = [
   "with-chrono-0_4",
   "with-serde_json-1",
@@ -28,7 +30,7 @@ tokio-postgres-rustls = { version = "0.10.0", optional = true }
 rustls-native-certs = { version = "0.7.0", optional = true }
 rustls-pemfile = { version = "2.0.0", optional = true }
 postgres_array = "0.11.1"
-deadpool-postgres.workspace = true
+deadpool-postgres = { workspace = true, optional = true }
 chrono.workspace = true
 regex.workspace = true
 serde.workspace = true

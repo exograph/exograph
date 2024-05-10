@@ -88,7 +88,7 @@ impl CommandDefinition for MigrateCommandDefinition {
 
 pub async fn open_database(database: Option<&str>) -> Result<DatabaseClientManager, DatabaseError> {
     if let Some(database) = database {
-        Ok(DatabaseClientManager::from_db_url(database, true).await?)
+        Ok(DatabaseClientManager::from_db_url(database, true, None).await?)
     } else {
         Ok(DatabaseClientManager::from_env(Some(1)).await?)
     }

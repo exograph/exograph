@@ -3,27 +3,31 @@ use std::ops::{Deref, DerefMut};
 use tokio_postgres::ToStatement;
 
 pub enum DatabaseClient {
+    #[cfg(feature = "pool")]
     Pooled(deadpool_postgres::Client),
-    Raw(tokio_postgres::Client),
+    Direct(tokio_postgres::Client),
 }
 
 pub enum TransactionWrapper<'a> {
+    #[cfg(feature = "pool")]
     Pooled(deadpool_postgres::Transaction<'a>),
-    Raw(tokio_postgres::Transaction<'a>),
+    Direct(tokio_postgres::Transaction<'a>),
 }
 
 impl<'a> TransactionWrapper<'a> {
     pub async fn commit(self) -> Result<(), tokio_postgres::Error> {
         match self {
+            #[cfg(feature = "pool")]
             TransactionWrapper::Pooled(tx) => tx.commit().await,
-            TransactionWrapper::Raw(tx) => tx.commit().await,
+            TransactionWrapper::Direct(tx) => tx.commit().await,
         }
     }
 
     pub async fn rollback(self) -> Result<(), tokio_postgres::Error> {
         match self {
+            #[cfg(feature = "pool")]
             TransactionWrapper::Pooled(tx) => tx.rollback().await,
-            TransactionWrapper::Raw(tx) => tx.rollback().await,
+            TransactionWrapper::Direct(tx) => tx.rollback().await,
         }
     }
 }
@@ -33,8 +37,9 @@ impl<'a> Deref for TransactionWrapper<'a> {
 
     fn deref(&self) -> &Self::Target {
         match self {
+            #[cfg(feature = "pool")]
             TransactionWrapper::Pooled(tx) => tx,
-            TransactionWrapper::Raw(tx) => tx,
+            TransactionWrapper::Direct(tx) => tx,
         }
     }
 }
@@ -42,8 +47,9 @@ impl<'a> Deref for TransactionWrapper<'a> {
 impl<'a> DerefMut for TransactionWrapper<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
+            #[cfg(feature = "pool")]
             TransactionWrapper::Pooled(tx) => tx,
-            TransactionWrapper::Raw(tx) => tx,
+            TransactionWrapper::Direct(tx) => tx,
         }
     }
 }
@@ -53,10 +59,13 @@ impl DatabaseClient {
         &mut self,
     ) -> Result<TransactionWrapper<'_>, tokio_postgres::error::Error> {
         match self {
+            #[cfg(feature = "pool")]
             DatabaseClient::Pooled(client) => {
                 client.transaction().await.map(TransactionWrapper::Pooled)
             }
-            DatabaseClient::Raw(client) => client.transaction().await.map(TransactionWrapper::Raw),
+            DatabaseClient::Direct(client) => {
+                client.transaction().await.map(TransactionWrapper::Direct)
+            }
         }
     }
 
@@ -69,8 +78,9 @@ impl DatabaseClient {
         T: ?Sized + ToStatement,
     {
         match self {
+            #[cfg(feature = "pool")]
             DatabaseClient::Pooled(client) => client.query(query, params).await,
-            DatabaseClient::Raw(client) => client.query(query, params).await,
+            DatabaseClient::Direct(client) => client.query(query, params).await,
         }
     }
 
@@ -83,8 +93,9 @@ impl DatabaseClient {
         T: ?Sized + ToStatement,
     {
         match self {
+            #[cfg(feature = "pool")]
             DatabaseClient::Pooled(client) => client.execute(query, params).await,
-            DatabaseClient::Raw(client) => client.execute(query, params).await,
+            DatabaseClient::Direct(client) => client.execute(query, params).await,
         }
     }
 }

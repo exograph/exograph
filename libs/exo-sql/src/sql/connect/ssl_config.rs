@@ -10,6 +10,7 @@ use rustls_native_certs::load_native_certs;
 
 #[cfg(feature = "postgres-url")]
 use tokio_postgres::config::SslMode;
+
 #[cfg(feature = "postgres-url")]
 pub(crate) struct SslConfig {
     mode: SslMode,

@@ -30,6 +30,7 @@ pub enum DatabaseError {
     #[error("SSL: {0}")]
     Ssl(#[from] rustls::Error),
 
+    #[cfg(feature = "pool")]
     #[error("Pool: {0}")]
     Pool(#[from] deadpool_postgres::PoolError),
 

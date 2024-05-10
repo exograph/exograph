@@ -62,7 +62,7 @@ impl CommandDefinition for ImportCommandDefinition {
 }
 
 async fn import_schema() -> Result<WithIssues<DatabaseSpec>> {
-    let database_client = DatabaseClientManager::from_env(Some(1)).await?; // TODO: error handling here
+    let database_client = DatabaseClientManager::from_env(Some(1)).await?;
     let client = database_client.get_client().await?;
     let database = DatabaseSpec::from_live_database(&client).await?;
     Ok(database)

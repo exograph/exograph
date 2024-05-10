@@ -9,12 +9,12 @@
 
 use std::cell::RefCell;
 
-use deadpool_postgres::Connect;
-use tokio_postgres::Config;
+use crate::{database_error::DatabaseError, Connect};
 
-use crate::database_error::DatabaseError;
+use super::{creation::DatabaseCreation, database_client::DatabaseClient};
 
-use super::{database_client::DatabaseClient, database_pool::DatabasePool};
+#[cfg(feature = "pool")]
+use super::database_pool::DatabasePool;
 
 // we spawn many resolvers concurrently in integration tests
 thread_local! {
@@ -24,45 +24,176 @@ thread_local! {
 }
 
 pub enum DatabaseClientManager {
+    #[cfg(feature = "pool")]
     Pooled(DatabasePool),
+    Direct(DatabaseCreation),
 }
 
 impl DatabaseClientManager {
-    #[cfg(feature = "postgres-url")]
-    pub async fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
-        let pool = DatabasePool::from_env(pool_size_override).await?;
-        Ok(Self::Pooled(pool))
-    }
-
-    #[cfg(feature = "postgres-url")]
-    pub async fn from_db_url(url: &str, check_connection: bool) -> Result<Self, DatabaseError> {
-        let pool = DatabasePool::from_db_url(url, check_connection).await?;
-        Ok(Self::Pooled(pool))
-    }
-
-    pub async fn from_connect(
-        pool_size: usize,
+    pub async fn from_connect_direct(
         check_connection: bool,
-        config: Config,
+        config: tokio_postgres::Config,
         connect: impl Connect + 'static,
         user: Option<String>,
         password: Option<String>,
     ) -> Result<Self, DatabaseError> {
-        let pool = DatabasePool::from_connect(
-            pool_size,
-            check_connection,
-            config,
-            connect,
+        let creation = DatabaseCreation::Connect {
+            config: Box::new(config),
             user,
             password,
-        )
-        .await?;
-        Ok(Self::Pooled(pool))
+            connect: Box::new(connect),
+        };
+
+        let res = Ok(Self::Direct(creation));
+
+        if let Ok(ref res) = res {
+            if check_connection {
+                let _ = res.get_client().await?;
+            }
+        }
+
+        res
+    }
+
+    #[cfg(feature = "pool")]
+    pub async fn from_connect_pooled(
+        check_connection: bool,
+        config: tokio_postgres::Config,
+        connect: impl Connect + 'static,
+        user: Option<String>,
+        password: Option<String>,
+        pool_size: usize,
+    ) -> Result<Self, DatabaseError> {
+        let creation = DatabaseCreation::Connect {
+            config: Box::new(config),
+            user,
+            password,
+            connect: Box::new(connect),
+        };
+
+        let res = Ok(Self::Pooled(
+            DatabasePool::create(creation, Some(pool_size)).await?,
+        ));
+
+        if let Ok(ref res) = res {
+            if check_connection {
+                let _ = res.get_client().await?;
+            }
+        }
+
+        res
     }
 
     pub async fn get_client(&self) -> Result<DatabaseClient, DatabaseError> {
         match self {
+            #[cfg(feature = "pool")]
             DatabaseClientManager::Pooled(pool) => pool.get_client().await,
+            DatabaseClientManager::Direct(creation) => creation.get_client().await,
         }
+    }
+}
+
+#[cfg(feature = "postgres-url")]
+use std::env;
+
+#[cfg(feature = "postgres-url")]
+impl DatabaseClientManager {
+    pub async fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
+        #[cfg(feature = "pool")]
+        {
+            Self::from_env_pooled(pool_size_override).await
+        }
+        #[cfg(not(feature = "pool"))]
+        {
+            Self::from_env_direct().await
+        }
+    }
+
+    pub async fn from_env_direct() -> Result<Self, DatabaseError> {
+        let creation = DatabaseCreation::Env;
+        Ok(DatabaseClientManager::Direct(creation))
+    }
+
+    #[cfg(feature = "pool")]
+    pub async fn from_env_pooled(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
+        use common::env_const::EXO_CHECK_CONNECTION_ON_STARTUP;
+
+        let creation = DatabaseCreation::Env;
+
+        let res = Ok(Self::Pooled(
+            DatabasePool::create(creation, pool_size_override).await?,
+        ));
+
+        let check_connection = LOCAL_CHECK_CONNECTION_ON_STARTUP
+            .with(|f| *f.borrow())
+            .or_else(|| {
+                env::var(EXO_CHECK_CONNECTION_ON_STARTUP)
+                    .ok()
+                    .map(|check| check.parse::<bool>().expect("Should be true or false"))
+            })
+            .unwrap_or(true);
+
+        if let Ok(ref res) = res {
+            if check_connection {
+                let _ = res.get_client().await?;
+            }
+        }
+
+        res
+    }
+
+    pub async fn from_db_url(
+        url: &str,
+        check_connection: bool,
+        pool_size: Option<usize>,
+    ) -> Result<Self, DatabaseError> {
+        #[cfg(feature = "pool")]
+        {
+            Self::from_db_url_pooled(url, check_connection, pool_size).await
+        }
+        #[cfg(not(feature = "pool"))]
+        {
+            Self::from_db_url_direct(url, check_connection).await
+        }
+    }
+
+    pub async fn from_db_url_direct(
+        url: &str,
+        check_connection: bool,
+    ) -> Result<Self, DatabaseError> {
+        let creation = DatabaseCreation::Url {
+            url: url.to_string(),
+        };
+        let res = Ok(DatabaseClientManager::Direct(creation));
+
+        if let Ok(ref res) = res {
+            if check_connection {
+                let _ = res.get_client().await?;
+            }
+        }
+
+        res
+    }
+
+    #[cfg(feature = "pool")]
+    pub async fn from_db_url_pooled(
+        url: &str,
+        check_connection: bool,
+        pool_size: Option<usize>,
+    ) -> Result<Self, DatabaseError> {
+        let creation = DatabaseCreation::Url {
+            url: url.to_string(),
+        };
+        let res = Ok(Self::Pooled(
+            DatabasePool::create(creation, pool_size).await?,
+        ));
+
+        if let Ok(ref res) = res {
+            if check_connection {
+                let _ = res.get_client().await?;
+            }
+        }
+
+        res
     }
 }

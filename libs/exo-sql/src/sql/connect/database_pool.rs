@@ -1,10 +1,11 @@
+#![cfg(feature = "pool")]
+
 #[cfg(feature = "postgres-url")]
 use std::env;
 
 #[cfg(feature = "postgres-url")]
 use common::env_const::{
-    EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_POSTGRES_PASSWORD,
-    EXO_POSTGRES_URL, EXO_POSTGRES_USER,
+    EXO_CONNECTION_POOL_SIZE, EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER,
 };
 
 #[cfg(feature = "postgres-url")]
@@ -15,17 +16,37 @@ use tokio_postgres::Config;
 
 use crate::database_error::DatabaseError;
 
-use super::database_client::DatabaseClient;
+use super::{creation::DatabaseCreation, database_client::DatabaseClient};
 
 pub struct DatabasePool {
     pool: Pool,
 }
 
 impl DatabasePool {
+    pub async fn create(
+        creation: DatabaseCreation,
+        pool_size: Option<usize>,
+    ) -> Result<Self, DatabaseError> {
+        match creation {
+            DatabaseCreation::Env => Self::from_env(pool_size).await,
+            DatabaseCreation::Url { url } => Self::from_db_url(&url, pool_size).await,
+            DatabaseCreation::Connect {
+                config,
+                user,
+                password,
+                connect,
+            } => Self::from_connect(1, *config, ConnectBridge(connect), user, password).await,
+        }
+    }
+
+    pub async fn get_client(&self) -> Result<DatabaseClient, DatabaseError> {
+        Ok(DatabaseClient::Pooled(self.pool.get().await?))
+    }
+
     // pool_size_override useful when we want to explicitly control the pool size (for example, to 1, when importing database schema)
     #[cfg(feature = "postgres-url")]
-    pub async fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
-        use crate::{LOCAL_CHECK_CONNECTION_ON_STARTUP, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
+    async fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
+        use crate::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
 
         let url = LOCAL_URL
             .with(|f| f.borrow().clone())
@@ -47,27 +68,17 @@ impl DatabasePool {
                 .unwrap_or(10)
         });
 
-        let check_connection = LOCAL_CHECK_CONNECTION_ON_STARTUP
-            .with(|f| *f.borrow())
-            .or_else(|| {
-                env::var(EXO_CHECK_CONNECTION_ON_STARTUP)
-                    .ok()
-                    .map(|check| check.parse::<bool>().expect("Should be true or false"))
-            })
-            .unwrap_or(true);
-
-        Self::from_helper(pool_size, check_connection, &url, user, password).await
+        Self::from_helper(pool_size, &url, user, password).await
     }
 
     #[cfg(feature = "postgres-url")]
-    pub async fn from_db_url(url: &str, check_connection: bool) -> Result<Self, DatabaseError> {
-        Self::from_helper(1, check_connection, url, None, None).await
+    async fn from_db_url(url: &str, pool_size: Option<usize>) -> Result<Self, DatabaseError> {
+        Self::from_helper(pool_size.unwrap_or(1), url, None, None).await
     }
 
     #[cfg(feature = "postgres-url")]
     async fn from_helper(
         pool_size: usize,
-        check_connection: bool,
         url: &str,
         user: Option<String>,
         password: Option<String>,
@@ -87,35 +98,19 @@ impl DatabasePool {
             Some(ssl_config) => {
                 let (config, tls) = ssl_config.updated_config(config)?;
 
-                Self::from_connect(
-                    pool_size,
-                    check_connection,
-                    config,
-                    ConfigConnectImpl { tls },
-                    user,
-                    password,
-                )
-                .await
+                Self::from_connect(pool_size, config, ConfigConnectImpl { tls }, user, password)
+                    .await
             }
             None => {
-                Self::from_connect(
-                    pool_size,
-                    check_connection,
-                    config,
-                    ConfigConnectImpl {
-                        tls: tokio_postgres::NoTls,
-                    },
-                    user,
-                    password,
-                )
-                .await
+                let tls = tokio_postgres::NoTls;
+                Self::from_connect(pool_size, config, ConfigConnectImpl { tls }, user, password)
+                    .await
             }
         }
     }
 
     pub async fn from_connect(
         pool_size: usize,
-        check_connection: bool,
         mut config: Config,
         connect: impl Connect + 'static,
         user: Option<String>,
@@ -141,14 +136,20 @@ impl DatabasePool {
 
         let db = Self { pool };
 
-        if check_connection {
-            let _ = db.get_client().await?;
-        }
-
         Ok(db)
     }
+}
 
-    pub async fn get_client(&self) -> Result<DatabaseClient, DatabaseError> {
-        Ok(DatabaseClient::Pooled(self.pool.get().await?))
+struct ConnectBridge(Box<dyn super::creation::Connect>);
+
+impl Connect for ConnectBridge {
+    fn connect(
+        &self,
+        pg_config: &tokio_postgres::Config,
+    ) -> futures::future::BoxFuture<
+        '_,
+        Result<(tokio_postgres::Client, tokio::task::JoinHandle<()>), tokio_postgres::Error>,
+    > {
+        self.0.connect(pg_config)
     }
 }

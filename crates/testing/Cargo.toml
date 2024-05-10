@@ -34,7 +34,12 @@ wildmatch.workspace = true
 include_dir.workspace = true
 unescape = "0.1.0"
 
-exo-sql = { path = "../../libs/exo-sql", features = [ "tls", "postgres-url", "testing" ] }
+exo-sql = { path = "../../libs/exo-sql", features = [
+  "tls",
+  "postgres-url",
+  "testing",
+  "pool",
+] }
 exo-deno = { path = "../../libs/exo-deno", features = ["typescript-loader"] }
 
 core-resolver = { path = "../core-subsystem/core-resolver" }
