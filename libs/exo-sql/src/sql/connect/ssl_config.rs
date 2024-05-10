@@ -1,6 +1,5 @@
-use crate::database_error::DatabaseError;
+#![cfg(feature = "postgres-url")]
 
-#[cfg(feature = "postgres-url")]
 use std::{fs::File, io::BufReader};
 
 #[cfg(feature = "tls")]
@@ -8,18 +7,15 @@ use rustls::{Certificate, RootCertStore};
 #[cfg(feature = "tls")]
 use rustls_native_certs::load_native_certs;
 
-#[cfg(feature = "postgres-url")]
+use crate::database_error::DatabaseError;
 use tokio_postgres::config::SslMode;
 
-#[cfg(feature = "postgres-url")]
 pub(crate) struct SslConfig {
     mode: SslMode,
     root_cert_path: Option<String>,
 }
 
-#[cfg(feature = "postgres-url")]
 impl SslConfig {
-    #[cfg(feature = "postgres-url")]
     pub(crate) fn from_url(url: &str) -> Result<(String, Option<SslConfig>), DatabaseError> {
         let url = url::Url::parse(url)
             .map_err(|_| DatabaseError::Config("Invalid database URL".into()))?;
@@ -101,7 +97,6 @@ impl SslConfig {
     }
 
     #[cfg(feature = "tls")]
-
     pub(crate) fn updated_config(
         self,
         mut config: tokio_postgres::Config,

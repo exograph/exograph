@@ -28,14 +28,18 @@ impl DatabasePool {
         pool_size: Option<usize>,
     ) -> Result<Self, DatabaseError> {
         match creation {
+            #[cfg(feature = "postgres-url")]
             DatabaseCreation::Env => Self::from_env(pool_size).await,
+            #[cfg(feature = "postgres-url")]
             DatabaseCreation::Url { url } => Self::from_db_url(&url, pool_size).await,
             DatabaseCreation::Connect {
                 config,
                 user,
                 password,
                 connect,
-            } => Self::from_connect(1, *config, ConnectBridge(connect), user, password).await,
+            } => {
+                Self::from_connect(pool_size, *config, ConnectBridge(connect), user, password).await
+            }
         }
     }
 
@@ -57,7 +61,7 @@ impl DatabasePool {
 
         let user = env::var(EXO_POSTGRES_USER).ok();
         let password = env::var(EXO_POSTGRES_PASSWORD).ok();
-        let pool_size = pool_size_override.unwrap_or_else(|| {
+        let pool_size = pool_size_override.or_else(|| {
             LOCAL_CONNECTION_POOL_SIZE
                 .with(|f| *f.borrow())
                 .or_else(|| {
@@ -65,7 +69,6 @@ impl DatabasePool {
                         .ok()
                         .map(|pool_str| pool_str.parse::<usize>().unwrap())
                 })
-                .unwrap_or(10)
         });
 
         Self::from_helper(pool_size, &url, user, password).await
@@ -73,12 +76,12 @@ impl DatabasePool {
 
     #[cfg(feature = "postgres-url")]
     async fn from_db_url(url: &str, pool_size: Option<usize>) -> Result<Self, DatabaseError> {
-        Self::from_helper(pool_size.unwrap_or(1), url, None, None).await
+        Self::from_helper(pool_size, url, None, None).await
     }
 
     #[cfg(feature = "postgres-url")]
     async fn from_helper(
-        pool_size: usize,
+        pool_size: Option<usize>,
         url: &str,
         user: Option<String>,
         password: Option<String>,
@@ -110,7 +113,7 @@ impl DatabasePool {
     }
 
     pub async fn from_connect(
-        pool_size: usize,
+        pool_size: Option<usize>,
         mut config: Config,
         connect: impl Connect + 'static,
         user: Option<String>,
@@ -129,10 +132,14 @@ impl DatabasePool {
 
         let manager = { Manager::from_connect(config, connect, manager_config) };
 
-        let pool = Pool::builder(manager)
-            .max_size(pool_size)
-            .build()
-            .expect("Failed to create DB pool");
+        let pool = Pool::builder(manager);
+
+        let pool = match pool_size {
+            Some(pool_size) => pool.max_size(pool_size),
+            None => pool,
+        }
+        .build()
+        .expect("Failed to create DB pool");
 
         let db = Self { pool };
 

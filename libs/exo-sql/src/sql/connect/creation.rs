@@ -1,6 +1,3 @@
-use std::env;
-
-use common::env_const::{EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER};
 use futures::future::BoxFuture;
 use tokio::task::JoinHandle;
 use tokio_postgres::Config;
@@ -10,10 +7,10 @@ use crate::database_error::DatabaseError;
 use super::database_client::DatabaseClient;
 
 pub enum DatabaseCreation {
+    #[cfg(feature = "postgres-url")]
     Env,
-    Url {
-        url: String,
-    },
+    #[cfg(feature = "postgres-url")]
+    Url { url: String },
     Connect {
         config: Box<Config>,
         user: Option<String>,
@@ -37,8 +34,14 @@ impl DatabaseCreation {
                 });
                 Ok(DatabaseClient::Direct(client))
             }
+            #[cfg(feature = "postgres-url")]
             DatabaseCreation::Env => {
+                use common::env_const::{
+                    EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER,
+                };
+
                 use crate::LOCAL_URL;
+                use std::env;
 
                 let url = LOCAL_URL
                     .with(|f| f.borrow().clone())
@@ -52,10 +55,12 @@ impl DatabaseCreation {
 
                 Self::from_helper(&url, user, password).await
             }
+            #[cfg(feature = "postgres-url")]
             DatabaseCreation::Url { url } => Self::from_helper(url, None, None).await,
         }
     }
 
+    #[cfg(feature = "postgres-url")]
     async fn from_helper(
         url: &str,
         user: Option<String>,
