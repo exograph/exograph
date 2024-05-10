@@ -1,3 +1,12 @@
+// Copyright Exograph, Inc. All rights reserved.
+//
+// Use of this software is governed by the Business Source License
+// included in the LICENSE file at the root of this repository.
+//
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0.
+
 use futures::future::BoxFuture;
 use tokio::task::JoinHandle;
 use tokio_postgres::Config;
@@ -25,13 +34,7 @@ impl DatabaseCreation {
             DatabaseCreation::Connect {
                 config, connect, ..
             } => {
-                let fut = connect.connect(config);
-                let (client, connection) = fut.await?;
-                let _conn_task = tokio::spawn(async move {
-                    if let Err(e) = connection.await {
-                        tracing::error!(target: "Postgres", "Connection error: {}", e);
-                    }
-                });
+                let (client, _connection) = connect.connect(config).await?;
                 Ok(DatabaseClient::Direct(client))
             }
             #[cfg(feature = "postgres-url")]

@@ -31,7 +31,7 @@ indicatif = "0.17.3"
 tempfile.workspace = true
 which.workspace = true
 
-exo-sql = { path = "../../libs/exo-sql" }
+exo-sql = { path = "../../libs/exo-sql", features = ["pool"] }
 builder = { path = "../builder" }
 testing = { path = "../testing" }
 common = { path = "../common" }
