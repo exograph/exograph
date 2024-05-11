@@ -9,7 +9,7 @@
 
 use std::fmt::Debug;
 
-use tokio_postgres::{GenericClient, Row, Transaction};
+use tokio_postgres::{GenericClient, Row};
 use tracing::{error, info, instrument};
 
 use crate::{
@@ -60,10 +60,10 @@ impl<'a> TransactionScript<'a> {
         name = "TransactionScript::execute"
         skip_all
         )]
-    pub async fn execute(
+    pub async fn execute<T: tokio_postgres::GenericClient>(
         self,
         database: &Database,
-        tx: &mut Transaction<'_>,
+        tx: &mut T,
     ) -> Result<TransactionStepResult, DatabaseError> {
         let mut transaction_context = TransactionContext { results: vec![] };
 

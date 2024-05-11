@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::sync::atomic::AtomicBool;
+use std::{ops::DerefMut, sync::atomic::AtomicBool};
 
 use crate::{
     database_error::DatabaseError,
@@ -102,7 +102,10 @@ impl TransactionHolder {
 
         // SAFETY: this should be safe, we only really handle transaction in this function and it should
         // always be de-referencable when it is a Some(_)
-        let tx = unsafe { self.transaction.map(|ptr| ptr.as_mut().unwrap()) };
+        let tx = unsafe {
+            self.transaction
+                .map(|ptr| ptr.as_mut().unwrap().deref_mut())
+        };
 
         match tx {
             Some(tx) => work.execute(database, tx).await,
@@ -127,7 +130,7 @@ impl TransactionHolder {
                     // SAFETY: this should always be de-referenceable when it is a Some(_)
                     let client = unsafe { self.client.map(|ptr| ptr.as_mut().unwrap()) }.unwrap();
                     let mut tx = Box::new(client.transaction().await?);
-                    let res = work.execute(database, &mut tx).await;
+                    let res = work.execute(database, tx.deref_mut().deref_mut()).await;
 
                     self.transaction = Some(Box::leak(tx));
 
