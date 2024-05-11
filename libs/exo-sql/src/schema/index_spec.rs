@@ -9,10 +9,12 @@
 
 use std::collections::HashSet;
 
-use deadpool_postgres::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::{database_error::DatabaseError, PhysicalTableName, VectorDistanceFunction};
+use crate::{
+    database_error::DatabaseError, sql::connect::database_client::DatabaseClient,
+    PhysicalTableName, VectorDistanceFunction,
+};
 
 use super::{column_spec::ColumnSpec, issue::WithIssues, op::SchemaOp, table_spec::TableSpec};
 
@@ -87,7 +89,7 @@ impl IndexSpec {
     }
 
     pub async fn from_live_db(
-        client: &Client,
+        client: &DatabaseClient,
         table_name: &PhysicalTableName,
         columns: &[ColumnSpec],
     ) -> Result<WithIssues<Vec<IndexSpec>>, DatabaseError> {

@@ -10,7 +10,7 @@
 use std::{io, path::PathBuf};
 
 use anyhow::anyhow;
-use exo_sql::{database_error::DatabaseError, DatabaseClient};
+use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
 use postgres_model::migration::Migration;
 
 use crate::{
@@ -86,10 +86,10 @@ impl CommandDefinition for MigrateCommandDefinition {
     }
 }
 
-pub async fn open_database(database: Option<&str>) -> Result<DatabaseClient, DatabaseError> {
+pub async fn open_database(database: Option<&str>) -> Result<DatabaseClientManager, DatabaseError> {
     if let Some(database) = database {
-        Ok(DatabaseClient::from_db_url(database, true).await?)
+        Ok(DatabaseClientManager::from_db_url(database, true, None).await?)
     } else {
-        Ok(DatabaseClient::from_env(Some(1)).await?)
+        Ok(DatabaseClientManager::from_env(Some(1)).await?)
     }
 }

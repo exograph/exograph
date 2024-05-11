@@ -111,7 +111,7 @@ mod tests {
     use super::*;
 
     use async_graphql_parser::parse_query;
-    use exo_sql::DatabaseClient;
+    use exo_sql::DatabaseClientManager;
 
     macro_rules! assert_debug {
         ($src:expr, $fn_name:expr) => {
@@ -862,19 +862,16 @@ mod tests {
             .serialized_subsystem;
 
         struct FakeConnect {}
-        impl deadpool_postgres::Connect for FakeConnect {
+        impl exo_sql::Connect for FakeConnect {
             fn connect(
                 &self,
-                _pg_config: &deadpool_postgres::tokio_postgres::Config,
+                _pg_config: &tokio_postgres::Config,
             ) -> std::pin::Pin<
                 Box<
                     dyn std::future::Future<
                             Output = Result<
-                                (
-                                    deadpool_postgres::tokio_postgres::Client,
-                                    tokio::task::JoinHandle<()>,
-                                ),
-                                deadpool_postgres::tokio_postgres::Error,
+                                (tokio_postgres::Client, tokio::task::JoinHandle<()>),
+                                tokio_postgres::Error,
                             >,
                         > + Send
                         + '_,
@@ -886,10 +883,9 @@ mod tests {
 
         // Since we are not actually connecting to a database, this is fine
         // (we are only interested get queries, mutations, and types to build the schema)
-        let client = DatabaseClient::from_connect(
-            1,
+        let client = DatabaseClientManager::from_connect_direct(
             false,
-            deadpool_postgres::tokio_postgres::Config::new(),
+            tokio_postgres::Config::new(),
             FakeConnect {},
             None,
             None,

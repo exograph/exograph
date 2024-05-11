@@ -14,7 +14,7 @@ use exo_sql::schema::column_spec::{ColumnSpec, ColumnTypeSpec};
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::table_spec::TableSpec;
-use exo_sql::DatabaseClient;
+use exo_sql::DatabaseClientManager;
 use std::fmt::Write;
 use std::path::PathBuf;
 
@@ -62,7 +62,7 @@ impl CommandDefinition for ImportCommandDefinition {
 }
 
 async fn import_schema() -> Result<WithIssues<DatabaseSpec>> {
-    let database_client = DatabaseClient::from_env(Some(1)).await?; // TODO: error handling here
+    let database_client = DatabaseClientManager::from_env(Some(1)).await?;
     let client = database_client.get_client().await?;
     let database = DatabaseSpec::from_live_database(&client).await?;
     Ok(database)

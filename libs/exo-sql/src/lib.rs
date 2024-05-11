@@ -64,10 +64,12 @@ pub use asql::{
 pub use sql::{
     array_util::{self, ArrayEntry},
     column::Column,
-    database::{Database, TableId},
-    database_client::{
-        DatabaseClient, LOCAL_CHECK_CONNECTION_ON_STARTUP, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL,
+    connect::creation::Connect,
+    connect::database_client_manager::{
+        DatabaseClientManager, LOCAL_CHECK_CONNECTION_ON_STARTUP, LOCAL_CONNECTION_POOL_SIZE,
+        LOCAL_URL,
     },
+    database::{Database, TableId},
     function::Function,
     limit::Limit,
     offset::Offset,

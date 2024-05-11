@@ -10,6 +10,7 @@
 use std::fmt::Write;
 
 use crate::database_error::DatabaseError;
+use crate::sql::connect::database_client::DatabaseClient;
 use crate::{
     Database, FloatBits, IntBits, ManyToOne, PhysicalColumn, PhysicalColumnType, PhysicalTableName,
 };
@@ -18,7 +19,6 @@ use super::issue::{Issue, WithIssues};
 use super::op::SchemaOp;
 use super::statement::SchemaStatement;
 use super::table_spec::TableSpec;
-use deadpool_postgres::Client;
 use regex::Regex;
 use std::collections::HashSet;
 
@@ -79,7 +79,7 @@ impl ColumnSpec {
     /// If the column references another table's column, the column's type can be specified with
     /// `explicit_type`.
     pub async fn from_live_db(
-        client: &Client,
+        client: &DatabaseClient,
         table_name: &PhysicalTableName,
         column_name: &str,
         is_pk: bool,
