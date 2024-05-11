@@ -1898,9 +1898,6 @@ name = "deadpool-runtime"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "092966b41edc516079bdf31ec78a2e0588d1d0c08f78b91d8307215928642b2b"
-dependencies = [
- "tokio",
-]
 
 [[package]]
 name = "debugid"
@@ -7497,7 +7494,6 @@ dependencies = [
  "console_error_panic_hook",
  "core-plugin-shared",
  "core-resolver",
- "deadpool-postgres",
  "exo-sql",
  "postgres-resolver",
  "resolver",

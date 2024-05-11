@@ -8,7 +8,7 @@ use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
 use core_resolver::{context::LOCAL_JWT_SECRET, system_resolver::SystemResolver};
-use exo_sql::DatabaseClient;
+use exo_sql::DatabaseClientManager;
 use resolver::{
     create_system_resolver_from_system, IntrospectionMode, LOCAL_ALLOW_INTROSPECTION,
     LOCAL_ENVIRONMENT,
@@ -107,7 +107,7 @@ impl SystemResolverHolder {
     async fn create_resolver(
         system: SerializableSystem,
         jwt_secret: Option<String>,
-        client: DatabaseClient,
+        client_manager: DatabaseClientManager,
     ) -> Result<SystemResolver, JsValue> {
         LOCAL_ALLOW_INTROSPECTION.with(|allow| {
             allow.borrow_mut().replace(IntrospectionMode::Enabled);
@@ -126,7 +126,7 @@ impl SystemResolverHolder {
         create_system_resolver_from_system(
             system,
             vec![Box::new(postgres_resolver::PostgresSubsystemLoader {
-                existing_client: Some(client),
+                existing_client: Some(client_manager),
             })],
         )
         .await

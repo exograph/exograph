@@ -1,10 +1,10 @@
-use exo_sql::DatabaseClient;
+use exo_sql::DatabaseClientManager;
 use std::str::FromStr;
 use wasm_bindgen::JsValue;
 
 use worker::{postgres_tls::PassthroughTls, SecureTransport, Socket};
 
-use deadpool_postgres::tokio_postgres::Config;
+use tokio_postgres::Config;
 
 pub(super) struct WorkerPostgresConnect {
     config: Config,
@@ -16,7 +16,7 @@ unsafe impl Send for WorkerPostgresConnect {}
 unsafe impl Sync for WorkerPostgresConnect {}
 
 impl WorkerPostgresConnect {
-    pub(crate) async fn create_client(url: &str) -> Result<DatabaseClient, JsValue> {
+    pub(crate) async fn create_client(url: &str) -> Result<DatabaseClientManager, JsValue> {
         let config = Config::from_str(&url).map_err(|e| {
             JsValue::from_str(&format!(
                 "Failed to parse PostgreSQL connection string: {:?}",
@@ -35,10 +35,9 @@ impl WorkerPostgresConnect {
 
         let connect = WorkerPostgresConnect { config, host, port };
 
-        let client = DatabaseClient::from_connect(
-            1,
+        let client = DatabaseClientManager::from_connect_direct(
             false,
-            deadpool_postgres::tokio_postgres::Config::new(),
+            tokio_postgres::Config::new(),
             connect,
             None,
             None,
@@ -50,19 +49,16 @@ impl WorkerPostgresConnect {
     }
 }
 
-impl deadpool_postgres::Connect for WorkerPostgresConnect {
+impl exo_sql::Connect for WorkerPostgresConnect {
     fn connect(
         &self,
-        _pg_config: &deadpool_postgres::tokio_postgres::Config,
+        _pg_config: &tokio_postgres::Config,
     ) -> std::pin::Pin<
         Box<
             dyn std::future::Future<
                     Output = Result<
-                        (
-                            deadpool_postgres::tokio_postgres::Client,
-                            tokio::task::JoinHandle<()>,
-                        ),
-                        deadpool_postgres::tokio_postgres::Error,
+                        (tokio_postgres::Client, tokio::task::JoinHandle<()>),
+                        tokio_postgres::Error,
                     >,
                 > + Send
                 + '_,
@@ -77,7 +73,7 @@ impl deadpool_postgres::Connect for WorkerPostgresConnect {
                 .connect(&self.host, self.port)
                 .map_err(|e| {
                     tracing::error!("Error establishing connection to Postgres server: {:?}", e);
-                    deadpool_postgres::tokio_postgres::Error::__private_api_timeout()
+                    tokio_postgres::Error::__private_api_timeout()
                 })?;
 
             let (client, connection) = self.config.connect_raw(socket, PassthroughTls).await?;
@@ -94,7 +90,7 @@ impl deadpool_postgres::Connect for WorkerPostgresConnect {
                 .build()
                 .map_err(|e| {
                     tracing::error!("Error creating tokio runtime: {:?}", e);
-                    deadpool_postgres::tokio_postgres::Error::__private_api_timeout()
+                    tokio_postgres::Error::__private_api_timeout()
                 })?;
             let _guard = tokio_runtime.enter();
 
