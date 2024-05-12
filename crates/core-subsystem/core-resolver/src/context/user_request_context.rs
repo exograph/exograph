@@ -119,4 +119,12 @@ impl<'a> UserRequestContext<'a> {
             .await?
             .map(Val::from))
     }
+
+    pub async fn ensure_transaction(&self) {
+        self.transaction_holder
+            .as_ref()
+            .lock()
+            .await
+            .ensure_transaction();
+    }
 }

@@ -87,6 +87,10 @@ impl<'a> TransactionScript<'a> {
         self.steps.push(step);
         TransactionStepId(id)
     }
+
+    pub fn needs_transaction(&self) -> bool {
+        self.steps.len() > 1
+    }
 }
 
 #[derive(Debug)]

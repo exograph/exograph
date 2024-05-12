@@ -30,16 +30,20 @@ impl FieldResolver<QueryResponse, SystemResolutionError, SystemResolver> for Val
         system_resolver: &'e SystemResolver,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse, SystemResolutionError> {
-        let intercepted_operation = InterceptedOperation::new(
-            Some(
-                system_resolver
-                    .applicable_interception_tree(&field.name, self.typ)
-                    .unwrap_or(&InterceptionTree::Operation),
-            ),
-            self.typ,
-            field,
-            system_resolver,
-        );
+        // If the operation is an interception tree, we need to ensure that a transaction is used.
+        let interception_tree =
+            match system_resolver.applicable_interception_tree(&field.name, self.typ) {
+                Some(tree) => {
+                    if !matches!(tree, InterceptionTree::Operation) {
+                        request_context.ensure_transaction().await;
+                    };
+                    tree
+                }
+                None => &InterceptionTree::Operation,
+            };
+
+        let intercepted_operation =
+            InterceptedOperation::new(Some(interception_tree), self.typ, field, system_resolver);
 
         let QueryResponse { body, headers } =
             intercepted_operation.resolve(request_context).await?;

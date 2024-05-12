@@ -86,6 +86,10 @@ impl SubsystemResolver for DenoSubsystemResolver {
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
+        // If the top-level operation is Deno, we can't be sure what the JS code will do, so we must
+        // ensure a transaction.
+        request_context.ensure_transaction().await;
+
         let operation_name = &operation.name;
 
         let deno_operation = match operation_type {

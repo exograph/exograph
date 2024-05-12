@@ -182,6 +182,10 @@ impl SystemResolver {
             }
         };
 
+        // If multiple operations are present, we need to ensure that we have a transaction
+        if operation.fields.len() > 1 {
+            request_context.ensure_transaction().await;
+        }
         operation
             .resolve_fields(&operation.fields, self, request_context)
             .await
