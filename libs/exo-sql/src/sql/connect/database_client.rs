@@ -17,6 +17,28 @@ pub enum DatabaseClient {
     Direct(tokio_postgres::Client),
 }
 
+impl Deref for DatabaseClient {
+    type Target = tokio_postgres::Client;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            #[cfg(feature = "pool")]
+            DatabaseClient::Pooled(client) => client,
+            DatabaseClient::Direct(client) => client,
+        }
+    }
+}
+
+impl DerefMut for DatabaseClient {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            #[cfg(feature = "pool")]
+            DatabaseClient::Pooled(client) => client,
+            DatabaseClient::Direct(client) => client,
+        }
+    }
+}
+
 pub enum TransactionWrapper<'a> {
     #[cfg(feature = "pool")]
     Pooled(deadpool_postgres::Transaction<'a>),
