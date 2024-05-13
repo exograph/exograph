@@ -70,4 +70,8 @@ impl<'a> OverriddenContext<'a> {
             }
         }
     }
+
+    pub async fn ensure_transaction(&self) {
+        self.base_context.ensure_transaction().await;
+    }
 }

@@ -86,4 +86,16 @@ impl<'a> RequestContext<'a> {
             }
         }
     }
+
+    #[async_recursion]
+    pub async fn ensure_transaction(&self) {
+        match self {
+            RequestContext::User(user_request_context) => {
+                user_request_context.ensure_transaction().await;
+            }
+            RequestContext::Overridden(overridden_context) => {
+                overridden_context.ensure_transaction().await;
+            }
+        }
+    }
 }

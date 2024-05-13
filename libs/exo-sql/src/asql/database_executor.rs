@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::sync::atomic::AtomicBool;
+use std::{ops::DerefMut, sync::atomic::AtomicBool};
 
 use crate::{
     database_error::DatabaseError,
@@ -61,6 +61,7 @@ pub struct TransactionHolder {
     client: Option<*mut DatabaseClient>,
     transaction: Option<*mut TransactionWrapper<'static>>,
     finalized: AtomicBool,
+    needs_transaction: AtomicBool,
 }
 
 /// # Safety
@@ -91,7 +92,7 @@ impl TransactionHolder {
     pub async fn with_tx(
         &mut self,
         database: &Database,
-        client: &DatabaseClientManager,
+        client_manager: &DatabaseClientManager,
         work: TransactionScript<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
         if self.finalized.load(std::sync::atomic::Ordering::SeqCst) {
@@ -102,14 +103,17 @@ impl TransactionHolder {
 
         // SAFETY: this should be safe, we only really handle transaction in this function and it should
         // always be de-referencable when it is a Some(_)
-        let tx = unsafe { self.transaction.map(|ptr| ptr.as_mut().unwrap()) };
+        let tx = unsafe {
+            self.transaction
+                .map(|ptr| ptr.as_mut().unwrap().deref_mut())
+        };
 
         match tx {
             Some(tx) => work.execute(database, tx).await,
 
             None => {
                 // first, grab a client if none are available
-                {
+                if self.client.is_none() {
                     let client_owned = unsafe {
                         let mut client_owned: Option<*mut DatabaseClient> = None;
                         std::mem::swap(&mut self.client, &mut client_owned);
@@ -117,7 +121,7 @@ impl TransactionHolder {
                     };
 
                     if client_owned.is_none() {
-                        let client = client.get_client().await?;
+                        let client = client_manager.get_client().await?;
                         self.client = Some(Box::leak(Box::new(client)));
                     };
                 }
@@ -126,12 +130,21 @@ impl TransactionHolder {
                 {
                     // SAFETY: this should always be de-referenceable when it is a Some(_)
                     let client = unsafe { self.client.map(|ptr| ptr.as_mut().unwrap()) }.unwrap();
-                    let mut tx = Box::new(client.transaction().await?);
-                    let res = work.execute(database, &mut tx).await;
 
-                    self.transaction = Some(Box::leak(tx));
+                    if work.needs_transaction()
+                        || self
+                            .needs_transaction
+                            .load(std::sync::atomic::Ordering::SeqCst)
+                    {
+                        let mut tx = Box::new(client.transaction().await?);
+                        let res = work.execute(database, tx.deref_mut().deref_mut()).await;
 
-                    res
+                        self.transaction = Some(Box::leak(tx));
+
+                        res
+                    } else {
+                        work.execute(database, client.deref_mut()).await
+                    }
                 }
             }
         }
@@ -160,5 +173,10 @@ impl TransactionHolder {
         self.finalized
             .store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
+    }
+
+    pub fn ensure_transaction(&self) {
+        self.needs_transaction
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 }

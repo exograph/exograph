@@ -69,6 +69,11 @@ impl SubsystemResolver for WasmSubsystemResolver {
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
+        // If the top-level operation is WASM, we can't be sure what the code will do, so we must
+        // ensure a transaction.
+
+        request_context.ensure_transaction().await;
+
         let operation_name = &field.name;
 
         let operation = match operation_type {
