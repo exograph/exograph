@@ -1,3 +1,4 @@
+#[cfg(not(target_family = "wasm"))]
 use super::EnvError;
 
 pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
@@ -29,6 +30,7 @@ pub enum DeploymentMode {
     Prod,
 }
 
+#[cfg(not(target_family = "wasm"))]
 pub fn get_deployment_mode() -> Result<DeploymentMode, EnvError> {
     match std::env::var(_EXO_DEPLOYMENT_MODE).as_deref() {
         Ok("yolo") => Ok(DeploymentMode::Yolo),
@@ -51,10 +53,12 @@ pub fn get_deployment_mode() -> Result<DeploymentMode, EnvError> {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 pub fn is_production() -> bool {
     matches!(get_deployment_mode(), Ok(DeploymentMode::Prod) | Err(_))
 }
 
+#[cfg(not(target_family = "wasm"))]
 pub fn get_enforce_trusted_documents() -> bool {
     std::env::var(_EXO_ENFORCE_TRUSTED_DOCUMENTS)
         .map(|value| value != "false")

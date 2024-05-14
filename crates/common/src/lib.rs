@@ -9,7 +9,6 @@
 
 use thiserror::Error;
 
-#[cfg(not(target_family = "wasm"))]
 pub mod env_const;
 
 #[derive(Error, Debug)]

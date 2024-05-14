@@ -73,13 +73,12 @@ heck = "0.4.0"
 include_dir = "0.7.2"
 indexmap = "2.0.1"
 insta = { version = "1.31.0", features = ["redactions", "yaml"] }
-jsonwebtoken = "9.2.0"
+jsonwebtoken = "9.3.0"
 lazy_static = "1.4.0"
 maybe-owned = "0.3.4"
 rand = "0.8"
 regex = "1"
-reqwest = { version = "0.11.4", default-features = false, features = [
-  "stream",
+reqwest = { version = "0.11.20", default-features = false, features = [
   "rustls-tls-native-roots",
 ] }
 serde = { version = "1.0", features = ["derive"] }

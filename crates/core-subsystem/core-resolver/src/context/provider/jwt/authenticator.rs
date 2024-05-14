@@ -2,8 +2,8 @@ use std::cell::RefCell;
 #[cfg(not(target_family = "wasm"))]
 use std::env;
 
-#[cfg(not(target_family = "wasm"))]
 use common::env_const::{EXO_JWT_SECRET, EXO_OIDC_URL};
+
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde_json::Value;
 
@@ -46,7 +46,7 @@ pub enum JwtConfigurationError {
     #[error("Invalid setup: {0}")]
     InvalidSetup(String),
 
-    #[error("JWT configuration error `{message}`")]
+    #[error("JWT configuration error '{message}'")]
     Configuration {
         message: String,
         source: Box<dyn std::error::Error + Send + Sync>,
@@ -70,8 +70,18 @@ impl JwtAuthenticator {
         });
 
         #[cfg(feature = "oidc")]
-        let oidc_url =
-            LOCAL_OIDC_URL.with(|url| url.borrow().clone().or_else(|| env::var(EXO_OIDC_URL).ok()));
+        let oidc_url = LOCAL_OIDC_URL.with(|url| {
+            url.borrow().clone().or_else(|| {
+                #[cfg(not(target_family = "wasm"))]
+                {
+                    env::var(EXO_OIDC_URL).ok()
+                }
+                #[cfg(target_family = "wasm")]
+                {
+                    None
+                }
+            })
+        });
 
         #[cfg(not(feature = "oidc"))]
         let oidc_url: Option<String> = None;

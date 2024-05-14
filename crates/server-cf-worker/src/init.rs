@@ -35,9 +35,13 @@ pub(crate) async fn init(env: worker::Env, system_bytes: Vec<u8>) -> Result<(), 
         .var("EXO_JWT_SECRET")
         .ok()
         .and_then(|secret_binding| Some(secret_binding.to_string()));
+    let oidc_url: Option<String> = env
+        .var("EXO_OIDC_URL")
+        .ok()
+        .and_then(|secret_binding| Some(secret_binding.to_string()));
 
     RESOLVER
-        .init_resolver(postgres_url, jwt_secret, system_bytes)
+        .init_resolver(postgres_url, jwt_secret, oidc_url, system_bytes)
         .await
 }
 
@@ -80,6 +84,7 @@ impl SystemResolverHolder {
         &self,
         postgres_url: String,
         jwt_secret: Option<String>,
+        oidc_url: Option<String>,
         system_bytes: Vec<u8>,
     ) -> Result<(), JsValue> {
         if self.system_resolver.get().is_some() {
@@ -92,7 +97,7 @@ impl SystemResolverHolder {
 
         let client = WorkerPostgresConnect::create_client(&postgres_url).await?;
 
-        let resolver = Self::create_resolver(system, jwt_secret, client)
+        let resolver = Self::create_resolver(system, jwt_secret, oidc_url, client)
             .await
             .map_err(|e| JsValue::from_str(&format!("Error creating resolver {:?}", e)))?;
 
@@ -107,10 +112,11 @@ impl SystemResolverHolder {
     async fn create_resolver(
         system: SerializableSystem,
         jwt_secret: Option<String>,
+        oidc_url: Option<String>,
         client_manager: DatabaseClientManager,
     ) -> Result<SystemResolver, JsValue> {
         LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-            allow.borrow_mut().replace(IntrospectionMode::Enabled);
+            allow.borrow_mut().replace(IntrospectionMode::Disabled);
         });
 
         LOCAL_ENVIRONMENT.with(|env| {
@@ -120,6 +126,13 @@ impl SystemResolverHolder {
         if let Some(jwt_secret) = jwt_secret {
             LOCAL_JWT_SECRET.with(|jwt_secret_ref| {
                 jwt_secret_ref.borrow_mut().replace(jwt_secret);
+            });
+        }
+
+        #[cfg(feature = "oidc")]
+        if let Some(oidc_url) = oidc_url {
+            core_resolver::context::LOCAL_OIDC_URL.with(|oidc_url_ref| {
+                oidc_url_ref.borrow_mut().replace(oidc_url);
             });
         }
 
