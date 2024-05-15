@@ -21,17 +21,17 @@ pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
     let context = lambda_runtime::Context::default();
     let event = lambda_runtime::LambdaEvent::new(json_input, context);
 
-    // HACK: some envvars need to be set to create a SystemContext
-    {
-        std::env::set_var(EXO_CHECK_CONNECTION_ON_STARTUP, "false");
-        std::env::set_var(EXO_POSTGRES_URL, "postgres://a@localhost:0");
-    }
+    // HACK: some env vars need to be set to create a SystemContext
+    let env = MapEnvironment::from([
+        (EXO_POSTGRES_URL, "postgres://a@localhost:0"),
+        (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
+    ]);
 
     let model_system = builder::build_system_from_str(exo_model, "index.exo".to_string(), vec![])
         .await
         .unwrap();
     let system_resolver = Arc::new(
-        create_system_resolver_from_system(model_system, create_static_loaders())
+        create_system_resolver_from_system(model_system, create_static_loaders(), Box::new(env))
             .await
             .unwrap(),
     );

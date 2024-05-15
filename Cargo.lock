@@ -7464,6 +7464,7 @@ dependencies = [
  "builder",
  "common",
  "core-resolver",
+ "exo-env",
  "futures",
  "lambda_runtime",
  "opentelemetry 0.17.0",
