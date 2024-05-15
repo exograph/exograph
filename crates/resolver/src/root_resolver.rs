@@ -30,6 +30,8 @@ pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
 use futures::Stream;
 
+use exo_env::Environment;
+
 const EXO_PLAYGROUND_HTTP_PATH: &str = "EXO_PLAYGROUND_HTTP_PATH";
 const EXO_ENDPOINT_HTTP_PATH: &str = "EXO_ENDPOINT_HTTP_PATH";
 
@@ -188,6 +190,7 @@ pub fn get_endpoint_http_path() -> String {
 pub async fn create_system_resolver(
     exo_ir_file: &str,
     static_loaders: StaticLoaders,
+    env: Box<dyn Environment>,
 ) -> Result<SystemResolver, SystemLoadingError> {
     if !Path::new(&exo_ir_file).exists() {
         return Err(SystemLoadingError::FileNotFound(exo_ir_file.to_string()));
@@ -196,7 +199,7 @@ pub async fn create_system_resolver(
         Ok(file) => {
             let exo_ir_file_buffer = BufReader::new(file);
 
-            SystemLoader::load(exo_ir_file_buffer, static_loaders).await
+            SystemLoader::load(exo_ir_file_buffer, static_loaders, env).await
         }
         Err(e) => Err(SystemLoadingError::FileOpen(exo_ir_file.into(), e)),
     }
@@ -205,15 +208,17 @@ pub async fn create_system_resolver(
 pub async fn create_system_resolver_from_system(
     system: SerializableSystem,
     static_loaders: StaticLoaders,
+    env: Box<dyn Environment>,
 ) -> Result<SystemResolver, SystemLoadingError> {
-    SystemLoader::load_from_system(system, static_loaders).await
+    SystemLoader::load_from_system(system, static_loaders, env).await
 }
 
 pub async fn create_system_resolver_or_exit(
     exo_ir_file: &str,
     static_loaders: StaticLoaders,
+    env: Box<dyn Environment>,
 ) -> SystemResolver {
-    match create_system_resolver(exo_ir_file, static_loaders).await {
+    match create_system_resolver(exo_ir_file, static_loaders, env).await {
         Ok(system_resolver) => system_resolver,
         Err(error) => {
             println!("{error}");

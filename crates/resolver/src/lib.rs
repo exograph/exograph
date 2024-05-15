@@ -21,6 +21,4 @@ pub use root_resolver::{
     create_system_resolver, create_system_resolver_from_system, create_system_resolver_or_exit,
     get_endpoint_http_path, get_playground_http_path, resolve, resolve_in_memory, ResponseStream,
 };
-pub use system_loader::{
-    introspection_mode, IntrospectionMode, LOCAL_ALLOW_INTROSPECTION, LOCAL_ENVIRONMENT,
-};
+pub use system_loader::{introspection_mode, IntrospectionMode};

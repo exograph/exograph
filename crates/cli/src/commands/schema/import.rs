@@ -14,7 +14,6 @@ use exo_sql::schema::column_spec::{ColumnSpec, ColumnTypeSpec};
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::table_spec::TableSpec;
-use exo_sql::DatabaseClientManager;
 use std::fmt::Write;
 use std::path::PathBuf;
 
@@ -24,6 +23,8 @@ use exo_sql::schema::issue::Issue;
 
 use crate::commands::command::{database_arg, get, output_arg, CommandDefinition};
 use crate::util::open_file_for_output;
+
+use super::util;
 
 pub(super) struct ImportCommandDefinition {}
 
@@ -62,7 +63,7 @@ impl CommandDefinition for ImportCommandDefinition {
 }
 
 async fn import_schema() -> Result<WithIssues<DatabaseSpec>> {
-    let database_client = DatabaseClientManager::from_env(Some(1)).await?;
+    let database_client = util::database_manager_from_env().await?;
     let client = database_client.get_client().await?;
     let database = DatabaseSpec::from_live_database(&client).await?;
     Ok(database)

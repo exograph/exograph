@@ -13,6 +13,7 @@ use builder::error::ParserError;
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
+use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
 use postgres_model::subsystem::PostgresSubsystem;
 
 use crate::commands::build::build_system_with_static_builders;
@@ -46,4 +47,19 @@ fn deserialize_postgres_subsystem(
         .map_err(|e| {
             ParserError::Generic(format!("Error while deserializing database subsystem: {e}"))
         })
+}
+
+pub(crate) async fn database_manager_from_env() -> Result<DatabaseClientManager, DatabaseError> {
+    let url = std::env::var("EXO_POSTGRES_URL").expect("EXO_POSTGRES_URL not set");
+    let user = std::env::var("EXO_POSTGRES_USER").ok();
+    let password = std::env::var("EXO_POSTGRES_PASSWORD").ok();
+    let pool_size = std::env::var("EXO_CONNECTION_POOL_SIZE")
+        .ok()
+        .and_then(|s| s.parse().ok());
+    let check_connection = std::env::var("EXO_CHECK_CONNECTION_ON_STARTUP")
+        .ok()
+        .map(|s| s == "true")
+        .unwrap_or(true);
+
+    DatabaseClientManager::from_url(&url, &user, &password, check_connection, pool_size).await
 }

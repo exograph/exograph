@@ -28,6 +28,7 @@ use core_plugin_interface::{
 
 use deno_model::{module::ModuleMethod, subsystem::DenoSubsystem};
 use exo_deno::DenoExecutorPool;
+use exo_env::Environment;
 
 use super::{
     deno_execution_error::DenoExecutionError,
@@ -53,6 +54,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
     async fn init(
         &mut self,
         serialized_subsystem: Vec<u8>,
+        _env: &dyn Environment,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
         deno_core::JsRuntime::init_platform(None);
         let subsystem = DenoSubsystem::deserialize(serialized_subsystem)?;

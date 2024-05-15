@@ -7,8 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
-
 use std::sync::Arc;
 
 use async_graphql_parser::{
@@ -28,6 +26,8 @@ use serde_json::{Map, Value};
 use thiserror::Error;
 use tokio::runtime::Handle;
 use tracing::{error, instrument, warn};
+
+use exo_env::Environment;
 
 use crate::context::provider::jwt::JwtAuthenticator;
 
@@ -62,7 +62,7 @@ pub struct SystemResolver {
     trusted_documents: TrustedDocuments,
     schema: Schema,
     pub jwt_authenticator: Arc<Option<JwtAuthenticator>>,
-    pub env: HashMap<String, String>,
+    pub env: Box<dyn Environment>,
     normal_query_depth_limit: usize,
     introspection_query_depth_limit: usize,
 }
@@ -76,7 +76,7 @@ impl SystemResolver {
         trusted_documents: TrustedDocuments,
         schema: Schema,
         jwt_authenticator: Arc<Option<JwtAuthenticator>>,
-        env: HashMap<String, String>,
+        env: Box<dyn Environment>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
     ) -> Self {

@@ -24,6 +24,8 @@ use std::time;
 
 use common::env_const::{get_deployment_mode, DeploymentMode, EXO_CORS_DOMAINS, EXO_SERVER_PORT};
 
+use exo_env::SystemEnvironment;
+
 const EXO_SERVER_HOST: &str = "EXO_SERVER_HOST";
 
 #[derive(Error)]
@@ -116,7 +118,7 @@ async fn main() -> Result<(), ServerError> {
                 println!("\thttp://{pretty_addr}{}", get_playground_http_path());
             };
 
-            match introspection_mode()? {
+            match introspection_mode(&SystemEnvironment)? {
                 IntrospectionMode::Enabled => {
                     print_server_info();
                     print_playground_info();

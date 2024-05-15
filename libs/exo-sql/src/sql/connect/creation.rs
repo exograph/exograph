@@ -17,9 +17,11 @@ use super::database_client::DatabaseClient;
 
 pub enum DatabaseCreation {
     #[cfg(feature = "postgres-url")]
-    Env,
-    #[cfg(feature = "postgres-url")]
-    Url { url: String },
+    Url {
+        url: String,
+        user: Option<String>,
+        password: Option<String>,
+    },
     Connect {
         config: Box<Config>,
         user: Option<String>,
@@ -38,36 +40,19 @@ impl DatabaseCreation {
                 Ok(DatabaseClient::Direct(client))
             }
             #[cfg(feature = "postgres-url")]
-            DatabaseCreation::Env => {
-                use common::env_const::{
-                    EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER,
-                };
-
-                use crate::LOCAL_URL;
-                use std::env;
-
-                let url = LOCAL_URL
-                    .with(|f| f.borrow().clone())
-                    .or_else(|| env::var(EXO_POSTGRES_URL).ok())
-                    .ok_or(DatabaseError::Config(format!(
-                        "Env {EXO_POSTGRES_URL} must be provided"
-                    )))?;
-
-                let user = env::var(EXO_POSTGRES_USER).ok();
-                let password = env::var(EXO_POSTGRES_PASSWORD).ok();
-
-                Self::from_helper(&url, user, password).await
-            }
-            #[cfg(feature = "postgres-url")]
-            DatabaseCreation::Url { url } => Self::from_helper(url, None, None).await,
+            DatabaseCreation::Url {
+                url,
+                user,
+                password,
+            } => Self::from_url(url, user, password).await,
         }
     }
 
     #[cfg(feature = "postgres-url")]
-    async fn from_helper(
+    async fn from_url(
         url: &str,
-        user: Option<String>,
-        password: Option<String>,
+        user: &Option<String>,
+        password: &Option<String>,
     ) -> Result<DatabaseClient, DatabaseError> {
         use std::str::FromStr;
 

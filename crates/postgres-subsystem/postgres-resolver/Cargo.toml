@@ -35,6 +35,7 @@ uuid = "1.1.2"
 pgvector = { version = "0.3", features = ["postgres"], optional = true }
 
 exo-sql = { path = "../../../libs/exo-sql" }
+exo-env = { path = "../../../libs/exo-env" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-model = { path = "../postgres-model" }
 

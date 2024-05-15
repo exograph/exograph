@@ -7,21 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::cell::RefCell;
-
 use crate::{database_error::DatabaseError, Connect};
 
 use super::{creation::DatabaseCreation, database_client::DatabaseClient};
 
 #[cfg(feature = "pool")]
 use super::database_pool::DatabasePool;
-
-// we spawn many resolvers concurrently in integration tests
-thread_local! {
-    pub static LOCAL_URL: RefCell<Option<String>> = const { RefCell::new(None) };
-    pub static LOCAL_CONNECTION_POOL_SIZE: RefCell<Option<usize>> = const { RefCell::new(None) };
-    pub static LOCAL_CHECK_CONNECTION_ON_STARTUP: RefCell<Option<bool>> = const { RefCell::new(None) };
-}
 
 pub enum DatabaseClientManager {
     #[cfg(feature = "pool")]
@@ -94,75 +85,34 @@ impl DatabaseClientManager {
 }
 
 #[cfg(feature = "postgres-url")]
-use std::env;
-
-#[cfg(feature = "postgres-url")]
 impl DatabaseClientManager {
-    pub async fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
-        #[cfg(feature = "pool")]
-        {
-            Self::from_env_pooled(pool_size_override).await
-        }
-        #[cfg(not(feature = "pool"))]
-        {
-            Self::from_env_direct().await
-        }
-    }
-
-    pub async fn from_env_direct() -> Result<Self, DatabaseError> {
-        let creation = DatabaseCreation::Env;
-        Ok(DatabaseClientManager::Direct(creation))
-    }
-
-    #[cfg(feature = "pool")]
-    pub async fn from_env_pooled(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
-        use common::env_const::EXO_CHECK_CONNECTION_ON_STARTUP;
-
-        let creation = DatabaseCreation::Env;
-
-        let res = Ok(Self::Pooled(
-            DatabasePool::create(creation, pool_size_override).await?,
-        ));
-
-        let check_connection = LOCAL_CHECK_CONNECTION_ON_STARTUP
-            .with(|f| *f.borrow())
-            .or_else(|| {
-                env::var(EXO_CHECK_CONNECTION_ON_STARTUP)
-                    .ok()
-                    .map(|check| check.parse::<bool>().expect("Should be true or false"))
-            })
-            .unwrap_or(true);
-
-        if let Ok(ref res) = res {
-            if check_connection {
-                let _ = res.get_client().await?;
-            }
-        }
-
-        res
-    }
-
-    pub async fn from_db_url(
+    pub async fn from_url(
         url: &str,
+        user: &Option<String>,
+        password: &Option<String>,
         check_connection: bool,
         pool_size: Option<usize>,
     ) -> Result<Self, DatabaseError> {
         #[cfg(feature = "pool")]
         {
-            Self::from_db_url_pooled(url, check_connection, pool_size).await
+            Self::from_url_pooled(url, user, password, check_connection, pool_size).await
         }
         #[cfg(not(feature = "pool"))]
         {
-            Self::from_db_url_direct(url, check_connection).await
+            Self::from_db_url_direct(url, user, password, check_connection).await
         }
     }
 
-    pub async fn from_db_url_direct(
+    pub async fn from_url_direct(
         url: &str,
+        user: &Option<String>,
+        password: &Option<String>,
         check_connection: bool,
     ) -> Result<Self, DatabaseError> {
         let creation = DatabaseCreation::Url {
             url: url.to_string(),
+            user: user.clone(),
+            password: password.clone(),
         };
         let res = Ok(DatabaseClientManager::Direct(creation));
 
@@ -176,13 +126,17 @@ impl DatabaseClientManager {
     }
 
     #[cfg(feature = "pool")]
-    pub async fn from_db_url_pooled(
+    pub async fn from_url_pooled(
         url: &str,
+        user: &Option<String>,
+        password: &Option<String>,
         check_connection: bool,
         pool_size: Option<usize>,
     ) -> Result<Self, DatabaseError> {
         let creation = DatabaseCreation::Url {
             url: url.to_string(),
+            user: user.clone(),
+            password: password.clone(),
         };
         let res = Ok(Self::Pooled(
             DatabasePool::create(creation, pool_size).await?,

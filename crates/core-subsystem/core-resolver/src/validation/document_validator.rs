@@ -111,6 +111,7 @@ mod tests {
     use super::*;
 
     use async_graphql_parser::parse_query;
+    use exo_env::MapEnvironment;
     use exo_sql::DatabaseClientManager;
 
     macro_rules! assert_debug {
@@ -897,7 +898,7 @@ mod tests {
         postgres_resolver::PostgresSubsystemLoader {
             existing_client: Some(client),
         }
-        .init(subsystem)
+        .init(subsystem, &MapEnvironment::from([]))
         .await
         .expect("Failed to initialize postgres subsystem")
     }

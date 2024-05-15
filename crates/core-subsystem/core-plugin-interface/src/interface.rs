@@ -23,6 +23,7 @@ use core_model_builder::typechecker::typ::TypecheckedSystem;
 use thiserror::Error;
 
 use crate::build_info::SubsystemCheckError;
+use exo_env::Environment;
 
 #[async_trait]
 pub trait SubsystemBuilder {
@@ -94,6 +95,7 @@ pub trait SubsystemLoader {
     async fn init(
         &mut self,
         serialized_subsystem: Vec<u8>,
+        env: &dyn Environment,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError>;
 }
 
@@ -104,6 +106,9 @@ pub enum SubsystemLoadingError {
 
     #[error("{0}")]
     BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("Configuration error: {0}")]
+    Config(String),
 }
 
 #[derive(Error, Debug)]

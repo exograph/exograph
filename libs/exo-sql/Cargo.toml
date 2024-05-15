@@ -38,7 +38,7 @@ maybe-owned.workspace = true
 once_cell = "1.17.1"
 lazy_static.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["rt"] }
 tracing.workspace = true
 typed-generational-arena.workspace = true
 url = "2.2.2"

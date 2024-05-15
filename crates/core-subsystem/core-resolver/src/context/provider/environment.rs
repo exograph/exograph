@@ -7,9 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
-
 use async_trait::async_trait;
+use exo_env::Environment;
 use serde_json::Value;
 
 use crate::context::{
@@ -17,7 +16,7 @@ use crate::context::{
 };
 
 pub struct EnvironmentContextExtractor<'a> {
-    pub env: &'a HashMap<String, String>,
+    pub env: &'a dyn Environment,
 }
 
 #[async_trait]
