@@ -28,9 +28,7 @@ use crate::{
     },
     util::watcher,
 };
-use common::env_const::{
-    EXO_JWT_SECRET, EXO_POSTGRES_PASSWORD, EXO_POSTGRES_URL, EXO_POSTGRES_USER,
-};
+use common::env_const::{EXO_JWT_SECRET, EXO_POSTGRES_URL};
 
 use super::command::{
     default_model_file, enforce_trusted_documents_arg, ensure_exo_project_dir, get, port_arg,
@@ -108,8 +106,6 @@ async fn run_server(
 ) -> Result<()> {
     // set envs for server
     std::env::set_var(EXO_POSTGRES_URL, db.url());
-    std::env::remove_var(EXO_POSTGRES_USER);
-    std::env::remove_var(EXO_POSTGRES_PASSWORD);
     std::env::set_var(EXO_INTROSPECTION, "true");
     std::env::set_var(EXO_INTROSPECTION_LIVE_UPDATE, "true");
     std::env::set_var(_EXO_DEPLOYMENT_MODE, "yolo");

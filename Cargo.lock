@@ -1479,6 +1479,7 @@ dependencies = [
  "core-model-builder",
  "core-plugin-shared",
  "core-resolver",
+ "exo-env",
  "libloading 0.7.4",
  "thiserror",
 ]
@@ -1515,6 +1516,7 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "elsa",
+ "exo-env",
  "exo-sql",
  "futures",
  "indexmap 2.2.5",
@@ -2049,6 +2051,7 @@ dependencies = [
  "deno-model",
  "deno_core",
  "exo-deno",
+ "exo-env",
  "futures",
  "indexmap 2.2.5",
  "maybe-owned",
@@ -3358,6 +3361,10 @@ dependencies = [
  "tokio",
  "tracing",
 ]
+
+[[package]]
+name = "exo-env"
+version = "0.8.2"
 
 [[package]]
 name = "exo-sql"
@@ -6360,8 +6367,10 @@ dependencies = [
  "base64 0.13.1",
  "builder",
  "chrono",
+ "common",
  "core-plugin-interface",
  "core-resolver",
+ "exo-env",
  "exo-sql",
  "futures",
  "indexmap 2.2.5",
@@ -6899,6 +6908,7 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "core-resolver",
+ "exo-env",
  "futures",
  "include_dir",
  "introspection-resolver",
@@ -7459,6 +7469,7 @@ dependencies = [
  "async-trait",
  "common",
  "core-resolver",
+ "exo-env",
  "futures",
  "reqwest",
  "resolver",
@@ -7478,6 +7489,7 @@ dependencies = [
  "builder",
  "common",
  "core-resolver",
+ "exo-env",
  "futures",
  "lambda_runtime",
  "opentelemetry 0.17.0",
@@ -7492,9 +7504,11 @@ dependencies = [
 name = "server-cf-worker"
 version = "0.8.2"
 dependencies = [
+ "common",
  "console_error_panic_hook",
  "core-plugin-shared",
  "core-resolver",
+ "exo-env",
  "exo-sql",
  "postgres-resolver",
  "resolver",
@@ -7520,6 +7534,7 @@ dependencies = [
  "core-plugin-interface",
  "core-resolver",
  "deno-resolver",
+ "exo-env",
  "postgres-resolver",
  "resolver",
  "wasm-resolver",
@@ -8489,12 +8504,14 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "colored",
+ "common",
  "core-plugin-interface",
  "core-resolver",
  "crossbeam-channel",
  "ctor",
  "deno_core",
  "exo-deno",
+ "exo-env",
  "exo-sql",
  "futures",
  "include_dir",
@@ -9697,6 +9714,7 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "core-plugin-interface",
+ "exo-env",
  "exo-wasm",
  "futures",
  "serde_json",

@@ -22,6 +22,7 @@ members = [
   "libs/exo-deno",
   "libs/exo-sql",
   "libs/exo-wasm",
+  "libs/exo-env"
 ]
 
 # The default workspace member to run `cargo` commands on (we exclude server-aws-lambda here, since we don't need to build it during normal development)
@@ -42,6 +43,7 @@ default-members = [
   "libs/exo-deno",
   "libs/exo-sql",
   "libs/exo-wasm",
+  "libs/exo-env"
 ]
 
 resolver = "2"

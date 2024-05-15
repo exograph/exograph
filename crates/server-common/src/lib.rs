@@ -15,6 +15,8 @@ use core_resolver::system_resolver::SystemResolver;
 
 use resolver::create_system_resolver_or_exit;
 
+use exo_env::SystemEnvironment;
+
 /// Initialize the server by:
 /// - Initializing tracing
 /// - Creating the system resolver (and return it)
@@ -30,7 +32,12 @@ pub async fn init() -> SystemResolver {
 
     let exo_ir_file = get_exo_ir_file_name();
 
-    create_system_resolver_or_exit(&exo_ir_file, create_static_loaders()).await
+    create_system_resolver_or_exit(
+        &exo_ir_file,
+        create_static_loaders(),
+        Box::new(SystemEnvironment),
+    )
+    .await
 }
 
 pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {

@@ -23,6 +23,7 @@ use core_plugin_interface::{
     interface::{SubsystemLoader, SubsystemLoadingError},
     system_serializer::SystemSerializer,
 };
+use exo_env::Environment;
 use exo_wasm::WasmExecutorPool;
 use wasm_model::{module::ModuleMethod, subsystem::WasmSubsystem};
 
@@ -37,6 +38,7 @@ impl SubsystemLoader for WasmSubsystemLoader {
     async fn init(
         &mut self,
         serialized_subsystem: Vec<u8>,
+        _env: &dyn Environment,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
         let subsystem = WasmSubsystem::deserialize(serialized_subsystem)?;
 

@@ -30,6 +30,7 @@ elsa = "1.8.1"
 tracing.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
+exo-env = { path = "../../../libs/exo-env" }
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
 common = { path = "../../common" }

@@ -1,0 +1,10 @@
+[package]
+name = "exo-env"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+
+[lib]
+doctest = false

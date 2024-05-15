@@ -45,7 +45,7 @@ impl<'a> UserRequestContext<'a> {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedContextExtractor> = vec![
             Box::new(EnvironmentContextExtractor {
-                env: &system_resolver.env,
+                env: system_resolver.env.as_ref(),
             }),
             Box::new(QueryExtractor::new(system_resolver)),
             Box::new(HeaderExtractor),

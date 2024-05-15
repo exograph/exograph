@@ -1,5 +1,6 @@
-use std::{cell::OnceCell, collections::HashMap};
+use std::cell::OnceCell;
 
+use exo_env::Environment;
 use wasm_bindgen::prelude::*;
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
@@ -7,12 +8,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
-use core_resolver::{context::LOCAL_JWT_SECRET, system_resolver::SystemResolver};
+use core_resolver::system_resolver::SystemResolver;
 use exo_sql::DatabaseClientManager;
-use resolver::{
-    create_system_resolver_from_system, IntrospectionMode, LOCAL_ALLOW_INTROSPECTION,
-    LOCAL_ENVIRONMENT,
-};
+use resolver::create_system_resolver_from_system;
 
 use crate::pg::WorkerPostgresConnect;
 
@@ -24,25 +22,10 @@ pub fn start() -> Result<(), JsValue> {
     Ok(())
 }
 
-pub(crate) async fn init(env: worker::Env, system_bytes: Vec<u8>) -> Result<(), JsValue> {
+pub(crate) async fn init(system_bytes: Vec<u8>, env: Box<dyn Environment>) -> Result<(), JsValue> {
     setup_tracing();
 
-    let postgres_url: String = env
-        .secret("EXO_POSTGRES_URL")
-        .map(|url_binding| url_binding.to_string())
-        .map_err(|e| JsValue::from_str(&format!("Error getting POSTGRES_URL: {:?}", e)))?;
-    let jwt_secret: Option<String> = env
-        .var("EXO_JWT_SECRET")
-        .ok()
-        .and_then(|secret_binding| Some(secret_binding.to_string()));
-    let oidc_url: Option<String> = env
-        .var("EXO_OIDC_URL")
-        .ok()
-        .and_then(|secret_binding| Some(secret_binding.to_string()));
-
-    RESOLVER
-        .init_resolver(postgres_url, jwt_secret, oidc_url, system_bytes)
-        .await
+    RESOLVER.init_resolver(system_bytes, env).await
 }
 
 fn setup_tracing() {
@@ -82,10 +65,8 @@ static RESOLVER: SystemResolverHolder = SystemResolverHolder {
 impl SystemResolverHolder {
     async fn init_resolver(
         &self,
-        postgres_url: String,
-        jwt_secret: Option<String>,
-        oidc_url: Option<String>,
         system_bytes: Vec<u8>,
+        env: Box<dyn Environment>,
     ) -> Result<(), JsValue> {
         if self.system_resolver.get().is_some() {
             return Ok(());
@@ -95,9 +76,9 @@ impl SystemResolverHolder {
         let system = SerializableSystem::deserialize(system_bytes)
             .map_err(|e| JsValue::from_str(&format!("Error deserializing system: {:?}", e)))?;
 
-        let client = WorkerPostgresConnect::create_client(&postgres_url).await?;
+        let client = WorkerPostgresConnect::create_client(env.as_ref()).await?;
 
-        let resolver = Self::create_resolver(system, jwt_secret, oidc_url, client)
+        let resolver = Self::create_resolver(system, client, env)
             .await
             .map_err(|e| JsValue::from_str(&format!("Error creating resolver {:?}", e)))?;
 
@@ -111,36 +92,15 @@ impl SystemResolverHolder {
 
     async fn create_resolver(
         system: SerializableSystem,
-        jwt_secret: Option<String>,
-        oidc_url: Option<String>,
         client_manager: DatabaseClientManager,
+        env: Box<dyn Environment>,
     ) -> Result<SystemResolver, JsValue> {
-        LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-            allow.borrow_mut().replace(IntrospectionMode::Disabled);
-        });
-
-        LOCAL_ENVIRONMENT.with(|env| {
-            env.borrow_mut().replace(HashMap::new());
-        });
-
-        if let Some(jwt_secret) = jwt_secret {
-            LOCAL_JWT_SECRET.with(|jwt_secret_ref| {
-                jwt_secret_ref.borrow_mut().replace(jwt_secret);
-            });
-        }
-
-        #[cfg(feature = "oidc")]
-        if let Some(oidc_url) = oidc_url {
-            core_resolver::context::LOCAL_OIDC_URL.with(|oidc_url_ref| {
-                oidc_url_ref.borrow_mut().replace(oidc_url);
-            });
-        }
-
         create_system_resolver_from_system(
             system,
             vec![Box::new(postgres_resolver::PostgresSubsystemLoader {
                 existing_client: Some(client_manager),
             })],
+            env,
         )
         .await
         .map_err(|e| JsValue::from_str(&format!("Error creating system resolver: {:?}", e)))

@@ -17,11 +17,15 @@ use exo_deno::{
     deno_executor_pool::{DenoScriptDefn, ResolvedModule},
     Arg, DenoModule, DenoModuleSharedState, UserCode,
 };
-use exo_sql::{LOCAL_CHECK_CONNECTION_ON_STARTUP, LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
+use exo_env::MapEnvironment;
 use include_dir::{include_dir, Dir};
-use resolver::{create_system_resolver, IntrospectionMode, LOCAL_ALLOW_INTROSPECTION};
+use resolver::create_system_resolver;
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
+
+use common::env_const::{
+    EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_POSTGRES_URL,
+};
 
 use super::{TestResult, TestResultKind};
 
@@ -39,26 +43,14 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
     let server = {
         let static_loaders = server_common::create_static_loaders();
 
-        LOCAL_URL
-            .with(|url| {
-                url.borrow_mut()
-                    .replace("postgres://a@dummy-value".to_string());
+        let env = MapEnvironment::from([
+            (EXO_POSTGRES_URL, "postgres://a@dummy-value"),
+            (EXO_CONNECTION_POOL_SIZE, "1"),
+            (EXO_INTROSPECTION, "true"),
+            (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
+        ]);
 
-                LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
-                    pool_size.borrow_mut().replace(1);
-
-                    LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-                        allow.borrow_mut().replace(IntrospectionMode::Enabled);
-
-                        LOCAL_CHECK_CONNECTION_ON_STARTUP.with(|check_connection| {
-                            check_connection.borrow_mut().replace(false);
-
-                            create_system_resolver(&exo_ir_file, static_loaders)
-                        })
-                    })
-                })
-            })
-            .await?
+        create_system_resolver(&exo_ir_file, static_loaders, Box::new(env)).await?
     };
 
     let result = check_introspection(&server).await?;

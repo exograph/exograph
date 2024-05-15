@@ -15,9 +15,7 @@ mod request;
 mod request_context;
 mod user_request_context;
 
-#[cfg(feature = "oidc")]
-pub use provider::jwt::LOCAL_OIDC_URL;
-pub use provider::jwt::{JwtAuthenticator, LOCAL_JWT_SECRET};
+pub use provider::jwt::JwtAuthenticator;
 
 pub use error::ContextExtractionError;
 pub use request::Request;

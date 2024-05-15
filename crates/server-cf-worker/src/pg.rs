@@ -1,4 +1,7 @@
+use common::env_const::{DATABASE_URL, EXO_POSTGRES_URL};
+use exo_env::Environment;
 use exo_sql::DatabaseClientManager;
+
 use std::str::FromStr;
 use wasm_bindgen::JsValue;
 
@@ -8,39 +11,34 @@ use tokio_postgres::Config;
 
 pub(super) struct WorkerPostgresConnect {
     config: Config,
-    host: String,
-    port: u16,
 }
 
 unsafe impl Send for WorkerPostgresConnect {}
 unsafe impl Sync for WorkerPostgresConnect {}
 
 impl WorkerPostgresConnect {
-    pub(crate) async fn create_client(url: &str) -> Result<DatabaseClientManager, JsValue> {
+    pub(crate) async fn create_client(
+        env: &dyn Environment,
+    ) -> Result<DatabaseClientManager, JsValue> {
+        let url = env
+            .get(EXO_POSTGRES_URL)
+            .or(env.get(DATABASE_URL))
+            .ok_or_else(|| {
+                JsValue::from_str(&format!("{EXO_POSTGRES_URL} or {DATABASE_URL} not set"))
+            })?;
         let config = Config::from_str(&url).map_err(|e| {
             JsValue::from_str(&format!(
                 "Failed to parse PostgreSQL connection string: {:?}",
                 e
             ))
         })?;
-        let host = match &config.get_hosts()[0] {
-            tokio_postgres::config::Host::Tcp(host) => Ok(host),
-            // #[cfg(accessible(::tokio_postgres::config::Host::Unix))] (but can't: https://github.com/rust-lang/rust/issues/64797)
-            #[allow(unreachable_patterns)]
-            _ => Err(JsValue::from_str("Unix domain sockets are not supported")),
-        }?
-        .clone();
 
-        let port = config.get_ports()[0];
-
-        let connect = WorkerPostgresConnect { config, host, port };
+        let connect = WorkerPostgresConnect { config };
 
         let client = DatabaseClientManager::from_connect_direct(
             false,
             tokio_postgres::Config::new(),
             connect,
-            None,
-            None,
         )
         .await
         .map_err(|e| JsValue::from_str(&format!("Error creating database client {:?}", e)))?;
@@ -52,7 +50,7 @@ impl WorkerPostgresConnect {
 impl exo_sql::Connect for WorkerPostgresConnect {
     fn connect(
         &self,
-        _pg_config: &tokio_postgres::Config,
+        _config: &tokio_postgres::Config,
     ) -> std::pin::Pin<
         Box<
             dyn std::future::Future<
@@ -67,10 +65,24 @@ impl exo_sql::Connect for WorkerPostgresConnect {
         // We are misusing the timeout error here, but that is the only way to construct a
         // `tokio_postgres::Error` (which is required by the trait implementation). An alternative
         // would be `upwrap()`, which is decidedly worse, especially in WASM environments.
+
         Box::pin(async move {
+            let host = match &self.config.get_hosts()[0] {
+                tokio_postgres::config::Host::Tcp(host) => Ok(host),
+                // #[cfg(accessible(::tokio_postgres::config::Host::Unix))] (but can't: https://github.com/rust-lang/rust/issues/64797)
+                #[allow(unreachable_patterns)]
+                _ => {
+                    tracing::error!("Connecting to a Unix socket is not supported");
+                    Err(tokio_postgres::Error::__private_api_timeout())
+                }
+            }?
+            .to_string();
+
+            let port = self.config.get_ports()[0];
+
             let socket = Socket::builder()
                 .secure_transport(SecureTransport::StartTls)
-                .connect(&self.host, self.port)
+                .connect(&host, port)
                 .map_err(|e| {
                     tracing::error!("Error establishing connection to Postgres server: {:?}", e);
                     tokio_postgres::Error::__private_api_timeout()
