@@ -30,19 +30,9 @@ impl DatabasePool {
     ) -> Result<Self, DatabaseError> {
         match creation {
             #[cfg(feature = "postgres-url")]
-            DatabaseCreation::Url {
-                url,
-                user,
-                password,
-            } => Self::from_db_url(&url, &user, &password, pool_size).await,
-            DatabaseCreation::Connect {
-                config,
-                user,
-                password,
-                connect,
-            } => {
-                Self::from_connect(pool_size, *config, ConnectBridge(connect), &user, &password)
-                    .await
+            DatabaseCreation::Url { url } => Self::from_db_url(&url, pool_size).await,
+            DatabaseCreation::Connect { config, connect } => {
+                Self::from_connect(pool_size, *config, ConnectBridge(connect)).await
             }
         }
     }
@@ -52,22 +42,12 @@ impl DatabasePool {
     }
 
     #[cfg(feature = "postgres-url")]
-    async fn from_db_url(
-        url: &str,
-        user: &Option<String>,
-        password: &Option<String>,
-        pool_size: Option<usize>,
-    ) -> Result<Self, DatabaseError> {
-        Self::from_helper(pool_size, url, user, password).await
+    async fn from_db_url(url: &str, pool_size: Option<usize>) -> Result<Self, DatabaseError> {
+        Self::from_helper(pool_size, url).await
     }
 
     #[cfg(feature = "postgres-url")]
-    async fn from_helper(
-        pool_size: Option<usize>,
-        url: &str,
-        user: &Option<String>,
-        password: &Option<String>,
-    ) -> Result<Self, DatabaseError> {
+    async fn from_helper(pool_size: Option<usize>, url: &str) -> Result<Self, DatabaseError> {
         use std::str::FromStr;
 
         use crate::sql::connect::ssl_config::SslConfig;
@@ -83,31 +63,20 @@ impl DatabasePool {
             Some(ssl_config) => {
                 let (config, tls) = ssl_config.updated_config(config)?;
 
-                Self::from_connect(pool_size, config, ConfigConnectImpl { tls }, user, password)
-                    .await
+                Self::from_connect(pool_size, config, ConfigConnectImpl { tls }).await
             }
             None => {
                 let tls = tokio_postgres::NoTls;
-                Self::from_connect(pool_size, config, ConfigConnectImpl { tls }, user, password)
-                    .await
+                Self::from_connect(pool_size, config, ConfigConnectImpl { tls }).await
             }
         }
     }
 
     pub async fn from_connect(
         pool_size: Option<usize>,
-        mut config: Config,
+        config: Config,
         connect: impl Connect + 'static,
-        user: &Option<String>,
-        password: &Option<String>,
     ) -> Result<Self, DatabaseError> {
-        if let Some(user) = &user {
-            config.user(user);
-        }
-        if let Some(password) = &password {
-            config.password(password);
-        }
-
         let manager_config = ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
         };

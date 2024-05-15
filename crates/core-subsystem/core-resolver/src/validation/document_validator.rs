@@ -888,8 +888,6 @@ mod tests {
             false,
             tokio_postgres::Config::new(),
             FakeConnect {},
-            None,
-            None,
         )
         .await
         .unwrap();

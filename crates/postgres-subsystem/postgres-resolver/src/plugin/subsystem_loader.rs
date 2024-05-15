@@ -9,6 +9,7 @@
 
 use super::PostgresSubsystemResolver;
 use async_trait::async_trait;
+use common::env_const::{DATABASE_URL, EXO_POSTGRES_URL};
 use core_plugin_interface::{
     core_resolver::plugin::SubsystemResolver,
     interface::{SubsystemLoader, SubsystemLoadingError},
@@ -40,11 +41,12 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         } else {
             #[cfg(feature = "network")]
             {
-                let url = env.get("EXO_POSTGRES_URL").ok_or_else(|| {
-                    SubsystemLoadingError::Config("Env EXO_POSTGRES_URL not set".to_string())
-                })?;
-                let user = env.get("EXO_POSTGRES_USER");
-                let password = env.get("EXO_POSTGRES_PASSWORD");
+                let url = env
+                    .get(EXO_POSTGRES_URL)
+                    .or(env.get(DATABASE_URL))
+                    .ok_or_else(|| {
+                        SubsystemLoadingError::Config("Env EXO_POSTGRES_URL not set".to_string())
+                    })?;
                 let pool_size: Option<usize> = env
                     .get("EXO_CONNECTION_POOL_SIZE")
                     .and_then(|s| s.parse().ok());
@@ -53,7 +55,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
                     .map(|s| s == "true")
                     .unwrap_or(true);
 
-                DatabaseClientManager::from_url(&url, &user, &password, check_connection, pool_size)
+                DatabaseClientManager::from_url(&url, check_connection, pool_size)
                     .await
                     .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?
             }

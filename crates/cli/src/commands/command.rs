@@ -117,7 +117,7 @@ pub fn new_project_arg() -> Arg {
 
 pub fn database_arg() -> Arg {
     Arg::new("database")
-        .help("The PostgreSQL database connection string to use. If not specified, the program will attempt to read it from the environment (`EXO_POSTGRES_URL`).")
+        .help("The PostgreSQL database connection string to use. If not specified, the program will attempt to read it from the environment (`EXO_POSTGRES_URL` or `DATABASE_URL`).")
         .long("database")
         .required(false)
 }

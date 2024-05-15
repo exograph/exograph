@@ -25,13 +25,9 @@ impl DatabaseClientManager {
         check_connection: bool,
         config: tokio_postgres::Config,
         connect: impl Connect + 'static,
-        user: Option<String>,
-        password: Option<String>,
     ) -> Result<Self, DatabaseError> {
         let creation = DatabaseCreation::Connect {
             config: Box::new(config),
-            user,
-            password,
             connect: Box::new(connect),
         };
 
@@ -51,14 +47,10 @@ impl DatabaseClientManager {
         check_connection: bool,
         config: tokio_postgres::Config,
         connect: impl Connect + 'static,
-        user: Option<String>,
-        password: Option<String>,
         pool_size: usize,
     ) -> Result<Self, DatabaseError> {
         let creation = DatabaseCreation::Connect {
             config: Box::new(config),
-            user,
-            password,
             connect: Box::new(connect),
         };
 
@@ -88,31 +80,22 @@ impl DatabaseClientManager {
 impl DatabaseClientManager {
     pub async fn from_url(
         url: &str,
-        user: &Option<String>,
-        password: &Option<String>,
         check_connection: bool,
         pool_size: Option<usize>,
     ) -> Result<Self, DatabaseError> {
         #[cfg(feature = "pool")]
         {
-            Self::from_url_pooled(url, user, password, check_connection, pool_size).await
+            Self::from_url_pooled(url, check_connection, pool_size).await
         }
         #[cfg(not(feature = "pool"))]
         {
-            Self::from_db_url_direct(url, user, password, check_connection).await
+            Self::from_db_url_direct(url, check_connection).await
         }
     }
 
-    pub async fn from_url_direct(
-        url: &str,
-        user: &Option<String>,
-        password: &Option<String>,
-        check_connection: bool,
-    ) -> Result<Self, DatabaseError> {
+    pub async fn from_url_direct(url: &str, check_connection: bool) -> Result<Self, DatabaseError> {
         let creation = DatabaseCreation::Url {
             url: url.to_string(),
-            user: user.clone(),
-            password: password.clone(),
         };
         let res = Ok(DatabaseClientManager::Direct(creation));
 
@@ -128,15 +111,11 @@ impl DatabaseClientManager {
     #[cfg(feature = "pool")]
     pub async fn from_url_pooled(
         url: &str,
-        user: &Option<String>,
-        password: &Option<String>,
         check_connection: bool,
         pool_size: Option<usize>,
     ) -> Result<Self, DatabaseError> {
         let creation = DatabaseCreation::Url {
             url: url.to_string(),
-            user: user.clone(),
-            password: password.clone(),
         };
         let res = Ok(Self::Pooled(
             DatabasePool::create(creation, pool_size).await?,

@@ -6364,6 +6364,7 @@ dependencies = [
  "base64 0.13.1",
  "builder",
  "chrono",
+ "common",
  "core-plugin-interface",
  "core-resolver",
  "exo-env",
