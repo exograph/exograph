@@ -22,6 +22,7 @@ tokio.workspace = true
 bincode.workspace = true
 
 exo-deno = { path = "../../../libs/exo-deno" }
+exo-env = { path = "../../../libs/exo-env" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 deno-model = { path = "../deno-model" }
 

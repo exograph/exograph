@@ -7,10 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::cell::RefCell;
 use std::sync::Arc;
 
-#[cfg(not(target_family = "wasm"))]
 use common::env_const::EXO_INTROSPECTION;
 use common::EnvError;
 use core_resolver::context::JwtAuthenticator;
@@ -26,13 +24,9 @@ use core_plugin_shared::{
 
 use core_resolver::plugin::SubsystemResolver;
 use core_resolver::{introspection::definition::schema::Schema, system_resolver::SystemResolver};
-use tracing::debug;
+use exo_env::Environment;
 
-// we spawn many resolvers concurrently in integration tests
-thread_local! {
-    pub static LOCAL_ALLOW_INTROSPECTION: RefCell<Option<IntrospectionMode>> =  const { RefCell::new(None) };
-    pub static LOCAL_ENVIRONMENT: RefCell<Option<std::collections::HashMap<String, String>>> =  const {RefCell::new(None) };
-}
+use tracing::debug;
 
 pub type StaticLoaders = Vec<Box<dyn SubsystemLoader>>;
 
@@ -44,16 +38,18 @@ impl SystemLoader {
     pub async fn load(
         read: impl std::io::Read,
         static_loaders: StaticLoaders,
+        env: Box<dyn Environment>,
     ) -> Result<SystemResolver, SystemLoadingError> {
         let serialized_system = SerializableSystem::deserialize_reader(read)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
-        Self::load_from_system(serialized_system, static_loaders).await
+        Self::load_from_system(serialized_system, static_loaders, env).await
     }
 
     pub async fn load_from_system(
         serialized_system: SerializableSystem,
         mut static_loaders: StaticLoaders,
+        env: Box<dyn Environment>,
     ) -> Result<SystemResolver, SystemLoadingError> {
         let SerializableSystem {
             subsystems,
@@ -104,7 +100,7 @@ impl SystemLoader {
         for serialized_subsystem in subsystems {
             let mut loader = get_loader(&mut static_loaders, serialized_subsystem.id)?;
             let resolver = loader
-                .init(serialized_subsystem.serialized_subsystem)
+                .init(serialized_subsystem.serialized_subsystem, env.as_ref())
                 .await
                 .map_err(SystemLoadingError::SubsystemLoadingError)?;
             subsystem_resolvers.push(resolver);
@@ -113,11 +109,13 @@ impl SystemLoader {
         // Then use those resolvers to build the schema
         let schema = Schema::new_from_resolvers(&subsystem_resolvers);
 
-        let subsystem_resolvers = Self::with_introspection_resolver(subsystem_resolvers)?;
+        let subsystem_resolvers =
+            Self::with_introspection_resolver(subsystem_resolvers, env.as_ref())?;
 
-        let (normal_query_depth_limit, introspection_query_depth_limit) = query_depth_limits()?;
+        let (normal_query_depth_limit, introspection_query_depth_limit) =
+            query_depth_limits(env.as_ref())?;
 
-        let authenticator = JwtAuthenticator::new_from_env()
+        let authenticator = JwtAuthenticator::new_from_env(env.as_ref())
             .await
             .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
 
@@ -128,11 +126,7 @@ impl SystemLoader {
             trusted_documents,
             schema,
             Arc::new(authenticator),
-            LOCAL_ENVIRONMENT.with(|f| {
-                f.borrow()
-                    .clone()
-                    .unwrap_or_else(|| std::env::vars().collect())
-            }),
+            env,
             normal_query_depth_limit,
             introspection_query_depth_limit,
         ))
@@ -140,10 +134,11 @@ impl SystemLoader {
 
     fn with_introspection_resolver(
         mut subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
+        env: &dyn Environment,
     ) -> Result<Vec<Box<dyn SubsystemResolver + Send + Sync>>, SystemLoadingError> {
         let schema = || Schema::new_from_resolvers(&subsystem_resolvers);
 
-        Ok(match introspection_mode()? {
+        Ok(match introspection_mode(env)? {
             IntrospectionMode::Disabled => subsystem_resolvers,
             IntrospectionMode::Enabled => {
                 let introspection_resolver = Box::new(IntrospectionResolver::new(schema()));
@@ -166,53 +161,32 @@ pub enum IntrospectionMode {
     Only,     // Only introspection queries are allowed (to support "exo playground")
 }
 
-pub fn introspection_mode() -> Result<IntrospectionMode, EnvError> {
-    LOCAL_ALLOW_INTROSPECTION.with(|f| {
-        #[allow(clippy::unnecessary_lazy_evaluations)]
-        f.borrow().map(Ok).unwrap_or_else(|| {
-            #[cfg(not(target_family = "wasm"))]
-            {
-                match std::env::var(EXO_INTROSPECTION).ok() {
-                    Some(e) => match e.to_lowercase().as_str() {
-                        "true" | "enabled" | "1" => Ok(IntrospectionMode::Enabled),
-                        "false" | "disabled" => Ok(IntrospectionMode::Disabled),
-                        "only" => Ok(IntrospectionMode::Only),
-                        _ => Err(EnvError::InvalidEnum {
-                            env_key: EXO_INTROSPECTION,
-                            env_value: e,
-                            message:
-                                "Must be set to either true, enabled, 1, false, disabled, or only"
-                                    .to_string(),
-                        }),
-                    },
+pub fn introspection_mode(env: &dyn Environment) -> Result<IntrospectionMode, EnvError> {
+    match env.get(EXO_INTROSPECTION) {
+        Some(e) => match e.to_lowercase().as_str() {
+            "true" | "enabled" | "1" => Ok(IntrospectionMode::Enabled),
+            "false" | "disabled" => Ok(IntrospectionMode::Disabled),
+            "only" => Ok(IntrospectionMode::Only),
+            _ => Err(EnvError::InvalidEnum {
+                env_key: EXO_INTROSPECTION,
+                env_value: e,
+                message: "Must be set to either true, enabled, 1, false, disabled, or only"
+                    .to_string(),
+            }),
+        },
 
-                    None => Ok(IntrospectionMode::Disabled),
-                }
-            }
-
-            #[cfg(target_family = "wasm")]
-            {
-                Ok(IntrospectionMode::Disabled)
-            }
-        })
-    })
+        None => Ok(IntrospectionMode::Disabled),
+    }
 }
 
 /// Returns the maximum depth of a selection set for normal queries and introspection queries. We
 /// hard-code the introspection query depth to 15 to accommodate the query invoked by GraphQL
 /// Playground
-pub fn query_depth_limits() -> Result<(usize, usize), SystemLoadingError> {
+pub fn query_depth_limits(env: &dyn Environment) -> Result<(usize, usize), SystemLoadingError> {
     const DEFAULT_QUERY_DEPTH: usize = 5;
     const DEFAULT_INTROSPECTION_QUERY_DEPTH: usize = 15;
 
-    let query_depth = match LOCAL_ENVIRONMENT
-        .with(|f| {
-            f.borrow()
-                .as_ref()
-                .and_then(|env| env.get(EXO_MAX_SELECTION_DEPTH).cloned())
-        })
-        .or_else(|| std::env::var(EXO_MAX_SELECTION_DEPTH).ok())
-    {
+    let query_depth = match env.get(EXO_MAX_SELECTION_DEPTH) {
         Some(e) => match e.parse::<usize>() {
             Ok(v) => Ok(v),
             Err(_) => Err(SystemLoadingError::Config(format!(

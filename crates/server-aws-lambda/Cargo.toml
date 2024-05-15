@@ -27,6 +27,7 @@ resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 common = { path = "../common" }
+exo-env = { path = "../../libs/exo-env" }
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 builder = { path = "../builder" }

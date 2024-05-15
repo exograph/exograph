@@ -14,5 +14,3 @@ mod oidc;
 
 pub use authenticator::JwtAuthenticator;
 pub use extractor::JwtExtractor;
-
-pub use authenticator::LOCAL_JWT_SECRET;

@@ -384,6 +384,7 @@ mod tests {
     use core_resolver::context::Request;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::system_resolver::SystemResolver;
+    use exo_env::MapEnvironment;
     use exo_sql::PhysicalTableName;
     use serde_json::{json, Value};
 
@@ -496,7 +497,7 @@ mod tests {
             TrustedDocuments::all(),
             Schema::new(vec![], vec![], vec![]),
             None.into(),
-            HashMap::new(),
+            Box::new(MapEnvironment::from(HashMap::new())),
             10,
             10,
         );

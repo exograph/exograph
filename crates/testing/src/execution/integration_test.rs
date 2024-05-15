@@ -10,21 +10,21 @@
 use anyhow::{anyhow, bail, Context, Result};
 use colored::Colorize;
 
+use common::env_const::{
+    EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_JWT_SECRET,
+    EXO_POSTGRES_URL,
+};
 use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
-use core_resolver::context::{Request, RequestContext, LOCAL_JWT_SECRET};
+use core_resolver::context::{Request, RequestContext};
 use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
-use exo_sql::{LOCAL_CONNECTION_POOL_SIZE, LOCAL_URL};
 use futures::future::OptionFuture;
 use futures::FutureExt;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
-use resolver::{
-    create_system_resolver, resolve_in_memory, IntrospectionMode, LOCAL_ALLOW_INTROSPECTION,
-    LOCAL_ENVIRONMENT,
-};
+use resolver::{create_system_resolver, resolve_in_memory};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use unescape::unescape;
@@ -34,6 +34,8 @@ use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 use std::{collections::HashMap, time::SystemTime};
+
+use exo_env::MapEnvironment;
 
 use crate::model::{resolve_testvariable, IntegrationTest, IntegrationTestOperation};
 
@@ -162,34 +164,27 @@ impl IntegrationTest {
                 let static_loaders = server_common::create_static_loaders();
 
                 let exo_ir_file = self.exo_ir_file_path(project_dir).display().to_string();
-                LOCAL_URL
-                    .with(|url| {
+
+                let mut env = HashMap::from([
+                    (
+                        EXO_POSTGRES_URL.to_string(),
                         // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
-                        url.borrow_mut().replace(format!(
-                            "{}?options=-c%20TimeZone%3DUTC%2B00",
-                            db_instance.url()
-                        ));
+                        format!("{}?options=-c%20TimeZone%3DUTC%2B00", db_instance.url()),
+                    ),
+                    (EXO_JWT_SECRET.to_string(), jwtsecret.to_string()),
+                    (EXO_CONNECTION_POOL_SIZE.to_string(), "1".to_string()),
+                    (
+                        EXO_CHECK_CONNECTION_ON_STARTUP.to_string(),
+                        "false".to_string(),
+                    ),
+                    (EXO_INTROSPECTION.to_string(), "enabled".to_string()),
+                ]);
 
-                        LOCAL_CONNECTION_POOL_SIZE.with(|pool_size| {
-                            // Otherwise we get a "too many connections" error
-                            pool_size.borrow_mut().replace(1);
+                env.extend(extra_envs);
 
-                            LOCAL_JWT_SECRET.with(|jwt| {
-                                jwt.borrow_mut().replace(jwtsecret.clone());
+                let env = MapEnvironment::from(env);
 
-                                LOCAL_ALLOW_INTROSPECTION.with(|allow| {
-                                    allow.borrow_mut().replace(IntrospectionMode::Enabled);
-
-                                    LOCAL_ENVIRONMENT.with(|env| {
-                                        env.borrow_mut().replace(extra_envs.clone());
-
-                                        create_system_resolver(&exo_ir_file, static_loaders)
-                                    })
-                                })
-                            })
-                        })
-                    })
-                    .await?
+                create_system_resolver(&exo_ir_file, static_loaders, Box::new(env)).await?
             };
 
             TestfileContext {

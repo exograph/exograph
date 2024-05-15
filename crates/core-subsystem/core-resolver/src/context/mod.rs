@@ -15,7 +15,7 @@ mod request;
 mod request_context;
 mod user_request_context;
 
-pub use provider::jwt::{JwtAuthenticator, LOCAL_JWT_SECRET};
+pub use provider::jwt::JwtAuthenticator;
 
 pub use error::ContextExtractionError;
 pub use request::Request;
