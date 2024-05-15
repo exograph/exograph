@@ -12,6 +12,7 @@
 use std::sync::Arc;
 
 use ::common::env_const::{EXO_CHECK_CONNECTION_ON_STARTUP, EXO_POSTGRES_URL};
+use exo_env::MapEnvironment;
 use resolver::create_system_resolver_from_system;
 use serde_json::Value;
 use server_aws_lambda::resolve;
