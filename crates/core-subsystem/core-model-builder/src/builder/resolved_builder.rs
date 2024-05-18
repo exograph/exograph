@@ -103,14 +103,36 @@ fn resolve_contexts(
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
             if ct.kind == AstModelKind::Context {
-                let resolved_fields = ct
+                let resolved_fields: Vec<_> = ct
                     .fields
                     .iter()
                     .flat_map(|field| {
-                        Some(ResolvedContextField {
-                            name: field.name.clone(),
-                            typ: resolve_context_field_type(&field.typ.to_typ(types), types),
-                            source: extract_context_source(field, errors)?,
+                        let typ = match resolve_context_field_type(&field.typ.to_typ(types), types)
+                        {
+                            Ok(typ) => Some(typ),
+                            Err(e) => {
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: e.to_string(),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: field.span,
+                                        style: SpanStyle::Primary,
+                                        label: None,
+                                    }],
+                                });
+                                None
+                            }
+                        };
+
+                        typ.and_then(|typ| {
+                            extract_context_source(field, errors).map(|source| {
+                                ResolvedContextField {
+                                    name: field.name.clone(),
+                                    typ,
+                                    source,
+                                }
+                            })
                         })
                     })
                     .collect();
@@ -129,16 +151,21 @@ fn resolve_contexts(
     Ok(resolved_contexts)
 }
 
-fn resolve_context_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedContextFieldType {
+fn resolve_context_field_type(
+    typ: &Type,
+    types: &MappedArena<Type>,
+) -> Result<ResolvedContextFieldType, ModelBuildingError> {
     match typ.deref(types) {
-        Type::Primitive(pt) => ResolvedContextFieldType::Plain(pt),
-        Type::Optional(underlying) => ResolvedContextFieldType::Optional(Box::new(
-            resolve_context_field_type(&underlying, types),
+        Type::Primitive(pt) => Ok(ResolvedContextFieldType::Plain(pt)),
+        Type::Optional(underlying) => Ok(ResolvedContextFieldType::Optional(Box::new(
+            resolve_context_field_type(&underlying, types)?,
+        ))),
+        Type::Set(underlying) | Type::Array(underlying) => Ok(ResolvedContextFieldType::List(
+            Box::new(resolve_context_field_type(&underlying, types)?),
         )),
-        Type::Set(underlying) | Type::Array(underlying) => {
-            ResolvedContextFieldType::List(Box::new(resolve_context_field_type(&underlying, types)))
-        }
-        _ => panic!("Unexpected type in context field {}", typ.deref(types)),
+        _ => Err(ModelBuildingError::Generic(
+            "Unexpected type in context field".to_string(),
+        )),
     }
 }
 
