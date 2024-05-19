@@ -211,14 +211,18 @@ async fn extract_db_schema(
 
 pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), DatabaseError> {
     let client = database.get_client().await?;
-    client
-        .execute("DROP SCHEMA public CASCADE", &[])
+
+    // wiping is equivalent to migrating to an empty database and deals with non-public schemas correctly
+    let current_database_spec = &DatabaseSpec::from_live_database(&client)
         .await
-        .expect("Failed to drop schema");
-    client
-        .execute("CREATE SCHEMA public", &[])
+        .map_err(|e| DatabaseError::BoxedError(Box::new(e)))?
+        .value;
+
+    let migrations = Migration::from_schemas(current_database_spec, &DatabaseSpec::new(vec![]));
+    migrations
+        .apply(database, true)
         .await
-        .expect("Failed to create schema");
+        .map_err(|e| DatabaseError::BoxedError(e.into()))?;
 
     Ok(())
 }
