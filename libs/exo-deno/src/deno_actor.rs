@@ -137,7 +137,7 @@ where
                 let mut deno_module = match deno_module {
                     Ok(m) => m,
                     Err(e) => {
-                        eprintln!("{:?}", e);
+                        eprintln!("{e:?}");
                         panic!("Could not create new DenoModule in DenoActor thread")
                     }
                 };

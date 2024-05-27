@@ -280,7 +280,7 @@ impl PhysicalColumnPath {
                 linked_table_alias, ..
             }) => match linked_table_alias {
                 Some(linked_table_alias) => match acc {
-                    Some(acc) => Some(format!("{}_{}", acc, linked_table_alias)),
+                    Some(acc) => Some(format!("{acc}_{linked_table_alias}")),
                     None => Some(linked_table_alias.clone()),
                 },
                 None => acc,

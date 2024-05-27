@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let graphiql_lib_path = graphiql_folder_path.join("lib");
         let graphiql_app_path = graphiql_folder_path.join("app");
 
-        let npm = which::which("npm").map_err(|e| format!("Failed to find npm: {}", e))?;
+        let npm = which::which("npm").map_err(|e| format!("Failed to find npm: {e}"))?;
 
         for sub_folder in &[&graphiql_lib_path, &graphiql_app_path] {
             for dependent_path in &[

@@ -680,8 +680,7 @@ fn compute_column_selection<'a>(
                     path_tail
                         .split_last()
                         .ok_or(ModelBuildingError::Generic(format!(
-                            "Unexpected expression in @access annotation: '{}'",
-                            value
+                            "Unexpected expression in @access annotation: '{value}'"
                         )))?;
 
                 match tail_last {
@@ -814,8 +813,7 @@ fn compute_json_selection<'a>(
                         path_tail
                             .split_last()
                             .ok_or(ModelBuildingError::Generic(format!(
-                                "Unexpected expression in @access annotation: '{}'",
-                                value
+                                "Unexpected expression in @access annotation: '{value}'"
                             )))?;
 
                     match tail_last {

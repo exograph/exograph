@@ -42,7 +42,7 @@ enum ServerError {
 // we don't print the default `Debug` implementation's message when the server exits.
 impl std::fmt::Debug for ServerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -147,9 +147,9 @@ fn pretty_addr(addrs: &[SocketAddr]) -> String {
         Some(addr) => format!("localhost:{}", addr.port()),
         None => match addrs {
             // Print single address without square brackets
-            [addr] => format!("{}", addr),
+            [addr] => format!("{addr}"),
             _ => {
-                format!("{:?}", addrs)
+                format!("{addrs:?}")
             }
         },
     }

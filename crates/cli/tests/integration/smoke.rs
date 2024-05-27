@@ -59,8 +59,7 @@ fn exo_smoke_tests() -> Result<(), Error> {
 fn assert_project_dir(mut path: PathBuf) {
     assert!(
         path.is_dir(),
-        "Exo project directory {:?} wasn't found",
-        path
+        "Exo project directory {path:?} wasn't found"
     );
     let mut tests = path.clone();
     path.push("src");

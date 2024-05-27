@@ -121,9 +121,9 @@ pub enum FloatBits {
 impl PhysicalColumnType {
     pub fn type_string(&self) -> String {
         match self {
-            PhysicalColumnType::Int { bits } => format!("Int of size {:?} bits", bits),
+            PhysicalColumnType::Int { bits } => format!("Int of size {bits:?} bits"),
             PhysicalColumnType::String { max_length } => {
-                format!("String of max length {:?}", max_length)
+                format!("String of max length {max_length:?}")
             }
             PhysicalColumnType::Boolean => "Boolean".to_string(),
             PhysicalColumnType::Timestamp {
@@ -131,24 +131,22 @@ impl PhysicalColumnType {
                 precision,
             } => {
                 format!(
-                    "Timestamp with timezone: {:?}, precision: {:?}",
-                    timezone, precision
+                    "Timestamp with timezone: {timezone:?}, precision: {precision:?}"
                 )
             }
             PhysicalColumnType::Date => "Date".to_string(),
             PhysicalColumnType::Time { precision } => {
-                format!("Time with precision: {:?}", precision)
+                format!("Time with precision: {precision:?}")
             }
             PhysicalColumnType::Json => "Json".to_string(),
             PhysicalColumnType::Blob => "Blob".to_string(),
             PhysicalColumnType::Uuid => "Uuid".to_string(),
-            PhysicalColumnType::Vector { size } => format!("Vector of size {:?}", size),
-            PhysicalColumnType::Array { typ } => format!("Array of {:?}", typ),
-            PhysicalColumnType::Float { bits } => format!("Float of size {:?} bits", bits),
+            PhysicalColumnType::Vector { size } => format!("Vector of size {size:?}"),
+            PhysicalColumnType::Array { typ } => format!("Array of {typ:?}"),
+            PhysicalColumnType::Float { bits } => format!("Float of size {bits:?} bits"),
             PhysicalColumnType::Numeric { precision, scale } => {
                 format!(
-                    "Numeric with precision: {:?}, scale: {:?}",
-                    precision, scale
+                    "Numeric with precision: {precision:?}, scale: {scale:?}"
                 )
             }
         }

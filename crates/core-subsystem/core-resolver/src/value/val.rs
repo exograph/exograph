@@ -45,26 +45,26 @@ impl Val {
 impl Display for Val {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Val::Bool(b) => write!(f, "{}", b),
+            Val::Bool(b) => write!(f, "{b}"),
             Val::Number(n) => {
                 if let Some(n) = n.as_f64() {
-                    write!(f, "{}", n)
+                    write!(f, "{n}")
                 } else if let Some(n) = n.as_i64() {
-                    write!(f, "{}", n)
+                    write!(f, "{n}")
                 } else if let Some(n) = n.as_u64() {
-                    write!(f, "{}", n)
+                    write!(f, "{n}")
                 } else {
                     write!(f, "NaN")
                 }
             }
-            Val::String(s) => write!(f, "\"{}\"", s),
+            Val::String(s) => write!(f, "\"{s}\""),
             Val::List(l) => {
                 write!(f, "[")?;
                 for (i, v) in l.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", v)?;
+                    write!(f, "{v}")?;
                 }
                 write!(f, "]")
             }
@@ -74,12 +74,12 @@ impl Display for Val {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}: {}", k, v)?;
+                    write!(f, "{k}: {v}")?;
                 }
                 write!(f, "}}")
             }
             Val::Binary(_) => write!(f, "Binary"),
-            Val::Enum(e) => write!(f, "{}", e),
+            Val::Enum(e) => write!(f, "{e}"),
             Val::Null => write!(f, "null"),
         }
     }
