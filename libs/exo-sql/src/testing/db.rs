@@ -79,9 +79,7 @@ pub(super) fn launch_process(
         .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| {
-            EphemeralDatabaseSetupError::Generic(format!(
-                "Failed to launch process {name}: {e}"
-            ))
+            EphemeralDatabaseSetupError::Generic(format!("Failed to launch process {name}: {e}"))
         })?;
 
     let status = command.wait().map_err(|e| {

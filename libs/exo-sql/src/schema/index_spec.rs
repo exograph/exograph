@@ -204,9 +204,7 @@ impl IndexSpec {
                         )
                     })
                     .unwrap_or_else(|| "".to_string());
-                format!(
-                    "USING hnsw ({columns_str} {distance_function_str}){params_str}"
-                )
+                format!("USING hnsw ({columns_str} {distance_function_str}){params_str}")
             }
             _ => format!("({columns_str})"),
         };

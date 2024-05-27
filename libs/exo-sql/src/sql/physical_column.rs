@@ -130,9 +130,7 @@ impl PhysicalColumnType {
                 timezone,
                 precision,
             } => {
-                format!(
-                    "Timestamp with timezone: {timezone:?}, precision: {precision:?}"
-                )
+                format!("Timestamp with timezone: {timezone:?}, precision: {precision:?}")
             }
             PhysicalColumnType::Date => "Date".to_string(),
             PhysicalColumnType::Time { precision } => {
@@ -145,9 +143,7 @@ impl PhysicalColumnType {
             PhysicalColumnType::Array { typ } => format!("Array of {typ:?}"),
             PhysicalColumnType::Float { bits } => format!("Float of size {bits:?} bits"),
             PhysicalColumnType::Numeric { precision, scale } => {
-                format!(
-                    "Numeric with precision: {precision:?}, scale: {scale:?}"
-                )
+                format!("Numeric with precision: {precision:?}, scale: {scale:?}")
             }
         }
     }
