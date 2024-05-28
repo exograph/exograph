@@ -12,17 +12,14 @@ use chrono::prelude::*;
 use chrono::DateTime;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::database_error::DatabaseError;
+#[cfg(feature = "bigdecimal")]
+use exo_sql::BigDecimal;
 use exo_sql::ColumnPath;
 use exo_sql::{
     array_util::{self, ArrayEntry},
-    Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParamContainer,
+    Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLParamContainer,
 };
-#[cfg(feature = "bigdecimal")]
-use pg_bigdecimal::{BigDecimal, PgNumeric};
-#[cfg(feature = "pgvector")]
-use pgvector::Vector;
 
-#[cfg(feature = "pgvector")]
 use std::str::FromStr;
 
 use super::postgres_execution_error::PostgresExecutionError;
@@ -63,9 +60,9 @@ pub(crate) fn literal_column(
 
 pub(crate) fn literal_column_path(
     value: &Val,
-    associated_column: &PhysicalColumn,
+    destination_type: &PhysicalColumnType,
 ) -> Result<ColumnPath, PostgresExecutionError> {
-    cast_value(value, &associated_column.typ)
+    cast_value(value, destination_type)
         .map(|value| value.map(ColumnPath::Param).unwrap_or(ColumnPath::Null))
         .map_err(PostgresExecutionError::CastError)
 }
@@ -77,12 +74,12 @@ pub(crate) fn cast_value(
     match value {
         Val::Number(number) => cast_number(number, destination_type).map(Some),
         Val::String(v) => cast_string(v, destination_type).map(Some),
-        Val::Bool(v) => Ok(Some(SQLParamContainer::new(*v))),
+        Val::Bool(v) => Ok(Some(SQLParamContainer::bool(*v))),
         Val::Null => Ok(None),
-        Val::Enum(v) => Ok(Some(SQLParamContainer::new(v.to_string()))), // We might need guidance from the database to do a correct translation
+        Val::Enum(v) => Ok(Some(SQLParamContainer::string(v.to_string()))), // We might need guidance from the database to do a correct translation
         Val::List(elems) => cast_list(elems, destination_type),
         Val::Object(_) => Ok(Some(cast_object(value, destination_type))),
-        Val::Binary(bytes) => Ok(Some(SQLParamContainer::new(SQLBytes(bytes.clone())))),
+        Val::Binary(bytes) => Ok(Some(SQLParamContainer::bytes(bytes.clone()))),
     }
 }
 
@@ -93,35 +90,25 @@ fn cast_list(
     match destination_type {
         #[allow(unused_variables)]
         PhysicalColumnType::Vector { size } => {
-            #[cfg(feature = "pgvector")]
-            {
-                if elems.len() != *size {
-                    return Err(CastError::Generic(format!(
-                        "Expected vector of size {size}, got {}",
-                        elems.len()
-                    )));
-                }
-
-                let vec_value: Result<Vec<f32>, PostgresExecutionError> = elems
-                    .iter()
-                    .map(|v| match v {
-                        Val::Number(n) => Ok(n.as_f64().unwrap() as f32),
-                        _ => Err(PostgresExecutionError::CastError(CastError::Generic(
-                            "Invalid vector parameter: element is not of float type".into(),
-                        ))),
-                    })
-                    .collect();
-
-                let vec_value = vec_value.map_err(|e| CastError::Generic(e.to_string()))?;
-                Ok(Some(SQLParamContainer::new(Vector::from(vec_value))))
+            if elems.len() != *size {
+                return Err(CastError::Generic(format!(
+                    "Expected vector of size {size}, got {}",
+                    elems.len()
+                )));
             }
 
-            #[cfg(not(feature = "pgvector"))]
-            {
-                Err(CastError::Generic(
-                    "Casting lists to vector fields is not supported in this build".into(),
-                ))
-            }
+            let vec_value: Result<Vec<f32>, PostgresExecutionError> = elems
+                .iter()
+                .map(|v| match v {
+                    Val::Number(n) => Ok(n.as_f64().unwrap() as f32),
+                    _ => Err(PostgresExecutionError::CastError(CastError::Generic(
+                        "Invalid vector parameter: element is not of float type".into(),
+                    ))),
+                })
+                .collect();
+
+            let vec_value = vec_value.map_err(|e| CastError::Generic(e.to_string()))?;
+            Ok(Some(SQLParamContainer::f32_array(vec_value)))
         }
         _ => {
             fn array_entry(elem: &Val) -> ArrayEntry<Val> {
@@ -137,7 +124,7 @@ fn cast_list(
                         .map_err(|error| DatabaseError::BoxedError(error.into()))
                 };
 
-            array_util::to_sql_param(elems, array_entry, &cast_value_with_error)
+            array_util::to_sql_param(elems, destination_type, array_entry, &cast_value_with_error)
                 .map_err(CastError::Postgres)
         }
     }
@@ -149,13 +136,13 @@ fn cast_number(
 ) -> Result<SQLParamContainer, CastError> {
     let result: SQLParamContainer = match destination_type {
         PhysicalColumnType::Int { bits } => match bits {
-            IntBits::_16 => SQLParamContainer::new(number.as_i64().unwrap() as i16),
-            IntBits::_32 => SQLParamContainer::new(number.as_i64().unwrap() as i32),
-            IntBits::_64 => SQLParamContainer::new(number.as_i64().unwrap()),
+            IntBits::_16 => SQLParamContainer::i16(number.as_i64().unwrap() as i16),
+            IntBits::_32 => SQLParamContainer::i32(number.as_i64().unwrap() as i32),
+            IntBits::_64 => SQLParamContainer::i64(number.as_i64().unwrap()),
         },
         PhysicalColumnType::Float { bits } => match bits {
-            FloatBits::_24 => SQLParamContainer::new(number.as_f64().unwrap() as f32),
-            FloatBits::_53 => SQLParamContainer::new(number.as_f64().unwrap()),
+            FloatBits::_24 => SQLParamContainer::f32(number.as_f64().unwrap() as f32),
+            FloatBits::_53 => SQLParamContainer::f64(number.as_f64().unwrap()),
         },
         PhysicalColumnType::Numeric { .. } => {
             return Err(CastError::Generic(
@@ -181,15 +168,13 @@ fn cast_string(
             #[cfg(feature = "bigdecimal")]
             {
                 let decimal = match string {
-                    "NaN" => PgNumeric { n: None },
-                    _ => PgNumeric {
-                        n: Some(BigDecimal::from_str(string).map_err(|_| {
-                            CastError::Generic(format!("Could not parse {string} into a decimal"))
-                        })?),
-                    },
+                    "NaN" => None,
+                    _ => Some(BigDecimal::from_str(string).map_err(|_| {
+                        CastError::Generic(format!("Could not parse {string} into a decimal"))
+                    })?),
                 };
 
-                SQLParamContainer::new(decimal)
+                SQLParamContainer::numeric(decimal)
             }
 
             #[cfg(not(feature = "bigdecimal"))]
@@ -202,30 +187,18 @@ fn cast_string(
 
         #[allow(unused_variables)]
         PhysicalColumnType::Vector { size } => {
-            #[cfg(feature = "pgvector")]
-            {
-                let parsed: Vec<_> = serde_json::from_str(string).map_err(|e| {
-                    CastError::Generic(format!("Could not parse {string} as a vector {e}"))
-                })?;
+            let parsed: Vec<f32> = serde_json::from_str(string).map_err(|e| {
+                CastError::Generic(format!("Could not parse {string} as a vector {e}"))
+            })?;
 
-                if parsed.len() != *size {
-                    return Err(CastError::Generic(format!(
-                        "Expected vector of size {size}, got {}",
-                        parsed.len()
-                    )));
-                }
-
-                let vector = Vector::from(parsed);
-
-                SQLParamContainer::new(vector)
+            if parsed.len() != *size {
+                return Err(CastError::Generic(format!(
+                    "Expected vector of size {size}, got {}",
+                    parsed.len()
+                )));
             }
 
-            #[cfg(not(feature = "pgvector"))]
-            {
-                return Err(CastError::Generic(
-                    "Casting strings to vector fields is not supported in this build".into(),
-                ));
-            }
+            SQLParamContainer::f32_array(parsed)
         }
 
         PhysicalColumnType::Timestamp { .. }
@@ -243,14 +216,14 @@ fn cast_string(
                     match &destination_type {
                         PhysicalColumnType::Timestamp { timezone, .. } => {
                             if *timezone {
-                                SQLParamContainer::new(datetime)
+                                SQLParamContainer::timestamp_tz(datetime)
                             } else {
                                 // default to the naive time if this is a non-timezone field
-                                SQLParamContainer::new(datetime.naive_local())
+                                SQLParamContainer::timestamp(datetime.naive_local())
                             }
                         }
-                        PhysicalColumnType::Time { .. } => SQLParamContainer::new(datetime.time()),
-                        PhysicalColumnType::Date => SQLParamContainer::new(datetime.date_naive()),
+                        PhysicalColumnType::Time { .. } => SQLParamContainer::time(datetime.time()),
+                        PhysicalColumnType::Date => SQLParamContainer::date(datetime.date_naive()),
                         _ => {
                             return Err(CastError::Generic(
                                 "missing case for datetime in inner match".into(),
@@ -264,19 +237,21 @@ fn cast_string(
                         PhysicalColumnType::Timestamp { timezone, .. } => {
                             if *timezone {
                                 // default to UTC+0 if this field is a timestamp+timezone field
-                                SQLParamContainer::new(DateTime::<Utc>::from_naive_utc_and_offset(
-                                    naive_datetime,
-                                    chrono::Utc,
-                                ))
+                                SQLParamContainer::timestamp_utc(
+                                    DateTime::<Utc>::from_naive_utc_and_offset(
+                                        naive_datetime,
+                                        chrono::Utc,
+                                    ),
+                                )
                             } else {
-                                SQLParamContainer::new(naive_datetime)
+                                SQLParamContainer::timestamp(naive_datetime)
                             }
                         }
                         PhysicalColumnType::Time { .. } => {
-                            SQLParamContainer::new(naive_datetime.time())
+                            SQLParamContainer::time(naive_datetime.time())
                         }
                         PhysicalColumnType::Date { .. } => {
-                            SQLParamContainer::new(naive_datetime.date())
+                            SQLParamContainer::date(naive_datetime.date())
                         }
                         _ => {
                             return Err(CastError::Generic(
@@ -306,7 +281,7 @@ fn cast_string(
                                     )
                                 },
                             )?;
-                            SQLParamContainer::new(t)
+                            SQLParamContainer::time(t)
                         }
                         PhysicalColumnType::Date => {
                             // try parsing the string as a date only
@@ -320,7 +295,7 @@ fn cast_string(
                                     )
                                 },
                             )?;
-                            SQLParamContainer::new(d)
+                            SQLParamContainer::date(d)
                         }
                         _ => panic!(),
                     }
@@ -330,17 +305,17 @@ fn cast_string(
 
         PhysicalColumnType::Blob => {
             let bytes = base64::decode(string)?;
-            SQLParamContainer::new(SQLBytes::new(bytes))
+            SQLParamContainer::bytes_from_vec(bytes)
         }
 
         PhysicalColumnType::Uuid => {
             let uuid = uuid::Uuid::parse_str(string)?;
-            SQLParamContainer::new(uuid)
+            SQLParamContainer::uuid(uuid)
         }
 
         PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
 
-        _ => SQLParamContainer::new(string.to_owned()),
+        _ => SQLParamContainer::string(string.to_owned()),
     };
 
     Ok(value)
@@ -350,7 +325,7 @@ fn cast_object(val: &Val, destination_type: &PhysicalColumnType) -> SQLParamCont
     match destination_type {
         PhysicalColumnType::Json => {
             let json_object = val.clone().into_json().unwrap();
-            SQLParamContainer::new(json_object)
+            SQLParamContainer::json(json_object)
         }
         _ => panic!(),
     }

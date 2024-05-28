@@ -13,10 +13,10 @@ use futures::{StreamExt, TryStreamExt};
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::{
-    AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, PhysicalColumnPath, Predicate,
+    AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, PhysicalColumnPath,
+    PhysicalColumnType, Predicate,
 };
 
-#[cfg(feature = "pgvector")]
 use exo_sql::{NumericComparator, SQLParamContainer};
 
 use futures::future::try_join_all;
@@ -33,7 +33,6 @@ use crate::{
     util::{get_argument_field, Arguments},
 };
 
-#[cfg(feature = "pgvector")]
 use crate::{cast::cast_value, util::to_pg_vector};
 
 use super::postgres_execution_error::PostgresExecutionError;
@@ -56,8 +55,13 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
-                let (op_key_path, op_value_path) =
-                    operands(self.param, argument, &self.parent_column_path, subsystem)?;
+                let (op_key_path, op_value_path) = operands(
+                    self.param,
+                    argument,
+                    None,
+                    &self.parent_column_path,
+                    subsystem,
+                )?;
 
                 Ok(AbstractPredicate::eq(op_key_path, op_value_path))
             }
@@ -84,7 +88,8 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                 let param_physical_column =
                                     param_column_id.get_column(&subsystem.database);
 
-                                let op_value = literal_column_path(arg, param_physical_column)?;
+                                let op_value =
+                                    literal_column_path(arg, &param_physical_column.typ)?;
 
                                 let new_predicate =
                                     AbstractPredicate::eq(param_column_path, op_value);
@@ -112,74 +117,76 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     arg_parameter_type.kind,
                                     PredicateParameterTypeKind::Vector
                                 ) {
-                                    #[cfg(feature = "pgvector")]
-                                    {
-                                        let value = op_value.get("distanceTo").unwrap();
-                                        let vector_value = to_pg_vector(value, &parameter.name)?;
+                                    let value = op_value.get("distanceTo").unwrap();
+                                    let vector_value = to_pg_vector(value, &parameter.name)?;
 
-                                        let distance = op_value.get("distance").unwrap();
-                                        match distance {
-                                            Val::Object(map) => {
-                                                assert!(map.len() == 1);
-                                                let operator = map.keys().next().unwrap();
-                                                let threshold = map.values().next().unwrap();
+                                    let distance = op_value.get("distance").unwrap();
+                                    match distance {
+                                        Val::Object(map) => {
+                                            assert!(map.len() == 1);
+                                            let operator = map.keys().next().unwrap();
+                                            let threshold = map.values().next().unwrap();
 
-                                                let distance_comparator = match operator.as_str() {
-                                                    "eq" => Ok(NumericComparator::Eq),
-                                                    "neq" => Ok(NumericComparator::Neq),
-                                                    "lt" => Ok(NumericComparator::Lt),
-                                                    "lte" => Ok(NumericComparator::Lte),
-                                                    "gt" => Ok(NumericComparator::Gt),
-                                                    "gte" => Ok(NumericComparator::Gte),
-                                                    _ => Err(PostgresExecutionError::Validation(
-                                                        "distance".into(),
-                                                        "Invalid distance operator".into(),
-                                                    )),
-                                                }?;
+                                            let distance_comparator = match operator.as_str() {
+                                                "eq" => Ok(NumericComparator::Eq),
+                                                "neq" => Ok(NumericComparator::Neq),
+                                                "lt" => Ok(NumericComparator::Lt),
+                                                "lte" => Ok(NumericComparator::Lte),
+                                                "gt" => Ok(NumericComparator::Gt),
+                                                "gte" => Ok(NumericComparator::Gte),
+                                                _ => Err(PostgresExecutionError::Validation(
+                                                    "distance".into(),
+                                                    "Invalid distance operator".into(),
+                                                )),
+                                            }?;
 
-                                                let threshold = cast_value(
-                                                    threshold,
-                                                    &exo_sql::PhysicalColumnType::Float {
-                                                        bits: exo_sql::FloatBits::_53,
-                                                    },
-                                                )?
-                                                .unwrap();
-                                                let target_vector =
-                                                    SQLParamContainer::new(vector_value);
+                                            let threshold = cast_value(
+                                                threshold,
+                                                &exo_sql::PhysicalColumnType::Float {
+                                                    bits: exo_sql::FloatBits::_53,
+                                                },
+                                            )?
+                                            .unwrap();
+                                            let target_vector =
+                                                SQLParamContainer::f32_array(vector_value);
 
-                                                Ok(AbstractPredicate::VectorDistance(
-                                                    ColumnPath::Physical(
-                                                        to_column_path(
-                                                            &self.parent_column_path,
-                                                            &self.param.column_path_link,
-                                                        )
-                                                        .unwrap(),
-                                                    ),
-                                                    ColumnPath::Param(target_vector),
-                                                    self.param
-                                                        .vector_distance_function
-                                                        .unwrap_or_default(),
-                                                    distance_comparator,
-                                                    ColumnPath::Param(threshold),
-                                                ))
-                                            }
-                                            _ => Err(PostgresExecutionError::Validation(
-                                                "distance".into(),
-                                                "Invalid distance parameter".into(),
-                                            )),
+                                            Ok(AbstractPredicate::VectorDistance(
+                                                ColumnPath::Physical(
+                                                    to_column_path(
+                                                        &self.parent_column_path,
+                                                        &self.param.column_path_link,
+                                                    )
+                                                    .unwrap(),
+                                                ),
+                                                ColumnPath::Param(target_vector),
+                                                self.param
+                                                    .vector_distance_function
+                                                    .unwrap_or_default(),
+                                                distance_comparator,
+                                                ColumnPath::Param(threshold),
+                                            ))
                                         }
-                                    }
-
-                                    #[cfg(not(feature = "pgvector"))]
-                                    {
-                                        Err(PostgresExecutionError::Generic(
-                                            "Vectors are not supported in this build".into(),
-                                        ))
+                                        _ => Err(PostgresExecutionError::Validation(
+                                            "distance".into(),
+                                            "Invalid distance parameter".into(),
+                                        )),
                                     }
                                 } else {
+                                    let override_op_value_type = match parameter.name.as_str() {
+                                        "matchAllKeys" | "matchAnyKey" => {
+                                            Some(PhysicalColumnType::Array {
+                                                typ: Box::new(PhysicalColumnType::String {
+                                                    max_length: None,
+                                                }),
+                                            })
+                                        }
+                                        _ => None,
+                                    };
+
                                     let (op_key_column, op_value_column) = operands(
                                         self.param,
                                         op_value,
+                                        override_op_value_type.as_ref(),
                                         &self.parent_column_path,
                                         subsystem,
                                     )
@@ -388,6 +395,7 @@ pub fn predicate_from_name<C: PartialEq + ParamEquality>(
 fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a Val,
+    op_value_type: Option<&PhysicalColumnType>,
     parent_column_path: &Option<PhysicalColumnPath>,
     subsystem: &'a PostgresSubsystem,
 ) -> Result<(ColumnPath, ColumnPath), PostgresExecutionError> {
@@ -398,7 +406,7 @@ fn operands<'a>(
         .self_column_id();
     let op_physical_column = op_physical_column_id.get_column(&subsystem.database);
 
-    let op_value = literal_column_path(op_value, op_physical_column)?;
+    let op_value = literal_column_path(op_value, op_value_type.unwrap_or(&op_physical_column.typ))?;
 
     Ok((
         ColumnPath::Physical(to_column_path(parent_column_path, &param.column_path_link).unwrap()),

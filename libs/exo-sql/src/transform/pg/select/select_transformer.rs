@@ -213,7 +213,7 @@ mod tests {
              }| {
                 let concert_id_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_id_column));
-                let literal = ColumnPath::Param(SQLParamContainer::new(5));
+                let literal = ColumnPath::Param(SQLParamContainer::i32(5));
                 let predicate = AbstractPredicate::Eq(concert_id_path, literal);
 
                 let aselect = AbstractSelect {
@@ -445,7 +445,7 @@ mod tests {
                                                 vec![concerts_venue_id_column, venues_id_column],
                                                 &database,
                                             )),
-                                            ColumnPath::Param(SQLParamContainer::new(1)),
+                                            ColumnPath::Param(SQLParamContainer::i32(1)),
                                         ),
                                         order_by: None,
                                         offset: None,
@@ -493,7 +493,7 @@ mod tests {
                         vec![concerts_venue_id_column, venues_name_column],
                         &database,
                     )),
-                    ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
                 );
                 let aselect = AbstractSelect {
                     table_id: concerts_table,
@@ -569,7 +569,7 @@ mod tests {
                 let concert_name_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column));
 
-                let literal = ColumnPath::Param(SQLParamContainer::new("c1".to_string()));
+                let literal = ColumnPath::Param(SQLParamContainer::string("c1".to_string()));
                 let predicate = AbstractPredicate::Eq(concert_name_path, literal);
 
                 let aselect = AbstractSelect {

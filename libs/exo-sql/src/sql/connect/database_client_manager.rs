@@ -89,7 +89,7 @@ impl DatabaseClientManager {
         }
         #[cfg(not(feature = "pool"))]
         {
-            Self::from_db_url_direct(url, check_connection).await
+            Self::from_url_direct(url, check_connection).await
         }
     }
 
