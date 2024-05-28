@@ -9,6 +9,8 @@
 
 use std::sync::Arc;
 
+use tokio_postgres::types::Type;
+
 use crate::Database;
 
 use super::{ExpressionBuilder, SQLBuilder};
@@ -20,6 +22,6 @@ impl ExpressionBuilder for Offset {
     /// Build expression of the form `OFFSET <offset>`
     fn build(&self, _database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("OFFSET ");
-        builder.push_param(Arc::new(self.0))
+        builder.push_param((Arc::new(self.0), Type::INT8))
     }
 }

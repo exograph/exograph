@@ -65,7 +65,7 @@ impl InsertionStrategy for MultiStatementStrategy {
         // Take the previous insert steps and use them as the input to the select
         // statement to form a predicate `pk IN (insert_step_1_pk, insert_step_2_pk, ...)`
         let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
-            let in_values = SQLParamContainer::new(
+            let in_values = SQLParamContainer::from_sql_values(
                 insert_step_ids
                     .into_iter()
                     .map(|insert_step_id| transaction_context.resolve_value(insert_step_id, 0, 0))

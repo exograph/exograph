@@ -144,8 +144,8 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                                     },
                                                 )?
                                                 .unwrap();
-                                                let target_vector =
-                                                    SQLParamContainer::new(vector_value);
+                                                let target_vector = todo!("Vector type");
+                                                // SQLParamContainer::new(vector_value);
 
                                                 Ok(AbstractPredicate::VectorDistance(
                                                     ColumnPath::Physical(

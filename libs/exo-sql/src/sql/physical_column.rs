@@ -14,6 +14,7 @@ use crate::{
 use super::{ExpressionBuilder, SQLBuilder};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use tokio_postgres::types::Type;
 
 /// A column in a physical table
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
@@ -261,6 +262,59 @@ impl PhysicalColumnType {
                     }
                 }
             }),
+        }
+    }
+
+    pub fn get_pg_type(&self) -> Type {
+        match &self {
+            PhysicalColumnType::Int { bits } => match bits {
+                IntBits::_16 => Type::INT2,
+                IntBits::_32 => Type::INT4,
+                IntBits::_64 => Type::INT8,
+            },
+            PhysicalColumnType::String { max_length } => {
+                if let Some(_) = max_length {
+                    Type::VARCHAR
+                } else {
+                    Type::TEXT
+                }
+            }
+            PhysicalColumnType::Boolean => Type::BOOL,
+            PhysicalColumnType::Timestamp { timezone, .. } => {
+                if *timezone {
+                    Type::TIMESTAMPTZ
+                } else {
+                    Type::TIMESTAMP
+                }
+            }
+            PhysicalColumnType::Date => Type::DATE,
+            PhysicalColumnType::Time { .. } => Type::TIME,
+            PhysicalColumnType::Json => Type::JSONB,
+            PhysicalColumnType::Blob => Type::BYTEA,
+            PhysicalColumnType::Uuid => Type::UUID,
+            PhysicalColumnType::Vector { .. } => Type::FLOAT4_ARRAY,
+            PhysicalColumnType::Array { typ } => {
+                let inner_type = typ.get_pg_type();
+                match inner_type {
+                    Type::INT2 => Type::INT2_ARRAY,
+                    Type::INT4 => Type::INT4_ARRAY,
+                    Type::INT8 => Type::INT8_ARRAY,
+                    Type::TEXT => Type::TEXT_ARRAY,
+                    Type::JSONB => Type::JSONB_ARRAY,
+                    Type::FLOAT4 => Type::FLOAT4_ARRAY,
+                    Type::FLOAT8 => Type::FLOAT8_ARRAY,
+                    Type::BOOL => Type::BOOL_ARRAY,
+                    Type::TIMESTAMPTZ => Type::TIMESTAMPTZ_ARRAY,
+                    Type::TEXT_ARRAY => Type::TEXT_ARRAY,
+                    Type::VARCHAR => Type::VARCHAR_ARRAY,
+                    _ => Type::BYTEA_ARRAY,
+                }
+            }
+            PhysicalColumnType::Float { bits } => match bits {
+                FloatBits::_24 => Type::FLOAT4,
+                FloatBits::_53 => Type::FLOAT8,
+            },
+            PhysicalColumnType::Numeric { .. } => Type::NUMERIC,
         }
     }
 }

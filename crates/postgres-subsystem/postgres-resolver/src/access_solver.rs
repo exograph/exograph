@@ -33,6 +33,7 @@ use postgres_model::{
     access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     subsystem::PostgresSubsystem,
 };
+use tokio_postgres::types::Type;
 
 use crate::cast;
 
@@ -353,14 +354,18 @@ fn to_column_path(column_id: &PhysicalColumnPath) -> ColumnPath {
 fn literal_column(value: Val) -> ColumnPath {
     match value {
         Val::Null => ColumnPath::Null,
-        Val::Bool(v) => ColumnPath::Param(SQLParamContainer::new(v)),
-        Val::Number(v) => ColumnPath::Param(SQLParamContainer::new(v.as_i64().unwrap() as i32)), // TODO: Deal with the exact number type
-        Val::String(v) => ColumnPath::Param(SQLParamContainer::new(v)),
+        Val::Bool(v) => ColumnPath::Param(SQLParamContainer::new(v, Type::BOOL)),
+        Val::Number(v) => ColumnPath::Param(SQLParamContainer::new(
+            v.as_i64().unwrap() as i32,
+            Type::INT4,
+        )), // TODO: Deal with the exact number type
+        Val::String(v) => ColumnPath::Param(SQLParamContainer::new(v, Type::TEXT)),
         Val::List(values) => ColumnPath::Param(SQLParamContainer::new(
             values
                 .into_iter()
                 .map(|v| v.into_json().unwrap())
                 .collect::<Vec<_>>(),
+            todo!(),
         )),
         Val::Object(_) | Val::Binary(_) | Val::Enum(_) => todo!(),
     }

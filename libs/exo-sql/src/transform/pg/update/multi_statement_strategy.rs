@@ -173,7 +173,7 @@ impl UpdateStrategy for MultiStatementStrategy {
         // statement to form a predicate `pk IN (update_pk1, update_pk2, ...)`
         let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
             let update_count = transaction_context.row_count(root_step_id);
-            let update_ids = SQLParamContainer::new(
+            let update_ids = SQLParamContainer::from_sql_values(
                 (0..update_count)
                     .map(|i| transaction_context.resolve_value(root_step_id, i, 0))
                     .collect::<Vec<_>>(),

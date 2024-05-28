@@ -354,7 +354,7 @@ mod tests {
         let age_column_id = database.get_column_id(people_table_id, "age").unwrap();
 
         let age_col = Column::physical(age_column_id, None);
-        let age_value_col = Column::Param(SQLParamContainer::new(5));
+        let age_value_col = Column::Param(SQLParamContainer::new(5, Type::INT4));
 
         let predicate = Predicate::Eq(age_col, age_value_col);
 

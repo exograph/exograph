@@ -148,20 +148,23 @@ async fn order_by_pair<'a>(
 
                                     let vector_value = to_pg_vector(value, parameter_name)?;
 
-                                    ordering(order).map(|ordering| {
-                                        AbstractOrderBy(vec![(
-                                            AbstractOrderByExpr::VectorDistance(
-                                                ColumnPath::Physical(new_column_path),
-                                                ColumnPath::Param(SQLParamContainer::new(
-                                                    vector_value,
-                                                )),
-                                                parameter
-                                                    .vector_distance_function
-                                                    .unwrap_or(VectorDistanceFunction::default()),
-                                            ),
-                                            ordering,
-                                        )])
-                                    })
+                                    todo!()
+
+                                    // ordering(order).map(|ordering| {
+                                    //     AbstractOrderBy(vec![(
+                                    //         AbstractOrderByExpr::VectorDistance(
+                                    //             ColumnPath::Physical(new_column_path),
+                                    //             ColumnPath::Param(SQLParamContainer::new(
+                                    //                 vector_value,
+                                    //                 todo!("Vector type"),
+                                    //             )),
+                                    //             parameter
+                                    //                 .vector_distance_function
+                                    //                 .unwrap_or(VectorDistanceFunction::default()),
+                                    //         ),
+                                    //         ordering,
+                                    //     )])
+                                    // })
                                 }
 
                                 #[cfg(not(feature = "pgvector"))]

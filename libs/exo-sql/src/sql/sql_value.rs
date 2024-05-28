@@ -17,7 +17,7 @@ use crate::database_error::DatabaseError;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SQLValue {
     value: Vec<u8>,
-    type_: Type,
+    pub(crate) type_: Type,
 }
 
 impl Display for SQLValue {
@@ -39,6 +39,10 @@ impl ToSql for SQLValue {
             out.extend(self.value.as_slice());
             Ok(tokio_postgres::types::IsNull::No)
         } else {
+            println!(
+                "Type mismatch expected {:?} got {:?} {:?}",
+                ty, self.type_, self
+            );
             Err(DatabaseError::Validation("Type mismatch".into()).into())
         }
     }

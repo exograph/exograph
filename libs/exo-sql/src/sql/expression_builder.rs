@@ -10,6 +10,7 @@
 use std::sync::Arc;
 
 use maybe_owned::MaybeOwned;
+use tokio_postgres::types::Type;
 
 use super::SQLBuilder;
 use crate::{Database, SQLParam};
@@ -27,7 +28,7 @@ pub trait ExpressionBuilder {
     /// want to assert on the generated SQL without going through the whole process of creating an
     /// SQLBuilder, then building the SQL expression into it, and finally extracting the SQL string
     /// and params.
-    fn to_sql(&self, database: &Database) -> (String, Vec<Arc<dyn SQLParam>>)
+    fn to_sql(&self, database: &Database) -> (String, Vec<(Arc<(dyn SQLParam + 'static)>, Type)>)
     where
         Self: Sized,
     {

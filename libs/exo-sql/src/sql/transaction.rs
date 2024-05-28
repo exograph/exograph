@@ -182,14 +182,17 @@ impl<'a> ConcreteTransactionStep<'a> {
         self.operation.build(database, &mut sql_builder);
         let (stmt, params) = sql_builder.into_sql();
 
-        let params: Vec<_> = params.iter().map(|p| p.as_pg()).collect();
+        let params: Vec<_> = params.iter().map(|p| (p.0.as_pg(), p.1.clone())).collect();
 
         info!("Executing SQL operation: {}", stmt);
 
-        client.query(&stmt, &params[..]).await.map_err(|e| {
-            error!("Failed to execute query: {e:?}");
-            DatabaseError::Delegate(e).with_context("Database operation failed".into())
-        })
+        client
+            .query_with_param_types(&stmt, &params[..])
+            .await
+            .map_err(|e| {
+                error!("Failed to execute query: {e:?}");
+                DatabaseError::Delegate(e).with_context("Database operation failed".into())
+            })
     }
 }
 
@@ -238,7 +241,7 @@ impl TemplateFilterOperation {
                     Predicate::Eq(
                         Column::physical(pk_column_id, None),
                         Column::ArrayParam {
-                            param: SQLParamContainer::new(
+                            param: SQLParamContainer::from_sql_values(
                                 (0..rows)
                                     .map(|row| {
                                         transaction_context.resolve_value(self.prev_step_id, row, 0)

@@ -385,9 +385,10 @@ async fn map_vector_distance_field<'content>(
 
     let to_vector_value = to_pg_vector(to_arg, "to")?;
 
-    Ok(SelectionElement::Function(Function::VectorDistance {
-        column_id: vector_distance_field.column_id,
-        distance_function: vector_distance_field.distance_function,
-        target: SQLParamContainer::new(to_vector_value),
-    }))
+    todo!()
+    // Ok(SelectionElement::Function(Function::VectorDistance {
+    //     column_id: vector_distance_field.column_id,
+    //     distance_function: vector_distance_field.distance_function,
+    //     target: SQLParamContainer::new(to_vector_value, todo!()),
+    // }))
 }

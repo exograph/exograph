@@ -6338,6 +6338,23 @@ dependencies = [
 [[package]]
 name = "postgres-protocol"
 version = "0.6.6"
+dependencies = [
+ "base64 0.22.0",
+ "byteorder",
+ "bytes",
+ "fallible-iterator 0.2.0",
+ "getrandom",
+ "hmac",
+ "md-5",
+ "memchr",
+ "rand",
+ "sha2",
+ "stringprep",
+]
+
+[[package]]
+name = "postgres-protocol"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49b6c5ef183cd3ab4ba005f1ca64c21e8bd97ce4699cfea9e8d9a2c4958ca520"
 dependencies = [
@@ -6345,7 +6362,6 @@ dependencies = [
  "byteorder",
  "bytes",
  "fallible-iterator 0.2.0",
- "getrandom",
  "hmac",
  "md-5",
  "memchr",
@@ -6376,7 +6392,6 @@ dependencies = [
  "pgvector",
  "postgres-model",
  "postgres-model-builder",
- "postgres-types",
  "resolver",
  "serde",
  "serde_json",
@@ -6399,13 +6414,11 @@ dependencies = [
 [[package]]
 name = "postgres-types"
 version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d2234cdee9408b523530a9b6d2d6b373d1db34f6a8e51dc03ded1828d7fb67c"
 dependencies = [
  "bytes",
  "chrono",
  "fallible-iterator 0.2.0",
- "postgres-protocol",
+ "postgres-protocol 0.6.6",
  "serde",
  "serde_json",
  "uuid",
@@ -6419,7 +6432,7 @@ checksum = "2667c8b8c3a857620d87fc5172972c3385254a7563a5ab303bc9a41a16a7bf4e"
 dependencies = [
  "bytes",
  "fallible-iterator 0.2.0",
- "postgres-protocol",
+ "postgres-protocol 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "postgres-types",
 ]
 
@@ -8665,8 +8678,6 @@ dependencies = [
 [[package]]
 name = "tokio-postgres"
 version = "0.7.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d340244b32d920260ae7448cb72b6e238bddc3d4f7603394e7dd46ed8e48f5b8"
 dependencies = [
  "async-trait",
  "byteorder",
@@ -8679,7 +8690,7 @@ dependencies = [
  "percent-encoding",
  "phf",
  "pin-project-lite",
- "postgres-protocol",
+ "postgres-protocol 0.6.6",
  "postgres-types",
  "rand",
  "socket2",
@@ -9121,7 +9132,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "rand",
  "static_assertions",
 ]
