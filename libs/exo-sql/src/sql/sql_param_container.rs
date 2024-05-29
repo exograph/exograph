@@ -101,11 +101,11 @@ impl SQLParamContainer {
         Self::new(PgNumeric { n: decimal }, Type::NUMERIC)
     }
 
-    pub fn native_date(value: chrono::NaiveDate) -> Self {
+    pub fn date(value: chrono::NaiveDate) -> Self {
         Self::new(value, Type::DATE)
     }
 
-    pub fn native_time(value: chrono::NaiveTime) -> Self {
+    pub fn time(value: chrono::NaiveTime) -> Self {
         Self::new(value, Type::TIME)
     }
 
