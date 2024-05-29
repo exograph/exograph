@@ -149,7 +149,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 ) => {
                     let physical_column = column.leaf_column().get_column(&self.database);
                     Ok(Some(column_predicate(
-                        cast::literal_column_path(&value, physical_column)
+                        cast::literal_column_path(&value, &physical_column.typ)
                             .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
                         to_column_path(&column),
                     )))
@@ -163,7 +163,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
 
                     Ok(Some(column_predicate(
                         to_column_path(&column),
-                        cast::literal_column_path(&value, physical_column)
+                        cast::literal_column_path(&value, &physical_column.typ)
                             .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
                     )))
                 }
@@ -360,14 +360,7 @@ fn literal_column(value: Val) -> ColumnPath {
             Type::INT4,
         )), // TODO: Deal with the exact number type
         Val::String(v) => ColumnPath::Param(SQLParamContainer::new(v, Type::TEXT)),
-        Val::List(values) => ColumnPath::Param(SQLParamContainer::new(
-            values
-                .into_iter()
-                .map(|v| v.into_json().unwrap())
-                .collect::<Vec<_>>(),
-            todo!(),
-        )),
-        Val::Object(_) | Val::Binary(_) | Val::Enum(_) => todo!(),
+        Val::List(_) | Val::Object(_) | Val::Binary(_) | Val::Enum(_) => todo!(),
     }
 }
 

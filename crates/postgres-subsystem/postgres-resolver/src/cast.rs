@@ -22,7 +22,6 @@ use pg_bigdecimal::{BigDecimal, PgNumeric};
 
 use tokio_postgres::types::Type;
 
-#[cfg(feature = "pgvector")]
 use std::str::FromStr;
 
 use super::postgres_execution_error::PostgresExecutionError;
@@ -63,9 +62,9 @@ pub(crate) fn literal_column(
 
 pub(crate) fn literal_column_path(
     value: &Val,
-    associated_column: &PhysicalColumn,
+    destination_type: &PhysicalColumnType,
 ) -> Result<ColumnPath, PostgresExecutionError> {
-    cast_value(value, &associated_column.typ)
+    cast_value(value, destination_type)
         .map(|value| value.map(ColumnPath::Param).unwrap_or(ColumnPath::Null))
         .map_err(PostgresExecutionError::CastError)
 }
@@ -80,13 +79,14 @@ pub(crate) fn cast_value(
         Val::Bool(v) => Ok(Some(SQLParamContainer::new(*v, Type::BOOL))),
         Val::Null => Ok(None),
         Val::Enum(v) => Ok(Some(SQLParamContainer::new(v.to_string(), Type::TEXT))), // We might need guidance from the database to do a correct translation
-        Val::List(elems) if !matches!(destination_type, PhysicalColumnType::Json) => {
-            cast_list(elems, destination_type)
-        }
-        Val::List(elems) => {
-            let json_object = elems.iter().map(|v| v.to_string()).collect::<Vec<_>>();
-            Ok(Some(SQLParamContainer::new(json_object, Type::TEXT_ARRAY)))
-        }
+        Val::List(elems) => cast_list(elems, destination_type),
+        // Val::List(elems) if !matches!(destination_type, PhysicalColumnType::Json) => {
+        //     cast_list(elems, destination_type)
+        // }
+        // Val::List(elems) => {
+        //     let json_object = elems.iter().map(|v| v.to_string()).collect::<Vec<_>>();
+        //     Ok(Some(SQLParamContainer::new(json_object, Type::TEXT_ARRAY)))
+        // }
         Val::Object(_) => Ok(Some(cast_object(value, destination_type))),
         Val::Binary(bytes) => Ok(Some(SQLParamContainer::new(
             SQLBytes(bytes.clone()),
@@ -102,35 +102,25 @@ fn cast_list(
     match destination_type {
         #[allow(unused_variables)]
         PhysicalColumnType::Vector { size } => {
-            #[cfg(feature = "pgvector")]
-            {
-                if elems.len() != *size {
-                    return Err(CastError::Generic(format!(
-                        "Expected vector of size {size}, got {}",
-                        elems.len()
-                    )));
-                }
-
-                let vec_value: Result<Vec<f32>, PostgresExecutionError> = elems
-                    .iter()
-                    .map(|v| match v {
-                        Val::Number(n) => Ok(n.as_f64().unwrap() as f32),
-                        _ => Err(PostgresExecutionError::CastError(CastError::Generic(
-                            "Invalid vector parameter: element is not of float type".into(),
-                        ))),
-                    })
-                    .collect();
-
-                let vec_value = vec_value.map_err(|e| CastError::Generic(e.to_string()))?;
-                Ok(Some(SQLParamContainer::new(vec_value, Type::FLOAT4_ARRAY)))
+            if elems.len() != *size {
+                return Err(CastError::Generic(format!(
+                    "Expected vector of size {size}, got {}",
+                    elems.len()
+                )));
             }
 
-            #[cfg(not(feature = "pgvector"))]
-            {
-                Err(CastError::Generic(
-                    "Casting lists to vector fields is not supported in this build".into(),
-                ))
-            }
+            let vec_value: Result<Vec<f32>, PostgresExecutionError> = elems
+                .iter()
+                .map(|v| match v {
+                    Val::Number(n) => Ok(n.as_f64().unwrap() as f32),
+                    _ => Err(PostgresExecutionError::CastError(CastError::Generic(
+                        "Invalid vector parameter: element is not of float type".into(),
+                    ))),
+                })
+                .collect();
+
+            let vec_value = vec_value.map_err(|e| CastError::Generic(e.to_string()))?;
+            Ok(Some(SQLParamContainer::new(vec_value, Type::FLOAT4_ARRAY)))
         }
         _ => {
             fn array_entry(elem: &Val) -> ArrayEntry<Val> {
@@ -211,28 +201,18 @@ fn cast_string(
 
         #[allow(unused_variables)]
         PhysicalColumnType::Vector { size } => {
-            #[cfg(feature = "pgvector")]
-            {
-                let parsed: Vec<f32> = serde_json::from_str(string).map_err(|e| {
-                    CastError::Generic(format!("Could not parse {string} as a vector {e}"))
-                })?;
+            let parsed: Vec<f32> = serde_json::from_str(string).map_err(|e| {
+                CastError::Generic(format!("Could not parse {string} as a vector {e}"))
+            })?;
 
-                if parsed.len() != *size {
-                    return Err(CastError::Generic(format!(
-                        "Expected vector of size {size}, got {}",
-                        parsed.len()
-                    )));
-                }
-
-                SQLParamContainer::new(parsed, Type::FLOAT4_ARRAY)
+            if parsed.len() != *size {
+                return Err(CastError::Generic(format!(
+                    "Expected vector of size {size}, got {}",
+                    parsed.len()
+                )));
             }
 
-            #[cfg(not(feature = "pgvector"))]
-            {
-                return Err(CastError::Generic(
-                    "Casting strings to vector fields is not supported in this build".into(),
-                ));
-            }
+            SQLParamContainer::new(parsed, Type::FLOAT4_ARRAY)
         }
 
         PhysicalColumnType::Timestamp { .. }
