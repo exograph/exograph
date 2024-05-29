@@ -45,6 +45,7 @@ impl ExpressionBuilder for Function {
                 distance_function.build(database, builder);
                 builder.push_space();
                 builder.push_param(target.param());
+                builder.push_str("::vector");
             }
         }
     }

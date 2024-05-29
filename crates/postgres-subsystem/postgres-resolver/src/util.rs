@@ -48,7 +48,7 @@ pub(crate) fn get_argument_field<'a>(argument_value: &'a Val, field_name: &str) 
 pub(super) fn to_pg_vector(
     value: &Val,
     parameter_name: &str,
-) -> Result<Vector, PostgresExecutionError> {
+) -> Result<Vec<f32>, PostgresExecutionError> {
     let vec_value: Vec<f32> = match value {
         Val::List(vector) => vector
             .iter()
@@ -66,7 +66,7 @@ pub(super) fn to_pg_vector(
         )),
     }?;
 
-    Ok(Vector::from(vec_value))
+    Ok(vec_value)
 }
 
 ///

@@ -9,6 +9,7 @@
 
 use async_trait::async_trait;
 use futures::future::join_all;
+use tokio_postgres::types::Type;
 
 #[cfg(feature = "pgvector")]
 use crate::util::to_pg_vector;
@@ -148,23 +149,21 @@ async fn order_by_pair<'a>(
 
                                     let vector_value = to_pg_vector(value, parameter_name)?;
 
-                                    todo!()
-
-                                    // ordering(order).map(|ordering| {
-                                    //     AbstractOrderBy(vec![(
-                                    //         AbstractOrderByExpr::VectorDistance(
-                                    //             ColumnPath::Physical(new_column_path),
-                                    //             ColumnPath::Param(SQLParamContainer::new(
-                                    //                 vector_value,
-                                    //                 todo!("Vector type"),
-                                    //             )),
-                                    //             parameter
-                                    //                 .vector_distance_function
-                                    //                 .unwrap_or(VectorDistanceFunction::default()),
-                                    //         ),
-                                    //         ordering,
-                                    //     )])
-                                    // })
+                                    ordering(order).map(|ordering| {
+                                        AbstractOrderBy(vec![(
+                                            AbstractOrderByExpr::VectorDistance(
+                                                ColumnPath::Physical(new_column_path),
+                                                ColumnPath::Param(SQLParamContainer::new(
+                                                    vector_value,
+                                                    Type::FLOAT4_ARRAY,
+                                                )),
+                                                parameter
+                                                    .vector_distance_function
+                                                    .unwrap_or(VectorDistanceFunction::default()),
+                                            ),
+                                            ordering,
+                                        )])
+                                    })
                                 }
 
                                 #[cfg(not(feature = "pgvector"))]

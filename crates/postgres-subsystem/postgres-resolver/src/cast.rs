@@ -19,8 +19,7 @@ use exo_sql::{
 };
 #[cfg(feature = "bigdecimal")]
 use pg_bigdecimal::{BigDecimal, PgNumeric};
-#[cfg(feature = "pgvector")]
-use pgvector::Vector;
+
 use tokio_postgres::types::Type;
 
 #[cfg(feature = "pgvector")]
@@ -81,7 +80,13 @@ pub(crate) fn cast_value(
         Val::Bool(v) => Ok(Some(SQLParamContainer::new(*v, Type::BOOL))),
         Val::Null => Ok(None),
         Val::Enum(v) => Ok(Some(SQLParamContainer::new(v.to_string(), Type::TEXT))), // We might need guidance from the database to do a correct translation
-        Val::List(elems) => cast_list(elems, destination_type),
+        Val::List(elems) if !matches!(destination_type, PhysicalColumnType::Json) => {
+            cast_list(elems, destination_type)
+        }
+        Val::List(elems) => {
+            let json_object = elems.iter().map(|v| v.to_string()).collect::<Vec<_>>();
+            Ok(Some(SQLParamContainer::new(json_object, Type::TEXT_ARRAY)))
+        }
         Val::Object(_) => Ok(Some(cast_object(value, destination_type))),
         Val::Binary(bytes) => Ok(Some(SQLParamContainer::new(
             SQLBytes(bytes.clone()),
@@ -117,10 +122,7 @@ fn cast_list(
                     .collect();
 
                 let vec_value = vec_value.map_err(|e| CastError::Generic(e.to_string()))?;
-                Ok(Some(SQLParamContainer::new(
-                    Vector::from(vec_value),
-                    Type::FLOAT4_ARRAY,
-                )))
+                Ok(Some(SQLParamContainer::new(vec_value, Type::FLOAT4_ARRAY)))
             }
 
             #[cfg(not(feature = "pgvector"))]
@@ -211,7 +213,7 @@ fn cast_string(
         PhysicalColumnType::Vector { size } => {
             #[cfg(feature = "pgvector")]
             {
-                let parsed: Vec<_> = serde_json::from_str(string).map_err(|e| {
+                let parsed: Vec<f32> = serde_json::from_str(string).map_err(|e| {
                     CastError::Generic(format!("Could not parse {string} as a vector {e}"))
                 })?;
 
@@ -222,10 +224,7 @@ fn cast_string(
                     )));
                 }
 
-                let vector = Vector::from(parsed);
-
-                // SQLParamContainer::new(vector, todo!())
-                todo!()
+                SQLParamContainer::new(parsed, Type::FLOAT4_ARRAY)
             }
 
             #[cfg(not(feature = "pgvector"))]
@@ -365,7 +364,7 @@ fn cast_object(val: &Val, destination_type: &PhysicalColumnType) -> SQLParamCont
     match destination_type {
         PhysicalColumnType::Json => {
             let json_object = val.clone().into_json().unwrap();
-            SQLParamContainer::new(json_object, Type::JSON)
+            SQLParamContainer::new(json_object, Type::JSONB)
         }
         _ => panic!(),
     }

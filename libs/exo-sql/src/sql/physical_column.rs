@@ -292,7 +292,7 @@ impl PhysicalColumnType {
             PhysicalColumnType::Json => Type::JSONB,
             PhysicalColumnType::Blob => Type::BYTEA,
             PhysicalColumnType::Uuid => Type::UUID,
-            PhysicalColumnType::Vector { .. } => Type::FLOAT4_ARRAY,
+            PhysicalColumnType::Vector { .. } => todo!(),
             PhysicalColumnType::Array { typ } => {
                 let inner_type = typ.get_pg_type();
                 match inner_type {

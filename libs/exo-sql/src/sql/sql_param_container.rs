@@ -21,7 +21,7 @@ use super::SQLValue;
 /// with just using `Arc<dyn SQLParam>` but we need to implement `ToSql` for it and since `Arc`
 /// (unlike `Box`) is not a `#[fundamental]` type, we have to wrap it in a newtype.
 #[derive(Clone)]
-pub struct SQLParamContainer(pub (Arc<dyn SQLParam>, Type));
+pub struct SQLParamContainer((Arc<dyn SQLParam>, Type));
 
 impl SQLParamContainer {
     pub fn param(&self) -> (Arc<dyn SQLParam>, Type) {

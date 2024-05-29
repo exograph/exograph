@@ -40,10 +40,11 @@ pub fn to_sql_param<T>(
 ) -> Result<Option<SQLParamContainer>, DatabaseError> {
     let element_pg_type = match destination_type {
         PhysicalColumnType::Array { typ } => typ.get_pg_type(),
+        PhysicalColumnType::Json => Type::JSONB,
         _ => {
             return Err(DatabaseError::Validation(
                 "Destination type is not an array".to_string(),
-            ))
+            ));
         }
     };
     to_sql_array(elems, element_pg_type, array_entry, to_sql_param).map(|array| {

@@ -24,6 +24,7 @@ use postgres_model::{
     predicate::{PredicateParameter, PredicateParameterTypeKind},
     subsystem::PostgresSubsystem,
 };
+use tokio_postgres::types::Type;
 
 use crate::{
     auth_util::check_retrieve_access,
@@ -144,8 +145,10 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                                     },
                                                 )?
                                                 .unwrap();
-                                                let target_vector = todo!("Vector type");
-                                                // SQLParamContainer::new(vector_value);
+                                                let target_vector = SQLParamContainer::new(
+                                                    vector_value,
+                                                    Type::FLOAT4_ARRAY,
+                                                );
 
                                                 Ok(AbstractPredicate::VectorDistance(
                                                     ColumnPath::Physical(

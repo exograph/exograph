@@ -377,6 +377,8 @@ async fn map_vector_distance_field<'content>(
     vector_distance_field: &VectorDistanceField,
     field: &'content ValidatedField,
 ) -> Result<SelectionElement, PostgresExecutionError> {
+    use tokio_postgres::types::Type;
+
     let to_arg = field.arguments.get("to").ok_or_else(|| {
         PostgresExecutionError::Generic(
             "Missing 'to' argument for vector distance field".to_string(),
@@ -385,10 +387,9 @@ async fn map_vector_distance_field<'content>(
 
     let to_vector_value = to_pg_vector(to_arg, "to")?;
 
-    todo!()
-    // Ok(SelectionElement::Function(Function::VectorDistance {
-    //     column_id: vector_distance_field.column_id,
-    //     distance_function: vector_distance_field.distance_function,
-    //     target: SQLParamContainer::new(to_vector_value, todo!()),
-    // }))
+    Ok(SelectionElement::Function(Function::VectorDistance {
+        column_id: vector_distance_field.column_id,
+        distance_function: vector_distance_field.distance_function,
+        target: SQLParamContainer::new(to_vector_value, Type::FLOAT4_ARRAY),
+    }))
 }
