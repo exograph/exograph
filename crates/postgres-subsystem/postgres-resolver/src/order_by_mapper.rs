@@ -9,7 +9,6 @@
 
 use async_trait::async_trait;
 use futures::future::join_all;
-use tokio_postgres::types::Type;
 
 use crate::util::to_pg_vector;
 use crate::{
@@ -148,9 +147,8 @@ async fn order_by_pair<'a>(
                                     AbstractOrderBy(vec![(
                                         AbstractOrderByExpr::VectorDistance(
                                             ColumnPath::Physical(new_column_path),
-                                            ColumnPath::Param(SQLParamContainer::new(
+                                            ColumnPath::Param(SQLParamContainer::f32_array(
                                                 vector_value,
-                                                Type::FLOAT4_ARRAY,
                                             )),
                                             parameter
                                                 .vector_distance_function

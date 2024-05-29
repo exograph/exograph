@@ -11,7 +11,7 @@ network = [
     "exo-sql/testing",
     "exo-sql/pool",
 ]
-bigdecimal = ["pg_bigdecimal"]
+bigdecimal = ["exo-sql/bigdecimal"]
 
 [dependencies]
 async-graphql-parser.workspace = true
@@ -28,8 +28,7 @@ tokio-postgres = { workspace = true, default-features = false }
 tracing.workspace = true
 base64 = "0.13"
 chrono.workspace = true
-pg_bigdecimal = { version = "0.1.4", optional = true }
-uuid = "1.1.2"
+uuid.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }

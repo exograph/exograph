@@ -12,15 +12,13 @@ use chrono::prelude::*;
 use chrono::DateTime;
 use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::database_error::DatabaseError;
+#[cfg(feature = "bigdecimal")]
+use exo_sql::BigDecimal;
 use exo_sql::ColumnPath;
 use exo_sql::{
     array_util::{self, ArrayEntry},
-    Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParamContainer,
+    Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLParamContainer,
 };
-#[cfg(feature = "bigdecimal")]
-use pg_bigdecimal::{BigDecimal, PgNumeric};
-
-use tokio_postgres::types::Type;
 
 use std::str::FromStr;
 
@@ -76,22 +74,12 @@ pub(crate) fn cast_value(
     match value {
         Val::Number(number) => cast_number(number, destination_type).map(Some),
         Val::String(v) => cast_string(v, destination_type).map(Some),
-        Val::Bool(v) => Ok(Some(SQLParamContainer::new(*v, Type::BOOL))),
+        Val::Bool(v) => Ok(Some(SQLParamContainer::bool(*v))),
         Val::Null => Ok(None),
-        Val::Enum(v) => Ok(Some(SQLParamContainer::new(v.to_string(), Type::TEXT))), // We might need guidance from the database to do a correct translation
+        Val::Enum(v) => Ok(Some(SQLParamContainer::string(v.to_string()))), // We might need guidance from the database to do a correct translation
         Val::List(elems) => cast_list(elems, destination_type),
-        // Val::List(elems) if !matches!(destination_type, PhysicalColumnType::Json) => {
-        //     cast_list(elems, destination_type)
-        // }
-        // Val::List(elems) => {
-        //     let json_object = elems.iter().map(|v| v.to_string()).collect::<Vec<_>>();
-        //     Ok(Some(SQLParamContainer::new(json_object, Type::TEXT_ARRAY)))
-        // }
         Val::Object(_) => Ok(Some(cast_object(value, destination_type))),
-        Val::Binary(bytes) => Ok(Some(SQLParamContainer::new(
-            SQLBytes(bytes.clone()),
-            Type::BYTEA,
-        ))),
+        Val::Binary(bytes) => Ok(Some(SQLParamContainer::bytes(bytes.clone()))),
     }
 }
 
@@ -120,7 +108,7 @@ fn cast_list(
                 .collect();
 
             let vec_value = vec_value.map_err(|e| CastError::Generic(e.to_string()))?;
-            Ok(Some(SQLParamContainer::new(vec_value, Type::FLOAT4_ARRAY)))
+            Ok(Some(SQLParamContainer::f32_array(vec_value)))
         }
         _ => {
             fn array_entry(elem: &Val) -> ArrayEntry<Val> {
@@ -148,13 +136,13 @@ fn cast_number(
 ) -> Result<SQLParamContainer, CastError> {
     let result: SQLParamContainer = match destination_type {
         PhysicalColumnType::Int { bits } => match bits {
-            IntBits::_16 => SQLParamContainer::new(number.as_i64().unwrap() as i16, Type::INT2),
-            IntBits::_32 => SQLParamContainer::new(number.as_i64().unwrap() as i32, Type::INT4),
-            IntBits::_64 => SQLParamContainer::new(number.as_i64().unwrap(), Type::INT8),
+            IntBits::_16 => SQLParamContainer::i16(number.as_i64().unwrap() as i16),
+            IntBits::_32 => SQLParamContainer::i32(number.as_i64().unwrap() as i32),
+            IntBits::_64 => SQLParamContainer::i64(number.as_i64().unwrap()),
         },
         PhysicalColumnType::Float { bits } => match bits {
-            FloatBits::_24 => SQLParamContainer::new(number.as_f64().unwrap() as f32, Type::FLOAT4),
-            FloatBits::_53 => SQLParamContainer::new(number.as_f64().unwrap(), Type::FLOAT8),
+            FloatBits::_24 => SQLParamContainer::f32(number.as_f64().unwrap() as f32),
+            FloatBits::_53 => SQLParamContainer::f64(number.as_f64().unwrap()),
         },
         PhysicalColumnType::Numeric { .. } => {
             return Err(CastError::Generic(
@@ -175,167 +163,163 @@ fn cast_string(
     string: &str,
     destination_type: &PhysicalColumnType,
 ) -> Result<SQLParamContainer, CastError> {
-    let value: SQLParamContainer = match destination_type {
-        PhysicalColumnType::Numeric { .. } => {
-            #[cfg(feature = "bigdecimal")]
-            {
-                let decimal = match string {
-                    "NaN" => PgNumeric { n: None },
-                    _ => PgNumeric {
-                        n: Some(BigDecimal::from_str(string).map_err(|_| {
+    let value: SQLParamContainer =
+        match destination_type {
+            PhysicalColumnType::Numeric { .. } => {
+                #[cfg(feature = "bigdecimal")]
+                {
+                    let decimal = match string {
+                        "NaN" => None,
+                        _ => Some(BigDecimal::from_str(string).map_err(|_| {
                             CastError::Generic(format!("Could not parse {string} into a decimal"))
                         })?),
-                    },
-                };
+                    };
 
-                SQLParamContainer::new(decimal, Type::NUMERIC)
-            }
-
-            #[cfg(not(feature = "bigdecimal"))]
-            {
-                return Err(CastError::Generic(
-                    "Casting strings to decimal fields are not supported in this build".into(),
-                ));
-            }
-        }
-
-        #[allow(unused_variables)]
-        PhysicalColumnType::Vector { size } => {
-            let parsed: Vec<f32> = serde_json::from_str(string).map_err(|e| {
-                CastError::Generic(format!("Could not parse {string} as a vector {e}"))
-            })?;
-
-            if parsed.len() != *size {
-                return Err(CastError::Generic(format!(
-                    "Expected vector of size {size}, got {}",
-                    parsed.len()
-                )));
-            }
-
-            SQLParamContainer::new(parsed, Type::FLOAT4_ARRAY)
-        }
-
-        PhysicalColumnType::Timestamp { .. }
-        | PhysicalColumnType::Time { .. }
-        | PhysicalColumnType::Date => {
-            let datetime = DateTime::parse_from_rfc3339(string);
-            let naive_datetime = NaiveDateTime::parse_from_str(
-                string,
-                &format!("{NAIVE_DATE_FORMAT}T{NAIVE_TIME_FORMAT}"),
-            );
-
-            // attempt to parse string as either datetime+offset or as a naive datetime
-            match (datetime, naive_datetime) {
-                (Ok(datetime), _) => {
-                    match &destination_type {
-                        PhysicalColumnType::Timestamp { timezone, .. } => {
-                            if *timezone {
-                                SQLParamContainer::new(datetime, Type::TIMESTAMPTZ)
-                            } else {
-                                // default to the naive time if this is a non-timezone field
-                                SQLParamContainer::new(datetime.naive_local(), Type::TIMESTAMP)
-                            }
-                        }
-                        PhysicalColumnType::Time { .. } => {
-                            SQLParamContainer::new(datetime.time(), Type::TIME)
-                        }
-                        PhysicalColumnType::Date => {
-                            SQLParamContainer::new(datetime.date_naive(), Type::DATE)
-                        }
-                        _ => {
-                            return Err(CastError::Generic(
-                                "missing case for datetime in inner match".into(),
-                            ))
-                        }
-                    }
+                    SQLParamContainer::numeric(decimal)
                 }
 
-                (_, Ok(naive_datetime)) => {
-                    match &destination_type {
-                        PhysicalColumnType::Timestamp { timezone, .. } => {
-                            if *timezone {
-                                // default to UTC+0 if this field is a timestamp+timezone field
-                                SQLParamContainer::new(
-                                    DateTime::<Utc>::from_naive_utc_and_offset(
-                                        naive_datetime,
-                                        chrono::Utc,
-                                    ),
-                                    Type::TIMESTAMPTZ,
-                                )
-                            } else {
-                                SQLParamContainer::new(naive_datetime, Type::TIMESTAMP)
-                            }
-                        }
-                        PhysicalColumnType::Time { .. } => {
-                            SQLParamContainer::new(naive_datetime.time(), Type::TIME)
-                        }
-                        PhysicalColumnType::Date { .. } => {
-                            SQLParamContainer::new(naive_datetime.date(), Type::DATE)
-                        }
-                        _ => {
-                            return Err(CastError::Generic(
-                                "missing case for datetime in inner match".into(),
-                            ))
-                        }
-                    }
+                #[cfg(not(feature = "bigdecimal"))]
+                {
+                    return Err(CastError::Generic(
+                        "Casting strings to decimal fields are not supported in this build".into(),
+                    ));
+                }
+            }
+
+            #[allow(unused_variables)]
+            PhysicalColumnType::Vector { size } => {
+                let parsed: Vec<f32> = serde_json::from_str(string).map_err(|e| {
+                    CastError::Generic(format!("Could not parse {string} as a vector {e}"))
+                })?;
+
+                if parsed.len() != *size {
+                    return Err(CastError::Generic(format!(
+                        "Expected vector of size {size}, got {}",
+                        parsed.len()
+                    )));
                 }
 
-                (Err(_), Err(_)) => {
-                    match &destination_type {
-                        PhysicalColumnType::Timestamp { .. } => {
-                            // exhausted options for timestamp formats
-                            return Err(CastError::Generic(format!(
-                                "Could not parse {string} as a valid timestamp format"
-                            )));
+                SQLParamContainer::f32_array(parsed)
+            }
+
+            PhysicalColumnType::Timestamp { .. }
+            | PhysicalColumnType::Time { .. }
+            | PhysicalColumnType::Date => {
+                let datetime = DateTime::parse_from_rfc3339(string);
+                let naive_datetime = NaiveDateTime::parse_from_str(
+                    string,
+                    &format!("{NAIVE_DATE_FORMAT}T{NAIVE_TIME_FORMAT}"),
+                );
+
+                // attempt to parse string as either datetime+offset or as a naive datetime
+                match (datetime, naive_datetime) {
+                    (Ok(datetime), _) => {
+                        match &destination_type {
+                            PhysicalColumnType::Timestamp { timezone, .. } => {
+                                if *timezone {
+                                    SQLParamContainer::timestamp_tz(datetime)
+                                } else {
+                                    // default to the naive time if this is a non-timezone field
+                                    SQLParamContainer::timestamp(datetime.naive_local())
+                                }
+                            }
+                            PhysicalColumnType::Time { .. } => {
+                                SQLParamContainer::native_time(datetime.time())
+                            }
+                            PhysicalColumnType::Date => {
+                                SQLParamContainer::native_date(datetime.date_naive())
+                            }
+                            _ => {
+                                return Err(CastError::Generic(
+                                    "missing case for datetime in inner match".into(),
+                                ))
+                            }
                         }
-                        PhysicalColumnType::Time { .. } => {
-                            // try parsing the string as a time only
-                            let t = NaiveTime::parse_from_str(string, NAIVE_TIME_FORMAT).map_err(
-                                |e| {
-                                    CastError::Date(
-                                        format!(
+                    }
+
+                    (_, Ok(naive_datetime)) => {
+                        match &destination_type {
+                            PhysicalColumnType::Timestamp { timezone, .. } => {
+                                if *timezone {
+                                    // default to UTC+0 if this field is a timestamp+timezone field
+                                    SQLParamContainer::timestamp_utc(
+                                        DateTime::<Utc>::from_naive_utc_and_offset(
+                                            naive_datetime,
+                                            chrono::Utc,
+                                        ),
+                                    )
+                                } else {
+                                    SQLParamContainer::timestamp(naive_datetime)
+                                }
+                            }
+                            PhysicalColumnType::Time { .. } => {
+                                SQLParamContainer::native_time(naive_datetime.time())
+                            }
+                            PhysicalColumnType::Date { .. } => {
+                                SQLParamContainer::native_date(naive_datetime.date())
+                            }
+                            _ => {
+                                return Err(CastError::Generic(
+                                    "missing case for datetime in inner match".into(),
+                                ))
+                            }
+                        }
+                    }
+
+                    (Err(_), Err(_)) => {
+                        match &destination_type {
+                            PhysicalColumnType::Timestamp { .. } => {
+                                // exhausted options for timestamp formats
+                                return Err(CastError::Generic(format!(
+                                    "Could not parse {string} as a valid timestamp format"
+                                )));
+                            }
+                            PhysicalColumnType::Time { .. } => {
+                                // try parsing the string as a time only
+                                let t = NaiveTime::parse_from_str(string, NAIVE_TIME_FORMAT)
+                                    .map_err(|e| {
+                                        CastError::Date(
+                                            format!(
                                             "Could not parse {string} as a valid time-only format"
                                         ),
-                                        e,
-                                    )
-                                },
-                            )?;
-                            SQLParamContainer::new(t, Type::TIME)
-                        }
-                        PhysicalColumnType::Date => {
-                            // try parsing the string as a date only
-                            let d = NaiveDate::parse_from_str(string, NAIVE_DATE_FORMAT).map_err(
-                                |e| {
-                                    CastError::Date(
-                                        format!(
+                                            e,
+                                        )
+                                    })?;
+                                SQLParamContainer::native_time(t)
+                            }
+                            PhysicalColumnType::Date => {
+                                // try parsing the string as a date only
+                                let d = NaiveDate::parse_from_str(string, NAIVE_DATE_FORMAT)
+                                    .map_err(|e| {
+                                        CastError::Date(
+                                            format!(
                                             "Could not parse {string} as a valid date-only format"
                                         ),
-                                        e,
-                                    )
-                                },
-                            )?;
-                            SQLParamContainer::new(d, Type::DATE)
+                                            e,
+                                        )
+                                    })?;
+                                SQLParamContainer::native_date(d)
+                            }
+                            _ => panic!(),
                         }
-                        _ => panic!(),
                     }
                 }
             }
-        }
 
-        PhysicalColumnType::Blob => {
-            let bytes = base64::decode(string)?;
-            SQLParamContainer::new(SQLBytes::new(bytes), Type::BYTEA)
-        }
+            PhysicalColumnType::Blob => {
+                let bytes = base64::decode(string)?;
+                SQLParamContainer::bytes_from_vec(bytes)
+            }
 
-        PhysicalColumnType::Uuid => {
-            let uuid = uuid::Uuid::parse_str(string)?;
-            SQLParamContainer::new(uuid, Type::UUID)
-        }
+            PhysicalColumnType::Uuid => {
+                let uuid = uuid::Uuid::parse_str(string)?;
+                SQLParamContainer::uuid(uuid)
+            }
 
-        PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
+            PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
 
-        _ => SQLParamContainer::new(string.to_owned(), Type::TEXT),
-    };
+            _ => SQLParamContainer::string(string.to_owned()),
+        };
 
     Ok(value)
 }
@@ -344,7 +328,7 @@ fn cast_object(val: &Val, destination_type: &PhysicalColumnType) -> SQLParamCont
     match destination_type {
         PhysicalColumnType::Json => {
             let json_object = val.clone().into_json().unwrap();
-            SQLParamContainer::new(json_object, Type::JSONB)
+            SQLParamContainer::json(json_object)
         }
         _ => panic!(),
     }

@@ -155,18 +155,25 @@ mod tests {
     }
 
     fn i32_to_sql_param(i: &i32) -> Result<OptionalSQLParam, DatabaseError> {
-        Ok(Some(SQLParamContainer::new(*i) as SQLParamContainer))
+        Ok(Some(SQLParamContainer::i32(*i) as SQLParamContainer))
     }
 
-    fn element_to_sql_param(entry: &Element) -> Result<OptionalSQLParam, DatabaseError> {
+    fn element_to_sql_param(
+        entry: &Element,
+        element_pg_type: &Type,
+    ) -> Result<OptionalSQLParam, DatabaseError> {
         match entry {
-            Element::Single(i) => Ok(Some(SQLParamContainer::new(*i) as SQLParamContainer)),
+            Element::Single(i) => Ok(Some(
+                SQLParamContainer::new(*i, element_pg_type.clone()) as SQLParamContainer
+            )),
             Element::List(entries) => {
                 let mut result = Vec::new();
                 for entry in entries {
-                    result.push(element_to_sql_param(entry)?);
+                    result.push(element_to_sql_param(entry, element_pg_type)?);
                 }
-                Ok(Some(SQLParamContainer::new(result) as SQLParamContainer))
+                Ok(Some(
+                    SQLParamContainer::new(result, element_pg_type.clone()) as SQLParamContainer,
+                ))
             }
         }
     }
@@ -183,7 +190,7 @@ mod tests {
             ArrayEntry::Single(elem)
         }
 
-        let array = to_sql_array(&elems, array_entry, &i32_to_sql_param).unwrap();
+        let array = to_sql_array(&elems, Type::INT4, array_entry, &i32_to_sql_param).unwrap();
         assert_eq!(
             array.dimensions(),
             [Dimension {
@@ -193,7 +200,11 @@ mod tests {
         );
         assert_eq!(
             to_debug_string(&array),
-            vec!["Some(1)", "Some(2)", "Some(3)",]
+            [
+                "(Some((1, Int4)), Int4)",
+                "(Some((2, Int4)), Int4)",
+                "(Some((3, Int4)), Int4)"
+            ]
         );
     }
 
@@ -219,7 +230,10 @@ mod tests {
             }
         }
 
-        let array = to_sql_array(&elems, array_entry, &element_to_sql_param).unwrap();
+        fn to_sql_param(elem: &Element) -> Result<OptionalSQLParam, DatabaseError> {
+            element_to_sql_param(elem, &Type::INT4)
+        }
+        let array = to_sql_array(&elems, Type::INT4, array_entry, &to_sql_param).unwrap();
         assert_eq!(
             array.dimensions(),
             [
@@ -235,7 +249,14 @@ mod tests {
         );
         assert_eq!(
             to_debug_string(&array),
-            vec!["Some(1)", "Some(2)", "Some(3)", "Some(4)", "Some(5)", "Some(6)",]
+            vec![
+                "(Some((1, Int4)), Int4)",
+                "(Some((2, Int4)), Int4)",
+                "(Some((3, Int4)), Int4)",
+                "(Some((4, Int4)), Int4)",
+                "(Some((5, Int4)), Int4)",
+                "(Some((6, Int4)), Int4)"
+            ]
         );
     }
 
@@ -261,7 +282,10 @@ mod tests {
             }
         }
 
-        let array = to_sql_array(&elems, array_entry, &element_to_sql_param).unwrap();
+        fn to_sql_param(elem: &Element) -> Result<OptionalSQLParam, DatabaseError> {
+            element_to_sql_param(elem, &Type::INT4)
+        }
+        let array = to_sql_array(&elems, Type::INT4, array_entry, &to_sql_param).unwrap();
         assert_eq!(
             array.dimensions(),
             [
@@ -281,7 +305,14 @@ mod tests {
         );
         assert_eq!(
             to_debug_string(&array),
-            vec!["Some(1)", "Some(2)", "Some(3)", "Some(4)", "Some(5)", "Some(6)",]
+            vec![
+                "(Some((1, Int4)), Int4)",
+                "(Some((2, Int4)), Int4)",
+                "(Some((3, Int4)), Int4)",
+                "(Some((4, Int4)), Int4)",
+                "(Some((5, Int4)), Int4)",
+                "(Some((6, Int4)), Int4)"
+            ]
         );
     }
 }

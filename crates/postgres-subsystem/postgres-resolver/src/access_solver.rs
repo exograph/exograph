@@ -33,7 +33,6 @@ use postgres_model::{
     access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     subsystem::PostgresSubsystem,
 };
-use tokio_postgres::types::Type;
 
 use crate::cast;
 
@@ -354,12 +353,9 @@ fn to_column_path(column_id: &PhysicalColumnPath) -> ColumnPath {
 fn literal_column(value: Val) -> ColumnPath {
     match value {
         Val::Null => ColumnPath::Null,
-        Val::Bool(v) => ColumnPath::Param(SQLParamContainer::new(v, Type::BOOL)),
-        Val::Number(v) => ColumnPath::Param(SQLParamContainer::new(
-            v.as_i64().unwrap() as i32,
-            Type::INT4,
-        )), // TODO: Deal with the exact number type
-        Val::String(v) => ColumnPath::Param(SQLParamContainer::new(v, Type::TEXT)),
+        Val::Bool(v) => ColumnPath::Param(SQLParamContainer::bool(v)),
+        Val::Number(v) => ColumnPath::Param(SQLParamContainer::i32(v.as_i64().unwrap() as i32)), // TODO: Deal with the exact number type
+        Val::String(v) => ColumnPath::Param(SQLParamContainer::string(v)),
         Val::List(_) | Val::Object(_) | Val::Binary(_) | Val::Enum(_) => todo!(),
     }
 }
@@ -611,8 +607,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_match_predicate(
-                    ColumnPath::Param(SQLParamContainer::new("token_value".to_string())),
-                    ColumnPath::Param(SQLParamContainer::new("token_value".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("token_value".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("token_value".to_string())),
                 )
             );
 
@@ -628,8 +624,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_mismatch_predicate(
-                    ColumnPath::Param(SQLParamContainer::new("token_value1".to_string())),
-                    ColumnPath::Param(SQLParamContainer::new("token_value2".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("token_value1".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("token_value2".to_string())),
                 )
             );
         }
@@ -651,7 +647,7 @@ mod tests {
                     &test_ae,
                     &context,
                     context_value_predicate(
-                        ColumnPath::Param(SQLParamContainer::new("u1".to_string())),
+                        ColumnPath::Param(SQLParamContainer::string("u1".to_string())),
                         test_system.owner_id_column(),
                     )
                 );
@@ -673,7 +669,7 @@ mod tests {
                     &context,
                     context_value_predicate(
                         test_system.owner_id_column(),
-                        ColumnPath::Param(SQLParamContainer::new("u1".to_string())),
+                        ColumnPath::Param(SQLParamContainer::string("u1".to_string())),
                     )
                 );
                 // No user_id, so we can definitely declare it Predicate::False
@@ -919,7 +915,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
                         test_system.dept1_id_column(),
-                        ColumnPath::Param(SQLParamContainer::new(true))
+                        ColumnPath::Param(SQLParamContainer::bool(true))
                     ))
                 );
 
@@ -934,7 +930,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
                         test_system.dept1_id_column(),
-                        ColumnPath::Param(SQLParamContainer::new(true))
+                        ColumnPath::Param(SQLParamContainer::bool(true))
                     ))
                 );
             }
@@ -954,11 +950,11 @@ mod tests {
                 both_columns(
                     Box::new(AbstractPredicate::Eq(
                         test_system.dept1_id_column(),
-                        ColumnPath::Param(SQLParamContainer::new(true))
+                        ColumnPath::Param(SQLParamContainer::bool(true))
                     )),
                     Box::new(AbstractPredicate::Eq(
                         test_system.dept2_id_column(),
-                        ColumnPath::Param(SQLParamContainer::new(true))
+                        ColumnPath::Param(SQLParamContainer::bool(true))
                     ))
                 )
             );
@@ -1062,7 +1058,7 @@ mod tests {
                 solved_predicate,
                 AbstractPredicate::Neq(
                     test_system.dept1_id_column(),
-                    ColumnPath::Param(SQLParamContainer::new(true))
+                    ColumnPath::Param(SQLParamContainer::bool(true))
                 )
             );
         }
@@ -1133,7 +1129,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Param(SQLParamContainer::new(true))
+                ColumnPath::Param(SQLParamContainer::bool(true))
             )
         );
     }
@@ -1164,7 +1160,7 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                ColumnPath::Param(SQLParamContainer::new("1".to_string())),
+                ColumnPath::Param(SQLParamContainer::string("1".to_string())),
                 test_system.owner_id_column(),
             )
         );
@@ -1174,7 +1170,7 @@ mod tests {
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
-                ColumnPath::Param(SQLParamContainer::new("2".to_string())),
+                ColumnPath::Param(SQLParamContainer::string("2".to_string())),
                 test_system.owner_id_column(),
             )
         );
@@ -1241,7 +1237,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Param(SQLParamContainer::new(true)),
+                ColumnPath::Param(SQLParamContainer::bool(true)),
             )
         );
 
@@ -1305,7 +1301,7 @@ mod tests {
             solved_predicate,
             AbstractPredicate::Eq(
                 test_system.published_column(),
-                ColumnPath::Param(SQLParamContainer::new(true))
+                ColumnPath::Param(SQLParamContainer::bool(true))
             )
         );
     }

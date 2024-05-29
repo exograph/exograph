@@ -7,13 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::sync::Arc;
-
 use maybe_owned::MaybeOwned;
-use tokio_postgres::types::Type;
 
-use super::SQLBuilder;
-use crate::{Database, SQLParam};
+use super::{sql_param::SQLParamWithType, SQLBuilder};
+use crate::Database;
 
 /// A trait for types that can build themselves into an SQL expression.
 ///
@@ -28,7 +25,7 @@ pub trait ExpressionBuilder {
     /// want to assert on the generated SQL without going through the whole process of creating an
     /// SQLBuilder, then building the SQL expression into it, and finally extracting the SQL string
     /// and params.
-    fn to_sql(&self, database: &Database) -> (String, Vec<(Arc<(dyn SQLParam + 'static)>, Type)>)
+    fn to_sql(&self, database: &Database) -> (String, Vec<SQLParamWithType>)
     where
         Self: Sized,
     {
