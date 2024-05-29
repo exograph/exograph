@@ -117,7 +117,7 @@ impl SystemSerializer for SerializableSystem {
             .map_err(|e| error("Failed to read the exo_ir file header", Some(e)))?;
         let header: Header = bincode::deserialize(&header_bytes).map_err(|e| {
             error(
-                &format!("Failed to deserialize the exo_ir file header: {0}", e),
+                &format!("Failed to deserialize the exo_ir file header: {e}"),
                 None,
             )
         })?;

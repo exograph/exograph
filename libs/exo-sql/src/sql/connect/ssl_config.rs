@@ -117,8 +117,7 @@ impl SslConfig {
                 Some(cert_path) => {
                     let cert_file = File::open(&cert_path).map_err(|e| {
                         DatabaseError::Config(format!(
-                            "Failed to open certificate file '{}': {}",
-                            cert_path, e
+                            "Failed to open certificate file '{cert_path}': {e}"
                         ))
                     })?;
                     let mut buf = BufReader::new(cert_file);

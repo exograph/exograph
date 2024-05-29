@@ -79,14 +79,11 @@ pub(super) fn launch_process(
         .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| {
-            EphemeralDatabaseSetupError::Generic(format!(
-                "Failed to launch process {}: {}",
-                name, e
-            ))
+            EphemeralDatabaseSetupError::Generic(format!("Failed to launch process {name}: {e}"))
         })?;
 
     let status = command.wait().map_err(|e| {
-        EphemeralDatabaseSetupError::Generic(format!("Failed to wait for process {}: {}", name, e))
+        EphemeralDatabaseSetupError::Generic(format!("Failed to wait for process {name}: {e}"))
     })?;
 
     if !status.success() {
@@ -99,8 +96,7 @@ pub(super) fn launch_process(
             }
         }
         return Err(EphemeralDatabaseSetupError::Generic(format!(
-            "Process {} exited with non-zero status code {}",
-            name, status,
+            "Process {name} exited with non-zero status code {status}",
         )));
     }
     Ok(())

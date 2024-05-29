@@ -89,19 +89,19 @@ impl CommandDefinition for FlyCommandDefinition {
             "(If you haven't already done so)".purple()
         );
 
-        println!("\t{}", format!("flyctl apps create {}", app_name).blue());
+        println!("\t{}", format!("flyctl apps create {app_name}").blue());
         println!(
             "\n\tSet up JWT by running {} of the following: ",
             "either".bold()
         );
         println!(
             "\t{}{}",
-            format!("flyctl secrets set --app {} EXO_JWT_SECRET=", app_name,).blue(),
+            format!("flyctl secrets set --app {app_name} EXO_JWT_SECRET=",).blue(),
             "<your-jwt-secret>".yellow()
         );
         println!(
             "\t{}{}",
-            format!("flyctl secrets set --app {} EXO_OIDC_URL=", app_name,).blue(),
+            format!("flyctl secrets set --app {app_name} EXO_OIDC_URL=",).blue(),
             "<your-oidc-url>".yellow()
         );
         println!("\n\tSet up the database: ");
@@ -109,16 +109,16 @@ impl CommandDefinition for FlyCommandDefinition {
         if use_fly_db {
             println!(
                 "\t{}",
-                format!("flyctl postgres create --name {}-db", app_name).blue()
+                format!("flyctl postgres create --name {app_name}-db").blue()
             );
             println!(
                 "\t{}",
-                format!("flyctl postgres attach --app {} {}-db", app_name, app_name).blue()
+                format!("flyctl postgres attach --app {app_name} {app_name}-db").blue()
             );
         } else {
             println!(
                 "\t{}{}{}",
-                format!("flyctl secrets set --app {} DATABASE_URL=\"", app_name).blue(),
+                format!("flyctl secrets set --app {app_name} DATABASE_URL=\"").blue(),
                 "<your-postgres-url>".yellow(),
                 "\"".blue()
             );
@@ -254,7 +254,7 @@ fn accumulate_env(envs: &mut String, env: &str) -> Result<()> {
     }
     let key = parts[0].to_string();
     let value = parts[1].to_string();
-    envs.push_str(&format!("{}=\"{}\"\n", key, value));
+    envs.push_str(&format!("{key}=\"{value}\"\n"));
 
     Ok(())
 }

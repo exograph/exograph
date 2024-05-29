@@ -180,7 +180,7 @@ impl IndexSpec {
 
         let columns_str = sorted_columns
             .iter()
-            .map(|c| format!("\"{}\"", c))
+            .map(|c| format!("\"{c}\""))
             .collect::<Vec<_>>()
             .join(", ");
 
@@ -204,12 +204,9 @@ impl IndexSpec {
                         )
                     })
                     .unwrap_or_else(|| "".to_string());
-                format!(
-                    "USING hnsw ({} {}){}",
-                    columns_str, distance_function_str, params_str
-                )
+                format!("USING hnsw ({columns_str} {distance_function_str}){params_str}")
             }
-            _ => format!("({})", columns_str),
+            _ => format!("({columns_str})"),
         };
 
         format!(

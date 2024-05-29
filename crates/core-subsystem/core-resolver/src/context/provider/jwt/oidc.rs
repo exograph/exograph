@@ -20,7 +20,7 @@ impl Oidc {
         // The issuer can be either the base URL (for example, Clerk) or the base URL with a trailing slash (for example, Auth0)
         // so we add both to the list of issuers to check.
         let url = url.trim_end_matches('/').to_owned();
-        settings.set_issuer(&[&url, &format!("{}/", url)]);
+        settings.set_issuer(&[&url, &format!("{url}/")]);
 
         let validator = Validator::new(url, client, Strategy::Automatic, settings)
             .await
