@@ -15,7 +15,7 @@ use tokio_postgres::types::{to_sql_checked, ToSql, Type};
 
 use crate::SQLParam;
 
-use super::SQLValue;
+use super::{physical_column::to_pg_array_type, SQLValue};
 
 /// Newtype for SQL parameters that can be used in a prepared statement. We would have been fine
 /// with just using `Arc<dyn SQLParam>` but we need to implement `ToSql` for it and since `Arc`
@@ -54,18 +54,7 @@ impl SQLParamContainer {
         let elem_type = params.first().map(|v| &v.type_);
 
         let collection_type = match elem_type {
-            Some(elem_type) => match elem_type {
-                &Type::INT4 => Type::INT4_ARRAY,
-                &Type::INT8 => Type::INT8_ARRAY,
-                &Type::TEXT => Type::TEXT_ARRAY,
-                &Type::JSONB => Type::JSONB_ARRAY,
-                &Type::FLOAT4 => Type::FLOAT4_ARRAY,
-                &Type::FLOAT8 => Type::FLOAT8_ARRAY,
-                &Type::BOOL => Type::BOOL_ARRAY,
-                &Type::TIMESTAMPTZ => Type::TIMESTAMPTZ_ARRAY,
-                &Type::UUID => Type::UUID_ARRAY,
-                _ => Type::BYTEA_ARRAY,
-            },
+            Some(elem_type) => to_pg_array_type(elem_type),
             None => todo!(),
         };
 
