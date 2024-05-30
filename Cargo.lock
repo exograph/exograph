@@ -3379,6 +3379,7 @@ dependencies = [
  "maybe-owned",
  "multiplatform_test",
  "once_cell",
+ "pg_bigdecimal",
  "postgres_array",
  "rand",
  "regex",
@@ -3396,6 +3397,7 @@ dependencies = [
  "typed-generational-arena",
  "url",
  "urlencoding",
+ "uuid",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
  "which 5.0.0",
@@ -6116,16 +6118,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pgvector"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1f4c0c07ceb64a0020f2f0e610cfe51122d2e72723499f0154877b7c76c8c31"
-dependencies = [
- "bytes",
- "postgres",
-]
-
-[[package]]
 name = "phf"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6341,6 +6333,23 @@ dependencies = [
 [[package]]
 name = "postgres-protocol"
 version = "0.6.6"
+dependencies = [
+ "base64 0.22.0",
+ "byteorder",
+ "bytes",
+ "fallible-iterator 0.2.0",
+ "getrandom",
+ "hmac",
+ "md-5",
+ "memchr",
+ "rand",
+ "sha2",
+ "stringprep",
+]
+
+[[package]]
+name = "postgres-protocol"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49b6c5ef183cd3ab4ba005f1ca64c21e8bd97ce4699cfea9e8d9a2c4958ca520"
 dependencies = [
@@ -6348,7 +6357,6 @@ dependencies = [
  "byteorder",
  "bytes",
  "fallible-iterator 0.2.0",
- "getrandom",
  "hmac",
  "md-5",
  "memchr",
@@ -6375,11 +6383,8 @@ dependencies = [
  "futures",
  "indexmap 2.2.5",
  "maybe-owned",
- "pg_bigdecimal",
- "pgvector",
  "postgres-model",
  "postgres-model-builder",
- "postgres-types",
  "resolver",
  "serde",
  "serde_json",
@@ -6402,13 +6407,11 @@ dependencies = [
 [[package]]
 name = "postgres-types"
 version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d2234cdee9408b523530a9b6d2d6b373d1db34f6a8e51dc03ded1828d7fb67c"
 dependencies = [
  "bytes",
  "chrono",
  "fallible-iterator 0.2.0",
- "postgres-protocol",
+ "postgres-protocol 0.6.6",
  "serde",
  "serde_json",
  "uuid",
@@ -6422,7 +6425,7 @@ checksum = "2667c8b8c3a857620d87fc5172972c3385254a7563a5ab303bc9a41a16a7bf4e"
 dependencies = [
  "bytes",
  "fallible-iterator 0.2.0",
- "postgres-protocol",
+ "postgres-protocol 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "postgres-types",
 ]
 
@@ -8716,8 +8719,6 @@ dependencies = [
 [[package]]
 name = "tokio-postgres"
 version = "0.7.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d340244b32d920260ae7448cb72b6e238bddc3d4f7603394e7dd46ed8e48f5b8"
 dependencies = [
  "async-trait",
  "byteorder",
@@ -8730,7 +8731,7 @@ dependencies = [
  "percent-encoding",
  "phf",
  "pin-project-lite",
- "postgres-protocol",
+ "postgres-protocol 0.6.6",
  "postgres-types",
  "rand",
  "socket2",

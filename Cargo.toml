@@ -22,7 +22,7 @@ members = [
   "libs/exo-deno",
   "libs/exo-sql",
   "libs/exo-wasm",
-  "libs/exo-env"
+  "libs/exo-env",
 ]
 
 # The default workspace member to run `cargo` commands on (we exclude server-aws-lambda here, since we don't need to build it during normal development)
@@ -43,7 +43,7 @@ default-members = [
   "libs/exo-deno",
   "libs/exo-sql",
   "libs/exo-wasm",
-  "libs/exo-env"
+  "libs/exo-env",
 ]
 
 resolver = "2"
@@ -97,6 +97,7 @@ tree-sitter = "0.20.10"
 tree-sitter-c2rust = "0.20.11-pre.1"
 tree-sitter-cli = "0.20.8"
 typed-generational-arena = { version = "0.2.5", features = ["serde"] }
+uuid = "1.1.2"
 url = "2.3.1"
 wasmtime = "13.0.0"
 wasmtime-wasi = "13.0.0"
@@ -106,6 +107,11 @@ which = "5.0.0"
 wasm-bindgen-test = "0.3.42"
 wasm-bindgen-test-macro = "0.3.42"
 multiplatform_test = "0.0.0"
+
+[patch.crates-io]
+tokio-postgres = { path = "/Users/ramnivas/external-dev/rust-postgres/tokio-postgres" }
+postgres-types = { path = "/Users/ramnivas/external-dev/rust-postgres/postgres-types" }
+
 
 # reduce binary size, does not affect stack traces
 [profile.dev]

@@ -182,14 +182,17 @@ impl<'a> ConcreteTransactionStep<'a> {
         self.operation.build(database, &mut sql_builder);
         let (stmt, params) = sql_builder.into_sql();
 
-        let params: Vec<_> = params.iter().map(|p| p.as_pg()).collect();
+        let params: Vec<_> = params.iter().map(|p| (p.0.as_pg(), p.1.clone())).collect();
 
         info!("Executing SQL operation: {}", stmt);
 
-        client.query(&stmt, &params[..]).await.map_err(|e| {
-            error!("Failed to execute query: {e:?}");
-            DatabaseError::Delegate(e).with_context("Database operation failed".into())
-        })
+        client
+            .query_with_param_types(&stmt, &params[..])
+            .await
+            .map_err(|e| {
+                error!("Failed to execute query: {e:?}");
+                DatabaseError::Delegate(e).with_context("Database operation failed".into())
+            })
     }
 }
 
@@ -230,6 +233,12 @@ impl TemplateFilterOperation {
         let pk_column_id = database
             .get_pk_column_id(self.table_id)
             .expect("No primary key column");
+        let pk_column_type = database
+            .get_table(self.table_id)
+            .get_pk_physical_column()
+            .unwrap()
+            .typ
+            .get_pg_type();
 
         let op = ConcreteTransactionStep {
             operation: SQLOperation::Select(Select {
@@ -238,12 +247,13 @@ impl TemplateFilterOperation {
                     Predicate::Eq(
                         Column::physical(pk_column_id, None),
                         Column::ArrayParam {
-                            param: SQLParamContainer::new(
+                            param: SQLParamContainer::from_sql_values(
                                 (0..rows)
                                     .map(|row| {
                                         transaction_context.resolve_value(self.prev_step_id, row, 0)
                                     })
                                     .collect::<Vec<_>>(),
+                                pk_column_type,
                             ),
                             wrapper: ArrayParamWrapper::Any,
                         },

@@ -168,7 +168,7 @@ mod tests {
              }| {
                 let predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column)),
-                    ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
                 );
 
                 let adelete = AbstractDelete {
@@ -214,7 +214,7 @@ mod tests {
                         vec![concerts_venue_id_column, venues_name_column],
                         &database,
                     )),
-                    ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
                 );
 
                 let adelete = AbstractDelete {

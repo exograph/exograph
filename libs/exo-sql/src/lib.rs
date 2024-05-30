@@ -78,3 +78,6 @@ pub use sql::{
     vector::{VectorDistanceFunction, DEFAULT_VECTOR_SIZE},
     SQLBytes, SQLParam, SQLParamContainer,
 };
+
+#[cfg(feature = "bigdecimal")]
+pub use pg_bigdecimal::BigDecimal;

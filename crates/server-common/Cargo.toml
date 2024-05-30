@@ -12,7 +12,6 @@ core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 postgres-resolver = { path = "../postgres-subsystem/postgres-resolver", features = [
   "network",
   "bigdecimal",
-  "vector",
 ], optional = true }
 deno-resolver = { path = "../deno-subsystem/deno-resolver", optional = true }
 wasm-resolver = { path = "../wasm-subsystem/wasm-resolver", optional = true }

@@ -116,11 +116,9 @@ impl<'a> TemplateUpdate<'a> {
                         column_id: self.nesting_relation.foreign_column_id,
                         table_alias: None,
                     },
-                    Column::Param(SQLParamContainer::new(transaction_context.resolve_value(
-                        prev_step_id,
-                        row_index,
-                        0,
-                    ))),
+                    Column::Param(SQLParamContainer::from_sql_value(
+                        transaction_context.resolve_value(prev_step_id, row_index, 0),
+                    )),
                 );
 
                 Update {
