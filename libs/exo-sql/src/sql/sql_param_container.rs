@@ -125,13 +125,8 @@ impl SQLParamContainer {
         Self::new(value, Type::JSONB)
     }
 
-    pub fn from_sql_values(params: Vec<SQLValue>) -> Self {
-        let elem_type = params.first().map(|v| &v.type_);
-
-        let collection_type = match elem_type {
-            Some(elem_type) => to_pg_array_type(elem_type),
-            None => todo!(),
-        };
+    pub fn from_sql_values(params: Vec<SQLValue>, elem_type: Type) -> Self {
+        let collection_type = to_pg_array_type(&elem_type);
 
         Self::new(params, collection_type)
     }

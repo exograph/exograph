@@ -292,13 +292,13 @@ impl PhysicalColumnType {
             PhysicalColumnType::Json => Type::JSONB,
             PhysicalColumnType::Blob => Type::BYTEA,
             PhysicalColumnType::Uuid => Type::UUID,
-            PhysicalColumnType::Vector { .. } => todo!(),
             PhysicalColumnType::Array { typ } => to_pg_array_type(&typ.get_pg_type()),
             PhysicalColumnType::Float { bits } => match bits {
                 FloatBits::_24 => Type::FLOAT4,
                 FloatBits::_53 => Type::FLOAT8,
             },
             PhysicalColumnType::Numeric { .. } => Type::NUMERIC,
+            PhysicalColumnType::Vector { .. } => Type::FLOAT4_ARRAY,
         }
     }
 }

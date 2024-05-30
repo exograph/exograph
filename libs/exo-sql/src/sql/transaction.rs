@@ -233,6 +233,12 @@ impl TemplateFilterOperation {
         let pk_column_id = database
             .get_pk_column_id(self.table_id)
             .expect("No primary key column");
+        let pk_column_type = database
+            .get_table(self.table_id)
+            .get_pk_physical_column()
+            .unwrap()
+            .typ
+            .get_pg_type();
 
         let op = ConcreteTransactionStep {
             operation: SQLOperation::Select(Select {
@@ -247,6 +253,7 @@ impl TemplateFilterOperation {
                                         transaction_context.resolve_value(self.prev_step_id, row, 0)
                                     })
                                     .collect::<Vec<_>>(),
+                                pk_column_type,
                             ),
                             wrapper: ArrayParamWrapper::Any,
                         },

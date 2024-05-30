@@ -169,6 +169,8 @@ impl UpdateStrategy for MultiStatementStrategy {
 
         let select = transformer.to_select(&abstract_update.selection, database);
 
+        let pk_column_type = table.get_pk_physical_column().unwrap().typ.get_pg_type();
+
         // Take the root step and use ids returned by it as the input to the select
         // statement to form a predicate `pk IN (update_pk1, update_pk2, ...)`
         let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
@@ -177,6 +179,7 @@ impl UpdateStrategy for MultiStatementStrategy {
                 (0..update_count)
                     .map(|i| transaction_context.resolve_value(root_step_id, i, 0))
                     .collect::<Vec<_>>(),
+                pk_column_type,
             );
 
             let predicate = Predicate::and(
