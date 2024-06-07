@@ -97,7 +97,7 @@ impl Debug for Database {
             writeln!(f, "{}: {}", id.arr_idx(), table.name.fully_qualified_name())?;
             writeln!(f, "  columns: ")?;
             for (column_id, column) in table.columns.iter().enumerate() {
-                writeln!(f, "    {}: {:?}", column_id, column)?;
+                writeln!(f, "    {column_id}: {column:?}")?;
             }
         }
 

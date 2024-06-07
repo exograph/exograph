@@ -87,11 +87,11 @@ impl SchemaOp<'_> {
     pub fn to_sql(&self) -> SchemaStatement {
         match self {
             SchemaOp::CreateSchema { schema } => SchemaStatement {
-                statement: format!("CREATE SCHEMA \"{}\";", schema),
+                statement: format!("CREATE SCHEMA \"{schema}\";"),
                 ..Default::default()
             },
             SchemaOp::DeleteSchema { schema } => SchemaStatement {
-                statement: format!("DROP SCHEMA \"{}\" CASCADE;", schema),
+                statement: format!("DROP SCHEMA \"{schema}\" CASCADE;"),
                 ..Default::default()
             },
             SchemaOp::CreateTable { table } => table.creation_sql(),
@@ -196,7 +196,7 @@ impl SchemaOp<'_> {
 
     pub fn error_string(&self) -> Option<String> {
         match self {
-            SchemaOp::CreateSchema { schema } => Some(format!("The schema `{}` exists in the model, but does not exist in the database.", schema)),
+            SchemaOp::CreateSchema { schema } => Some(format!("The schema `{schema}` exists in the model, but does not exist in the database.")),
             SchemaOp::DeleteSchema { .. } => None, // An extra schema in the database is not a problem
 
             SchemaOp::CreateTable { table } => Some(format!("The table `{}` exists in the model, but does not exist in the database.", table.sql_name())),

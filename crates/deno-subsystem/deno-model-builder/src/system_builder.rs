@@ -142,15 +142,13 @@ fn process_script(
             let factory = CliFactory::from_cli_options(Arc::new(cli_options));
             let module_graph_builder = factory.module_graph_builder().await.map_err(|e| {
                 ModelBuildingError::Generic(format!(
-                    "While trying to create Deno graph loader: {:?}",
-                    e
+                    "While trying to create Deno graph loader: {e:?}"
                 ))
             })?;
             let graph = {
                 let module_graph_creator = factory.module_graph_creator().await.map_err(|e| {
                     ModelBuildingError::Generic(format!(
-                        "While trying to create Deno graph creator: {:?}",
-                        e
+                        "While trying to create Deno graph creator: {e:?}"
                     ))
                 })?;
                 let mut loader = module_graph_builder.create_graph_loader();
@@ -163,8 +161,7 @@ fn process_script(
                     .await
                     .map_err(|e| {
                         ModelBuildingError::Generic(format!(
-                            "While trying to create Deno graph: {:?}",
-                            e
+                            "While trying to create Deno graph: {e:?}"
                         ))
                     })?
             };
@@ -282,8 +279,7 @@ fn walk_node_resolutions(
 
             // Deno generates a thin ESM wrapper that uses an absolute path
             let mut root_replaced_specifier: ModuleSpecifier = ModuleSpecifier::parse(&format!(
-                "file:///EXOGRAPH_NPM_MODULES_SNAPSHOT/{}",
-                node_relative_path_str
+                "file:///EXOGRAPH_NPM_MODULES_SNAPSHOT/{node_relative_path_str}"
             ))
             .unwrap();
             root_replaced_specifier.set_host(Some("localhost")).unwrap();
@@ -297,7 +293,7 @@ fn walk_node_resolutions(
                     .replace('\\', "\\\\")
                     .replace('\'', "\\\'")
                     .replace('\"', "\\\""),
-                &format!("/EXOGRAPH_NPM_MODULES_SNAPSHOT/{}", node_relative_path_str)
+                &format!("/EXOGRAPH_NPM_MODULES_SNAPSHOT/{node_relative_path_str}")
                     .replace('\\', "\\\\")
                     .replace('\'', "\\\'")
                     .replace('\"', "\\\""),
@@ -345,8 +341,7 @@ fn walk_node_resolutions(
 
             // Deno generates a thin ESM wrapper that uses an absolute path
             let mut root_replaced_specifier: ModuleSpecifier = ModuleSpecifier::parse(&format!(
-                "file:///EXOGRAPH_NPM_MODULES_SNAPSHOT/{}",
-                node_relative_path_str
+                "file:///EXOGRAPH_NPM_MODULES_SNAPSHOT/{node_relative_path_str}"
             ))
             .unwrap();
             root_replaced_specifier.set_host(Some("localhost")).unwrap();
@@ -508,7 +503,7 @@ fn walk_module_graph(
                         | MediaType::Dcts
                         | MediaType::Tsx => (deno_core::ModuleType::JavaScript, true),
                         MediaType::Json => (deno_core::ModuleType::Json, false),
-                        _ => panic!("Unknown media type {:?}", media_type),
+                        _ => panic!("Unknown media type {media_type:?}"),
                     };
 
                     let transpiled = if should_transpile {

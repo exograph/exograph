@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=package.json");
     println!("cargo:rerun-if-changed=package-lock.json");
 
-    let npm = which::which("npm").map_err(|e| format!("Failed to find npm: {}", e))?;
+    let npm = which::which("npm").map_err(|e| format!("Failed to find npm: {e}"))?;
 
     if !std::process::Command::new(npm)
         .arg("ci")

@@ -278,7 +278,7 @@ impl Request for MemoryRequest {
             return self
                 .cookies
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect();
         } else {
             self.headers

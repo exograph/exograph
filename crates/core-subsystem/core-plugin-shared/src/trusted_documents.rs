@@ -113,7 +113,7 @@ mod tests {
         let mut map = HashMap::new();
 
         for i in 0..=2 {
-            let query = format!("query{}", i);
+            let query = format!("query{i}");
             let hash = TrustedDocuments::sha256(&query);
             map.insert(hash, query);
         }
@@ -122,7 +122,7 @@ mod tests {
         let trusted_documents_all = TrustedDocuments::from_map(map, true);
 
         for i in 0..=2 {
-            let query = format!("query{}", i);
+            let query = format!("query{i}");
             let hash = TrustedDocuments::sha256(&query);
 
             // Common cases for both types of trusted documents

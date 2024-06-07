@@ -407,7 +407,7 @@ trait TypeScriptType {
 impl TypeScriptType for AstFieldType<Typed> {
     fn typescript_type(&self) -> String {
         match self {
-            AstFieldType::Optional(tpe) => format!("{}?", tpe.typescript_type()),
+            AstFieldType::Optional(tpe) => format!("{} | undefined", tpe.typescript_type()),
             AstFieldType::Plain(name, ..) => typescript_base_type(name),
         }
     }
@@ -416,7 +416,7 @@ impl TypeScriptType for AstFieldType<Typed> {
 impl TypeScriptType for ContextFieldType {
     fn typescript_type(&self) -> String {
         match self {
-            ContextFieldType::Optional(typ) => format!("{}?", typ.typescript_type()),
+            ContextFieldType::Optional(typ) => format!("{} | undefined", typ.typescript_type()),
             ContextFieldType::Plain(pt) => typescript_base_type(&pt.name()),
             ContextFieldType::List(typ) => format!("{}[]", typ.typescript_type()),
         }

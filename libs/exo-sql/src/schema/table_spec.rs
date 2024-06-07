@@ -303,8 +303,7 @@ impl TableSpec {
             let columns_part = sorted_comma_list(columns, true);
 
             post_statements.push(format!(
-                "ALTER TABLE {} ADD CONSTRAINT \"{}\" UNIQUE ({});",
-                table_name, unique_constraint_name, columns_part
+                "ALTER TABLE {table_name} ADD CONSTRAINT \"{unique_constraint_name}\" UNIQUE ({columns_part});"
             ));
         }
 
