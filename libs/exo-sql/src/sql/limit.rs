@@ -20,6 +20,6 @@ impl ExpressionBuilder for Limit {
     /// Build expression of the form `LIMIT <limit>`
     fn build(&self, _database: &Database, builder: &mut SQLBuilder) {
         builder.push_str("LIMIT ");
-        builder.push_param(Arc::new(self.0))
+        builder.push_param((Arc::new(self.0), tokio_postgres::types::Type::INT8));
     }
 }

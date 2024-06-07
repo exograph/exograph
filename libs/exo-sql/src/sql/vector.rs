@@ -28,6 +28,7 @@ impl<C: ExpressionBuilder> ExpressionBuilder for VectorDistance<C> {
         self.function.build(database, builder);
         builder.push_space();
         self.rhs.build(database, builder);
+        builder.push_str("::vector");
     }
 }
 

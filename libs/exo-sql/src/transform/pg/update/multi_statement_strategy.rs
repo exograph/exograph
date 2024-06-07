@@ -169,14 +169,17 @@ impl UpdateStrategy for MultiStatementStrategy {
 
         let select = transformer.to_select(&abstract_update.selection, database);
 
+        let pk_column_type = table.get_pk_physical_column().unwrap().typ.get_pg_type();
+
         // Take the root step and use ids returned by it as the input to the select
         // statement to form a predicate `pk IN (update_pk1, update_pk2, ...)`
         let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
             let update_count = transaction_context.row_count(root_step_id);
-            let update_ids = SQLParamContainer::new(
+            let update_ids = SQLParamContainer::from_sql_values(
                 (0..update_count)
                     .map(|i| transaction_context.resolve_value(root_step_id, i, 0))
                     .collect::<Vec<_>>(),
+                pk_column_type,
             );
 
             let predicate = Predicate::and(
@@ -303,7 +306,7 @@ mod tests {
              }| {
                 let venue_id_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(venues_id_column));
-                let literal = ColumnPath::Param(SQLParamContainer::new(5));
+                let literal = ColumnPath::Param(SQLParamContainer::i32(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let abs_update = AbstractUpdate {
@@ -311,7 +314,7 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Param(SQLParamContainer::new("new_name".to_string())),
+                        Column::Param(SQLParamContainer::string("new_name".to_string())),
                     )],
                     nested_updates: vec![],
                     nested_inserts: vec![],
@@ -360,7 +363,7 @@ mod tests {
                 let venue_id_path =
                     ColumnPath::Physical(PhysicalColumnPath::leaf(venues_id_column));
 
-                let literal = ColumnPath::Param(SQLParamContainer::new(5));
+                let literal = ColumnPath::Param(SQLParamContainer::i32(5));
                 let predicate = AbstractPredicate::eq(venue_id_path, literal);
 
                 let nested_abs_update = NestedAbstractUpdate {
@@ -373,7 +376,9 @@ mod tests {
                         predicate: Predicate::True,
                         column_values: vec![(
                             concerts_name_column,
-                            Column::Param(SQLParamContainer::new("new_concert_name".to_string())),
+                            Column::Param(SQLParamContainer::string(
+                                "new_concert_name".to_string(),
+                            )),
                         )],
                         selection: AbstractSelect {
                             table_id: venues_table,
@@ -394,7 +399,7 @@ mod tests {
                     predicate,
                     column_values: vec![(
                         venues_name_column,
-                        Column::Param(SQLParamContainer::new("new_name".to_string())),
+                        Column::Param(SQLParamContainer::string("new_name".to_string())),
                     )],
                     nested_updates: vec![nested_abs_update],
                     nested_inserts: vec![],

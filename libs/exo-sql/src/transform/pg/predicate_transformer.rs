@@ -442,7 +442,7 @@ mod tests {
              }| {
                 let abstract_predicate = AbstractPredicate::Eq(
                     ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_name_column)),
-                    ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
+                    ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
                 );
 
                 {
@@ -528,14 +528,14 @@ mod tests {
                 let abstract_predicate = AbstractPredicate::and(
                     AbstractPredicate::Eq(
                         ColumnPath::Physical(PhysicalColumnPath::leaf(concerts_venue_id_column)),
-                        ColumnPath::Param(SQLParamContainer::new(1)),
+                        ColumnPath::Param(SQLParamContainer::i32(1)),
                     ),
                     AbstractPredicate::Eq(
                         ColumnPath::Physical(PhysicalColumnPath::from_columns(
                             vec![concerts_venue_id_column, venues_name_column],
                             &database,
                         )),
-                        ColumnPath::Param(SQLParamContainer::new("v1".to_string())),
+                        ColumnPath::Param(SQLParamContainer::string("v1".to_string())),
                     ),
                 );
 
@@ -594,7 +594,7 @@ mod tests {
                         &database,
                     ));
                     let literal_column =
-                        ColumnPath::Param(SQLParamContainer::new("v1".to_string()));
+                        ColumnPath::Param(SQLParamContainer::string("v1".to_string()));
 
                     let abstract_predicate = if literal_on_the_right {
                         op(physical_column, literal_column)

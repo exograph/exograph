@@ -62,14 +62,22 @@ impl InsertionStrategy for MultiStatementStrategy {
 
         let select = transformer.to_select(selection, database);
 
+        let pk_column_type = database
+            .get_table(*table_id)
+            .get_pk_physical_column()
+            .unwrap()
+            .typ
+            .get_pg_type();
+
         // Take the previous insert steps and use them as the input to the select
         // statement to form a predicate `pk IN (insert_step_1_pk, insert_step_2_pk, ...)`
         let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
-            let in_values = SQLParamContainer::new(
+            let in_values = SQLParamContainer::from_sql_values(
                 insert_step_ids
                     .into_iter()
                     .map(|insert_step_id| transaction_context.resolve_value(insert_step_id, 0, 0))
                     .collect::<Vec<_>>(),
+                pk_column_type,
             );
 
             let predicate = Predicate::and(

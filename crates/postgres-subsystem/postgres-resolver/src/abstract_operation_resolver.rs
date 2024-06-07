@@ -12,7 +12,7 @@ use exo_sql::AbstractOperation;
 use core_plugin_interface::core_resolver::{
     context::RequestContext, QueryResponse, QueryResponseBody,
 };
-use postgres_types::FromSqlOwned;
+use tokio_postgres::types::FromSqlOwned;
 use tokio_postgres::Row;
 
 use crate::{

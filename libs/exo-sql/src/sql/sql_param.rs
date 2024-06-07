@@ -7,9 +7,11 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::any::Any;
+use std::{any::Any, sync::Arc};
 
-use tokio_postgres::types::ToSql;
+use tokio_postgres::types::{ToSql, Type};
+
+pub type SQLParamWithType = (Arc<dyn SQLParam>, Type);
 
 /// A trait to simplify our use of SQL parameters, specifically to have the [Send] and [Sync] bounds.
 pub trait SQLParam: ToSql + Send + Sync {

@@ -7,17 +7,17 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-use crate::{Database, SQLParam};
+use crate::Database;
 
-use super::{physical_table::PhysicalTableName, ExpressionBuilder};
+use super::{physical_table::PhysicalTableName, sql_param::SQLParamWithType, ExpressionBuilder};
 
 pub struct SQLBuilder {
     /// The SQL being built with placeholders for each parameter
     sql: String,
     /// The list of parameters
-    params: Vec<Arc<dyn SQLParam>>,
+    params: Vec<SQLParamWithType>,
     /// Indicates if column name should be rendered with the table name i.e. "table"."col"  instead
     /// of "col" (needed for INSERT/UPDATE statements)
     fully_qualify_column_names: bool,
@@ -99,7 +99,7 @@ impl SQLBuilder {
 
     /// Push a parameter, which will be replaced with a placeholder in the SQL string
     /// and the parameter will be added to the list of parameters.
-    pub fn push_param(&mut self, param: Arc<dyn SQLParam>) {
+    pub fn push_param(&mut self, param: SQLParamWithType) {
         self.params.push(param);
         self.push('$');
         self.push_str(&self.params.len().to_string());
@@ -140,7 +140,7 @@ impl SQLBuilder {
 
     /// Get the SQL string and the list of parameters. Calling this method should be the final step
     /// in building an SQL expression, and thus this builder consumes the `self`.
-    pub fn into_sql(self) -> (String, Vec<Arc<dyn SQLParam>>) {
+    pub fn into_sql(self) -> (String, Vec<SQLParamWithType>) {
         (self.sql, self.params)
     }
 
