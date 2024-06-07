@@ -12,7 +12,7 @@ use core_resolver::system_resolver::SystemResolver;
 use exo_sql::DatabaseClientManager;
 use resolver::create_system_resolver_from_system;
 
-use crate::pg::WorkerPostgresConnect;
+use crate::{env::WorkerEnvironment, pg::WorkerPostgresConnect};
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -22,7 +22,7 @@ pub fn start() -> Result<(), JsValue> {
     Ok(())
 }
 
-pub(crate) async fn init(system_bytes: Vec<u8>, env: Box<dyn Environment>) -> Result<(), JsValue> {
+pub(crate) async fn init(system_bytes: Vec<u8>, env: WorkerEnvironment) -> Result<(), JsValue> {
     setup_tracing();
 
     RESOLVER.init_resolver(system_bytes, env).await
@@ -66,7 +66,7 @@ impl SystemResolverHolder {
     async fn init_resolver(
         &self,
         system_bytes: Vec<u8>,
-        env: Box<dyn Environment>,
+        env: WorkerEnvironment,
     ) -> Result<(), JsValue> {
         if self.system_resolver.get().is_some() {
             return Ok(());
@@ -76,9 +76,9 @@ impl SystemResolverHolder {
         let system = SerializableSystem::deserialize(system_bytes)
             .map_err(|e| JsValue::from_str(&format!("Error deserializing system: {:?}", e)))?;
 
-        let client = WorkerPostgresConnect::create_client(env.as_ref()).await?;
+        let client = WorkerPostgresConnect::create_client(&env).await?;
 
-        let resolver = Self::create_resolver(system, client, env)
+        let resolver = Self::create_resolver(system, client, Box::new(env))
             .await
             .map_err(|e| JsValue::from_str(&format!("Error creating resolver {:?}", e)))?;
 

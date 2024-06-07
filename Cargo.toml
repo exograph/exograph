@@ -109,9 +109,8 @@ wasm-bindgen-test-macro = "0.3.42"
 multiplatform_test = "0.0.0"
 
 [patch.crates-io]
-tokio-postgres = { path = "/Users/ramnivas/external-dev/rust-postgres/tokio-postgres" }
-postgres-types = { path = "/Users/ramnivas/external-dev/rust-postgres/postgres-types" }
-
+tokio-postgres = { git = "https://github.com/exograph/rust-postgres", branch = "exograph" }
+postgres-types = { git = "https://github.com/exograph/rust-postgres", branch = "exograph" }
 
 # reduce binary size, does not affect stack traces
 [profile.dev]

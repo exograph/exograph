@@ -9,6 +9,10 @@ use worker::{postgres_tls::PassthroughTls, SecureTransport, Socket};
 
 use tokio_postgres::Config;
 
+use crate::WorkerEnvironment;
+
+const EXO_HYPERDRIVE_BINDING: &str = "EXO_HYPERDRIVE_BINDING";
+
 pub(super) struct WorkerPostgresConnect {
     config: Config,
 }
@@ -18,20 +22,51 @@ unsafe impl Sync for WorkerPostgresConnect {}
 
 impl WorkerPostgresConnect {
     pub(crate) async fn create_client(
-        env: &dyn Environment,
+        env: &WorkerEnvironment,
     ) -> Result<DatabaseClientManager, JsValue> {
-        let url = env
-            .get(EXO_POSTGRES_URL)
-            .or(env.get(DATABASE_URL))
-            .ok_or_else(|| {
-                JsValue::from_str(&format!("{EXO_POSTGRES_URL} or {DATABASE_URL} not set"))
-            })?;
-        let config = Config::from_str(&url).map_err(|e| {
-            JsValue::from_str(&format!(
-                "Failed to parse PostgreSQL connection string: {:?}",
-                e
-            ))
-        })?;
+        let hyperdrive_binding = env.get(EXO_HYPERDRIVE_BINDING);
+
+        let config = match hyperdrive_binding {
+            Some(hyperdrive_binding) => {
+                let hyperdrive = env.hyperdrive(&hyperdrive_binding)?;
+
+                tracing::info!("Connecting to Postgres with hyperdrive {hyperdrive_binding}");
+
+                let mut config = hyperdrive
+                    .connection_string()
+                    .parse::<tokio_postgres::Config>()
+                    .map_err(|e| {
+                        worker::Error::RustError(format!("Failed to parse configuration: {:?}", e))
+                    })?;
+
+                let host = hyperdrive.host();
+                let port = hyperdrive.port();
+
+                config.host(&host);
+                config.port(port);
+
+                config
+            }
+            None => {
+                let url = env
+                    .get(EXO_POSTGRES_URL)
+                    .or(env.get(DATABASE_URL))
+                    .ok_or_else(|| {
+                        JsValue::from_str(&format!("{EXO_POSTGRES_URL} or {DATABASE_URL} not set"))
+                    })?;
+
+                tracing::info!("Connecting to Postgres directly");
+
+                let config = Config::from_str(&url).map_err(|e| {
+                    JsValue::from_str(&format!(
+                        "Failed to parse PostgreSQL connection string: {:?}",
+                        e
+                    ))
+                })?;
+
+                config
+            }
+        };
 
         let connect = WorkerPostgresConnect { config };
 
