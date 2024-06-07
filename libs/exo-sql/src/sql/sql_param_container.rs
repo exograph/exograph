@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use chrono::FixedOffset;
+#[cfg(feature = "bigdecimal")]
 use pg_bigdecimal::{BigDecimal, PgNumeric};
 use std::{
     fmt::{Debug, Display},
@@ -97,6 +98,7 @@ impl SQLParamContainer {
         Self::new(SQLBytes::new(value), Type::BYTEA)
     }
 
+    #[cfg(feature = "bigdecimal")]
     pub fn numeric(decimal: Option<BigDecimal>) -> Self {
         Self::new(PgNumeric { n: decimal }, Type::NUMERIC)
     }
