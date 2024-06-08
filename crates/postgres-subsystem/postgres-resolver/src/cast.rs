@@ -19,7 +19,7 @@ use exo_sql::{
     array_util::{self, ArrayEntry},
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLParamContainer,
 };
-
+#[cfg(feature = "bigdecimal")]
 use std::str::FromStr;
 
 use super::postgres_execution_error::PostgresExecutionError;

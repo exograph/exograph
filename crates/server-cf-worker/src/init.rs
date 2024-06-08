@@ -1,9 +1,10 @@
 use std::cell::OnceCell;
 
 use exo_env::Environment;
+use tracing::level_filters::LevelFilter;
 use wasm_bindgen::prelude::*;
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
@@ -11,6 +12,7 @@ use core_plugin_shared::{
 use core_resolver::system_resolver::SystemResolver;
 use exo_sql::DatabaseClientManager;
 use resolver::create_system_resolver_from_system;
+use worker::console_error;
 
 use crate::{env::WorkerEnvironment, pg::WorkerPostgresConnect};
 
@@ -23,20 +25,38 @@ pub fn start() -> Result<(), JsValue> {
 }
 
 pub(crate) async fn init(system_bytes: Vec<u8>, env: WorkerEnvironment) -> Result<(), JsValue> {
-    setup_tracing();
+    setup_tracing(&env);
 
     RESOLVER.init_resolver(system_bytes, env).await
 }
 
-fn setup_tracing() {
+fn setup_tracing(env: &WorkerEnvironment) {
     #[cfg(feature = "panic_hook")]
     console_error_panic_hook::set_once();
+
+    // Set up simple tracing filter.
+    // The proper way would be to call `parse_lossy` on the `EnvFilter` builder, but that adds about
+    // 300KB to the wasm binary (and makes the total size exceed the recommended 1MB).
+    let level: LevelFilter = match env.get("EXO_LOG") {
+        Some(level) => match level.to_lowercase().as_str() {
+            "trace" => LevelFilter::TRACE,
+            "debug" => LevelFilter::DEBUG,
+            "info" => LevelFilter::INFO,
+            "warn" => LevelFilter::WARN,
+            "error" => LevelFilter::ERROR,
+            _ => {
+                console_error!("Invalid log level: {}. Defaulting to \"warn\"", level);
+                LevelFilter::WARN
+            }
+        },
+        None => LevelFilter::WARN,
+    };
 
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_ansi(false)
         .without_time()
         .with_writer(tracing_web::MakeWebConsoleWriter::new())
-        .with_filter(tracing::level_filters::LevelFilter::DEBUG);
+        .with_filter(level);
 
     // Use the "try" version to avoid crashing on refreshes
     let _ = tracing_subscriber::registry().with(fmt_layer).try_init();
