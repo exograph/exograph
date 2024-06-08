@@ -56,7 +56,7 @@ impl CommandDefinition for CfWorkerCommandDefinition {
             "\t- In another terminal, run the command using the url printed earlier:\n\t\t{}",
             "exo playground --endpoint http://localhost:8787".blue()
         );
-        println!("\t{}", "- Try running queries in the playground".purple());
+        println!("\t{}", "- Try queries in the playground".purple());
 
         println!();
 
@@ -67,16 +67,25 @@ impl CommandDefinition for CfWorkerCommandDefinition {
         );
         println!("\t\t{}", "npx wrangler secret put EXO_POSTGRES_URL".blue());
         println!("\t\t{}", "npx wrangler secret put <other secrets>".blue());
+        println!(
+            "\t{}",
+            "- If you want to enable the Hyperdrive feature".purple()
+        );
+        println!(
+            "\t\t{}",
+            "Update Hyperdrive settings in wrangler.toml".purple()
+        );
+
         println!("\t- Run: {}", "npx wrangler deploy".blue());
         println!(
-            "\t- In a separate terminal run (adjust the port to one printed by the earlier command):\n\t\t{}",
+            "\t- In a separate terminal run:\n\t\t{}",
             format!(
                 "exo playground --endpoint {}",
                 "<url shown in the deploy command>".yellow()
             )
             .blue()
         );
-        println!("\t{}", "- Try running queries in the playground".purple());
+        println!("\t{}", "- Try queries in the playground".purple());
 
         Ok(())
     }
