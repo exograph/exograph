@@ -7507,7 +7507,7 @@ dependencies = [
 
 [[package]]
 name = "server-cf-worker"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "common",
  "console_error_panic_hook",
