@@ -13,7 +13,7 @@ We will explore two ways to use Postgres:
 
 - **Railway-provided Postgres**: In this arrangement, we co-locate the app and database in Railway's infrastructure.
 
-- **External Postgres**: In this arrangement, we use a provider specializing in Postgres and connect to it from Railway. We will illustrate using [Neon](https://neon.tech/), a "multi-cloud fully managed Postgres with a generous free tier". This free tier is perfect for this tutorial. If you want to use other Postgres providers, the basic steps are the same: create a database and set the `EXO_POSTGRES_URL` environment variable to point to it.
+- **External Postgres**: In this arrangement, we use a provider specializing in Postgres and connect to it from Railway. We will illustrate using [Neon](https://neon.tech/), a "multi-cloud fully managed Postgres with a generous free tier". This free tier is perfect for this tutorial. If you want to use other Postgres providers, the basic steps remain the same: create a database and set the `EXO_POSTGRES_URL` environment variable to point to it.
 
 ## Creating a new application
 
