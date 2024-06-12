@@ -7,14 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{fs::File, io::Write, path::Path};
+use std::path::Path;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command};
 use colored::Colorize;
 
-use crate::commands::command::CommandDefinition;
+use crate::commands::{command::CommandDefinition, deploy::util::write_template_file};
 
 pub(super) struct RailwayCommandDefinition {}
 
@@ -113,49 +113,30 @@ static DOCKERFILE_RAILWAY_DB: &str = include_str!("../templates/Dockerfile.railw
 static DOCKERFILE_EXTERNAL_DB: &str = include_str!("../templates/Dockerfile.railway.external_db");
 
 fn create_dockerfile(base_dir: &Path, use_railway_db: bool) -> Result<()> {
-    let dockerfile_path = base_dir.join("Dockerfile.railway");
+    let created = write_template_file(
+        base_dir.join("Dockerfile.railway"),
+        if use_railway_db {
+            DOCKERFILE_RAILWAY_DB
+        } else {
+            DOCKERFILE_EXTERNAL_DB
+        },
+        None,
+    )?;
 
-    if dockerfile_path.exists() {
-        println!(
-            "{}",
-            "Dockerfile already exists. To regenerate, remove the existing file. Skipping..."
-                .purple()
-        );
-        return Ok(());
+    if created {
+        println!("{}", "Created Dockerfile.railway file.".green());
     }
-
-    let dockerfile_content = if use_railway_db {
-        DOCKERFILE_RAILWAY_DB
-    } else {
-        DOCKERFILE_EXTERNAL_DB
-    };
-
-    let mut dockerfile = File::create(dockerfile_path)?;
-    dockerfile.write_all(dockerfile_content.as_bytes())?;
-
-    println!("{}", "Created Dockerfile.railway file.".green());
 
     Ok(())
 }
 
 /// Create a railway.toml file.
 fn create_config_toml(base_dir: &Path) -> Result<()> {
-    let config_file_path = base_dir.join("railway.toml");
+    let created = write_template_file(base_dir.join("railway.toml"), RAILWAY_TOML, None)?;
 
-    if config_file_path.exists() {
-        println!(
-            "{}",
-            "railway.toml file already exists. To regenerate, remove the existing file. Skipping..."
-                .purple()
-        );
-        return Ok(());
+    if created {
+        println!("{}", "Created railway.toml file.".green());
     }
-
-    let mut config_file = File::create(config_file_path)?;
-    let config_file_content = RAILWAY_TOML;
-    config_file.write_all(config_file_content.as_bytes())?;
-
-    println!("{}", "Created railway.toml file.".green());
 
     Ok(())
 }

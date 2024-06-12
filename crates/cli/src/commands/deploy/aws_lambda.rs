@@ -8,25 +8,20 @@
 // by the Apache License, Version 2.0.
 
 use std::{
-    cmp::min,
     fs::{create_dir_all, File},
-    io::Write,
     path::PathBuf,
 };
 
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{Ok, Result};
 use async_trait::async_trait;
-use clap::{Arg, Command};
+use clap::Command;
 use colored::Colorize;
-use futures::StreamExt;
-use home::home_dir;
-use indicatif::{ProgressBar, ProgressStyle};
-use tempfile::NamedTempFile;
 
-use crate::commands::{
-    build::build,
-    command::{get_required, CommandDefinition},
-};
+use crate::commands::{build::build, command::CommandDefinition};
+
+use super::{download::download_if_needed, util::app_name_arg, util::app_name_from_args};
+
+const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The `deploy aws-lambda` command.
 ///
@@ -44,35 +39,17 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
     fn command(&self) -> clap::Command {
         Command::new("aws-lambda")
             .about("Deploy to AWS Lambda")
-            .arg(
-                Arg::new("app-name")
-                    .help("The name of the application")
-                    .short('a')
-                    .long("app")
-                    .required(true)
-                    .num_args(1),
-            )
+            .arg(app_name_arg())
     }
 
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         let download_file_name = "exograph-aws-lambda-linux-2023-x86_64.zip";
-        let current_version = env!("CARGO_PKG_VERSION");
-        let download_url = format!("https://github.com/exograph/exograph/releases/download/v{current_version}/{download_file_name}");
-        let download_dir = home_dir()
-            .ok_or(anyhow!("Failed to resolve home directory"))?
-            .join(".exograph")
-            .join("cache")
-            .join(current_version);
+        let download_url = format!("https://github.com/exograph/exograph/releases/download/v{CURRENT_VERSION}/{download_file_name}");
 
-        let downloaded_file_path = download_if_needed(
-            &download_url,
-            download_dir,
-            download_file_name,
-            "Exograph AWS Distribution",
-        )
-        .await?;
+        let downloaded_file_path =
+            download_if_needed(&download_url, "Exograph AWS Distribution").await?;
 
-        let app_name: String = get_required(matches, "app-name")?;
+        let app_name: String = app_name_from_args(matches);
 
         build(false).await?;
 
@@ -173,65 +150,4 @@ fn append_file(
     std::io::copy(&mut reader, zip_writer)?;
 
     Ok(())
-}
-
-/// Download a file if it doesn't already exist.
-///
-/// Suitable for downloading large files where showing progress bar is useful.
-///
-/// # Arguments
-/// - `url`: The URL to download from.
-/// - `download_dir`: The directory to download to.
-/// - `download_file_name`: The name of the file to download.
-/// - `info_name`: The name of the file to display in the progress bar etc. (e.g. "Exograph AWS Distribution")
-async fn download_if_needed(
-    url: &str,
-    download_dir: PathBuf,
-    download_file_name: &str,
-    info_name: &str,
-) -> Result<PathBuf> {
-    let download_file_path = download_dir.join(download_file_name);
-    if download_file_path.exists() {
-        println!("Using cached version of {info_name}");
-        return Ok(download_file_path);
-    }
-
-    create_dir_all(&download_dir)?;
-
-    let response = reqwest::get(url)
-        .await
-        .map_err(|e| anyhow!("Failed to fetch from '{}': {e}", &url))?;
-    let content_length = response.content_length().unwrap_or(0);
-
-    // Based on https://github.com/console-rs/indicatif/blob/main/examples/download.rs
-    let pb = ProgressBar::new(content_length)
-        .with_message(format!("Downloading {info_name}..."))
-        .with_style(
-            ProgressStyle::with_template(
-                "{spinner:.green} [{wide_bar:.cyan/blue}] {bytes}/{total_bytes}",
-            )
-            .unwrap()
-            .progress_chars("#>-"),
-        );
-
-    let mut response_stream = response.bytes_stream();
-    let mut downloaded_len: u64 = 0;
-    let mut temp_downloaded_file = NamedTempFile::new_in(download_dir)?;
-
-    // Download to a temporary file first
-    while let Some(chunk) = response_stream.next().await {
-        let chunk = chunk.map_err(|e| anyhow!("Failed to continue downloading {e}"))?;
-        temp_downloaded_file
-            .write(&chunk)
-            .map_err(|e| anyhow!("Failed to write to the file {e}"))?;
-        downloaded_len = min(downloaded_len + (chunk.len() as u64), content_length);
-        pb.set_position(downloaded_len);
-    }
-
-    // Then move it to the final location. This avoids partially downloaded files.
-    std::fs::rename(temp_downloaded_file.path(), &download_file_path)?;
-
-    pb.finish_with_message("Downloaded!");
-
-    Ok(download_file_path)
 }

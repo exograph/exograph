@@ -10,8 +10,11 @@
 use super::command::SubcommandDefinition;
 
 mod aws_lambda;
+mod cf_worker;
+mod download;
 mod fly;
 mod railway;
+mod util;
 
 pub fn command_definition() -> SubcommandDefinition {
     SubcommandDefinition::new(
@@ -21,6 +24,7 @@ pub fn command_definition() -> SubcommandDefinition {
             Box::new(fly::FlyCommandDefinition {}),
             Box::new(railway::RailwayCommandDefinition {}),
             Box::new(aws_lambda::AwsLambdaCommandDefinition {}),
+            Box::new(cf_worker::CfWorkerCommandDefinition {}),
         ],
     )
 }

@@ -10,6 +10,7 @@ members = [
   "crates/resolver",
   "crates/server-actix",
   "crates/server-aws-lambda",
+  "crates/server-cf-worker",
   "crates/server-common",
   "crates/testing",
   "crates/core-subsystem/*",
@@ -74,13 +75,12 @@ heck = "0.4.0"
 include_dir = "0.7.2"
 indexmap = "2.0.1"
 insta = { version = "1.31.0", features = ["redactions", "yaml"] }
-jsonwebtoken = "9.2.0"
+jsonwebtoken = "9.3.0"
 lazy_static = "1.4.0"
 maybe-owned = "0.3.4"
 rand = "0.8"
 regex = "1"
-reqwest = { version = "0.11.4", default-features = false, features = [
-  "stream",
+reqwest = { version = "0.11.20", default-features = false, features = [
   "rustls-tls-native-roots",
 ] }
 serde = { version = "1.0", features = ["derive"] }
@@ -117,6 +117,9 @@ postgres-types = { git = "https://github.com/exograph/rust-postgres", branch = "
 debug = 1
 
 [profile.release]
-lto = "thin"
+lto = true
 codegen-units = 1
 strip = true
+
+[profile.release.package.server-cf-worker]
+opt-level = "s" # optimize for size in release builds

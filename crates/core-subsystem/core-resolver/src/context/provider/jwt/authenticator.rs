@@ -37,7 +37,7 @@ pub enum JwtConfigurationError {
     #[error("Invalid setup: {0}")]
     InvalidSetup(String),
 
-    #[error("JWT configuration error `{message}`")]
+    #[error("JWT configuration error '{message}'")]
     Configuration {
         message: String,
         source: Box<dyn std::error::Error + Send + Sync>,

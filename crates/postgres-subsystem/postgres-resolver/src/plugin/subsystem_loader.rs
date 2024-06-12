@@ -9,7 +9,7 @@
 
 use super::PostgresSubsystemResolver;
 use async_trait::async_trait;
-use common::env_const::{DATABASE_URL, EXO_POSTGRES_URL};
+
 use core_plugin_interface::{
     core_resolver::plugin::SubsystemResolver,
     interface::{SubsystemLoader, SubsystemLoadingError},
@@ -41,6 +41,8 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         } else {
             #[cfg(feature = "network")]
             {
+                use common::env_const::{DATABASE_URL, EXO_POSTGRES_URL};
+
                 let url = env
                     .get(EXO_POSTGRES_URL)
                     .or(env.get(DATABASE_URL))

@@ -1,0 +1,15 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "<<<APP_NAME>>>"
+main = "target/cf-worker/index.js"
+compatibility_date = "2024-04-23"
+compatibility_flags = ["nodejs_compat"]
+
+rules = [{ type = "Data", globs = ["**/*.exo_ir"], fallthrough = false }]
+
+# Uncomment the following lines to enable the Hyperdrive feature
+# [vars]
+# EXO_HYPERDRIVE_BINDING = "<Hyperdrive binding name>"
+
+# [[hyperdrive]]
+# binding = "<Hyperdrive binding name>"
+# id = "<id for the Hyperdrive>"

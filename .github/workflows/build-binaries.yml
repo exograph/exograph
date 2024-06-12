@@ -15,6 +15,7 @@ on:
     branches: ["main"]
     tags:
       - "*"
+  pull_request: # temporary to test cf-worker build without merging
 
 jobs:
   # Build and package all the things
@@ -157,5 +158,43 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: dist/exograph-${{ env.ARCH }}.zip
           asset_name: exograph-${{ env.ARCH }}.zip
+          tag: ${{ github.ref }}
+          prerelease: true
+
+  build-cf-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clear up some disk space from the runner
+        run: |
+          bash ${PWD}/.github/workflows/clear-disk-space.sh
+
+      - name: Add target
+        run: rustup target add wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm32-unknown-unknown
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Build and package
+        run: sh ./build-cf-worker.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: exograph-cf-worker-wasm.zip
+          path: target/exograph-cf-worker-wasm.zip
+
+      - name: Upload zip to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/exograph-cf-worker-wasm.zip
+          asset_name: exograph-cf-worker-wasm.zip
           tag: ${{ github.ref }}
           prerelease: true

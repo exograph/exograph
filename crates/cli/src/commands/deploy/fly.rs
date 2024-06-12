@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use std::{
+    collections::HashMap,
     fs::File,
     io::{BufRead, Write},
     path::{Path, PathBuf},
@@ -20,9 +21,11 @@ use colored::Colorize;
 
 use crate::commands::{
     build::build,
-    command::{get, get_required, CommandDefinition},
+    command::{get, CommandDefinition},
 };
 use common::env_const::EXO_POSTGRES_URL;
+
+use super::util::{app_name_arg, app_name_from_args, write_template_file};
 
 pub(super) struct FlyCommandDefinition {}
 
@@ -32,12 +35,7 @@ impl CommandDefinition for FlyCommandDefinition {
         Command::new("fly")
             .about("Deploy to Fly.io")
             .arg(
-                Arg::new("app-name")
-                    .help("The name of the Fly.io application to deploy to")
-                    .short('a')
-                    .long("app")
-                    .required(true)
-                    .num_args(1),
+                app_name_arg(),
             )
             .arg(
                 Arg::new("env")
@@ -66,7 +64,7 @@ impl CommandDefinition for FlyCommandDefinition {
     /// Create a fly.toml file, a Dockerfile, and build the docker image. Then provide instructions
     /// on how to deploy the app to Fly.io.
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        let app_name: String = get_required(matches, "app-name")?;
+        let app_name: String = app_name_from_args(matches);
         let envs: Option<Vec<String>> = matches.get_many("env").map(|env| env.cloned().collect());
         let env_file: Option<PathBuf> = get(matches, "env-file");
         let use_fly_db: bool = matches.get_flag("use-fly-db");
@@ -141,25 +139,13 @@ static DOCKERFILE_BUILDER: &str = include_str!("../templates/Dockerfile.fly.buil
 
 fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
     {
-        let dockerfile_path = fly_dir.join("Dockerfile.fly");
+        let pg_key_val = format!("EXO_POSTGRES_URL={}", EXO_POSTGRES_URL);
+        let substitute =
+            use_fly_db.then(|| HashMap::from([("<<<EXTRA_ENV>>>", pg_key_val.as_str())]));
 
-        if dockerfile_path.exists() {
-            println!(
-                "{}",
-                "Dockerfile.fly already exists. To regenerate, remove the existing file. Skipping..."
-                    .purple()
-            );
-        } else {
-            let extra_env = if use_fly_db {
-                format!("{EXO_POSTGRES_URL}=${{DATABASE_URL}}")
-            } else {
-                "".into()
-            };
+        let created = write_template_file(fly_dir.join("Dockerfile.fly"), DOCKERFILE, substitute)?;
 
-            let dockerfile_content = DOCKERFILE.replace("<<<EXTRA_ENV>>>", &extra_env);
-
-            let mut dockerfile = File::create(dockerfile_path)?;
-            dockerfile.write_all(dockerfile_content.as_bytes())?;
+        if created {
             println!(
                 "{}",
                 "Created Dockerfile.fly. You can edit this file to customize the deployment such as installing additional dependencies."
@@ -169,17 +155,11 @@ fn create_dockerfile(fly_dir: &Path, use_fly_db: bool) -> Result<()> {
     }
 
     {
-        let dockerfile_builder_path = fly_dir.join("Dockerfile.fly.builder");
-        if dockerfile_builder_path.exists() {
-            println!(
-                "{}",
-                "Dockerfile.fly.builder already exists. To regenerate, remove the existing file. Skipping..."
-                    .purple()
-            );
-        } else {
-            let mut dockerfile_builder = File::create(dockerfile_builder_path)?;
-            dockerfile_builder.write_all(DOCKERFILE_BUILDER.as_bytes())?;
-        }
+        write_template_file(
+            fly_dir.join("Dockerfile.fly.builder"),
+            DOCKERFILE_BUILDER,
+            None,
+        )?;
     }
 
     Ok(())
