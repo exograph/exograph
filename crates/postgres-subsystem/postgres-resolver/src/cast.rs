@@ -8,6 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use base64::DecodeError;
+use base64::Engine;
 use chrono::prelude::*;
 use chrono::DateTime;
 use core_plugin_interface::core_resolver::value::Val;
@@ -304,7 +305,7 @@ fn cast_string(
         }
 
         PhysicalColumnType::Blob => {
-            let bytes = base64::decode(string)?;
+            let bytes = base64::engine::general_purpose::STANDARD.decode(string)?;
             SQLParamContainer::bytes_from_vec(bytes)
         }
 
