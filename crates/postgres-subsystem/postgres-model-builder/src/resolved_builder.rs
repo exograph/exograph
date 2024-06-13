@@ -145,6 +145,7 @@ pub struct ResolvedField {
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
+    #[allow(unused)]
     pub span: Span,
 }
 

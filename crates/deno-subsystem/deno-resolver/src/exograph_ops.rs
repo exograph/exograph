@@ -15,9 +15,9 @@ use serde_json::Value;
 use std::{cell::RefCell, rc::Rc};
 use tokio::sync::mpsc::Sender;
 
-use super::exo_execution::{
-    ExographMethodResponse, RequestFromDenoMessage, ResponseForDenoMessage,
-};
+use crate::exo_execution::ExographMethodResponse;
+
+use super::exo_execution::{RequestFromDenoMessage, ResponseForDenoMessage};
 
 #[derive(Debug)]
 pub struct InterceptedOperationInfo {
@@ -162,11 +162,7 @@ pub async fn op_operation_proceed(
 pub fn add_header(state: &mut OpState, header: String, value: String) -> Result<(), AnyError> {
     // get response object out of GothamStorage
     // if no object exists, create one
-    let mut response = if let Some(resp @ ExographMethodResponse { .. }) = state.try_take() {
-        resp
-    } else {
-        ExographMethodResponse::default()
-    };
+    let mut response: ExographMethodResponse = state.try_take().unwrap_or_default();
 
     // add header
     response.headers.push((header, value));

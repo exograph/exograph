@@ -7,8 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-#![cfg(test)]
-
 //! Test assertion to check SQL statements and parameters.
 
 /// Assert that the given parameters match the expected ones.

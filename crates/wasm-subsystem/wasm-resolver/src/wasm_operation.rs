@@ -20,8 +20,10 @@ use wasmtime::Val;
 pub struct WasmOperation<'a> {
     pub method: &'a ModuleMethod,
     pub field: &'a ValidatedField,
+    #[allow(unused)]
     pub request_context: &'a RequestContext<'a>,
     pub subsystem_resolver: &'a WasmSubsystemResolver,
+    #[allow(unused)]
     pub system_resolver: &'a SystemResolver,
 }
 

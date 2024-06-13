@@ -16,9 +16,13 @@ use crate::{ColumnId, Database, PhysicalTableName, TableId};
 pub struct TestSetup {
     pub database: Database,
 
+    #[allow(unused)]
     pub concerts_table: TableId,
+    #[allow(unused)]
     pub concert_artists_table: TableId,
+    #[allow(unused)]
     pub artists_table: TableId,
+    #[allow(unused)]
     pub addresses_table: TableId,
     pub venues_table: TableId,
 
@@ -29,10 +33,12 @@ pub struct TestSetup {
     pub concert_artists_concert_id_column: ColumnId,
     pub concert_artists_artist_id_column: ColumnId,
 
+    #[allow(unused)]
     pub artists_id_column: ColumnId,
     pub artists_name_column: ColumnId,
     pub artists_address_id_column: ColumnId,
 
+    #[allow(unused)]
     pub addresses_id_column: ColumnId,
     pub addresses_city_column: ColumnId,
 

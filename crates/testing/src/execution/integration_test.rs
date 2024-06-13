@@ -25,7 +25,6 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
 use resolver::{create_system_resolver, resolve_in_memory};
-use serde::Serialize;
 use serde_json::{json, Map, Value};
 use unescape::unescape;
 
@@ -41,12 +40,6 @@ use crate::model::{resolve_testvariable, IntegrationTest, IntegrationTestOperati
 
 use super::assertion::{dynamic_assert_using_deno, evaluate_using_deno};
 use super::{TestResult, TestResultKind};
-
-#[derive(Serialize)]
-struct ExoPost {
-    query: String,
-    variables: Map<String, Value>,
-}
 
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.

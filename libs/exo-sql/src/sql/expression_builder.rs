@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use super::{sql_param::SQLParamWithType, SQLBuilder};
+use super::SQLBuilder;
 use crate::Database;
 
 /// A trait for types that can build themselves into an SQL expression.
@@ -25,7 +25,8 @@ pub trait ExpressionBuilder {
     /// want to assert on the generated SQL without going through the whole process of creating an
     /// SQLBuilder, then building the SQL expression into it, and finally extracting the SQL string
     /// and params.
-    fn to_sql(&self, database: &Database) -> (String, Vec<SQLParamWithType>)
+    #[cfg(test)]
+    fn to_sql(&self, database: &Database) -> (String, Vec<super::sql_param::SQLParamWithType>)
     where
         Self: Sized,
     {
