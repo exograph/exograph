@@ -1,4 +1,4 @@
 [toolchain]
-channel = "1.77.1"
+channel = "1.78.0"
 components = ["clippy", "rustfmt"]
 targets = ["wasm32-wasi"]
