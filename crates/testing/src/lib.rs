@@ -11,7 +11,7 @@ pub(crate) mod execution;
 pub(crate) mod loader;
 mod model;
 
-use std::cmp::min;
+// use std::cmp::min;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -60,7 +60,7 @@ pub fn run(
 
     let project_tests = TestSuite::load(root_directory, pattern)
         .with_context(|| format!("While loading testfiles from directory {root_directory_str}"))?;
-    let number_of_integration_tests = project_tests.len();
+    // let number_of_integration_tests = project_tests.len();
 
     // test introspection for all model files
     if run_introspection_tests {
@@ -86,7 +86,8 @@ pub fn run(
 
     // Estimate an optimal pool size
     let cpus = num_cpus::get();
-    let pool_size = min(number_of_integration_tests, cpus * 2);
+    // let pool_size = min(number_of_integration_tests, cpus * 2);
+    let pool_size = 1;
     for _ in 0..pool_size {
         let my_reader = read_tasks.clone();
         std::thread::spawn(move || {
