@@ -117,10 +117,9 @@ postgres-types = { git = "https://github.com/exograph/rust-postgres", branch = "
 debug = 1
 
 [profile.release]
-debug = 1
-# lto = true
-# codegen-units = 1
-# strip = true
+lto = true
+codegen-units = 1
+strip = true
 
 [profile.release.package.server-cf-worker]
 opt-level = "s" # optimize for size in release builds
