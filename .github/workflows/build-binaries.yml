@@ -77,7 +77,7 @@ jobs:
         shell: bash
       - name: Test
         env:
-          RUST_BACKTRACE: full
+          RUST_BACKTRACE: 1
           EXO_RUN_INTROSPECTION_TESTS: true
         run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
       - name: Create zip of binaries
