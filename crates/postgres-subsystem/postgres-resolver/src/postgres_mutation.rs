@@ -53,7 +53,7 @@ impl OperationResolver for PostgresMutation {
             None,
             None,
             None,
-            &self.return_type,
+            return_type,
             &field.subfields,
             subsystem,
             request_context,
@@ -63,7 +63,6 @@ impl OperationResolver for PostgresMutation {
         Ok(match &self.parameters {
             PostgresMutationParameters::Create(data_param) => AbstractOperation::Insert(
                 create_operation(
-                    return_type,
                     data_param,
                     field,
                     abstract_select,
@@ -103,7 +102,6 @@ impl OperationResolver for PostgresMutation {
 }
 
 async fn create_operation<'content>(
-    return_type: &'content OperationReturnType<EntityType>,
     data_param: &'content DataParameter,
     field: &'content ValidatedField,
     select: AbstractSelect,
@@ -114,13 +112,9 @@ async fn create_operation<'content>(
 
     match data_arg {
         Some(argument) => {
-            InsertOperation {
-                data_param,
-                select,
-                return_type,
-            }
-            .to_sql(argument, subsystem, request_context)
-            .await
+            InsertOperation { data_param, select }
+                .to_sql(argument, subsystem, request_context)
+                .await
         }
         None => Err(PostgresExecutionError::MissingArgument(
             data_param.name.clone(),

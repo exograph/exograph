@@ -9,7 +9,6 @@
 
 use async_recursion::async_recursion;
 use async_trait::async_trait;
-use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::context::RequestContext;
 use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
 use core_plugin_interface::core_resolver::value::Val;
@@ -22,7 +21,7 @@ use postgres_model::{
     mutation::DataParameter,
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
     subsystem::PostgresSubsystem,
-    types::{base_type, EntityType, MutationType, PostgresField, PostgresType},
+    types::{base_type, MutationType, PostgresField, PostgresType},
 };
 
 use crate::{
@@ -37,7 +36,6 @@ use super::{
 
 pub struct InsertOperation<'a> {
     pub data_param: &'a DataParameter,
-    pub return_type: &'a OperationReturnType<EntityType>,
     pub select: AbstractSelect,
 }
 
