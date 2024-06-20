@@ -824,6 +824,19 @@ fn compute_column_info(
 
         let update_sync = field.annotations.contains("update");
 
+        if update_sync && field.default_value.is_none() {
+            return Err(Diagnostic {
+                level: Level::Error,
+                message: "Fields with @update must have a default value".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            });
+        }
+
         let id_column_name = |field_name: &str| {
             user_supplied_column_name
                 .clone()
