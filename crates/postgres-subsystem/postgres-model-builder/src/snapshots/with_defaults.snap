@@ -64,6 +64,7 @@ values:
             unique_constraints: []
             indices: []
             default_value: AutoIncrement
+            update_sync: false
           - name: title
             typ:
               Plain:
@@ -85,6 +86,7 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
           - name: venue
             typ:
               Plain:
@@ -107,6 +109,7 @@ values:
               - unique_concert
             indices: []
             default_value: ~
+            update_sync: false
           - name: attending
             typ:
               List:
@@ -129,6 +132,7 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
           - name: seating
             typ:
               List:
@@ -152,6 +156,7 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
         table_name:
           name: concerts
           schema: ~
@@ -190,6 +195,7 @@ values:
             unique_constraints: []
             indices: []
             default_value: AutoIncrement
+            update_sync: false
           - name: name
             typ:
               Plain:
@@ -211,6 +217,7 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
           - name: concerts
             typ:
               List:
@@ -233,6 +240,7 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
         table_name:
           name: venues
           schema: ~

@@ -48,45 +48,53 @@ pub struct TestSetup {
 
 impl TestSetup {
     pub fn with_setup(test_fn: impl Fn(TestSetup)) {
-        let database = DatabaseSpec::new(vec![
-            TableSpec::new(
-                PhysicalTableName::new("concerts", None),
-                vec![
-                    pk_column("id"),
-                    pk_reference_column("venue_id", "venues", None),
-                    string_column("name"),
-                ],
-                vec![],
-            ),
-            TableSpec::new(
-                PhysicalTableName::new("venues", None),
-                vec![pk_column("id"), string_column("name")],
-                vec![],
-            ),
-            TableSpec::new(
-                PhysicalTableName::new("concert_artists", None),
-                vec![
-                    pk_column("id"),
-                    pk_reference_column("concert_id", "concerts", None),
-                    pk_reference_column("artist_id", "artists", None),
-                ],
-                vec![],
-            ),
-            TableSpec::new(
-                PhysicalTableName::new("artists", None),
-                vec![
-                    pk_column("id"),
-                    string_column("name"),
-                    pk_reference_column("address_id", "addresses", None),
-                ],
-                vec![],
-            ),
-            TableSpec::new(
-                PhysicalTableName::new("addresses", None),
-                vec![pk_column("id"), string_column("city")],
-                vec![],
-            ),
-        ])
+        let database = DatabaseSpec::new(
+            vec![
+                TableSpec::new(
+                    PhysicalTableName::new("concerts", None),
+                    vec![
+                        pk_column("id"),
+                        pk_reference_column("venue_id", "venues", None),
+                        string_column("name"),
+                    ],
+                    vec![],
+                    vec![],
+                ),
+                TableSpec::new(
+                    PhysicalTableName::new("venues", None),
+                    vec![pk_column("id"), string_column("name")],
+                    vec![],
+                    vec![],
+                ),
+                TableSpec::new(
+                    PhysicalTableName::new("concert_artists", None),
+                    vec![
+                        pk_column("id"),
+                        pk_reference_column("concert_id", "concerts", None),
+                        pk_reference_column("artist_id", "artists", None),
+                    ],
+                    vec![],
+                    vec![],
+                ),
+                TableSpec::new(
+                    PhysicalTableName::new("artists", None),
+                    vec![
+                        pk_column("id"),
+                        string_column("name"),
+                        pk_reference_column("address_id", "addresses", None),
+                    ],
+                    vec![],
+                    vec![],
+                ),
+                TableSpec::new(
+                    PhysicalTableName::new("addresses", None),
+                    vec![pk_column("id"), string_column("city")],
+                    vec![],
+                    vec![],
+                ),
+            ],
+            vec![],
+        )
         .to_database();
 
         let concert_table_id = database

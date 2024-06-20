@@ -1,0 +1,12 @@
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+    @update modificationId: Uuid = generate_uuid()
+    @update updatedAt: Instant = now()
+    @update updatedAt2: Instant = now()
+  }
+}

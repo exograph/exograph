@@ -81,7 +81,12 @@ impl Migration {
                 | SchemaOp::SetColumnDefaultValue { .. }
                 | SchemaOp::UnsetColumnDefaultValue { .. }
                 | SchemaOp::SetNotNull { .. }
-                | SchemaOp::UnsetNotNull { .. } => false,
+                | SchemaOp::UnsetNotNull { .. }
+                | SchemaOp::CreateFunction { .. }
+                | SchemaOp::DeleteFunction { .. }
+                | SchemaOp::CreateOrReplaceFunction { .. }
+                | SchemaOp::CreateTrigger { .. }
+                | SchemaOp::DeleteTrigger { .. } => false,
             };
 
             let statement = diff.to_sql();
@@ -218,7 +223,8 @@ pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), Datab
         .map_err(|e| DatabaseError::BoxedError(Box::new(e)))?
         .value;
 
-    let migrations = Migration::from_schemas(current_database_spec, &DatabaseSpec::new(vec![]));
+    let migrations =
+        Migration::from_schemas(current_database_spec, &DatabaseSpec::new(vec![], vec![]));
     migrations
         .apply(database, true)
         .await
@@ -1663,13 +1669,13 @@ mod tests {
         let new_system = compute_spec(new_system).await;
 
         assert_change(
-            &DatabaseSpec::new(vec![]),
+            &DatabaseSpec::new(vec![], vec![]),
             &old_system,
             old_create,
             "Create old system schema",
         );
         assert_change(
-            &DatabaseSpec::new(vec![]),
+            &DatabaseSpec::new(vec![], vec![]),
             &new_system,
             new_create,
             "Create new system schema",

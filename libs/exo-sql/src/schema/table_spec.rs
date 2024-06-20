@@ -19,20 +19,28 @@ use super::index_spec::IndexSpec;
 use super::issue::WithIssues;
 use super::op::SchemaOp;
 use super::statement::SchemaStatement;
+use super::trigger_spec::TriggerSpec;
 
 #[derive(Debug)]
 pub struct TableSpec {
     pub name: PhysicalTableName,
     pub columns: Vec<ColumnSpec>,
     pub indices: Vec<IndexSpec>,
+    pub triggers: Vec<TriggerSpec>,
 }
 
 impl TableSpec {
-    pub fn new(name: PhysicalTableName, columns: Vec<ColumnSpec>, indices: Vec<IndexSpec>) -> Self {
+    pub fn new(
+        name: PhysicalTableName,
+        columns: Vec<ColumnSpec>,
+        indices: Vec<IndexSpec>,
+        triggers: Vec<TriggerSpec>,
+    ) -> Self {
         Self {
             name,
             columns,
             indices,
+            triggers,
         }
     }
 
@@ -143,11 +151,18 @@ impl TableSpec {
         } = IndexSpec::from_live_db(client, &table_name, &columns).await?;
         issues.extend(indices_issues);
 
+        let WithIssues {
+            issues: triggers_issues,
+            value: triggers,
+        } = TriggerSpec::from_live_db(client, &table_name).await?;
+        issues.extend(triggers_issues);
+
         Ok(WithIssues {
             value: TableSpec {
                 name: table_name,
                 columns,
                 indices,
+                triggers,
             },
             issues,
         })
@@ -280,6 +295,22 @@ impl TableSpec {
             }
         }
 
+        for trigger in self.triggers.iter() {
+            if !new.triggers.iter().any(|t| t.name == trigger.name) {
+                // trigger deletion
+                changes.push(SchemaOp::DeleteTrigger { trigger });
+            }
+        }
+
+        for new_trigger in new.triggers.iter() {
+            if !self.triggers.iter().any(|t| t.name == new_trigger.name) {
+                // new trigger
+                changes.push(SchemaOp::CreateTrigger {
+                    trigger: new_trigger,
+                });
+            }
+        }
+
         changes
     }
 
@@ -309,6 +340,10 @@ impl TableSpec {
 
         for index in self.indices.iter() {
             post_statements.push(index.creation_sql(&self.name));
+        }
+
+        for trigger in self.triggers.iter() {
+            post_statements.push(trigger.creation_sql());
         }
 
         SchemaStatement {

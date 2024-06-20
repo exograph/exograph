@@ -47,7 +47,7 @@ impl CommandDefinition for CreateCommandDefinition {
 
         // Creating the schema from the model is the same as migrating from an empty database.
         let migrations = Migration::from_schemas(
-            &DatabaseSpec::new(vec![]),
+            &DatabaseSpec::new(vec![], vec![]),
             &DatabaseSpec::from_database(&postgres_subsystem.database),
         );
         migrations.write(&mut buffer, true)?;

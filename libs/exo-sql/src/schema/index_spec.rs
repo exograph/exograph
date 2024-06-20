@@ -94,7 +94,7 @@ impl IndexSpec {
         columns: &[ColumnSpec],
     ) -> Result<WithIssues<Vec<IndexSpec>>, DatabaseError> {
         let indices = client
-            .query(INDICES_QUERY, &[&table_name.name.as_str()])
+            .query(INDICES_QUERY, &[&table_name.fully_qualified_name()])
             .await?
             .iter()
             .flat_map(|row| {

@@ -142,6 +142,7 @@ pub struct ResolvedField {
     pub unique_constraints: Vec<String>,
     pub indices: Vec<String>,
     pub default_value: Option<ResolvedFieldDefault>,
+    pub update_sync: bool,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -314,6 +315,7 @@ fn resolve(
                                         access,
                                         unique_constraints,
                                         indices,
+                                        update_sync,
                                     }) => {
                                         let typ = resolve_field_type(
                                             &field.typ.to_typ(&typechecked_system.types),
@@ -340,6 +342,7 @@ fn resolve(
                                             unique_constraints,
                                             indices,
                                             default_value,
+                                            update_sync,
                                             span: field.span,
                                         })
                                     }
@@ -753,6 +756,8 @@ struct ColumnInfo {
     unique_constraints: Vec<String>,
     indices: Vec<String>,
     access: ResolvedAccess,
+    // Will this field be auto-updated by the system (through triggers, etc.) to its default value?
+    update_sync: bool,
 }
 
 fn compute_column_info(
@@ -816,6 +821,8 @@ fn compute_column_info(
                 AstAnnotationParams::Map(_, _) => panic!(),
             })
             .unwrap_or_default();
+
+        let update_sync = field.annotations.contains("update");
 
         let id_column_name = |field_name: &str| {
             user_supplied_column_name
@@ -887,7 +894,8 @@ fn compute_column_info(
                                         self_column: false,
                                         access,
                                         unique_constraints,
-                                        indices
+                                        indices,
+                                        update_sync
                                     }),
                                     Cardinality::Unbounded => Ok(ColumnInfo {
                                         name: id_column_name(&field.name),
@@ -895,6 +903,7 @@ fn compute_column_info(
                                         access,
                                         unique_constraints,
                                         indices,
+                                        update_sync
                                     }),
                                 }
                             }
@@ -913,6 +922,7 @@ fn compute_column_info(
                                     access,
                                     unique_constraints,
                                     indices,
+                                    update_sync,
                                 })
                             }
                         }
@@ -933,6 +943,7 @@ fn compute_column_info(
                                 access,
                                 unique_constraints,
                                 indices,
+                                update_sync,
                             })
                         } else {
                             Err(Diagnostic {
@@ -962,6 +973,7 @@ fn compute_column_info(
                                 access,
                                 unique_constraints,
                                 indices,
+                                update_sync,
                             })
                         } else {
                             Err(Diagnostic {
@@ -982,6 +994,7 @@ fn compute_column_info(
                         access,
                         unique_constraints,
                         indices,
+                        update_sync,
                     }),
                 }
             }

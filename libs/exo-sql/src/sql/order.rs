@@ -104,6 +104,8 @@ impl ExpressionBuilder for (&VectorDistanceOperand, Option<&String>) {
 
 #[cfg(test)]
 mod test {
+    use std::vec;
+
     use super::*;
     use crate::schema::test_helper::{int_column, pk_column, string_column};
     use crate::schema::{database_spec::DatabaseSpec, table_spec::TableSpec};
@@ -113,11 +115,15 @@ mod test {
 
     #[multiplatform_test]
     fn single() {
-        let database = DatabaseSpec::new(vec![TableSpec::new(
-            PhysicalTableName::new("people", None),
-            vec![pk_column("id"), int_column("age")],
+        let database = DatabaseSpec::new(
+            vec![TableSpec::new(
+                PhysicalTableName::new("people", None),
+                vec![pk_column("id"), int_column("age")],
+                vec![],
+                vec![],
+            )],
             vec![],
-        )])
+        )
         .to_database();
 
         let people_table_id = database
@@ -136,11 +142,15 @@ mod test {
 
     #[multiplatform_test]
     fn multiple() {
-        let database = DatabaseSpec::new(vec![TableSpec::new(
-            PhysicalTableName::new("people", None),
-            vec![pk_column("id"), string_column("name"), int_column("age")],
+        let database = DatabaseSpec::new(
+            vec![TableSpec::new(
+                PhysicalTableName::new("people", None),
+                vec![pk_column("id"), string_column("name"), int_column("age")],
+                vec![],
+                vec![],
+            )],
             vec![],
-        )])
+        )
         .to_database();
 
         let table_id = database

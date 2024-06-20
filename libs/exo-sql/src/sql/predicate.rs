@@ -341,11 +341,15 @@ mod tests {
 
     #[multiplatform_test]
     fn eq_predicate() {
-        let database = DatabaseSpec::new(vec![TableSpec::new(
-            PhysicalTableName::new("people", None),
-            vec![pk_column("id"), int_column("age")],
+        let database = DatabaseSpec::new(
+            vec![TableSpec::new(
+                PhysicalTableName::new("people", None),
+                vec![pk_column("id"), int_column("age")],
+                vec![],
+                vec![],
+            )],
             vec![],
-        )])
+        )
         .to_database();
 
         let people_table_id = database
@@ -363,11 +367,15 @@ mod tests {
 
     #[multiplatform_test]
     fn and_predicate() {
-        let database = DatabaseSpec::new(vec![TableSpec::new(
-            PhysicalTableName::new("people", None),
-            vec![pk_column("id"), string_column("name"), int_column("age")],
+        let database = DatabaseSpec::new(
+            vec![TableSpec::new(
+                PhysicalTableName::new("people", None),
+                vec![pk_column("id"), string_column("name"), int_column("age")],
+                vec![],
+                vec![],
+            )],
             vec![],
-        )])
+        )
         .to_database();
 
         let people_table_id = database
@@ -397,11 +405,15 @@ mod tests {
 
     #[multiplatform_test]
     fn string_predicates() {
-        let database = DatabaseSpec::new(vec![TableSpec::new(
-            PhysicalTableName::new("videos", None),
-            vec![pk_column("id"), string_column("title")],
+        let database = DatabaseSpec::new(
+            vec![TableSpec::new(
+                PhysicalTableName::new("videos", None),
+                vec![pk_column("id"), string_column("title")],
+                vec![],
+                vec![],
+            )],
             vec![],
-        )])
+        )
         .to_database();
 
         let table_id = database
@@ -462,11 +474,15 @@ mod tests {
 
     #[multiplatform_test]
     fn json_predicates() {
-        let database = DatabaseSpec::new(vec![TableSpec::new(
-            PhysicalTableName::new("card", None),
-            vec![pk_column("id"), json_column("data")],
+        let database = DatabaseSpec::new(
+            vec![TableSpec::new(
+                PhysicalTableName::new("card", None),
+                vec![pk_column("id"), json_column("data")],
+                vec![],
+                vec![],
+            )],
             vec![],
-        )])
+        )
         .to_database();
 
         let table_id = database
