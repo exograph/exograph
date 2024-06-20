@@ -63,6 +63,7 @@ values:
             indices: []
             default_value: AutoIncrement
             update_sync: false
+            readonly: false
           - name: name
             typ:
               Plain:
@@ -85,6 +86,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
         table_name:
           name: auth_schema_tables
           schema: auth
@@ -122,6 +124,7 @@ values:
             indices: []
             default_value: AutoIncrement
             update_sync: false
+            readonly: false
           - name: name
             typ:
               Plain:
@@ -144,6 +147,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
         table_name:
           name: custom_table
           schema: auth

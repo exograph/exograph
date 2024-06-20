@@ -65,6 +65,7 @@ values:
             indices: []
             default_value: AutoIncrement
             update_sync: false
+            readonly: false
           - name: title
             typ:
               Plain:
@@ -89,6 +90,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: venue
             typ:
               Plain:
@@ -111,6 +113,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: reserved
             typ:
               Plain:
@@ -138,6 +141,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: time
             typ:
               Plain:
@@ -162,6 +166,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: price
             typ:
               Plain:
@@ -187,6 +192,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
         table_name:
           name: custom_concerts
           schema: ~
@@ -224,6 +230,7 @@ values:
             indices: []
             default_value: AutoIncrement
             update_sync: false
+            readonly: false
           - name: name
             typ:
               Plain:
@@ -246,6 +253,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: concerts
             typ:
               List:
@@ -269,6 +277,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: capacity
             typ:
               Plain:
@@ -294,6 +303,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: latitude
             typ:
               Plain:
@@ -318,6 +328,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
         table_name:
           name: venues
           schema: ~

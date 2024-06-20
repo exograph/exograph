@@ -63,6 +63,7 @@ values:
             indices: []
             default_value: AutoIncrement
             update_sync: false
+            readonly: false
           - name: mainTitle
             typ:
               Plain:
@@ -85,6 +86,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
         table_name:
           name: concert_infos
           schema: ~

@@ -65,6 +65,7 @@ values:
             indices: []
             default_value: AutoIncrement
             update_sync: false
+            readonly: false
           - name: title
             typ:
               Plain:
@@ -87,6 +88,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: venue
             typ:
               Plain:
@@ -110,6 +112,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: attending
             typ:
               List:
@@ -133,6 +136,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: seating
             typ:
               List:
@@ -157,6 +161,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
         table_name:
           name: concerts
           schema: ~
@@ -196,6 +201,7 @@ values:
             indices: []
             default_value: AutoIncrement
             update_sync: false
+            readonly: false
           - name: name
             typ:
               Plain:
@@ -218,6 +224,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
           - name: concerts
             typ:
               List:
@@ -241,6 +248,7 @@ values:
             indices: []
             default_value: ~
             update_sync: false
+            readonly: false
         table_name:
           name: venues
           schema: ~
