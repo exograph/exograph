@@ -175,6 +175,7 @@ pub struct PostgresField<CT> {
     pub relation: PostgresRelation,
     pub has_default_value: bool, // does this field have a default value?
     pub dynamic_default_value: Option<ContextSelection>,
+    pub readonly: bool,
     pub access: Access,
 }
 

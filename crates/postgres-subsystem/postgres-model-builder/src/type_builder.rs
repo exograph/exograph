@@ -635,6 +635,7 @@ fn create_persistent_field(
         access,
         has_default_value: field.default_value.is_some(),
         dynamic_default_value: None,
+        readonly: field.readonly || field.update_sync,
     })
 }
 

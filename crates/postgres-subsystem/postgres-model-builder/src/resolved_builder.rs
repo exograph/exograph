@@ -143,6 +143,7 @@ pub struct ResolvedField {
     pub indices: Vec<String>,
     pub default_value: Option<ResolvedFieldDefault>,
     pub update_sync: bool,
+    pub readonly: bool,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -305,6 +306,9 @@ fn resolve(
                             .fields
                             .iter()
                             .flat_map(|field| {
+                                let update_sync = field.annotations.contains("update");
+                                let readonly = field.annotations.contains("readonly");
+
                                 let column_info =
                                     compute_column_info(ct, field, &typechecked_system.types);
 
@@ -315,7 +319,6 @@ fn resolve(
                                         access,
                                         unique_constraints,
                                         indices,
-                                        update_sync,
                                     }) => {
                                         let typ = resolve_field_type(
                                             &field.typ.to_typ(&typechecked_system.types),
@@ -343,6 +346,7 @@ fn resolve(
                                             indices,
                                             default_value,
                                             update_sync,
+                                            readonly,
                                             span: field.span,
                                         })
                                     }
@@ -756,8 +760,8 @@ struct ColumnInfo {
     unique_constraints: Vec<String>,
     indices: Vec<String>,
     access: ResolvedAccess,
-    // Will this field be auto-updated by the system (through triggers, etc.) to its default value?
-    update_sync: bool,
+    // // Will this field be auto-updated by the system (through triggers, etc.) to its default value?
+    // update_sync: bool,
 }
 
 fn compute_column_info(
@@ -823,11 +827,12 @@ fn compute_column_info(
             .unwrap_or_default();
 
         let update_sync = field.annotations.contains("update");
+        let readonly = field.annotations.contains("readonly");
 
-        if update_sync && field.default_value.is_none() {
+        if (update_sync || readonly) && field.default_value.is_none() {
             return Err(Diagnostic {
                 level: Level::Error,
-                message: "Fields with @update must have a default value".to_string(),
+                message: "Fields with @readonly or @update must have a default value".to_string(),
                 code: Some("C000".to_string()),
                 spans: vec![SpanLabel {
                     span: field.span,
@@ -908,7 +913,6 @@ fn compute_column_info(
                                         access,
                                         unique_constraints,
                                         indices,
-                                        update_sync
                                     }),
                                     Cardinality::Unbounded => Ok(ColumnInfo {
                                         name: id_column_name(&field.name),
@@ -916,7 +920,6 @@ fn compute_column_info(
                                         access,
                                         unique_constraints,
                                         indices,
-                                        update_sync
                                     }),
                                 }
                             }
@@ -935,7 +938,6 @@ fn compute_column_info(
                                     access,
                                     unique_constraints,
                                     indices,
-                                    update_sync,
                                 })
                             }
                         }
@@ -956,7 +958,6 @@ fn compute_column_info(
                                 access,
                                 unique_constraints,
                                 indices,
-                                update_sync,
                             })
                         } else {
                             Err(Diagnostic {
@@ -986,7 +987,6 @@ fn compute_column_info(
                                 access,
                                 unique_constraints,
                                 indices,
-                                update_sync,
                             })
                         } else {
                             Err(Diagnostic {
@@ -1007,7 +1007,6 @@ fn compute_column_info(
                         access,
                         unique_constraints,
                         indices,
-                        update_sync,
                     }),
                 }
             }

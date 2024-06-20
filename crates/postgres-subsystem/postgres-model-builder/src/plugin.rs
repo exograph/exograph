@@ -222,6 +222,15 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 },
             ),
             (
+                "readonly",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: true,
+                    single_params: true,
+                    mapped_params: None,
+                },
+            ),
+            (
                 "update",
                 AnnotationSpec {
                     targets: &[AnnotationTarget::Field],
