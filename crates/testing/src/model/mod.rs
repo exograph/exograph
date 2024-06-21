@@ -28,7 +28,7 @@ pub struct IntegrationTest {
     pub retries: usize,
     pub init_operations: Vec<IntegrationTestOperation>,
     pub test_operations: Vec<IntegrationTestOperation>,
-    pub extra_envs: HashMap<String, String>, // extra envvars ti be set when starting the exo server
+    pub extra_envs: HashMap<String, String>, // extra envvars to be set when starting the exo server
 }
 
 #[derive(Debug, Clone)]

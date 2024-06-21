@@ -64,6 +64,37 @@ pub fn diff<'a>(old: &'a DatabaseSpec, new: &'a DatabaseSpec) -> Vec<SchemaOp<'a
         }
     }
 
+    for old_function in old.functions.iter() {
+        // try to find a function with the same name in the new spec
+        match new
+            .functions
+            .iter()
+            .find(|new_function| old_function.name == new_function.name)
+        {
+            // function exists, compare bodies
+            Some(new_function) => changes.extend(old_function.diff(new_function)),
+
+            // function does not exist, deletion
+            None => changes.push(SchemaOp::DeleteFunction {
+                name: &old_function.name,
+            }),
+        }
+    }
+
+    // try to find a function that needs to be created
+    for new_function in new.functions.iter() {
+        if !old
+            .functions
+            .iter()
+            .any(|old_function| new_function.name == old_function.name)
+        {
+            // new function
+            changes.push(SchemaOp::CreateFunction {
+                function: new_function,
+            })
+        }
+    }
+
     // extension removal
     let extensions_to_drop =
         sorted_strings(old_required_extensions.difference(&new_required_extensions));
@@ -80,6 +111,17 @@ pub fn diff<'a>(old: &'a DatabaseSpec, new: &'a DatabaseSpec) -> Vec<SchemaOp<'a
             schema: schema.clone(),
         })
     }
+
+    // sort changes so that triggers are created after its functions
+    changes.sort_by(|a, b| match (a, b) {
+        (SchemaOp::CreateTrigger { .. }, SchemaOp::CreateFunction { .. }) => {
+            std::cmp::Ordering::Greater
+        }
+        (SchemaOp::CreateFunction { .. }, SchemaOp::CreateTrigger { .. }) => {
+            std::cmp::Ordering::Less
+        }
+        _ => std::cmp::Ordering::Equal,
+    });
 
     changes
 }

@@ -1,0 +1,27 @@
+operation: |
+  mutation($id: Int!) {
+      updateTodo(id: $id, data: {completed: true, createdAt: "2024-06-20T23:07:57.731441+00:00"}) {
+          id
+          title
+          completed
+          createdAt
+      }
+  }
+variable: |
+  {
+    id: $.t1id
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Argument(s) '[\"createdAt\"]' invalid for 'updateTodo'",
+        "locations": [
+          {
+            "line": 2,
+            "column": 5
+          }
+        ]
+      }
+    ]
+  }

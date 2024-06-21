@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Customizing Schema
 
-Exograph infers the mapping of a type to a table, which is often good enough. But if you need to customize the mapping, Exograph provides a few annotations. This section will examine the default Exograph mapping and how to customize it.
+Exograph infers the mapping of a type to a table, which is often good enough. However, if you need to customize the mapping, Exograph provides a few annotations. This section will examine the default Exograph mapping and how to customize it.
 
 ## Type-level customization
 
@@ -85,7 +85,7 @@ Use the `@plural` annotation to deal with type names with irregular pluralizatio
 
 Exograph maps each field to a column in the database and infers a few other aspects of the column.
 
-### Column name
+### Specifying column name
 
 Exograph infers the column's name as the **snake_cased** version of the field name for a scalar-type column. For example, Exograph will map the `name` field to the `name` column, while it will map `ticketPrice` to `ticket_price`.
 
@@ -134,7 +134,7 @@ module ConcertModule {
 
 If you change the name of the foreign key column in the `Venue` type, you must also change the name of the foreign key column in the `Concert` type. This way, the column names guide Exograph to infer the relationship between the two types.
 
-### Primary key
+### Assigning primary key
 
 The `@pk` annotation designates the primary key of a type. The current implementation of Exograph only supports a single primary key (we will lift this restriction in the future):
 
@@ -175,7 +175,7 @@ type Venue {
 }
 ```
 
-### Default value
+### Specifying a default value
 
 The default value of a column is specified using an assignment in the field definition. For example, as we have seen in the [previous](#primary-key)[ section](#primary-key), you can set the default value of an `Int` field to `autoIncrement()` to make it auto-incrementing and the default value of a `Uuid` field to `generate_uuid()` to make it auto-generated.
 
@@ -195,13 +195,56 @@ You can set the default value to `now()` for all date and time field types. For 
 ```exo
 type Concert {
   ...
-  createdAt: LocalDateTime = now()
+  createdAt: Instant = now()
 }
 ```
 
-When you create a new concert, the `createdAt` field will be set to optional, and the current time will be used if you don't specify a value.
+When you create a new concert, the `createdAt` field will be set to optional, and Exograph will use =the current time if you don't specify a value.
 
-#### Controlling Nullability
+### Marking read-only
+
+In the previous example, the intention seems to set the `createdAt` field to the creation time. However, this requires clients to not specify a value for the `createdAt` field in `createConcert` or `createConcerts` API. Furthermore, it can be changed to another value when updating the concert (the field remains part of the `updateConcert` and `updateConcerts` API). Therefore, this arrangement doesn't reflect the intention.
+
+Exograph provides the `@readonly` annotation to make a field read-only for such situations. For example, you can make the `createdAt` field read-only using the following definition:
+
+```exo
+type Concert {
+  ...
+  @readonly createdAt: Instant = now()
+}
+```
+
+Now, the `createdAt` field will not be part of the `createConcert`, `createConcerts`, `updateConcert`, and `updateConcerts`APIs. As a result, the field's value will always be the creation time.
+
+Note that a field marked with the `@readonly` annotation must also have a default value.
+
+### Updating automatically
+
+What if you want to introduce another field `updatedAt` that should be set automatically to the current time whenever the concert is updated? Exograph provides the `@update` annotation to achieve this. For example, you can make the `updatedAt` field update automatically using the following definition:
+
+```exo
+type Concert {
+  ...
+  @update updatedAt: Instant = now()
+}
+```
+
+Every time a client updates a concert, Exograph will set the `updatedAt` field to its default value, `now()`&mdash;the current time.
+
+Like the `@readonly` annotation, an `@update` field must have a default value. The default value usually is a function (like `now()`) that generates the value at runtime. It can be constant, but a plain `@readonly` is more appropriate. An `@update` field is also implicitly considered read-only. Consequently, it will not be part of the `createConcert`, `createConcerts`, `updateConcert`, and `updateConcerts` APIs.
+
+You may use the `@update` annotation to track other aspects. For example, if you want to set the last modified version, you can use the `@update` annotation as follows:
+
+```exo
+type Concert {
+  ...
+  @update modificationVersion: Uuid = generate_uuid()
+}
+```
+
+Whenever a client updates a concert, Exograph will set the `modificationVersion` field to a new UUID.
+
+### Controlling Nullability
 
 Exograph will make the column nullable if the field is optional. You can control nullability by adding the `?` suffix to the field type. For example, if you want to make the `name` field non-nullable, you can use the following definition:
 
@@ -215,7 +258,7 @@ type TicketPrice {
 
 Here, the database schema will have the `price` field as non-nullable and the `details` field as nullable.
 
-### Uniqueness
+### Constraining Uniqueness
 
 Often, you want to set a constraint on a field to make it unique. You may use the `@unique` annotation for this purpose. For example, if you want to make sure that the `name` field is unique, you can use the `@unique` annotation:
 
@@ -254,7 +297,7 @@ type Person {
 
 Since we use the name `primary_email` for the `primaryEmailId` and the `emailDomain` fields, that combination will be marked unique. We do the same for the `secondaryEmailId` and the `emailDomain` fields.
 
-### Index
+### Adding Index
 
 It is a common practice to set up indexes on columns to speed up queries. While indexes speed up queries, they slow down inserts and updates. So, you should analyze the usage pattern of your application and create indexes accordingly.
 

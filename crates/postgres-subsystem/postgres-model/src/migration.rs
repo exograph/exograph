@@ -81,7 +81,12 @@ impl Migration {
                 | SchemaOp::SetColumnDefaultValue { .. }
                 | SchemaOp::UnsetColumnDefaultValue { .. }
                 | SchemaOp::SetNotNull { .. }
-                | SchemaOp::UnsetNotNull { .. } => false,
+                | SchemaOp::UnsetNotNull { .. }
+                | SchemaOp::CreateFunction { .. }
+                | SchemaOp::DeleteFunction { .. }
+                | SchemaOp::CreateOrReplaceFunction { .. }
+                | SchemaOp::CreateTrigger { .. }
+                | SchemaOp::DeleteTrigger { .. } => false,
             };
 
             let statement = diff.to_sql();
@@ -218,7 +223,8 @@ pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), Datab
         .map_err(|e| DatabaseError::BoxedError(Box::new(e)))?
         .value;
 
-    let migrations = Migration::from_schemas(current_database_spec, &DatabaseSpec::new(vec![]));
+    let migrations =
+        Migration::from_schemas(current_database_spec, &DatabaseSpec::new(vec![], vec![]));
     migrations
         .apply(database, true)
         .await
@@ -1605,6 +1611,99 @@ mod tests {
         .await
     }
 
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn add_update_sync_field() {
+        assert_changes(
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    title: String
+                }
+            }
+            "#,
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    title: String
+                    @update updatedAt: Instant = now()
+                    @update modificationId: Uuid = generate_uuid()
+                }
+            }
+            "#,
+            vec![
+                ("CREATE TABLE \"concerts\" (\n    \"id\" SERIAL PRIMARY KEY,\n    \"title\" TEXT NOT NULL\n);", false)
+            ],
+            vec![
+                ("CREATE EXTENSION \"pgcrypto\";", false), 
+                ("CREATE TABLE \"concerts\" (\n    \"id\" SERIAL PRIMARY KEY,\n    \"title\" TEXT NOT NULL,\n    \"updated_at\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),\n    \"modification_id\" uuid NOT NULL DEFAULT gen_random_uuid()\n);", false),
+                ("CREATE FUNCTION exograph_update_concerts() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); NEW.modification_id = gen_random_uuid(); RETURN NEW; END; $$ language 'plpgsql';", false),
+                ("CREATE TRIGGER exograph_on_update_concerts BEFORE UPDATE ON concerts FOR EACH ROW EXECUTE FUNCTION exograph_update_concerts();", false)
+            ],
+            vec![
+                ("CREATE EXTENSION \"pgcrypto\";", false), 
+                ("ALTER TABLE \"concerts\" ADD \"updated_at\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now();", false),
+                ("ALTER TABLE \"concerts\" ADD \"modification_id\" uuid NOT NULL DEFAULT gen_random_uuid();", false),
+                ("CREATE FUNCTION exograph_update_concerts() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); NEW.modification_id = gen_random_uuid(); RETURN NEW; END; $$ language 'plpgsql';", false),
+                ("CREATE TRIGGER exograph_on_update_concerts BEFORE UPDATE ON concerts FOR EACH ROW EXECUTE FUNCTION exograph_update_concerts();", false)
+            ],
+            vec![
+                ("ALTER TABLE \"concerts\" DROP COLUMN \"updated_at\";", true),
+                ("ALTER TABLE \"concerts\" DROP COLUMN \"modification_id\";", true),
+                ("DROP TRIGGER exograph_on_update_concerts on \"concerts\";", false),
+                ("DROP FUNCTION exograph_update_concerts;", false),
+                ("DROP EXTENSION \"pgcrypto\";", true)            
+            ],
+        ).await
+    }
+
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn add_update_annotation() {
+        assert_changes(
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    title: String
+                    updatedAt: Instant = now()
+                }
+            }
+            "#,
+            r#"
+            @postgres
+            module ConcertModule {
+                type Concert {
+                    @pk id: Int = autoIncrement()
+                    title: String
+                    @update updatedAt: Instant = now()
+                }
+            }
+            "#,
+            vec![
+                ("CREATE TABLE \"concerts\" (\n    \"id\" SERIAL PRIMARY KEY,\n    \"title\" TEXT NOT NULL,\n    \"updated_at\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()\n);", false)
+            ],
+            vec![
+                ("CREATE TABLE \"concerts\" (\n    \"id\" SERIAL PRIMARY KEY,\n    \"title\" TEXT NOT NULL,\n    \"updated_at\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()\n);", false),
+                ("CREATE FUNCTION exograph_update_concerts() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ language 'plpgsql';", false),
+                ("CREATE TRIGGER exograph_on_update_concerts BEFORE UPDATE ON concerts FOR EACH ROW EXECUTE FUNCTION exograph_update_concerts();", false)
+            ],
+            vec![
+                ("CREATE FUNCTION exograph_update_concerts() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ language 'plpgsql';", false),
+                ("CREATE TRIGGER exograph_on_update_concerts BEFORE UPDATE ON concerts FOR EACH ROW EXECUTE FUNCTION exograph_update_concerts();", false)
+            ],
+            vec![
+                ("DROP TRIGGER exograph_on_update_concerts on \"concerts\";", false),
+                ("DROP FUNCTION exograph_update_concerts;", false)          
+            ],
+        ).await
+    }
+
     async fn create_postgres_system_from_str(
         model_str: &str,
         file_name: String,
@@ -1663,13 +1762,13 @@ mod tests {
         let new_system = compute_spec(new_system).await;
 
         assert_change(
-            &DatabaseSpec::new(vec![]),
+            &DatabaseSpec::new(vec![], vec![]),
             &old_system,
             old_create,
             "Create old system schema",
         );
         assert_change(
-            &DatabaseSpec::new(vec![]),
+            &DatabaseSpec::new(vec![], vec![]),
             &new_system,
             new_create,
             "Create new system schema",

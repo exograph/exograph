@@ -635,6 +635,7 @@ fn create_persistent_field(
         access,
         has_default_value: field.default_value.is_some(),
         dynamic_default_value: None,
+        readonly: field.readonly || field.update_sync,
     })
 }
 
@@ -712,6 +713,25 @@ fn create_vector_distance_field(
     }
 }
 
+fn default_value(field: &ResolvedField) -> Option<String> {
+    field
+        .default_value
+        .as_ref()
+        .and_then(|default_value| match default_value {
+            ResolvedFieldDefault::Value(val) => match &**val {
+                AstExpr::StringLiteral(string, _) => {
+                    Some(format!("'{}'::text", string.replace('\'', "''")))
+                }
+                AstExpr::BooleanLiteral(boolean, _) => Some(format!("{boolean}")),
+                AstExpr::NumberLiteral(val, _) => Some(format!("{val}")),
+                AstExpr::FieldSelection(_) => None,
+                _ => panic!("Invalid concrete value"),
+            },
+            ResolvedFieldDefault::PostgresFunction(string) => Some(string.to_string()),
+            ResolvedFieldDefault::AutoIncrement => None,
+        })
+}
+
 fn create_column(
     field: &ResolvedField,
     table_id: TableId,
@@ -736,23 +756,8 @@ fn create_column(
         _ => (&field.typ, false),
     };
 
-    let default_value =
-        field
-            .default_value
-            .as_ref()
-            .and_then(|default_value| match default_value {
-                ResolvedFieldDefault::Value(val) => match &**val {
-                    AstExpr::StringLiteral(string, _) => {
-                        Some(format!("'{}'::text", string.replace('\'', "''")))
-                    }
-                    AstExpr::BooleanLiteral(boolean, _) => Some(format!("{boolean}")),
-                    AstExpr::NumberLiteral(val, _) => Some(format!("{val}")),
-                    AstExpr::FieldSelection(_) => None,
-                    _ => panic!("Invalid concrete value"),
-                },
-                ResolvedFieldDefault::PostgresFunction(string) => Some(string.to_string()),
-                ResolvedFieldDefault::AutoIncrement => None,
-            });
+    let default_value = default_value(field);
+    let update_sync = field.update_sync;
 
     match typ {
         FieldType::Plain(ResolvedFieldType { type_name, .. }) => {
@@ -777,6 +782,7 @@ fn create_column(
                     is_nullable: optional,
                     unique_constraints: unique_constraint_name,
                     default_value,
+                    update_sync,
                 }),
                 ResolvedType::Composite(_) => {
                     // Many-to-one:
@@ -791,6 +797,7 @@ fn create_column(
                         is_nullable: optional,
                         unique_constraints: unique_constraint_name,
                         default_value,
+                        update_sync,
                     })
                 }
             }
@@ -837,6 +844,7 @@ fn create_column(
                     is_nullable: optional,
                     unique_constraints: unique_constraint_name,
                     default_value,
+                    update_sync,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column

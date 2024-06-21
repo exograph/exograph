@@ -252,6 +252,7 @@ pub trait DataParamBuilder<D> {
                         has_default_value: field.has_default_value,
                         access: field.access.clone(),
                         dynamic_default_value: field.dynamic_default_value.clone(),
+                        readonly: field.readonly,
                     })
                 } else {
                     // Make the decision to include the pk column based on the default value for the
@@ -279,11 +280,12 @@ pub trait DataParamBuilder<D> {
                             relation: field.relation.clone(),
                             has_default_value: field.has_default_value,
                             dynamic_default_value: field.dynamic_default_value.clone(),
+                            readonly: field.readonly,
                         })
                     }
                 }
             }
-            PostgresRelation::Scalar { .. } => Some(PostgresField {
+            PostgresRelation::Scalar { .. } => (!field.readonly).then_some(PostgresField {
                 name: field.name.clone(),
                 typ: if optional {
                     to_mutation_type(&field.typ).optional()
@@ -294,6 +296,7 @@ pub trait DataParamBuilder<D> {
                 relation: field.relation.clone(),
                 has_default_value: field.has_default_value,
                 dynamic_default_value: field.dynamic_default_value.clone(),
+                readonly: field.readonly,
             }),
             PostgresRelation::OneToMany { .. } => {
                 self.compute_one_to_many_data_field(field, container_type, building)
@@ -326,6 +329,7 @@ pub trait DataParamBuilder<D> {
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
                         dynamic_default_value: field.dynamic_default_value.clone(),
+                        readonly: field.readonly,
                     }),
                 }
             }
@@ -369,6 +373,7 @@ pub trait DataParamBuilder<D> {
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
                         dynamic_default_value: field.dynamic_default_value.clone(),
+                        readonly: field.readonly,
                     }),
                 }
             })

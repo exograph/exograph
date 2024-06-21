@@ -68,6 +68,7 @@ fn expanded_reference_types(
                 relation: field.relation.clone(),
                 has_default_value: field.has_default_value,
                 dynamic_default_value: None,
+                readonly: field.readonly,
             }),
             _ => None,
         })

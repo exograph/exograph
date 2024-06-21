@@ -11,7 +11,10 @@ use std::collections::HashSet;
 
 use crate::schema::{constraint::sorted_comma_list, index_spec::IndexSpec};
 
-use super::{column_spec::ColumnSpec, statement::SchemaStatement, table_spec::TableSpec};
+use super::{
+    column_spec::ColumnSpec, function_spec::FunctionSpec, statement::SchemaStatement,
+    table_spec::TableSpec, trigger_spec::TriggerSpec,
+};
 
 /// An execution unit of SQL, representing an operation that can create or destroy resources.
 #[derive(Debug)]
@@ -81,6 +84,23 @@ pub enum SchemaOp<'a> {
         table: &'a TableSpec,
         column: &'a ColumnSpec,
     },
+
+    CreateFunction {
+        function: &'a FunctionSpec,
+    },
+    DeleteFunction {
+        name: &'a str,
+    },
+    CreateOrReplaceFunction {
+        function: &'a FunctionSpec,
+    },
+
+    CreateTrigger {
+        trigger: &'a TriggerSpec,
+    },
+    DeleteTrigger {
+        trigger: &'a TriggerSpec,
+    },
 }
 
 impl SchemaOp<'_> {
@@ -94,8 +114,10 @@ impl SchemaOp<'_> {
                 statement: format!("DROP SCHEMA \"{schema}\" CASCADE;"),
                 ..Default::default()
             },
+
             SchemaOp::CreateTable { table } => table.creation_sql(),
             SchemaOp::DeleteTable { table } => table.deletion_sql(),
+
             SchemaOp::CreateColumn { table, column } => {
                 let column_stmt = column.to_sql(table);
 
@@ -117,6 +139,7 @@ impl SchemaOp<'_> {
                 ),
                 ..Default::default()
             },
+
             SchemaOp::CreateIndex { table, index } => SchemaStatement {
                 statement: index.creation_sql(&table.name),
                 ..Default::default()
@@ -125,6 +148,7 @@ impl SchemaOp<'_> {
                 statement: format!("DROP INDEX \"{}\";", index.name),
                 ..Default::default()
             },
+
             SchemaOp::SetColumnDefaultValue {
                 table,
                 column,
@@ -146,6 +170,7 @@ impl SchemaOp<'_> {
                 ),
                 ..Default::default()
             },
+
             SchemaOp::CreateExtension { extension } => SchemaStatement {
                 statement: format!("CREATE EXTENSION \"{extension}\";"),
                 ..Default::default()
@@ -154,6 +179,7 @@ impl SchemaOp<'_> {
                 statement: format!("DROP EXTENSION \"{extension}\";"),
                 ..Default::default()
             },
+
             SchemaOp::CreateUniqueConstraint {
                 table,
                 constraint_name,
@@ -175,6 +201,7 @@ impl SchemaOp<'_> {
                 ),
                 ..Default::default()
             },
+
             SchemaOp::SetNotNull { table, column } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE {} ALTER COLUMN \"{}\" SET NOT NULL;",
@@ -188,6 +215,32 @@ impl SchemaOp<'_> {
                     "ALTER TABLE {} ALTER COLUMN \"{}\" DROP NOT NULL;",
                     table.sql_name(),
                     column.name
+                ),
+                ..Default::default()
+            },
+
+            SchemaOp::CreateFunction { function } => SchemaStatement {
+                statement: function.creation_sql(false),
+                ..Default::default()
+            },
+            SchemaOp::CreateOrReplaceFunction { function } => SchemaStatement {
+                statement: function.creation_sql(true),
+                ..Default::default()
+            },
+            SchemaOp::DeleteFunction { name } => SchemaStatement {
+                statement: format!("DROP FUNCTION {name};"),
+                ..Default::default()
+            },
+
+            SchemaOp::CreateTrigger { trigger } => SchemaStatement {
+                statement: trigger.creation_sql(),
+                ..Default::default()
+            },
+            SchemaOp::DeleteTrigger { trigger } => SchemaStatement {
+                statement: format!(
+                    "DROP TRIGGER {name} on {table};",
+                    name = trigger.name,
+                    table = trigger.table.sql_name()
                 ),
                 ..Default::default()
             },
@@ -234,6 +287,17 @@ impl SchemaOp<'_> {
                 Some(format!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.name, table.sql_name()))
             },
             SchemaOp::UnsetNotNull { table, column } => Some(format!("The model requires that the column `{}` in table `{}` is nullable.", column.name, table.sql_name())),
+            SchemaOp::CreateTrigger { trigger } => {
+                Some(format!("The model requires a trigger named `{}`", trigger.name))
+            },
+            SchemaOp::DeleteTrigger { trigger } => Some(format!("The trigger `{name}` exists in the database, but does not exist in the model.", name = trigger.name)),
+            SchemaOp::CreateFunction { function } => {
+                Some(format!("The model requires a function named `{}`", function.name))
+            },
+            SchemaOp::DeleteFunction { name } => Some(format!("The function `{name}` exists in the database, but does not exist in the model.")),
+            SchemaOp::CreateOrReplaceFunction { function } => {
+                Some(format!("The model requires a function named `{}` with body `{}`", function.name, function.body))
+            },
         }
     }
 }

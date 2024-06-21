@@ -61,21 +61,26 @@ mod tests {
 
     #[multiplatform_test]
     fn basic_join() {
-        let database = DatabaseSpec::new(vec![
-            TableSpec::new(
-                PhysicalTableName::new("concerts", None),
-                vec![
-                    pk_column("id"),
-                    pk_reference_column("venue_id", "venues", None),
-                ],
-                vec![],
-            ),
-            TableSpec::new(
-                PhysicalTableName::new("venues", None),
-                vec![pk_column("id"), int_column("capacity")],
-                vec![],
-            ),
-        ])
+        let database = DatabaseSpec::new(
+            vec![
+                TableSpec::new(
+                    PhysicalTableName::new("concerts", None),
+                    vec![
+                        pk_column("id"),
+                        pk_reference_column("venue_id", "venues", None),
+                    ],
+                    vec![],
+                    vec![],
+                ),
+                TableSpec::new(
+                    PhysicalTableName::new("venues", None),
+                    vec![pk_column("id"), int_column("capacity")],
+                    vec![],
+                    vec![],
+                ),
+            ],
+            vec![],
+        )
         .to_database();
 
         let concert_physical_table_id = database

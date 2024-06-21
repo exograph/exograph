@@ -37,6 +37,7 @@ pub struct PhysicalColumn {
 
     /// optional default value for this column
     pub default_value: Option<String>,
+    pub update_sync: bool,
 }
 
 /// Simpler implementation of Debug for PhysicalColumn.

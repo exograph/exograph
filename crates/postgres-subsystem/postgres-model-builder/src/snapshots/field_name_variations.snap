@@ -62,6 +62,8 @@ values:
             unique_constraints: []
             indices: []
             default_value: AutoIncrement
+            update_sync: false
+            readonly: false
           - name: title_main
             typ:
               Plain:
@@ -83,6 +85,8 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
+            readonly: false
           - name: title_main1
             typ:
               Plain:
@@ -104,6 +108,8 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
+            readonly: false
           - name: public1
             typ:
               Plain:
@@ -125,6 +131,8 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
+            readonly: false
           - name: PUBLIC2
             typ:
               Plain:
@@ -146,6 +154,8 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
+            readonly: false
           - name: foo123
             typ:
               Plain:
@@ -167,6 +177,8 @@ values:
             unique_constraints: []
             indices: []
             default_value: ~
+            update_sync: false
+            readonly: false
         table_name:
           name: entitys
           schema: ~

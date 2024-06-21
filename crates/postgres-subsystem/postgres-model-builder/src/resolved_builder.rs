@@ -142,6 +142,8 @@ pub struct ResolvedField {
     pub unique_constraints: Vec<String>,
     pub indices: Vec<String>,
     pub default_value: Option<ResolvedFieldDefault>,
+    pub update_sync: bool,
+    pub readonly: bool,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -304,6 +306,9 @@ fn resolve(
                             .fields
                             .iter()
                             .flat_map(|field| {
+                                let update_sync = field.annotations.contains("update");
+                                let readonly = field.annotations.contains("readonly");
+
                                 let column_info =
                                     compute_column_info(ct, field, &typechecked_system.types);
 
@@ -340,6 +345,8 @@ fn resolve(
                                             unique_constraints,
                                             indices,
                                             default_value,
+                                            update_sync,
+                                            readonly,
                                             span: field.span,
                                         })
                                     }
@@ -753,6 +760,8 @@ struct ColumnInfo {
     unique_constraints: Vec<String>,
     indices: Vec<String>,
     access: ResolvedAccess,
+    // // Will this field be auto-updated by the system (through triggers, etc.) to its default value?
+    // update_sync: bool,
 }
 
 fn compute_column_info(
@@ -816,6 +825,22 @@ fn compute_column_info(
                 AstAnnotationParams::Map(_, _) => panic!(),
             })
             .unwrap_or_default();
+
+        let update_sync = field.annotations.contains("update");
+        let readonly = field.annotations.contains("readonly");
+
+        if (update_sync || readonly) && field.default_value.is_none() {
+            return Err(Diagnostic {
+                level: Level::Error,
+                message: "Fields with @readonly or @update must have a default value".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            });
+        }
 
         let id_column_name = |field_name: &str| {
             user_supplied_column_name
@@ -887,7 +912,7 @@ fn compute_column_info(
                                         self_column: false,
                                         access,
                                         unique_constraints,
-                                        indices
+                                        indices,
                                     }),
                                     Cardinality::Unbounded => Ok(ColumnInfo {
                                         name: id_column_name(&field.name),

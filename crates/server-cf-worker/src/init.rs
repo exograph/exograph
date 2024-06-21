@@ -4,7 +4,7 @@ use exo_env::Environment;
 use tracing::level_filters::LevelFilter;
 use wasm_bindgen::prelude::*;
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,

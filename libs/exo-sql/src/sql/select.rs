@@ -114,14 +114,18 @@ mod tests {
 
     #[multiplatform_test]
     fn json_object() {
-        let database = DatabaseSpec::new(vec![TableSpec::new(
-            PhysicalTableName {
-                name: "people".to_owned(),
-                schema: None,
-            },
-            vec![pk_column("id"), string_column("name"), int_column("age")],
+        let database = DatabaseSpec::new(
+            vec![TableSpec::new(
+                PhysicalTableName {
+                    name: "people".to_owned(),
+                    schema: None,
+                },
+                vec![pk_column("id"), string_column("name"), int_column("age")],
+                vec![],
+                vec![],
+            )],
             vec![],
-        )])
+        )
         .to_database();
 
         let table_id = database

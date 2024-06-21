@@ -1,0 +1,56 @@
+deno: |
+  function assertTimestampUpdate(actual, minimum) {
+    const minimum_ms = Date.parse(minimum);
+    const actual_ms = Date.parse(actual);
+
+    if (actual_ms <= minimum_ms) {
+        throw new ExographError(
+          "Update time not correct: expected later than " + minimum_ms + ", got " + actual_ms
+        )
+    }
+
+    const now_ms = Date.now();
+
+    if (Math.abs(actual_ms - now_ms) > 5000) {
+        throw new ExographError(
+          "Time returned is off by more than 5 seconds: expected " + now_ms + ", got " + actual_ms
+        )
+    } 
+
+    return true
+  }
+operation: |
+  mutation($id: Int!) {
+      updateTodo(id: $id, data: {completed: true}) {
+          id
+          title
+          completed
+          modificationId
+          updatedAt @bind(name: "updatedAt")
+          updatedAt2
+      }
+  }
+variable: |
+  {
+    id: $.t1id
+  }
+response: |
+  {
+    "data": {
+      "updateTodo": {
+        "id": 1,
+        "title": "T1",
+        "completed": true,
+        "modificationId": (modificationId) => {
+            // The uuid must have been changed
+            return modificationId !== $.t1modificationId
+        },
+        "updatedAt": (updateTime) => {
+            return assertTimestampUpdate(updateTime, $.t1updatedAt)
+        },
+        "updatedAt2": (updateTime) => {
+          return updateTime == $.updatedAt
+        }
+      }
+    }
+  }

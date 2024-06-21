@@ -1,0 +1,23 @@
+operation: |
+  mutation {
+      createTodo(data: {completed: true, title: "invalid-createAt", createdAt: "2024-06-20T23:07:57.731441+00:00"}) {
+          id
+          title
+          completed
+          createdAt
+      }
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Argument(s) '[\"createdAt\"]' invalid for 'createTodo'",
+        "locations": [
+          {
+            "line": 2,
+            "column": 5
+          }
+        ]
+      }
+    ]
+  }

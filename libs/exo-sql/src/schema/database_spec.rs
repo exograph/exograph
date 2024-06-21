@@ -12,21 +12,27 @@ use std::collections::HashSet;
 use crate::{
     database_error::DatabaseError, schema::column_spec::ColumnSpec,
     sql::connect::database_client::DatabaseClient, Database, ManyToOne, PhysicalColumn,
-    PhysicalIndex, PhysicalTableName, TableId,
+    PhysicalIndex, PhysicalTable, PhysicalTableName, TableId,
 };
 
 use super::{
-    column_spec::ColumnTypeSpec, index_spec::IndexSpec, issue::WithIssues, table_spec::TableSpec,
+    column_spec::ColumnTypeSpec,
+    function_spec::FunctionSpec,
+    index_spec::IndexSpec,
+    issue::WithIssues,
+    table_spec::TableSpec,
+    trigger_spec::{TriggerEvent, TriggerOrientation, TriggerSpec, TriggerTiming},
 };
 
 #[derive(Debug)]
 pub struct DatabaseSpec {
     pub tables: Vec<TableSpec>,
+    pub functions: Vec<FunctionSpec>,
 }
 
 impl DatabaseSpec {
-    pub fn new(tables: Vec<TableSpec>) -> Self {
-        Self { tables }
+    pub fn new(tables: Vec<TableSpec>, functions: Vec<FunctionSpec>) -> Self {
+        Self { tables, functions }
     }
 
     /// Non-public schemas required by this database spec.
@@ -43,13 +49,6 @@ impl DatabaseSpec {
                 .cloned()
                 .collect()
         })
-    }
-
-    pub fn get_indices(&self) -> Vec<IndexSpec> {
-        self.tables
-            .iter()
-            .flat_map(|table| table.indices.clone())
-            .collect()
     }
 
     pub fn to_database(self) -> Database {
@@ -78,6 +77,7 @@ impl DatabaseSpec {
                     is_nullable: column_spec.is_nullable,
                     unique_constraints: column_spec.unique_constraints.to_owned(),
                     default_value: column_spec.default_value.to_owned(),
+                    update_sync: false, // There is no good way to know from the database spec if a column should be updated on sync
                 })
                 .collect();
 
@@ -154,10 +154,19 @@ impl DatabaseSpec {
     }
 
     pub fn from_database(database: &Database) -> DatabaseSpec {
+        let mut all_function_specs = vec![];
+
         let tables = database
             .tables()
             .into_iter()
             .map(|(_, table)| {
+                let (trigger_specs, function_specs) = match Self::update_trigger(table) {
+                    Some((trigger, function)) => (vec![trigger], vec![function]),
+                    None => (vec![], vec![]),
+                };
+
+                all_function_specs.extend(function_specs);
+
                 TableSpec::new(
                     table.name.clone(),
                     table
@@ -176,11 +185,12 @@ impl DatabaseSpec {
                             index_kind: index.index_kind,
                         })
                         .collect(),
+                    trigger_specs,
                 )
             })
             .collect();
 
-        DatabaseSpec { tables }
+        DatabaseSpec::new(tables, all_function_specs)
     }
 
     /// Creates a new schema specification from an SQL database.
@@ -225,9 +235,62 @@ impl DatabaseSpec {
             }
         }
 
+        let WithIssues {
+            value: functions,
+            issues: functions_issues,
+        } = FunctionSpec::from_live_db(client).await?;
+        issues.extend(functions_issues);
+
         Ok(WithIssues {
-            value: DatabaseSpec { tables },
+            value: DatabaseSpec { tables, functions },
             issues,
         })
+    }
+
+    fn update_trigger(table: &PhysicalTable) -> Option<(TriggerSpec, FunctionSpec)> {
+        let update_sync_columns = table
+            .columns
+            .iter()
+            .filter(|column| column.update_sync)
+            .collect::<Vec<_>>();
+
+        if !update_sync_columns.is_empty() {
+            let table_name = table.name.fully_qualified_name_with_sep("_");
+
+            let update_statements = update_sync_columns
+                .iter()
+                .map(|column| {
+                    format!(
+                        "NEW.{} = {}",
+                        column.name,
+                        column.default_value.clone().unwrap()
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("; ");
+
+            let function_name = format!("exograph_update_{table_name}");
+            let function_body = format!("BEGIN {update_statements}; RETURN NEW; END;");
+
+            let trigger_name = format!("exograph_on_update_{}", table_name);
+
+            Some((
+                TriggerSpec {
+                    name: trigger_name,
+                    function: function_name.clone(),
+                    timing: TriggerTiming::Before,
+                    orientation: TriggerOrientation::Row,
+                    event: TriggerEvent::Update,
+                    table: table.name.clone(),
+                },
+                FunctionSpec {
+                    name: function_name,
+                    body: function_body,
+                    language: "plpgsql".into(),
+                },
+            ))
+        } else {
+            None
+        }
     }
 }
