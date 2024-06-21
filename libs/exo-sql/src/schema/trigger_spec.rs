@@ -111,7 +111,7 @@ impl FromStr for TriggerEvent {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct TriggerSpec {
     pub name: String,
     pub function: String,
