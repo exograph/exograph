@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use deno_ast::EmitOptions;
 use deno_ast::MediaType;
 use deno_ast::ParseParams;
 use deno_ast::SourceTextInfo;
@@ -150,7 +151,11 @@ impl ModuleLoader for TypescriptLoader {
                     scope_analysis: false,
                     maybe_syntax: None,
                 })?;
-                Code::String(parsed.transpile(&Default::default())?.text)
+                Code::String(
+                    parsed
+                        .transpile(&Default::default(), &EmitOptions::default())?
+                        .text,
+                )
             } else {
                 source
             };

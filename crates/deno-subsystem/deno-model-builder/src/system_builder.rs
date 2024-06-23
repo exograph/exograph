@@ -27,7 +27,7 @@ use deno::{
     resolver::NpmModuleLoader,
     CliFactory, Flags, PathBuf,
 };
-use deno_ast::{MediaType, ParseParams, SourceTextInfo};
+use deno_ast::{EmitOptions, MediaType, ParseParams, SourceTextInfo};
 use deno_graph::{
     DependencyDescriptor, DynamicArgument, Module, ModuleAnalyzer, ModuleEntryRef, ModuleGraph,
     ModuleSpecifier, WalkOptions,
@@ -434,6 +434,7 @@ fn walk_module_graph(
             follow_dynamic: true,
             follow_type_only: false,
             check_js: true,
+            prefer_fast_check_graph: false,
         },
     ) {
         match maybe_module {
@@ -517,7 +518,10 @@ fn walk_module_graph(
                         })
                         .unwrap();
                         // TODO(shadaj): fail gracefully here
-                        parsed.transpile(&Default::default()).unwrap().text
+                        parsed
+                            .transpile(&Default::default(), &EmitOptions::default())
+                            .unwrap()
+                            .text
                     } else {
                         module_source
                     };
