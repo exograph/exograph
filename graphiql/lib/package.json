@@ -19,26 +19,26 @@
     "@codemirror/lang-json": "^6.0.1",
     "@graphiql/plugin-explorer": "^2.0.0",
     "@graphiql/toolkit": "^0.9.1",
-    "@uiw/codemirror-themes": "^4.21.25",
-    "@uiw/react-codemirror": "^4.21.25",
+    "@uiw/codemirror-themes": "^4.22.2",
+    "@uiw/react-codemirror": "^4.22.2",
     "cross-env": "^7.0.3",
-    "graphiql": "3.2.0",
+    "graphiql": "3.3.1",
     "graphql-ws": "^5.16.0",
-    "jose": "^5.2.4"
+    "jose": "^5.4.1"
   },
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@types/node": "^20.12.7",
+    "@types/node": "^20.14.8",
     "@types/react": "^18.2.79",
     "@types/react-dom": "^18.2.25",
     "@typescript-eslint/eslint-plugin": "^7.7.0",
-    "@typescript-eslint/parser": "^7.7.0",
+    "@typescript-eslint/parser": "^7.13.1",
     "eslint": "^8.57.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.6",
-    "typescript": "^5.4.5"
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.7",
+    "typescript": "^5.5.2"
   }
 }
