@@ -83,7 +83,7 @@ If you wish to play with the APIs, launch the playground by running the followin
 exo playground --endpoint <cloudflare-worker-url>
 ```
 
-You can try the typical queries such as creating a new todo as we have seen in the [Getting Started](../getting-started#using-the-graphiql-interface) guide:
+You can try the typical queries, such as creating a new todo, as seen in the [Getting Started](../getting-started#using-the-graphiql-interface) guide.
 
 ## Improving latency
 
