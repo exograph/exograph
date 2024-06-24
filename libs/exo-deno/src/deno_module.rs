@@ -30,6 +30,7 @@ use deno_runtime::permissions::PermissionsContainer;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
+use deno_runtime::WorkerExecutionMode;
 use deno_semver::package::PackageNv;
 use deno_semver::Version;
 use deno_virtual_fs::file_system::DenoCompileFileSystem;
@@ -359,6 +360,9 @@ impl DenoModule {
                 verbose_deprecated_api_warning: false,
                 argv0: None,
                 future: false,
+                mode: WorkerExecutionMode::None,
+                serve_host: None,
+                serve_port: None,
             },
             create_params: None,
             extensions,
@@ -386,6 +390,7 @@ impl DenoModule {
             feature_checker: Default::default(),
             skip_op_registration: false,
             strace_ops: None,
+            v8_code_cache: None,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;

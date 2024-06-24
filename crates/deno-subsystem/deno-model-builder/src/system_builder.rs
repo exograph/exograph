@@ -521,6 +521,7 @@ fn walk_module_graph(
                         parsed
                             .transpile(&Default::default(), &EmitOptions::default())
                             .unwrap()
+                            .into_source()
                             .text
                     } else {
                         module_source
