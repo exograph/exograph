@@ -154,6 +154,7 @@ impl ModuleLoader for TypescriptLoader {
                 Code::String(
                     parsed
                         .transpile(&Default::default(), &EmitOptions::default())?
+                        .into_source()
                         .text,
                 )
             } else {
