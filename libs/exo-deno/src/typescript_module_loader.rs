@@ -10,7 +10,6 @@
 use deno_ast::EmitOptions;
 use deno_ast::MediaType;
 use deno_ast::ParseParams;
-use deno_ast::SourceTextInfo;
 use deno_core::anyhow::anyhow;
 use deno_core::anyhow::bail;
 use deno_core::error::AnyError;
@@ -145,7 +144,7 @@ impl ModuleLoader for TypescriptLoader {
             let source = if should_transpile {
                 let parsed = deno_ast::parse_module(ParseParams {
                     specifier: module_specifier.clone(),
-                    text_info: SourceTextInfo::from_string(source.to_string()?),
+                    text: source.to_string()?.into(),
                     media_type,
                     capture_tokens: false,
                     scope_analysis: false,
@@ -154,6 +153,8 @@ impl ModuleLoader for TypescriptLoader {
                 Code::String(
                     parsed
                         .transpile(&Default::default(), &EmitOptions::default())?
+                        .into_source()
+                        .into_string()?
                         .text,
                 )
             } else {

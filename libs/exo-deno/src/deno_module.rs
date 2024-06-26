@@ -25,11 +25,12 @@ use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_io::Stdio;
 use deno_runtime::deno_node::NodeResolver;
 use deno_runtime::deno_node::NpmResolver;
+use deno_runtime::deno_permissions::PermissionsContainer;
 use deno_runtime::deno_web::BlobStore;
-use deno_runtime::permissions::PermissionsContainer;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
+use deno_runtime::WorkerExecutionMode;
 use deno_semver::package::PackageNv;
 use deno_semver::Version;
 use deno_virtual_fs::file_system::DenoCompileFileSystem;
@@ -102,9 +103,7 @@ impl NpmResolver for SnapshotNpmResolver {
         &self,
         specifier: &str,
         referrer: &ModuleSpecifier,
-        mode: deno_runtime::deno_node::NodeResolutionMode,
     ) -> Result<PathBuf, AnyError> {
-        assert!(mode == deno_runtime::deno_node::NodeResolutionMode::Execution);
         if let Ok(referrer_path) = referrer.to_file_path() {
             if let Ok(without_registry) = referrer_path.strip_prefix(&self.registry_base) {
                 let mut without_registry_vec = without_registry.iter().collect::<Vec<_>>();
@@ -165,7 +164,7 @@ impl NpmResolver for SnapshotNpmResolver {
 
     fn ensure_read_permission(
         &self,
-        _permissions: &dyn deno_runtime::deno_node::NodePermissions,
+        _permissions: &mut dyn deno_runtime::deno_node::NodePermissions,
         path: &std::path::Path,
     ) -> Result<(), AnyError> {
         if path.starts_with(&self.registry_base) {
@@ -328,14 +327,14 @@ impl DenoModule {
                 (Arc::new(deno_fs::RealFs), None)
             };
 
-        let node_resolver = npm_resolver
+        let node_resolver: Option<Arc<_>> = npm_resolver
             .as_ref()
-            .map(|npm_resolver| NodeResolver::new(fs.clone(), npm_resolver.clone()));
+            .map(|npm_resolver| NodeResolver::new(fs.clone(), npm_resolver.clone()).into());
 
         let module_loader = Rc::new(EmbeddedModuleLoader {
             source_code_map: Rc::new(RefCell::new(script_modules)),
             embedded_dirs: embedded_script_dirs.unwrap_or_default(),
-            node_resolver,
+            node_resolver: node_resolver.clone(),
         });
 
         let options = WorkerOptions {
@@ -347,7 +346,9 @@ impl DenoModule {
                 location: None,
                 no_color: false,
                 unstable: true,
-                is_tty: false,
+                mode: WorkerExecutionMode::None,
+                is_stdout_tty: false,
+                is_stderr_tty: false,
                 user_agent: user_agent_name.to_string(),
                 inspect: false,
                 locale: "en".to_string(),
@@ -359,6 +360,9 @@ impl DenoModule {
                 verbose_deprecated_api_warning: false,
                 argv0: None,
                 future: false,
+                serve_host: None,
+                serve_port: None,
+                node_debug: None,
             },
             create_params: None,
             extensions,
@@ -386,6 +390,8 @@ impl DenoModule {
             feature_checker: Default::default(),
             skip_op_registration: false,
             strace_ops: None,
+            node_resolver: node_resolver.clone(),
+            v8_code_cache: None,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;

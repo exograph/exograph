@@ -20,14 +20,14 @@ use core_plugin_interface::{
 };
 
 use deno::{
-    args::CliOptions,
+    args::{create_default_npmrc, CliOptions},
     cache::{ModuleInfoCache, ParsedSourceCache},
     node::CliCjsCodeAnalyzer,
     npm::ManagedCliNpmResolver,
     resolver::NpmModuleLoader,
     CliFactory, Flags, PathBuf,
 };
-use deno_ast::{EmitOptions, MediaType, ParseParams, SourceTextInfo};
+use deno_ast::{EmitOptions, MediaType, ParseParams};
 use deno_graph::{
     DependencyDescriptor, DynamicArgument, Module, ModuleAnalyzer, ModuleEntryRef, ModuleGraph,
     ModuleSpecifier, WalkOptions,
@@ -38,9 +38,8 @@ use deno_model::{
     subsystem::DenoSubsystem,
 };
 use deno_npm::NpmSystemInfo;
-use deno_runtime::{
-    deno_node::{analyze::NodeCodeTranslator, NodeResolution, NodeResolutionMode, NodeResolver},
-    permissions::PermissionsContainer,
+use deno_runtime::deno_node::{
+    analyze::NodeCodeTranslator, NodeResolution, NodeResolutionMode, NodeResolver,
 };
 use deno_virtual_fs::virtual_fs::{VfsBuilder, VirtualDirectory};
 use exo_deno::deno_executor_pool::{DenoScriptDefn, ResolvedModule};
@@ -136,6 +135,7 @@ fn process_script(
                 None,
                 None,
                 None,
+                create_default_npmrc(),
                 false,
             )
             .unwrap();
@@ -180,8 +180,10 @@ fn process_script(
             );
 
             let managed_npm = npm_resolver.as_managed().unwrap();
-            let root_path =
-                managed_npm.registry_folder_in_global_cache(managed_npm.registry_base_url());
+            let root_path = npm_resolver
+                .as_managed()
+                .unwrap()
+                .global_cache_root_folder();
             if !root_path.exists() {
                 std::fs::create_dir_all(&root_path).unwrap();
             }
@@ -217,7 +219,8 @@ fn process_script(
                     parsed_source_cache,
                     module_info_cache,
                     root_path,
-                )?,
+                )
+                .await?,
                 npm_snapshot: Some((
                     managed_npm
                         .serialized_valid_snapshot_for_system(&NpmSystemInfo::default())
@@ -236,7 +239,8 @@ fn process_script(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn walk_node_resolutions(
+#[async_recursion::async_recursion(?Send)]
+async fn walk_node_resolutions(
     root: NodeResolution,
     npm_loader: &NpmModuleLoader,
     node_resolver: &Arc<NodeResolver>,
@@ -250,20 +254,17 @@ fn walk_node_resolutions(
         NodeResolution::BuiltIn(_) => None,
         NodeResolution::CommonJs(cjs_specifier) => {
             let loaded = npm_loader
-                .load_sync_if_in_npm_package(
-                    &cjs_specifier,
-                    None,
-                    &PermissionsContainer::allow_all(),
-                )
+                .load_if_in_npm_package(&cjs_specifier, None)
+                .await
                 .unwrap()
                 .unwrap();
 
             let loaded_rewritten = code_translator
                 .translate_cjs_to_esm(
                     &cjs_specifier,
-                    Some(loaded.code.to_string()),
-                    &PermissionsContainer::allow_all(),
+                    Some(String::from_utf8(loaded.code.as_bytes().to_vec()).unwrap()),
                 )
+                .await
                 .unwrap();
 
             let cjs_path = cjs_specifier.to_file_path().unwrap();
@@ -320,11 +321,8 @@ fn walk_node_resolutions(
         }
         NodeResolution::Esm(esm_specifier) => {
             let loaded = npm_loader
-                .load_sync_if_in_npm_package(
-                    &esm_specifier,
-                    None,
-                    &PermissionsContainer::allow_all(),
-                )
+                .load_if_in_npm_package(&esm_specifier, None)
+                .await
                 .unwrap()
                 .unwrap();
 
@@ -335,6 +333,7 @@ fn walk_node_resolutions(
             // encode the segments of the path with forward slashes, even on windows
             let node_relative_path_str = node_relative_path
                 .components()
+                .skip(1)
                 .map(|c| c.as_os_str().to_str().unwrap())
                 .collect::<Vec<_>>()
                 .join("/");
@@ -351,22 +350,22 @@ fn walk_node_resolutions(
                 modules.insert(
                     root_replaced_specifier.clone(),
                     ResolvedModule::Module(
-                        loaded.code.as_str().to_string(),
+                        String::from_utf8(loaded.code.as_bytes().to_vec()).unwrap(),
                         deno_core::ModuleType::JavaScript,
                         root_replaced_specifier.clone(),
                         false,
                     ),
                 );
 
-                let parser = parsed_source_cache.as_capturing_parser();
-                let analyzer = module_info_cache.as_module_analyzer(&parser);
+                let analyzer = module_info_cache.as_module_analyzer(parsed_source_cache);
 
                 let analysis = analyzer
                     .analyze(
                         &esm_specifier,
-                        Arc::from(loaded.code.as_str()),
+                        Arc::from(String::from_utf8(loaded.code.as_bytes().to_vec()).unwrap()),
                         MediaType::JavaScript,
                     )
+                    .await
                     .expect("Failed to analyze dependencies of an ESM NPM module");
 
                 for dep in &analysis.dependencies {
@@ -387,7 +386,6 @@ fn walk_node_resolutions(
                             specifier,
                             &esm_specifier,
                             deno_runtime::deno_node::NodeResolutionMode::Execution,
-                            &PermissionsContainer::allow_all(),
                         )
                         .expect("Failed to resolve dependency of an ESM NPM module")
                         .expect("Failed to resolve dependency of an ESM NPM module");
@@ -401,12 +399,13 @@ fn walk_node_resolutions(
                         module_info_cache,
                         root_path,
                         modules,
-                    );
+                    )
+                    .await;
                 }
             }
 
             Some((
-                loaded.code.as_str().to_string(),
+                String::from_utf8(loaded.code.as_bytes().to_vec()).unwrap(),
                 MediaType::JavaScript,
                 root_replaced_specifier,
                 false,
@@ -416,7 +415,7 @@ fn walk_node_resolutions(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn walk_module_graph(
+async fn walk_module_graph(
     graph: ModuleGraph,
     npm_loader: NpmModuleLoader,
     node_resolver: Arc<NodeResolver>,
@@ -429,7 +428,7 @@ fn walk_module_graph(
     let mut modules: HashMap<Url, ResolvedModule> = HashMap::new();
 
     for (specifier, maybe_module) in graph.walk(
-        &graph.roots,
+        graph.roots.iter(),
         WalkOptions {
             follow_dynamic: true,
             follow_type_only: false,
@@ -464,7 +463,6 @@ fn walk_module_graph(
                                 // this uses the module as its own referrer, but this seems to be fine
                                 specifier,
                                 NodeResolutionMode::Execution,
-                                &PermissionsContainer::allow_all(),
                             )
                             .unwrap()
                             .unwrap();
@@ -479,6 +477,7 @@ fn walk_module_graph(
                             &root_path,
                             &mut modules,
                         )
+                        .await
                     }
                     o => {
                         return Err(ModelBuildingError::Generic(format!(
@@ -510,7 +509,7 @@ fn walk_module_graph(
                     let transpiled = if should_transpile {
                         let parsed = deno_ast::parse_module(ParseParams {
                             specifier: specifier.clone(),
-                            text_info: SourceTextInfo::from_string(module_source),
+                            text: module_source.into(),
                             media_type,
                             capture_tokens: false,
                             scope_analysis: false,
@@ -520,6 +519,9 @@ fn walk_module_graph(
                         // TODO(shadaj): fail gracefully here
                         parsed
                             .transpile(&Default::default(), &EmitOptions::default())
+                            .unwrap()
+                            .into_source()
+                            .into_string()
                             .unwrap()
                             .text
                     } else {
