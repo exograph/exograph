@@ -183,7 +183,9 @@ fn process_script(
             let root_path = npm_resolver
                 .as_managed()
                 .unwrap()
-                .global_cache_root_folder();
+                .global_cache_root_folder()
+                .join("registry.npmjs.org");
+
             if !root_path.exists() {
                 std::fs::create_dir_all(&root_path).unwrap();
             }
@@ -333,7 +335,6 @@ async fn walk_node_resolutions(
             // encode the segments of the path with forward slashes, even on windows
             let node_relative_path_str = node_relative_path
                 .components()
-                .skip(1)
                 .map(|c| c.as_os_str().to_str().unwrap())
                 .collect::<Vec<_>>()
                 .join("/");

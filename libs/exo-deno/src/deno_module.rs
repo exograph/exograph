@@ -170,7 +170,7 @@ impl NpmResolver for SnapshotNpmResolver {
         if path.starts_with(&self.registry_base) {
             Ok(())
         } else {
-            bail!("")
+            bail!("Expected path to be in the registry")
         }
     }
 }
