@@ -582,9 +582,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.77"
+version = "0.1.80"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c980ee35e870bd1a4d2c8294d4c04d0499e67bca1e4b5cefcc693c2fa00caea9"
+checksum = "c6fa2087f2753a7da8cc1c0dbfcf89579dd57458e36769de5ac750b4671737ca"
 dependencies = [
  "proc-macro2 1.0.78",
  "quote 1.0.35",
@@ -1239,7 +1239,7 @@ dependencies = [
  "deno-model-builder",
  "exo-sql",
  "futures",
- "heck",
+ "heck 0.5.0",
  "home",
  "indicatif",
  "inquire",
@@ -1255,7 +1255,7 @@ dependencies = [
  "testing",
  "tokio",
  "wasm-model-builder",
- "which 5.0.0",
+ "which 6.0.1",
  "zip",
 ]
 
@@ -1917,10 +1917,11 @@ dependencies = [
 
 [[package]]
 name = "deadpool-postgres"
-version = "0.13.2"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19be9da496d60d03ec3ab45d960d80a3afb285b787394b83614a79942f467e7f"
+checksum = "1ab8a4ea925ce79678034870834602a2980f4b88c09e97feb266496dbb4493d2"
 dependencies = [
+ "async-trait",
  "deadpool",
  "getrandom",
  "tokio",
@@ -3322,7 +3323,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ffccbb6966c05b32ef8fbac435df276c4ae4d3dc55a8cd0eb9745e6c12f546a"
 dependencies = [
- "heck",
+ "heck 0.4.1",
  "proc-macro2 1.0.78",
  "quote 1.0.35",
  "syn 2.0.52",
@@ -3474,7 +3475,7 @@ dependencies = [
  "uuid",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
- "which 5.0.0",
+ "which 6.0.1",
 ]
 
 [[package]]
@@ -4093,6 +4094,12 @@ name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
+
+[[package]]
+name = "heck"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "hermit-abi"
@@ -6402,7 +6409,7 @@ dependencies = [
  "core-plugin-interface",
  "deno-model-builder",
  "exo-sql",
- "heck",
+ "heck 0.5.0",
  "insta",
  "lazy_static",
  "multiplatform_test",
@@ -6652,7 +6659,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "119533552c9a7ffacc21e099c24a0ac8bb19c2a2a3f363de84cd9b844feab270"
 dependencies = [
  "bytes",
- "heck",
+ "heck 0.4.1",
  "itertools 0.10.5",
  "lazy_static",
  "log",
@@ -7041,7 +7048,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "which 5.0.0",
+ "which 6.0.1",
 ]
 
 [[package]]
@@ -8084,7 +8091,7 @@ version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23dc1fa9ac9c169a78ba62f0b841814b7abae11bdd047b9c58f893439e309ea0"
 dependencies = [
- "heck",
+ "heck 0.4.1",
  "proc-macro2 1.0.78",
  "quote 1.0.35",
  "rustversion",
@@ -8719,7 +8726,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "unescape",
- "which 5.0.0",
+ "which 6.0.1",
  "wildmatch",
 ]
 
@@ -10306,7 +10313,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70dc077306b38288262e5ba01d4b21532a6987416cdc0aedf04bb06c22a68fdc"
 dependencies = [
  "anyhow",
- "heck",
+ "heck 0.4.1",
  "indexmap 2.2.5",
  "wit-parser",
 ]
@@ -10492,19 +10499,6 @@ dependencies = [
 
 [[package]]
 name = "which"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bf3ea8596f3a0dd5980b46430f2058dfe2c36a27ccfbb1845d6fbfcd9ba6e14"
-dependencies = [
- "either",
- "home",
- "once_cell",
- "rustix",
- "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "which"
 version = "6.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8211e4f58a2b2805adfbefbc07bab82958fc91e3836339b1ab7ae32465dce0d7"
@@ -10554,7 +10548,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "557567f2793508760cd855f7659b7a0b9dc4dbc451f53f1415d6943a15311ade"
 dependencies = [
  "anyhow",
- "heck",
+ "heck 0.4.1",
  "proc-macro2 1.0.78",
  "quote 1.0.35",
  "shellexpand 2.1.2",
