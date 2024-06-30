@@ -102,14 +102,14 @@ tree-sitter-cli = "0.20.8"
 typed-generational-arena = { version = "0.2.5", features = ["serde"] }
 uuid = "1.1.2"
 url = "2.3.1"
-wasmtime = "13.0.0"
-wasmtime-wasi = "13.0.0"
-wasi-common = "13.0.0"
+wasmtime = "22.0.0"
+wasmtime-wasi = "22.0.0"
+wasi-common = "22.0.0"
 wildmatch = "2.1.0"
 which = "5.0.0"
 wasm-bindgen-test = "0.3.42"
 wasm-bindgen-test-macro = "0.3.42"
-multiplatform_test = "0.0.0"
+multiplatform_test = "0.1.0"
 
 [patch.crates-io]
 tokio-postgres = { git = "https://github.com/exograph/rust-postgres", branch = "exograph" }

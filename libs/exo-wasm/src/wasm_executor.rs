@@ -9,8 +9,8 @@
 
 use crate::wasm_error::WasmError;
 
+use wasi_common::sync::WasiCtxBuilder;
 use wasmtime::{Engine, Linker, Module, Store, Val};
-use wasmtime_wasi::WasiCtxBuilder;
 
 #[derive(Clone)]
 pub struct WasmExecutor {
@@ -31,7 +31,7 @@ impl WasmExecutor {
         arguments: Vec<Val>,
     ) -> Result<serde_json::Value, WasmError> {
         let mut linker = Linker::new(self.module.engine());
-        wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
+        wasi_common::sync::add_to_linker(&mut linker, |s| s)?;
 
         let wasi = WasiCtxBuilder::new()
             .inherit_stdio()
@@ -60,6 +60,7 @@ impl WasmExecutor {
             wasmtime::Val::V128(_) => Err(WasmError::UnsupportedType("V128".to_string())),
             wasmtime::Val::FuncRef(_) => Err(WasmError::UnsupportedType("FuncRef".to_string())),
             wasmtime::Val::ExternRef(_) => Err(WasmError::UnsupportedType("ExternRef".to_string())),
+            wasmtime::Val::AnyRef(_) => Err(WasmError::UnsupportedType("AnyRef".to_string())),
         }
     }
 }
