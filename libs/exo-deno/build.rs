@@ -12,7 +12,7 @@ fn main() {
     let o = PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
     let snapshot_path = o.join("RUNTIME_SNAPSHOT.bin");
 
-    deno_runtime::snapshot::create_runtime_snapshot(snapshot_path, snapshot_options);
+    deno_runtime::snapshot::create_runtime_snapshot(snapshot_path, snapshot_options, vec![]);
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=TARGET");
