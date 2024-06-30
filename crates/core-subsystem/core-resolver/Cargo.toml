@@ -20,10 +20,10 @@ futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 jsonwebtoken = { workspace = true }
 reqwest = { workspace = true, optional = true }
-oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", branch="wasm-support", optional = true }
+oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", branch = "wasm-support", optional = true }
 serde.workspace = true
 thiserror.workspace = true
-cookie = "0.16"
+cookie = "0.18.1"
 tokio = { workspace = true, features = ["rt", "macros"] }
 elsa = "1.8.1"
 

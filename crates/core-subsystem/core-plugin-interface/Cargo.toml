@@ -5,7 +5,7 @@ edition.workspace = true
 publish = false
 
 [build-dependencies]
-built = "0.6"
+built = "0.7.3"
 
 [dependencies]
 thiserror.workspace = true
@@ -20,7 +20,7 @@ core-plugin-shared = { path = "../core-plugin-shared" }
 exo-env = { path = "../../../libs/exo-env" }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-libloading = "0.7.3"
+libloading = "0.8.4"
 
 [dev-dependencies]
 
