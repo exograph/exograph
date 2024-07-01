@@ -18,7 +18,7 @@ static-wasm-resolver = ["server-common/static-wasm-resolver"]
 
 [dependencies]
 async-trait.workspace = true
-actix-web = { version = "4.5.1", default-features = false, features = [
+actix-web = { version = "4.8.0", default-features = false, features = [
   "macros",
   "cookies",
 ] }
