@@ -63,11 +63,34 @@ impl DatabasePool {
             Some(ssl_config) => {
                 let (config, tls) = ssl_config.updated_config(config)?;
 
-                Self::from_connect(pool_size, config, ConfigConnectImpl { tls }).await
+                // If there is any TCP host, use the TLS connector (with the new Rustls version, SSL over unix sockets errors out)
+                let has_tcp_hosts = config
+                    .get_hosts()
+                    .iter()
+                    .any(|host| matches!(host, tokio_postgres::config::Host::Tcp(_)));
+
+                if has_tcp_hosts {
+                    Self::from_connect(pool_size, config, ConfigConnectImpl { tls }).await
+                } else {
+                    Self::from_connect(
+                        pool_size,
+                        config,
+                        ConfigConnectImpl {
+                            tls: tokio_postgres::NoTls,
+                        },
+                    )
+                    .await
+                }
             }
             None => {
-                let tls = tokio_postgres::NoTls;
-                Self::from_connect(pool_size, config, ConfigConnectImpl { tls }).await
+                Self::from_connect(
+                    pool_size,
+                    config,
+                    ConfigConnectImpl {
+                        tls: tokio_postgres::NoTls,
+                    },
+                )
+                .await
             }
         }
     }

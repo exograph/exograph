@@ -3,13 +3,16 @@
 use std::{fs::File, io::BufReader};
 
 #[cfg(feature = "tls")]
-use rustls::{Certificate, RootCertStore};
+use rustls::RootCertStore;
 #[cfg(feature = "tls")]
 use rustls_native_certs::load_native_certs;
+#[cfg(feature = "tls")]
+use rustls_pki_types::CertificateDer;
 
 use crate::database_error::DatabaseError;
 use tokio_postgres::config::SslMode;
 
+#[derive(Debug)]
 pub(crate) struct SslConfig {
     mode: SslMode,
     root_cert_path: Option<String>,
@@ -125,18 +128,15 @@ impl SslConfig {
                         .collect::<Result<Vec<_>, _>>()
                         .map_err(|_| DatabaseError::Config("Invalid certificate".into()))?
                         .into_iter()
-                        .map(|cert| root_store.add(&Certificate(cert.to_vec())))
+                        .map(|cert| root_store.add(CertificateDer::from(cert.to_vec())))
                         .collect::<Result<Vec<_>, _>>()?;
                 }
                 None => {
-                    for cert in load_native_certs()? {
-                        root_store.add(&Certificate(cert.to_vec()))?;
-                    }
+                    root_store.add_parsable_certificates(load_native_certs()?);
                 }
             }
 
             let config = rustls::ClientConfig::builder()
-                .with_safe_defaults()
                 .with_root_certificates(root_store)
                 .with_no_client_auth();
             tokio_postgres_rustls::MakeRustlsConnect::new(config)
