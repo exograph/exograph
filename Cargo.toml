@@ -79,7 +79,7 @@ include_dir = "0.7.2"
 indexmap = "2.0.1"
 insta = { version = "1.31.0", features = ["redactions", "yaml"] }
 jsonwebtoken = "9.3.0"
-lazy_static = "1.4.0"
+lazy_static = "1.5.0"
 maybe-owned = "0.3.4"
 rand = "0.8"
 regex = "1"
