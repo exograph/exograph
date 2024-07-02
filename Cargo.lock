@@ -2034,6 +2034,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bincode",
+ "codemap",
  "core-plugin-interface",
  "deno",
  "deno-model",
@@ -2047,6 +2048,7 @@ dependencies = [
  "futures",
  "serde_json",
  "subsystem-model-builder-util",
+ "tempfile",
  "tokio",
  "url",
 ]

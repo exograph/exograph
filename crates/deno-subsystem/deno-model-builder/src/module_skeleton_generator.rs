@@ -436,3 +436,131 @@ fn typescript_base_type(exo_type_name: &str) -> String {
         t => t.to_string(),
     }
 }
+
+mod tests {
+    use super::*;
+
+    struct MockType {
+        name: String,
+        fields: Vec<(String, String)>,
+    }
+
+    impl Type for MockType {
+        fn name(&self) -> &str {
+            &self.name
+        }
+
+        fn fields(&self) -> Vec<(&str, &dyn TypeScriptType)> {
+            self.fields
+                .iter()
+                .map(|(name, typ)| (name.as_str(), typ as &dyn TypeScriptType))
+                .collect()
+        }
+    }
+
+    impl TypeScriptType for String {
+        fn typescript_type(&self) -> String {
+            self.clone()
+        }
+    }
+
+    #[test]
+    fn test_generate_type_skeleton() {
+        use tempfile::tempfile;
+        use std::io::Seek;
+        use std::io::Read;
+
+        let mock_type = MockType {
+            name: "TestType".to_string(),
+            fields: vec![
+                ("field1".to_string(), "string".to_string()),
+                ("field2".to_string(), "number".to_string()),
+            ],
+        };
+
+        let mut temp_file = tempfile().unwrap();
+        generate_type_skeleton(&mock_type, &mut temp_file).unwrap();
+
+        temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        let mut generated_code = String::new();
+        temp_file.read_to_string(&mut generated_code).unwrap();
+
+        let expected_code = "export interface TestType {\n\tfield1: string\n\tfield2: number\n}\n\n";
+
+        assert_eq!(generated_code, expected_code);
+    }
+
+    #[test]
+    fn test_generates_module_definitions_correctly() {
+        use std::fs;
+        use core_plugin_interface::core_model_builder::ast::ast_types::{AstModel, AstField, AstFieldType, AstModule, AstModelKind};
+        use codemap::CodeMap;
+        use std::path::PathBuf;
+
+        let span = CodeMap::new().add_file("".to_string(), "".to_string()).span.subspan(0, 0);
+        
+        let module = AstModule {
+            name: "TestModule".to_string(),
+            types: vec![
+                AstModel {
+                    name: "TestType1".to_string(),
+                    kind: AstModelKind::Type,
+                    fields: vec![
+                        AstField {
+                            name: "field1".to_string(),
+                            typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
+                            annotations: Default::default(),
+                            default_value: None,
+                            span,
+                        }
+                    ],
+                    annotations: Default::default(),
+                    span,
+                },
+                AstModel {
+                    name: "TestType2".to_string(),
+                    kind: AstModelKind::Type,
+                    fields: vec![
+                        AstField {
+                            name: "field2".to_string(),
+                            typ: AstFieldType::Plain("Number".to_string(), vec![], true, span),
+                            annotations: Default::default(),
+                            default_value: None,
+                            span,
+                        }
+                    ],
+                    annotations: Default::default(),
+                    span,
+                }
+            ],
+            annotations: Default::default(),
+            base_exofile: PathBuf::new(),
+            interceptors: vec![],
+            methods: vec![],
+            span,
+        };
+
+        let generated_dir = Path::new("generated");
+
+        // Ensure the directory does not exist before the test
+        if generated_dir.exists() {
+            fs::remove_dir_all(generated_dir).unwrap();
+        }
+
+        generate_module_definitions(&module).unwrap();
+
+        let module_file = generated_dir.join("TestModule.d.ts");
+        assert!(module_file.exists(), "Module {} doesn't exist", module_file.display());
+
+        let content = fs::read_to_string(module_file).unwrap();
+        println!("Conteúdo do arquivo:\n{}", content);
+
+        let expected_type1 = "export interface TestType1 {\n\tfield1: string\n}";
+        let expected_type2 = "export interface TestType2 {\n\tfield2: Number\n}";
+        assert!(content.contains(expected_type1), "TestType1 não encontrado");
+        assert!(content.contains(expected_type2), "TestType2 não encontrado");
+
+        // Clean up
+        fs::remove_dir_all(generated_dir).unwrap();
+    }
+}

@@ -28,6 +28,15 @@ pub struct AnnotationMap {
     pub spans: HashMap<String, Vec<Span>>,
 }
 
+impl Default for AnnotationMap {
+    fn default() -> Self {
+        AnnotationMap {
+            annotations: HashMap::new(),
+            spans: HashMap::new(),
+        }
+    }
+}
+
 fn ordered_map<S: Serializer>(
     value: &HashMap<String, AstAnnotation<Typed>>,
     serializer: S,
