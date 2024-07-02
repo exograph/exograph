@@ -61,6 +61,9 @@ jobs:
       - name: Install NASM for aws-lc-rs on Windows
         if: runner.os == 'Windows'
         uses: ilammy/setup-nasm@v1
+      - name: Change CC on Ubuntu
+        if: runner.os == 'Linux'
+        run: echo "CC=clang" >> "$GITHUB_ENV"
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
