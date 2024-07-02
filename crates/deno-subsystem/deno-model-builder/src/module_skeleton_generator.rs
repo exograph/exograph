@@ -95,6 +95,10 @@ pub fn generate_module_skeleton(
     // are independent of the module code.
     generate_context_definitions(base_system)?;
 
+    if is_typescript {
+        generate_module_definitions(module)?;
+    }
+
     // We don't want to overwrite any user files
     // TODO: Parse the existing file and warn if any definitions don't match the expected ones
     // along with a helpful message so that users can copy/paste the expected definitions.
@@ -113,10 +117,6 @@ pub fn generate_module_skeleton(
     if is_typescript {
         generate_exograph_imports(module, &mut file, out_file_dir)?;
         generate_context_imports(module, base_system, &mut file, out_file_dir)?;
-
-        for module_type in module.types.iter() {
-            generate_type_skeleton(module_type, &mut file)?;
-        }
     }
 
     for method in module.methods.iter() {
@@ -296,6 +296,26 @@ fn generate_context_definitions(base_system: &BaseModelSystem) -> Result<(), Mod
     let mut file = std::fs::File::create(context_file)?;
     for (_, context) in base_system.contexts.iter() {
         generate_type_skeleton(context, &mut file)?;
+    }
+
+    Ok(())
+}
+
+fn generate_module_definitions(module: &AstModule<Typed>) -> Result<(), ModelBuildingError> {
+    let generated_dir = PathBuf::from("generated");
+
+    create_dir_all(&generated_dir)?;
+
+    // Assume that (currently satisfied by the cli) that the current working directory is the root of the project.
+    let module_file = generated_dir.join(format!("{}.d.ts", module.name));
+
+    if std::path::Path::exists(&module_file) {
+        std::fs::remove_file(&module_file)?;
+    }
+
+    let mut file = std::fs::File::create(module_file)?;
+    for module_type in module.types.iter() {
+        generate_type_skeleton(module_type, &mut file)?;
     }
 
     Ok(())
