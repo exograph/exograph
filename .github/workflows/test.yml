@@ -75,9 +75,9 @@ jobs:
       - name: Install NASM for aws-lc-rs on Windows
         if: runner.os == 'Windows'
         uses: ilammy/setup-nasm@v1
-      - name: Change CC to gcc on Ubuntu
+      - name: Change CC on Ubuntu
         if: runner.os == 'Linux'
-        run: echo "CC=gcc" >> "$GITHUB_ENV"
+        run: echo "CC=clang" >> "$GITHUB_ENV"
       - name: Add Postgres to PATH
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
