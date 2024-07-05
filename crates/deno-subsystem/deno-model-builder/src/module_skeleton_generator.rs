@@ -45,7 +45,7 @@ use core_plugin_interface::core_model_builder::{
 /// import { AuthContext } from './contexts.d.ts'
 ///
 /// import type { Todo } from '../generated/TodoModule.d.ts';
-/// 
+///
 /// export async function todo(id: number): Todo {
 ///     // TODO
 ///     throw new Error('not implemented');
@@ -213,9 +213,7 @@ fn generate_type_imports(
     writeln!(
         file,
         "import type {{ {} }} from '{}generated/{}.d.ts';\n",
-        imports,
-        relative_path,
-        module.name
+        imports, relative_path, module.name
     )?;
 
     Ok(())
@@ -259,7 +257,8 @@ fn import_types_from_models(
     module: &AstModule<Typed>,
     selection: &impl Fn(&AstModel<Typed>) -> bool,
 ) -> String {
-    let mut types_used = module.types
+    let mut types_used = module
+        .types
         .iter()
         .filter(|model| selection(model))
         .map(|model| model.name.clone())
@@ -524,9 +523,9 @@ mod tests {
 
     #[test]
     fn test_generate_type_skeleton() {
-        use tempfile::tempfile;
-        use std::io::Seek;
         use std::io::Read;
+        use std::io::Seek;
+        use tempfile::tempfile;
 
         let mock_type = MockType {
             name: "TestType".to_string(),
@@ -543,53 +542,55 @@ mod tests {
         let mut generated_code = String::new();
         temp_file.read_to_string(&mut generated_code).unwrap();
 
-        let expected_code = "export interface TestType {\n\tfield1: string\n\tfield2: number\n}\n\n";
+        let expected_code =
+            "export interface TestType {\n\tfield1: string\n\tfield2: number\n}\n\n";
 
         assert_eq!(generated_code, expected_code);
     }
 
     #[test]
     fn test_generates_module_definitions_correctly() {
-        use std::fs;
-        use core_plugin_interface::core_model_builder::ast::ast_types::{AstModel, AstField, AstFieldType, AstModule, AstModelKind};
         use codemap::CodeMap;
+        use core_plugin_interface::core_model_builder::ast::ast_types::{
+            AstField, AstFieldType, AstModel, AstModelKind, AstModule,
+        };
+        use std::fs;
         use std::path::PathBuf;
 
-        let span = CodeMap::new().add_file("".to_string(), "".to_string()).span.subspan(0, 0);
-        
+        let span = CodeMap::new()
+            .add_file("".to_string(), "".to_string())
+            .span
+            .subspan(0, 0);
+
         let module = AstModule {
             name: "TestModule".to_string(),
             types: vec![
                 AstModel {
                     name: "TestType1".to_string(),
                     kind: AstModelKind::Type,
-                    fields: vec![
-                        AstField {
-                            name: "field1".to_string(),
-                            typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
-                            annotations: Default::default(),
-                            default_value: None,
-                            span,
-                        }
-                    ],
+                    fields: vec![AstField {
+                        name: "field1".to_string(),
+                        typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
+                        annotations: Default::default(),
+                        default_value: None,
+                        span,
+                    }],
                     annotations: Default::default(),
                     span,
                 },
                 AstModel {
                     name: "TestType2".to_string(),
                     kind: AstModelKind::Type,
-                    fields: vec![
-                        AstField {
-                            name: "field2".to_string(),
-                            typ: AstFieldType::Plain("Number".to_string(), vec![], true, span),
-                            annotations: Default::default(),
-                            default_value: None,
-                            span,
-                        }
-                    ],
+                    fields: vec![AstField {
+                        name: "field2".to_string(),
+                        typ: AstFieldType::Plain("Number".to_string(), vec![], true, span),
+                        annotations: Default::default(),
+                        default_value: None,
+                        span,
+                    }],
                     annotations: Default::default(),
                     span,
-                }
+                },
             ],
             annotations: Default::default(),
             base_exofile: PathBuf::new(),
@@ -608,7 +609,11 @@ mod tests {
         generate_module_definitions(&module).unwrap();
 
         let module_file = generated_dir.join("TestModule.d.ts");
-        assert!(module_file.exists(), "Module {} doesn't exist", module_file.display());
+        assert!(
+            module_file.exists(),
+            "Module {} doesn't exist",
+            module_file.display()
+        );
 
         let content = fs::read_to_string(module_file).unwrap();
 
@@ -622,12 +627,17 @@ mod tests {
 
     #[test]
     fn test_generate_type_imports() {
-        use std::fs;
-        use core_plugin_interface::core_model_builder::ast::ast_types::{AstModel, AstField, AstFieldType, AstModule, AstModelKind};
         use codemap::CodeMap;
+        use core_plugin_interface::core_model_builder::ast::ast_types::{
+            AstField, AstFieldType, AstModel, AstModelKind, AstModule,
+        };
+        use std::fs;
         use std::path::PathBuf;
-        
-        let span = CodeMap::new().add_file("".to_string(), "".to_string()).span.subspan(0, 0);
+
+        let span = CodeMap::new()
+            .add_file("".to_string(), "".to_string())
+            .span
+            .subspan(0, 0);
 
         let module = AstModule {
             name: "TestModule".to_string(),
@@ -635,33 +645,29 @@ mod tests {
                 AstModel {
                     name: "TestType1".to_string(),
                     kind: AstModelKind::Type,
-                    fields: vec![
-                        AstField {
-                            name: "field1".to_string(),
-                            typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
-                            annotations: Default::default(),
-                            default_value: None,
-                            span,
-                        }
-                    ],
+                    fields: vec![AstField {
+                        name: "field1".to_string(),
+                        typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
+                        annotations: Default::default(),
+                        default_value: None,
+                        span,
+                    }],
                     annotations: Default::default(),
                     span,
                 },
                 AstModel {
                     name: "TestType2".to_string(),
                     kind: AstModelKind::Type,
-                    fields: vec![
-                        AstField {
-                            name: "field2".to_string(),
-                            typ: AstFieldType::Plain("Number".to_string(), vec![], true, span),
-                            annotations: Default::default(),
-                            default_value: None,
-                            span,
-                        }
-                    ],
+                    fields: vec![AstField {
+                        name: "field2".to_string(),
+                        typ: AstFieldType::Plain("Number".to_string(), vec![], true, span),
+                        annotations: Default::default(),
+                        default_value: None,
+                        span,
+                    }],
                     annotations: Default::default(),
                     span,
-                }
+                },
             ],
             annotations: Default::default(),
             base_exofile: PathBuf::new(),
@@ -682,14 +688,22 @@ mod tests {
         let out_file_path = generated_dir.join("test_module.ts");
         let mut out_file = fs::File::create(&out_file_path).unwrap();
 
-        assert!(out_file_path.exists(), "File {} doesn't exist", out_file_path.display());
+        assert!(
+            out_file_path.exists(),
+            "File {} doesn't exist",
+            out_file_path.display()
+        );
 
         generate_type_imports(&module, &mut out_file, &generated_dir).unwrap();
 
         let content = fs::read_to_string(out_file_path).unwrap();
 
-        let expected_imports = "import type { TestType1, TestType2 } from '../generated/TestModule.d.ts';\n";
-        assert!(content.contains(expected_imports), "Types imports not found");
+        let expected_imports =
+            "import type { TestType1, TestType2 } from '../generated/TestModule.d.ts';\n";
+        assert!(
+            content.contains(expected_imports),
+            "Types imports not found"
+        );
 
         fs::remove_dir_all(Path::new("tests")).unwrap();
     }
