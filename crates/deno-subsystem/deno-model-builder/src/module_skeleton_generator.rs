@@ -494,46 +494,67 @@ fn typescript_base_type(exo_type_name: &str) -> String {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
+    use codemap::CodeMap;
+    use core_plugin_interface::core_model_builder::ast::ast_types::{
+        AstField, AstFieldType, AstModel, AstModelKind, AstModule,
+    };
+    use std::io::Read;
+    use std::io::Seek;
+    use tempfile::tempfile;
 
-    struct MockType {
-        name: String,
-        fields: Vec<(String, String)>,
+    fn fabricate_span() -> codemap::Span {
+        CodeMap::new()
+            .add_file("".to_string(), "".to_string())
+            .span
+            .subspan(0, 0)
     }
 
-    impl Type for MockType {
-        fn name(&self) -> &str {
-            &self.name
-        }
+    fn fabricate_model(name: &str) -> AstModel<Typed> {
+        let span = fabricate_span();
 
-        fn fields(&self) -> Vec<(&str, &dyn TypeScriptType)> {
-            self.fields
-                .iter()
-                .map(|(name, typ)| (name.as_str(), typ as &dyn TypeScriptType))
-                .collect()
+        AstModel {
+            name: name.to_string(),
+            kind: AstModelKind::Type,
+            fields: vec![
+                AstField {
+                    name: "field1".to_string(),
+                    typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
+                    annotations: Default::default(),
+                    default_value: None,
+                    span,
+                },
+                AstField {
+                    name: "field2".to_string(),
+                    typ: AstFieldType::Plain("Int".to_string(), vec![], true, span),
+                    annotations: Default::default(),
+                    default_value: None,
+                    span,
+                },
+            ],
+            annotations: Default::default(),
+            span,
         }
     }
 
-    impl TypeScriptType for String {
-        fn typescript_type(&self) -> String {
-            self.clone()
+    fn fabricate_module(name: &str) -> AstModule<Typed> {
+        let span = fabricate_span();
+        AstModule {
+            name: name.to_string(),
+            types: vec![fabricate_model("TestType1"), fabricate_model("TestType2")],
+            annotations: Default::default(),
+            base_exofile: PathBuf::new(),
+            interceptors: vec![],
+            methods: vec![],
+            span,
         }
     }
 
     #[test]
     fn test_generate_type_skeleton() {
-        use std::io::Read;
-        use std::io::Seek;
-        use tempfile::tempfile;
-
-        let mock_type = MockType {
-            name: "TestType".to_string(),
-            fields: vec![
-                ("field1".to_string(), "string".to_string()),
-                ("field2".to_string(), "number".to_string()),
-            ],
-        };
+        let mock_type = fabricate_model("TestType");
 
         let mut temp_file = tempfile().unwrap();
         generate_type_skeleton(&mock_type, &mut temp_file).unwrap();
@@ -550,54 +571,9 @@ mod tests {
 
     #[test]
     fn test_generates_module_definitions_correctly() {
-        use codemap::CodeMap;
-        use core_plugin_interface::core_model_builder::ast::ast_types::{
-            AstField, AstFieldType, AstModel, AstModelKind, AstModule,
-        };
         use std::fs;
-        use std::path::PathBuf;
 
-        let span = CodeMap::new()
-            .add_file("".to_string(), "".to_string())
-            .span
-            .subspan(0, 0);
-
-        let module = AstModule {
-            name: "TestModule".to_string(),
-            types: vec![
-                AstModel {
-                    name: "TestType1".to_string(),
-                    kind: AstModelKind::Type,
-                    fields: vec![AstField {
-                        name: "field1".to_string(),
-                        typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
-                        annotations: Default::default(),
-                        default_value: None,
-                        span,
-                    }],
-                    annotations: Default::default(),
-                    span,
-                },
-                AstModel {
-                    name: "TestType2".to_string(),
-                    kind: AstModelKind::Type,
-                    fields: vec![AstField {
-                        name: "field2".to_string(),
-                        typ: AstFieldType::Plain("Number".to_string(), vec![], true, span),
-                        annotations: Default::default(),
-                        default_value: None,
-                        span,
-                    }],
-                    annotations: Default::default(),
-                    span,
-                },
-            ],
-            annotations: Default::default(),
-            base_exofile: PathBuf::new(),
-            interceptors: vec![],
-            methods: vec![],
-            span,
-        };
+        let module = fabricate_module("TestModule");
 
         let generated_dir = Path::new("generated");
 
@@ -617,8 +593,8 @@ mod tests {
 
         let content = fs::read_to_string(module_file).unwrap();
 
-        let expected_type1 = "export interface TestType1 {\n\tfield1: string\n}";
-        let expected_type2 = "export interface TestType2 {\n\tfield2: Number\n}";
+        let expected_type1 = "export interface TestType1 {\n\tfield1: string\n\tfield2: number\n}";
+        let expected_type2 = "export interface TestType2 {\n\tfield1: string\n\tfield2: number\n}";
         assert!(content.contains(expected_type1), "TestType1 not found");
         assert!(content.contains(expected_type2), "TestType2 not found");
 
@@ -627,54 +603,9 @@ mod tests {
 
     #[test]
     fn test_generate_type_imports() {
-        use codemap::CodeMap;
-        use core_plugin_interface::core_model_builder::ast::ast_types::{
-            AstField, AstFieldType, AstModel, AstModelKind, AstModule,
-        };
         use std::fs;
-        use std::path::PathBuf;
 
-        let span = CodeMap::new()
-            .add_file("".to_string(), "".to_string())
-            .span
-            .subspan(0, 0);
-
-        let module = AstModule {
-            name: "TestModule".to_string(),
-            types: vec![
-                AstModel {
-                    name: "TestType1".to_string(),
-                    kind: AstModelKind::Type,
-                    fields: vec![AstField {
-                        name: "field1".to_string(),
-                        typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
-                        annotations: Default::default(),
-                        default_value: None,
-                        span,
-                    }],
-                    annotations: Default::default(),
-                    span,
-                },
-                AstModel {
-                    name: "TestType2".to_string(),
-                    kind: AstModelKind::Type,
-                    fields: vec![AstField {
-                        name: "field2".to_string(),
-                        typ: AstFieldType::Plain("Number".to_string(), vec![], true, span),
-                        annotations: Default::default(),
-                        default_value: None,
-                        span,
-                    }],
-                    annotations: Default::default(),
-                    span,
-                },
-            ],
-            annotations: Default::default(),
-            base_exofile: PathBuf::new(),
-            interceptors: vec![],
-            methods: vec![],
-            span,
-        };
+        let module = fabricate_module("TestModule");
 
         let src_dir = Path::new("tests/src");
         fs::create_dir_all(src_dir).unwrap();
