@@ -619,8 +619,8 @@ mod tests {
 
         let expected_type1 = "export interface TestType1 {\n\tfield1: string\n}";
         let expected_type2 = "export interface TestType2 {\n\tfield2: Number\n}";
-        assert!(content.contains(expected_type1), "TestType1 não encontrado");
-        assert!(content.contains(expected_type2), "TestType2 não encontrado");
+        assert!(content.contains(expected_type1), "TestType1 not found");
+        assert!(content.contains(expected_type2), "TestType2 not found");
 
         fs::remove_dir_all(generated_dir).unwrap();
     }
