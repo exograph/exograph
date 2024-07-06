@@ -1,6 +1,7 @@
 # Ignore autocreated contexts.d.ts.
 contexts.d.ts
 exograph.d.ts
+generated
 
 .wrangler/
 node_modules
