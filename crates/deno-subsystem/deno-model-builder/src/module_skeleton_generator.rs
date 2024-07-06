@@ -677,13 +677,13 @@ mod tests {
         };
 
         let src_dir = Path::new("tests/src");
-        fs::create_dir_all(&src_dir).unwrap();
+        fs::create_dir_all(src_dir).unwrap();
 
         let index_file_path = src_dir.join("index.exo");
-        fs::File::create(&index_file_path).unwrap();
+        fs::File::create(index_file_path).unwrap();
 
         let generated_dir = Path::new("tests/generated");
-        fs::create_dir_all(&generated_dir).unwrap();
+        fs::create_dir_all(generated_dir).unwrap();
 
         let out_file_path = generated_dir.join("test_module.ts");
         let mut out_file = fs::File::create(&out_file_path).unwrap();
@@ -694,7 +694,7 @@ mod tests {
             out_file_path.display()
         );
 
-        generate_type_imports(&module, &mut out_file, &generated_dir).unwrap();
+        generate_type_imports(&module, &mut out_file, generated_dir).unwrap();
 
         let content = fs::read_to_string(out_file_path).unwrap();
 
