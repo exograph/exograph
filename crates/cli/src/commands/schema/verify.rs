@@ -13,11 +13,12 @@ use clap::Command;
 use postgres_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
-use crate::commands::command::{
-    database_arg, default_model_file, ensure_exo_project_dir, get, CommandDefinition,
-};
+use crate::commands::command::{database_arg, default_model_file, get, CommandDefinition};
 
-use super::{migrate::open_database, util};
+use super::{
+    migrate::open_database,
+    util::{self, use_ir_arg},
+};
 
 pub(super) struct VerifyCommandDefinition {}
 
@@ -27,18 +28,18 @@ impl CommandDefinition for VerifyCommandDefinition {
         Command::new("verify")
             .about("Verify that the database schema is compatible with a Exograph model")
             .arg(database_arg())
+            .arg(use_ir_arg())
     }
 
     /// Verify that a schema is compatible with a exograph model
 
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        ensure_exo_project_dir(&PathBuf::from("."))?;
-
         let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
+        let use_ir: bool = matches.get_flag("use-ir");
 
         let db_client = open_database(database.as_deref()).await?;
-        let postgres_subsystem = util::create_postgres_system(&model, None).await?;
+        let postgres_subsystem = util::create_postgres_system(&model, None, use_ir).await?;
         let verification_result = Migration::verify(&db_client, &postgres_subsystem).await;
 
         match &verification_result {

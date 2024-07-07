@@ -14,14 +14,11 @@ use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
 use postgres_model::migration::Migration;
 
 use crate::{
-    commands::command::{
-        database_arg, default_model_file, ensure_exo_project_dir, get, output_arg,
-        CommandDefinition,
-    },
+    commands::command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
     util::open_file_for_output,
 };
 
-use super::util;
+use super::util::{self, use_ir_arg};
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command};
@@ -49,17 +46,19 @@ impl CommandDefinition for MigrateCommandDefinition {
                 .required(false)
                 .num_args(0),
         )
+        .arg(
+            use_ir_arg()
+        )
     }
 
     /// Perform a database migration for a exograph model
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        ensure_exo_project_dir(&PathBuf::from("."))?;
-
         let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
         let output: Option<PathBuf> = get(matches, "output");
         let apply_to_database: bool = matches.get_flag("apply-to-database");
         let allow_destructive_changes: bool = matches.get_flag("allow-destructive-changes");
+        let use_ir: bool = matches.get_flag("use-ir");
 
         if output.is_some() && apply_to_database {
             return Err(anyhow!(
@@ -67,7 +66,8 @@ impl CommandDefinition for MigrateCommandDefinition {
             ));
         }
 
-        let postgres_subsystem = util::create_postgres_system(&model, None).await?;
+        let postgres_subsystem = util::create_postgres_system(&model, None, use_ir).await?;
+
         let db_client = open_database(database.as_deref()).await?;
         let migrations = Migration::from_db_and_model(&db_client, &postgres_subsystem).await?;
 
