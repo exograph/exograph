@@ -142,8 +142,8 @@ async fn run_server(
     let db_client = open_database(None).await?;
 
     // generate migrations for current database
-    let postgres_subystem = util::create_postgres_system(model, None).await?;
-    let migrations = Migration::from_db_and_model(&db_client, &postgres_subystem).await?;
+    let postgres_subsystem = util::create_postgres_system(model, None, false).await?;
+    let migrations = Migration::from_db_and_model(&db_client, &postgres_subsystem).await?;
 
     // execute migration
     println!("Applying migrations...");

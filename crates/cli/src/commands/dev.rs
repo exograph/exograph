@@ -73,7 +73,7 @@ impl CommandDefinition for DevCommandDefinition {
             let db_client = open_database(None).await?;
 
             loop {
-                let postgres_subsystem = util::create_postgres_system(&model, None).await?;
+                let postgres_subsystem = util::create_postgres_system(&model, None, false).await?;
                 let verification_result = Migration::verify(&db_client, &postgres_subsystem).await;
 
                 match verification_result {

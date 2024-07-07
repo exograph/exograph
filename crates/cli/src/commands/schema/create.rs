@@ -16,13 +16,11 @@ use std::{io::Write, path::PathBuf};
 use exo_sql::schema::database_spec::DatabaseSpec;
 
 use crate::{
-    commands::command::{
-        default_model_file, ensure_exo_project_dir, get, output_arg, CommandDefinition,
-    },
+    commands::command::{default_model_file, get, output_arg, CommandDefinition},
     util::open_file_for_output,
 };
 
-use super::util;
+use super::util::{self, use_ir_arg};
 
 pub(super) struct CreateCommandDefinition {}
 
@@ -32,16 +30,17 @@ impl CommandDefinition for CreateCommandDefinition {
         Command::new("create")
             .about("Create a database schema from a Exograph model")
             .arg(output_arg())
+            .arg(use_ir_arg())
     }
 
     /// Create a database schema from a exograph model
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
-        ensure_exo_project_dir(&PathBuf::from("."))?;
+        let use_ir: bool = matches.get_flag("use-ir");
 
         let model: PathBuf = default_model_file();
         let output: Option<PathBuf> = get(matches, "output");
 
-        let postgres_subsystem = util::create_postgres_system(model, None).await?;
+        let postgres_subsystem = util::create_postgres_system(&model, None, use_ir).await?;
 
         let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
 
