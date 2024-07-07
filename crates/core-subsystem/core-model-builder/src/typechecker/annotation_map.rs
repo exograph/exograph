@@ -17,7 +17,7 @@ use codemap::Span;
 
 use serde::{Deserialize, Serialize, Serializer};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct AnnotationMap {
     #[serde(serialize_with = "ordered_map")] // serialize with ordered_map to sort by key
     pub annotations: HashMap<String, AstAnnotation<Typed>>,

@@ -44,12 +44,7 @@ use core_plugin_interface::core_model_builder::{
 ///
 /// import { AuthContext } from './contexts.d.ts'
 ///
-/// export interface Todo {
-///     userId: number
-///     id: number
-///     title: string
-///     completed: boolean
-/// }
+/// import type { Todo } from '../generated/TodoModule.d.ts';
 ///
 /// export async function todo(id: number): Todo {
 ///     // TODO
@@ -95,6 +90,10 @@ pub fn generate_module_skeleton(
     // are independent of the module code.
     generate_context_definitions(base_system)?;
 
+    if is_typescript {
+        generate_module_definitions(module)?;
+    }
+
     // We don't want to overwrite any user files
     // TODO: Parse the existing file and warn if any definitions don't match the expected ones
     // along with a helpful message so that users can copy/paste the expected definitions.
@@ -113,10 +112,7 @@ pub fn generate_module_skeleton(
     if is_typescript {
         generate_exograph_imports(module, &mut file, out_file_dir)?;
         generate_context_imports(module, base_system, &mut file, out_file_dir)?;
-
-        for module_type in module.types.iter() {
-            generate_type_skeleton(module_type, &mut file)?;
-        }
+        generate_type_imports(module, &mut file, out_file_dir)?;
     }
 
     for method in module.methods.iter() {
@@ -152,7 +148,7 @@ fn generate_exograph_imports(
         exograph_type_names.contains(&argument.typ.name().as_str())
     }
 
-    let imports = import_types(module, &is_exograph_type);
+    let imports = import_types_from_arguments(module, &is_exograph_type);
 
     if imports.is_empty() {
         return Ok(());
@@ -181,7 +177,7 @@ fn generate_context_imports(
             .is_some()
     }
 
-    let imports = import_types(module, &|arg| is_context_type(arg, base_system));
+    let imports = import_types_from_arguments(module, &|arg| is_context_type(arg, base_system));
 
     if imports.is_empty() {
         return Ok(());
@@ -192,6 +188,32 @@ fn generate_context_imports(
     writeln!(
         file,
         "import type {{ {imports} }} from '{relative_path}generated/contexts.d.ts';\n"
+    )?;
+
+    Ok(())
+}
+
+fn generate_type_imports(
+    module: &AstModule<Typed>,
+    file: &mut File,
+    out_file_dir: &Path,
+) -> Result<(), ModelBuildingError> {
+    fn is_defined_type(_model: &AstModel<Typed>) -> bool {
+        true
+    }
+
+    let imports = import_types_from_models(module, &is_defined_type);
+
+    if imports.is_empty() {
+        return Ok(());
+    }
+
+    let relative_path = generated_dir_path(out_file_dir)?;
+
+    writeln!(
+        file,
+        "import type {{ {} }} from '{}generated/{}.d.ts';\n",
+        imports, relative_path, module.name
     )?;
 
     Ok(())
@@ -231,28 +253,43 @@ fn generated_dir_path(out_file_dir: &Path) -> Result<String, ModelBuildingError>
 }
 
 /// Collect all types used in the module matching the given selection criteria.
-fn import_types(
+fn import_types_from_models(
+    module: &AstModule<Typed>,
+    selection: &impl Fn(&AstModel<Typed>) -> bool,
+) -> String {
+    let mut types_used = module
+        .types
+        .iter()
+        .filter(|model| selection(model))
+        .map(|model| model.name.clone())
+        .collect::<Vec<_>>();
+
+    types_used.dedup();
+    types_used.sort(); // Sort to make the output deterministic
+
+    types_used.join(", ")
+}
+
+fn import_types_from_arguments(
     module: &AstModule<Typed>,
     selection: &impl Fn(&AstArgument<Typed>) -> bool,
 ) -> String {
-    fn arguments(module: &AstModule<Typed>) -> impl Iterator<Item = &AstArgument<Typed>> {
-        let method_arguments = module
-            .methods
-            .iter()
-            .flat_map(|method| method.arguments.iter());
+    let method_arguments = module
+        .methods
+        .iter()
+        .flat_map(|method| method.arguments.iter());
 
-        let interceptor_arguments = module
-            .interceptors
-            .iter()
-            .flat_map(|interceptor| interceptor.arguments.iter());
+    let interceptor_arguments = module
+        .interceptors
+        .iter()
+        .flat_map(|interceptor| interceptor.arguments.iter());
 
-        method_arguments.chain(interceptor_arguments)
-    }
-
-    let mut types_used = arguments(module)
+    let mut types_used = method_arguments
+        .chain(interceptor_arguments)
         .filter(|arg| selection(arg))
         .map(|arg| arg.typ.name())
         .collect::<Vec<_>>();
+
     types_used.dedup();
     types_used.sort(); // Sort to make the output deterministic
 
@@ -296,6 +333,26 @@ fn generate_context_definitions(base_system: &BaseModelSystem) -> Result<(), Mod
     let mut file = std::fs::File::create(context_file)?;
     for (_, context) in base_system.contexts.iter() {
         generate_type_skeleton(context, &mut file)?;
+    }
+
+    Ok(())
+}
+
+fn generate_module_definitions(module: &AstModule<Typed>) -> Result<(), ModelBuildingError> {
+    let generated_dir = PathBuf::from("generated");
+
+    create_dir_all(&generated_dir)?;
+
+    // Assume that (currently satisfied by the cli) that the current working directory is the root of the project.
+    let module_file = generated_dir.join(format!("{}.d.ts", module.name));
+
+    if std::path::Path::exists(&module_file) {
+        std::fs::remove_file(&module_file)?;
+    }
+
+    let mut file = std::fs::File::create(module_file)?;
+    for module_type in module.types.iter() {
+        generate_type_skeleton(module_type, &mut file)?;
     }
 
     Ok(())
@@ -434,5 +491,151 @@ fn typescript_base_type(exo_type_name: &str) -> String {
         "Exograph" => "Exograph".to_string(),
         "ExographPriv" => "ExographPriv".to_string(),
         t => t.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use codemap::CodeMap;
+    use core_plugin_interface::core_model_builder::ast::ast_types::{
+        AstField, AstFieldType, AstModel, AstModelKind, AstModule,
+    };
+    use std::io::Read;
+    use std::io::Seek;
+    use tempfile::tempfile;
+
+    fn fabricate_span() -> codemap::Span {
+        CodeMap::new()
+            .add_file("".to_string(), "".to_string())
+            .span
+            .subspan(0, 0)
+    }
+
+    fn fabricate_model(name: &str) -> AstModel<Typed> {
+        let span = fabricate_span();
+
+        AstModel {
+            name: name.to_string(),
+            kind: AstModelKind::Type,
+            fields: vec![
+                AstField {
+                    name: "field1".to_string(),
+                    typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
+                    annotations: Default::default(),
+                    default_value: None,
+                    span,
+                },
+                AstField {
+                    name: "field2".to_string(),
+                    typ: AstFieldType::Plain("Int".to_string(), vec![], true, span),
+                    annotations: Default::default(),
+                    default_value: None,
+                    span,
+                },
+            ],
+            annotations: Default::default(),
+            span,
+        }
+    }
+
+    fn fabricate_module(name: &str) -> AstModule<Typed> {
+        let span = fabricate_span();
+        AstModule {
+            name: name.to_string(),
+            types: vec![fabricate_model("TestType1"), fabricate_model("TestType2")],
+            annotations: Default::default(),
+            base_exofile: PathBuf::new(),
+            interceptors: vec![],
+            methods: vec![],
+            span,
+        }
+    }
+
+    #[test]
+    fn test_generate_type_skeleton() {
+        let mock_type = fabricate_model("TestType");
+
+        let mut temp_file = tempfile().unwrap();
+        generate_type_skeleton(&mock_type, &mut temp_file).unwrap();
+
+        temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        let mut generated_code = String::new();
+        temp_file.read_to_string(&mut generated_code).unwrap();
+
+        let expected_code =
+            "export interface TestType {\n\tfield1: string\n\tfield2: number\n}\n\n";
+
+        assert_eq!(generated_code, expected_code);
+    }
+
+    #[test]
+    fn test_generates_module_definitions_correctly() {
+        use std::fs;
+
+        let module = fabricate_module("TestModule");
+
+        let generated_dir = Path::new("generated");
+
+        // Ensure the directory does not exist before the test
+        if generated_dir.exists() {
+            fs::remove_dir_all(generated_dir).unwrap();
+        }
+
+        generate_module_definitions(&module).unwrap();
+
+        let module_file = generated_dir.join("TestModule.d.ts");
+        assert!(
+            module_file.exists(),
+            "Module {} doesn't exist",
+            module_file.display()
+        );
+
+        let content = fs::read_to_string(module_file).unwrap();
+
+        let expected_type1 = "export interface TestType1 {\n\tfield1: string\n\tfield2: number\n}";
+        let expected_type2 = "export interface TestType2 {\n\tfield1: string\n\tfield2: number\n}";
+        assert!(content.contains(expected_type1), "TestType1 not found");
+        assert!(content.contains(expected_type2), "TestType2 not found");
+
+        fs::remove_dir_all(generated_dir).unwrap();
+    }
+
+    #[test]
+    fn test_generate_type_imports() {
+        use std::fs;
+
+        let module = fabricate_module("TestModule");
+
+        let src_dir = Path::new("tests/src");
+        fs::create_dir_all(src_dir).unwrap();
+
+        let index_file_path = src_dir.join("index.exo");
+        fs::File::create(index_file_path).unwrap();
+
+        let generated_dir = Path::new("tests/generated");
+        fs::create_dir_all(generated_dir).unwrap();
+
+        let out_file_path = generated_dir.join("test_module.ts");
+        let mut out_file = fs::File::create(&out_file_path).unwrap();
+
+        assert!(
+            out_file_path.exists(),
+            "File {} doesn't exist",
+            out_file_path.display()
+        );
+
+        generate_type_imports(&module, &mut out_file, generated_dir).unwrap();
+
+        let content = fs::read_to_string(out_file_path).unwrap();
+
+        let expected_imports =
+            "import type { TestType1, TestType2 } from '../generated/TestModule.d.ts';\n";
+        assert!(
+            content.contains(expected_imports),
+            "Types imports not found"
+        );
+
+        fs::remove_dir_all(Path::new("tests")).unwrap();
     }
 }
