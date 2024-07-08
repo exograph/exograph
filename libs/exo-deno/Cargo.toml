@@ -27,7 +27,7 @@ deno_ast = { workspace = true, features = ["transpiling"], optional = true }
 deno_semver.workspace = true
 deno_npm.workspace = true
 tokio.workspace = true
-http_req = { version = "0.10.2", default-features = false, features = [
+http_req = { version = "0.11.0", default-features = false, features = [
   "rust-tls",
 ] }
 futures.workspace = true
