@@ -3,10 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use worker::{Request as WorkerRequest, Response as WorkerResponse};
 
-use core_resolver::{
-    context::{Request, RequestContext},
-    OperationsPayload,
-};
+use core_resolver::{context::Request, OperationsPayload};
 
 use wasm_bindgen::prelude::*;
 
@@ -53,15 +50,13 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
         .json()
         .await
         .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-    let request_context = RequestContext::new(&worker_request, vec![], system_resolver)
-        .map_err(|e| JsValue::from_str(&format!("Error creating request context: {:?}", e)))?;
 
     let operations_payload: Result<OperationsPayload, _> = OperationsPayload::from_json(body_json);
     let operations_payload =
         operations_payload.map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
 
     let (stream, headers) =
-        resolver::resolve::<JsValue>(operations_payload, system_resolver, request_context, false)
+        resolver::resolve::<JsValue>(operations_payload, system_resolver, &worker_request, false)
             .await;
 
     let mut response =

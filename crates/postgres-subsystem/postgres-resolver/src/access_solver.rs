@@ -1493,6 +1493,5 @@ mod tests {
             })],
             system_resolver,
         )
-        .unwrap()
     }
 }

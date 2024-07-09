@@ -32,12 +32,12 @@ impl<'a> RequestContext<'a> {
         request: &'a (dyn Request + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
         system_resolver: &'a SystemResolver,
-    ) -> Result<RequestContext<'a>, ContextExtractionError> {
-        Ok(RequestContext::User(UserRequestContext::new(
+    ) -> RequestContext<'a> {
+        RequestContext::User(UserRequestContext::new(
             request,
             parsed_contexts,
             system_resolver,
-        )?))
+        ))
     }
 
     pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {

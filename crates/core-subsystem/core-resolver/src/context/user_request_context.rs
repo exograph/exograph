@@ -41,7 +41,7 @@ impl<'a> UserRequestContext<'a> {
         request: &'a (dyn Request + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
         system_resolver: &'a SystemResolver,
-    ) -> Result<UserRequestContext<'a>, ContextExtractionError> {
+    ) -> UserRequestContext<'a> {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedContextExtractor> = vec![
             Box::new(EnvironmentContextExtractor {
@@ -54,7 +54,7 @@ impl<'a> UserRequestContext<'a> {
             Box::new(JwtExtractor::new(system_resolver.jwt_authenticator.clone())),
         ];
 
-        Ok(UserRequestContext {
+        UserRequestContext {
             parsed_context_map: parsed_contexts
                 .into_iter()
                 .chain(generic_contexts) // include agnostic contexts
@@ -63,7 +63,7 @@ impl<'a> UserRequestContext<'a> {
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
             request,
             context_cache: FrozenMap::new(),
-        })
+        }
     }
 
     pub async fn extract_context_field(

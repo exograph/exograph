@@ -10,7 +10,7 @@
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 
-use core_resolver::{context::RequestContext, system_resolver::SystemResolver, OperationsPayload};
+use core_resolver::{system_resolver::SystemResolver, OperationsPayload};
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,
@@ -125,7 +125,6 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         .await?;
 
     let request = MemoryRequest::new(HashMap::new());
-    let request_context = RequestContext::new(&request, vec![], server)?;
     let operations_payload = OperationsPayload {
         operation_name: None,
         query: if let Value::String(s) = query {
@@ -137,13 +136,7 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         query_hash: None,
     };
 
-    let result = run_query(
-        operations_payload,
-        request_context,
-        server,
-        &mut HashMap::new(),
-    )
-    .await;
+    let result = run_query(operations_payload, &request, server, &mut HashMap::new()).await;
 
     let result = deno_module
         .execute_function(

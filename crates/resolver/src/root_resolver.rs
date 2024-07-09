@@ -17,6 +17,7 @@ use crate::system_loader::{StaticLoaders, SystemLoadingError};
 use common::env_const::is_production;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
+use core_resolver::context::Request;
 use core_resolver::QueryResponse;
 
 use super::system_loader::SystemLoader;
@@ -37,14 +38,16 @@ const EXO_ENDPOINT_HTTP_PATH: &str = "EXO_ENDPOINT_HTTP_PATH";
 
 #[instrument(
     name = "resolver::resolve_in_memory"
-    skip(system_resolver, request_context)
+    skip(system_resolver, request)
 )]
 pub async fn resolve_in_memory<'a>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
-    request_context: RequestContext<'a>,
+    request: &'a (dyn Request + Send + Sync),
     trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
+    let request_context = RequestContext::new(request, vec![], system_resolver);
+
     let response = system_resolver
         .resolve_operations(
             operations_payload,
@@ -76,12 +79,12 @@ pub type ResponseStream<E> = (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Hea
 /// then call `resolve` with that object.
 #[instrument(
     name = "resolver::resolve"
-    skip(system_resolver, request_context)
+    skip(system_resolver, request)
 )]
 pub async fn resolve<'a, E: 'static>(
     operations_payload: OperationsPayload,
     system_resolver: &SystemResolver,
-    request_context: RequestContext<'a>,
+    request: &'a (dyn Request + Send + Sync),
     playground_request: bool,
 ) -> ResponseStream<E> {
     #[cfg(not(target_family = "wasm"))]
@@ -92,7 +95,7 @@ pub async fn resolve<'a, E: 'static>(
     let response = resolve_in_memory(
         operations_payload,
         system_resolver,
-        request_context,
+        request,
         if playground_request && !is_production {
             TrustedDocumentEnforcement::DoNotEnforce
         } else {

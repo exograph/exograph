@@ -13,13 +13,12 @@ use std::path::Path;
 
 use actix_web::{
     http::header::{CacheControl, CacheDirective},
-    web::{self, Bytes, Redirect, ServiceConfig},
+    web::{self, Redirect, ServiceConfig},
     Error, HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
 };
 use url::Url;
 
 use common::env_const::{get_deployment_mode, DeploymentMode};
-use core_resolver::context::{ContextExtractionError, RequestContext};
 use core_resolver::system_resolver::SystemResolver;
 use core_resolver::OperationsPayload;
 use request::ActixRequest;
@@ -102,53 +101,30 @@ async fn resolve_locally(
         .unwrap_or(false);
 
     let request = ActixRequest::from_request(req);
-    let request_context = RequestContext::new(&request, vec![], system_resolver.as_ref());
 
-    match request_context {
-        Ok(request_context) => {
-            let operations_payload: Result<OperationsPayload, _> =
-                OperationsPayload::from_json(body.into_inner());
+    let operations_payload: Result<OperationsPayload, _> =
+        OperationsPayload::from_json(body.into_inner());
 
-            match operations_payload {
-                Ok(operations_payload) => {
-                    let (stream, headers) = resolver::resolve::<Error>(
-                        operations_payload,
-                        system_resolver.as_ref(),
-                        request_context,
-                        playground_request,
-                    )
-                    .await;
+    match operations_payload {
+        Ok(operations_payload) => {
+            let (stream, headers) = resolver::resolve::<Error>(
+                operations_payload,
+                system_resolver.as_ref(),
+                &request,
+                playground_request,
+            )
+            .await;
 
-                    let mut builder = HttpResponse::Ok();
-                    builder.content_type("application/json");
+            let mut builder = HttpResponse::Ok();
+            builder.content_type("application/json");
 
-                    for header in headers.into_iter() {
-                        builder.append_header(header);
-                    }
-
-                    builder.streaming(Box::pin(stream))
-                }
-                Err(_) => HttpResponse::BadRequest().body(error_msg!("Invalid query payload")),
+            for header in headers.into_iter() {
+                builder.append_header(header);
             }
+
+            builder.streaming(Box::pin(stream))
         }
-
-        Err(err) => {
-            let (message, mut base_response) = match err {
-                ContextExtractionError::Unauthorized => {
-                    (error_msg!("Unauthorized"), HttpResponse::Unauthorized())
-                }
-                ContextExtractionError::Malformed => {
-                    (error_msg!("Malformed header"), HttpResponse::BadRequest())
-                }
-                _ => (error_msg!("Unknown error"), HttpResponse::Unauthorized()),
-            };
-
-            let error_message: Result<Bytes, Error> = Ok(Bytes::from_static(message));
-
-            base_response
-                .content_type("application/json")
-                .streaming(Box::pin(futures::stream::once(async { error_message })))
-        }
+        Err(_) => HttpResponse::BadRequest().body(error_msg!("Invalid query payload")),
     }
 }
 

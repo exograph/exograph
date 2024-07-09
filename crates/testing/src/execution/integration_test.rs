@@ -15,7 +15,7 @@ use common::env_const::{
     EXO_POSTGRES_URL,
 };
 use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
-use core_resolver::context::{Request, RequestContext};
+use core_resolver::context::Request;
 use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
@@ -364,7 +364,6 @@ async fn run_operation(
         }
     }
 
-    let request_context = RequestContext::new(&request, vec![], &ctx.server)?;
     let operations_payload = OperationsPayload {
         operation_name: None,
         query: Some(query),
@@ -373,13 +372,7 @@ async fn run_operation(
     };
 
     // run the operation
-    let body = run_query(
-        operations_payload,
-        request_context,
-        &ctx.server,
-        &mut ctx.cookies,
-    )
-    .await;
+    let body = run_query(operations_payload, &request, &ctx.server, &mut ctx.cookies).await;
 
     // resolve testvariables from the result of our current operation
     // and extend our collection with them
@@ -422,14 +415,14 @@ async fn run_operation(
 
 pub async fn run_query(
     operations_payload: OperationsPayload,
-    request_context: RequestContext<'_>,
+    request: &(dyn Request + Send + Sync),
     server: &SystemResolver,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
     let res = resolve_in_memory(
         operations_payload,
         server,
-        request_context,
+        request,
         TrustedDocumentEnforcement::DoNotEnforce,
     )
     .await;

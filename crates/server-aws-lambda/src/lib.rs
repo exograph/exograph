@@ -11,11 +11,7 @@
 
 mod request;
 
-use core_resolver::{
-    context::{ContextExtractionError, RequestContext},
-    system_resolver::SystemResolver,
-    OperationsPayload,
-};
+use core_resolver::{system_resolver::SystemResolver, OperationsPayload};
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use request::LambdaRequest;
@@ -37,81 +33,59 @@ pub async fn resolve(
     system_resolver: Arc<SystemResolver>,
 ) -> Result<Value, Error> {
     let request = LambdaRequest::new(&event);
-    let request_context = RequestContext::new(&request, vec![], system_resolver.as_ref());
 
     let body = event.payload["body"].clone();
 
-    match request_context {
-        Ok(request_context) => {
-            let operations_payload_json: Option<Value> = body
-                .as_str()
-                .and_then(|body_string| serde_json::from_str(body_string).ok());
+    let operations_payload_json: Option<Value> = body
+        .as_str()
+        .and_then(|body_string| serde_json::from_str(body_string).ok());
 
-            let operations_payload = match operations_payload_json {
-                Some(operations_payload_json) => {
-                    OperationsPayload::from_json(operations_payload_json)
-                }
-                None => return Ok(error_msg("Invalid query payload", 400)),
-            };
+    let operations_payload = match operations_payload_json {
+        Some(operations_payload_json) => OperationsPayload::from_json(operations_payload_json),
+        None => return Ok(error_msg("Invalid query payload", 400)),
+    };
 
-            match operations_payload {
-                Ok(operations_payload) => {
-                    let (stream, headers) = resolver::resolve::<Error>(
-                        operations_payload,
-                        &system_resolver,
-                        request_context,
-                        false,
-                    )
+    match operations_payload {
+        Ok(operations_payload) => {
+            let (stream, headers) =
+                resolver::resolve::<Error>(operations_payload, &system_resolver, &request, false)
                     .await;
 
-                    let bytes = stream
-                        .map(|chunks| chunks.unwrap())
-                        .collect::<Vec<_>>()
-                        .await;
+            let bytes = stream
+                .map(|chunks| chunks.unwrap())
+                .collect::<Vec<_>>()
+                .await;
 
-                    let bytes: Vec<u8> =
-                        bytes.into_iter().flat_map(|bytes| bytes.to_vec()).collect();
+            let bytes: Vec<u8> = bytes.into_iter().flat_map(|bytes| bytes.to_vec()).collect();
 
-                    // it would be nice to just pass `bytes` as the body,
-                    // but lambda_http sets "isBase64Encoded" for the Lambda integration response if
-                    // the body is not a string, and so our response gets base64'd if we do
-                    let body_string = std::str::from_utf8(&bytes)
-                        .expect("Response stream is not UTF-8")
-                        .to_string();
+            // it would be nice to just pass `bytes` as the body,
+            // but lambda_http sets "isBase64Encoded" for the Lambda integration response if
+            // the body is not a string, and so our response gets base64'd if we do
+            let body_string = std::str::from_utf8(&bytes)
+                .expect("Response stream is not UTF-8")
+                .to_string();
 
-                    Ok(json!({
-                        "isBase64Encoded": false,
-                        "statusCode": 200,
-                        "headers": {},
-                        "multiValueHeaders": headers
-                            .into_iter()
-                            .fold(json!({}), |mut acc, (k, v)| {
-                                if let Some(value) = acc.get_mut(&k) {
-                                    let array = value.as_array_mut().unwrap();
-                                    array.push(v.into());
-                                } else {
-                                    let map = acc.as_object_mut().unwrap();
-                                    map[&k] = v.into();
-                                }
+            Ok(json!({
+                "isBase64Encoded": false,
+                "statusCode": 200,
+                "headers": {},
+                "multiValueHeaders": headers
+                    .into_iter()
+                    .fold(json!({}), |mut acc, (k, v)| {
+                        if let Some(value) = acc.get_mut(&k) {
+                            let array = value.as_array_mut().unwrap();
+                            array.push(v.into());
+                        } else {
+                            let map = acc.as_object_mut().unwrap();
+                            map[&k] = v.into();
+                        }
 
-                                acc
-                            }),
-                        "body": body_string
-                    }))
-                }
-
-                _ => Ok(error_msg("Invalid query payload", 400)),
-            }
+                        acc
+                    }),
+                "body": body_string
+            }))
         }
 
-        Err(err) => {
-            let response = match err {
-                ContextExtractionError::Unauthorized => error_msg("Unauthorized", 401),
-                ContextExtractionError::Malformed => error_msg("Malformed header", 400),
-                _ => error_msg("Unknown error", 401),
-            };
-
-            Ok(response)
-        }
+        _ => Ok(error_msg("Invalid query payload", 400)),
     }
 }
