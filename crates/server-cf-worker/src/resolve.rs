@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use worker::{Request as WorkerRequest, Response as WorkerResponse};
 
-use core_resolver::{context::Request, OperationsPayload};
+use core_resolver::context::Request;
 
 use wasm_bindgen::prelude::*;
 
@@ -51,27 +51,29 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
         .await
         .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
 
-    let operations_payload: Result<OperationsPayload, _> = OperationsPayload::from_json(body_json);
-    let operations_payload =
-        operations_payload.map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+    match resolver::resolve::<JsValue>(body_json, system_resolver, &worker_request, false).await {
+        Ok((stream, headers)) => {
+            let mut response = WorkerResponse::from_stream(stream)
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
 
-    let (stream, headers) =
-        resolver::resolve::<JsValue>(operations_payload, system_resolver, &worker_request, false)
-            .await;
+            response
+                .headers_mut()
+                .append("content-type", "application/json")
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+            for header in headers.into_iter() {
+                response
+                    .headers_mut()
+                    .append(&header.0, &header.1)
+                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+            }
 
-    let mut response =
-        WorkerResponse::from_stream(stream).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-
-    response
-        .headers_mut()
-        .append("content-type", "application/json")
-        .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-    for header in headers.into_iter() {
-        response
-            .headers_mut()
-            .append(&header.0, &header.1)
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+            web_sys::Response::try_from(response)
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+        }
+        Err(_) => {
+            let response = WorkerResponse::builder().error("Invalid payload", 400)?;
+            web_sys::Response::try_from(response)
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+        }
     }
-
-    web_sys::Response::try_from(response).map_err(|e| JsValue::from_str(&format!("{:?}", e)))
 }

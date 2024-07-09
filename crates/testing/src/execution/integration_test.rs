@@ -372,7 +372,13 @@ async fn run_operation(
     };
 
     // run the operation
-    let body = run_query(operations_payload, &request, &ctx.server, &mut ctx.cookies).await;
+    let body = run_query(
+        operations_payload.to_json()?,
+        &request,
+        &ctx.server,
+        &mut ctx.cookies,
+    )
+    .await;
 
     // resolve testvariables from the result of our current operation
     // and extend our collection with them
@@ -414,13 +420,13 @@ async fn run_operation(
 }
 
 pub async fn run_query(
-    operations_payload: OperationsPayload,
+    body: serde_json::Value,
     request: &(dyn Request + Send + Sync),
     server: &SystemResolver,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
     let res = resolve_in_memory(
-        operations_payload,
+        body,
         server,
         request,
         TrustedDocumentEnforcement::DoNotEnforce,

@@ -136,7 +136,13 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         query_hash: None,
     };
 
-    let result = run_query(operations_payload, &request, server, &mut HashMap::new()).await;
+    let result = run_query(
+        operations_payload.to_json()?,
+        &request,
+        server,
+        &mut HashMap::new(),
+    )
+    .await;
 
     let result = deno_module
         .execute_function(

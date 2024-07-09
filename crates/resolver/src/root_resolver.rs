@@ -19,14 +19,15 @@ use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::context::Request;
 use core_resolver::QueryResponse;
+use serde_json::Value;
 
 use super::system_loader::SystemLoader;
 use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bytes::Bytes;
-use core_resolver::system_resolver::SystemResolutionError;
 use core_resolver::system_resolver::SystemResolver;
+use core_resolver::system_resolver::{RequestError, SystemResolutionError};
 pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
 use futures::Stream;
@@ -41,11 +42,13 @@ const EXO_ENDPOINT_HTTP_PATH: &str = "EXO_ENDPOINT_HTTP_PATH";
     skip(system_resolver, request)
 )]
 pub async fn resolve_in_memory<'a>(
-    operations_payload: OperationsPayload,
+    body: Value,
     system_resolver: &SystemResolver,
     request: &'a (dyn Request + Send + Sync),
     trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
+    let operations_payload = OperationsPayload::from_json(body)
+        .map_err(|e| SystemResolutionError::RequestError(RequestError::InvalidBodyJson(e)))?;
     let request_context = RequestContext::new(request, vec![], system_resolver);
 
     let response = system_resolver
@@ -82,18 +85,18 @@ pub type ResponseStream<E> = (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Hea
     skip(system_resolver, request)
 )]
 pub async fn resolve<'a, E: 'static>(
-    operations_payload: OperationsPayload,
+    body: Value,
     system_resolver: &SystemResolver,
     request: &'a (dyn Request + Send + Sync),
     playground_request: bool,
-) -> ResponseStream<E> {
+) -> Result<ResponseStream<E>, RequestError> {
     #[cfg(not(target_family = "wasm"))]
     let is_production = is_production();
     #[cfg(target_family = "wasm")]
     let is_production = !playground_request;
 
     let response = resolve_in_memory(
-        operations_payload,
+        body,
         system_resolver,
         request,
         if playground_request && !is_production {
@@ -103,6 +106,10 @@ pub async fn resolve<'a, E: 'static>(
         },
     )
     .await;
+
+    if let Err(SystemResolutionError::RequestError(e)) = response {
+        return Err(e);
+    }
 
     let headers = if let Ok(ref response) = response {
         response
@@ -179,7 +186,7 @@ pub async fn resolve<'a, E: 'static>(
 
     let boxed_stream = Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;
 
-    (boxed_stream, headers)
+    Ok((boxed_stream, headers))
 }
 
 pub fn get_playground_http_path() -> String {

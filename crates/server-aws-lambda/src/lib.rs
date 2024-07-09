@@ -11,7 +11,7 @@
 
 mod request;
 
-use core_resolver::{system_resolver::SystemResolver, OperationsPayload};
+use core_resolver::system_resolver::SystemResolver;
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use request::LambdaRequest;
@@ -40,52 +40,56 @@ pub async fn resolve(
         .as_str()
         .and_then(|body_string| serde_json::from_str(body_string).ok());
 
-    let operations_payload = match operations_payload_json {
-        Some(operations_payload_json) => OperationsPayload::from_json(operations_payload_json),
-        None => return Ok(error_msg("Invalid query payload", 400)),
-    };
+    match operations_payload_json {
+        Some(operations_payload_json) => {
+            match resolver::resolve::<Error>(
+                operations_payload_json,
+                &system_resolver,
+                &request,
+                false,
+            )
+            .await
+            {
+                Ok((stream, headers)) => {
+                    let bytes = stream
+                        .map(|chunks| chunks.unwrap())
+                        .collect::<Vec<_>>()
+                        .await;
 
-    match operations_payload {
-        Ok(operations_payload) => {
-            let (stream, headers) =
-                resolver::resolve::<Error>(operations_payload, &system_resolver, &request, false)
-                    .await;
+                    let bytes: Vec<u8> =
+                        bytes.into_iter().flat_map(|bytes| bytes.to_vec()).collect();
 
-            let bytes = stream
-                .map(|chunks| chunks.unwrap())
-                .collect::<Vec<_>>()
-                .await;
+                    // it would be nice to just pass `bytes` as the body,
+                    // but lambda_http sets "isBase64Encoded" for the Lambda integration response if
+                    // the body is not a string, and so our response gets base64'd if we do
+                    let body_string = std::str::from_utf8(&bytes)
+                        .expect("Response stream is not UTF-8")
+                        .to_string();
 
-            let bytes: Vec<u8> = bytes.into_iter().flat_map(|bytes| bytes.to_vec()).collect();
+                    Ok(json!({
+                        "isBase64Encoded": false,
+                        "statusCode": 200,
+                        "headers": {},
+                        "multiValueHeaders": headers
+                            .into_iter()
+                            .fold(json!({}), |mut acc, (k, v)| {
+                                if let Some(value) = acc.get_mut(&k) {
+                                    let array = value.as_array_mut().unwrap();
+                                    array.push(v.into());
+                                } else {
+                                    let map = acc.as_object_mut().unwrap();
+                                    map[&k] = v.into();
+                                }
 
-            // it would be nice to just pass `bytes` as the body,
-            // but lambda_http sets "isBase64Encoded" for the Lambda integration response if
-            // the body is not a string, and so our response gets base64'd if we do
-            let body_string = std::str::from_utf8(&bytes)
-                .expect("Response stream is not UTF-8")
-                .to_string();
-
-            Ok(json!({
-                "isBase64Encoded": false,
-                "statusCode": 200,
-                "headers": {},
-                "multiValueHeaders": headers
-                    .into_iter()
-                    .fold(json!({}), |mut acc, (k, v)| {
-                        if let Some(value) = acc.get_mut(&k) {
-                            let array = value.as_array_mut().unwrap();
-                            array.push(v.into());
-                        } else {
-                            let map = acc.as_object_mut().unwrap();
-                            map[&k] = v.into();
-                        }
-
-                        acc
-                    }),
-                "body": body_string
-            }))
+                                acc
+                            }),
+                        "body": body_string
+                    }))
+                }
+                Err(_) => Ok(error_msg("Invalid query payload", 400)),
+            }
         }
 
-        _ => Ok(error_msg("Invalid query payload", 400)),
+        None => Ok(error_msg("Invalid query payload", 400)),
     }
 }

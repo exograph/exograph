@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 #[derive(Debug)]
@@ -18,17 +18,17 @@ pub struct OperationsPayload {
     pub query_hash: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RawOperationsPayload {
+    #[serde(rename = "operationName")]
+    pub operation_name: Option<String>,
+    pub query: Option<String>,
+    pub variables: Option<Map<String, Value>>,
+    pub extensions: Option<Map<String, Value>>,
+}
+
 impl OperationsPayload {
     pub fn from_json(json: Value) -> Result<Self, serde_json::Error> {
-        #[derive(Debug, Deserialize)]
-        pub struct RawOperationsPayload {
-            #[serde(rename = "operationName")]
-            pub operation_name: Option<String>,
-            pub query: Option<String>,
-            pub variables: Option<Map<String, Value>>,
-            pub extensions: Option<Map<String, Value>>,
-        }
-
         let raw_payload = serde_json::from_value::<RawOperationsPayload>(json);
 
         raw_payload.map(|raw_payload| {
@@ -49,5 +49,22 @@ impl OperationsPayload {
                 query_hash,
             }
         })
+    }
+
+    pub fn to_json(&self) -> Result<Value, serde_json::Error> {
+        let raw_payload = RawOperationsPayload {
+            operation_name: self.operation_name.clone(),
+            query: self.query.clone(),
+            variables: self.variables.clone(),
+            extensions: self.query_hash.as_ref().map(|query_hash| {
+                let mut extensions = Map::new();
+                let mut persisted_query = Map::new();
+                persisted_query.insert("sha256Hash".to_string(), Value::String(query_hash.clone()));
+                extensions.insert("persistedQuery".to_string(), Value::Object(persisted_query));
+                extensions
+            }),
+        };
+
+        serde_json::to_value(&raw_payload)
     }
 }

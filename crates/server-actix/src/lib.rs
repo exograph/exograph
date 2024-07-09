@@ -20,7 +20,6 @@ use url::Url;
 
 use common::env_const::{get_deployment_mode, DeploymentMode};
 use core_resolver::system_resolver::SystemResolver;
-use core_resolver::OperationsPayload;
 use request::ActixRequest;
 use resolver::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use serde_json::Value;
@@ -102,19 +101,16 @@ async fn resolve_locally(
 
     let request = ActixRequest::from_request(req);
 
-    let operations_payload: Result<OperationsPayload, _> =
-        OperationsPayload::from_json(body.into_inner());
+    let res = resolver::resolve::<Error>(
+        body.into_inner(),
+        system_resolver.as_ref(),
+        &request,
+        playground_request,
+    )
+    .await;
 
-    match operations_payload {
-        Ok(operations_payload) => {
-            let (stream, headers) = resolver::resolve::<Error>(
-                operations_payload,
-                system_resolver.as_ref(),
-                &request,
-                playground_request,
-            )
-            .await;
-
+    match res {
+        Ok((stream, headers)) => {
             let mut builder = HttpResponse::Ok();
             builder.content_type("application/json");
 
