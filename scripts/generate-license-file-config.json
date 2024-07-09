@@ -1,0 +1,17 @@
+{
+  "inputs": [
+    "./docs/package.json",
+    "./graphiql/lib/package.json",
+    "./graphiql/app/package.json",
+    "./crates/testing/package.json"
+  ],
+  "output": "scripts/npm-licenses.txt",
+  "replace": {
+    "rc@1.2.8": "https://spdx.org/licenses/MIT.txt",
+    "sockjs@0.3.24": "./docs/node_modules/sockjs/LICENSE",
+    "type-fest@2.19.0": "https://spdx.org/licenses/MIT.txt"
+  },
+  "exclude": [
+    "exograph-playground-lib"
+  ]
+}

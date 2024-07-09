@@ -4358,7 +4358,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd68fe813419e7fd8982607f1b39e2a393226a98cf4cc905e716ba328e2a488f"
 dependencies = [
  "rustls 0.23.10",
- "rustls-pemfile 2.1.1",
+ "rustls-pemfile 2.1.2",
  "rustls-pki-types",
  "unicase",
  "webpki",

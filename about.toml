@@ -12,6 +12,7 @@ accepted = [
     "OpenSSL",
     "Unicode-DFS-2016",
     "Zlib",
+    "BSL-1.0",
 ]
 private = { ignore = true }
 workarounds = ["ring"]
