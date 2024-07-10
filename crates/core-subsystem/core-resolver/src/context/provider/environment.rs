@@ -11,8 +11,9 @@ use async_trait::async_trait;
 use exo_env::Environment;
 use serde_json::Value;
 
-use crate::context::{
-    context_extractor::ContextExtractor, request::Request, ContextExtractionError, RequestContext,
+use crate::{
+    context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext},
+    http::RequestHead,
 };
 
 pub struct EnvironmentContextExtractor<'a> {
@@ -29,7 +30,7 @@ impl<'a> ContextExtractor for EnvironmentContextExtractor<'a> {
         &self,
         key: &str,
         _request_context: &RequestContext,
-        _request: &(dyn Request + Send + Sync),
+        _request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self.env.get(key).map(|v| v.as_str().into()))
     }

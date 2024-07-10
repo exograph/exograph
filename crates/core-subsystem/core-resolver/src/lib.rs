@@ -10,7 +10,7 @@
 pub mod access_solver;
 pub mod context;
 pub mod context_extractor;
-pub mod exchange;
+pub mod http;
 pub mod introspection;
 pub mod number_cmp;
 pub mod operation_resolver;

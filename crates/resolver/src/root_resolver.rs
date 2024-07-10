@@ -17,8 +17,9 @@ use crate::system_loader::{StaticLoaders, SystemLoadingError};
 use common::env_const::is_production;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
-use core_resolver::exchange::Exchange;
+use core_resolver::http::{Headers, RequestPayload, ResponsePayload};
 use core_resolver::QueryResponse;
+use http::StatusCode;
 
 use super::system_loader::SystemLoader;
 use ::tracing::instrument;
@@ -38,19 +39,19 @@ const EXO_ENDPOINT_HTTP_PATH: &str = "EXO_ENDPOINT_HTTP_PATH";
 
 #[instrument(
     name = "resolver::resolve_in_memory"
-    skip(system_resolver, exchange)
+    skip(system_resolver, request)
 )]
 pub async fn resolve_in_memory<'a>(
-    mut exchange: impl Exchange,
+    mut request: impl RequestPayload,
     system_resolver: &SystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
-    let body = exchange.take_body();
-    let request = exchange.get_request();
+    let body = request.take_body();
+    let request_head = request.get_head();
 
     let operations_payload = OperationsPayload::from_json(body.clone())
         .map_err(|e| SystemResolutionError::RequestError(RequestError::InvalidBodyJson(e)))?;
-    let request_context = RequestContext::new(request, vec![], system_resolver);
+    let request_context = RequestContext::new(request_head, vec![], system_resolver);
 
     let response = system_resolver
         .resolve_operations(
@@ -72,8 +73,6 @@ pub async fn resolve_in_memory<'a>(
         .and(response)
 }
 
-pub type Headers = Vec<(String, String)>;
-pub type ResponseStream<E> = (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers);
 /// Resolves an incoming query, returning a response stream containing JSON and a set
 /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
 /// if something went wrong.
@@ -83,20 +82,20 @@ pub type ResponseStream<E> = (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Hea
 /// then call `resolve` with that object.
 #[instrument(
     name = "resolver::resolve"
-    skip(system_resolver, exchange)
+    skip(system_resolver, request)
 )]
 pub async fn resolve<'a, E: 'static>(
-    exchange: impl Exchange,
+    request: impl RequestPayload,
     system_resolver: &SystemResolver,
     playground_request: bool,
-) -> Result<ResponseStream<E>, RequestError> {
+) -> ResponsePayload<E> {
     #[cfg(not(target_family = "wasm"))]
     let is_production = is_production();
     #[cfg(target_family = "wasm")]
     let is_production = !playground_request;
 
     let response = resolve_in_memory(
-        exchange,
+        request,
         system_resolver,
         if playground_request && !is_production {
             TrustedDocumentEnforcement::DoNotEnforce
@@ -107,10 +106,15 @@ pub async fn resolve<'a, E: 'static>(
     .await;
 
     if let Err(SystemResolutionError::RequestError(e)) = response {
-        return Err(e);
+        tracing::error!("Error while resolving request: {:?}", e);
+        return ResponsePayload {
+            stream: None,
+            headers: Headers::new(),
+            status_code: StatusCode::BAD_REQUEST,
+        };
     }
 
-    let headers = if let Ok(ref response) = response {
+    let mut headers = if let Ok(ref response) = response {
         response
             .iter()
             .flat_map(|(_, qr)| qr.headers.clone())
@@ -118,6 +122,8 @@ pub async fn resolve<'a, E: 'static>(
     } else {
         vec![]
     };
+
+    headers.push(("content-type".into(), "application/json".into()));
 
     let stream = try_stream! {
         macro_rules! report_position {
@@ -183,9 +189,11 @@ pub async fn resolve<'a, E: 'static>(
         }
     };
 
-    let boxed_stream = Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;
-
-    Ok((boxed_stream, headers))
+    ResponsePayload {
+        stream: Some(Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>),
+        headers,
+        status_code: StatusCode::OK,
+    }
 }
 
 pub fn get_playground_http_path() -> String {

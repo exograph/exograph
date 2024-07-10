@@ -8,9 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use actix_web::{dev::ConnectionInfo, http::header::HeaderMap, HttpRequest};
-use core_resolver::context::Request;
+use core_resolver::http::RequestHead;
 
-pub struct ActixRequest {
+pub struct ActixRequestHead {
     // we cannot refer to HttpRequest directly, as it holds an Rc (and therefore does
     // not impl Send or Sync)
     //
@@ -19,16 +19,16 @@ pub struct ActixRequest {
     connection_info: ConnectionInfo,
 }
 
-impl ActixRequest {
-    pub fn from_request(req: HttpRequest) -> ActixRequest {
-        ActixRequest {
+impl ActixRequestHead {
+    pub fn from_request(req: HttpRequest) -> ActixRequestHead {
+        ActixRequestHead {
             headers: req.headers().clone(),
             connection_info: req.connection_info().clone(),
         }
     }
 }
 
-impl Request for ActixRequest {
+impl RequestHead for ActixRequestHead {
     fn get_headers(&self, key: &str) -> Vec<String> {
         self.headers
             .get_all(key.to_lowercase())

@@ -19,8 +19,11 @@ use actix_web::{
 use url::Url;
 
 use common::env_const::{get_deployment_mode, DeploymentMode};
-use core_resolver::{context::Request, exchange::Exchange, system_resolver::SystemResolver};
-use request::ActixRequest;
+use core_resolver::{
+    http::{RequestHead, RequestPayload, ResponsePayload},
+    system_resolver::SystemResolver,
+};
+use request::ActixRequestHead;
 use resolver::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use serde_json::Value;
 
@@ -88,14 +91,14 @@ async fn resolve(
     }
 }
 
-struct ActixExchange {
-    request: ActixRequest,
+struct ActixRequestPayload {
+    head: ActixRequestHead,
     body: Value,
 }
 
-impl Exchange for ActixExchange {
-    fn get_request(&self) -> &(dyn Request + Send + Sync) {
-        &self.request
+impl RequestPayload for ActixRequestPayload {
+    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        &self.head
     }
 
     fn take_body(&mut self) -> Value {
@@ -114,28 +117,26 @@ async fn resolve_locally(
         .map(|value| value == "true")
         .unwrap_or(false);
 
-    let request = ActixRequest::from_request(req);
-
-    let exchange = ActixExchange {
-        request,
+    let request = ActixRequestPayload {
+        head: ActixRequestHead::from_request(req),
         body: body.into_inner(),
     };
 
-    let res =
-        resolver::resolve::<Error>(exchange, system_resolver.as_ref(), playground_request).await;
+    let ResponsePayload {
+        stream,
+        headers,
+        status_code,
+    } = resolver::resolve::<Error>(request, system_resolver.as_ref(), playground_request).await;
 
-    match res {
-        Ok((stream, headers)) => {
-            let mut builder = HttpResponse::Ok();
-            builder.content_type("application/json");
+    let mut builder = HttpResponse::build(status_code);
 
-            for header in headers.into_iter() {
-                builder.append_header(header);
-            }
+    for header in headers.into_iter() {
+        builder.append_header(header);
+    }
 
-            builder.streaming(Box::pin(stream))
-        }
-        Err(_) => HttpResponse::BadRequest().body(error_msg!("Invalid query payload")),
+    match stream {
+        Some(stream) => builder.streaming(stream),
+        None => builder.finish(),
     }
 }
 

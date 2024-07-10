@@ -9,12 +9,11 @@
 
 use async_recursion::async_recursion;
 
-use crate::{system_resolver::SystemResolver, value::Val};
+use crate::{http::RequestHead, system_resolver::SystemResolver, value::Val};
 
 use super::{
     context_extractor::BoxedContextExtractor, error::ContextExtractionError,
-    overridden_context::OverriddenContext, request::Request,
-    user_request_context::UserRequestContext,
+    overridden_context::OverriddenContext, user_request_context::UserRequestContext,
 };
 
 use serde_json::Value;
@@ -29,12 +28,12 @@ pub enum RequestContext<'a> {
 
 impl<'a> RequestContext<'a> {
     pub fn new(
-        request: &'a (dyn Request + Send + Sync),
+        request_head: &'a (dyn RequestHead + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
         system_resolver: &'a SystemResolver,
     ) -> RequestContext<'a> {
         RequestContext::User(UserRequestContext::new(
-            request,
+            request_head,
             parsed_contexts,
             system_resolver,
         ))

@@ -15,8 +15,8 @@ use common::env_const::{
     EXO_POSTGRES_URL,
 };
 use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
-use core_resolver::context::Request;
-use core_resolver::exchange::Exchange;
+use core_resolver::http::RequestHead;
+use core_resolver::http::RequestPayload;
 use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
@@ -245,12 +245,12 @@ enum OperationResult {
     AssertFailed(anyhow::Error),
 }
 
-pub struct MemoryRequest {
+pub struct MemoryRequestHead {
     headers: HashMap<String, Vec<String>>,
     cookies: HashMap<String, String>,
 }
 
-impl MemoryRequest {
+impl MemoryRequestHead {
     pub fn new(cookies: HashMap<String, String>) -> Self {
         Self {
             headers: HashMap::new(),
@@ -266,7 +266,7 @@ impl MemoryRequest {
     }
 }
 
-impl Request for MemoryRequest {
+impl RequestHead for MemoryRequestHead {
     fn get_headers(&self, key: &str) -> Vec<String> {
         if key.to_ascii_lowercase() == "cookie" {
             return self
@@ -287,24 +287,24 @@ impl Request for MemoryRequest {
     }
 }
 
-pub(super) struct MemoryExchange {
+pub(super) struct MemoryRequestPayload {
     body: Value,
-    request: MemoryRequest,
+    head: MemoryRequestHead,
 }
 
-impl MemoryExchange {
-    pub(super) fn new(body: Value, request: MemoryRequest) -> Self {
-        Self { body, request }
+impl MemoryRequestPayload {
+    pub(super) fn new(body: Value, head: MemoryRequestHead) -> Self {
+        Self { body, head }
     }
 }
 
-impl Exchange for MemoryExchange {
+impl RequestPayload for MemoryRequestPayload {
     fn take_body(&mut self) -> Value {
         self.body.take()
     }
 
-    fn get_request(&self) -> &(dyn Request + Send + Sync) {
-        &self.request
+    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        &self.head
     }
 }
 
@@ -347,7 +347,7 @@ async fn run_operation(
     // similarly, remove @unordered directives
     let query = query.replace("@unordered", "");
 
-    let mut request = MemoryRequest::new(ctx.cookies.clone());
+    let mut request_head = MemoryRequestHead::new(ctx.cookies.clone());
 
     // add JWT token if specified in testfile
     if let Some(auth) = auth {
@@ -365,10 +365,10 @@ async fn run_operation(
             &EncodingKey::from_secret(ctx.jwtsecret.as_ref()),
         )
         .unwrap();
-        request.add_header("Authorization", &format!("Bearer {token}"));
+        request_head.add_header("Authorization", &format!("Bearer {token}"));
     };
 
-    request.add_header("Content-Type", "application/json");
+    request_head.add_header("Content-Type", "application/json");
 
     // add extra headers from testfile
     let headers = OptionFuture::from(headers.as_ref().map(|headers| async {
@@ -379,7 +379,7 @@ async fn run_operation(
 
     if let Some(Value::Object(map)) = headers {
         for (header, value) in map.iter() {
-            request.add_header(
+            request_head.add_header(
                 header,
                 value.as_str().expect("expected string for header value"),
             );
@@ -393,9 +393,9 @@ async fn run_operation(
         query_hash: None,
     };
 
-    let exchange = MemoryExchange::new(operations_payload.to_json()?, request);
+    let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
     // run the operation
-    let body = run_query(exchange, &ctx.server, &mut ctx.cookies).await;
+    let body = run_query(request, &ctx.server, &mut ctx.cookies).await;
 
     // resolve testvariables from the result of our current operation
     // and extend our collection with them
@@ -437,11 +437,11 @@ async fn run_operation(
 }
 
 pub async fn run_query(
-    exchange: impl Exchange,
+    request: impl RequestPayload,
     server: &SystemResolver,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
-    let res = resolve_in_memory(exchange, server, TrustedDocumentEnforcement::DoNotEnforce).await;
+    let res = resolve_in_memory(request, server, TrustedDocumentEnforcement::DoNotEnforce).await;
 
     match res {
         Ok(res) => {

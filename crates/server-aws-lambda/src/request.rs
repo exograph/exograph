@@ -9,7 +9,7 @@
 
 #![cfg(target_os = "linux")]
 
-use core_resolver::context::Request;
+use core_resolver::http::RequestHead;
 use lambda_runtime::LambdaEvent;
 use serde_json::Value;
 
@@ -23,7 +23,7 @@ impl<'a> LambdaRequest<'a> {
     }
 }
 
-impl Request for LambdaRequest<'_> {
+impl RequestHead for LambdaRequest<'_> {
     fn get_headers(&self, key: &str) -> Vec<String> {
         // handle "headers" field
         let mut headers: Vec<String> = self.0.payload["headers"]

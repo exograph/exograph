@@ -375,7 +375,7 @@ mod tests {
         trusted_documents::TrustedDocuments,
     };
 
-    use core_resolver::context::Request;
+    use core_resolver::http::RequestHead;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::system_resolver::SystemResolver;
     use exo_env::MapEnvironment;
@@ -395,7 +395,7 @@ mod tests {
 
     struct TestRequest {}
 
-    impl Request for TestRequest {
+    impl RequestHead for TestRequest {
         fn get_headers(&self, _key: &str) -> Vec<String> {
             vec![]
         }

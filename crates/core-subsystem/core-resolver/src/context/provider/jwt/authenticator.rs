@@ -9,7 +9,7 @@ use thiserror::Error;
 use tracing::error;
 
 use crate::context::error::ContextExtractionError;
-use crate::context::request::Request;
+use crate::http::RequestHead;
 
 #[cfg(feature = "oidc")]
 use super::oidc::Oidc;
@@ -104,9 +104,9 @@ impl JwtAuthenticator {
     /// the declared user context model
     pub(super) async fn extract_authentication(
         &self,
-        request: &(dyn Request + Send + Sync),
+        request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Value, ContextExtractionError> {
-        let jwt_token = request
+        let jwt_token = request_head
             .get_header("Authorization")
             .and_then(|auth_token| auth_token.strip_prefix("Bearer ").map(|t| t.to_owned()));
 

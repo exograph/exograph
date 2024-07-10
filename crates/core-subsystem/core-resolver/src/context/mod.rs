@@ -11,14 +11,12 @@ mod context_extractor;
 mod error;
 mod overridden_context;
 pub mod provider;
-mod request;
 mod request_context;
 mod user_request_context;
 
 pub use provider::jwt::JwtAuthenticator;
 
 pub use error::ContextExtractionError;
-pub use request::Request;
 pub use request_context::RequestContext;
 
 #[cfg(feature = "test-context")]

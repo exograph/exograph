@@ -10,8 +10,9 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::context::{
-    context_extractor::ContextExtractor, request::Request, ContextExtractionError, RequestContext,
+use crate::{
+    context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext},
+    http::RequestHead,
 };
 
 pub struct HeaderExtractor;
@@ -26,9 +27,9 @@ impl ContextExtractor for HeaderExtractor {
         &self,
         key: &str,
         _request_context: &RequestContext,
-        request: &(dyn Request + Send + Sync),
+        request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
-        Ok(request
+        Ok(request_head
             .get_header(&key.to_ascii_lowercase())
             .map(|str| str.as_str().into()))
     }
