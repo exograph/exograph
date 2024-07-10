@@ -16,6 +16,7 @@ use common::env_const::{
 };
 use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::context::Request;
+use core_resolver::exchange::Exchange;
 use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
@@ -286,6 +287,27 @@ impl Request for MemoryRequest {
     }
 }
 
+pub(super) struct MemoryExchange {
+    body: Value,
+    request: MemoryRequest,
+}
+
+impl MemoryExchange {
+    pub(super) fn new(body: Value, request: MemoryRequest) -> Self {
+        Self { body, request }
+    }
+}
+
+impl Exchange for MemoryExchange {
+    fn take_body(&mut self) -> Value {
+        self.body.take()
+    }
+
+    fn get_request(&self) -> &(dyn Request + Send + Sync) {
+        &self.request
+    }
+}
+
 async fn run_operation(
     gql: &IntegrationTestOperation,
     ctx: &mut TestfileContext,
@@ -371,14 +393,9 @@ async fn run_operation(
         query_hash: None,
     };
 
+    let exchange = MemoryExchange::new(operations_payload.to_json()?, request);
     // run the operation
-    let body = run_query(
-        operations_payload.to_json()?,
-        &request,
-        &ctx.server,
-        &mut ctx.cookies,
-    )
-    .await;
+    let body = run_query(exchange, &ctx.server, &mut ctx.cookies).await;
 
     // resolve testvariables from the result of our current operation
     // and extend our collection with them
@@ -420,18 +437,11 @@ async fn run_operation(
 }
 
 pub async fn run_query(
-    body: serde_json::Value,
-    request: &(dyn Request + Send + Sync),
+    exchange: impl Exchange,
     server: &SystemResolver,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
-    let res = resolve_in_memory(
-        body,
-        server,
-        request,
-        TrustedDocumentEnforcement::DoNotEnforce,
-    )
-    .await;
+    let res = resolve_in_memory(exchange, server, TrustedDocumentEnforcement::DoNotEnforce).await;
 
     match res {
         Ok(res) => {

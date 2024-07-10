@@ -19,7 +19,7 @@ use actix_web::{
 use url::Url;
 
 use common::env_const::{get_deployment_mode, DeploymentMode};
-use core_resolver::system_resolver::SystemResolver;
+use core_resolver::{context::Request, exchange::Exchange, system_resolver::SystemResolver};
 use request::ActixRequest;
 use resolver::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use serde_json::Value;
@@ -88,6 +88,21 @@ async fn resolve(
     }
 }
 
+struct ActixExchange {
+    request: ActixRequest,
+    body: Value,
+}
+
+impl Exchange for ActixExchange {
+    fn get_request(&self) -> &(dyn Request + Send + Sync) {
+        &self.request
+    }
+
+    fn take_body(&mut self) -> Value {
+        self.body.take()
+    }
+}
+
 async fn resolve_locally(
     req: HttpRequest,
     body: web::Json<Value>,
@@ -101,13 +116,13 @@ async fn resolve_locally(
 
     let request = ActixRequest::from_request(req);
 
-    let res = resolver::resolve::<Error>(
-        body.into_inner(),
-        system_resolver.as_ref(),
-        &request,
-        playground_request,
-    )
-    .await;
+    let exchange = ActixExchange {
+        request,
+        body: body.into_inner(),
+    };
+
+    let res =
+        resolver::resolve::<Error>(exchange, system_resolver.as_ref(), playground_request).await;
 
     match res {
         Ok((stream, headers)) => {

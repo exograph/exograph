@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use worker::{Request as WorkerRequest, Response as WorkerResponse};
 
-use core_resolver::context::Request;
+use core_resolver::{context::Request, exchange::Exchange};
 
 use wasm_bindgen::prelude::*;
 
@@ -40,6 +40,20 @@ impl Request for WorkerRequestWrapper {
         None
     }
 }
+struct WorkerExchange {
+    body: Value,
+    request: WorkerRequestWrapper,
+}
+
+impl Exchange for WorkerExchange {
+    fn get_request(&self) -> &(dyn Request + Send + Sync) {
+        &self.request
+    }
+
+    fn take_body(&mut self) -> Value {
+        self.body.take()
+    }
+}
 
 pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response, JsValue> {
     let mut worker_request = WorkerRequestWrapper(WorkerRequest::from(raw_request));
@@ -51,7 +65,12 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
         .await
         .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
 
-    match resolver::resolve::<JsValue>(body_json, system_resolver, &worker_request, false).await {
+    let exchange = WorkerExchange {
+        body: body_json,
+        request: worker_request,
+    };
+
+    match resolver::resolve::<JsValue>(exchange, system_resolver, false).await {
         Ok((stream, headers)) => {
             let mut response = WorkerResponse::from_stream(stream)
                 .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;

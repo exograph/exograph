@@ -27,7 +27,7 @@ use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_POSTGRES_URL,
 };
 
-use super::{TestResult, TestResultKind};
+use super::{integration_test::MemoryExchange, TestResult, TestResultKind};
 
 use super::integration_test::{run_query, MemoryRequest};
 
@@ -136,13 +136,9 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         query_hash: None,
     };
 
-    let result = run_query(
-        operations_payload.to_json()?,
-        &request,
-        server,
-        &mut HashMap::new(),
-    )
-    .await;
+    let exchange = MemoryExchange::new(operations_payload.to_json()?, request);
+
+    let result = run_query(exchange, server, &mut HashMap::new()).await;
 
     let result = deno_module
         .execute_function(
