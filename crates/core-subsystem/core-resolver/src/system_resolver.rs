@@ -29,7 +29,7 @@ use tracing::{error, instrument, warn};
 
 use exo_env::Environment;
 
-use crate::context::provider::jwt::JwtAuthenticator;
+use crate::{context::provider::jwt::JwtAuthenticator, OperationsPayload};
 
 use crate::{
     context::RequestContext,
@@ -39,7 +39,7 @@ use crate::{
         document_validator::DocumentValidator, field::ValidatedField,
         operation::ValidatedOperation, validation_error::ValidationError,
     },
-    FieldResolver, InterceptedOperation, OperationsPayload, QueryResponse,
+    FieldResolver, InterceptedOperation, QueryResponse,
 };
 
 pub type ExographExecuteQueryFn<'a> = dyn Fn(
@@ -401,6 +401,12 @@ fn parse_query(query: &str) -> Result<ExecutableDocument, ValidationError> {
 }
 
 #[derive(Error, Debug)]
+pub enum RequestError {
+    #[error("Invalid body JSON {0}")]
+    InvalidBodyJson(serde_json::Error),
+}
+
+#[derive(Error, Debug)]
 pub enum SystemResolutionError {
     #[error("{0}")]
     Delegate(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
@@ -427,6 +433,9 @@ pub enum SystemResolutionError {
 
     #[error("{0}")]
     TrustedDocumentResolution(#[from] TrustedDocumentResolutionError),
+
+    #[error("Invalid request {0}")]
+    RequestError(#[from] RequestError),
 }
 
 impl SystemResolutionError {

@@ -15,7 +15,8 @@ use common::env_const::{
     EXO_POSTGRES_URL,
 };
 use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
-use core_resolver::context::{Request, RequestContext};
+use core_resolver::http::RequestHead;
+use core_resolver::http::RequestPayload;
 use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
@@ -244,12 +245,12 @@ enum OperationResult {
     AssertFailed(anyhow::Error),
 }
 
-pub struct MemoryRequest {
+pub struct MemoryRequestHead {
     headers: HashMap<String, Vec<String>>,
     cookies: HashMap<String, String>,
 }
 
-impl MemoryRequest {
+impl MemoryRequestHead {
     pub fn new(cookies: HashMap<String, String>) -> Self {
         Self {
             headers: HashMap::new(),
@@ -265,7 +266,7 @@ impl MemoryRequest {
     }
 }
 
-impl Request for MemoryRequest {
+impl RequestHead for MemoryRequestHead {
     fn get_headers(&self, key: &str) -> Vec<String> {
         if key.to_ascii_lowercase() == "cookie" {
             return self
@@ -283,6 +284,27 @@ impl Request for MemoryRequest {
 
     fn get_ip(&self) -> Option<std::net::IpAddr> {
         Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
+    }
+}
+
+pub(super) struct MemoryRequestPayload {
+    body: Value,
+    head: MemoryRequestHead,
+}
+
+impl MemoryRequestPayload {
+    pub(super) fn new(body: Value, head: MemoryRequestHead) -> Self {
+        Self { body, head }
+    }
+}
+
+impl RequestPayload for MemoryRequestPayload {
+    fn take_body(&mut self) -> Value {
+        self.body.take()
+    }
+
+    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        &self.head
     }
 }
 
@@ -325,7 +347,7 @@ async fn run_operation(
     // similarly, remove @unordered directives
     let query = query.replace("@unordered", "");
 
-    let mut request = MemoryRequest::new(ctx.cookies.clone());
+    let mut request_head = MemoryRequestHead::new(ctx.cookies.clone());
 
     // add JWT token if specified in testfile
     if let Some(auth) = auth {
@@ -343,10 +365,10 @@ async fn run_operation(
             &EncodingKey::from_secret(ctx.jwtsecret.as_ref()),
         )
         .unwrap();
-        request.add_header("Authorization", &format!("Bearer {token}"));
+        request_head.add_header("Authorization", &format!("Bearer {token}"));
     };
 
-    request.add_header("Content-Type", "application/json");
+    request_head.add_header("Content-Type", "application/json");
 
     // add extra headers from testfile
     let headers = OptionFuture::from(headers.as_ref().map(|headers| async {
@@ -357,14 +379,13 @@ async fn run_operation(
 
     if let Some(Value::Object(map)) = headers {
         for (header, value) in map.iter() {
-            request.add_header(
+            request_head.add_header(
                 header,
                 value.as_str().expect("expected string for header value"),
             );
         }
     }
 
-    let request_context = RequestContext::new(&request, vec![], &ctx.server)?;
     let operations_payload = OperationsPayload {
         operation_name: None,
         query: Some(query),
@@ -372,14 +393,9 @@ async fn run_operation(
         query_hash: None,
     };
 
+    let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
     // run the operation
-    let body = run_query(
-        operations_payload,
-        request_context,
-        &ctx.server,
-        &mut ctx.cookies,
-    )
-    .await;
+    let body = run_query(request, &ctx.server, &mut ctx.cookies).await;
 
     // resolve testvariables from the result of our current operation
     // and extend our collection with them
@@ -421,18 +437,11 @@ async fn run_operation(
 }
 
 pub async fn run_query(
-    operations_payload: OperationsPayload,
-    request_context: RequestContext<'_>,
+    request: impl RequestPayload,
     server: &SystemResolver,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
-    let res = resolve_in_memory(
-        operations_payload,
-        server,
-        request_context,
-        TrustedDocumentEnforcement::DoNotEnforce,
-    )
-    .await;
+    let res = resolve_in_memory(request, server, TrustedDocumentEnforcement::DoNotEnforce).await;
 
     match res {
         Ok(res) => {

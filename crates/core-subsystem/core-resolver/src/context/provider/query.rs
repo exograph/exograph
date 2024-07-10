@@ -10,9 +10,8 @@
 use async_trait::async_trait;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
-use crate::context::context_extractor::ContextExtractor;
-use crate::context::request::Request;
-use crate::context::{ContextExtractionError, RequestContext};
+use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
+use crate::http::RequestHead;
 use crate::system_resolver::SystemResolver;
 use crate::OperationsPayload;
 
@@ -36,7 +35,7 @@ impl ContextExtractor for QueryExtractor<'_> {
         &self,
         key: &str,
         request_context: &RequestContext,
-        _request: &(dyn Request + Send + Sync),
+        _request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<serde_json::Value>, ContextExtractionError> {
         let query = format!("query {{ {} }}", key.to_owned());
 

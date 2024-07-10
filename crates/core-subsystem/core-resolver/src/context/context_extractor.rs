@@ -10,7 +10,9 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use super::{request::Request, ContextExtractionError, RequestContext};
+use crate::http::RequestHead;
+
+use super::{ContextExtractionError, RequestContext};
 
 /// Extractor for a particular context field
 ///
@@ -26,7 +28,7 @@ pub trait ContextExtractor {
         &self,
         key: &str,
         request_context: &RequestContext,
-        request: &(dyn Request + Send + Sync),
+        request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError>;
 }
 pub type BoxedContextExtractor<'a> = Box<dyn ContextExtractor + 'a + Send + Sync>;
@@ -47,7 +49,7 @@ impl ContextExtractor for TestRequestContext {
         &self,
         key: &str,
         _request_context: &RequestContext,
-        _request: &(dyn Request + Send + Sync),
+        _request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self.test_values.get(key).cloned())
     }

@@ -22,7 +22,7 @@ async fn test_basic_query() {
             "isBase64Encoded": false,
             "statusCode": 200,
             "headers": {},
-            "multiValueHeaders": {},
+            "multiValueHeaders": {"content-type": "application/json"},
             "body": "{\"errors\": [{\"message\":\"Operation failed\"}]}"
         }),
     )

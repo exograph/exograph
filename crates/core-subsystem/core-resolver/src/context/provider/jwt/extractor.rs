@@ -9,8 +9,8 @@ use tracing::warn;
 
 use crate::context::context_extractor::ContextExtractor;
 use crate::context::error::ContextExtractionError;
-use crate::context::request::Request;
 use crate::context::RequestContext;
+use crate::http::RequestHead;
 
 use super::JwtAuthenticator;
 
@@ -29,10 +29,10 @@ impl JwtExtractor {
 
     async fn extract_authentication(
         &self,
-        request: &(dyn Request + Send + Sync),
+        request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Value, ContextExtractionError> {
         if let Some(jwt_authenticator) = self.jwt_authenticator.as_ref() {
-            jwt_authenticator.extract_authentication(request).await
+            jwt_authenticator.extract_authentication(request_head).await
         } else {
             #[cfg(target_family = "wasm")]
             warn!("JWT secret or OIDC URL is not set, not parsing JWT tokens");
@@ -57,11 +57,11 @@ impl ContextExtractor for JwtExtractor {
         &self,
         key: &str,
         _request_context: &RequestContext,
-        request: &(dyn Request + Send + Sync),
+        request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self
             .extracted_claims
-            .get_or_try_init(|| async { self.extract_authentication(request).await })
+            .get_or_try_init(|| async { self.extract_authentication(request_head).await })
             .await?
             .get(key)
             .cloned())

@@ -23,6 +23,8 @@ reqwest = { workspace = true, optional = true }
 oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", branch = "wasm-support", optional = true }
 serde.workspace = true
 thiserror.workspace = true
+async-stream.workspace = true
+http.workspace = true
 cookie = "0.18.1"
 tokio = { workspace = true, features = ["rt", "macros"] }
 elsa = "1.8.1"

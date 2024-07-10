@@ -10,7 +10,7 @@
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 
-use core_resolver::{context::RequestContext, system_resolver::SystemResolver, OperationsPayload};
+use core_resolver::{system_resolver::SystemResolver, OperationsPayload};
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,
@@ -27,9 +27,9 @@ use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_POSTGRES_URL,
 };
 
-use super::{TestResult, TestResultKind};
+use super::{integration_test::MemoryRequestPayload, TestResult, TestResultKind};
 
-use super::integration_test::{run_query, MemoryRequest};
+use super::integration_test::{run_query, MemoryRequestHead};
 
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
 const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");
@@ -124,8 +124,7 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         .execute_function("introspectionQuery", vec![])
         .await?;
 
-    let request = MemoryRequest::new(HashMap::new());
-    let request_context = RequestContext::new(&request, vec![], server)?;
+    let request_head = MemoryRequestHead::new(HashMap::new());
     let operations_payload = OperationsPayload {
         operation_name: None,
         query: if let Value::String(s) = query {
@@ -137,13 +136,9 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         query_hash: None,
     };
 
-    let result = run_query(
-        operations_payload,
-        request_context,
-        server,
-        &mut HashMap::new(),
-    )
-    .await;
+    let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
+
+    let result = run_query(request, server, &mut HashMap::new()).await;
 
     let result = deno_module
         .execute_function(

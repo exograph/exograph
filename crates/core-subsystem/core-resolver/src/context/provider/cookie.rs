@@ -14,9 +14,9 @@ use cookie::Cookie;
 use serde_json::Value;
 use tokio::sync::OnceCell;
 
-use crate::context::{
-    context_extractor::ContextExtractor, error::ContextExtractionError, request::Request,
-    RequestContext,
+use crate::{
+    context::{context_extractor::ContextExtractor, error::ContextExtractionError, RequestContext},
+    http::RequestHead,
 };
 
 pub struct CookieExtractor {
@@ -32,9 +32,9 @@ impl CookieExtractor {
     }
 
     pub fn extract_cookies(
-        request: &dyn Request,
+        request_head: &dyn RequestHead,
     ) -> Result<HashMap<String, Value>, ContextExtractionError> {
-        let cookie_headers = request.get_headers("cookie");
+        let cookie_headers = request_head.get_headers("cookie");
 
         let cookie_strings = cookie_headers
             .into_iter()
@@ -62,11 +62,11 @@ impl ContextExtractor for CookieExtractor {
         &self,
         key: &str,
         _request_context: &RequestContext,
-        request: &(dyn Request + Send + Sync),
+        request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self
             .extracted_cookies
-            .get_or_try_init(|| futures::future::ready(Self::extract_cookies(request)))
+            .get_or_try_init(|| futures::future::ready(Self::extract_cookies(request_head)))
             .await?
             .get(key)
             .cloned())

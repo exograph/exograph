@@ -3,10 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use worker::{Request as WorkerRequest, Response as WorkerResponse};
 
-use core_resolver::{
-    context::{Request, RequestContext},
-    OperationsPayload,
-};
+use core_resolver::http::{RequestHead, RequestPayload, ResponsePayload};
 
 use wasm_bindgen::prelude::*;
 
@@ -29,7 +26,7 @@ impl DerefMut for WorkerRequestWrapper {
 unsafe impl Send for WorkerRequestWrapper {}
 unsafe impl Sync for WorkerRequestWrapper {}
 
-impl Request for WorkerRequestWrapper {
+impl RequestHead for WorkerRequestWrapper {
     fn get_headers(&self, key: &str) -> Vec<String> {
         self.0
             .headers()
@@ -43,6 +40,20 @@ impl Request for WorkerRequestWrapper {
         None
     }
 }
+struct WorkerRequestPayload {
+    body: Value,
+    head: WorkerRequestWrapper,
+}
+
+impl RequestPayload for WorkerRequestPayload {
+    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        &self.head
+    }
+
+    fn take_body(&mut self) -> Value {
+        self.body.take()
+    }
+}
 
 pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response, JsValue> {
     let mut worker_request = WorkerRequestWrapper(WorkerRequest::from(raw_request));
@@ -53,30 +64,36 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
         .json()
         .await
         .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-    let request_context = RequestContext::new(&worker_request, vec![], system_resolver)
-        .map_err(|e| JsValue::from_str(&format!("Error creating request context: {:?}", e)))?;
 
-    let operations_payload: Result<OperationsPayload, _> = OperationsPayload::from_json(body_json);
-    let operations_payload =
-        operations_payload.map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+    let request = WorkerRequestPayload {
+        body: body_json,
+        head: worker_request,
+    };
 
-    let (stream, headers) =
-        resolver::resolve::<JsValue>(operations_payload, system_resolver, request_context, false)
-            .await;
+    let ResponsePayload {
+        stream,
+        headers,
+        status_code,
+    } = resolver::resolve::<JsValue>(request, system_resolver, false).await;
 
-    let mut response =
-        WorkerResponse::from_stream(stream).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+    let response = match stream {
+        Some(stream) => {
+            let mut response = WorkerResponse::from_stream(stream)
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
 
-    response
-        .headers_mut()
-        .append("content-type", "application/json")
-        .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-    for header in headers.into_iter() {
-        response
-            .headers_mut()
-            .append(&header.0, &header.1)
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-    }
+            for header in headers.into_iter() {
+                response
+                    .headers_mut()
+                    .append(&header.0, &header.1)
+                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+            }
+
+            response.with_status(status_code.into())
+        }
+        None => WorkerResponse::builder()
+            .with_status(status_code.into())
+            .body(worker::ResponseBody::Empty),
+    };
 
     web_sys::Response::try_from(response).map_err(|e| JsValue::from_str(&format!("{:?}", e)))
 }

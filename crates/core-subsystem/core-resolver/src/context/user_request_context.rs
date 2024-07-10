@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 use elsa::sync::FrozenMap;
 use exo_sql::TransactionHolder;
 
-use crate::{system_resolver::SystemResolver, value::Val};
+use crate::{http::RequestHead, system_resolver::SystemResolver, value::Val};
 
 use super::provider::jwt::JwtExtractor;
 use super::provider::{
@@ -21,8 +21,7 @@ use super::provider::{
     ip::IpExtractor, query::QueryExtractor,
 };
 use super::{
-    context_extractor::BoxedContextExtractor, error::ContextExtractionError, request::Request,
-    RequestContext,
+    context_extractor::BoxedContextExtractor, error::ContextExtractionError, RequestContext,
 };
 
 /// Represent a request context extracted for a particular request
@@ -30,7 +29,7 @@ pub struct UserRequestContext<'a> {
     // maps from an annotation to a parsed context
     parsed_context_map: HashMap<String, BoxedContextExtractor<'a>>,
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
-    request: &'a (dyn Request + Send + Sync),
+    request_head: &'a (dyn RequestHead + Send + Sync),
     // cache of context values so that we compute them only once per request
     context_cache: FrozenMap<(String, String), Box<Option<Val>>>,
 }
@@ -38,10 +37,10 @@ pub struct UserRequestContext<'a> {
 impl<'a> UserRequestContext<'a> {
     // Constructs a UserRequestContext from a vector of parsed contexts and a request.
     pub fn new(
-        request: &'a (dyn Request + Send + Sync),
+        request_head: &'a (dyn RequestHead + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
         system_resolver: &'a SystemResolver,
-    ) -> Result<UserRequestContext<'a>, ContextExtractionError> {
+    ) -> UserRequestContext<'a> {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedContextExtractor> = vec![
             Box::new(EnvironmentContextExtractor {
@@ -54,16 +53,16 @@ impl<'a> UserRequestContext<'a> {
             Box::new(JwtExtractor::new(system_resolver.jwt_authenticator.clone())),
         ];
 
-        Ok(UserRequestContext {
+        UserRequestContext {
             parsed_context_map: parsed_contexts
                 .into_iter()
                 .chain(generic_contexts) // include agnostic contexts
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
-            request,
+            request_head,
             context_cache: FrozenMap::new(),
-        })
+        }
     }
 
     pub async fn extract_context_field(
@@ -115,7 +114,7 @@ impl<'a> UserRequestContext<'a> {
             .ok_or_else(|| ContextExtractionError::SourceNotFound(annotation.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(key, request_context, self.request)
+            .extract_context_field(key, request_context, self.request_head)
             .await?
             .map(Val::from))
     }
