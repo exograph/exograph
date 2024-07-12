@@ -1,5 +1,4 @@
 use serde_json::Value;
-use std::ops::{Deref, DerefMut};
 
 use worker::{Request as WorkerRequest, Response as WorkerResponse};
 
@@ -7,21 +6,7 @@ use core_resolver::http::{RequestHead, RequestPayload, ResponsePayload};
 
 use wasm_bindgen::prelude::*;
 
-struct WorkerRequestWrapper(WorkerRequest);
-
-impl Deref for WorkerRequestWrapper {
-    type Target = WorkerRequest;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for WorkerRequestWrapper {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+struct WorkerRequestWrapper(WorkerRequest, String, Option<Value>);
 
 unsafe impl Send for WorkerRequestWrapper {}
 unsafe impl Sync for WorkerRequestWrapper {}
@@ -39,7 +24,30 @@ impl RequestHead for WorkerRequestWrapper {
     fn get_ip(&self) -> Option<std::net::IpAddr> {
         None
     }
+
+    fn get_method(&self) -> &http::Method {
+        match self.0.method() {
+            worker::Method::Head => &http::Method::HEAD,
+            worker::Method::Get => &http::Method::GET,
+            worker::Method::Post => &http::Method::POST,
+            worker::Method::Put => &http::Method::PUT,
+            worker::Method::Patch => &http::Method::PATCH,
+            worker::Method::Delete => &http::Method::DELETE,
+            worker::Method::Options => &http::Method::OPTIONS,
+            worker::Method::Connect => &http::Method::CONNECT,
+            worker::Method::Trace => &http::Method::TRACE,
+        }
+    }
+
+    fn get_path(&self) -> &str {
+        &self.1
+    }
+
+    fn get_query(&self) -> Option<Value> {
+        self.2.clone()
+    }
 }
+
 struct WorkerRequestPayload {
     body: Value,
     head: WorkerRequestWrapper,
@@ -56,11 +64,25 @@ impl RequestPayload for WorkerRequestPayload {
 }
 
 pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response, JsValue> {
-    let mut worker_request = WorkerRequestWrapper(WorkerRequest::from(raw_request));
+    let url =
+        url::Url::parse(&raw_request.url()).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+    let path = url.path().to_string();
+    let query = Some(
+        url.query_pairs()
+            .map(|q| {
+                let (k, v) = q;
+                (k.to_string(), v.to_string())
+            })
+            .collect(),
+    );
+
+    let mut worker_request =
+        WorkerRequestWrapper(WorkerRequest::from(raw_request), path.into(), query);
 
     let system_resolver = crate::init::get_system_resolver()?;
 
     let body_json: Value = worker_request
+        .0
         .json()
         .await
         .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;

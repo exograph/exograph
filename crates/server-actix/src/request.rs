@@ -17,13 +17,19 @@ pub struct ActixRequestHead {
     // request: &'a actix_web::HttpRequest,
     headers: HeaderMap,
     connection_info: ConnectionInfo,
+    method: actix_web::http::Method,
+    path: String,
+    query: Option<serde_json::Value>,
 }
 
 impl ActixRequestHead {
-    pub fn from_request(req: HttpRequest) -> ActixRequestHead {
+    pub fn from_request(req: HttpRequest, query: Option<serde_json::Value>) -> ActixRequestHead {
         ActixRequestHead {
             headers: req.headers().clone(),
             connection_info: req.connection_info().clone(),
+            method: req.method().clone(),
+            path: req.path().to_string(),
+            query,
         }
     }
 }
@@ -40,5 +46,17 @@ impl RequestHead for ActixRequestHead {
         self.connection_info
             .realip_remote_addr()
             .and_then(|realip| realip.parse().ok())
+    }
+
+    fn get_method(&self) -> &actix_web::http::Method {
+        &self.method
+    }
+
+    fn get_path(&self) -> &str {
+        &self.path
+    }
+
+    fn get_query(&self) -> Option<serde_json::Value> {
+        self.query.clone()
     }
 }

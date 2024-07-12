@@ -44,6 +44,7 @@ core-resolver = { path = "../../core-subsystem/core-resolver", features = [
 ] }
 resolver = { path = "../../resolver" }
 postgres-model-builder = { path = "../postgres-model-builder" }
+http.workspace = true
 wasm-bindgen-test.workspace = true
 
 [lib]

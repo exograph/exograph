@@ -46,7 +46,7 @@ pub fn configure_resolver(
     move |app| {
         app.app_data(system_resolver)
             .app_data(web::Data::new(endpoint_url))
-            .service(web::scope(&resolve_path).route("", web::post().to(resolve)));
+            .service(web::scope(&resolve_path).route("", web::to(resolve)));
     }
 }
 
@@ -73,6 +73,7 @@ pub fn configure_playground(cfg: &mut ServiceConfig) {
 async fn resolve(
     http_request: HttpRequest,
     body: web::Json<Value>,
+    query: web::Query<Option<Value>>,
     endpoint_url: web::Data<Option<Url>>,
     system_resolver: web::Data<SystemResolver>,
 ) -> impl Responder {
@@ -80,13 +81,13 @@ async fn resolve(
         Some(endpoint_url) => match http_request.headers().get("_exo_operation_kind") {
             Some(value) if value == "schema_query" => {
                 // This is a schema fetch request, so solve it locally
-                resolve_locally(http_request, body, system_resolver).await
+                resolve_locally(http_request, body, query.into_inner(), system_resolver).await
             }
             _ => forward_request(http_request, body, endpoint_url).await,
         },
         None => {
             // We aren't operating in the playground mode, so we can resolve it here
-            resolve_locally(http_request, body, system_resolver).await
+            resolve_locally(http_request, body, query.into_inner(), system_resolver).await
         }
     }
 }
@@ -109,6 +110,7 @@ impl RequestPayload for ActixRequestPayload {
 async fn resolve_locally(
     req: HttpRequest,
     body: web::Json<Value>,
+    query: Option<Value>,
     system_resolver: web::Data<SystemResolver>,
 ) -> HttpResponse {
     let playground_request = req
@@ -118,7 +120,7 @@ async fn resolve_locally(
         .unwrap_or(false);
 
     let request = ActixRequestPayload {
-        head: ActixRequestHead::from_request(req),
+        head: ActixRequestHead::from_request(req, query),
         body: body.into_inner(),
     };
 
