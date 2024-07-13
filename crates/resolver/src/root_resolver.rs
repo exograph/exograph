@@ -46,6 +46,13 @@ pub async fn resolve_in_memory<'a>(
     system_resolver: &SystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
+    let method = request.get_head().get_method();
+    if method != http::Method::POST {
+        return Err(SystemResolutionError::RequestError(
+            RequestError::RouteNotFound(method.clone(), request.get_head().get_path().to_string()),
+        ));
+    }
+
     let body = request.take_body();
     let request_head = request.get_head();
 

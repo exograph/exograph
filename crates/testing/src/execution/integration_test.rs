@@ -248,13 +248,24 @@ enum OperationResult {
 pub struct MemoryRequestHead {
     headers: HashMap<String, Vec<String>>,
     cookies: HashMap<String, String>,
+    method: http::Method,
+    path: String,
+    query: Option<Value>,
 }
 
 impl MemoryRequestHead {
-    pub fn new(cookies: HashMap<String, String>) -> Self {
+    pub fn new(
+        cookies: HashMap<String, String>,
+        method: http::Method,
+        path: String,
+        query: Option<Value>,
+    ) -> Self {
         Self {
             headers: HashMap::new(),
             cookies,
+            method,
+            path,
+            query,
         }
     }
 
@@ -284,6 +295,18 @@ impl RequestHead for MemoryRequestHead {
 
     fn get_ip(&self) -> Option<std::net::IpAddr> {
         Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
+    }
+
+    fn get_method(&self) -> &http::Method {
+        &self.method
+    }
+
+    fn get_path(&self) -> &str {
+        &self.path
+    }
+
+    fn get_query(&self) -> Option<serde_json::Value> {
+        self.query.clone()
     }
 }
 
@@ -347,7 +370,12 @@ async fn run_operation(
     // similarly, remove @unordered directives
     let query = query.replace("@unordered", "");
 
-    let mut request_head = MemoryRequestHead::new(ctx.cookies.clone());
+    let mut request_head = MemoryRequestHead::new(
+        ctx.cookies.clone(),
+        http::Method::POST,
+        "/graphql".to_string(),
+        None,
+    );
 
     // add JWT token if specified in testfile
     if let Some(auth) = auth {

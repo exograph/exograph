@@ -29,6 +29,7 @@ regex.workspace = true
 tokio.workspace = true
 async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
+http.workspace = true
 md5 = "0.7"
 wildmatch.workspace = true
 include_dir.workspace = true

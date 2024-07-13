@@ -40,4 +40,9 @@ pub trait RequestHead {
 
     // return the IP address used to make the request
     fn get_ip(&self) -> Option<std::net::IpAddr>;
+
+    fn get_path(&self) -> &str;
+    fn get_query(&self) -> Option<serde_json::Value>;
+
+    fn get_method(&self) -> &http::Method;
 }

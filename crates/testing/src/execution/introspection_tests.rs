@@ -124,7 +124,12 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         .execute_function("introspectionQuery", vec![])
         .await?;
 
-    let request_head = MemoryRequestHead::new(HashMap::new());
+    let request_head = MemoryRequestHead::new(
+        HashMap::new(),
+        http::Method::POST,
+        "/graphql".to_string(),
+        None,
+    );
     let operations_payload = OperationsPayload {
         operation_name: None,
         query: if let Value::String(s) = query {

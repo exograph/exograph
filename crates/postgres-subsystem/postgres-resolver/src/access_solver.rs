@@ -403,6 +403,18 @@ mod tests {
         fn get_ip(&self) -> Option<std::net::IpAddr> {
             None
         }
+
+        fn get_method(&self) -> &http::Method {
+            &http::Method::POST
+        }
+
+        fn get_path(&self) -> &str {
+            ""
+        }
+
+        fn get_query(&self) -> Option<serde_json::Value> {
+            None
+        }
     }
 
     const REQUEST: TestRequest = TestRequest {};
