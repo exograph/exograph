@@ -24,6 +24,7 @@ tracing-web = "0.1.3"
 # worker = { version = "0.3.0", features = ["tokio-postgres"] }
 worker = { git = "https://github.com/exograph/workers-rs.git", branch = "expose-Hyperdrive", features = [
   "tokio-postgres",
+  "http",
 ] }
 
 web-sys = "0.3.69"

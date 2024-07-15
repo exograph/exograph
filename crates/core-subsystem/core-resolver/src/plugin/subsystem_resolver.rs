@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    context::RequestContext, system_resolver::SystemResolver, validation::field::ValidatedField,
+    context::RequestContext, system_resolver::SystemRouter, validation::field::ValidatedField,
     InterceptedOperation, QueryResponse,
 };
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
@@ -41,7 +41,7 @@ pub trait SubsystemResolver: Sync {
         operation: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a SystemRouter,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         // TODO: reintroduce `let _guard = handle.enter();` or an equivalent mechanism to
         // ensure dynamically loaded resolvers continue to work
@@ -57,7 +57,7 @@ pub trait SubsystemResolver: Sync {
         interceptor_index: InterceptorIndex,
         intercepted_operation: &'a InterceptedOperation,
         request_context: &'a RequestContext<'a>,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a SystemRouter,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         // TODO: See above for `let _guard = handle.enter();` reintroduction
         self.invoke_interceptor(
@@ -77,7 +77,7 @@ pub trait SubsystemResolver: Sync {
         operation: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a SystemRouter,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
 
     /// Involves an interceptor
@@ -89,7 +89,7 @@ pub trait SubsystemResolver: Sync {
         interceptor_index: InterceptorIndex,
         intercepted_operation: &'a InterceptedOperation,
         request_context: &'a RequestContext<'a>,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a SystemRouter,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
 
     // Support for schema creation (and in turn, validation)

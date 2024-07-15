@@ -10,7 +10,7 @@
 use crate::{plugin::WasmSubsystemResolver, wasm_execution_error::WasmExecutionError};
 use core_plugin_interface::core_resolver::value::val::Val as ExoVal;
 use core_plugin_interface::core_resolver::{
-    context::RequestContext, system_resolver::SystemResolver, validation::field::ValidatedField,
+    context::RequestContext, system_resolver::SystemRouter, validation::field::ValidatedField,
     QueryResponse, QueryResponseBody,
 };
 use std::collections::HashMap;
@@ -24,7 +24,7 @@ pub struct WasmOperation<'a> {
     pub request_context: &'a RequestContext<'a>,
     pub subsystem_resolver: &'a WasmSubsystemResolver,
     #[allow(unused)]
-    pub system_resolver: &'a SystemResolver,
+    pub system_resolver: &'a SystemRouter,
 }
 
 impl<'a> WasmOperation<'a> {

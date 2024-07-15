@@ -9,9 +9,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
-use core_resolver::system_resolver::SystemResolver;
+use core_resolver::system_resolver::SystemRouter;
 use exo_sql::DatabaseClientManager;
-use resolver::create_system_resolver_from_system;
+use resolver::{create_system_resolver_from_system, SystemRouter};
 use worker::console_error;
 
 use crate::{env::WorkerEnvironment, pg::WorkerPostgresConnect};
@@ -62,7 +62,7 @@ fn setup_tracing(env: &WorkerEnvironment) {
     let _ = tracing_subscriber::registry().with(fmt_layer).try_init();
 }
 
-pub(crate) fn get_system_resolver() -> Result<&'static SystemResolver, JsValue> {
+pub(crate) fn get_system_resolver() -> Result<&'static SystemRouter, JsValue> {
     let system_resolver = RESOLVER
         .system_resolver
         .get()
@@ -72,7 +72,7 @@ pub(crate) fn get_system_resolver() -> Result<&'static SystemResolver, JsValue> 
 }
 
 struct SystemResolverHolder {
-    system_resolver: OnceCell<SystemResolver>,
+    system_resolver: OnceCell<SystemRouter>,
 }
 
 unsafe impl Send for SystemResolverHolder {}
@@ -114,7 +114,7 @@ impl SystemResolverHolder {
         system: SerializableSystem,
         client_manager: DatabaseClientManager,
         env: Box<dyn Environment>,
-    ) -> Result<SystemResolver, JsValue> {
+    ) -> Result<SystemRouter, JsValue> {
         create_system_resolver_from_system(
             system,
             vec![Box::new(postgres_resolver::PostgresSubsystemLoader {

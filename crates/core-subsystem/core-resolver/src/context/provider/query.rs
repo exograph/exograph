@@ -12,15 +12,15 @@ use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
 use crate::http::RequestHead;
-use crate::system_resolver::SystemResolver;
+use crate::system_resolver::SystemRouter;
 use crate::OperationsPayload;
 
 pub struct QueryExtractor<'a> {
-    system_resolver: &'a SystemResolver,
+    system_resolver: &'a SystemRouter,
 }
 
 impl<'a> QueryExtractor<'a> {
-    pub fn new(system_resolver: &'a SystemResolver) -> QueryExtractor<'a> {
+    pub fn new(system_resolver: &'a SystemRouter) -> QueryExtractor<'a> {
         QueryExtractor { system_resolver }
     }
 }

@@ -12,7 +12,7 @@ version.workspace = true
 edition.workspace = true
 repository = "https://github.com/exograph/exograph"
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(target_os = "macos")'.dependencies]
 async-trait.workspace = true
 lambda_runtime = "0.6.1"
 futures.workspace = true
@@ -30,7 +30,7 @@ server-common = { path = "../server-common" }
 common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }
 
-[target.'cfg(target_os = "linux")'.dev-dependencies]
+[target.'cfg(target_os = "macos")'.dev-dependencies]
 builder = { path = "../builder" }
 
 [features]

@@ -377,7 +377,7 @@ mod tests {
 
     use core_resolver::http::RequestHead;
     use core_resolver::introspection::definition::schema::Schema;
-    use core_resolver::system_resolver::SystemResolver;
+    use core_resolver::system_resolver::SystemRouter;
     use exo_env::MapEnvironment;
     use exo_sql::PhysicalTableName;
     use serde_json::{json, Value};
@@ -390,7 +390,7 @@ mod tests {
         owner_id_column_path: PhysicalColumnPath,
         dept1_id_column_path: PhysicalColumnPath,
         dept2_id_column_path: PhysicalColumnPath,
-        test_system_resolver: SystemResolver,
+        test_system_resolver: SystemRouter,
     }
 
     struct TestRequest {}
@@ -492,7 +492,7 @@ mod tests {
 
         // Create an empty SystemResolver. Since in tests we never invoke the resolver (since we don't have @query context),
         // we don't need to populate it.
-        let test_system_resolver = SystemResolver::new(
+        let test_system_resolver = SystemRouter::new(
             vec![],
             InterceptionMap {
                 map: HashMap::new(),
@@ -1494,10 +1494,7 @@ mod tests {
         }
     }
 
-    fn test_request_context(
-        test_values: Value,
-        system_resolver: &SystemResolver,
-    ) -> RequestContext {
+    fn test_request_context(test_values: Value, system_resolver: &SystemRouter) -> RequestContext {
         RequestContext::new(
             &REQUEST,
             vec![Box::new(core_resolver::context::TestRequestContext {

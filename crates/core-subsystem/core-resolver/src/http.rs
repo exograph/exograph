@@ -14,7 +14,7 @@ use bytes::Bytes;
 use futures::Stream;
 use std::pin::Pin;
 
-pub trait RequestPayload {
+pub trait RequestPayload: Send + Sync {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync);
     fn take_body(&mut self) -> Value;
 }
@@ -22,8 +22,8 @@ pub trait RequestPayload {
 type PinnedStream<E> = Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;
 pub type Headers = Vec<(String, String)>;
 
-pub struct ResponsePayload<E> {
-    pub stream: Option<PinnedStream<E>>,
+pub struct ResponsePayload {
+    pub stream: Option<PinnedStream<core::convert::Infallible>>,
     pub headers: Headers,
     pub status_code: StatusCode,
 }

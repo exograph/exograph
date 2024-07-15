@@ -17,7 +17,7 @@ use common::env_const::{
 use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::http::RequestHead;
 use core_resolver::http::RequestPayload;
-use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
+use core_resolver::system_resolver::{SystemResolutionError, SystemRouter};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::future::OptionFuture;
@@ -45,7 +45,7 @@ use super::{TestResult, TestResultKind};
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
 struct TestfileContext {
-    server: SystemResolver,
+    server: SystemRouter,
     jwtsecret: String,
     cookies: HashMap<String, String>,
     testvariables: HashMap<String, serde_json::Value>,
@@ -423,7 +423,7 @@ async fn run_operation(
 
     let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
     // run the operation
-    let body = run_query(request, &ctx.server, &mut ctx.cookies).await;
+    let body = run_query(Box::new(request), &ctx.server, &mut ctx.cookies).await;
 
     // resolve testvariables from the result of our current operation
     // and extend our collection with them
@@ -465,8 +465,8 @@ async fn run_operation(
 }
 
 pub async fn run_query(
-    request: impl RequestPayload,
-    server: &SystemResolver,
+    request: Box<dyn RequestPayload>,
+    server: &SystemRouter,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
     let res = resolve_in_memory(request, server, TrustedDocumentEnforcement::DoNotEnforce).await;

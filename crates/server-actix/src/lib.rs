@@ -14,14 +14,14 @@ use std::path::Path;
 use actix_web::{
     http::header::{CacheControl, CacheDirective},
     web::{self, Redirect, ServiceConfig},
-    Error, HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
+    HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
 };
 use url::Url;
 
 use common::env_const::{get_deployment_mode, DeploymentMode};
 use core_resolver::{
     http::{RequestHead, RequestPayload, ResponsePayload},
-    system_resolver::SystemResolver,
+    system_resolver::SystemRouter,
 };
 use request::ActixRequestHead;
 use resolver::{get_endpoint_http_path, get_playground_http_path, graphiql};
@@ -34,7 +34,7 @@ macro_rules! error_msg {
 }
 
 pub fn configure_resolver(
-    system_resolver: web::Data<SystemResolver>,
+    system_resolver: web::Data<SystemRouter>,
 ) -> impl FnOnce(&mut ServiceConfig) {
     let resolve_path = get_endpoint_http_path();
 
@@ -75,7 +75,7 @@ async fn resolve(
     body: web::Json<Value>,
     query: web::Query<Option<Value>>,
     endpoint_url: web::Data<Option<Url>>,
-    system_resolver: web::Data<SystemResolver>,
+    system_resolver: web::Data<SystemRouter>,
 ) -> impl Responder {
     match endpoint_url.as_ref() {
         Some(endpoint_url) => match http_request.headers().get("_exo_operation_kind") {
@@ -111,7 +111,7 @@ async fn resolve_locally(
     req: HttpRequest,
     body: web::Json<Value>,
     query: Option<Value>,
-    system_resolver: web::Data<SystemResolver>,
+    system_resolver: web::Data<SystemRouter>,
 ) -> HttpResponse {
     let playground_request = req
         .headers()
@@ -128,7 +128,12 @@ async fn resolve_locally(
         stream,
         headers,
         status_code,
-    } = resolver::resolve::<Error>(request, system_resolver.as_ref(), playground_request).await;
+    } = resolver::resolve(
+        Box::new(request),
+        system_resolver.as_ref(),
+        playground_request,
+    )
+    .await;
 
     let mut builder = HttpResponse::build(status_code);
 
@@ -188,7 +193,7 @@ async fn forward_request(
     }
 }
 
-async fn playground(req: HttpRequest, resolver: web::Data<SystemResolver>) -> impl Responder {
+async fn playground(req: HttpRequest, resolver: web::Data<SystemRouter>) -> impl Responder {
     if !resolver.allow_introspection() {
         return HttpResponse::Forbidden().body("Introspection is not enabled");
     }

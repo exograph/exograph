@@ -10,7 +10,7 @@
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 
-use core_resolver::{system_resolver::SystemResolver, OperationsPayload};
+use core_resolver::{system_resolver::SystemRouter, OperationsPayload};
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,
@@ -68,7 +68,7 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
     }
 }
 
-async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
+async fn check_introspection(server: &SystemRouter) -> Result<Result<()>> {
     let script = INTROSPECTION_ASSERT_JS;
 
     let mut deno_module = DenoModule::new(
@@ -143,7 +143,7 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
 
     let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
 
-    let result = run_query(request, server, &mut HashMap::new()).await;
+    let result = run_query(Box::new(request), server, &mut HashMap::new()).await;
 
     let result = deno_module
         .execute_function(

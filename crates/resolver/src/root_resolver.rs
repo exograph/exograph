@@ -12,6 +12,7 @@ use std::process::exit;
 use std::{fs::File, io::BufReader, path::Path};
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
+use crate::system_router::SystemRouter;
 
 #[cfg(not(target_family = "wasm"))]
 use common::env_const::is_production;
@@ -26,7 +27,7 @@ use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bytes::Bytes;
-use core_resolver::system_resolver::SystemResolver;
+use core_resolver::system_resolver::SystemRouter;
 use core_resolver::system_resolver::{RequestError, SystemResolutionError};
 pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
@@ -42,8 +43,8 @@ const EXO_ENDPOINT_HTTP_PATH: &str = "EXO_ENDPOINT_HTTP_PATH";
     skip(system_resolver, request)
 )]
 pub async fn resolve_in_memory<'a>(
-    mut request: impl RequestPayload,
-    system_resolver: &SystemResolver,
+    mut request: Box<dyn RequestPayload>,
+    system_resolver: &SystemRouter,
     trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
     let method = request.get_head().get_method();
@@ -55,10 +56,10 @@ pub async fn resolve_in_memory<'a>(
 
     let body = request.take_body();
     let request_head = request.get_head();
-
-    let operations_payload = OperationsPayload::from_json(body.clone())
-        .map_err(|e| SystemResolutionError::RequestError(RequestError::InvalidBodyJson(e)))?;
     let request_context = RequestContext::new(request_head, vec![], system_resolver);
+
+    let operations_payload = OperationsPayload::from_json(body)
+        .map_err(|e| SystemResolutionError::RequestError(RequestError::InvalidBodyJson(e)))?;
 
     let response = system_resolver
         .resolve_operations(
@@ -91,11 +92,11 @@ pub async fn resolve_in_memory<'a>(
     name = "resolver::resolve"
     skip(system_resolver, request)
 )]
-pub async fn resolve<'a, E: 'static>(
-    request: impl RequestPayload,
-    system_resolver: &SystemResolver,
+pub async fn resolve<'a>(
+    request: Box<dyn RequestPayload>,
+    system_resolver: &SystemRouter,
     playground_request: bool,
-) -> ResponsePayload<E> {
+) -> ResponsePayload {
     #[cfg(not(target_family = "wasm"))]
     let is_production = is_production();
     #[cfg(target_family = "wasm")]
@@ -197,7 +198,10 @@ pub async fn resolve<'a, E: 'static>(
     };
 
     ResponsePayload {
-        stream: Some(Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>),
+        stream: Some(Box::pin(stream)
+            as Pin<
+                Box<dyn Stream<Item = Result<Bytes, core::convert::Infallible>>>,
+            >),
         headers,
         status_code: StatusCode::OK,
     }
@@ -215,7 +219,7 @@ pub async fn create_system_resolver(
     exo_ir_file: &str,
     static_loaders: StaticLoaders,
     env: Box<dyn Environment>,
-) -> Result<SystemResolver, SystemLoadingError> {
+) -> Result<SystemRouter, SystemLoadingError> {
     if !Path::new(&exo_ir_file).exists() {
         return Err(SystemLoadingError::FileNotFound(exo_ir_file.to_string()));
     }
@@ -233,17 +237,19 @@ pub async fn create_system_resolver_from_system(
     system: SerializableSystem,
     static_loaders: StaticLoaders,
     env: Box<dyn Environment>,
-) -> Result<SystemResolver, SystemLoadingError> {
-    SystemLoader::load_from_system(system, static_loaders, env).await
+) -> Result<SystemRouter, SystemLoadingError> {
+    Ok(SystemRouter::new(vec![Box::new(
+        SystemLoader::load_from_system(system, static_loaders, env).await?,
+    )]))
 }
 
 pub async fn create_system_resolver_or_exit(
     exo_ir_file: &str,
     static_loaders: StaticLoaders,
     env: Box<dyn Environment>,
-) -> SystemResolver {
+) -> SystemRouter {
     match create_system_resolver(exo_ir_file, static_loaders, env).await {
-        Ok(system_resolver) => system_resolver,
+        Ok(system_resolver) => SystemRouter::new(vec![Box::new(system_resolver)]),
         Err(error) => {
             println!("{error}");
             exit(1);

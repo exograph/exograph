@@ -7,13 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-#![cfg(target_os = "linux")]
+#![cfg(target_os = "macos")]
 
 mod request;
 
 use core_resolver::{
     http::{RequestHead, RequestPayload, ResponsePayload},
-    system_resolver::SystemResolver,
+    system_resolver::SystemRouter,
 };
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
@@ -38,7 +38,7 @@ impl<'a> RequestPayload for AwsLambdaRequestPayload<'a> {
 
 pub async fn resolve(
     event: LambdaEvent<Value>,
-    system_resolver: Arc<SystemResolver>,
+    system_resolver: Arc<SystemRouter>,
 ) -> Result<Value, Error> {
     let request_payload = AwsLambdaRequestPayload {
         head: LambdaRequest::new(&event),
@@ -49,7 +49,7 @@ pub async fn resolve(
         stream,
         headers,
         status_code,
-    } = resolver::resolve::<Error>(request_payload, &system_resolver, false).await;
+    } = resolver::resolve(Box::new(request_payload), &system_resolver, false).await;
 
     let body_string = match stream {
         Some(stream) => {

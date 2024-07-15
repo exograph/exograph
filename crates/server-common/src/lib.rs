@@ -11,9 +11,9 @@ use std::{env, process::exit};
 
 use common::logging_tracing;
 use core_plugin_interface::interface::SubsystemLoader;
-use core_resolver::system_resolver::SystemResolver;
+use core_resolver::system_resolver::SystemRouter;
 
-use resolver::create_system_resolver_or_exit;
+use resolver::{create_system_resolver_or_exit, SystemRouter};
 
 use exo_env::SystemEnvironment;
 
@@ -27,7 +27,7 @@ use exo_env::SystemEnvironment;
 ///
 /// # Exit codes
 /// - 1 - If the exo_ir file doesn't exist or can't be loaded.
-pub async fn init() -> SystemResolver {
+pub async fn init() -> SystemRouter {
     logging_tracing::init();
 
     let exo_ir_file = get_exo_ir_file_name();

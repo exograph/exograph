@@ -13,7 +13,7 @@ use core_resolver::{
     context::RequestContext,
     introspection::definition::schema::Schema,
     plugin::{SubsystemResolutionError, SubsystemResolver},
-    system_resolver::SystemResolver,
+    system_resolver::SystemRouter,
     validation::field::ValidatedField,
     InterceptedOperation, QueryResponse, QueryResponseBody,
 };
@@ -40,7 +40,7 @@ impl SubsystemResolver for IntrospectionResolver {
         field: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext,
-        _system_resolver: &'a SystemResolver,
+        _system_resolver: &'a SystemRouter,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let name = field.name.as_str();
 
@@ -69,7 +69,7 @@ impl SubsystemResolver for IntrospectionResolver {
         _interceptor_index: InterceptorIndex,
         _proceeding_interceptor: &'a InterceptedOperation<'a>,
         _request_context: &'a RequestContext<'a>,
-        _system_resolver: &'a SystemResolver,
+        _system_resolver: &'a SystemRouter,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         Err(SubsystemResolutionError::NoInterceptorFound)
     }

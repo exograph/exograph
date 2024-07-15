@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 use elsa::sync::FrozenMap;
 use exo_sql::TransactionHolder;
 
-use crate::{http::RequestHead, system_resolver::SystemResolver, value::Val};
+use crate::{http::RequestHead, system_resolver::SystemRouter, value::Val};
 
 use super::provider::jwt::JwtExtractor;
 use super::provider::{
@@ -39,7 +39,7 @@ impl<'a> UserRequestContext<'a> {
     pub fn new(
         request_head: &'a (dyn RequestHead + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a SystemRouter,
     ) -> UserRequestContext<'a> {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedContextExtractor> = vec![

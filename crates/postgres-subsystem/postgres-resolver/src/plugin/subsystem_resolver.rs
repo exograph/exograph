@@ -17,7 +17,7 @@ use core_plugin_interface::{
     core_resolver::{
         context::RequestContext,
         plugin::{SubsystemResolutionError, SubsystemResolver},
-        system_resolver::SystemResolver,
+        system_resolver::SystemRouter,
         validation::field::ValidatedField,
         InterceptedOperation, QueryResponse,
     },
@@ -43,7 +43,7 @@ impl SubsystemResolver for PostgresSubsystemResolver {
         field: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext<'a>,
-        _system_resolver: &'a SystemResolver,
+        _system_resolver: &'a SystemRouter,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let operation_name = &field.name;
 
@@ -98,7 +98,7 @@ impl SubsystemResolver for PostgresSubsystemResolver {
         _interceptor_index: InterceptorIndex,
         _intercepted_operation: &'a InterceptedOperation<'a>,
         _request_context: &'a RequestContext<'a>,
-        _system_resolver: &'a SystemResolver,
+        _system_resolver: &'a SystemRouter,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         Err(SubsystemResolutionError::NoInterceptorFound)
     }

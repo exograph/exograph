@@ -96,7 +96,7 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
         stream,
         headers,
         status_code,
-    } = resolver::resolve::<JsValue>(request, system_resolver, false).await;
+    } = resolver::resolve(Box::new(request), system_resolver, false).await;
 
     let response = match stream {
         Some(stream) => {

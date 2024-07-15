@@ -23,7 +23,7 @@ use core_plugin_shared::{
 };
 
 use core_resolver::plugin::SubsystemResolver;
-use core_resolver::{introspection::definition::schema::Schema, system_resolver::SystemResolver};
+use core_resolver::{introspection::definition::schema::Schema, system_resolver::SystemRouter};
 use exo_env::Environment;
 
 use tracing::debug;
@@ -39,7 +39,7 @@ impl SystemLoader {
         read: impl std::io::Read,
         static_loaders: StaticLoaders,
         env: Box<dyn Environment>,
-    ) -> Result<SystemResolver, SystemLoadingError> {
+    ) -> Result<SystemRouter, SystemLoadingError> {
         let serialized_system = SerializableSystem::deserialize_reader(read)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
@@ -50,7 +50,7 @@ impl SystemLoader {
         serialized_system: SerializableSystem,
         mut static_loaders: StaticLoaders,
         env: Box<dyn Environment>,
-    ) -> Result<SystemResolver, SystemLoadingError> {
+    ) -> Result<SystemRouter, SystemLoadingError> {
         let SerializableSystem {
             subsystems,
             query_interception_map,
@@ -119,7 +119,7 @@ impl SystemLoader {
             .await
             .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
 
-        Ok(SystemResolver::new(
+        Ok(SystemRouter::new(
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
