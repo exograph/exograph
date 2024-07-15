@@ -53,7 +53,7 @@ core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 
 server-common = { path = "../server-common" }
 futures.workspace = true
-crossbeam-channel = "0.5.8"
+crossbeam-channel = "0.5.13"
 
 
 [dev-dependencies]
