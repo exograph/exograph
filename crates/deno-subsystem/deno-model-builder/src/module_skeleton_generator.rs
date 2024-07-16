@@ -464,7 +464,7 @@ trait TypeScriptType {
 impl TypeScriptType for AstFieldType<Typed> {
     fn typescript_type(&self) -> String {
         match self {
-            AstFieldType::Optional(tpe) => format!("{}?", tpe.typescript_type()),
+            AstFieldType::Optional(typ) => format!("{} | undefined", typ.typescript_type()),
             AstFieldType::Plain(_, name, ..) => typescript_base_type(name),
         }
     }
@@ -521,14 +521,14 @@ mod tests {
             fields: vec![
                 AstField {
                     name: "field1".to_string(),
-                    typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
+                    typ: AstFieldType::Plain(None, "String".to_string(), vec![], true, span),
                     annotations: Default::default(),
                     default_value: None,
                     span,
                 },
                 AstField {
                     name: "field2".to_string(),
-                    typ: AstFieldType::Plain("Int".to_string(), vec![], true, span),
+                    typ: AstFieldType::Plain(None, "Int".to_string(), vec![], true, span),
                     annotations: Default::default(),
                     default_value: None,
                     span,
