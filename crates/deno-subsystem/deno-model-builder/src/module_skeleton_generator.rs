@@ -465,7 +465,14 @@ impl TypeScriptType for AstFieldType<Typed> {
     fn typescript_type(&self) -> String {
         match self {
             AstFieldType::Optional(typ) => format!("{} | undefined", typ.typescript_type()),
-            AstFieldType::Plain(_, name, ..) => typescript_base_type(name),
+            AstFieldType::Plain(_, name, inner_type, ..) => {
+                if name == "Set" {
+                    let inner_type_name = inner_type.first().unwrap().typescript_type();
+                    return format!("{}[]", typescript_base_type(inner_type_name.as_str()));
+                }
+
+                typescript_base_type(name)
+            }
         }
     }
 }
@@ -539,11 +546,54 @@ mod tests {
         }
     }
 
+    fn fabricate_model_with_collection(name: &str) -> AstModel<Typed> {
+        let span = fabricate_span();
+
+        AstModel {
+            name: name.to_string(),
+            kind: AstModelKind::Type,
+            fields: vec![
+                AstField {
+                    name: "items".to_string(),
+                    typ: AstFieldType::Plain(
+                        None,
+                        "Set".to_string(),
+                        vec![AstFieldType::Plain(
+                            None,
+                            "Item".to_string(),
+                            vec![],
+                            true,
+                            span,
+                        )],
+                        true,
+                        span,
+                    ),
+                    annotations: Default::default(),
+                    default_value: None,
+                    span,
+                },
+                AstField {
+                    name: "totalCount".to_string(),
+                    typ: AstFieldType::Plain(None, "Int".to_string(), vec![], true, span),
+                    annotations: Default::default(),
+                    default_value: None,
+                    span,
+                },
+            ],
+            annotations: Default::default(),
+            span,
+        }
+    }
+
     fn fabricate_module(name: &str) -> AstModule<Typed> {
         let span = fabricate_span();
         AstModule {
             name: name.to_string(),
-            types: vec![fabricate_model("TestType1"), fabricate_model("TestType2")],
+            types: vec![
+                fabricate_model("TestType1"),
+                fabricate_model("TestType2"),
+                fabricate_model_with_collection("EdgeType"),
+            ],
             annotations: Default::default(),
             base_exofile: PathBuf::new(),
             interceptors: vec![],
@@ -565,6 +615,23 @@ mod tests {
 
         let expected_code =
             "export interface TestType {\n\tfield1: string\n\tfield2: number\n}\n\n";
+
+        assert_eq!(generated_code, expected_code);
+    }
+
+    #[test]
+    fn test_generate_with_collection_type_skeleton() {
+        let mock_type = fabricate_model_with_collection("TestType");
+
+        let mut temp_file = tempfile().unwrap();
+        generate_type_skeleton(&mock_type, &mut temp_file).unwrap();
+
+        temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        let mut generated_code = String::new();
+        temp_file.read_to_string(&mut generated_code).unwrap();
+
+        let expected_code =
+            "export interface TestType {\n\titems: Item[]\n\ttotalCount: number\n}\n\n";
 
         assert_eq!(generated_code, expected_code);
     }
@@ -595,8 +662,11 @@ mod tests {
 
         let expected_type1 = "export interface TestType1 {\n\tfield1: string\n\tfield2: number\n}";
         let expected_type2 = "export interface TestType2 {\n\tfield1: string\n\tfield2: number\n}";
+        let expected_edge_type =
+            "export interface EdgeType {\n\titems: Item[]\n\ttotalCount: number\n}";
         assert!(content.contains(expected_type1), "TestType1 not found");
         assert!(content.contains(expected_type2), "TestType2 not found");
+        assert!(content.contains(expected_edge_type), "EdgeType not found");
 
         fs::remove_dir_all(generated_dir).unwrap();
     }
@@ -630,7 +700,7 @@ mod tests {
         let content = fs::read_to_string(out_file_path).unwrap();
 
         let expected_imports =
-            "import type { TestType1, TestType2 } from '../generated/TestModule.d.ts';\n";
+            "import type { EdgeType, TestType1, TestType2 } from '../generated/TestModule.d.ts';\n";
         assert!(
             content.contains(expected_imports),
             "Types imports not found"
