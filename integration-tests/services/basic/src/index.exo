@@ -44,5 +44,12 @@ module TodoModule {
         completed: Boolean
     }
 
+    @access(true)
+    type Todos {
+        items: Set<Todo>
+        totalCount: Int
+    }
+
     @access(true) export query todo(id: Int): Todo
+    @access(true) export query todos(): Todos
 }
