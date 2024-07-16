@@ -17,7 +17,7 @@ use core_model::{
         default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
         Parameter, TypeDefinitionProvider,
     },
-    types::{FieldType, Named},
+    types::{FieldType, Named, OperationReturnType},
 };
 
 use serde::{Deserialize, Serialize};
@@ -130,5 +130,23 @@ impl Parameter for ModuleField {
 
     fn typ(&self) -> Type {
         (&self.typ).into()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ModuleOperationReturnType {
+    Own(OperationReturnType<ModuleType>),
+    Foreign(FieldType<ForeignModuleType>),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ForeignModuleType {
+    pub module_name: String,
+    pub return_type_name: String,
+}
+
+impl Named for ForeignModuleType {
+    fn name(&self) -> &str {
+        &self.return_type_name
     }
 }

@@ -9,16 +9,13 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::access::Access;
+use crate::{access::Access, types::ModuleOperationReturnType};
 
 use super::{
     operation::{ModuleMutation, ModuleQuery},
     types::ModuleType,
 };
-use core_model::{
-    mapped_arena::SerializableSlabIndex,
-    types::{FieldType, OperationReturnType},
-};
+use core_model::{mapped_arena::SerializableSlabIndex, types::FieldType};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModuleMethod {
@@ -28,7 +25,7 @@ pub struct ModuleMethod {
     pub is_exported: bool,
     pub arguments: Vec<Argument>,
     pub access: Access,
-    pub return_type: OperationReturnType<ModuleType>,
+    pub return_type: ModuleOperationReturnType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -18,7 +18,7 @@ use subsystem_model_util::{
     interceptor::Interceptor,
     module::{Argument, ModuleMethod, ModuleMethodType, Script},
     operation::{ModuleMutation, ModuleQuery},
-    types::ModuleType,
+    types::{ForeignModuleType, ModuleOperationReturnType, ModuleType},
 };
 
 use crate::builder::resolved_builder::ResolvedFieldType;
@@ -121,14 +121,29 @@ fn create_shallow_module(
                 })
                 .collect(),
             return_type: {
-                let plain_return_type = BaseOperationReturnType {
-                    associated_type_id: building
-                        .get_id(resolved_method.return_type.name())
-                        .unwrap(),
-                    type_name: resolved_method.return_type.name().to_string(),
-                };
+                match &resolved_method.return_type.innermost().module_name {
+                    Some(module_name) => {
+                        let plain_return_type = ForeignModuleType {
+                            module_name: module_name.clone(),
+                            return_type_name: resolved_method.return_type.name().to_string(),
+                        };
+                        ModuleOperationReturnType::Foreign(
+                            resolved_method.return_type.wrap(plain_return_type),
+                        )
+                    }
+                    None => {
+                        let plain_return_type = BaseOperationReturnType {
+                            associated_type_id: building
+                                .get_id(resolved_method.return_type.name())
+                                .unwrap(),
+                            type_name: resolved_method.return_type.name().to_string(),
+                        };
 
-                resolved_method.return_type.wrap(plain_return_type)
+                        ModuleOperationReturnType::Own(
+                            resolved_method.return_type.wrap(plain_return_type),
+                        )
+                    }
+                }
             },
         },
     );
@@ -142,17 +157,31 @@ fn shallow_module_query(
     let resolved_return_type = &method.return_type;
     let return_type_name = resolved_return_type.name();
 
-    ModuleQuery {
-        name: method.name.clone(),
-        method_id: None,
-        argument_param: argument_param(method, building),
-        return_type: {
+    let module_name = resolved_return_type.innermost().module_name.clone();
+
+    let return_type = match module_name {
+        Some(module_name) => {
+            let plain_return_type = ForeignModuleType {
+                module_name,
+                return_type_name: return_type_name.to_string(),
+            };
+            ModuleOperationReturnType::Foreign(resolved_return_type.wrap(plain_return_type))
+        }
+
+        None => {
             let plain_return_type = BaseOperationReturnType {
                 associated_type_id: module_types.get_id(return_type_name).unwrap(),
                 type_name: return_type_name.to_string(),
             };
-            resolved_return_type.wrap(plain_return_type)
-        },
+            ModuleOperationReturnType::Own(resolved_return_type.wrap(plain_return_type))
+        }
+    };
+
+    ModuleQuery {
+        name: method.name.clone(),
+        method_id: None,
+        argument_param: argument_param(method, building),
+        return_type,
     }
 }
 
@@ -173,7 +202,7 @@ fn shallow_module_mutation(
                 associated_type_id: module_types.get_id(return_type_name).unwrap(),
                 type_name: return_type_name.to_string(),
             };
-            resolved_return_type.wrap(plain_return_type)
+            ModuleOperationReturnType::Own(resolved_return_type.wrap(plain_return_type))
         },
     }
 }

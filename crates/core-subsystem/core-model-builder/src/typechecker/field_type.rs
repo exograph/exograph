@@ -16,7 +16,7 @@ use super::{Type, Typed};
 impl AstFieldType<Typed> {
     pub fn get_underlying_typename(&self, types: &MappedArena<Type>) -> Option<String> {
         match &self {
-            AstFieldType::Plain(_, _, _, _, _) => self.to_typ(types).get_underlying_typename(types),
+            AstFieldType::Plain(..) => self.to_typ(types).get_underlying_typename(types),
             AstFieldType::Optional(underlying) => underlying.get_underlying_typename(types),
         }
     }
@@ -37,6 +37,16 @@ impl AstFieldType<Typed> {
             AstFieldType::Optional(underlying) => {
                 Type::Optional(Box::new(underlying.to_typ(types)))
             }
+        }
+    }
+
+    pub fn module_name(&self) -> Option<String> {
+        match &self {
+            AstFieldType::Plain(module, name, params, _, _) => match name.as_str() {
+                "Set" | "Array" => params[0].module_name(),
+                _ => module.clone(),
+            },
+            AstFieldType::Optional(underlying) => underlying.module_name(),
         }
     }
 }

@@ -135,7 +135,7 @@ fn create_module_field(field: &ResolvedField, building: &SystemContextBuilding) 
         building: &SystemContextBuilding,
     ) -> FieldType<ModuleFieldType> {
         match field_type {
-            FieldType::Plain(ResolvedFieldType { type_name }) => {
+            FieldType::Plain(ResolvedFieldType { type_name, .. }) => {
                 let type_id = building.types.get_id(type_name).unwrap();
 
                 FieldType::Plain(ModuleFieldType {
