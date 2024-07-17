@@ -128,7 +128,7 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         HashMap::new(),
         http::Method::POST,
         "/graphql".to_string(),
-        None,
+        Default::default(),
     );
     let operations_payload = OperationsPayload {
         operation_name: None,

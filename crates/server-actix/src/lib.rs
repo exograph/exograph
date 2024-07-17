@@ -73,7 +73,7 @@ pub fn configure_playground(cfg: &mut ServiceConfig) {
 async fn resolve(
     http_request: HttpRequest,
     body: web::Json<Value>,
-    query: web::Query<Option<Value>>,
+    query: web::Query<Value>,
     endpoint_url: web::Data<Option<Url>>,
     system_resolver: web::Data<SystemResolver>,
 ) -> impl Responder {
@@ -110,7 +110,7 @@ impl RequestPayload for ActixRequestPayload {
 async fn resolve_locally(
     req: HttpRequest,
     body: web::Json<Value>,
-    query: Option<Value>,
+    query: Value,
     system_resolver: web::Data<SystemResolver>,
 ) -> HttpResponse {
     let playground_request = req
