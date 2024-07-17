@@ -19,7 +19,7 @@ pub struct LambdaRequest<'a> {
     event: &'a LambdaEvent<Value>,
     path: &'a str,
     method: http::Method,
-    query: Option<serde_json::Value>,
+    query: serde_json::Value,
 }
 
 impl<'a> LambdaRequest<'a> {
@@ -41,7 +41,11 @@ impl<'a> LambdaRequest<'a> {
         };
 
         let path = event.payload["path"].as_str().unwrap();
-        let query = event.payload.get("queryStringParameters").cloned();
+        let query = event
+            .payload
+            .get("queryStringParameters")
+            .cloned()
+            .unwrap_or_default();
 
         LambdaRequest {
             event,
@@ -107,7 +111,7 @@ impl RequestHead for LambdaRequest<'_> {
         self.path
     }
 
-    fn get_query(&self) -> Option<serde_json::Value> {
+    fn get_query(&self) -> serde_json::Value {
         self.query.clone()
     }
 }

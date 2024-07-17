@@ -250,7 +250,7 @@ pub struct MemoryRequestHead {
     cookies: HashMap<String, String>,
     method: http::Method,
     path: String,
-    query: Option<Value>,
+    query: Value,
 }
 
 impl MemoryRequestHead {
@@ -258,7 +258,7 @@ impl MemoryRequestHead {
         cookies: HashMap<String, String>,
         method: http::Method,
         path: String,
-        query: Option<Value>,
+        query: Value,
     ) -> Self {
         Self {
             headers: HashMap::new(),
@@ -305,7 +305,7 @@ impl RequestHead for MemoryRequestHead {
         &self.path
     }
 
-    fn get_query(&self) -> Option<serde_json::Value> {
+    fn get_query(&self) -> Value {
         self.query.clone()
     }
 }
@@ -374,7 +374,7 @@ async fn run_operation(
         ctx.cookies.clone(),
         http::Method::POST,
         "/graphql".to_string(),
-        None,
+        Default::default(),
     );
 
     // add JWT token if specified in testfile

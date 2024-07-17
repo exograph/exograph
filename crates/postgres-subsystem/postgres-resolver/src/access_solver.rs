@@ -412,8 +412,8 @@ mod tests {
             ""
         }
 
-        fn get_query(&self) -> Option<serde_json::Value> {
-            None
+        fn get_query(&self) -> serde_json::Value {
+            Default::default()
         }
     }
 

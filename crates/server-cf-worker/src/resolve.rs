@@ -6,7 +6,7 @@ use core_resolver::http::{RequestHead, RequestPayload, ResponsePayload};
 
 use wasm_bindgen::prelude::*;
 
-struct WorkerRequestWrapper(WorkerRequest, String, Option<Value>);
+struct WorkerRequestWrapper(WorkerRequest, String, Value);
 
 unsafe impl Send for WorkerRequestWrapper {}
 unsafe impl Sync for WorkerRequestWrapper {}
@@ -43,7 +43,7 @@ impl RequestHead for WorkerRequestWrapper {
         &self.1
     }
 
-    fn get_query(&self) -> Option<Value> {
+    fn get_query(&self) -> Value {
         self.2.clone()
     }
 }
@@ -67,14 +67,13 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
     let url =
         url::Url::parse(&raw_request.url()).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
     let path = url.path().to_string();
-    let query = Some(
-        url.query_pairs()
-            .map(|q| {
-                let (k, v) = q;
-                (k.to_string(), v.to_string())
-            })
-            .collect(),
-    );
+    let query = url
+        .query_pairs()
+        .map(|q| {
+            let (k, v) = q;
+            (k.to_string(), v.to_string())
+        })
+        .collect();
 
     let mut worker_request =
         WorkerRequestWrapper(WorkerRequest::from(raw_request), path.into(), query);
