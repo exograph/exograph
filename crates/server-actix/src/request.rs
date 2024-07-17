@@ -19,11 +19,11 @@ pub struct ActixRequestHead {
     connection_info: ConnectionInfo,
     method: actix_web::http::Method,
     path: String,
-    query: Option<serde_json::Value>,
+    query: serde_json::Value,
 }
 
 impl ActixRequestHead {
-    pub fn from_request(req: HttpRequest, query: Option<serde_json::Value>) -> ActixRequestHead {
+    pub fn from_request(req: HttpRequest, query: serde_json::Value) -> ActixRequestHead {
         ActixRequestHead {
             headers: req.headers().clone(),
             connection_info: req.connection_info().clone(),
@@ -56,7 +56,7 @@ impl RequestHead for ActixRequestHead {
         &self.path
     }
 
-    fn get_query(&self) -> Option<serde_json::Value> {
+    fn get_query(&self) -> serde_json::Value {
         self.query.clone()
     }
 }
