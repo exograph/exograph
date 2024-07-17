@@ -30,14 +30,14 @@ const UPDATE_EMBEDDING_MUTATION = `mutation($id: Int!, $contentVector: [Float!]!
 	}
 }`;
 
-export interface DocumentResult {
+export interface Document {
 	id: number
 	title: string
 	content: string
 	contentVector: Vector | null
 }
 
-export async function searchDocuments(searchString: string, exograph: Exograph): Promise<DocumentResult[]> {
+export async function searchDocuments(searchString: string, exograph: Exograph): Promise<Document[]> {
 	const embedding: number[] = getEmbedding(searchString);
 	return (await exograph.executeQuery(SEARCH_QUERY, { searchVector: embedding })).documents;
 }
@@ -50,7 +50,7 @@ export async function updateEmbedding(operation: Operation, exograph: Exograph) 
 	return await syncEmbedding(operation, exograph);
 }
 
-export async function searchDocumentsByVector(searchVector: number[], exograph: Exograph): Promise<DocumentResult[]> {
+export async function searchDocumentsByVector(searchVector: number[], exograph: Exograph): Promise<Document[]> {
 	return (await exograph.executeQuery(SEARCH_QUERY, { searchVector })).documents;
 }
 
