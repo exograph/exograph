@@ -8265,6 +8265,7 @@ name = "subsystem-model-util"
 version = "0.9.2"
 dependencies = [
  "async-graphql-parser",
+ "async-graphql-value",
  "core-model",
  "core-plugin-shared",
  "serde",

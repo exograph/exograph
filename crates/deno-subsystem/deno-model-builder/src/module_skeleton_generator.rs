@@ -464,8 +464,8 @@ trait TypeScriptType {
 impl TypeScriptType for AstFieldType<Typed> {
     fn typescript_type(&self) -> String {
         match self {
-            AstFieldType::Optional(tpe) => format!("{} | undefined", tpe.typescript_type()),
-            AstFieldType::Plain(name, inner_type, ..) => {
+            AstFieldType::Optional(typ) => format!("{} | undefined", typ.typescript_type()),
+            AstFieldType::Plain(_, name, inner_type, ..) => {
                 if name == "Set" {
                     let inner_type_name = inner_type.first().unwrap().typescript_type();
                     return format!("{}[]", typescript_base_type(inner_type_name.as_str()));
@@ -528,14 +528,14 @@ mod tests {
             fields: vec![
                 AstField {
                     name: "field1".to_string(),
-                    typ: AstFieldType::Plain("String".to_string(), vec![], true, span),
+                    typ: AstFieldType::Plain(None, "String".to_string(), vec![], true, span),
                     annotations: Default::default(),
                     default_value: None,
                     span,
                 },
                 AstField {
                     name: "field2".to_string(),
-                    typ: AstFieldType::Plain("Int".to_string(), vec![], true, span),
+                    typ: AstFieldType::Plain(None, "Int".to_string(), vec![], true, span),
                     annotations: Default::default(),
                     default_value: None,
                     span,
@@ -556,8 +556,15 @@ mod tests {
                 AstField {
                     name: "items".to_string(),
                     typ: AstFieldType::Plain(
+                        None,
                         "Set".to_string(),
-                        vec![AstFieldType::Plain("Item".to_string(), vec![], true, span)],
+                        vec![AstFieldType::Plain(
+                            None,
+                            "Item".to_string(),
+                            vec![],
+                            true,
+                            span,
+                        )],
                         true,
                         span,
                     ),
@@ -567,7 +574,7 @@ mod tests {
                 },
                 AstField {
                     name: "totalCount".to_string(),
-                    typ: AstFieldType::Plain("Int".to_string(), vec![], true, span),
+                    typ: AstFieldType::Plain(None, "Int".to_string(), vec![], true, span),
                     annotations: Default::default(),
                     default_value: None,
                     span,

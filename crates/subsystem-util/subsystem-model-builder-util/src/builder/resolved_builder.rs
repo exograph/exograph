@@ -70,6 +70,7 @@ pub struct ResolvedField {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedFieldType {
+    pub module_name: Option<String>,
     pub type_name: String,
 }
 
@@ -305,7 +306,7 @@ async fn resolve_module(
                             .iter()
                             .map(|a| resolve_argument(a, types))
                             .collect(),
-                        return_type: resolve_field_type(&m.return_type.to_typ(types), types),
+                        return_type: resolve_field_type(&m.return_type.to_typ(types), m.return_type.module_name(), types),
                     }
                 })
                 .collect(),
@@ -371,7 +372,7 @@ async fn resolve_module(
 fn resolve_argument(arg: &AstArgument<Typed>, types: &MappedArena<Type>) -> ResolvedArgument {
     ResolvedArgument {
         name: arg.name.clone(),
-        typ: resolve_field_type(&arg.typ.to_typ(types), types),
+        typ: resolve_field_type(&arg.typ.to_typ(types), arg.typ.module_name(), types),
         is_injected: arg.annotations.get("inject").is_some(),
     }
 }
@@ -493,6 +494,7 @@ fn resolve_module_types(
                             name: field.name.clone(),
                             typ: resolve_field_type(
                                 &field.typ.to_typ(&typechecked_system.types),
+                                field.typ.module_name(),
                                 &typechecked_system.types,
                             ),
                             default_value: None,
@@ -517,17 +519,24 @@ fn resolve_module_types(
     Ok(resolved_module_types)
 }
 
-fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> FieldType<ResolvedFieldType> {
+fn resolve_field_type(
+    typ: &Type,
+    module_name: Option<String>,
+    types: &MappedArena<Type>,
+) -> FieldType<ResolvedFieldType> {
     match typ {
-        Type::Optional(underlying) => {
-            FieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
-        }
+        Type::Optional(underlying) => FieldType::Optional(Box::new(resolve_field_type(
+            underlying.as_ref(),
+            module_name,
+            types,
+        ))),
         Type::Reference(id) => FieldType::Plain(ResolvedFieldType {
             type_name: types[*id].get_underlying_typename(types).unwrap(),
+            module_name,
         }),
-        Type::Set(underlying) | Type::Array(underlying) => {
-            FieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
-        }
+        Type::Set(underlying) | Type::Array(underlying) => FieldType::List(Box::new(
+            resolve_field_type(underlying.as_ref(), module_name, types),
+        )),
         _ => {
             panic!("Unsupported field type")
         }

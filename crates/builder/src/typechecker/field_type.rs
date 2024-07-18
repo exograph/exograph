@@ -20,7 +20,8 @@ use super::{Scope, Type, TypecheckFrom};
 impl TypecheckFrom<AstFieldType<Untyped>> for AstFieldType<Typed> {
     fn shallow(untyped: &AstFieldType<Untyped>) -> AstFieldType<Typed> {
         match untyped {
-            AstFieldType::Plain(name, params, _, s) => AstFieldType::Plain(
+            AstFieldType::Plain(module, name, params, _, s) => AstFieldType::Plain(
+                module.clone(),
                 name.clone(),
                 params.iter().map(AstFieldType::shallow).collect(),
                 false,
@@ -38,7 +39,7 @@ impl TypecheckFrom<AstFieldType<Untyped>> for AstFieldType<Typed> {
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
         match self {
-            AstFieldType::Plain(name, params, ok, s) => {
+            AstFieldType::Plain(_, name, params, ok, s) => {
                 let ref_updated = if !*ok {
                     if type_env.get_id(name.as_str()).is_some()
                         || name.as_str() == "Set"

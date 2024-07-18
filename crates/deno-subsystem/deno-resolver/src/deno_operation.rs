@@ -26,7 +26,7 @@ use core_plugin_interface::{
 use deno_model::{
     module::{Argument, ModuleMethod},
     subsystem::DenoSubsystem,
-    types::{ModuleCompositeType, ModuleTypeKind},
+    types::{ModuleCompositeType, ModuleOperationReturnType, ModuleTypeKind},
 };
 
 use exo_deno::{deno_executor_pool::DenoScriptDefn, Arg};
@@ -59,26 +59,37 @@ impl<'a> DenoOperation<'a> {
     }
 
     async fn compute_module_access_predicate(&self) -> Result<bool, AccessSolverError> {
-        let subsystem = &self.subsystem();
-        let return_type = self.method.return_type.typ(&subsystem.module_types);
+        match &self.method.return_type {
+            ModuleOperationReturnType::Own(return_type) => {
+                let subsystem = &self.subsystem();
+                let return_type = return_type.typ(&subsystem.module_types);
 
-        let type_level_access = match &return_type.kind {
-            ModuleTypeKind::Primitive => true,
-            ModuleTypeKind::Composite(ModuleCompositeType { access, .. }) => subsystem
-                .solve(self.request_context, None, &access.value)
-                .await?
-                .map(|r| matches!(r.0, ModuleAccessPredicate::True))
-                .unwrap_or(false),
-        };
+                let type_level_access = match &return_type.kind {
+                    ModuleTypeKind::Primitive => true,
+                    ModuleTypeKind::Composite(ModuleCompositeType { access, .. }) => subsystem
+                        .solve(self.request_context, None, &access.value)
+                        .await?
+                        .map(|r| matches!(r.0, ModuleAccessPredicate::True))
+                        .unwrap_or(false),
+                };
 
-        let method_level_access = subsystem
-            .solve(self.request_context, None, &self.method.access.value)
-            .await?
-            .map(|r| r.0)
-            .unwrap_or(ModuleAccessPredicate::False);
+                let method_level_access = subsystem
+                    .solve(self.request_context, None, &self.method.access.value)
+                    .await?
+                    .map(|r| r.0)
+                    .unwrap_or(ModuleAccessPredicate::False);
 
-        // deny if either access check fails
-        Ok(type_level_access && !matches!(method_level_access, ModuleAccessPredicate::False))
+                // deny if either access check fails
+                Ok(type_level_access
+                    && !matches!(method_level_access, ModuleAccessPredicate::False))
+            }
+            ModuleOperationReturnType::Foreign(_) => {
+                // For foreign types, Deno doesn't impose its own access control The associated code
+                // may impose any required access control and in (typical) case of using
+                // Exograph.executeQuery(), that itself will apply the necessary access control
+                Ok(true)
+            }
+        }
     }
 
     async fn resolve_deno(&self) -> Result<QueryResponse, DenoExecutionError> {

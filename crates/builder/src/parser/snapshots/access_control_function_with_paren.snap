@@ -16,8 +16,10 @@ modules:
             typ:
               Optional:
                 Plain:
+                  - ~
                   - Set
                   - - Plain:
+                        - ~
                         - Concert
                         - []
                         - ~
@@ -70,6 +72,7 @@ modules:
           - name: id
             typ:
               Plain:
+                - ~
                 - Int
                 - []
                 - ~
@@ -84,6 +87,7 @@ modules:
           - name: venue
             typ:
               Plain:
+                - ~
                 - Venue
                 - []
                 - ~
