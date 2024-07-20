@@ -52,4 +52,7 @@ module TodoModule {
 
     @access(true) export query todo(id: Int): Todo
     @access(true) export query todos(): Todos
+
+    // An example of using a type from a Postgrs module
+    @access(true) export mutation publishFoo(): FooDatabase.Foo
 }

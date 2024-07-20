@@ -154,12 +154,35 @@ fn shallow_module_query(
     module_types: &MappedArena<ModuleType>,
     building: &SystemContextBuilding,
 ) -> ModuleQuery {
-    let resolved_return_type = &method.return_type;
+    ModuleQuery {
+        name: method.name.clone(),
+        method_id: None,
+        argument_param: argument_param(method, building),
+        return_type: compute_shallow_return_type(&method.return_type, module_types),
+    }
+}
+
+fn shallow_module_mutation(
+    method: &ResolvedMethod,
+    module_types: &MappedArena<ModuleType>,
+    building: &SystemContextBuilding,
+) -> ModuleMutation {
+    ModuleMutation {
+        name: method.name.clone(),
+        method_id: None,
+        argument_param: argument_param(method, building),
+        return_type: compute_shallow_return_type(&method.return_type, module_types),
+    }
+}
+
+fn compute_shallow_return_type(
+    resolved_return_type: &FieldType<ResolvedFieldType>,
+    module_types: &MappedArena<ModuleType>,
+) -> ModuleOperationReturnType {
+    let module_name = resolved_return_type.innermost().module_name.clone();
     let return_type_name = resolved_return_type.name();
 
-    let module_name = resolved_return_type.innermost().module_name.clone();
-
-    let return_type = match module_name {
+    match module_name {
         Some(module_name) => {
             let plain_return_type = ForeignModuleType {
                 module_name,
@@ -175,35 +198,6 @@ fn shallow_module_query(
             };
             ModuleOperationReturnType::Own(resolved_return_type.wrap(plain_return_type))
         }
-    };
-
-    ModuleQuery {
-        name: method.name.clone(),
-        method_id: None,
-        argument_param: argument_param(method, building),
-        return_type,
-    }
-}
-
-fn shallow_module_mutation(
-    method: &ResolvedMethod,
-    module_types: &MappedArena<ModuleType>,
-    building: &SystemContextBuilding,
-) -> ModuleMutation {
-    let resolved_return_type = &method.return_type;
-    let return_type_name = resolved_return_type.name();
-
-    ModuleMutation {
-        name: method.name.clone(),
-        method_id: None,
-        argument_param: argument_param(method, building),
-        return_type: {
-            let plain_return_type = BaseOperationReturnType {
-                associated_type_id: module_types.get_id(return_type_name).unwrap(),
-                type_name: return_type_name.to_string(),
-            };
-            ModuleOperationReturnType::Own(resolved_return_type.wrap(plain_return_type))
-        },
     }
 }
 
