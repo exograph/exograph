@@ -261,7 +261,9 @@ impl TypeDefinitionProvider<PostgresSubsystem> for MutationType {
             let fields = self
                 .fields
                 .iter()
-                .map(|field| default_positioned(field.input_value()))
+                .flat_map(|field| {
+                    (!field.readonly).then_some(default_positioned(field.input_value()))
+                })
                 .collect();
             TypeKind::InputObject(InputObjectType { fields })
         };
