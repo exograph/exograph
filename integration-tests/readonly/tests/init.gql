@@ -1,19 +1,33 @@
-operation: |
-    mutation {
-        t1: createTodo(data: {title: "T1", completed: true}) {
-            id @bind(name: "t1id")
-            createdAt @bind(name: "t1CreatedAt")
+stages:
+    - operation: |
+        mutation {
+            t1: createTodo(data: {title: "T1", completed: true}) {
+                id @bind(name: "t1id")
+                createdAt @bind(name: "t1CreatedAt")
+            }
+            t2: createTodo(data: {title: "T2", completed: false}) {
+                id @bind(name: "t2id")
+                createdAt @bind(name: "t2CreatedAt")
+            }
+            t3: createTodo(data: {title: "T3", completed: true}) {
+                id @bind(name: "t3id")
+                createdAt @bind(name: "t3CreatedAt")
+            }
+            t4: createTodo(data: {title: "T4", completed: false}) {
+                id @bind(name: "t4id")
+                createdAt @bind(name: "t4CreatedAt")
+            }
         }
-        t2: createTodo(data: {title: "T2", completed: false}) {
-            id @bind(name: "t2id")
-            createdAt @bind(name: "t2CreatedAt")
+    - operation: |
+        mutation {
+            d1: createDocument(data: {title: "D1"}) {
+                id @bind(name: "d1id")
+            }
+            d2: createDocument(data: {title: "D2"}) {
+                id @bind(name: "d2id")
+            }
         }
-        t3: createTodo(data: {title: "T3", completed: true}) {
-            id @bind(name: "t3id")
-            createdAt @bind(name: "t3CreatedAt")
+      auth: |
+        {
+            "sub": 1
         }
-        t4: createTodo(data: {title: "T4", completed: false}) {
-            id @bind(name: "t4id")
-            createdAt @bind(name: "t4CreatedAt")
-        }
-    }

@@ -285,7 +285,7 @@ pub trait DataParamBuilder<D> {
                     }
                 }
             }
-            PostgresRelation::Scalar { .. } => (!field.readonly).then_some(PostgresField {
+            PostgresRelation::Scalar { .. } => Some(PostgresField {
                 name: field.name.clone(),
                 typ: if optional {
                     to_mutation_type(&field.typ).optional()

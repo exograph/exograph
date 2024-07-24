@@ -1,3 +1,7 @@
+context AuthContext {
+  @jwt("sub") id: Int
+}
+
 @postgres
 module TodoDatabase {
   @access(true)
@@ -6,5 +10,12 @@ module TodoDatabase {
     title: String
     completed: Boolean
     @readonly createdAt: Instant = now()
+  }
+
+  @access(true)
+  type Document {
+    @pk id: Int = autoIncrement()
+    title: String
+    @readonly ownerId: Int = AuthContext.id
   }
 }

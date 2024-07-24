@@ -1,0 +1,59 @@
+deno: |
+  function assertTimestampUpdate(actual, minimum) {
+    const minimum_ms = Date.parse(minimum);
+    const actual_ms = Date.parse(actual);
+
+    if (actual_ms <= minimum_ms) {
+        throw new ExographError(
+          "Update time not correct: expected later than " + minimum_ms + ", got " + actual_ms
+        )
+    }
+
+    const now_ms = Date.now();
+
+    if (Math.abs(actual_ms - now_ms) > 5000) {
+        throw new ExographError(
+          "Time returned is off by more than 5 seconds: expected " + now_ms + ", got " + actual_ms
+        )
+    } 
+
+    return true
+  }  
+operation: |
+  mutation {
+      createTodo(data: {completed: true, title: "new-todo"}) {
+          id
+          title
+          completed
+          createdAt
+      }
+
+      createDocument(data: {title: "new-document"}) {
+          id
+          title
+          ownerId
+      }
+  }
+auth: |
+  {
+    "sub": 10
+  }
+response: |
+  {
+    "data": {
+      "createTodo": {
+        "id": 5,
+        "title": "new-todo",
+        "completed": true,
+        "createdAt": (createTime) => {
+            const now = Date.now() - 5000; // allow 5 seconds of drift between server and client
+            return assertTimestampUpdate(createTime, new Date(now).toISOString())
+        },
+      },
+      "createDocument": {
+        "id": 3,
+        "title": "new-document",
+        "ownerId": 10
+      },      
+    }
+  }

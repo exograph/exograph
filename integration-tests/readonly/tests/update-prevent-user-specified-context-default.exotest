@@ -1,0 +1,31 @@
+operation: |
+  mutation($id: Int!) {
+      updateDocument(id: $id, data: {title: "changed", ownerId: 2}) {
+          id
+          title
+          ownerId
+      }
+  }
+variable: |
+  {
+    id: $.t1id
+  }
+auth: |
+  {
+    "sub": 2
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Argument(s) '[\"ownerId\"]' invalid for 'updateDocument'",
+        "locations": [
+          {
+            "line": 2,
+            "column": 5
+          }
+        ]
+      }
+    ]
+  }
+
