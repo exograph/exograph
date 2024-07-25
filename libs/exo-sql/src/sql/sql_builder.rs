@@ -102,7 +102,7 @@ impl SQLBuilder {
     pub fn push_param(&mut self, param: SQLParamWithType) {
         self.params.push(param);
         self.push('$');
-        self.push_str(&self.params.len().to_string());
+        self.push_str(self.params.len().to_string());
     }
 
     /// Push elements of an iterator, separated by `sep`. The `push_elem` function provides

@@ -31,7 +31,7 @@ use super::{
 ///
 /// Pre-conditions (for non-aggregate output):
 /// - Predicate along with order by refers to only many-to-one relationships (such as `concerts(orderBy: {venue: {name: ASC}})`)
-///  -- or --
+///   OR
 /// - Explicit specification indicated that duplicate rows are allowed
 ///
 /// We use a subselect in which we can use the predicates, order-by, limit, and offset (note
