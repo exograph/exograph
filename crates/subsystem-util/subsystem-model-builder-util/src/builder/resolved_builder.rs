@@ -384,27 +384,49 @@ fn resolve_module_input_types(
 ) -> Result<Vec<String>, ModelBuildingError> {
     // 1. collect types used as arguments (input) and return types (output)
     type IsInput = bool;
-    let mut types_used: Vec<(AstFieldType<Typed>, IsInput)> = vec![];
+    let mut types_used: Vec<(String, Span, IsInput)> = vec![];
+
+    fn get_underlying_type_name(field_type: &AstFieldType<Typed>) -> String {
+        match field_type {
+            AstFieldType::Plain(_, name, type_params, ..) => match name.as_str() {
+                "Set" | "Array" => get_underlying_type_name(&type_params[0]),
+                _ => name.clone(),
+            },
+            AstFieldType::Optional(underlying) => get_underlying_type_name(underlying),
+        }
+    }
 
     for (_, Module(module)) in typechecked_system.modules.iter() {
         for method in module.methods.iter() {
             for argument in method.arguments.iter() {
-                types_used.push((argument.typ.clone(), true))
+                types_used.push((
+                    get_underlying_type_name(&argument.typ),
+                    argument.typ.span(),
+                    true,
+                ))
             }
 
-            types_used.push((method.return_type.clone(), false))
+            types_used.push((
+                get_underlying_type_name(&method.return_type),
+                method.return_type.span(),
+                false,
+            ))
         }
 
         for interceptor in module.interceptors.iter() {
             for argument in interceptor.arguments.iter() {
-                types_used.push((argument.typ.clone(), true))
+                types_used.push((
+                    get_underlying_type_name(&argument.typ),
+                    argument.typ.span(),
+                    true,
+                ))
             }
         }
     }
 
     // 2. filter out primitives
-    let types_used = types_used.iter().filter(|(arg, _)| {
-        if let Some(typ) = resolved_module_types.get_by_key(&arg.name()) {
+    let types_used = types_used.iter().filter(|(type_name, ..)| {
+        if let Some(typ) = resolved_module_types.get_by_key(type_name) {
             !typ.is_primitive()
         } else {
             true
@@ -412,10 +434,10 @@ fn resolve_module_input_types(
     });
 
     let (input_types, output_types): (Vec<_>, Vec<_>) =
-        types_used.clone().partition(|(_, is_input)| *is_input);
+        types_used.clone().partition(|(_, _, is_input)| *is_input);
 
     // 3. check types
-    for (typ, is_input) in types_used {
+    for (typ_name, span, is_input) in types_used {
         let (opposite_descriptor, opposite_types) = if *is_input {
             ("an output type", &output_types)
         } else {
@@ -425,22 +447,24 @@ fn resolve_module_input_types(
         // check type against opposite list
         if let Some(opposite_type) = opposite_types
             .iter()
-            .find(|(opposite_typ, _)| opposite_typ.name() == typ.name())
+            .find(|(opposite_typ_name, ..)| opposite_typ_name == typ_name)
         {
             // FIXME: add a resolved builder snapshot unit test case for this error
             errors.push(
                 Diagnostic {
                 level: Level::Error,
-                message: format!("Type {} was used as {} somewhere else in the model. Types may only be used as either an input type or an output type.", typ.name(), opposite_descriptor),
+                message:
+                    format!("Type {} was used as {} somewhere else in the model. Types may only be used as either an input type or an output type.", 
+                            typ_name, opposite_descriptor),
                 code: Some("C000".to_string()),
                 spans: vec![
                     SpanLabel {
-                        span: typ.span(),
+                        span: *span,
                         style: SpanStyle::Primary,
                         label: Some("conflicting usage".to_owned()),
                     },
                     SpanLabel {
-                        span: opposite_type.0.span(),
+                        span: opposite_type.1,
                         style: SpanStyle::Secondary,
                         label: Some(opposite_descriptor.to_string()),
                     },
@@ -452,9 +476,9 @@ fn resolve_module_input_types(
     }
 
     let mut input_type_names = vec![];
-    for (input_type, _) in input_types.iter() {
-        if !input_type_names.contains(&input_type.name()) {
-            input_type_names.push(input_type.name())
+    for (input_type_name, _, _) in input_types.iter() {
+        if !input_type_names.contains(input_type_name) {
+            input_type_names.push(input_type_name.clone());
         }
     }
 

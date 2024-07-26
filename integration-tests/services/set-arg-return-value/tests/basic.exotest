@@ -1,0 +1,29 @@
+operation: |
+  query {
+      chat(messages: [{text: "Hello"}, {text: "How are you?"}])
+
+      initialQuestion(projectId: "00000000-0000-0000-0000-000000000000") {
+        content
+      }
+
+      generateQuestions(projectId: "00000000-0000-0000-0000-000000000000") {
+        content
+      }
+  }
+response: |
+  {
+    "data": {
+      "chat": "HELLO HOW ARE YOU?",
+      "initialQuestion": {
+        "content": "What's up?"
+      },
+      "generateQuestions": [
+        {
+          "content": "What is your name?"
+        },
+        {
+          "content": "How can I help you?"
+        }
+      ]
+    }
+  }

@@ -141,18 +141,26 @@ impl Schema {
             .map(|td| td.name.node.as_str().to_string())
             .collect();
 
+        fn remove_scalars(
+            field_definitions: &Vec<Positioned<FieldDefinition>>,
+            unused_scalars_names: &mut HashSet<String>,
+        ) {
+            for field in field_definitions {
+                unused_scalars_names.remove(underlying_type(&field.node.ty.node).as_str());
+                for arg in &field.node.arguments {
+                    unused_scalars_names.remove(underlying_type(&arg.node.ty.node).as_str());
+                }
+            }
+        }
+
         // Next, remove scalars that are used
         for td in &type_definitions {
             match &td.kind {
                 TypeKind::Object(object_type) => {
-                    for field in &object_type.fields {
-                        unused_scalars_names.remove(underlying_type(&field.node.ty.node).as_str());
-                    }
+                    remove_scalars(&object_type.fields, &mut unused_scalars_names);
                 }
                 TypeKind::Interface(interface_type) => {
-                    for field in &interface_type.fields {
-                        unused_scalars_names.remove(underlying_type(&field.node.ty.node).as_str());
-                    }
+                    remove_scalars(&interface_type.fields, &mut unused_scalars_names);
                 }
                 TypeKind::InputObject(input_object_type) => {
                     for field in &input_object_type.fields {
