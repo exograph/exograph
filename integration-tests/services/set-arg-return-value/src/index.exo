@@ -1,0 +1,24 @@
+// Exograph should enforce disjoinment only of the underlying types 
+// (Message and Quesion in this case) and not the container types (Set). 
+// See https://github.com/exograph/exograph/issues/1183
+@deno("chat.ts")
+module ChatService {
+  @access(true)
+  type Message {
+    text: String
+  }
+
+  @access(true)
+  type Question {
+    content: String
+  }
+
+  @access(true)
+  query chat(messages: Set<Message>): String
+
+  @access(true)
+  query generateQuestions(projectId: Uuid): Set<Question>
+
+  @access(true)
+  query initialQuestion(projectId: Uuid): Question
+}
