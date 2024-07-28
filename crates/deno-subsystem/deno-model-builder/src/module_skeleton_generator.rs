@@ -465,13 +465,19 @@ impl TypeScriptType for AstFieldType<Typed> {
     fn typescript_type(&self) -> String {
         match self {
             AstFieldType::Optional(typ) => format!("{} | undefined", typ.typescript_type()),
-            AstFieldType::Plain(_, name, inner_type, ..) => {
+            AstFieldType::Plain(module_name, name, inner_type, ..) => {
+                let type_name = if let Some(module_name) = module_name {
+                    format!("{}.{}", module_name, name)
+                } else {
+                    name.to_string()
+                };
+
                 if name == "Set" {
                     let inner_type_name = inner_type.first().unwrap().typescript_type();
                     return format!("{}[]", typescript_base_type(inner_type_name.as_str()));
                 }
 
-                typescript_base_type(name)
+                typescript_base_type(&type_name)
             }
         }
     }
@@ -506,7 +512,7 @@ mod tests {
     use super::*;
     use codemap::CodeMap;
     use core_plugin_interface::core_model_builder::ast::ast_types::{
-        AstField, AstFieldType, AstModel, AstModelKind, AstModule,
+        AstField, AstFieldType, AstMethod, AstMethodType, AstModel, AstModelKind, AstModule,
     };
     use std::io::Read;
     use std::io::Seek;
@@ -601,6 +607,8 @@ mod tests {
             span,
         }
     }
+
+    // TESTS
 
     #[test]
     fn test_generate_type_skeleton() {
@@ -707,5 +715,62 @@ mod tests {
         );
 
         fs::remove_dir_all(Path::new("tests")).unwrap();
+    }
+
+    // When a foregn model is used inside a Deno module.
+
+    fn fabricate_method_with_foreign_return_type(
+        name: &str,
+        foreign_module_name: &str,
+        foreign_model_name: &str,
+    ) -> AstMethod<Typed> {
+        let span = fabricate_span();
+        AstMethod {
+            name: name.to_string(),
+            typ: AstMethodType::Mutation,
+            arguments: vec![AstArgument {
+                name: "id".to_string(),
+                typ: AstFieldType::Plain(None, "Int".to_string(), vec![], true, span),
+                annotations: Default::default(),
+            }],
+            return_type: AstFieldType::Plain(
+                Some(foreign_module_name.to_string()),
+                foreign_model_name.to_string(),
+                vec![],
+                true,
+                span,
+            ),
+            is_exported: true,
+            annotations: Default::default(),
+            span,
+        }
+    }
+
+    #[test]
+    fn test_generate_method_function_with_foreign_model() {
+        let mocked_method =
+            fabricate_method_with_foreign_return_type("publishFoo", "ForeignModule", "TestType1");
+
+        let mut temp_file = tempfile().unwrap();
+
+        let _result = generate_method_skeleton(
+            &mocked_method.name,
+            &mocked_method.arguments,
+            Some(&mocked_method.return_type),
+            &mut temp_file,
+            true,
+        )
+        .unwrap();
+
+        temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        let mut generated_code = String::new();
+        temp_file.read_to_string(&mut generated_code).unwrap();
+
+        let first_line = generated_code.lines().next().unwrap();
+
+        let expected_code =
+            "export async function publishFoo(id: number): Promise<ForeignModule.TestType1> {";
+
+        assert_eq!(first_line, expected_code);
     }
 }
