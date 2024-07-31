@@ -198,7 +198,7 @@ impl DatabaseSpec {
         client: &DatabaseClient,
     ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
         const SCHEMAS_QUERY: &str =
-            "SELECT DISTINCT table_schema FROM information_schema.tables WHERE table_schema != 'information_schema' AND table_schema != 'pg_catalog'";
+            "SELECT DISTINCT table_schema FROM information_schema.tables WHERE table_schema != 'information_schema' AND table_schema NOT LIKE 'pg_%' AND table_type <> 'SYSTEM VIEW'";
 
         // Query to get a list of all the tables in the database
         const TABLE_NAMES_QUERY: &str =
