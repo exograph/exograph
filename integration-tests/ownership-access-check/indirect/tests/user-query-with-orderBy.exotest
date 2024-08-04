@@ -1,0 +1,34 @@
+operation: |
+  query questions {
+    asc: questions(orderBy: { text: ASC }) {
+      id
+    }
+    desc: questions(orderBy: { text: DESC }) {
+      id
+    }
+  }
+auth: |
+  {
+    sub: $.u1Id
+  }
+response: |
+  {
+    "data": {
+      "asc": [
+        {
+          "id": $.q1Ids[0]
+        },
+        {
+          "id": $.q1Ids[1]
+        }
+      ],
+      "desc": [
+        {
+          "id": $.q1Ids[1]
+        },
+        {
+          "id": $.q1Ids[0]
+        }
+      ]
+    }
+  }

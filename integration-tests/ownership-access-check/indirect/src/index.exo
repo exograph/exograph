@@ -1,0 +1,32 @@
+context AuthContext {
+  @jwt("sub") userId: Uuid?
+  @jwt("isAdmin") isAdmin: Boolean
+}
+
+@postgres
+module ChatModule {
+  @access(
+    query = AuthContext.isAdmin || self.id == AuthContext.userId,
+    mutation = AuthContext.isAdmin
+  )
+  type User {
+    @pk id: Uuid = generate_uuid()
+    name: String
+    projects: Set<Project>?
+  }
+
+  @access(AuthContext.isAdmin || self.owner.id == AuthContext.userId)
+  type Project {
+    @pk id: Uuid = generate_uuid()
+    name: String
+    owner: User
+    questions: Set<Question>?
+  }
+
+  @access(AuthContext.isAdmin || self.project.owner.id == AuthContext.userId)
+  type Question {
+    @pk id: Uuid = generate_uuid()
+    text: String
+    project: Project
+  }
+}

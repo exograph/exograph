@@ -1,0 +1,23 @@
+operation: |
+  query questions {
+    questions @unordered {
+      id
+    }
+  }
+auth: |
+  {
+    sub: $.u1Id
+  }
+response: |
+  {
+    "data": {
+      "questions": [
+        {
+          "id": $.q1Ids[0]
+        },
+        {
+          "id": $.q1Ids[1]
+        }
+      ]
+    }
+  }

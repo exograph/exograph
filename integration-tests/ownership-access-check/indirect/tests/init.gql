@@ -1,0 +1,50 @@
+stages:
+    - operation: |
+        mutation {
+            u1: createUser(data: {name: "U1"}) {
+                id @bind(name: "u1Id")
+            }
+            u2: createUser(data: {name: "U2"}) {
+                id @bind(name: "u2Id")
+            }
+        }
+      auth: |
+        {
+            isAdmin: true
+        }
+    - operation: |
+        mutation($u1Id: Uuid!, $u2Id: Uuid!) {
+            p1: createProject(data: {name: "P1", owner: {id: $u1Id}}) {
+                id @bind(name: "p1Id")
+            }
+            p2: createProject(data: {name: "P2", owner: {id: $u2Id}}) {
+                id @bind(name: "p2Id")
+            }
+        }
+      variable: |
+        {
+            "u1Id": $.u1Id,
+            "u2Id": $.u2Id
+        }
+      auth: |
+        {
+            isAdmin: true
+        }
+    - operation: |
+        mutation($p1Id: Uuid!, $p2Id: Uuid!) {
+            q1s: createQuestions(data: [{text: "Q1A", project: {id: $p1Id}}, {text: "Q1B", project: {id: $p1Id}}]) {
+                id @bind(name: "q1Ids")
+            }
+            q2s: createQuestions(data: [{text: "Q2A", project: {id: $p2Id}}, {text: "Q2B", project: {id: $p2Id}}]) {
+                id @bind(name: "q2Ids")
+            }
+        }
+      variable: |
+        {
+            "p1Id": $.p1Id,
+            "p2Id": $.p2Id
+        }
+      auth: |
+        {
+            isAdmin: true
+        }                

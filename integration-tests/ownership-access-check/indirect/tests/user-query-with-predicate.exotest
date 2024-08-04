@@ -1,0 +1,33 @@
+operation: |
+  query questions($mineProjectId: Uuid!, $othersProjectId: Uuid!) {
+    mine: questions(where: { project: { id: { eq: $mineProjectId } } }) @unordered{
+      id
+    }
+    others: questions(where: { project: { id: { eq: $othersProjectId } } }) @unordered {
+      id
+    }
+  }
+variable: |
+  {
+    "mineProjectId": $.p1Id,
+    "othersProjectId": $.p2Id
+  }
+auth: |
+  {
+    sub: $.u1Id
+  }
+response: |
+  {
+    "data": {
+      "mine": [
+        {
+          "id": $.q1Ids[0]
+        },
+        {
+          "id": $.q1Ids[1]
+        }
+      ],
+      "others": [
+      ]
+    }
+  }
