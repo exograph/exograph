@@ -1,0 +1,49 @@
+operation: |
+  query questions($mineProjectId: Uuid!, $othersProjectId: Uuid!) {
+    mine_asc: questions(where: { project: { id: { eq: $mineProjectId } } }, orderBy: { text: ASC }) {
+      id
+    }
+    mine_desc: questions(where: { project: { id: { eq: $mineProjectId } } }, orderBy: { text: DESC }) {
+      id
+    }
+    others_asc: questions(where: { project: { id: { eq: $othersProjectId } } }, orderBy: {text: ASC}) {
+      id
+    }
+    others_desc: questions(where: { project: { id: { eq: $othersProjectId } } }, orderBy: {text: DESC}) {
+      id
+    }
+  }
+variable: |
+  {
+    "mineProjectId": $.p1Id,
+    "othersProjectId": $.p2Id
+  }
+auth: |
+  {
+    sub: $.u1Id
+  }
+response: |
+  {
+    "data": {
+      "mine_asc": [
+        {
+          "id": $.q1Ids[0]
+        },
+        {
+          "id": $.q1Ids[1]
+        }
+      ],
+      "mine_desc": [
+        {
+          "id": $.q1Ids[1]
+        },
+        {
+          "id": $.q1Ids[0]
+        }
+      ],
+      "others_asc": [
+      ],
+      "others_desc": [
+      ]
+    }
+  }

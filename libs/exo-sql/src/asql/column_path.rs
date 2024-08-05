@@ -271,18 +271,13 @@ impl PhysicalColumnPath {
 
     /// Alias to be used for the last table in the path
     ///
-    /// The computed alias is useful to avoid name collision when joining the same table multiple
-    /// times. For example, if `concerts` has two columns that link to `venue`, we can create
-    /// alias for them such as `main_venue` and `alternative_venue`.
+    /// Picks the linked_table_alias for the penultimate link in the path
     pub fn alias(&self) -> Option<String> {
         self.0.iter().fold(None, |acc, link| match link {
             ColumnPathLink::Relation(RelationLink {
                 linked_table_alias, ..
             }) => match linked_table_alias {
-                Some(linked_table_alias) => match acc {
-                    Some(acc) => Some(format!("{acc}_{linked_table_alias}")),
-                    None => Some(linked_table_alias.clone()),
-                },
+                Some(linked_table_alias) => Some(linked_table_alias.clone()),
                 None => acc,
             },
             ColumnPathLink::Leaf(_) => acc,

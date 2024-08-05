@@ -1,0 +1,39 @@
+operation: |
+  mutation createQuestions($projectId: Uuid!) {
+    deleteQuestions(where: { project: { id: { eq: $projectId } } }) @unordered {
+      id
+    }
+
+    createQuestions(data: [{text: "Q1C", project: {id: $projectId}}, {text: "Q1D", project: {id: $projectId}}]) {
+      id @bind(name: "qNewIds")
+    }
+  }
+variable: |
+  {
+    "projectId": $.p1Id
+  }
+auth: |
+  {
+    sub: $.u1Id
+  }
+response: |
+  {
+    "data": {
+      "createQuestions": [
+        {
+          "id": $.qNewIds[0]
+        },
+        {
+          "id": $.qNewIds[1]
+        }
+      ],
+      "deleteQuestions": [
+        {
+          "id": $.q1Ids[0]
+        },
+        {
+          "id": $.q1Ids[1]
+        }
+      ]
+    }
+  }
