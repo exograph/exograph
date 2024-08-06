@@ -17,10 +17,11 @@ use exo_sql::schema::database_spec::DatabaseSpec;
 
 use crate::{
     commands::command::{default_model_file, get, output_arg, CommandDefinition},
+    commands::util::use_ir_arg,
     util::open_file_for_output,
 };
 
-use super::util::{self, use_ir_arg};
+use super::util;
 
 pub(super) struct CreateCommandDefinition {}
 

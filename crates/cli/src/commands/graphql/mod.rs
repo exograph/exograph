@@ -7,11 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-mod assertion;
-mod integration_test;
-mod introspection_tests;
-mod result;
-mod test_suite;
+use super::command::SubcommandDefinition;
 
-pub use introspection_tests::get_introspection_result;
-pub(crate) use result::{TestResult, TestResultKind};
+mod schema;
+
+pub fn command_definition() -> SubcommandDefinition {
+    SubcommandDefinition::new(
+        "graphql",
+        "Work with the GraphQL schema",
+        vec![Box::new(schema::SchemaCommandDefinition {})],
+    )
+}

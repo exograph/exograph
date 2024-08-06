@@ -125,7 +125,7 @@ pub fn database_arg() -> Arg {
 pub fn output_arg() -> Arg {
     Arg::new("output")
         .help("Output file path")
-        .help("If specified, the output will be written to this file path instead of stdout.")
+        .long_help("If specified, the output will be written to this file path instead of stdout.")
         .short('o')
         .long("output")
         .required(false)

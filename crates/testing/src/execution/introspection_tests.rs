@@ -10,6 +10,9 @@
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 
+use core_plugin_interface::{
+    serializable_system::SerializableSystem, trusted_documents::TrustedDocumentEnforcement,
+};
 use core_resolver::{system_resolver::SystemResolver, OperationsPayload};
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
@@ -19,7 +22,7 @@ use exo_deno::{
 };
 use exo_env::MapEnvironment;
 use include_dir::{include_dir, Dir};
-use resolver::create_system_resolver;
+use resolver::{create_system_resolver, resolve_in_memory, SystemLoader};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
 
@@ -40,7 +43,7 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
 
     let exo_ir_file = format!("{}/target/index.exo_ir", model_path.display()).to_string();
 
-    let server = {
+    let resolver = {
         let static_loaders = server_common::create_static_loaders();
 
         let env = MapEnvironment::from([
@@ -53,7 +56,7 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
         create_system_resolver(&exo_ir_file, static_loaders, Box::new(env)).await?
     };
 
-    let result = check_introspection(&server).await?;
+    let result = check_introspection(&resolver).await?;
 
     match result {
         Ok(()) => Ok(TestResult {
@@ -68,10 +71,10 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
     }
 }
 
-async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
+async fn create_introspection_deno_module() -> Result<DenoModule> {
     let script = INTROSPECTION_ASSERT_JS;
 
-    let mut deno_module = DenoModule::new(
+    DenoModule::new(
         UserCode::LoadFromMemory {
             path: "file://internal/introspection_tests.js".to_owned(),
             script: DenoScriptDefn {
@@ -118,11 +121,22 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
                 .replace("process.env.NODE_ENV === 'production'", "false"),
         )]),
     )
-    .await?;
+    .await
+}
 
-    let query = deno_module
-        .execute_function("introspectionQuery", vec![])
-        .await?;
+async fn create_introspection_request() -> Result<MemoryRequestPayload> {
+    let query = tokio::task::spawn_blocking({
+        move || {
+            tokio::runtime::Handle::current().block_on(async move {
+                let mut deno_module = create_introspection_deno_module().await?;
+                deno_module
+                    .execute_function("introspectionQuery", vec![])
+                    .await
+                    .map_err(|e| anyhow!("Error getting introspection query: {:?}", e))
+            })
+        }
+    })
+    .await??;
 
     let request_head = MemoryRequestHead::new(
         HashMap::new(),
@@ -130,6 +144,7 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         "/graphql".to_string(),
         Default::default(),
     );
+
     let operations_payload = OperationsPayload {
         operation_name: None,
         query: if let Value::String(s) = query {
@@ -141,7 +156,54 @@ async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
         query_hash: None,
     };
 
-    let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
+    Ok(MemoryRequestPayload::new(
+        operations_payload.to_json()?,
+        request_head,
+    ))
+}
+
+// Needed for `exp graphql schema` command
+// TODO: Find a better home for this and associated functions
+pub async fn get_introspection_result(serialized_system: SerializableSystem) -> Result<Value> {
+    let request = create_introspection_request()
+        .await
+        .map_err(|e| anyhow!("Error getting introspection result: {:?}", e))?;
+
+    let result = tokio::task::spawn_blocking({
+        move || {
+            tokio::runtime::Handle::current().block_on(async move {
+                let resolver = {
+                    let static_loaders = server_common::create_static_loaders();
+
+                    let env = MapEnvironment::from([
+                        (EXO_POSTGRES_URL, "postgres://a@dummy-value"),
+                        (EXO_CONNECTION_POOL_SIZE, "1"),
+                        (EXO_INTROSPECTION, "true"),
+                        (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
+                    ]);
+
+                    SystemLoader::load_from_system(serialized_system, static_loaders, Box::new(env))
+                        .await?
+                };
+                resolve_in_memory(request, &resolver, TrustedDocumentEnforcement::DoNotEnforce)
+                    .await
+                    .map_err(|e| anyhow!("Error getting introspection result: {:?}", e))
+            })
+        }
+    })
+    .await??;
+
+    Ok(serde_json::json!({
+        "data": result.iter().map(|(name, result)| {
+            (name.clone(), result.body.to_json().unwrap())
+        }).collect::<HashMap<String, Value>>(),
+    }))
+}
+
+async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
+    let mut deno_module = create_introspection_deno_module().await?;
+
+    let request = create_introspection_request().await?;
 
     let result = run_query(request, server, &mut HashMap::new()).await;
 

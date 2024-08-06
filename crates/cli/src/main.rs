@@ -24,6 +24,7 @@ use commands::{
     command::{CommandDefinition, SubcommandDefinition},
     deploy,
     dev::DevCommandDefinition,
+    graphql,
     new::NewCommandDefinition,
     playground::PlaygroundCommandDefinition,
     schema,
@@ -73,6 +74,7 @@ async fn main() -> Result<()> {
             Box::new(schema::command_definition()),
             Box::new(PlaygroundCommandDefinition {}),
             Box::new(TestCommandDefinition {}),
+            Box::new(graphql::command_definition()),
         ],
     );
 

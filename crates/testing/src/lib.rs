@@ -22,6 +22,8 @@ use exo_sql::testing::db::EphemeralDatabaseLauncher;
 
 use model::TestSuite;
 
+pub use execution::get_introspection_result;
+
 #[cfg(test)]
 use ctor::ctor;
 

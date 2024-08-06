@@ -14,11 +14,9 @@ use postgres_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use crate::commands::command::{database_arg, default_model_file, get, CommandDefinition};
+use crate::commands::util::use_ir_arg;
 
-use super::{
-    migrate::open_database,
-    util::{self, use_ir_arg},
-};
+use super::{migrate::open_database, util};
 
 pub(super) struct VerifyCommandDefinition {}
 

@@ -1317,6 +1317,7 @@ dependencies = [
  "reqwest",
  "rexpect",
  "serde",
+ "serde_json",
  "tempfile",
  "testing",
  "tokio",

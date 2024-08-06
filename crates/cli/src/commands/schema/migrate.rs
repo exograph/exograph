@@ -15,10 +15,11 @@ use postgres_model::migration::Migration;
 
 use crate::{
     commands::command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
+    commands::util::use_ir_arg,
     util::open_file_for_output,
 };
 
-use super::util::{self, use_ir_arg};
+use super::util;
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command};
