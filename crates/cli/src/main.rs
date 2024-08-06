@@ -72,9 +72,9 @@ async fn main() -> Result<()> {
             Box::new(BuildCommandDefinition {}),
             Box::new(deploy::command_definition()),
             Box::new(schema::command_definition()),
+            Box::new(graphql::command_definition()),
             Box::new(PlaygroundCommandDefinition {}),
             Box::new(TestCommandDefinition {}),
-            Box::new(graphql::command_definition()),
         ],
     );
 
