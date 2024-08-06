@@ -1,10 +1,10 @@
 ---
-sidebar_position: 2
+sidebar_position: 20
 ---
 
 # exo yolo
 
-During development, especially at the beginning, you want a low ceremony experience while developing your model. The yolo mode is a shortcut to get you started quickly. As long as you have either Postgres or [Docker](https://docker.com) installed, in this mode, Exograph will create a temporary database with the proper schema, create a JWT secret, and start the server. As you change the model, it will automatically apply the migrations and restart the server.
+During development, especially at the beginning, you want a low ceremony experience while developing your model. Yolo mode is a shortcut that gets you started quickly. As long as you have either Postgres or [Docker](https://docker.com) installed, in this mode, Exograph will create a temporary database with the proper schema, create a JWT secret, and start the server. As you change the model, it will automatically apply the migrations and restart the server.
 
 In this mode, Exograph will delete any database created in the yolo mode when you stop the server. Once you have a reasonably stable model, you should switch to the [dev mode](./dev.md) to have more control over the database and retain data between restarts.
 

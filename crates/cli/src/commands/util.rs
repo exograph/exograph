@@ -9,6 +9,7 @@
 
 use std::io::stdin;
 
+use clap::Arg;
 use rand::Rng;
 
 pub(super) fn generate_random_string() -> String {
@@ -27,4 +28,12 @@ pub(crate) fn wait_for_enter(prompt: &str) -> std::io::Result<()> {
     stdin().read_line(&mut line)?;
 
     Ok(())
+}
+
+pub(crate) fn use_ir_arg() -> Arg {
+    Arg::new("use-ir")
+        .help("Use the IR file instead of the model file")
+        .long("use-ir")
+        .required(false)
+        .num_args(0)
 }

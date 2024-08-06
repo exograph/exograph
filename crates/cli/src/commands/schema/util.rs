@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use anyhow::anyhow;
 
 use builder::error::ParserError;
-use clap::Arg;
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
@@ -66,12 +65,12 @@ pub(crate) async fn database_manager_from_env() -> Result<DatabaseClientManager,
     DatabaseClientManager::from_url(&url, check_connection, pool_size).await
 }
 
-pub(crate) async fn create_postgres_system(
+pub(crate) async fn create_system(
     model_file: impl AsRef<Path>,
     trusted_documents_dir: Option<&Path>,
     use_ir: bool,
-) -> Result<PostgresSubsystem, anyhow::Error> {
-    let serialized_system = if use_ir {
+) -> Result<SerializableSystem, anyhow::Error> {
+    if use_ir {
         let exo_ir_file = PathBuf::from("target/index.exo_ir");
         if !Path::new(&exo_ir_file).exists() {
             return Err(anyhow!("IR file not found"));
@@ -85,20 +84,20 @@ pub(crate) async fn create_postgres_system(
                     .map_err(|e| anyhow!("Error deserializing system: {:?}", e))
             }
             Err(e) => Err(anyhow!("Error opening IR file: {}", e)),
-        }?
+        }
     } else {
         ensure_exo_project_dir(&PathBuf::from("."))?;
-        build_system_with_static_builders(model_file.as_ref(), trusted_documents_dir).await?
-    };
+        Ok(build_system_with_static_builders(model_file.as_ref(), trusted_documents_dir).await?)
+    }
+}
+
+pub(crate) async fn create_postgres_system(
+    model_file: impl AsRef<Path>,
+    trusted_documents_dir: Option<&Path>,
+    use_ir: bool,
+) -> Result<PostgresSubsystem, anyhow::Error> {
+    let serialized_system = create_system(model_file, trusted_documents_dir, use_ir).await?;
 
     deserialize_postgres_subsystem(serialized_system)
         .map_err(|e| anyhow!("Error while deserializing database subsystem: {}", e))
-}
-
-pub(super) fn use_ir_arg() -> Arg {
-    Arg::new("use-ir")
-        .help("Use the IR file instead of the model file")
-        .long("use-ir")
-        .required(false)
-        .num_args(0)
 }
