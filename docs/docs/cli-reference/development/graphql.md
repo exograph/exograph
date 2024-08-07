@@ -13,5 +13,4 @@ The `graphql schema` subcommand creates a file with the GraphQL schema to use wi
 ```shell-session
 # shell-command-next-line
 exo graphql schema
-``
 ```
