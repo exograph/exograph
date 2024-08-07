@@ -131,11 +131,23 @@ pub(super) fn join_info(
         .unwrap_or(selection_level);
 
     let predicate = transformer.to_predicate(predicate, predicate_selection_level, true, database);
-    let relation_predicate = compute_relation_predicate(
-        predicate_selection_level,
-        matches!(join, Table::Join(_)),
-        database,
-    );
+
+    let relation_predicate = {
+        // The relation predicate (which ensures that we select entries that relate to the parent) needs
+        // aliasing if the relation is one-to-many. For many-to-one relations, the join for the parent already
+        // has the alias, so we don't need to alias the relation predicate.
+        let relation_predicate_needs_aliasing = matches!(join, Table::Join(_))
+            && predicate_selection_level
+                .tail_relation_id()
+                .map(|r| matches!(r, RelationId::OneToMany(..)))
+                .unwrap_or(true);
+
+        compute_relation_predicate(
+            predicate_selection_level,
+            relation_predicate_needs_aliasing,
+            database,
+        )
+    };
 
     let predicate = ConcretePredicate::and(predicate, relation_predicate);
 
