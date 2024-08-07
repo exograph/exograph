@@ -1,0 +1,71 @@
+operation: |
+  query questions {
+    withProject: questions @unordered {
+      id
+      project {
+        id
+        name
+      }
+    }
+
+    withProjectAndOwner: questions @unordered {
+      id
+      project {
+        id
+        name
+        owner {
+          id
+          name
+        }
+      }
+    }
+  }
+auth: |
+  {
+    sub: $.u1Id
+  }
+response: |
+  {
+    "data": {
+      "withProject": [
+        {
+          "id": $.q1Ids[0],
+          "project": {
+            id: $.p1Id,
+            "name": "P1"
+          }
+        },
+        {
+          "id": $.q1Ids[1],
+          "project": {
+            id: $.p1Id,
+            "name": "P1"
+          }
+        }
+      ],
+      "withProjectAndOwner": [
+        {
+          "id": $.q1Ids[0],
+          "project": {
+            id: $.p1Id,
+            "name": "P1",
+            "owner": {
+              id: $.u1Id,
+              "name": "U1"
+            }
+          }
+        },
+        {
+          "id": $.q1Ids[1],
+          "project": {
+            id: $.p1Id,
+            "name": "P1",
+            "owner": {
+              id: $.u1Id,
+              "name": "U1"
+            }
+          }
+        }
+      ]
+    }
+  }

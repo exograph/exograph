@@ -1,0 +1,107 @@
+operation: |
+  query questions {
+    withProject: questions @unordered {
+      id
+      project {
+        id
+        name
+      }
+    }
+
+    withProjectAndOwner: questions @unordered {
+      id
+      project {
+        id
+        name
+        owner {
+          id
+          name
+        }
+      }
+    }
+  }
+auth: |
+  {
+    isAdmin: true
+  }
+response: |
+  {
+    "data": {
+      "withProject": [
+        {
+          "id": $.q1Ids[0],
+          "project": {
+            id: $.p1Id,
+            "name": "P1"
+          }
+        },
+        {
+          "id": $.q1Ids[1],
+          "project": {
+            id: $.p1Id,
+            "name": "P1"
+          }
+        },
+        {
+          "id": $.q2Ids[0],
+          "project": {
+            id: $.p2Id,
+            "name": "P2"
+          }
+        },
+        {
+          "id": $.q2Ids[1],
+          "project": {
+            id: $.p2Id,
+            "name": "P2"
+          }
+        }
+      ],
+      "withProjectAndOwner": [
+        {
+          "id": $.q1Ids[0],
+          "project": {
+            id: $.p1Id,
+            "name": "P1",
+            "owner": {
+              id: $.u1Id,
+              "name": "U1"
+            }
+          }
+        },
+        {
+          "id": $.q1Ids[1],
+          "project": {
+            id: $.p1Id,
+            "name": "P1",
+            "owner": {
+              id: $.u1Id,
+              "name": "U1"
+            }
+          }
+        },
+        {
+          "id": $.q2Ids[0],
+          "project": {
+            id: $.p2Id,
+            "name": "P2",
+            "owner": {
+              id: $.u2Id,
+              "name": "U2"
+            }
+          }
+        },
+        {
+          "id": $.q2Ids[1],
+          "project": {
+            id: $.p2Id,
+            "name": "P2",
+            "owner": {
+              id: $.u2Id,
+              "name": "U2"
+            }
+          }
+        }
+      ]
+    }
+  }
