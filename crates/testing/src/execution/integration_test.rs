@@ -197,9 +197,9 @@ impl IntegrationTest {
             })?;
 
             match result {
-                OperationResult::Finished => {}
-                OperationResult::AssertFailed(_) | OperationResult::AssertPassed => {
-                    panic!("did not expect assertions in setup")
+                OperationResult::Finished | OperationResult::AssertPassed => {}
+                OperationResult::AssertFailed(error) => {
+                    Err(anyhow!("Initialization failed: {error}"))?;
                 }
             }
         }
@@ -239,6 +239,7 @@ impl IntegrationTest {
     }
 }
 
+#[derive(Debug)]
 enum OperationResult {
     Finished,
     AssertPassed,
@@ -457,9 +458,14 @@ async fn run_operation(
         }
 
         None => {
-            // don't need to check anything
-
-            Ok(OperationResult::Finished)
+            // No expected response specified - just check for errors
+            match body.get("errors") {
+                Some(_) => Ok(OperationResult::AssertFailed(anyhow!(
+                    "Unexpected error in response: {}",
+                    serde_json::to_string_pretty(&body)?
+                ))),
+                None => Ok(OperationResult::Finished),
+            }
         }
     }
 }
