@@ -1,0 +1,108 @@
+operation: |
+  query {
+      documents @unordered {
+          id
+          content
+          permissions @unordered {
+              id
+              user {
+                  id
+                  name
+              }
+              read
+              write
+          }
+      }
+  }
+auth: |
+  {
+    "role": "admin"
+  }
+response: |
+  {
+    "data": {
+      "documents": [
+        {
+          "id": $.d1Id,
+          "content": "d1",
+          "permissions": [
+            {
+              "id": $.d1PermissionIds[0],
+              "user": {
+                "id": $.u1Id,
+                "name": "U1"
+              },
+              "read": true,
+              "write": true
+            },
+            {
+              "id": $.d1PermissionIds[1],
+              "user": {
+                "id": $.u2Id,
+                "name": "U2"
+              },
+              "read": false,
+              "write": false
+            },
+            {
+              "id": $.d1PermissionIds[2],
+              "user": {
+                "id": $.u3Id,
+                "name": "U3"
+              },
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": $.d2Id,
+          "content": "d2",
+          "permissions": [
+            {
+              "id": $.d2PermissionIds[0],
+              "user": {
+                "id": $.u1Id,
+                "name": "U1"
+              },
+              "read": false,
+              "write": false
+            },
+            {
+              "id": $.d2PermissionIds[1],
+              "user": {
+                "id": $.u2Id,
+                "name": "U2"
+              },
+              "read": true,
+              "write": true
+            },
+            {
+              "id": $.d2PermissionIds[2],
+              "user": {
+                "id": $.u3Id,
+                "name": "U3"
+              },
+              "read": true,
+              "write": false
+            }
+          ]
+        },
+        {
+          "id": $.d3Id,
+          "content": "d3",
+          "permissions": [
+            {
+              "id": $.d3PermissionIds[0],
+              "user": {
+                "id": $.u4Id,
+                "name": "U4"
+              },
+              "read": true,
+              "write": false
+            }
+          ]
+        }
+      ]
+    }
+  }

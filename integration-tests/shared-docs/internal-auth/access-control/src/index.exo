@@ -1,0 +1,36 @@
+context AuthContext {
+  @jwt("sub") id: Int
+  @jwt role: String
+}
+
+@postgres
+module DocsDatabase {
+  @access(
+    query = AuthContext.role == "admin" || self.permissions.some(permission => permission.user.id == AuthContext.id && permission.read),
+    mutation = AuthContext.role == "admin" || self.permissions.some(permission => permission.user.id == AuthContext.id && permission.write)
+  )
+  type Document {
+    @pk id: Int = autoIncrement()
+    content: String
+    permissions: Set<Permission>?
+  }
+
+  @access(
+    query = AuthContext.role == "admin" || (self.user.id == AuthContext.id && self.read),
+    mutation = AuthContext.role == "admin" || (self.user.id == AuthContext.id && self.write)
+  )
+  type Permission {
+    @pk id: Int = autoIncrement()
+    document: Document
+    user: User
+    read: Boolean
+    write: Boolean
+  }
+
+  @access(AuthContext.role == "admin" || self.id == AuthContext.id)
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    permissions: Set<Permission>?
+  }
+}

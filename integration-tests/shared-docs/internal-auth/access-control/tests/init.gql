@@ -1,0 +1,86 @@
+stages:
+    - operation: |
+        mutation {
+            u1: createUser(data: {name: "U1"}) {
+                id @bind(name: "u1Id")
+            }
+            u2: createUser(data: {name: "U2"}) {
+                id @bind(name: "u2Id")
+            }
+            u3: createUser(data: {name: "U3"}) {
+                id @bind(name: "u3Id")
+            }
+            u4: createUser(data: {name: "U4"}) {
+                id @bind(name: "u4Id")
+            }
+        }
+      auth: |
+        {
+            "role": "admin"
+        }
+    - operation: |
+        # d1 -> u1 (r, w),   u2 (-r, -w), u3 (r), u4 (-)
+        # d2 -> u1 (-r, -w), u2 (r, w),   u3 (r), u4 (-)
+        # d3 -> u1 (-),      u2 (-),      u3 (-), u4 (r, -w)
+        mutation($u1Id: Int!, $u2Id: Int!, $u3Id: Int!, $u4Id: Int!) {
+            d1: createDocument(data: {
+                content: "d1", 
+                permissions: [
+                    {user: {id: $u1Id}, read: true,  write: true}, 
+                    {user: {id: $u2Id}, read: false,  write: false},
+                    {user: {id: $u3Id}, read: true,  write: false},
+                    # u4 doesn't have any relation to d1
+                ]
+            }) {
+                id @bind(name: "d1Id")
+                content
+                permissions {
+                    id @bind(name: "d1PermissionIds")
+                    read
+                    write
+                }
+            }
+            d2: createDocument(data: {
+                content: "d2", 
+                permissions: [
+                    {user: {id: $u1Id}, read: false,  write: false},
+                    {user: {id: $u2Id}, read: true,  write: true},
+                    {user: {id: $u3Id}, read: true,  write: false},
+                    # u4 doesn't have any relation to d2
+                ]
+            }) {
+                id @bind(name: "d2Id")
+                content
+                permissions {
+                    id @bind(name: "d2PermissionIds")
+                    read
+                    write
+                }
+            }
+            d3: createDocument(data: {
+                content: "d3", 
+                permissions: [
+                    {user: {id: $u4Id}, read: true,  write: false},
+                    # u1, u2, u3 don't have any relation to d3
+                ]
+            }) {
+                id @bind(name: "d3Id")
+                content
+                permissions {
+                    id @bind(name: "d3PermissionIds")
+                    read
+                    write
+                }
+            }                
+        }
+      auth: |
+        {
+            "role": "admin"
+        }        
+      variable: |
+        {
+            "u1Id": $.u1Id,
+            "u2Id": $.u2Id,
+            "u3Id": $.u3Id,
+            "u4Id": $.u4Id
+        }
