@@ -1,0 +1,100 @@
+stages:
+  - operation: |
+      query {
+          documents @unordered {
+              id
+              content
+              permissions @unordered {
+                  id
+                  user {
+                      id
+                      name
+                  }
+                  read
+                  write
+              }
+          }
+      }
+    auth: |
+      {
+        "sub": $.u1Id
+      }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": $.d1Id,
+              "content": "d1",
+              "permissions": [
+                {
+                  "id": $.d1PermissionIds[0],
+                  "user": {
+                    "id": $.u1Id,
+                    "name": "U1"
+                  },
+                  "read": true,
+                  "write": true
+                }
+              ]
+            }
+          ]
+        }
+      }
+  - operation: |
+      query {
+          documents @unordered {
+              id
+              content
+              permissions @unordered {
+                  id
+                  user {
+                      id
+                      name
+                  }
+                  read
+                  write
+              }
+          }
+      }
+    auth: |
+      {
+        "sub": $.u3Id
+      }
+    response: |
+      {
+        "data": {
+          "documents": [
+            {
+              "id": $.d1Id,
+              "content": "d1",
+              "permissions": [
+                {
+                  "id": $.d1PermissionIds[2],
+                  "user": {
+                    "id": $.u3Id,
+                    "name": "U3"
+                  },
+                  "read": true,
+                  "write": false
+                }
+              ]
+            },
+            {
+              "id": $.d2Id,
+              "content": "d2",
+              "permissions": [
+                {
+                  "id": $.d2PermissionIds[2],
+                  "user": {
+                    "id": $.u3Id,
+                    "name": "U3"
+                  },
+                  "read": true,
+                  "write": false
+                }
+              ]
+            }
+          ]
+        }
+      }

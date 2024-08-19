@@ -126,7 +126,7 @@ impl SelectionStrategy for PlainJoinStrategy {
             order_by: abstract_select
                 .order_by
                 .as_ref()
-                .map(|ob| transformer.to_order_by(ob)),
+                .map(|ob| transformer.to_order_by(ob, selection_level, database)),
             offset: abstract_select.offset.clone(),
             limit: abstract_select.limit.clone(),
             group_by: None,

@@ -1,0 +1,94 @@
+operation: |
+  query {
+      projects @unordered {
+        id
+        title
+        owner {
+          id
+          name
+          assignedProjects @unordered {
+            id
+            title
+          }
+        }
+      }
+  }
+response: |
+  {
+    "data": {
+      "projects": [
+        {
+          "id": $.u1ProjectIds[0],
+          "title": "U1P1",
+          "owner": {
+            "id": $.u1Id,
+            "name": "U1",
+            "assignedProjects": [
+              {
+                "id": $.u1ProjectIds[0],
+                "title": "U1P1"
+              },
+              {
+                "id": $.u1ProjectIds[1],
+                "title": "U1P2"
+              }
+            ]
+          }
+        },
+        {
+          "id": $.u1ProjectIds[1],
+          "title": "U1P2",
+          "owner": {
+            "id": $.u1Id,
+            "name": "U1",
+            "assignedProjects": [
+              {
+                "id": $.u1ProjectIds[0],
+                "title": "U1P1"
+              },
+              {
+                "id": $.u1ProjectIds[1],
+                "title": "U1P2"
+              }
+            ]
+          }
+        },
+        {
+          "id": $.u2ProjectIds[0],
+          "title": "U2P1",
+          "owner": {
+            "id": $.u2Id,
+            "name": "U2",
+            "assignedProjects": [
+              {
+                "id": $.u2ProjectIds[0],
+                "title": "U2P1"
+              },
+              {
+                "id": $.u2ProjectIds[1],
+                "title": "U2P2"
+              }
+            ]
+          }
+        },
+        {
+          "id": $.u2ProjectIds[1],
+          "title": "U2P2",
+          "owner": {
+            "id": $.u2Id,
+            "name": "U2",
+            "assignedProjects": [
+              {
+                "id": $.u2ProjectIds[0],
+                "title": "U2P1"
+              },
+              {
+                "id": $.u2ProjectIds[1],
+                "title": "U2P2"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }

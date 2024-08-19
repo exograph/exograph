@@ -1,0 +1,65 @@
+operation: |
+  query {
+    venues @unordered {
+      id
+      name
+      mainConcerts(where: {mainVenue: {name: {eq: "Venue 1"}}}) @unordered {
+        id
+        title
+      }
+      altConcerts(where: {mainVenue: {name: {eq: "Venue 1"}}}) @unordered {
+        id
+        title
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "venues": [
+        {
+          "id": 1,
+          "name": "Venue 1",
+          "mainConcerts": [
+            {
+              "id": 1,
+              "title": "C1"
+            },
+            {
+              "id": 3,
+              "title": "C3"
+            }
+          ],
+          "altConcerts": []
+        },
+        {
+          "id": 2,
+          "name": "Venue 2",
+          "mainConcerts": [],
+          "altConcerts": [
+            {
+              "id": 1,
+              "title": "C1"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "name": "Venue 3",
+          "mainConcerts": [],
+          "altConcerts": [
+            {
+              "id": 3,
+              "title": "C3"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "name": "Venue 4",
+          "mainConcerts": [],
+          "altConcerts": []
+        }
+      ]
+    }
+  }

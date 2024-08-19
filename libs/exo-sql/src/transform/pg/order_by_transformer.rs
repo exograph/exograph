@@ -11,10 +11,10 @@ use crate::{
     asql::order_by::AbstractOrderByExpr,
     sql::order::{OrderBy, OrderByElement, OrderByElementExpr, VectorDistanceOperand},
     transform::transformer::OrderByTransformer,
-    AbstractOrderBy, ColumnPath,
+    AbstractOrderBy, ColumnPath, Database,
 };
 
-use super::Postgres;
+use super::{selection_level::SelectionLevel, Postgres};
 
 impl OrderByTransformer for Postgres {
     /// Transforms an abstract order-by clause into a concrete one
@@ -24,14 +24,25 @@ impl OrderByTransformer for Postgres {
     /// ```sql
     /// ORDER BY table.column ASC, table2.column2 DESC
     /// ```
-    fn to_order_by<'a>(&self, order_by: &AbstractOrderBy) -> OrderBy {
+    fn to_order_by<'a>(
+        &self,
+        order_by: &AbstractOrderBy,
+        selection_level: &SelectionLevel,
+        database: &Database,
+    ) -> OrderBy {
         OrderBy(
             order_by
                 .0
                 .iter()
                 .map(|(expr, ordering)| match expr {
                     AbstractOrderByExpr::Column(path) => {
-                        let (column_id, table_alias) = (path.leaf_column(), path.alias());
+                        let table_alias = match (selection_level.prefix(database), path.alias()) {
+                            (Some(prefix), Some(alias)) => Some(format!("{}${}", prefix, alias)),
+                            (None, Some(alias)) => Some(alias),
+                            _ => None,
+                        };
+
+                        let column_id = path.leaf_column();
                         OrderByElement::new(column_id, *ordering, table_alias)
                     }
                     AbstractOrderByExpr::VectorDistance(lhs, rhs, op) => {

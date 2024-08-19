@@ -1,4 +1,4 @@
-use crate::{Database, RelationId};
+use crate::{Database, RelationId, TableId};
 
 /// Representation of the level of a subselection in a query.
 ///
@@ -21,7 +21,7 @@ use crate::{Database, RelationId};
 /// }
 /// ```
 ///
-/// Here when forming the SQL, we want to user an alias when referring to the "users" table inside
+/// Here when forming the SQL, we want to use an alias when referring to the "users" table inside
 /// the subquery for "documents" (note "users$users" below):
 ///
 /// ```sql
@@ -54,7 +54,7 @@ pub enum SelectionLevel {
     Nested(Vec<RelationId>),
 }
 
-pub(crate) const ALIAS_SEPARATOR: &str = "$";
+const ALIAS_SEPARATOR: &str = "$";
 
 impl SelectionLevel {
     pub(super) fn is_top_level(&self) -> bool {
@@ -72,7 +72,7 @@ impl SelectionLevel {
         }
     }
 
-    pub(super) fn tail_relation_id(&self) -> Option<&RelationId> {
+    pub(crate) fn tail_relation_id(&self) -> Option<&RelationId> {
         match self {
             SelectionLevel::TopLevel => None,
             SelectionLevel::Nested(relation_ids) => relation_ids.last(),
@@ -80,21 +80,74 @@ impl SelectionLevel {
     }
 
     /// Compute a suitable alias for this selection level
-    pub(crate) fn alias(&self, name: String, database: &Database) -> String {
+    pub(crate) fn alias(
+        &self,
+        leaf_table: (TableId, Option<String>),
+        database: &Database,
+    ) -> String {
+        let prefix = self.prefix(database);
+
+        let leaf_table_name = leaf_table.1.unwrap_or_else(|| {
+            database
+                .get_table(leaf_table.0)
+                .name
+                .fully_qualified_name_with_sep(ALIAS_SEPARATOR)
+        });
+
+        match prefix {
+            None => leaf_table_name,
+            Some(prefix) => format!("{prefix}{ALIAS_SEPARATOR}{leaf_table_name}"),
+        }
+    }
+
+    pub(crate) fn prefix(&self, database: &Database) -> Option<String> {
         match self {
-            SelectionLevel::TopLevel => name,
+            SelectionLevel::TopLevel => None,
             SelectionLevel::Nested(relation_ids) => {
-                relation_ids.iter().rev().fold(name, |acc, relation_id| {
-                    let foreign_table_id = match relation_id {
-                        RelationId::ManyToOne(r) => r.deref(database).self_column_id.table_id,
-                        RelationId::OneToMany(r) => r.deref(database).self_pk_column_id.table_id,
-                    };
-                    let table_name = &database
-                        .get_table(foreign_table_id)
-                        .name
-                        .fully_qualified_name_with_sep(ALIAS_SEPARATOR);
-                    format!("{table_name}{ALIAS_SEPARATOR}{acc}")
-                })
+                // Collect the table and the next-table aliases in the relation chain
+                let table_linking = relation_ids.iter().map(|relation_id| match relation_id {
+                    RelationId::ManyToOne(r) => {
+                        let many_to_one = r.deref(database);
+                        (
+                            many_to_one.self_column_id.table_id,
+                            many_to_one.foreign_table_alias.clone(),
+                        )
+                    }
+                    RelationId::OneToMany(r) => {
+                        let one_to_many = r.deref(database);
+                        (one_to_many.self_pk_column_id.table_id, None)
+                    }
+                });
+
+                // Go over the table linking and for name aliasing list If there is an alias for the
+                // previous table, use it instead of the table name For example, if we have a
+                // relation chain like:
+                // (concert-table, None) -> (venue-table, Some("main-venue")) -> (office-table,None),
+                // The alias formed will be:
+                // "concert-table$main-venue$office-table" (instead of "concert-table$venue-table$office-table")
+                let (_, names) = table_linking.fold(
+                    (None, vec![]),
+                    |(prev_alias, mut acc), cur| match prev_alias {
+                        None => {
+                            let (table_id, alias) = cur;
+                            let table_name = database
+                                .get_table(table_id)
+                                .name
+                                .fully_qualified_name_with_sep(ALIAS_SEPARATOR);
+                            acc.push(table_name);
+
+                            (alias, acc)
+                        }
+                        Some(prev_alias) => {
+                            let (_, alias) = cur;
+                            acc.push(prev_alias);
+
+                            (alias, acc)
+                        }
+                    },
+                );
+
+                Some(names.join(ALIAS_SEPARATOR))
             }
         }
     }

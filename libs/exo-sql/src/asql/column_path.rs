@@ -97,7 +97,7 @@ impl ColumnPathLink {
 pub struct RelationLink {
     /// The column in the current table that is linked to the next table.
     pub self_column_id: ColumnId,
-    /// The column in the next table that is linked to the current table. None implies that this is a terminal column (such as artist.name).
+    /// The column in the next table that is linked to the current table.
     pub foreign_column_id: ColumnId,
     /// Alias that could be used when joining the table, etc. Useful when multiple columns in the self table refers to the same linked column
     /// For example, if "concerts" has "main_venue_id" and "alternative_venue_id" (both link to the venues.id column), we can set linked_table_alias
