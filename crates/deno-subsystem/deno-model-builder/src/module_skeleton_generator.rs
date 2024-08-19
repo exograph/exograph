@@ -113,6 +113,7 @@ pub fn generate_module_skeleton(
         generate_exograph_imports(module, &mut file, out_file_dir)?;
         generate_context_imports(module, base_system, &mut file, out_file_dir)?;
         generate_type_imports(module, &mut file, out_file_dir)?;
+        generate_foreign_type_imports(module, &mut file, out_file_dir)?;
     }
 
     for method in module.methods.iter() {
@@ -212,9 +213,55 @@ fn generate_type_imports(
 
     writeln!(
         file,
-        "import type {{ {} }} from '{}generated/{}.d.ts';\n",
+        "import type {{ {} }} from '{}generated/{}.d.ts';",
         imports, relative_path, module.name
     )?;
+
+    Ok(())
+}
+
+fn generate_foreign_type_imports(
+    module: &AstModule<Typed>,
+    file: &mut File,
+    out_file_dir: &Path,
+) -> Result<(), ModelBuildingError> {
+    let foreign_modules_from_fields = module.types.iter().flat_map(|typ| {
+        typ.fields.iter().filter_map(|field| {
+            if let AstFieldType::Plain(Some(module_name), _, _, _, _) = &field.typ {
+                Some(module_name)
+            } else {
+                None
+            }
+        })
+    });
+
+    let foreign_modules_from_methods = module.methods.iter().flat_map(|method| {
+        if let AstFieldType::Plain(Some(module_name), _, _, _, _) = &method.return_type {
+            Some(module_name)
+        } else {
+            None
+        }
+    });
+
+    let mut foreign_modules: Vec<_> = foreign_modules_from_fields
+        .chain(foreign_modules_from_methods)
+        .collect();
+    foreign_modules.sort();
+    foreign_modules.dedup();
+
+    if foreign_modules.is_empty() {
+        return Ok(());
+    }
+
+    let relative_path = generated_dir_path(out_file_dir)?;
+
+    for module_name in foreign_modules {
+        writeln!(
+            file,
+            "import type * as {} from '{}generated/{}.d.ts';",
+            module_name, relative_path, module_name
+        )?;
+    }
 
     Ok(())
 }
@@ -514,6 +561,7 @@ mod tests {
     use core_plugin_interface::core_model_builder::ast::ast_types::{
         AstField, AstFieldType, AstMethod, AstMethodType, AstModel, AstModelKind, AstModule,
     };
+    use std::fs;
     use std::io::Read;
     use std::io::Seek;
     use tempfile::tempfile;
@@ -681,11 +729,9 @@ mod tests {
 
     #[test]
     fn test_generate_type_imports() {
-        use std::fs;
-
         let module = fabricate_module("TestModule");
 
-        let src_dir = Path::new("tests/src");
+        let src_dir = Path::new("generate_type_tests/src");
         fs::create_dir_all(src_dir).unwrap();
 
         let index_file_path = src_dir.join("index.exo");
@@ -694,7 +740,7 @@ mod tests {
         let generated_dir = Path::new("tests/generated");
         fs::create_dir_all(generated_dir).unwrap();
 
-        let out_file_path = generated_dir.join("test_module.ts");
+        let out_file_path = src_dir.join("test_module.ts");
         let mut out_file = fs::File::create(&out_file_path).unwrap();
 
         assert!(
@@ -703,18 +749,16 @@ mod tests {
             out_file_path.display()
         );
 
-        generate_type_imports(&module, &mut out_file, generated_dir).unwrap();
+        generate_type_imports(&module, &mut out_file, src_dir).unwrap();
 
         let content = fs::read_to_string(out_file_path).unwrap();
 
         let expected_imports =
             "import type { EdgeType, TestType1, TestType2 } from '../generated/TestModule.d.ts';\n";
-        assert!(
-            content.contains(expected_imports),
-            "Types imports not found"
-        );
 
-        fs::remove_dir_all(Path::new("tests")).unwrap();
+        fs::remove_dir_all(Path::new("generate_type_tests")).unwrap();
+
+        assert_eq!(content, expected_imports);
     }
 
     // When a foregn model is used inside a Deno module.
@@ -746,6 +790,58 @@ mod tests {
         }
     }
 
+    fn fabricate_model_with_foreign_model(
+        name: &str,
+        foreign_module_name: &str,
+        foreign_model_name: &str,
+    ) -> AstModel<Typed> {
+        let span = fabricate_span();
+
+        AstModel {
+            name: name.to_string(),
+            kind: AstModelKind::Type,
+            fields: vec![AstField {
+                name: "foreignField".to_string(),
+                typ: AstFieldType::Plain(
+                    Some(foreign_module_name.to_string()),
+                    foreign_model_name.to_string(),
+                    vec![],
+                    true,
+                    span,
+                ),
+                annotations: Default::default(),
+                default_value: None,
+                span,
+            }],
+            annotations: Default::default(),
+            span,
+        }
+    }
+
+    /*
+       module [module name] {
+           type LocalModel {
+               foreignField: ForeignModule.ForeignModel
+           }
+       }
+    */
+    fn fabricate_module_with_foreign_model(name: &str) -> AstModule<Typed> {
+        let span = fabricate_span();
+        AstModule {
+            name: name.to_string(),
+            types: vec![fabricate_model_with_foreign_model(
+                "LocalModel",
+                "ForeignModule",
+                "ForeignModel",
+            )],
+            annotations: Default::default(),
+            base_exofile: PathBuf::new(),
+            interceptors: vec![],
+            methods: vec![],
+            span,
+        }
+    }
+
     #[test]
     fn test_generate_method_function_with_foreign_model() {
         let mocked_method =
@@ -753,7 +849,7 @@ mod tests {
 
         let mut temp_file = tempfile().unwrap();
 
-        let _result = generate_method_skeleton(
+        generate_method_skeleton(
             &mocked_method.name,
             &mocked_method.arguments,
             Some(&mocked_method.return_type),
@@ -772,5 +868,48 @@ mod tests {
             "export async function publishFoo(id: number): Promise<ForeignModule.TestType1> {";
 
         assert_eq!(first_line, expected_code);
+    }
+
+    #[test]
+    fn test_generate_foreign_type_imports() {
+        let mut mocked_module = fabricate_module_with_foreign_model("LocalModule");
+        let mocked_method = fabricate_method_with_foreign_return_type(
+            "publishForeignModel",
+            "SecondForeignModule",
+            "ForeignModel",
+        );
+
+        mocked_module.methods.push(mocked_method);
+
+        let src_dir = Path::new("foreign_type_imports_tests/src");
+        fs::create_dir_all(src_dir).unwrap();
+
+        let index_file_path = src_dir.join("index.exo");
+        fs::File::create(index_file_path).unwrap();
+
+        let generated_dir = Path::new("tests/generated");
+        fs::create_dir_all(generated_dir).unwrap();
+
+        let out_file_path = src_dir.join("test_module.ts");
+        let mut out_file = fs::File::create(&out_file_path).unwrap();
+
+        assert!(
+            out_file_path.exists(),
+            "File {} doesn't exist",
+            out_file_path.display()
+        );
+
+        generate_foreign_type_imports(&mocked_module, &mut out_file, src_dir).unwrap();
+
+        let first_line = fs::read_to_string(out_file_path).unwrap();
+
+        let expected_line = concat!(
+            "import type * as ForeignModule from '../generated/ForeignModule.d.ts';\n",
+            "import type * as SecondForeignModule from '../generated/SecondForeignModule.d.ts';\n"
+        );
+
+        fs::remove_dir_all(Path::new("foreign_type_imports_tests")).unwrap();
+
+        assert_eq!(first_line, expected_line);
     }
 }
