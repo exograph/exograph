@@ -85,7 +85,7 @@ dependencies = [
  "derive_more",
  "encoding_rs",
  "futures-core",
- "http 0.2.11",
+ "http 0.2.12",
  "httparse",
  "httpdate",
  "itoa",
@@ -120,7 +120,7 @@ checksum = "13d324164c51f63867b57e73ba5936ea151b8a41a1d23d1031eeb9f70d0236f8"
 dependencies = [
  "bytestring",
  "cfg-if 1.0.0",
- "http 0.2.11",
+ "http 0.2.12",
  "regex-lite",
  "serde",
  "tracing",
@@ -677,7 +677,7 @@ dependencies = [
  "bitflags 1.3.2",
  "bytes",
  "futures-util",
- "http 0.2.11",
+ "http 0.2.12",
  "http-body 0.4.6",
  "hyper 0.14.28",
  "itoa",
@@ -703,7 +703,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "futures-util",
- "http 0.2.11",
+ "http 0.2.12",
  "http-body 0.4.6",
  "mime",
  "rustversion",
@@ -1630,7 +1630,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
- "http 0.2.11",
+ "http 1.1.0",
  "indexmap 2.2.5",
  "insta",
  "jsonwebtoken",
@@ -2421,7 +2421,7 @@ dependencies = [
  "deno_permissions",
  "deno_tls",
  "dyn-clone",
- "http 0.2.11",
+ "http 0.2.12",
  "reqwest",
  "serde",
  "serde_json",
@@ -2511,7 +2511,7 @@ dependencies = [
  "deno_net",
  "deno_websocket",
  "flate2",
- "http 0.2.11",
+ "http 0.2.12",
  "http 1.1.0",
  "httparse",
  "hyper 0.14.28",
@@ -2670,7 +2670,7 @@ dependencies = [
  "h2 0.3.26",
  "hkdf",
  "home",
- "http 0.2.11",
+ "http 0.2.12",
  "idna 0.3.0",
  "indexmap 2.2.5",
  "ipnetwork",
@@ -4120,7 +4120,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "futures-util",
- "http 0.2.11",
+ "http 0.2.12",
  "indexmap 2.2.5",
  "slab",
  "tokio",
@@ -4294,9 +4294,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "0.2.11"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8947b1a6fad4393052c7ba1f4cd97bed3e953a95c79c92ad9b051a04611d9fbb"
+checksum = "601cbb57e577e2f5ef5be8e7b83f0f63994f25aa94d673e54a92d5c516d101f1"
 dependencies = [
  "bytes",
  "fnv",
@@ -4321,7 +4321,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ceab25649e9960c0311ea418d17bee82c0dcec1bd053b5f9a66e265a693bed2"
 dependencies = [
  "bytes",
- "http 0.2.11",
+ "http 0.2.12",
  "pin-project-lite",
 ]
 
@@ -4397,7 +4397,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2 0.3.26",
- "http 0.2.11",
+ "http 0.2.12",
  "http-body 0.4.6",
  "httparse",
  "httpdate",
@@ -4437,7 +4437,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec3efd23720e2049821a693cbc7e65ea87c72f1c58ff2f9522ff332b1491e590"
 dependencies = [
  "futures-util",
- "http 0.2.11",
+ "http 0.2.12",
  "hyper 0.14.28",
  "rustls 0.21.11",
  "tokio",
@@ -4973,7 +4973,7 @@ dependencies = [
  "async-stream",
  "bytes",
  "futures",
- "http 0.2.11",
+ "http 0.2.12",
  "hyper 0.14.28",
  "lambda_runtime_api_client",
  "serde",
@@ -4990,7 +4990,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b54698c666ffe503cb51fa66e4567e53e806128a10359de7095999d925a771ed"
 dependencies = [
- "http 0.2.11",
+ "http 0.2.12",
  "hyper 0.14.28",
  "tokio",
  "tower-service",
@@ -5954,7 +5954,7 @@ checksum = "b0ba633e55c5ea6f431875ba55e71664f2fa5d3a90bd34ec9302eecc41c865dd"
 dependencies = [
  "async-trait",
  "bytes",
- "http 0.2.11",
+ "http 0.2.12",
  "opentelemetry 0.23.0",
  "reqwest",
 ]
@@ -5981,7 +5981,7 @@ checksum = "a94c69209c05319cdf7460c6d4c055ed102be242a0a6245835d7bc42c6ec7f54"
 dependencies = [
  "async-trait",
  "futures-core",
- "http 0.2.11",
+ "http 0.2.12",
  "opentelemetry 0.23.0",
  "opentelemetry-http",
  "opentelemetry-proto",
@@ -6609,7 +6609,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
- "http 0.2.11",
+ "http 1.1.0",
  "indexmap 2.2.5",
  "maybe-owned",
  "postgres-model",
@@ -7126,7 +7126,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2 0.3.26",
- "http 0.2.11",
+ "http 0.2.12",
  "http-body 0.4.6",
  "hyper 0.14.28",
  "hyper-rustls",
@@ -7186,7 +7186,7 @@ dependencies = [
  "core-resolver",
  "exo-env",
  "futures",
- "http 0.2.11",
+ "http 1.1.0",
  "include_dir",
  "introspection-resolver",
  "serde",
@@ -7814,7 +7814,7 @@ dependencies = [
  "core-resolver",
  "exo-env",
  "futures",
- "http 0.2.11",
+ "http 1.1.0",
  "lambda_runtime",
  "opentelemetry 0.17.0",
  "opentelemetry-jaeger",
@@ -7834,7 +7834,7 @@ dependencies = [
  "core-resolver",
  "exo-env",
  "exo-sql",
- "http 0.2.11",
+ "http 1.1.0",
  "postgres-resolver",
  "resolver",
  "serde",
@@ -8860,7 +8860,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
- "http 0.2.11",
+ "http 1.1.0",
  "include_dir",
  "insta",
  "jsonwebtoken",
@@ -9224,7 +9224,7 @@ dependencies = [
  "base64 0.21.7",
  "bytes",
  "h2 0.3.26",
- "http 0.2.11",
+ "http 0.2.12",
  "http-body 0.4.6",
  "hyper 0.14.28",
  "hyper-timeout",
