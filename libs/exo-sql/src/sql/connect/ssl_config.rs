@@ -132,11 +132,11 @@ impl SslConfig {
                         .collect::<Result<Vec<_>, _>>()?;
                 }
                 None => {
-                    // If all host addresses are Unix sockets, we don't need to load native certs.
+                    // We need to load certificates only if at least one TCP host is present.
                     let needs_certs = config
                         .get_hosts()
                         .iter()
-                        .all(|host| !matches!(host, tokio_postgres::config::Host::Unix(_)));
+                        .any(|host| matches!(host, tokio_postgres::config::Host::Tcp(_)));
 
                     if needs_certs {
                         root_store.add_parsable_certificates(load_native_certs()?);
