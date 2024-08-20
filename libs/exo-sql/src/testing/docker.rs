@@ -115,19 +115,27 @@ impl EphemeralDatabaseServer for DockerPostgresDatabaseServer {
 impl Drop for DockerPostgresDatabaseServer {
     fn drop(&mut self) {
         // kill docker, will get removed automatically on exit due to --rm provided when starting
-        launch_process("docker", &["kill", &self.container_name], false).unwrap();
+        if let Err(e) = launch_process("docker", &["kill", &self.container_name], false) {
+            eprintln!(
+                "Failed to kill docker container '{}': {}",
+                self.container_name, e
+            );
+        }
     }
 }
 
 impl EphemeralDatabase for DockerPostgresDatabase {
     fn url(&self) -> String {
-        format!("postgresql://exo:exo@127.0.0.1:{}/{}", self.port, self.name)
+        format!(
+            "postgresql://exo:exo@127.0.0.1:{}/{}?sslmode=disable",
+            self.port, self.name
+        )
     }
 }
 
 impl Drop for DockerPostgresDatabase {
     fn drop(&mut self) {
-        launch_process(
+        if let Err(e) = launch_process(
             "docker",
             &[
                 "exec",
@@ -138,8 +146,12 @@ impl Drop for DockerPostgresDatabase {
                 &self.name,
             ],
             false,
-        )
-        .unwrap();
+        ) {
+            eprintln!(
+                "Failed to drop database '{}' in container '{}': {}",
+                self.name, self.container_name, e
+            );
+        }
     }
 }
 
