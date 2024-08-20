@@ -83,6 +83,8 @@ pub fn generate_module_skeleton(
     // Make sure the directory exists in case the path provides is "new_dir/new_file.ts" and the "new_dir" doesn't exist.
     std::fs::create_dir_all(out_file_dir)?;
 
+    let generated_dir = PathBuf::from("generated");
+
     generate_exograph_d_ts()?;
 
     // Generate context definitions (even if the target is a Javascript file to help with code completion)
@@ -91,7 +93,7 @@ pub fn generate_module_skeleton(
     generate_context_definitions(base_system)?;
 
     if is_typescript {
-        generate_module_definitions(module)?;
+        generate_module_definitions(module, &generated_dir)?;
     }
 
     // We don't want to overwrite any user files
@@ -400,14 +402,15 @@ fn generate_context_definitions(base_system: &BaseModelSystem) -> Result<(), Mod
     Ok(())
 }
 
-fn generate_module_definitions(module: &AstModule<Typed>) -> Result<(), ModelBuildingError> {
-    let generated_dir = PathBuf::from("generated");
-
-    create_dir_all(&generated_dir)?;
+fn generate_module_definitions(
+    module: &AstModule<Typed>,
+    generated_dir: &PathBuf,
+) -> Result<(), ModelBuildingError> {
+    create_dir_all(generated_dir)?;
 
     // Assume that (currently satisfied by the cli) that the current working directory is the root of the project.
     let module_file = generated_dir.join(format!("{}.d.ts", module.name));
-
+    let module_file_path = module_file.clone();
     if std::path::Path::exists(&module_file) {
         std::fs::remove_file(&module_file)?;
     }
@@ -723,16 +726,18 @@ mod tests {
 
         let module = fabricate_module("TestModule");
 
-        let generated_dir = Path::new("generated");
+        let generated_dir = PathBuf::from("generated");
+        let generated_dir_path = generated_dir.as_path();
 
         // Ensure the directory does not exist before the test
-        if generated_dir.exists() {
-            fs::remove_dir_all(generated_dir).unwrap();
+        if generated_dir_path.exists() {
+            fs::remove_dir_all(&generated_dir).unwrap();
         }
 
-        generate_module_definitions(&module).unwrap();
+        let module_file = generated_dir_path.join("TestModule.d.ts");
 
-        let module_file = generated_dir.join("TestModule.d.ts");
+        generate_module_definitions(&module, &generated_dir).unwrap();
+
         assert!(
             module_file.exists(),
             "Module {} doesn't exist",
@@ -959,7 +964,7 @@ mod tests {
             fs::remove_dir_all(&generated_dir).unwrap();
         }
 
-        std::fs::create_dir_all(&generated_dir_path).unwrap();
+        std::fs::create_dir_all(generated_dir_path).unwrap();
 
         let module_file_path = generated_dir_path.join("LocalModule.d.ts");
 
@@ -971,7 +976,7 @@ mod tests {
 
         assert!(
             module_file_path.exists(),
-            "O arquivo {} não foi criado",
+            "File {} doesn't exist",
             module_file_path.display()
         );
 
@@ -989,14 +994,14 @@ mod tests {
 
         assert_eq!(
             actual_imports, expected_imports,
-            "As importações estrangeiras não foram geradas corretamente"
+            "Foreign module imports was not generated correctly"
         );
 
         let expected_interface =
             "export interface LocalModel {\n\tforeignField: ForeignModule.ForeignModel\n}\n\n";
         assert!(
             generated_content.contains(expected_interface),
-            "A interface LocalModel não foi gerada corretamente"
+            "Interface LocalModel was not generated correctly"
         );
 
         std::fs::remove_dir_all(generated_dir.parent().unwrap()).unwrap();
