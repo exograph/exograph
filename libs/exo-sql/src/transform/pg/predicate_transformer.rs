@@ -218,9 +218,11 @@ fn leaf_column(
 ) -> Column {
     match column_path {
         ColumnPath::Physical(links) => {
-            let alias = links
-                .alias()
-                .map(|links_alias| selection_level.alias(links_alias, database));
+            let alias = match (selection_level.prefix(database), links.alias()) {
+                (Some(prefix), Some(alias)) => Some(format!("{}${}", prefix, alias)),
+                (None, Some(alias)) => Some(alias),
+                _ => None,
+            };
             Column::physical(links.leaf_column(), alias)
         }
         ColumnPath::Param(l) => Column::Param(l.clone()),

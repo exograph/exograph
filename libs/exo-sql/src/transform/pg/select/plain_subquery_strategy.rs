@@ -95,6 +95,7 @@ impl SelectionStrategy for PlainSubqueryStrategy {
             &abstract_select.order_by,
             &abstract_select.limit,
             &abstract_select.offset,
+            selection_level,
             transformer,
             database,
         );

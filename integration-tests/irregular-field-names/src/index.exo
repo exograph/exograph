@@ -1,0 +1,17 @@
+// Use field names for relations that do not follow the convention of being "pluralized table names".
+@postgres
+module ProjectDatabase {
+  @access(true)
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    assignedProjects: Set<Project>?
+  }
+
+  @access(true)
+  type Project {
+    @pk id: Int = autoIncrement()
+    title: String
+    owner: User
+  }
+}

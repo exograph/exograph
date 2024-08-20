@@ -1,0 +1,113 @@
+operation: |
+  query questions {
+    usersNesting: users @unordered {
+      id
+      name
+      projects {
+        id
+        name
+      }
+    }
+
+    projectsNesting: projects @unordered {
+      id
+      name
+      owner {
+        id
+        name
+        projects {
+          id
+          name
+        }
+      }
+    }  
+
+    questionsNesting: questions @unordered {
+      id
+      project {
+        id
+        name
+        owner {
+          id
+          name
+          projects {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+auth: |
+  {
+    sub: $.u1Id
+  }
+response: |
+  {
+    "data": {
+      "usersNesting": [
+        {
+          "id": $.u1Id,
+          "name": "U1",
+          "projects": [
+            {
+              "id": $.p1Id,
+              "name": "P1"
+            }
+          ]
+        }
+      ],
+      "projectsNesting": [
+        {
+          "id": $.p1Id,
+          "name": "P1",
+          "owner": {
+            "id": $.u1Id,
+            "name": "U1",
+            "projects": [
+              {
+                "id": $.p1Id,
+                "name": "P1"
+              }
+            ]
+          }
+        }
+      ],
+      "questionsNesting": [
+        {
+          "id": $.q1Ids[0],
+          "project": {
+            "id": $.p1Id,
+            "name": "P1",
+            "owner": {
+              "id": $.u1Id,
+              "name": "U1",
+              "projects": [
+                {
+                  "id": $.p1Id,
+                  "name": "P1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": $.q1Ids[1],
+          "project": {
+            "id": $.p1Id,
+            "name": "P1",
+            "owner": {
+              "id": $.u1Id,
+              "name": "U1",
+              "projects": [
+                {
+                  "id": $.p1Id,
+                  "name": "P1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }

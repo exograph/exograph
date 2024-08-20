@@ -10,10 +10,7 @@
 use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
     sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
-    transform::{
-        pg::selection_level::ALIAS_SEPARATOR,
-        table_dependency::{DependencyLink, TableDependency},
-    },
+    transform::table_dependency::{DependencyLink, TableDependency},
     Database, PhysicalColumnPath, TableId,
 };
 
@@ -34,19 +31,15 @@ pub fn compute_join(
         database: &Database,
         top_level: bool,
     ) -> Table {
-        let alias = selection_level.alias(
-            database
-                .get_table(dependency.table_id)
-                .name
-                .fully_qualified_name_with_sep(ALIAS_SEPARATOR),
-            database,
-        );
-
-        // We don't use the alias for the top level table in predicate either, so match the behavior here
+        // We don't use the alias for the top level table in predicate, so match the behavior here
         let init_table = {
             Table::physical(
                 dependency.table_id,
-                if top_level { None } else { Some(alias) },
+                if top_level {
+                    None
+                } else {
+                    Some(selection_level.alias((dependency.table_id, None), database))
+                },
             )
         };
 
@@ -58,13 +51,18 @@ pub fn compute_join(
                         self_column_id,
                         foreign_column_id: linked_column_id,
                         linked_table_alias,
-                    }) => (
-                        ConcretePredicate::Eq(
-                            Column::physical(self_column_id, None),
-                            Column::physical(linked_column_id, linked_table_alias.clone()),
-                        ),
-                        linked_table_alias,
-                    ),
+                    }) => {
+                        let new_alias = selection_level
+                            .alias((linked_column_id.table_id, linked_table_alias), database);
+
+                        (
+                            ConcretePredicate::Eq(
+                                Column::physical(self_column_id, None),
+                                Column::physical(linked_column_id, Some(new_alias.clone())),
+                            ),
+                            new_alias,
+                        )
+                    }
                     ColumnPathLink::Leaf(_) => {
                         panic!("Unexpected leaf in dependency link")
                     }
@@ -74,12 +72,9 @@ pub fn compute_join(
                     from_dependency(dependency, selection_level, database, false);
 
                 let join_table_query = match join_table_query {
-                    Table::Physical { table_id, .. } => Table::physical(
-                        table_id,
-                        linked_table_alias.map(|linked_table_alias| {
-                            selection_level.alias(linked_table_alias, database)
-                        }),
-                    ),
+                    Table::Physical { table_id, .. } => {
+                        Table::physical(table_id, Some(linked_table_alias))
+                    }
                     _ => join_table_query,
                 };
 
@@ -92,6 +87,7 @@ pub fn compute_join(
         table_id,
         dependencies: vec![],
     });
+
     from_dependency(table_tree, selection_level, database, true)
 }
 

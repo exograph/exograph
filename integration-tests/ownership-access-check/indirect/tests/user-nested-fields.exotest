@@ -19,6 +19,22 @@ operation: |
         }
       }
     }
+
+    withProjectAndOwnerWithQuestions: questions @unordered {
+      id
+      project {
+        id
+        name
+        owner {
+          id
+          name
+        }
+        questions {
+          id
+          text
+        }
+      }
+    }
   }
 auth: |
   {
@@ -64,6 +80,50 @@ response: |
               id: $.u1Id,
               "name": "U1"
             }
+          }
+        }
+      ],
+      "withProjectAndOwnerWithQuestions": [
+        {
+          "id": $.q1Ids[0],
+          "project": {
+            "id": $.p1Id,
+            "name": "P1",
+            "owner": {
+              "id": $.u1Id,
+              "name": "U1"
+            },
+            "questions": [
+              {
+                "id": $.q1Ids[0],
+                "text": "Q1A"
+              },
+              {
+                "id": $.q1Ids[1],
+                "text": "Q1B"
+              }
+            ]
+          }
+        },
+        {
+          "id": $.q1Ids[1],
+          "project": {
+            "id": $.p1Id,
+            "name": "P1",
+            "owner": {
+              "id": $.u1Id,
+              "name": "U1"
+            },
+            "questions": [
+              {
+                "id": $.q1Ids[0],
+                "text": "Q1A"
+              },
+              {
+                "id": $.q1Ids[1],
+                "text": "Q1B"
+              }
+            ]
           }
         }
       ]

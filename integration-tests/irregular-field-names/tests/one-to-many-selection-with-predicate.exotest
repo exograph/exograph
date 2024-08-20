@@ -1,0 +1,38 @@
+operation: |
+  query {
+      users @unordered {
+        id
+        name
+        assignedProjects(where: {owner: {name: {eq: "U1"}}}) @unordered{
+          id
+          title
+        }
+      }
+  }
+response: |
+  {
+    "data": {
+      "users": [
+        {
+          "id": $.u1Id,
+          "name": "U1",
+          "assignedProjects": [
+            {
+              "id": $.u1ProjectIds[0],
+              "title": "U1P1"
+            },
+            {
+              "id": $.u1ProjectIds[1],
+              "title": "U1P2"
+            }
+          ]
+        },
+        {
+          "id": $.u2Id,
+          "name": "U2",
+          "assignedProjects": []
+        }
+      ]
+    }
+  }
+

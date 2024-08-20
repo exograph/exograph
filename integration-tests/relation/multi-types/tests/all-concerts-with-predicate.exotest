@@ -1,19 +1,110 @@
 operation: |
-  query {
-    concerts(where: {and: [{mainVenue: {id: {eq: 1}}}, {altVenue: {id: {eq: 2}}}]}) {
+  fragment ConcertFragment on Concert {
+    id
+    mainVenue {
       id
-      mainVenue {
-        id
-      }
-      altVenue {
-        id
-      }
+    }
+    altVenue {
+      id
+    }
+  }
+  query {
+    filterByIdBothVenues: concerts(where: {and: [{mainVenue: {id: {eq: 1}}}, {altVenue: {id: {eq: 2}}}]}) {
+      ...ConcertFragment
+    }
+    filterByNameBothVenues: concerts(where: {and: [{mainVenue: {name: {eq: "Venue 1"}}}, {altVenue: {name: {eq: "Venue 2"}}}]}) {
+      ...ConcertFragment
+    }
+    filterByIdMainVenue: concerts(where: {mainVenue: {id: {eq: 1}}}) {
+      ...ConcertFragment
+    }
+    filterByIdAltVenue: concerts(where: {altVenue: {id: {eq: 2}}}) {
+      ...ConcertFragment
+    }
+    filterByNameMainVenue: concerts(where: {mainVenue: {name: {eq: "Venue 1"}}}) {
+      ...ConcertFragment
+    }          
+    filterByNameAltVenue: concerts(where: {altVenue: {name: {eq: "Venue 2"}}}) {
+      ...ConcertFragment
     }
   }
 response: |
   {
     "data": {
-      "concerts": [
+      "filterByIdBothVenues": [
+        {
+          "id": 1,
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        }
+      ],
+      "filterByNameBothVenues": [
+        {
+          "id": 1,
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        }
+      ],
+      "filterByIdMainVenue": [
+        {
+          "id": 1,
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        },
+        {
+          "id": 3,
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        }
+      ],      
+      "filterByIdAltVenue": [
+        {
+          "id": 1,
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        }
+      ],
+      "filterByNameMainVenue": [
+        {
+          "id": 1,
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 2
+          }
+        },
+        {
+          "id": 3,
+          "mainVenue": {
+            "id": 1
+          },
+          "altVenue": {
+            "id": 3
+          }
+        }
+      ],
+      "filterByNameAltVenue": [
         {
           "id": 1,
           "mainVenue": {

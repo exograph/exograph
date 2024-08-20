@@ -1,0 +1,15 @@
+operation: |
+    mutation {
+        u1: createUser(data: {name: "U1", assignedProjects: [{title: "U1P1"}, {title: "U1P2"}]}) {
+            id @bind(name: "u1Id")
+            assignedProjects {
+                id @bind(name: "u1ProjectIds")
+            }
+        }
+        u2: createUser(data: {name: "U2", assignedProjects: [{title: "U2P1"}, {title: "U2P2"}]}) {
+            id @bind(name: "u2Id")
+            assignedProjects {
+                id @bind(name: "u2ProjectIds")
+            }
+        }
+    }

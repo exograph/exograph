@@ -465,7 +465,7 @@ mod tests {
                 let select = Postgres {}.to_select(&aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
-                    r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" LEFT JOIN "venues" AS "venues$venues" ON "concerts"."venue_id" = "venues"."id" WHERE ("venues$venues"."id" = $1 AND "venues$venues"."id" = "concerts"."venue_id")))), '[]'::json)::text FROM "venues""#,
+                    r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" LEFT JOIN "venues" AS "venues$venues" ON "concerts"."venue_id" = "venues$venues"."id" WHERE ("venues$venues"."id" = $1 AND "venues"."id" = "concerts"."venue_id")))), '[]'::json)::text FROM "venues""#,
                     1
                 );
             },

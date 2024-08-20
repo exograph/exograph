@@ -14,10 +14,7 @@ use crate::{
     },
     transform::{
         join_util,
-        pg::{
-            selection_level::{SelectionLevel, ALIAS_SEPARATOR},
-            Postgres,
-        },
+        pg::{selection_level::SelectionLevel, Postgres},
         transformer::{OrderByTransformer, PredicateTransformer},
     },
     AbstractOrderBy, AbstractPredicate, Column, Database, Limit, ManyToOne, Offset, OneToMany,
@@ -57,6 +54,7 @@ pub(super) fn compute_inner_select(
     order_by: &Option<AbstractOrderBy>,
     limit: &Option<Limit>,
     offset: &Option<Offset>,
+    selection_level: &SelectionLevel,
     transformer: &impl OrderByTransformer,
     database: &Database,
 ) -> Select {
@@ -66,7 +64,9 @@ pub(super) fn compute_inner_select(
             database.get_table(wildcard_table).name.clone(),
         ))],
         predicate,
-        order_by: order_by.as_ref().map(|ob| transformer.to_order_by(ob)),
+        order_by: order_by
+            .as_ref()
+            .map(|ob| transformer.to_order_by(ob, selection_level, database)),
         offset: offset.clone(),
         limit: limit.clone(),
         group_by: None,
@@ -132,22 +132,7 @@ pub(super) fn join_info(
 
     let predicate = transformer.to_predicate(predicate, predicate_selection_level, true, database);
 
-    let relation_predicate = {
-        // The relation predicate (which ensures that we select entries that relate to the parent) needs
-        // aliasing if the relation is one-to-many. For many-to-one relations, the join for the parent already
-        // has the alias, so we don't need to alias the relation predicate.
-        let relation_predicate_needs_aliasing = matches!(join, Table::Join(_))
-            && predicate_selection_level
-                .tail_relation_id()
-                .map(|r| matches!(r, RelationId::OneToMany(..)))
-                .unwrap_or(true);
-
-        compute_relation_predicate(
-            predicate_selection_level,
-            relation_predicate_needs_aliasing,
-            database,
-        )
-    };
+    let relation_predicate = compute_relation_predicate(predicate_selection_level, false, database);
 
     let predicate = ConcretePredicate::and(predicate, relation_predicate);
 
@@ -186,15 +171,7 @@ pub(super) fn compute_relation_predicate(
             };
 
             let alias = if use_alias {
-                Some(
-                    selection_level.alias(
-                        database
-                            .get_table(self_column_id.table_id)
-                            .name
-                            .fully_qualified_name_with_sep(ALIAS_SEPARATOR),
-                        database,
-                    ),
-                )
+                Some(selection_level.alias((self_column_id.table_id, None), database))
             } else {
                 None
             };

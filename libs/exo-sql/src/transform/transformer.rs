@@ -168,5 +168,10 @@ pub trait PredicateTransformer {
 }
 
 pub trait OrderByTransformer {
-    fn to_order_by(&self, order_by: &AbstractOrderBy) -> OrderBy;
+    fn to_order_by(
+        &self,
+        order_by: &AbstractOrderBy,
+        selection_level: &SelectionLevel,
+        database: &Database,
+    ) -> OrderBy;
 }
