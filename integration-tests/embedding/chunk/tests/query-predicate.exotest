@@ -9,23 +9,22 @@ operation: |
       }
   }
   query {
-      now: todos(where: {chunks: {chunkVector:{similar: {distanceTo: [1,1], distance:{lt: 0.4}}}}}) {
+      now: todos(where: {chunks: {chunkVector:{similar: {distanceTo: [1,1], distance: {lt: 0.4}}}}}) {
         ...TodoInfo
       }
-      soon: todos(where: {chunks: {chunkVector:{similar: {distanceTo: [0.5, 0.5], distance:{lt: 0.4}}}}}) {
+      soon: todos(where: {chunks: {chunkVector:{similar: {distanceTo: [0.5, 0.5], distance: {lt: 0.4}}}}}) {
         ...TodoInfo
       }
-      someday: todos(where: {chunks: {chunkVector:{similar: {distanceTo: [0,0], distance:{lt: 0.5}}}}}) {
+      someday: todos(where: {chunks: {chunkVector:{similar: {distanceTo: [0,0], distance: {lt: 0.5}}}}}) {
         ...TodoInfo
       }
-      
   }
 response: |
   {
     "data": {
       "now": [
         {
-          "id": 3,
+          "id": $.t3id,
           "title": "Prepare for the meeting",
           "description": "Need to show customers a demo next week. I don't want to mess this up!",
           "chunks": [
