@@ -15,7 +15,7 @@ response: |
     "data": {
       "todos": [
         {
-          "id": 1,
+          "id": $.t1id,
           "title": "Alex's birthday",
           "description": "Need to buy a gift next month. But what will he like?",
           "chunks": [
@@ -36,7 +36,7 @@ response: |
           ]
         },
         {
-          "id": 2,
+          "id": $.t2id,
           "title": "Refactor the validation logic",
           "description": "It is all working fine. But could use some refactoring for new features",
           "chunks": [
@@ -57,7 +57,7 @@ response: |
           ]
         },
         {
-          "id": 3,
+          "id": $.t3id,
           "title": "Prepare for the meeting",
           "description": "Need to show customers a demo next week. I don't want to mess this up!",
           "chunks": [

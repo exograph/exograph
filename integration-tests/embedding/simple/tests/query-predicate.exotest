@@ -22,19 +22,19 @@ response: |
     "data": {
       "near": [
         {
-          "id": 1,
+          "id": $.d1id,
           "title": "car",
           "content": "Car",
           "contentVector": [0.9,0.8,0.1]
         },
         {
-          "id": 2,
+          "id": $.d2id,
           "title": "motorcycle",
           "content": "Motorcycle",
           "contentVector": [0.8,0.5,0.1]
         },
         {
-          "id": 4,
+          "id": $.d4id,
           "title": "elephant",
           "content": "Elephant",
           "contentVector": [0.6,0.9,0.9]
@@ -42,7 +42,7 @@ response: |
       ],
       "far": [
         {
-          "id": 3,
+          "id": $.d3id,
           "title": "dog",
           "content": "Dog",
           "contentVector": [0.1,0.1,0.9]

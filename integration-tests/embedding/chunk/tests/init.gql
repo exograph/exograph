@@ -9,6 +9,9 @@ operation: |
             ]
         }) {
             id @bind(name: "t1id")
+            chunks {
+                id @bind(name: "t1ChunkIds")
+            }
         }
         t2: createTodo(data: 
             {title: "Refactor the validation logic", 
@@ -19,6 +22,9 @@ operation: |
             ]
         }) {
             id @bind(name: "t2id")
+            chunks {
+                id @bind(name: "t2ChunkIds")
+            }
         }
         t3: createTodo(data: 
             {title: "Prepare for the meeting", 
@@ -29,5 +35,8 @@ operation: |
             ]
         }) {
             id @bind(name: "t3id")
+            chunks {
+                id @bind(name: "t3ChunkIds")
+            }
         }
     }
