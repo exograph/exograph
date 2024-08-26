@@ -260,111 +260,128 @@ async fn resolve_module(
         &Path,
     ) -> Result<(String, Vec<u8>), ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
-    // Extract the source path from the annotation
-    // `@deno("util/auth.ts")` -> `util/auth.ts`
-    let module_relative_path = match module.annotations.get(&annotation_name).unwrap() {
-        AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
-        _ => panic!(),
+    let annotation = module.annotations.get(&annotation_name);
+
+    match annotation {
+        // Extract the source path from the annotation
+        // `@deno("util/auth.ts")` -> `util/auth.ts`
+        Some(AstAnnotationParams::Single(AstExpr::StringLiteral(module_relative_path, _), _)) => {
+            // The source path is relative to the module's base exofile
+            let mut source_path = module.base_exofile.clone();
+            source_path.pop();
+            source_path.push(module_relative_path);
+
+            let (script_path, bundled_script) = process_script(module, base_system, &source_path)?;
+
+            fn extract_intercept_annot<'a>(
+                annotations: &'a AnnotationMap,
+                key: &str,
+            ) -> Option<&'a AstExpr<Typed>> {
+                annotations.get(key).map(|a| a.as_single())
+            }
+
+            resolved_modules.add(
+                &module.name,
+                ResolvedModule {
+                    name: module.name.clone(),
+                    script: bundled_script,
+                    script_path,
+                    methods: module
+                        .methods
+                        .iter()
+                        .map(|m| {
+                            let access = build_access(m.annotations.get("access"));
+                            ResolvedMethod {
+                                name: m.name.clone(),
+                                operation_kind: match m.typ {
+                                    AstMethodType::Query   => ResolvedMethodType::Query,
+                                    AstMethodType::Mutation => ResolvedMethodType::Mutation,
+                                },
+                                is_exported: m.is_exported,
+                                access,
+                                arguments: m
+                                    .arguments
+                                    .iter()
+                                    .map(|a| resolve_argument(a, types))
+                                    .collect(),
+                                return_type: resolve_field_type(&m.return_type.to_typ(types), m.return_type.module_name(), types),
+                            }
+                        })
+                        .collect(),
+                    interceptors: module
+                        .interceptors
+                        .iter()
+                        .flat_map(|i| {
+                            let before_annot = extract_intercept_annot(&i.annotations, "before")
+                                .map(|s| ResolvedInterceptorKind::Before(s.clone()));
+                            let after_annot = extract_intercept_annot(&i.annotations, "after")
+                                .map(|s| ResolvedInterceptorKind::After(s.clone()));
+                            let around_annot = extract_intercept_annot(&i.annotations, "around")
+                                .map(|s| ResolvedInterceptorKind::Around(s.clone()));
+
+                            let kind_annots = vec![before_annot, after_annot, around_annot];
+                            let kind_annots: Vec<_> =
+                                kind_annots.into_iter().flatten().collect();
+
+                            fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T, ModelBuildingError> {
+                                errors.push(
+                                    Diagnostic {
+                                        level: Level::Error,
+                                        message: message.to_string(),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span,
+                                            style: SpanStyle::Primary,
+                                            label: None,
+                                        }],
+                                    });
+                                Err(ModelBuildingError::Diagnosis(errors.clone()))
+                            }
+
+                            let kind_annot = match kind_annots.as_slice() {
+                                [] => {
+                                    create_diagnostic("Interceptor must have at least one of the before/after/around annotation", i.span, errors)
+                                }
+                                [single] => Ok(single),
+                                _ => create_diagnostic(
+                                    "Interceptor cannot have more than of the before/after/around annotations", i.span, errors
+                                ),
+                            }?;
+
+                            Result::<ResolvedInterceptor, ModelBuildingError>::Ok(ResolvedInterceptor {
+                                module_name: module.name.clone(),
+                                method_name: i.name.clone(),
+                                arguments: i
+                                    .arguments
+                                    .iter()
+                                    .map(|a| resolve_argument(a, types))
+                                    .collect(),
+                                interceptor_kind: kind_annot.clone(),
+                            })
+                        })
+                        .collect(),
+                        types_defined: module.types.iter().map(|m| m.name.clone()).collect(),
+                },
+            );
+        }
+        Some(AstAnnotationParams::None) => {
+            let script_path = module.base_exofile.clone();
+            process_script(module, base_system, &script_path)?;
+
+            resolved_modules.add(
+                &module.name,
+                ResolvedModule {
+                    name: module.name.clone(),
+                    script: vec![],
+                    script_path: "".to_string(),
+                    methods: vec![],
+                    interceptors: vec![],
+                    types_defined: module.types.iter().map(|m| m.name.clone()).collect(),
+                },
+            );
+        }
+        _ => panic!("Unsupported annotation format"),
     }
-    .clone();
-
-    // The source path is relative to the module's base exofile
-    let mut source_path = module.base_exofile.clone();
-    source_path.pop();
-    source_path.push(&module_relative_path);
-
-    let (script_path, bundled_script) = process_script(module, base_system, &source_path)?;
-
-    fn extract_intercept_annot<'a>(
-        annotations: &'a AnnotationMap,
-        key: &str,
-    ) -> Option<&'a AstExpr<Typed>> {
-        annotations.get(key).map(|a| a.as_single())
-    }
-
-    resolved_modules.add(
-        &module.name,
-        ResolvedModule {
-            name: module.name.clone(),
-            script: bundled_script,
-            script_path,
-            methods: module
-                .methods
-                .iter()
-                .map(|m| {
-                    let access = build_access(m.annotations.get("access"));
-                    ResolvedMethod {
-                        name: m.name.clone(),
-                        operation_kind: match m.typ {
-                            AstMethodType::Query   => ResolvedMethodType::Query,
-                            AstMethodType::Mutation => ResolvedMethodType::Mutation,
-                        },
-                        is_exported: m.is_exported,
-                        access,
-                        arguments: m
-                            .arguments
-                            .iter()
-                            .map(|a| resolve_argument(a, types))
-                            .collect(),
-                        return_type: resolve_field_type(&m.return_type.to_typ(types), m.return_type.module_name(), types),
-                    }
-                })
-                .collect(),
-            interceptors: module
-                .interceptors
-                .iter()
-                .flat_map(|i| {
-                    let before_annot = extract_intercept_annot(&i.annotations, "before")
-                        .map(|s| ResolvedInterceptorKind::Before(s.clone()));
-                    let after_annot = extract_intercept_annot(&i.annotations, "after")
-                        .map(|s| ResolvedInterceptorKind::After(s.clone()));
-                    let around_annot = extract_intercept_annot(&i.annotations, "around")
-                        .map(|s| ResolvedInterceptorKind::Around(s.clone()));
-
-                    let kind_annots = vec![before_annot, after_annot, around_annot];
-                    let kind_annots: Vec<_> =
-                        kind_annots.into_iter().flatten().collect();
-
-                    fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T, ModelBuildingError> {
-                        errors.push(
-                            Diagnostic {
-                                level: Level::Error,
-                                message: message.to_string(),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span,
-                                    style: SpanStyle::Primary,
-                                    label: None,
-                                }],
-                            });
-                        Err(ModelBuildingError::Diagnosis(errors.clone()))
-                    }
-
-                    let kind_annot = match kind_annots.as_slice() {
-                        [] => {
-                            create_diagnostic("Interceptor must have at least one of the before/after/around annotation", i.span, errors)
-                        }
-                        [single] => Ok(single),
-                        _ => create_diagnostic(
-                            "Interceptor cannot have more than of the before/after/around annotations", i.span, errors
-                        ),
-                    }?;
-
-                    Result::<ResolvedInterceptor, ModelBuildingError>::Ok(ResolvedInterceptor {
-                        module_name: module.name.clone(),
-                        method_name: i.name.clone(),
-                        arguments: i
-                            .arguments
-                            .iter()
-                            .map(|a| resolve_argument(a, types))
-                            .collect(),
-                        interceptor_kind: kind_annot.clone(),
-                    })
-                })
-                .collect(),
-                types_defined: module.types.iter().map(|m| m.name.clone()).collect(),
-        },
-    );
 
     Ok(())
 }

@@ -92,9 +92,7 @@ pub fn generate_module_skeleton(
     // are independent of the module code.
     generate_context_definitions(base_system)?;
 
-    if is_typescript {
-        generate_module_definitions(module, &generated_dir)?;
-    }
+    generate_module_definitions(module, &generated_dir)?;
 
     // We don't want to overwrite any user files
     // TODO: Parse the existing file and warn if any definitions don't match the expected ones
