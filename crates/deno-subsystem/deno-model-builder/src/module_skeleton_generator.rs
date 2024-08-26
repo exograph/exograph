@@ -462,6 +462,7 @@ fn generate_method_skeleton(
     out_file: &mut File,
     is_typescript: bool,
 ) -> Result<(), ModelBuildingError> {
+    out_file.write_all(" \n".as_bytes())?;
     // We put `async` in a comment as an indication to the user that it is okay to have async functions
     out_file.write_all("export async function ".as_bytes())?;
     out_file.write_all(name.as_bytes())?;
@@ -482,7 +483,7 @@ fn generate_method_skeleton(
     out_file.write_all(" {\n".as_bytes())?;
     out_file.write_all("\t// TODO\n".as_bytes())?;
     out_file.write_all("\tthrow new Error('not implemented');\n".as_bytes())?;
-    out_file.write_all("}\n\n".as_bytes())?;
+    out_file.write_all("}\n".as_bytes())?;
 
     Ok(())
 }
@@ -893,13 +894,12 @@ mod tests {
         temp_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         let mut generated_code = String::new();
         temp_file.read_to_string(&mut generated_code).unwrap();
-
-        let first_line = generated_code.lines().next().unwrap();
+        let method_line: &str = generated_code.lines().nth(1).unwrap();
 
         let expected_code =
             "export async function publishFoo(id: number): Promise<ForeignModule.TestType1> {";
 
-        assert_eq!(first_line, expected_code);
+        assert_eq!(method_line, expected_code);
     }
 
     #[test]
