@@ -113,7 +113,11 @@ pub fn generate_module_skeleton(
         generate_exograph_imports(module, &mut file, out_file_dir)?;
         generate_context_imports(module, base_system, &mut file, out_file_dir)?;
         generate_type_imports(module, &mut file, out_file_dir)?;
-        generate_foreign_type_imports(module, &mut file, out_file_dir)?;
+
+        // Types aren't relevant for foreign module imports.
+        let mut module_without_local_types = module.clone();
+        module_without_local_types.types.clear();
+        generate_foreign_type_imports(&module_without_local_types, &mut file, out_file_dir)?;
     }
 
     for method in module.methods.iter() {
@@ -415,11 +419,11 @@ fn generate_module_definitions(
 
     let mut file = std::fs::File::create(module_file)?;
 
-    // Methods aren't relevant for foreign module imports.
-    let mut module_witout_methods = module.clone();
-    module_witout_methods.methods.clear();
+    // Methods aren't relevant for foreign module imports in definition file.
+    let mut module_without_methods = module.clone();
+    module_without_methods.methods.clear();
 
-    generate_foreign_type_imports(&module_witout_methods, &mut file, &module_file_path)?;
+    generate_foreign_type_imports(&module_without_methods, &mut file, &module_file_path)?;
 
     // Space between imports and type skeleton.
     file.write_all("\n".as_bytes())?;
