@@ -952,13 +952,41 @@ fn compute_column_info(
                                 Ok(matching_field) => matching_field,
                                 Err(err) => return Err(err),
                             };
-                            Ok(ColumnInfo {
-                                name: id_column_name(&matching_field.name),
-                                self_column: false,
-                                access,
-                                unique_constraints,
-                                indices,
-                            })
+
+                            let matching_field_cardinality = field_cardinality(&matching_field.typ);
+
+                            if matching_field_cardinality == Cardinality::Unbounded {
+                                let referring_type_name = &enclosing_type.name;
+                                let referred_type_name = &field_type.name;
+                                let suggested_linking_type_name =
+                                    if referring_type_name < referred_type_name {
+                                        format!("{}{}", referring_type_name, referred_type_name)
+                                    } else {
+                                        format!("{}{}", referred_type_name, referring_type_name)
+                                    };
+
+                                // We don't support direct many-to-many relationships
+                                Err(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!(
+                                        "Many-to-many relationships without a linking type are not supported. Consider adding a linking type to connect '{referring_type_name}' and '{referred_type_name}', such as {suggested_linking_type_name}",
+                                    ),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: field.span,
+                                        style: SpanStyle::Primary,
+                                        label: None,
+                                    }],
+                                })
+                            } else {
+                                Ok(ColumnInfo {
+                                    name: id_column_name(&matching_field.name),
+                                    self_column: false,
+                                    access,
+                                    unique_constraints,
+                                    indices,
+                                })
+                            }
                         } else {
                             Err(Diagnostic {
                                 level: Level::Error,
@@ -1225,6 +1253,13 @@ mod tests {
                     insta::assert_yaml_snapshot!(resolved)
                 }
             })
+        };
+    }
+
+    macro_rules! assert_resolved_err {
+        ($src:expr, $error_string:expr) => {
+            let system = create_resolved_system($src);
+            assert_eq!(system.is_err(), true, $error_string);
         };
     }
 
@@ -1519,6 +1554,69 @@ mod tests {
         }
         "#,
             "non_public_schema"
+        );
+    }
+
+    #[multiplatform_test]
+    fn many_to_many_without_linking_type() {
+        assert_resolved_err!(
+            r#"
+        @postgres
+        module ConcertModule {
+            type Concert {
+                @pk id: Int = autoIncrement() 
+                title: String 
+                artists: Set<Artist> 
+            }
+          
+            type Artist {
+                @pk id: Int = autoIncrement() 
+                name:String 
+                concerts: Set<Concert> 
+            }  
+        }
+        "#,
+            "Many-to-many relationships (both side non-optional) without a linking type should be rejected"
+        );
+
+        assert_resolved_err!(
+            r#"
+        @postgres
+        module ConcertModule {
+            type Concert {
+                @pk id: Int = autoIncrement() 
+                title: String 
+                artists: Set<Artist>?
+            }
+          
+            type Venue {
+                @pk id: Int = autoIncrement() 
+                name:String 
+                concerts: Set<Concert> 
+            }  
+        }
+        "#,
+            "Many-to-many relationships (one side non-optional) without a linking type should be rejected"
+        );
+
+        assert_resolved_err!(
+            r#"
+        @postgres
+        module ConcertModule {
+            type Concert {
+                @pk id: Int = autoIncrement() 
+                title: String 
+                artists: Set<Artist>?
+            }
+          
+            type Venue {
+                @pk id: Int = autoIncrement() 
+                name:String 
+                concerts: Set<Concert>?
+            }  
+        }
+        "#,
+            "Many-to-many relationships (both side optional) without a linking type should be rejected"
         );
     }
 }
