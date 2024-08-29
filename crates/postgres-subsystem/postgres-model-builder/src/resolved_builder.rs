@@ -969,7 +969,7 @@ fn compute_column_info(
                                 Err(Diagnostic {
                                     level: Level::Error,
                                     message: format!(
-                                        "Many-to-many relationships without a linking type are not supported. Consider adding a linking type to connect '{referring_type_name}' and '{referred_type_name}', such as {suggested_linking_type_name}",
+                                        "Many-to-many relationships without a linking type are not supported. Consider adding a type such as '{suggested_linking_type_name}' to connect '{referring_type_name}' and '{referred_type_name}",
                                     ),
                                     code: Some("C000".to_string()),
                                     spans: vec![SpanLabel {
