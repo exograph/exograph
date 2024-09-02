@@ -32,7 +32,7 @@ use common::env_const::{EXO_JWT_SECRET, EXO_POSTGRES_URL};
 
 use super::command::{
     default_model_file, enforce_trusted_documents_arg, ensure_exo_project_dir, get, port_arg,
-    setup_trusted_documents_enforcement, CommandDefinition,
+    seed_arg, setup_trusted_documents_enforcement, CommandDefinition,
 };
 use common::env_const::EXO_OIDC_URL;
 use exo_sql::testing::db::{EphemeralDatabase, EphemeralDatabaseLauncher};
@@ -53,6 +53,7 @@ impl CommandDefinition for YoloCommandDefinition {
             .about("Run local exograph server with a temporary database")
             .arg(port_arg())
             .arg(enforce_trusted_documents_arg())
+            .arg(seed_arg())
     }
 
     /// Run local exograph server with a temporary database
@@ -64,11 +65,13 @@ impl CommandDefinition for YoloCommandDefinition {
 
         setup_trusted_documents_enforcement(matches);
 
-        run(&root_path, port).await
+        let seed_path: Option<PathBuf> = get(matches, "seed");
+
+        run(&root_path, port, seed_path).await
     }
 }
 
-async fn run(root_path: &Path, port: Option<u32>) -> Result<()> {
+async fn run(root_path: &Path, port: Option<u32>, seed: Option<PathBuf>) -> Result<()> {
     // make sure we do not exit on SIGINT
     // we spawn processes/containers that need to be cleaned up through drop(),
     // which does not run on a normal SIGINT exit
@@ -93,7 +96,7 @@ async fn run(root_path: &Path, port: Option<u32>) -> Result<()> {
         (None, None) => Ok(JWTSecret::Generated(super::util::generate_random_string())),
     }?;
 
-    let prestart_callback = || run_server(&model, &jwt_secret, db.as_ref()).boxed();
+    let prestart_callback = || run_server(&model, &jwt_secret, db.as_ref(), seed.clone()).boxed();
 
     watcher::start_watcher(root_path, port, prestart_callback).await
 }
@@ -103,6 +106,7 @@ async fn run_server(
     model: &PathBuf,
     jwt_secret: &JWTSecret,
     db: &(dyn EphemeralDatabase + Send + Sync),
+    seed: Option<PathBuf>,
 ) -> Result<()> {
     // set envs for server
     std::env::set_var(EXO_POSTGRES_URL, db.url());
@@ -166,7 +170,7 @@ async fn run_server(
             }
             REBUILD => {
                 migration::wipe_database(&db_client).await?;
-                run_server(model, jwt_secret, db).await?;
+                run_server(model, jwt_secret, db, None).await?;
             }
             PAUSE => {
                 println!("Pausing for manual repair");
@@ -184,6 +188,9 @@ async fn run_server(
             }
             _ => unreachable!(),
         }
+    } else if let Some(seed) = seed {
+        let seed = std::fs::read_to_string(seed)?;
+        db_client.get_client().await?.batch_execute(&seed).await?;
     }
 
     Ok(())

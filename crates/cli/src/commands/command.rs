@@ -153,6 +153,16 @@ pub(crate) fn enforce_trusted_documents_arg() -> Arg {
         .required(false)
 }
 
+pub(crate) fn seed_arg() -> Arg {
+    Arg::new("seed")
+        .help("Seed the database")
+        .long_help("If set, the database will be seeded with test data in the SQL format.")
+        .long("seed")
+        .required(false)
+        .value_parser(clap::value_parser!(PathBuf))
+        .num_args(1)
+}
+
 pub(crate) fn setup_trusted_documents_enforcement(matches: &ArgMatches) {
     let enforce_trusted_documents: bool = get::<String>(matches, "enforce-trusted-documents")
         .map(|value| value != "false")
