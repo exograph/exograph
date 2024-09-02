@@ -309,7 +309,7 @@ struct StderrReporter;
 
 impl ErrorReporter for StderrReporter {
     fn emit(&mut self, codemap: &CodeMap, err: &ParserError) {
-        let mut emitter = Emitter::stderr(ColorConfig::Always, Some(codemap));
+        let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(codemap));
         emit_diagnostics(err, &mut emitter, codemap, None);
     }
 }
