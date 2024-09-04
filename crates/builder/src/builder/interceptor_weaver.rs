@@ -89,6 +89,7 @@ fn matches(expr: &AstExpr<Typed>, operation_name: &str, operation_kind: Operatio
         AstExpr::StringList(_, _) => {
             panic!("List not supported in interceptor expression")
         }
+        AstExpr::NullLiteral(_) => panic!("NullLiteral not supported in interceptor expression"),
     }
 }
 

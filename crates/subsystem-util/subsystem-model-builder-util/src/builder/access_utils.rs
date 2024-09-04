@@ -123,6 +123,9 @@ fn compute_primitive_expr(
         AstExpr::NumberLiteral(value, _) => ModuleAccessPrimitiveExpression::Common(
             CommonAccessPrimitiveExpression::NumberLiteral(*value),
         ),
+        AstExpr::NullLiteral(_) => {
+            ModuleAccessPrimitiveExpression::Common(CommonAccessPrimitiveExpression::NullLiteral)
+        }
         AstExpr::StringList(_, _) => panic!("Module access expressions do not support lists yet"),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions

@@ -1,0 +1,71 @@
+stages:
+  # Authenticated user with no roles
+  - operation: |
+      query {
+        authenticatedDocs {
+          id
+          content
+        }
+      }
+    auth: |
+      {
+        "sub": 2,
+      }   
+    response: |
+      {
+        "data": {
+          "authenticatedDocs": [
+            {
+              "id": $.authenticatedDoc1Id,
+              "content": "authenticatedDoc1"
+            },
+            {
+              "id": $.authenticatedDoc2Id,
+              "content": "authenticatedDoc2"
+            }
+          ]
+        }
+      }
+  # Authenticated user with ADMIN role
+  - operation: |
+      query {
+        authenticatedDocs {
+          id
+          content
+        }
+      }
+    auth: |
+      {
+        "roles": ["ADMIN"],
+      }   
+    response: |
+      {
+        "data": {
+          "authenticatedDocs": [
+            {
+              "id": $.authenticatedDoc1Id,
+              "content": "authenticatedDoc1"
+            },
+            {
+              "id": $.authenticatedDoc2Id,
+              "content": "authenticatedDoc2"
+            }
+          ]
+        }
+      }
+  # Unauthenticated user
+  - operation: |
+      query {
+        authenticatedDocs {
+          id
+          content
+        }
+      }  
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

@@ -531,6 +531,7 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<U
             let value = first_child.child(0).unwrap().utf8_text(source).unwrap();
             AstExpr::BooleanLiteral(value == "true", source_span)
         }
+        "literal_null" => AstExpr::NullLiteral(span_from_node(source_span, first_child)),
         "logical_op" => AstExpr::LogicalOp(convert_logical_op(first_child, source, source_span)),
         "relational_op" => {
             AstExpr::RelationalOp(convert_relational_op(first_child, source, source_span))

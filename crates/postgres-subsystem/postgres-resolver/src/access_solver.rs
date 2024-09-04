@@ -206,6 +206,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 AbstractPredicate::In,
                 |left_value, right_value| match right_value {
                     Val::List(values) => values.contains(&left_value).into(),
+                    Val::Null => false.into(),
                     _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
                 },
             ),

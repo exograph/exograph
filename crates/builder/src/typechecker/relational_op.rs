@@ -96,6 +96,16 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
             in_updated || out_updated
         };
 
+        fn identical_match_with_null(left: &Type, right: &Type) -> bool {
+            // Allow optional types to be compared to null
+            match (left, right) {
+                (Type::Optional(_), Type::Null)
+                | (Type::Null, Type::Optional(_))
+                | (Type::Null, Type::Null) => true,
+                _ => identical_match(left, right),
+            }
+        }
+
         fn identical_match(left: &Type, right: &Type) -> bool {
             // Allow optional types to be compared to non-optional types
             match (left, right) {
@@ -115,9 +125,11 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
         }
 
         match self {
-            RelationalOp::Eq(left, right, o_typ)
-            | RelationalOp::Neq(left, right, o_typ)
-            | RelationalOp::Lt(left, right, o_typ)
+            RelationalOp::Eq(left, right, o_typ) | RelationalOp::Neq(left, right, o_typ) => {
+                // For equality and inequality, we allow optional types to be compared to null
+                typecheck_operands(left, right, o_typ, identical_match_with_null)
+            }
+            RelationalOp::Lt(left, right, o_typ)
             | RelationalOp::Lte(left, right, o_typ)
             | RelationalOp::Gt(left, right, o_typ)
             | RelationalOp::Gte(left, right, o_typ) => {

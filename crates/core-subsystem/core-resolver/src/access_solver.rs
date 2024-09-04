@@ -149,6 +149,7 @@ pub async fn reduce_common_primitive_expression<'a>(
         CommonAccessPrimitiveExpression::StringLiteral(value) => Some(Val::String(value.clone())),
         CommonAccessPrimitiveExpression::BooleanLiteral(value) => Some(Val::Bool(*value)),
         CommonAccessPrimitiveExpression::NumberLiteral(value) => Some(Val::Number((*value).into())),
+        CommonAccessPrimitiveExpression::NullLiteral => Some(Val::Null),
     })
 }
 

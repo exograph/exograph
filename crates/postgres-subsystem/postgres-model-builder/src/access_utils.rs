@@ -173,6 +173,9 @@ pub fn compute_input_predicate_expression(
         AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
             "Top-level expression cannot be a list literal".to_string(),
         )),
+        AstExpr::NullLiteral(_) => Err(ModelBuildingError::Generic(
+            "Top-level expression cannot be a null literal".to_string(),
+        )),
     }
 }
 
@@ -497,6 +500,9 @@ fn compute_primitive_db_expr(
         AstExpr::NumberLiteral(value, _) => Ok(DatabaseAccessPrimitiveExpression::Common(
             CommonAccessPrimitiveExpression::NumberLiteral(*value),
         )),
+        AstExpr::NullLiteral(_) => Ok(DatabaseAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::NullLiteral,
+        )),
         AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
             "Access expressions do not support lists yet".to_string(),
         )),
@@ -539,6 +545,9 @@ fn compute_primitive_json_expr(
         )),
         AstExpr::NumberLiteral(value, _) => Ok(InputAccessPrimitiveExpression::Common(
             CommonAccessPrimitiveExpression::NumberLiteral(*value),
+        )),
+        AstExpr::NullLiteral(_) => Ok(InputAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::NullLiteral,
         )),
         AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
             "Access expressions do not support lists yet".to_string(),

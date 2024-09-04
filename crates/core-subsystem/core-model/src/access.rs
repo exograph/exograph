@@ -129,6 +129,7 @@ pub enum CommonAccessPrimitiveExpression {
     StringLiteral(String),              // for example, "ADMIN"
     BooleanLiteral(bool),               // for example, true
     NumberLiteral(i64),                 // for example, integer (-13, 0, 300, etc.)
+    NullLiteral,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

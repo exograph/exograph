@@ -283,6 +283,12 @@ pub enum AstExpr<T: NodeTypedness> {
         #[serde(skip_deserializing)]
         Vec<Span>,
     ),
+    NullLiteral(
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
 }
 
 impl<T: NodeTypedness> AstExpr<T> {
@@ -298,6 +304,7 @@ impl<T: NodeTypedness> AstExpr<T> {
             AstExpr::RelationalOp(r) => r.span(),
             AstExpr::BooleanLiteral(_, s) => *s,
             AstExpr::NumberLiteral(_, s) => *s,
+            AstExpr::NullLiteral(s) => *s,
             AstExpr::StringList(_, s) => {
                 let mut span = s[0].to_owned();
                 for s in s.iter().skip(1) {
