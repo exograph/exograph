@@ -1,0 +1,118 @@
+stages:
+  # Authenticated user queries what they can see
+  - operation: |
+      query {
+        getAuthenticatedSecret
+      }
+    auth: |
+      {
+        "sub": 2,
+      }   
+    response: |
+      {
+        "data": {
+          "getAuthenticatedSecret": "authenticated-secret"
+        }
+      }
+  # Authenticated user queries what they can't see
+  - operation: |
+      query {
+        getUnauthenticatedSecret
+      }
+    auth: |
+      {
+        "sub": 2,
+      }   
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  # Unauthenticated user queries what they can see
+  - operation: |
+      query {
+        getUnauthenticatedSecret
+      }
+    response: |
+      {
+        "data": {
+          "getUnauthenticatedSecret": "unauthenticated-secret"
+        }
+      }
+  # Unauthenticated user queries what they can't see
+  - operation: |
+      query {
+        getAuthenticatedSecret
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+
+  # Authenticated user mutates what they can 
+  - operation: |
+      mutation {
+        setAuthenticatedSecret(secret: "new")
+      }
+    auth: |
+      {
+        "sub": 2,
+      }
+    response: |
+      {
+        "data": {
+          "setAuthenticatedSecret": "NEW"
+        }
+      }
+  # Authenticated user mutates what they can't
+  - operation: |
+      mutation {
+        setUnauthenticatedSecret(secret: "new")
+      }
+    auth: |
+      {
+        "sub": 2,
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  # Unauthenticated user mutates what they can 
+  - operation: |
+      mutation {
+        setUnauthenticatedSecret(secret: "new")
+      }
+    response: |
+      {
+        "data": {
+          "setUnauthenticatedSecret": "NEW"
+        }
+      }
+  # Unauthenticated user mutates what they can't
+  - operation: |
+      mutation {
+        setAuthenticatedSecret(secret: "new")
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+

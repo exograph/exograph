@@ -132,7 +132,8 @@ module.exports = grammar({
       $.selection,
       $.literal_number,
       $.literal_str,
-      $.literal_boolean
+      $.literal_boolean,
+      $.literal_null
     ),
     parenthetical: $ => seq("(", field("expression", $.expression), ")"),
     selection: $ => choice(
@@ -213,6 +214,7 @@ module.exports = grammar({
     literal_str: $ => seq("\"", field("value", $.str), "\""),
     literal_boolean: $ => choice("true", "false"),
     literal_number: $ => field("value", $.number),
+    literal_null: $ => "null",
     comment: $ => token(choice(
       seq('//', /.*/),
       seq(

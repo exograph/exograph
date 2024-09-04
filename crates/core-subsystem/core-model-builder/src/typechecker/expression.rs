@@ -25,6 +25,7 @@ impl AstExpr<Typed> {
             AstExpr::StringList(_, _) => {
                 Type::Array(Box::new(Type::Primitive(PrimitiveType::String)))
             }
+            AstExpr::NullLiteral(_) => Type::Null,
         }
     }
 

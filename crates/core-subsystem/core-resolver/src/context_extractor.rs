@@ -15,6 +15,7 @@ use core_model::{
         ContextContainer, ContextField, ContextFieldType, ContextSelection, ContextType,
     },
     primitive_type::PrimitiveType,
+    types::FieldType,
 };
 use futures::StreamExt;
 
@@ -118,7 +119,13 @@ async fn extract_context_field<'a>(
         )
         .await?;
 
-    Ok(raw_val)
+    // If the field type is optional, we return Val::Null for an empty value.
+    let option_sensitive_value = match typ {
+        FieldType::Optional(_) => Some(raw_val.unwrap_or(&Val::Null)),
+        _ => raw_val,
+    };
+
+    Ok(option_sensitive_value)
 }
 
 fn coerce(value: Val, typ: &ContextFieldType) -> Result<Val, ContextExtractionError> {

@@ -34,6 +34,18 @@ stages:
             users: createUsers(data: [{name: "u1"}, {name: "u2"}, {name: "a1"}, {name: "a2"}]) {
                 id @bind(name: "userIds")
             }
+            authenticatedDoc1: createAuthenticatedDoc(data: {content: "authenticatedDoc1"}) {
+                id @bind(name: "authenticatedDoc1Id")
+            }
+            authenticatedDoc2: createAuthenticatedDoc(data: {content: "authenticatedDoc2"}) {
+                id @bind(name: "authenticatedDoc2Id")
+            }
+            unauthenticatedDoc1: createUnauthenticatedDoc(data: {content: "unauthenticatedDoc1"}) {
+                id @bind(name: "unauthenticatedDoc1Id")
+            }
+            unauthenticatedDoc2: createUnauthenticatedDoc(data: {content: "unauthenticatedDoc2"}) {
+                id @bind(name: "unauthenticatedDoc2Id")
+            }
         }  
       auth: |
         {

@@ -23,6 +23,7 @@ pub enum Type {
     Set(Box<Type>),
     Array(Box<Type>),
     Reference(SerializableSlabIndex<Type>),
+    Null,
     Defer,
     Error,
 }
@@ -53,6 +54,7 @@ impl Display for Type {
                 f.write_str("ref#")?;
                 r.arr_idx().fmt(f)
             }
+            Type::Null => f.write_str("null"),
             _ => Result::Err(std::fmt::Error),
         }
     }

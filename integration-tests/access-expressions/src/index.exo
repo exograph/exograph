@@ -1,5 +1,5 @@
 context AuthContext {
-  @jwt("sub") id: Int 
+  @jwt("sub") id: Int?
   @jwt("roles") roles: Array<String> 
   @jwt("externalId") externalId: Int
 }
@@ -51,4 +51,34 @@ module DocumentModule {
     externalId: Int?
     content: String
   }
+
+  // Only authenticated users can see the docs
+  @access(query=AuthContext.id != null || "ADMIN" in AuthContext.roles, mutation="ADMIN" in AuthContext.roles)
+  type AuthenticatedDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+  }
+
+  // Only un-authenticated users can see the docs (this is a contrived example)
+  @access(query=AuthContext.id == null || "ADMIN" in AuthContext.roles, mutation="ADMIN" in AuthContext.roles)
+  type UnauthenticatedDoc {
+    @pk id: Int = autoIncrement()
+    content: String
+  }
+}
+
+@deno("access-expressions.ts")
+module AccessExpressions {
+  @access(AuthContext.id != null)
+  query getAuthenticatedSecret(): String
+
+  @access(AuthContext.id != null)
+  mutation setAuthenticatedSecret(secret: String): String
+
+  // This is a contrived example, but it shows `== null` in the access expression
+  @access(AuthContext.id == null)
+  query getUnauthenticatedSecret(): String
+
+  @access(AuthContext.id == null)
+  mutation setUnauthenticatedSecret(secret: String): String
 }
