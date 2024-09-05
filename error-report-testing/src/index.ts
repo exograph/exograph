@@ -86,6 +86,8 @@ function checkExographProjects(directories: string[]): Array<Failure> {
       if (fs.existsSync(expectedErrorFilePath)) {
         const expectedErrors = fs.readFileSync(expectedErrorFilePath, 'utf-8');
         if (expectedErrors != actualErrors) {
+          console.log("actual ", actualErrors);
+          console.log("expected", expectedErrors);
           failedProjects.push(new Failure(directory, "Errors do not match. Check error.txt.new."))
         } else {
           filesToRemove.push(actualErrorPath);
@@ -120,7 +122,7 @@ if (failed.length == 0) {
   console.log("The following tests failed:");
   failed.forEach(failure => {
     console.log("\x1b[31m%s\x1b[0m", `- ${failure.path}: ${failure.reason}`);
-    const diff = spawnSync('diff', [failure.expectedErrorFilePath, failure.actualErrorFilePath], { encoding: 'utf-8', stdio: 'inherit' });
+    const diff = spawnSync('diff', ["-b", failure.expectedErrorFilePath, failure.actualErrorFilePath], { encoding: 'utf-8', stdio: 'inherit' });
     if (diff.stdout) {
       console.log("\x1b[33m%s\x1b[0m", `Diff between expected and actual error file for ${failure.path}:`);
       console.log(diff.stdout);
