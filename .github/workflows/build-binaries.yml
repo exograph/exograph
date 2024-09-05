@@ -87,7 +87,7 @@ jobs:
         run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
       - name: Error reporting tests
         env:
-          EXO_EXECUTABLE: target/${{matrix.target}}/release/exo${{matrix.bin_extension}}
+          EXO_EXECUTABLE: ${PWD}/target/${{matrix.target}}/release/exo${{matrix.bin_extension}}
         run: cd error-report-testing && npm install && npm run dev
       - name: Create zip of binaries
         run: |

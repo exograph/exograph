@@ -3,7 +3,7 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { exit } from 'process';
 
-let exo_executable = process.env.EXO_EXECUTABLE ? path.resolve(__dirname, "..", process.env.EXO_EXECUTABLE) : "";
+let exo_executable = process.env.EXO_EXECUTABLE || "";
 
 if (!exo_executable) {
   const MODE = process.env.EXECUTABLE_MODE;

@@ -106,7 +106,7 @@ jobs:
         shell: bash
       - name: Error reporting tests
         env:
-          EXO_EXECUTABLE: target/${{matrix.target}}/debug/exo
+          EXO_EXECUTABLE: ${PWD}/target/${{matrix.target}}/debug/exo
         run: cd error-report-testing && npm install && npm run dev
 
   test-wasm:
