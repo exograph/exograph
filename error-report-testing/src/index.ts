@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
+import { exit } from 'process';
 
 let exo_executable = process.env.EXO_EXECUTABLE ? path.resolve(__dirname, "..", process.env.EXO_EXECUTABLE) : "";
 
@@ -52,6 +53,14 @@ class Failure {
   constructor(readonly path: string, readonly reason: string) {
     this.path = path;
     this.reason = reason;
+  }
+
+  get actualErrorFilePath(): string {
+    return path.join(this.path, 'error.txt.new');
+  }
+
+  get expectedErrorFilePath(): string {
+    return path.join(this.path, 'error.txt');
   }
 }
 
@@ -111,6 +120,12 @@ if (failed.length == 0) {
   console.log("The following tests failed:");
   failed.forEach(failure => {
     console.log("\x1b[31m%s\x1b[0m", `- ${failure.path}: ${failure.reason}`);
+    const diff = spawnSync('diff', [failure.expectedErrorFilePath, failure.actualErrorFilePath], { encoding: 'utf-8', stdio: 'inherit' });
+    if (diff.stdout) {
+      console.log("\x1b[33m%s\x1b[0m", `Diff between expected and actual error file for ${failure.path}:`);
+      console.log(diff.stdout);
+    }
   });
+  exit(1)
 }
 
