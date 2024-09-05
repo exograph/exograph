@@ -66,7 +66,6 @@ class Failure {
 
 function checkExographProjects(directories: string[]): Array<Failure> {
   let failedProjects: Array<Failure> = [];
-  let filesToRemove: Array<string> = [];
 
   directories.forEach(directory => {
     console.log("Checking", directory);
@@ -74,38 +73,27 @@ function checkExographProjects(directories: string[]): Array<Failure> {
     const actualErrorPath = expectedErrorFilePath + ".new";
 
     const result = spawnSync(exo_executable, ['build'], {
-      cwd: directory, stdio: [
-        0,
-        'pipe',
-        fs.openSync(actualErrorPath, 'w'),
-      ]
+      cwd: directory, stdio: 'pipe',
     });
 
     if (result.status != 0) {
-      const actualErrors = fs.readFileSync(actualErrorPath, 'utf-8');
+      const actualErrors = result.stderr.toString();
       if (fs.existsSync(expectedErrorFilePath)) {
         const expectedErrors = fs.readFileSync(expectedErrorFilePath, 'utf-8');
         if (expectedErrors != actualErrors) {
           console.log("actual ", actualErrors);
           console.log("expected", expectedErrors);
+          fs.writeFileSync(actualErrorPath, actualErrors, 'utf-8');
           failedProjects.push(new Failure(directory, "Errors do not match. Check error.txt.new."))
-        } else {
-          filesToRemove.push(actualErrorPath);
         }
       } else {
+        fs.writeFileSync(actualErrorPath, actualErrors, 'utf-8');
         failedProjects.push(new Failure(directory, "Expected error not found"))
       }
-      fs.writeFileSync(expectedErrorFilePath + '.new', actualErrors, 'utf-8');
     } else {
-      filesToRemove.push(actualErrorPath);
       failedProjects.push(new Failure(directory, "Expected errors, but the project built successfully"))
     }
   });
-
-  filesToRemove.forEach(file => {
-    fs.unlinkSync(file);
-  });
-
 
   return failedProjects
 }

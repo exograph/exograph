@@ -1,7 +1,7 @@
 error[C000]: Duplicate field: title
  --> src/index.exo:6:5
   |
-6 |     title: String
+6 |     title: Stringz
   |     ^^^^^^^^^^^^^ first defined here
 7 |     title: String
   |     ------------- again defined here
