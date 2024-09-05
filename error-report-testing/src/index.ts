@@ -21,6 +21,8 @@ if (!exo_executable) {
   }
 }
 
+console.log("exo_executable", exo_executable);
+
 function isExographProject(directory: string): boolean {
   const indexExoPath = path.join(directory, 'src', 'index.exo');
   return fs.existsSync(indexExoPath);
