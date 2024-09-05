@@ -248,7 +248,7 @@ impl ResolvedType {
     }
 }
 
-pub fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> FieldType<ResolvedFieldType> {
+fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> FieldType<ResolvedFieldType> {
     match typ {
         Type::Optional(underlying) => {
             FieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))

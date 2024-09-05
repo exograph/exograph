@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, vec};
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -358,19 +358,46 @@ pub fn build(
 }
 
 fn validate_module(module: &AstModule<Untyped>) -> Result<(), ParserError> {
-    validate_no_duplicates(
+    let mut diagnostics = vec![];
+
+    let mut process_err = |result: Result<(), ParserError>| match result {
+        Err(ParserError::Diagnosis(diags)) => {
+            diagnostics.extend(diags);
+            Ok(())
+        }
+        Err(err) => Err(err),
+        Ok(_) => Ok(()),
+    };
+
+    process_err(validate_no_duplicates(
         &module.methods,
         |method| &method.name,
         |method| method.span,
         "operation",
-    )?;
+    ))?;
 
-    validate_no_duplicates(
+    process_err(validate_no_duplicates(
         &module.types,
         |model| &model.name,
         |model| model.span,
         "model/type",
-    )
+    ))?;
+
+    // iterate over module.types and validate that all fields in each type is unique
+    for model in module.types.iter() {
+        process_err(validate_no_duplicates(
+            &model.fields,
+            |field| &field.name,
+            |field| field.span,
+            "field",
+        ))?;
+    }
+
+    if diagnostics.is_empty() {
+        Ok(())
+    } else {
+        Err(ParserError::Diagnosis(diagnostics))
+    }
 }
 
 fn validate_no_duplicates<T>(
