@@ -21,8 +21,6 @@ if (!exo_executable) {
   }
 }
 
-console.log("exo_executable", exo_executable);
-
 function isExographProject(directory: string): boolean {
   const indexExoPath = path.join(directory, 'src', 'index.exo');
   return fs.existsSync(indexExoPath);
@@ -52,9 +50,10 @@ function exographProjects(startPath: string): string[] {
 }
 
 class Failure {
-  constructor(readonly path: string, readonly reason: string) {
+  constructor(readonly path: string, readonly reason: string, readonly diff: string) {
     this.path = path;
     this.reason = reason;
+    this.diff = diff;
   }
 
   get actualErrorFilePath(): string {
@@ -81,23 +80,26 @@ function checkExographProjects(directories: string[]): Array<Failure> {
     if (result.status != 0) {
       const actualErrors = result.stderr.toString();
       if (fs.existsSync(expectedErrorFilePath)) {
-        const expectedErrors = fs.readFileSync(expectedErrorFilePath, 'utf-8');
-        if (expectedErrors != actualErrors) {
-          console.log("actual ", actualErrors);
-          console.log("expected", expectedErrors);
+        let diff = diffFiles(expectedErrorFilePath, actualErrorPath);
+        if (diff) {
           fs.writeFileSync(actualErrorPath, actualErrors, 'utf-8');
-          failedProjects.push(new Failure(directory, "Errors do not match. Check error.txt.new."))
+          failedProjects.push(new Failure(directory, "Errors do not match. Check error.txt.new.", diff))
         }
       } else {
         fs.writeFileSync(actualErrorPath, actualErrors, 'utf-8');
-        failedProjects.push(new Failure(directory, "Expected error not found"))
+        failedProjects.push(new Failure(directory, "Expected error not found", ""))
       }
     } else {
-      failedProjects.push(new Failure(directory, "Expected errors, but the project built successfully"))
+      failedProjects.push(new Failure(directory, "Expected errors, but the project built successfully", ""))
     }
   });
 
   return failedProjects
+}
+
+function diffFiles(expectedFile: string, actualFile: string): string {
+  const diff = spawnSync('diff', ["-b", expectedFile, actualFile], { encoding: 'utf-8', stdio: 'inherit' });
+  return diff.stdout || "";
 }
 
 const exographDirectories = exographProjects('.');
@@ -112,10 +114,9 @@ if (failed.length == 0) {
   console.log("The following tests failed:");
   failed.forEach(failure => {
     console.log("\x1b[31m%s\x1b[0m", `- ${failure.path}: ${failure.reason}`);
-    const diff = spawnSync('diff', ["-b", failure.expectedErrorFilePath, failure.actualErrorFilePath], { encoding: 'utf-8', stdio: 'inherit' });
-    if (diff.stdout) {
+    if (failure.diff) {
       console.log("\x1b[33m%s\x1b[0m", `Diff between expected and actual error file for ${failure.path}:`);
-      console.log(diff.stdout);
+      console.log(failure.diff);
     }
   });
   exit(1)
