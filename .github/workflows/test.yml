@@ -104,6 +104,9 @@ jobs:
           EXO_RUN_INTROSPECTION_TESTS: true
         run: target/${{ matrix.target }}/debug/exo test integration-tests
         shell: bash
+      - name: Error reporting tests
+        run: cd error-report-testing && npm install && EXO_EXECUTABLE=${PWD}/../target/${{matrix.target}}/debug/exo npm run dev
+        shell: bash
 
   test-wasm:
     runs-on: ubuntu-latest

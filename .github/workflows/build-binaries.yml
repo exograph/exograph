@@ -85,6 +85,9 @@ jobs:
           RUST_BACKTRACE: 1
           EXO_RUN_INTROSPECTION_TESTS: true
         run: target/${{matrix.target}}/release/exo${{matrix.bin_extension}} test integration-tests
+      - name: Error reporting tests
+        run: cd error-report-testing && npm install && EXO_EXECUTABLE=${PWD}/../target/${{matrix.target}}/release/exo${{matrix.bin_extension}} npm run dev
+        shell: bash
       - name: Create zip of binaries
         run: |
           mkdir -p dist
