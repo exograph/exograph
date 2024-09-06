@@ -105,7 +105,7 @@ jobs:
         run: target/${{ matrix.target }}/debug/exo test integration-tests
         shell: bash
       - name: Error reporting tests
-        run: cd error-report-testing && npm install && EXO_EXECUTABLE=${PWD}/target/${{matrix.target}}/debug/exo npm run dev
+        run: EXO_EXECUTABLE=${PWD}/target/${{matrix.target}}/debug/exo cd error-report-testing && npm install && npm run dev
         shell: bash
 
   test-wasm:
