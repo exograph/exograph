@@ -79,11 +79,14 @@ function checkExographProjects(directories: string[]): Array<Failure> {
 
     if (result.status != 0) {
       const actualErrors = result.stderr.toString();
+      fs.writeFileSync(actualErrorPath, actualErrors, 'utf-8');
+
       if (fs.existsSync(expectedErrorFilePath)) {
         let diff = diffFiles(expectedErrorFilePath, actualErrorPath);
         if (diff) {
-          fs.writeFileSync(actualErrorPath, actualErrors, 'utf-8');
           failedProjects.push(new Failure(directory, "Errors do not match. Check error.txt.new.", diff))
+        } else {
+          fs.unlinkSync(actualErrorPath);
         }
       } else {
         fs.writeFileSync(actualErrorPath, actualErrors, 'utf-8');
@@ -98,7 +101,7 @@ function checkExographProjects(directories: string[]): Array<Failure> {
 }
 
 function diffFiles(expectedFile: string, actualFile: string): string {
-  const diff = spawnSync('diff', ["-b", expectedFile, actualFile], { encoding: 'utf-8', stdio: 'inherit' });
+  const diff = spawnSync('diff', ["-b", expectedFile, actualFile], { encoding: 'utf-8', stdio: 'pipe' });
   return diff.stdout || "";
 }
 
@@ -115,7 +118,6 @@ if (failed.length == 0) {
   failed.forEach(failure => {
     console.log("\x1b[31m%s\x1b[0m", `- ${failure.path}: ${failure.reason}`);
     if (failure.diff) {
-      console.log("\x1b[33m%s\x1b[0m", `Diff between expected and actual error file for ${failure.path}:`);
       console.log(failure.diff);
     }
   });
