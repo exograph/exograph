@@ -6570,26 +6570,9 @@ dependencies = [
 
 [[package]]
 name = "postgres-protocol"
-version = "0.6.6"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49b6c5ef183cd3ab4ba005f1ca64c21e8bd97ce4699cfea9e8d9a2c4958ca520"
-dependencies = [
- "base64 0.21.7",
- "byteorder",
- "bytes",
- "fallible-iterator 0.2.0",
- "hmac",
- "md-5",
- "memchr",
- "rand",
- "sha2",
- "stringprep",
-]
-
-[[package]]
-name = "postgres-protocol"
-version = "0.6.6"
-source = "git+https://github.com/exograph/rust-postgres?branch=exograph#f3976680c6d7004b04b3ba39f90f2956ce6d7010"
+checksum = "acda0ebdebc28befa84bee35e651e4c5f09073d668c7aed4cf7e23c3cda84b23"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -6646,13 +6629,14 @@ dependencies = [
 
 [[package]]
 name = "postgres-types"
-version = "0.2.6"
-source = "git+https://github.com/exograph/rust-postgres?branch=exograph#f3976680c6d7004b04b3ba39f90f2956ce6d7010"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f66ea23a2d0e5734297357705193335e0a957696f34bed2f2faefacb2fec336f"
 dependencies = [
  "bytes",
  "chrono",
  "fallible-iterator 0.2.0",
- "postgres-protocol 0.6.6 (git+https://github.com/exograph/rust-postgres?branch=exograph)",
+ "postgres-protocol",
  "serde",
  "serde_json",
  "uuid",
@@ -6666,7 +6650,7 @@ checksum = "2667c8b8c3a857620d87fc5172972c3385254a7563a5ab303bc9a41a16a7bf4e"
 dependencies = [
  "bytes",
  "fallible-iterator 0.2.0",
- "postgres-protocol 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "postgres-protocol",
  "postgres-types",
 ]
 
@@ -9073,8 +9057,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-postgres"
-version = "0.7.10"
-source = "git+https://github.com/exograph/rust-postgres?branch=exograph#f3976680c6d7004b04b3ba39f90f2956ce6d7010"
+version = "0.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b5d3742945bc7d7f210693b0c58ae542c6fd47b17adbbda0885f3dcb34a6bdb"
 dependencies = [
  "async-trait",
  "byteorder",
@@ -9087,7 +9072,7 @@ dependencies = [
  "percent-encoding",
  "phf",
  "pin-project-lite",
- "postgres-protocol 0.6.6 (git+https://github.com/exograph/rust-postgres?branch=exograph)",
+ "postgres-protocol",
  "postgres-types",
  "rand",
  "socket2",

@@ -96,7 +96,7 @@ test-log = "0.2.15"
 thiserror = "1.0.31"
 tracing = "0.1"
 tokio = "1"
-tokio-postgres = { version = "0.7.10", default-features = false }
+tokio-postgres = { version = "0.7.12", default-features = false }
 deadpool-postgres = { version = "0.14.0", default-features = false }
 tree-sitter = "0.20.10"
 tree-sitter-c2rust = "0.20.11-pre.1"
@@ -112,10 +112,6 @@ which = "6.0.1"
 wasm-bindgen-test = "0.3.42"
 wasm-bindgen-test-macro = "0.3.42"
 multiplatform_test = "0.1.0"
-
-[patch.crates-io]
-tokio-postgres = { git = "https://github.com/exograph/rust-postgres", branch = "exograph" }
-postgres-types = { git = "https://github.com/exograph/rust-postgres", branch = "exograph" }
 
 # reduce binary size, does not affect stack traces
 [profile.dev]
