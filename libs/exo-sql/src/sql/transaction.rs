@@ -186,13 +186,10 @@ impl<'a> ConcreteTransactionStep<'a> {
 
         info!("Executing SQL operation: {}", stmt);
 
-        client
-            .query_with_param_types(&stmt, &params[..])
-            .await
-            .map_err(|e| {
-                error!("Failed to execute query: {e:?}");
-                DatabaseError::Delegate(e).with_context("Database operation failed".into())
-            })
+        client.query_typed(&stmt, &params[..]).await.map_err(|e| {
+            error!("Failed to execute query: {e:?}");
+            DatabaseError::Delegate(e).with_context("Database operation failed".into())
+        })
     }
 }
 
