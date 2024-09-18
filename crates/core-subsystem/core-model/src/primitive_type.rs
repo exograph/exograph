@@ -86,3 +86,11 @@ pub fn vector_introspection_type(optional: bool) -> Type {
         nullable: optional,
     }
 }
+
+// TODO: We should refactor `PrimitiveValue` along with `Val` to be a single enum
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PrimitiveValue {
+    Int(i64),
+    String(String),
+    Boolean(bool),
+}

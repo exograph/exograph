@@ -1,0 +1,13 @@
+context AuthContext {
+  @jwt roles: Array<String>
+}
+
+@postgres
+module TodoDatabase {
+  @access(AuthContext.roles.contains())
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+  }
+}

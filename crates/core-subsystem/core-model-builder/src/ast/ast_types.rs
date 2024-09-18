@@ -15,6 +15,12 @@ use std::{
 };
 
 use codemap::{CodeMap, Span};
+use core_model::{
+    context_type::{ContextFieldType, ContextSelection, ContextSelectionElement, ContextType},
+    function_defn::FunctionDefinition,
+    mapped_arena::MappedArena,
+    primitive_type::PrimitiveValue,
+};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::typechecker::Typed;
@@ -347,29 +353,121 @@ impl FieldSelection<Typed> {
         acc
     }
 
-    // temporary method to get a string representation of the path until we resolve typechecking etc
-    pub fn context_path(&self) -> Vec<String> {
-        fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
-            fn process_selection_elem(elem: &FieldSelectionElement<Typed>, acc: &mut Vec<String>) {
-                match elem {
-                    FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
-                    FieldSelectionElement::HofCall { .. } => {
-                        unimplemented!("Context path doesn't support function calls yet")
-                    }
-                }
-            }
-            match selection {
-                FieldSelection::Single(elem, _) => process_selection_elem(elem, acc),
-                FieldSelection::Select(path, elem, _, _) => {
-                    flatten(path, acc);
-                    process_selection_elem(elem, acc);
-                }
-            }
-        }
+    // // temporary method to get a string representation of the path until we resolve typechecking etc
+    // fn context_path(&self) -> Vec<String> {
+    //     fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
+    //         fn process_selection_elem(elem: &FieldSelectionElement<Typed>, acc: &mut Vec<String>) {
+    //             match elem {
+    //                 FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
+    //                 FieldSelectionElement::HofCall { .. }
+    //                 | FieldSelectionElement::NormalCall { .. } => {
+    //                     unimplemented!("Context path doesn't support function calls yet")
+    //                 }
+    //             }
+    //         }
+    //         match selection {
+    //             FieldSelection::Single(elem, _) => process_selection_elem(elem, acc),
+    //             FieldSelection::Select(path, elem, _, _) => {
+    //                 flatten(path, acc);
+    //                 process_selection_elem(elem, acc);
+    //             }
+    //         }
+    //     }
 
-        let mut acc = vec![];
-        flatten(self, &mut acc);
-        acc
+    //     let mut acc = vec![];
+    //     flatten(self, &mut acc);
+    //     acc
+    // }
+
+    pub fn get_context<'a>(
+        &self,
+        contexts: &'a MappedArena<ContextType>,
+        function_definitions: &'a MappedArena<FunctionDefinition>,
+    ) -> (ContextSelection, &'a ContextFieldType) {
+        let path_elements = self.path();
+
+        if path_elements.len() < 2 {
+            todo!()
+        } else {
+            let (head, tail) = path_elements.split_first().unwrap();
+
+            let context_type_name = match head {
+                FieldSelectionElement::Identifier(name, _, _) => name,
+                _ => panic!(),
+            };
+
+            let context_type = contexts
+                .iter()
+                .find(|t| &t.1.name == context_type_name)
+                .unwrap()
+                .1;
+
+            let path: Vec<_> = tail
+                .iter()
+                .map(|elem| match elem {
+                    FieldSelectionElement::Identifier(name, _, _) => {
+                        ContextSelectionElement::Identifier(name.clone())
+                    }
+                    FieldSelectionElement::HofCall { .. } => {
+                        panic!("HofCall not supported in context path")
+                    }
+                    FieldSelectionElement::NormalCall { name, params, .. } => {
+                        let args = params
+                            .iter()
+                            .map(|param| match param {
+                                AstExpr::StringLiteral(value, _) => {
+                                    PrimitiveValue::String(value.clone())
+                                }
+                                AstExpr::BooleanLiteral(value, _) => {
+                                    PrimitiveValue::Boolean(*value)
+                                }
+                                AstExpr::NumberLiteral(value, _) => PrimitiveValue::Int(*value),
+                                _ => panic!("Unsupported parameter type"),
+                            })
+                            .collect();
+
+                        ContextSelectionElement::NormalCall {
+                            function_name: name.0.clone(),
+                            args,
+                        }
+                    }
+                })
+                .collect();
+
+            let last_element = path.last().unwrap();
+
+            let field_type = match &last_element {
+                ContextSelectionElement::Identifier(name) => {
+                    &context_type
+                        .fields
+                        .iter()
+                        .find(|field| &field.name == name)
+                        .unwrap()
+                        .typ
+                }
+                ContextSelectionElement::NormalCall { function_name, .. } => {
+                    &function_definitions
+                        .get_by_key(function_name)
+                        .unwrap()
+                        .return_type
+                }
+            };
+
+            let (head_path, tail_path) = path.split_first().unwrap();
+
+            let first_element_name = match head_path {
+                ContextSelectionElement::Identifier(name, ..) => name.clone(),
+                _ => panic!(),
+            };
+
+            (
+                ContextSelection {
+                    context_name: context_type.name.clone(),
+                    path: (first_element_name, tail_path.to_vec()),
+                },
+                field_type,
+            )
+        }
     }
 }
 
@@ -404,6 +502,15 @@ pub enum FieldSelectionElement<T: NodeTypedness> {
         expr: Box<AstExpr<T>>, // expression passed to the function such as "du.userId == AuthContext.id && du.read"
         typ: T::FieldSelection,
     },
+    NormalCall {
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        span: Span,
+        name: Identifier,        // name of the function such as "contains"
+        params: Vec<AstExpr<T>>, // parameters passed to the function such as ("ADMIN")
+        typ: T::FieldSelection,
+    },
 }
 
 impl<T: NodeTypedness> FieldSelectionElement<T> {
@@ -411,13 +518,15 @@ impl<T: NodeTypedness> FieldSelectionElement<T> {
         match &self {
             FieldSelectionElement::Identifier(_, span, _) => span,
             FieldSelectionElement::HofCall { span, .. } => span,
+            FieldSelectionElement::NormalCall { span, .. } => span,
         }
     }
 
     pub fn typ(&self) -> &T::FieldSelection {
         match &self {
-            FieldSelectionElement::Identifier(_, _, typ) => typ,
+            FieldSelectionElement::Identifier(.., typ) => typ,
             FieldSelectionElement::HofCall { typ, .. } => typ,
+            FieldSelectionElement::NormalCall { typ, .. } => typ,
         }
     }
 }

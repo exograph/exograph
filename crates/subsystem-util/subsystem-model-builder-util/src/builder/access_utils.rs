@@ -12,7 +12,7 @@ use core_model::{
         AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
         CommonAccessPrimitiveExpression,
     },
-    context_type::{get_context, ContextFieldType, ContextSelection},
+    context_type::{ContextFieldType, ContextSelection},
     primitive_type::PrimitiveType,
 };
 use core_model_builder::{
@@ -136,8 +136,7 @@ fn compute_selection<'a>(
     selection: &FieldSelection<Typed>,
     resolved_env: &'a ResolvedTypeEnv<'a>,
 ) -> PathSelection<'a> {
-    let path_elements = selection.context_path();
-
-    let (context_selection, column_type) = get_context(&path_elements, resolved_env.contexts);
+    let (context_selection, column_type) =
+        selection.get_context(resolved_env.contexts, resolved_env.function_definitions);
     PathSelection::Context(context_selection, column_type)
 }

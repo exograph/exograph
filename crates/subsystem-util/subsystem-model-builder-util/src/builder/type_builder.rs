@@ -7,7 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_model::{context_type::ContextType, mapped_arena::MappedArena, types::FieldType};
+use core_model::{
+    context_type::ContextType, function_defn::FunctionDefinition, mapped_arena::MappedArena,
+    types::FieldType,
+};
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed};
 use subsystem_model_util::{
     access::Access,
@@ -28,6 +31,7 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct ResolvedTypeEnv<'a> {
     pub contexts: &'a MappedArena<ContextType>,
+    pub function_definitions: &'a MappedArena<FunctionDefinition>,
     pub resolved_types: MappedArena<ResolvedType>,
     pub resolved_modules: MappedArena<ResolvedModule>,
 }

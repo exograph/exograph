@@ -7,7 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use core_model::function_defn::FunctionDefinition;
 use core_model::primitive_type::PrimitiveType;
+use core_model::types::FieldType;
 use core_model::{context_type::ContextType, mapped_arena::MappedArena};
 
 use crate::error::ModelBuildingError;
@@ -25,6 +27,7 @@ pub struct SystemContextBuilding {
 pub struct BaseModelSystem {
     pub primitive_types: MappedArena<PrimitiveType>,
     pub contexts: MappedArena<ContextType>,
+    pub function_definitions: MappedArena<FunctionDefinition>,
 }
 
 pub fn build(
@@ -41,8 +44,20 @@ pub fn build(
 
     context_builder::build(&resolved.contexts, &mut building);
 
+    let mut function_definitions = MappedArena::default();
+
+    vec![FunctionDefinition {
+        name: "contains".to_string(),
+        return_type: FieldType::Plain(PrimitiveType::Boolean),
+    }]
+    .into_iter()
+    .for_each(|defn| {
+        function_definitions.add(&defn.name.clone(), defn);
+    });
+
     Ok(BaseModelSystem {
         primitive_types: building.primitive_types,
         contexts: building.contexts,
+        function_definitions,
     })
 }

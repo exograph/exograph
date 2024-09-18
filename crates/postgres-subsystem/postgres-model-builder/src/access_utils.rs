@@ -9,6 +9,7 @@
 
 use std::collections::HashMap;
 
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_plugin_interface::{
     core_model::access::FunctionCall,
     core_model_builder::{
@@ -23,7 +24,7 @@ use core_plugin_interface::{
             AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
             CommonAccessPrimitiveExpression,
         },
-        context_type::{get_context, ContextFieldType, ContextSelection},
+        context_type::{ContextFieldType, ContextSelection},
         mapped_arena::MappedArena,
         primitive_type::PrimitiveType,
         types::FieldType,
@@ -670,7 +671,8 @@ fn compute_column_selection<'a>(
                             Some(field_type),
                         )
                     }
-                    FieldSelectionElement::HofCall { .. } => unreachable!(),
+                    FieldSelectionElement::HofCall { .. }
+                    | FieldSelectionElement::NormalCall { .. } => unreachable!(),
                 }
             },
         )
@@ -732,20 +734,33 @@ fn compute_column_selection<'a>(
                             },
                         ))
                     }
+                    FieldSelectionElement::NormalCall { span, .. } => {
+                        Err(ModelBuildingError::Diagnosis(vec![Diagnostic {
+                            level: Level::Error,
+                            message: "Function calls supported only on context fields".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: *span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        }]))
+                    }
                 }
             } else {
-                let path_elements = selection.context_path();
                 let (context_selection, context_field_type) =
-                    get_context(&path_elements, resolved_env.contexts);
+                    selection.get_context(resolved_env.contexts, resolved_env.function_definitions);
                 Ok(DatabasePathSelection::Context(
                     context_selection,
                     context_field_type,
                 ))
             }
         }
-        FieldSelectionElement::HofCall { .. } => Err(ModelBuildingError::Generic(
-            "Function selection at the top level is not supported".to_string(),
-        )),
+        FieldSelectionElement::HofCall { .. } | FieldSelectionElement::NormalCall { .. } => {
+            Err(ModelBuildingError::Generic(
+                "Function selection at the top level is not supported".to_string(),
+            ))
+        }
     }
 }
 
@@ -801,7 +816,8 @@ fn compute_json_selection<'a>(
 
                         (field_composite_type, json_path, Some(field_type))
                     }
-                    FieldSelectionElement::HofCall { .. } => unreachable!(),
+                    FieldSelectionElement::HofCall { .. }
+                    | FieldSelectionElement::NormalCall { .. } => unreachable!(),
                 }
             },
         )
@@ -863,12 +879,24 @@ fn compute_json_selection<'a>(
                                 },
                             ))
                         }
+                        FieldSelectionElement::NormalCall { span, .. } => {
+                            Err(ModelBuildingError::Diagnosis(vec![Diagnostic {
+                                level: Level::Error,
+                                message: "Function calls supported only on context fields"
+                                    .to_string(),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: *span,
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            }]))
+                        }
                     }
                 }
                 None => {
-                    let path_elements = selection.context_path();
-                    let (context_selection, context_field_type) =
-                        get_context(&path_elements, resolved_env.contexts);
+                    let (context_selection, context_field_type) = selection
+                        .get_context(resolved_env.contexts, resolved_env.function_definitions);
                     Ok(JsonPathSelection::Context(
                         context_selection,
                         context_field_type,
@@ -876,9 +904,11 @@ fn compute_json_selection<'a>(
                 }
             }
         }
-        FieldSelectionElement::HofCall { .. } => Err(ModelBuildingError::Generic(
-            "Function selection at the top level is not supported".to_string(),
-        )),
+        FieldSelectionElement::HofCall { .. } | FieldSelectionElement::NormalCall { .. } => {
+            Err(ModelBuildingError::Generic(
+                "Function selection at the top level is not supported".to_string(),
+            ))
+        }
     }
 }
 

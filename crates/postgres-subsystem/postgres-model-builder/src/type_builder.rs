@@ -20,7 +20,8 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_plugin_interface::{
     core_model::{
         access::AccessPredicateExpression,
-        context_type::{get_context, ContextType},
+        context_type::ContextType,
+        function_defn::FunctionDefinition,
         mapped_arena::{MappedArena, SerializableSlabIndex},
         primitive_type::PrimitiveType,
         types::{FieldType, Named},
@@ -61,6 +62,7 @@ use super::{
 pub struct ResolvedTypeEnv<'a> {
     pub contexts: &'a MappedArena<ContextType>,
     pub resolved_types: MappedArena<ResolvedType>,
+    pub function_definitions: &'a MappedArena<FunctionDefinition>,
 }
 
 impl<'a> ResolvedTypeEnv<'a> {
@@ -398,8 +400,10 @@ fn expand_dynamic_default_values(
                 let dynamic_default_value = match resolved_field.default_value.as_ref() {
                     Some(ResolvedFieldDefault::Value(expr)) => match expr.as_ref() {
                         AstExpr::FieldSelection(selection) => {
-                            let (context_selection, context_type) =
-                                get_context(&selection.context_path(), resolved_env.contexts);
+                            let (context_selection, context_type) = selection.get_context(
+                                resolved_env.contexts,
+                                resolved_env.function_definitions,
+                            );
 
                             match entity_field.relation {
                                 PostgresRelation::Scalar { .. } => {

@@ -97,6 +97,7 @@ pub async fn build_with_selection(
         contexts: &base_system.contexts,
         resolved_types: resolved_system.module_types,
         resolved_modules: resolved_system.modules,
+        function_definitions: &base_system.function_definitions,
     };
 
     build_shallow_module(&resolved_env, &mut building);

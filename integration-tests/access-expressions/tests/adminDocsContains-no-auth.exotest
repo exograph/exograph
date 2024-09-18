@@ -1,0 +1,15 @@
+operation: |
+    query {
+      adminDocWithContainss {
+        id
+        content
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Not authorized"
+        }
+      ]
+    }

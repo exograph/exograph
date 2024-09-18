@@ -29,6 +29,9 @@ pub enum Val {
     Null,
 }
 
+pub const TRUE: Val = Val::Bool(true);
+pub const FALSE: Val = Val::Bool(false);
+
 impl Val {
     pub fn into_json(self) -> Result<serde_json::Value, serde_json::Error> {
         self.try_into()
