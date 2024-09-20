@@ -14,3 +14,7 @@ export async function setUnauthenticatedSecret(secret: string): Promise<string> 
 	return secret.toUpperCase();
 }
 
+export async function getAdminSecret(): Promise<string> {
+	return 'admin-secret';
+}
+

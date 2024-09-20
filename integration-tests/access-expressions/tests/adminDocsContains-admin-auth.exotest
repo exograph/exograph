@@ -1,0 +1,35 @@
+operation: |
+    query {
+      adminDocWithContainss @unordered {
+        id
+        content
+      }
+    }
+auth: |
+    {
+        "sub": 2,
+        "roles": ["ADMIN"]
+    }   
+response: |
+    {
+      "data": {
+        "adminDocWithContainss": [
+          {
+            "id": 1,
+            "content": "adminDocWithContains1"
+          },
+          {
+            "id": 2,
+            "content": "adminDocWithContains2"
+          },
+          {
+            "id": 3,
+            "content": "adminDocWithContains3"
+          },
+          {
+            "id": 4,
+            "content": "adminDocWithContains4"
+          }
+        ]
+      }
+    }

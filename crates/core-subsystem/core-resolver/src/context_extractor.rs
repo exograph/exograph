@@ -12,9 +12,10 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use core_model::{
     context_type::{
-        ContextContainer, ContextField, ContextFieldType, ContextSelection, ContextType,
+        ContextContainer, ContextField, ContextFieldType, ContextSelection,
+        ContextSelectionElement, ContextType,
     },
-    primitive_type::PrimitiveType,
+    primitive_type::{PrimitiveType, PrimitiveValue},
     types::FieldType,
 };
 use futures::StreamExt;
@@ -88,6 +89,7 @@ pub trait ContextExtractor {
         context_selection: &ContextSelection,
     ) -> Result<Option<&'a Val>, ContextExtractionError> {
         let context_type = self.context_type(&context_selection.context_name);
+
         let context_field = context_type
             .fields
             .iter()
@@ -96,7 +98,73 @@ pub trait ContextExtractor {
                 ContextExtractionError::FieldNotFound(context_selection.path.0.to_string())
             })?;
 
-        extract_context_field(request_context, context_type, context_field).await
+        let context_selection_path = &context_selection.path.1;
+
+        let context_value =
+            extract_context_field(request_context, context_type, context_field).await?;
+
+        if context_selection_path.is_empty() {
+            Ok(context_value)
+        } else if context_selection_path.len() == 1 {
+            match context_selection_path.first().unwrap() {
+                ContextSelectionElement::NormalCall {
+                    function_name,
+                    args,
+                } => {
+                    if function_name == "contains" {
+                        match context_value {
+                            Some(context_value) => {
+                                let search_value = args.first().unwrap();
+
+                                match context_value {
+                                    Val::List(values) => {
+                                        let res = values.iter().any(|element| {
+                                            match (element, search_value) {
+                                                (
+                                                    Val::String(s),
+                                                    PrimitiveValue::String(search),
+                                                ) => s == search,
+                                                (Val::Number(n), PrimitiveValue::Int(search)) => {
+                                                    n.as_i64().unwrap() == *search
+                                                }
+                                                (Val::Bool(b), PrimitiveValue::Boolean(search)) => {
+                                                    *b == *search
+                                                }
+                                                _ => false,
+                                            }
+                                        });
+
+                                        Ok(Some(if res {
+                                            &crate::value::val::TRUE
+                                        } else {
+                                            &crate::value::val::FALSE
+                                        }))
+                                    }
+                                    _ => Err(ContextExtractionError::TypeMismatch {
+                                        expected: "list".to_string(),
+                                        actual: context_value.to_string(),
+                                    }),
+                                }
+                            }
+                            None => Ok(Some(&crate::value::val::FALSE)),
+                        }
+                    } else {
+                        Err(
+                            ContextExtractionError::UnexpectedFunctionCallInContextSelection(
+                                function_name.to_string(),
+                            ),
+                        )
+                    }
+                }
+                _ => Err(ContextExtractionError::Generic(
+                    "Unexpected context selection element".to_string(),
+                )),
+            }
+        } else {
+            Err(ContextExtractionError::Generic(
+                "Unexpected context selection path".to_string(),
+            ))
+        }
     }
 }
 

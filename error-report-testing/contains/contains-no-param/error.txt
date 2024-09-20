@@ -1,0 +1,8 @@
+error[C000]: Contains function expects one parameter
+ --> src/index.exo:7:29
+  |
+7 |   @access(AuthContext.roles.contains())
+  |                             ^^^^^^^^^^ type mismatch
+
+Error: Parser error: Could not process input exo files
+

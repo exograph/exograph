@@ -25,6 +25,18 @@ stages:
             adminDoc4: createAdminDoc(data: {content: "adminDoc4"}) {
                 id
             }
+            adminDocWithContains1: createAdminDocWithContains(data: {content: "adminDocWithContains1"}) {
+                id
+            }
+            adminDocWithContains2: createAdminDocWithContains(data: {content: "adminDocWithContains2"}) {
+                id
+            }
+            adminDocWithContains3: createAdminDocWithContains(data: {content: "adminDocWithContains3"}) {
+                id
+            }
+            adminDocWithContains4: createAdminDocWithContains(data: {content: "adminDocWithContains4"}) {
+                id
+            }
             externalDoc1: createExternalDoc(data: {content: "externalDoc1", externalId: 1}) {
                 id
             }

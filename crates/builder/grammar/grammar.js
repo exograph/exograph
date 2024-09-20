@@ -125,15 +125,18 @@ module.exports = grammar({
       seq($.field_term, optional(seq("<", commaSep(field("type_param", $.field_type)), ">")))
     ),
     optional_field_type: $ => seq(field("inner", $.field_type), "?"),
+    literal: $ => choice(
+      $.literal_number,
+      $.literal_str,
+      $.literal_boolean,
+      $.literal_null
+    ),
     expression: $ => choice(
       $.parenthetical,
       prec(1, $.logical_op),
       prec(3, $.relational_op),
       $.selection,
-      $.literal_number,
-      $.literal_str,
-      $.literal_boolean,
-      $.literal_null
+      $.literal,
     ),
     parenthetical: $ => seq("(", field("expression", $.expression), ")"),
     selection: $ => choice(
@@ -147,22 +150,34 @@ module.exports = grammar({
     ),
     selection_element: $ => choice(
       $.term,
-      $.hof_call,
+      $.func_call,
+    ),
+    func_call: $ => seq(
+      field("name", $.term), // "contains"
+      "(",
+      optional(commaSep(field("args", $.expression))), // "ADMIN"
+      ")"
     ),
     // High-order function call of the `name(param_name, expr)` such as: 
     // - `some((du) => du.userId == AuthContext.id && du.read)`
     // - `some(du => du.userId == AuthContext.id && du.read)`
     // (note `du` vs `(du)`)
-    hof_call: $ => seq(
+    func_call: $ => seq(
       field("name", $.term), // "some"
       "(",
+      choice(
+        field("hof_args", $.hof_args),
+        field("normal_param", optional(commaSep($.literal))) // "ADMIN"
+      ),
+      ")"
+    ),
+    hof_args: $ => seq(
       choice(
         field("param_name", $.term), // "du"
         seq("(", field("param_name", $.term), ")") // "(du)"
       ),
       "=>",
-      field("expr", $.expression), // "du.userId == AuthContext.id && du.read"
-      ")"
+      field("expr", $.expression) // "du.userId == AuthContext.id && du.read"
     ),
     logical_op: $ => choice(
       $.logical_or,
@@ -215,6 +230,12 @@ module.exports = grammar({
     literal_boolean: $ => choice("true", "false"),
     literal_number: $ => field("value", $.number),
     literal_null: $ => "null",
+    literal: $ => choice(
+      $.literal_str,
+      $.literal_number,
+      $.literal_boolean,
+      $.literal_null
+    ),
     comment: $ => token(choice(
       seq('//', /.*/),
       seq(

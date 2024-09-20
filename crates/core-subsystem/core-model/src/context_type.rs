@@ -30,7 +30,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{mapped_arena::MappedArena, primitive_type::PrimitiveType, types::FieldType};
+use crate::{
+    mapped_arena::MappedArena,
+    primitive_type::{PrimitiveType, PrimitiveValue},
+    types::FieldType,
+};
 
 /// A context type to represent objects such as `AuthContext` and `IPContext`
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -80,33 +84,14 @@ pub struct ContextSelection {
     pub context_name: String,
     /// The path to the value within the context such as `role`. Since the path is always non-empty,
     /// it is represented with a tuple of the first element and the rest of the elements.
-    pub path: (String, Vec<String>),
+    pub path: (String, Vec<ContextSelectionElement>),
 }
 
-pub fn get_context<'a>(
-    path_elements: &[String],
-    contexts: &'a MappedArena<ContextType>,
-) -> (ContextSelection, &'a ContextFieldType) {
-    if path_elements.len() == 2 {
-        let context_type = contexts
-            .iter()
-            .find(|t| t.1.name == path_elements[0])
-            .unwrap()
-            .1;
-        let field = context_type
-            .fields
-            .iter()
-            .find(|field| field.name == path_elements[1])
-            .unwrap();
-
-        (
-            ContextSelection {
-                context_name: path_elements[0].clone(),
-                path: (path_elements[1].clone(), vec![]),
-            },
-            &field.typ,
-        )
-    } else {
-        todo!() // Nested selection such as AuthContext.user.id
-    }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ContextSelectionElement {
+    Identifier(String),
+    NormalCall {
+        function_name: String,
+        args: Vec<PrimitiveValue>,
+    },
 }

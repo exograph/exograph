@@ -19,6 +19,13 @@ module DocumentModule {
     @pk id: Int = autoIncrement()
     content: String
   }
+
+  // Same as AdminDoc, but with a contains clause
+  @access(AuthContext.roles.contains("ADMIN")) 
+  type AdminDocWithContains {
+    @pk id: Int = autoIncrement()
+    content: String
+  }
   
   // An example of nested access control (users can see there own membership)
   @access(query="ADMIN" in AuthContext.roles || self.user.id == AuthContext.id, mutation="ADMIN" in AuthContext.roles)
@@ -81,4 +88,7 @@ module AccessExpressions {
 
   @access(AuthContext.id == null)
   mutation setUnauthenticatedSecret(secret: String): String
+
+  @access(AuthContext.roles.contains("ADMIN")) 
+  query getAdminSecret(): String
 }

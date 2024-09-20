@@ -52,6 +52,7 @@ pub fn build(
         let resolved_env = ResolvedTypeEnv {
             contexts: &base_system.contexts,
             resolved_types,
+            function_definitions: &base_system.function_definitions,
         };
 
         build_shallow(&resolved_env, &mut building);

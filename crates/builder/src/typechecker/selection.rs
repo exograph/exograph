@@ -20,7 +20,7 @@ use crate::ast::ast_types::{AstModelKind, FieldSelection, Untyped};
 
 use super::{Scope, Type, TypecheckFrom};
 
-pub trait TypecheckHofCallFrom<T>
+pub trait TypecheckFunctionCallFrom<T>
 where
     Self: Sized,
 {
@@ -35,7 +35,7 @@ where
     ) -> bool;
 }
 
-impl TypecheckHofCallFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typed> {
+impl TypecheckFunctionCallFrom<FieldSelectionElement<Untyped>> for FieldSelectionElement<Typed> {
     fn shallow(untyped: &FieldSelectionElement<Untyped>) -> Self {
         match untyped {
             FieldSelectionElement::Identifier(value, s, _) => {
@@ -52,6 +52,14 @@ impl TypecheckHofCallFrom<FieldSelectionElement<Untyped>> for FieldSelectionElem
                 name: name.clone(),
                 param_name: elem_name.clone(),
                 expr: Box::new(AstExpr::shallow(expr)),
+                typ: Type::Defer,
+            },
+            FieldSelectionElement::NormalCall {
+                span, name, params, ..
+            } => FieldSelectionElement::NormalCall {
+                span: *span,
+                name: name.clone(),
+                params: params.iter().map(AstExpr::shallow).collect(),
                 typ: Type::Defer,
             },
         }
@@ -141,6 +149,76 @@ impl TypecheckHofCallFrom<FieldSelectionElement<Untyped>> for FieldSelectionElem
                 *typ = expr.typ().clone();
                 updated
             }
+            FieldSelectionElement::NormalCall {
+                name,
+                params,
+                typ,
+                span,
+            } => {
+                let updated = params
+                    .iter_mut()
+                    .map(|p| p.pass(type_env, annotation_env, scope, errors))
+                    .all(|b| b);
+
+                if name.0 != "contains" {
+                    *typ = Type::Error;
+
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!(
+                            "Only `contains` function is supported on arrays, not `{}`",
+                            name.0
+                        ),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: *span,
+                            style: SpanStyle::Primary,
+                            label: Some("unknown context".to_string()),
+                        }],
+                    });
+                    false
+                } else {
+                    // Ensure that the params and elem_type are compatible
+                    if params.is_empty() {
+                        *typ = Type::Error;
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: "Contains function expects one parameter".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: *span,
+                                style: SpanStyle::Primary,
+                                label: Some("type mismatch".to_string()),
+                            }],
+                        });
+                        return false;
+                    }
+                    if params.len() == 1 {
+                        let param_type = params[0].typ();
+                        if let Some(elem_type) = elem_type {
+                            if elem_type != &param_type {
+                                *typ = Type::Error;
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!(
+                                        "Parameter type does not match element type: expected `{}`, found `{}`",
+                                        elem_type, param_type,
+                                    ),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: params[0].span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some("type mismatch".to_string()),
+                                    }],
+                                });
+                                return false;
+                            }
+                        }
+                    }
+                    *typ = typ.clone();
+                    updated
+                }
+            }
         }
     }
 }
@@ -174,7 +252,8 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                     FieldSelectionElement::Identifier(_, _, resolved_typ) => {
                         *typ = resolved_typ.clone();
                     }
-                    FieldSelectionElement::HofCall { name, span, .. } => {
+                    FieldSelectionElement::HofCall { name, span, .. }
+                    | FieldSelectionElement::NormalCall { name, span, .. } => {
                         *typ = Type::Error;
                         errors.push(Diagnostic {
                             level: Level::Error,
@@ -218,6 +297,27 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                             let elem = match elem {
                                 FieldSelectionElement::Identifier(value, s, _) => (value, *s),
                                 FieldSelectionElement::HofCall { span, name, .. } => {
+                                    *typ = Type::Error;
+                                    errors.push(Diagnostic {
+                                        level: Level::Error,
+                                        message: format!(
+                                            "Function call {} not supported on type {}",
+                                            name.0, c.name
+                                        ),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: *span,
+                                            style: SpanStyle::Primary,
+                                            label: Some(
+                                                "unsupported function call target type".to_string(),
+                                            ),
+                                        }],
+                                    });
+                                    return false;
+                                }
+                                FieldSelectionElement::NormalCall {
+                                    span, name, typ, ..
+                                } => {
                                     *typ = Type::Error;
                                     errors.push(Diagnostic {
                                         level: Level::Error,
@@ -290,6 +390,46 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                                 *typ = hof_call.typ().clone();
                                 updated
                             }
+                            normal_call @ FieldSelectionElement::NormalCall { .. } => {
+                                let updated = normal_call.pass(
+                                    type_env,
+                                    annotation_env,
+                                    scope,
+                                    Some(&elem_type),
+                                    errors,
+                                );
+                                *typ = normal_call.typ().clone();
+                                updated
+                            }
+                        },
+                        Type::Array(elem_type) => match elem {
+                            normal_call @ FieldSelectionElement::NormalCall { .. } => {
+                                let updated = normal_call.pass(
+                                    type_env,
+                                    annotation_env,
+                                    scope,
+                                    Some(&elem_type),
+                                    errors,
+                                );
+                                *typ = normal_call.typ().clone();
+                                updated
+                            }
+                            _ => {
+                                *typ = Type::Error;
+
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: "Only `contains` function is supported on arrays"
+                                        .to_string(),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: *elem.span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some("unsupported field".to_string()),
+                                    }],
+                                });
+                                false
+                            }
                         },
                         _ => {
                             *typ = Type::Error;
@@ -297,13 +437,14 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                             let field_name = match elem {
                                 FieldSelectionElement::Identifier(value, _, _) => value,
                                 FieldSelectionElement::HofCall { name, .. } => &name.0,
+                                FieldSelectionElement::NormalCall { name, .. } => &name.0,
                             };
 
                             if !prefix.typ().is_error() {
                                 errors.push(Diagnostic {
                                     level: Level::Error,
                                     message: format!(
-                                        "Cannot read field {} from a non-composite type {}",
+                                        "Cannot read field `{}` from a non-composite type `{}`",
                                         field_name,
                                         prefix.typ().deref(type_env)
                                     ),

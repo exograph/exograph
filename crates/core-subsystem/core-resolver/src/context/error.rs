@@ -32,6 +32,9 @@ pub enum ContextExtractionError {
     #[error("Field not found: `{0}`")]
     FieldNotFound(String),
 
+    #[error("Unexpected function call in context selection: `{0}`")]
+    UnexpectedFunctionCallInContextSelection(String),
+
     #[error("{0}")]
     Generic(String),
 }

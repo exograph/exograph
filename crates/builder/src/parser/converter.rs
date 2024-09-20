@@ -503,8 +503,7 @@ fn convert_annotation_params(
     }
 }
 
-fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<Untyped> {
-    assert_eq!(node.kind(), "expression");
+fn convert_literal(node: Node, source: &[u8], source_span: Span) -> AstExpr<Untyped> {
     let first_child = node.child(0).unwrap();
 
     match first_child.kind() {
@@ -532,6 +531,16 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<U
             AstExpr::BooleanLiteral(value == "true", source_span)
         }
         "literal_null" => AstExpr::NullLiteral(span_from_node(source_span, first_child)),
+        _ => panic!("Unsupported literal type {:?}", first_child.kind()),
+    }
+}
+
+fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<Untyped> {
+    assert_eq!(node.kind(), "expression");
+    let first_child = node.child(0).unwrap();
+
+    match first_child.kind() {
+        "literal" => convert_literal(first_child, source, source_span),
         "logical_op" => AstExpr::LogicalOp(convert_logical_op(first_child, source, source_span)),
         "relational_op" => {
             AstExpr::RelationalOp(convert_relational_op(first_child, source, source_span))
@@ -665,21 +674,53 @@ fn convert_selection_elem(
             span_from_node(source_span, first_child),
             (),
         ),
-        "hof_call" => {
+        "func_call" => {
             let name_field = first_child.child_by_field_name("name").unwrap();
             let name = name_field.utf8_text(source).unwrap().to_string();
 
-            let param_name_field = first_child.child_by_field_name("param_name").unwrap();
-            let param_name = param_name_field.utf8_text(source).unwrap().to_string();
+            let hof_args = first_child.child_by_field_name("hof_args");
 
-            let expr_field = first_child.child_by_field_name("expr").unwrap();
-            let expr = convert_expression(expr_field, source, source_span);
-            FieldSelectionElement::HofCall {
-                span: span_from_node(source_span, first_child),
-                name: Identifier(name, span_from_node(source_span, name_field)),
-                param_name: Identifier(param_name, span_from_node(source_span, param_name_field)),
-                expr: Box::new(expr),
-                typ: (),
+            match hof_args {
+                Some(hof_args) => {
+                    let param_name_field = hof_args.child_by_field_name("param_name").unwrap();
+                    let param_name = param_name_field.utf8_text(source).unwrap().to_string();
+
+                    let expr_field = hof_args.child_by_field_name("expr").unwrap();
+                    let expr = convert_expression(expr_field, source, source_span);
+                    FieldSelectionElement::HofCall {
+                        span: span_from_node(source_span, hof_args),
+                        name: Identifier(name, span_from_node(source_span, name_field)),
+                        param_name: Identifier(
+                            param_name,
+                            span_from_node(source_span, param_name_field),
+                        ),
+                        expr: Box::new(expr),
+                        typ: (),
+                    }
+                }
+                None => {
+                    let mut cursor = first_child.walk();
+
+                    let params_child =
+                        first_child.children_by_field_name("normal_param", &mut cursor);
+
+                    let params: Vec<_> = params_child
+                        .flat_map(|c| {
+                            if c.kind() == "literal" {
+                                Some(convert_literal(c, source, source_span))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    FieldSelectionElement::NormalCall {
+                        span: span_from_node(source_span, first_child),
+                        name: Identifier(name, span_from_node(source_span, name_field)),
+                        params,
+                        typ: (),
+                    }
+                }
             }
         }
         o => panic!("unsupported selection element kind: {o}"),

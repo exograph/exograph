@@ -1,0 +1,49 @@
+stages:
+  # Admin user queries what they can see
+  - operation: |
+      query {
+        getAdminSecret
+      }
+    auth: |
+      {
+        "sub": 2,
+        "roles": ["ADMIN"]
+      }   
+    response: |
+      {
+        "data": {
+          "getAdminSecret": "admin-secret"
+        }
+      }
+  # Non-admin user queries what they can't see
+  - operation: |
+      query {
+        getAdminSecret
+      }
+    auth: |
+      {
+        "sub": 2,
+        "roles": ["USER"]
+      }   
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  # Unauthenticated user queries what they can't see
+  - operation: |
+      query {
+        getAdminSecret
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
