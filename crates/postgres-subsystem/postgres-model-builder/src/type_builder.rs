@@ -403,7 +403,7 @@ fn expand_dynamic_default_values(
                             let (context_selection, context_type) = selection.get_context(
                                 resolved_env.contexts,
                                 resolved_env.function_definitions,
-                            );
+                            )?;
 
                             match entity_field.relation {
                                 PostgresRelation::Scalar { .. } => {

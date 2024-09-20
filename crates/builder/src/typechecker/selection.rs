@@ -415,7 +415,20 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                                 updated
                             }
                             _ => {
-                                todo!()
+                                *typ = Type::Error;
+
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: "Only `contains` function is supported on arrays"
+                                        .to_string(),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: *elem.span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some("unsupported field".to_string()),
+                                    }],
+                                });
+                                false
                             }
                         },
                         _ => {

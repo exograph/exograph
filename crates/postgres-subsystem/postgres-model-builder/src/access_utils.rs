@@ -748,8 +748,8 @@ fn compute_column_selection<'a>(
                     }
                 }
             } else {
-                let (context_selection, context_field_type) =
-                    selection.get_context(resolved_env.contexts, resolved_env.function_definitions);
+                let (context_selection, context_field_type) = selection
+                    .get_context(resolved_env.contexts, resolved_env.function_definitions)?;
                 Ok(DatabasePathSelection::Context(
                     context_selection,
                     context_field_type,
@@ -896,7 +896,7 @@ fn compute_json_selection<'a>(
                 }
                 None => {
                     let (context_selection, context_field_type) = selection
-                        .get_context(resolved_env.contexts, resolved_env.function_definitions);
+                        .get_context(resolved_env.contexts, resolved_env.function_definitions)?;
                     Ok(JsonPathSelection::Context(
                         context_selection,
                         context_field_type,

@@ -23,7 +23,7 @@ use core_model::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::typechecker::Typed;
+use crate::{error::ModelBuildingError, typechecker::Typed};
 
 pub trait NodeTypedness
 where
@@ -353,41 +353,17 @@ impl FieldSelection<Typed> {
         acc
     }
 
-    // // temporary method to get a string representation of the path until we resolve typechecking etc
-    // fn context_path(&self) -> Vec<String> {
-    //     fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
-    //         fn process_selection_elem(elem: &FieldSelectionElement<Typed>, acc: &mut Vec<String>) {
-    //             match elem {
-    //                 FieldSelectionElement::Identifier(name, _, _) => acc.push(name.clone()),
-    //                 FieldSelectionElement::HofCall { .. }
-    //                 | FieldSelectionElement::NormalCall { .. } => {
-    //                     unimplemented!("Context path doesn't support function calls yet")
-    //                 }
-    //             }
-    //         }
-    //         match selection {
-    //             FieldSelection::Single(elem, _) => process_selection_elem(elem, acc),
-    //             FieldSelection::Select(path, elem, _, _) => {
-    //                 flatten(path, acc);
-    //                 process_selection_elem(elem, acc);
-    //             }
-    //         }
-    //     }
-
-    //     let mut acc = vec![];
-    //     flatten(self, &mut acc);
-    //     acc
-    // }
-
     pub fn get_context<'a>(
         &self,
         contexts: &'a MappedArena<ContextType>,
         function_definitions: &'a MappedArena<FunctionDefinition>,
-    ) -> (ContextSelection, &'a ContextFieldType) {
+    ) -> Result<(ContextSelection, &'a ContextFieldType), ModelBuildingError> {
         let path_elements = self.path();
 
         if path_elements.len() < 2 {
-            todo!()
+            Err(ModelBuildingError::Generic(
+                "Context path must have at least 2 elements".to_string(),
+            ))
         } else {
             let (head, tail) = path_elements.split_first().unwrap();
 
@@ -460,13 +436,13 @@ impl FieldSelection<Typed> {
                 _ => panic!(),
             };
 
-            (
+            Ok((
                 ContextSelection {
                     context_name: context_type.name.clone(),
                     path: (first_element_name, tail_path.to_vec()),
                 },
                 field_type,
-            )
+            ))
         }
     }
 }

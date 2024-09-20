@@ -33,7 +33,7 @@ pub fn compute_predicate_expression(
     resolved_env: &ResolvedTypeEnv,
 ) -> Result<AccessPredicateExpression<ModuleAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
-        AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
+        AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env)? {
             PathSelection::Context(context_selection, field_type) => {
                 if field_type.innermost() == &PrimitiveType::Boolean {
                     // Treat boolean context expressions in the same way as an "eq" relational expression
@@ -92,8 +92,8 @@ pub fn compute_predicate_expression(
             let (left, right) = op.sides();
 
             Ok(AccessPredicateExpression::RelationalOp(combiner(
-                Box::new(compute_primitive_expr(left, resolved_env)),
-                Box::new(compute_primitive_expr(right, resolved_env)),
+                Box::new(compute_primitive_expr(left, resolved_env)?),
+                Box::new(compute_primitive_expr(right, resolved_env)?),
             )))
         }
         AstExpr::BooleanLiteral(value, _) => Ok(AccessPredicateExpression::BooleanLiteral(*value)),
@@ -107,26 +107,29 @@ pub fn compute_predicate_expression(
 fn compute_primitive_expr(
     expr: &AstExpr<Typed>,
     resolved_env: &ResolvedTypeEnv,
-) -> ModuleAccessPrimitiveExpression {
+) -> Result<ModuleAccessPrimitiveExpression, ModelBuildingError> {
     match expr {
-        AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
-            PathSelection::Context(c, _) => ModuleAccessPrimitiveExpression::Common(
+        AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env)? {
+            PathSelection::Context(c, _) => Ok(ModuleAccessPrimitiveExpression::Common(
                 CommonAccessPrimitiveExpression::ContextSelection(c),
-            ),
+            )),
         },
-        AstExpr::StringLiteral(value, _) => ModuleAccessPrimitiveExpression::Common(
+        AstExpr::StringLiteral(value, _) => Ok(ModuleAccessPrimitiveExpression::Common(
             CommonAccessPrimitiveExpression::StringLiteral(value.clone()),
-        ),
-        AstExpr::BooleanLiteral(value, _) => ModuleAccessPrimitiveExpression::Common(
+        )),
+        AstExpr::BooleanLiteral(value, _) => Ok(ModuleAccessPrimitiveExpression::Common(
             CommonAccessPrimitiveExpression::BooleanLiteral(*value),
-        ),
-        AstExpr::NumberLiteral(value, _) => ModuleAccessPrimitiveExpression::Common(
+        )),
+        AstExpr::NumberLiteral(value, _) => Ok(ModuleAccessPrimitiveExpression::Common(
             CommonAccessPrimitiveExpression::NumberLiteral(*value),
-        ),
-        AstExpr::NullLiteral(_) => {
-            ModuleAccessPrimitiveExpression::Common(CommonAccessPrimitiveExpression::NullLiteral)
-        }
-        AstExpr::StringList(_, _) => panic!("Module access expressions do not support lists yet"),
+        )),
+        AstExpr::NullLiteral(_) => Ok(ModuleAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::NullLiteral,
+        )),
+
+        AstExpr::StringList(_, _) => Err(ModelBuildingError::Generic(
+            "Module access expressions do not support lists yet".to_string(),
+        )),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
     }
@@ -135,8 +138,8 @@ fn compute_primitive_expr(
 fn compute_selection<'a>(
     selection: &FieldSelection<Typed>,
     resolved_env: &'a ResolvedTypeEnv<'a>,
-) -> PathSelection<'a> {
+) -> Result<PathSelection<'a>, ModelBuildingError> {
     let (context_selection, column_type) =
-        selection.get_context(resolved_env.contexts, resolved_env.function_definitions);
-    PathSelection::Context(context_selection, column_type)
+        selection.get_context(resolved_env.contexts, resolved_env.function_definitions)?;
+    Ok(PathSelection::Context(context_selection, column_type))
 }
