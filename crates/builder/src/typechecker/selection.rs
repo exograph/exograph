@@ -202,7 +202,7 @@ impl TypecheckFunctionCallFrom<FieldSelectionElement<Untyped>> for FieldSelectio
                                     level: Level::Error,
                                     message: format!(
                                         "Parameter type does not match element type: expected `{}`, found `{}`",
-                                        elem_type, param_type, 
+                                        elem_type, param_type,
                                     ),
                                     code: Some("C000".to_string()),
                                     spans: vec![SpanLabel {
