@@ -19,12 +19,10 @@ use actix_web::{
 use url::Url;
 
 use common::env_const::{get_deployment_mode, DeploymentMode};
-use core_resolver::{
-    http::{RequestHead, RequestPayload, ResponsePayload},
-    system_resolver::SystemResolver,
-};
+use common::http::{RequestHead, RequestPayload, ResponsePayload};
 use request::ActixRequestHead;
 use resolver::{get_endpoint_http_path, get_playground_http_path, graphiql};
+use router::SystemRouter;
 use serde_json::Value;
 
 macro_rules! error_msg {
@@ -33,9 +31,7 @@ macro_rules! error_msg {
     };
 }
 
-pub fn configure_resolver(
-    system_resolver: web::Data<SystemResolver>,
-) -> impl FnOnce(&mut ServiceConfig) {
+pub fn configure_router(system_router: web::Data<SystemRouter>) -> impl FnOnce(&mut ServiceConfig) {
     let resolve_path = get_endpoint_http_path();
 
     let endpoint_url = match get_deployment_mode() {
@@ -44,7 +40,7 @@ pub fn configure_resolver(
     };
 
     move |app| {
-        app.app_data(system_resolver)
+        app.app_data(system_router)
             .app_data(web::Data::new(endpoint_url))
             .service(web::scope(&resolve_path).route("", web::to(resolve)));
     }
@@ -75,19 +71,19 @@ async fn resolve(
     body: web::Json<Value>,
     query: web::Query<Value>,
     endpoint_url: web::Data<Option<Url>>,
-    system_resolver: web::Data<SystemResolver>,
+    system_router: web::Data<SystemRouter>,
 ) -> impl Responder {
     match endpoint_url.as_ref() {
         Some(endpoint_url) => match http_request.headers().get("_exo_operation_kind") {
             Some(value) if value == "schema_query" => {
                 // This is a schema fetch request, so solve it locally
-                resolve_locally(http_request, body, query.into_inner(), system_resolver).await
+                resolve_locally(http_request, body, query.into_inner(), system_router).await
             }
             _ => forward_request(http_request, body, endpoint_url).await,
         },
         None => {
             // We aren't operating in the playground mode, so we can resolve it here
-            resolve_locally(http_request, body, query.into_inner(), system_resolver).await
+            resolve_locally(http_request, body, query.into_inner(), system_router).await
         }
     }
 }
@@ -111,7 +107,7 @@ async fn resolve_locally(
     req: HttpRequest,
     body: web::Json<Value>,
     query: Value,
-    system_resolver: web::Data<SystemResolver>,
+    system_router: web::Data<SystemRouter>,
 ) -> HttpResponse {
     let playground_request = req
         .headers()
@@ -128,7 +124,10 @@ async fn resolve_locally(
         stream,
         headers,
         status_code,
-    } = resolver::resolve::<Error>(request, system_resolver.as_ref(), playground_request).await;
+    } = system_router
+        .as_ref()
+        .route::<Error>(request, playground_request)
+        .await;
 
     let mut builder = HttpResponse::build(status_code);
 
@@ -188,7 +187,7 @@ async fn forward_request(
     }
 }
 
-async fn playground(req: HttpRequest, resolver: web::Data<SystemResolver>) -> impl Responder {
+async fn playground(req: HttpRequest, resolver: web::Data<SystemRouter>) -> impl Responder {
     if !resolver.allow_introspection() {
         return HttpResponse::Forbidden().body("Introspection is not enabled");
     }

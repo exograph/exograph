@@ -11,9 +11,9 @@ use async_trait::async_trait;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
-use crate::http::RequestHead;
 use crate::system_resolver::SystemResolver;
 use crate::OperationsPayload;
+use common::http::RequestHead;
 
 pub struct QueryExtractor<'a> {
     system_resolver: &'a SystemResolver,

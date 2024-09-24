@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use actix_web::{dev::ConnectionInfo, http::header::HeaderMap, HttpRequest};
-use core_resolver::http::RequestHead;
+use common::http::RequestHead;
 
 pub struct ActixRequestHead {
     // we cannot refer to HttpRequest directly, as it holds an Rc (and therefore does

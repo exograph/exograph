@@ -1,0 +1,12 @@
+[package]
+name = "router"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+common = { path = "../common" }
+resolver = { path = "../resolver" }
+
+[lib]
+doctest = false

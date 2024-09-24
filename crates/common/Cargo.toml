@@ -10,6 +10,12 @@ opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "tonic"]
 
 [dependencies]
 thiserror.workspace = true
+http.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+bytes.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-opentelemetry = "0.24.0"

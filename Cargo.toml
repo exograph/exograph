@@ -7,6 +7,7 @@ edition = "2021"
 members = [
   "crates/builder",
   "crates/cli",
+  "crates/router",
   "crates/resolver",
   "crates/server-actix",
   "crates/server-aws-lambda",
@@ -30,6 +31,7 @@ members = [
 default-members = [
   "crates/builder",
   "crates/cli",
+  "crates/router",
   "crates/resolver",
   "crates/server-actix",
   "crates/testing",

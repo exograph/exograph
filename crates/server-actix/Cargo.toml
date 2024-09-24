@@ -33,6 +33,7 @@ tracing-actix-web = "0.7.11"
 url.workspace = true
 reqwest.workspace = true
 resolver = { path = "../resolver" }
+router = { path = "../router" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 common = { path = "../common" }

@@ -36,11 +36,11 @@ const EXO_MAX_SELECTION_DEPTH: &str = "EXO_MAX_SELECTION_DEPTH";
 
 impl SystemLoader {
     pub async fn load(
-        read: impl std::io::Read,
+        ir: impl std::io::Read,
         static_loaders: StaticLoaders,
         env: Box<dyn Environment>,
     ) -> Result<SystemResolver, SystemLoadingError> {
-        let serialized_system = SerializableSystem::deserialize_reader(read)
+        let serialized_system = SerializableSystem::deserialize_reader(ir)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
         Self::load_from_system(serialized_system, static_loaders, env).await

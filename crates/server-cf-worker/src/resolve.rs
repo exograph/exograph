@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use worker::{Request as WorkerRequest, Response as WorkerResponse};
 
-use core_resolver::http::{RequestHead, RequestPayload, ResponsePayload};
+use common::http::{RequestHead, RequestPayload, ResponsePayload};
 
 use wasm_bindgen::prelude::*;
 
@@ -78,7 +78,7 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
     let mut worker_request =
         WorkerRequestWrapper(WorkerRequest::from(raw_request), path.into(), query);
 
-    let system_resolver = crate::init::get_system_resolver()?;
+    let system_router = crate::init::get_system_router()?;
 
     let body_json: Value = worker_request
         .0
@@ -95,7 +95,7 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
         stream,
         headers,
         status_code,
-    } = resolver::resolve::<JsValue>(request, system_resolver, false).await;
+    } = system_router.route::<JsValue>(request, false).await;
 
     let response = match stream {
         Some(stream) => {

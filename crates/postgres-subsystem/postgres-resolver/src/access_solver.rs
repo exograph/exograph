@@ -376,7 +376,7 @@ mod tests {
         trusted_documents::TrustedDocuments,
     };
 
-    use core_resolver::http::RequestHead;
+    use common::http::RequestHead;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::system_resolver::SystemResolver;
     use exo_env::MapEnvironment;

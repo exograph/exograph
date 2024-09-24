@@ -10,8 +10,10 @@ use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
 use core_resolver::system_resolver::SystemResolver;
+use router::SystemRouter;
+
 use exo_sql::DatabaseClientManager;
-use resolver::create_system_resolver_from_system;
+use resolver::{create_system_resolver_from_system, GraphQLRouter};
 use worker::console_error;
 
 use crate::{env::WorkerEnvironment, pg::WorkerPostgresConnect};
@@ -27,7 +29,7 @@ pub fn start() -> Result<(), JsValue> {
 pub(crate) async fn init(system_bytes: Vec<u8>, env: WorkerEnvironment) -> Result<(), JsValue> {
     setup_tracing(&env);
 
-    RESOLVER.init_resolver(system_bytes, env).await
+    ROUTER.init_router(system_bytes, env).await
 }
 
 fn setup_tracing(env: &WorkerEnvironment) {
@@ -62,33 +64,33 @@ fn setup_tracing(env: &WorkerEnvironment) {
     let _ = tracing_subscriber::registry().with(fmt_layer).try_init();
 }
 
-pub(crate) fn get_system_resolver() -> Result<&'static SystemResolver, JsValue> {
-    let system_resolver = RESOLVER
-        .system_resolver
+pub(crate) fn get_system_router() -> Result<&'static SystemRouter, JsValue> {
+    let system_router = ROUTER
+        .system_router
         .get()
         .ok_or_else(|| JsValue::from_str("Resolver not set"))?;
 
-    Ok(system_resolver)
+    Ok(system_router)
 }
 
-struct SystemResolverHolder {
-    system_resolver: OnceCell<SystemResolver>,
+struct SystemRouterHolder {
+    system_router: OnceCell<SystemRouter>,
 }
 
-unsafe impl Send for SystemResolverHolder {}
-unsafe impl Sync for SystemResolverHolder {}
+unsafe impl Send for SystemRouterHolder {}
+unsafe impl Sync for SystemRouterHolder {}
 
-static RESOLVER: SystemResolverHolder = SystemResolverHolder {
-    system_resolver: OnceCell::new(),
+static ROUTER: SystemRouterHolder = SystemRouterHolder {
+    system_router: OnceCell::new(),
 };
 
-impl SystemResolverHolder {
-    async fn init_resolver(
+impl SystemRouterHolder {
+    async fn init_router(
         &self,
         system_bytes: Vec<u8>,
         env: WorkerEnvironment,
     ) -> Result<(), JsValue> {
-        if self.system_resolver.get().is_some() {
+        if self.system_router.get().is_some() {
             return Ok(());
         }
 
@@ -102,9 +104,13 @@ impl SystemResolverHolder {
             .await
             .map_err(|e| JsValue::from_str(&format!("Error creating resolver {:?}", e)))?;
 
+        let graphql_router = GraphQLRouter::new(resolver);
+
+        let system_router = SystemRouter::new(graphql_router);
+
         let _ = self
-            .system_resolver
-            .set(resolver)
+            .system_router
+            .set(system_router)
             .map_err(|_| JsValue::from_str("Error setting resolver"))?;
 
         Ok(())

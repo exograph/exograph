@@ -10,7 +10,7 @@ use tracing::warn;
 use crate::context::context_extractor::ContextExtractor;
 use crate::context::error::ContextExtractionError;
 use crate::context::RequestContext;
-use crate::http::RequestHead;
+use common::http::RequestHead;
 
 use super::JwtAuthenticator;
 

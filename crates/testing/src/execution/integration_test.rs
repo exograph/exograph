@@ -14,9 +14,8 @@ use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_JWT_SECRET,
     EXO_POSTGRES_URL,
 };
+use common::http::{RequestHead, RequestPayload};
 use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
-use core_resolver::http::RequestHead;
-use core_resolver::http::RequestPayload;
 use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;

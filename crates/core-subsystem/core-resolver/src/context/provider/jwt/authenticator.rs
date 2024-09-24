@@ -9,7 +9,7 @@ use thiserror::Error;
 use tracing::error;
 
 use crate::context::error::ContextExtractionError;
-use crate::http::RequestHead;
+use common::http::RequestHead;
 
 #[cfg(feature = "oidc")]
 use super::oidc::Oidc;
