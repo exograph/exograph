@@ -24,7 +24,7 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 tokio = { workspace = true, features = ["full"] }
 http.workspace = true
 
-resolver = { path = "../resolver" }
+router = { path = "../router" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 common = { path = "../common" }

@@ -32,7 +32,6 @@ tokio-postgres = { workspace = true, features = ["js"] }
 serde_json = { workspace = true, features = ["preserve_order"] }
 tokio = { workspace = true }
 
-resolver = { path = "../resolver" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 postgres-resolver = { path = "../postgres-subsystem/postgres-resolver" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
