@@ -12,8 +12,6 @@ use std::{env, process::exit};
 use common::logging_tracing;
 use core_plugin_interface::interface::SubsystemLoader;
 
-use resolver::{create_system_resolver_or_exit, GraphQLRouter};
-
 use exo_env::SystemEnvironment;
 use router::SystemRouter;
 
@@ -32,14 +30,19 @@ pub async fn init() -> SystemRouter {
 
     let exo_ir_file = get_exo_ir_file_name();
 
-    let system_resolver = create_system_resolver_or_exit(
+    match SystemRouter::new_from_file(
         &exo_ir_file,
         create_static_loaders(),
         Box::new(SystemEnvironment),
     )
-    .await;
-
-    SystemRouter::new(GraphQLRouter::new(system_resolver))
+    .await
+    {
+        Ok(system_router) => system_router,
+        Err(error) => {
+            println!("{error}");
+            exit(1);
+        }
+    }
 }
 
 pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {

@@ -22,7 +22,7 @@ use exo_deno::{
 };
 use exo_env::MapEnvironment;
 use include_dir::{include_dir, Dir};
-use resolver::{create_system_resolver, resolve_in_memory, GraphQLRouter, SystemLoader};
+use resolver::{resolve_in_memory, SystemLoader};
 use router::SystemRouter;
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
@@ -54,9 +54,7 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
             (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
         ]);
 
-        let resolver = create_system_resolver(&exo_ir_file, static_loaders, Box::new(env)).await?;
-
-        SystemRouter::new(GraphQLRouter::new(resolver))
+        SystemRouter::new_from_file(&exo_ir_file, static_loaders, Box::new(env)).await?
     };
 
     let result = check_introspection(&router).await?;

@@ -9,11 +9,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
-use core_resolver::system_resolver::SystemResolver;
 use router::SystemRouter;
 
-use exo_sql::DatabaseClientManager;
-use resolver::{create_system_resolver_from_system, GraphQLRouter};
 use worker::console_error;
 
 use crate::{env::WorkerEnvironment, pg::WorkerPostgresConnect};
@@ -100,13 +97,15 @@ impl SystemRouterHolder {
 
         let client = WorkerPostgresConnect::create_client(&env).await?;
 
-        let resolver = Self::create_resolver(system, client, Box::new(env))
-            .await
-            .map_err(|e| JsValue::from_str(&format!("Error creating resolver {:?}", e)))?;
-
-        let graphql_router = GraphQLRouter::new(resolver);
-
-        let system_router = SystemRouter::new(graphql_router);
+        let system_router = SystemRouter::new_from_system(
+            system,
+            vec![Box::new(postgres_resolver::PostgresSubsystemLoader {
+                existing_client: Some(client),
+            })],
+            Box::new(env),
+        )
+        .await
+        .map_err(|e| JsValue::from_str(&format!("Error creating system resolver: {:?}", e)))?;
 
         let _ = self
             .system_router
@@ -114,21 +113,5 @@ impl SystemRouterHolder {
             .map_err(|_| JsValue::from_str("Error setting resolver"))?;
 
         Ok(())
-    }
-
-    async fn create_resolver(
-        system: SerializableSystem,
-        client_manager: DatabaseClientManager,
-        env: Box<dyn Environment>,
-    ) -> Result<SystemResolver, JsValue> {
-        create_system_resolver_from_system(
-            system,
-            vec![Box::new(postgres_resolver::PostgresSubsystemLoader {
-                existing_client: Some(client_manager),
-            })],
-            env,
-        )
-        .await
-        .map_err(|e| JsValue::from_str(&format!("Error creating system resolver: {:?}", e)))
     }
 }

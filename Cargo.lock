@@ -7263,6 +7263,8 @@ name = "router"
 version = "0.9.9"
 dependencies = [
  "common",
+ "core-plugin-interface",
+ "exo-env",
  "resolver",
 ]
 

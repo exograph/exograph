@@ -22,7 +22,6 @@ use futures::FutureExt;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
-use resolver::{create_system_resolver, GraphQLRouter};
 use router::SystemRouter;
 use serde_json::{json, Map, Value};
 
@@ -175,9 +174,7 @@ impl IntegrationTest {
 
                 let env = MapEnvironment::from(env);
 
-                let resolver =
-                    create_system_resolver(&exo_ir_file, static_loaders, Box::new(env)).await?;
-                SystemRouter::new(GraphQLRouter::new(resolver))
+                SystemRouter::new_from_file(&exo_ir_file, static_loaders, Box::new(env)).await?
             };
 
             TestfileContext {

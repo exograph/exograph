@@ -8,7 +8,6 @@
 // by the Apache License, Version 2.0.
 
 use std::pin::Pin;
-use std::process::exit;
 use std::{fs::File, io::BufReader, path::Path};
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
@@ -253,18 +252,4 @@ pub async fn create_system_resolver_from_system(
     env: Box<dyn Environment>,
 ) -> Result<SystemResolver, SystemLoadingError> {
     SystemLoader::load_from_system(system, static_loaders, env).await
-}
-
-pub async fn create_system_resolver_or_exit(
-    exo_ir_file: &str,
-    static_loaders: StaticLoaders,
-    env: Box<dyn Environment>,
-) -> SystemResolver {
-    match create_system_resolver(exo_ir_file, static_loaders, env).await {
-        Ok(system_resolver) => system_resolver,
-        Err(error) => {
-            println!("{error}");
-            exit(1);
-        }
-    }
 }
