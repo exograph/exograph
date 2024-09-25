@@ -15,7 +15,7 @@ response: |
   {
     "errors": [
       {
-        "message": "Argument(s) '[\"createdAt\"]' invalid for 'updateTodo'",
+        "message": "Argument(s) '[createdAt]' invalid for 'updateTodo'",
         "locations": [
           {
             "line": 2,

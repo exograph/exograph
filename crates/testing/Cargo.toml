@@ -48,6 +48,7 @@ exo-env = { path = "../../libs/exo-env" }
 
 core-resolver = { path = "../core-subsystem/core-resolver" }
 resolver = { path = "../resolver", features = ["oidc"] }
+router = { path = "../router" }
 
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 

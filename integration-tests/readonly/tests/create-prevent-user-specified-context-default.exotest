@@ -14,7 +14,7 @@ response: |
   {
     "errors": [
       {
-        "message": "Argument(s) '[\"ownerId\"]' invalid for 'createDocument'",
+        "message": "Argument(s) '[ownerId]' invalid for 'createDocument'",
         "locations": [
           {
             "line": 2,

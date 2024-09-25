@@ -7875,6 +7875,7 @@ dependencies = [
  "exo-env",
  "postgres-resolver",
  "resolver",
+ "router",
  "wasm-resolver",
 ]
 
@@ -8882,6 +8883,7 @@ dependencies = [
  "rand",
  "regex",
  "resolver",
+ "router",
  "serde",
  "serde_json",
  "serde_yaml",

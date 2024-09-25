@@ -13,7 +13,8 @@ use std::sync::Arc;
 
 use ::common::env_const::{EXO_CHECK_CONNECTION_ON_STARTUP, EXO_POSTGRES_URL};
 use exo_env::MapEnvironment;
-use resolver::create_system_resolver_from_system;
+use resolver::{create_system_resolver_from_system, GraphQLRouter};
+use router::SystemRouter;
 use serde_json::Value;
 use server_aws_lambda::resolve;
 use server_common::create_static_loaders;
@@ -31,13 +32,13 @@ pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
     let model_system = builder::build_system_from_str(exo_model, "index.exo".to_string(), vec![])
         .await
         .unwrap();
-    let system_resolver = Arc::new(
+    let system_resolver =
         create_system_resolver_from_system(model_system, create_static_loaders(), Box::new(env))
             .await
-            .unwrap(),
-    );
+            .unwrap();
+    let system_router = SystemRouter::new(GraphQLRouter::new(system_resolver));
 
-    let result = resolve(event, system_resolver).await.unwrap();
+    let result = resolve(event, Arc::new(system_router)).await.unwrap();
 
     println!(
         "!! expected: {}",

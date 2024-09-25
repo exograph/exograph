@@ -11,11 +11,11 @@ use std::{env, process::exit};
 
 use common::logging_tracing;
 use core_plugin_interface::interface::SubsystemLoader;
-use core_resolver::system_resolver::SystemResolver;
 
-use resolver::create_system_resolver_or_exit;
+use resolver::{create_system_resolver_or_exit, GraphQLRouter};
 
 use exo_env::SystemEnvironment;
+use router::SystemRouter;
 
 /// Initialize the server by:
 /// - Initializing tracing
@@ -27,17 +27,19 @@ use exo_env::SystemEnvironment;
 ///
 /// # Exit codes
 /// - 1 - If the exo_ir file doesn't exist or can't be loaded.
-pub async fn init() -> SystemResolver {
+pub async fn init() -> SystemRouter {
     logging_tracing::init();
 
     let exo_ir_file = get_exo_ir_file_name();
 
-    create_system_resolver_or_exit(
+    let system_resolver = create_system_resolver_or_exit(
         &exo_ir_file,
         create_static_loaders(),
         Box::new(SystemEnvironment),
     )
-    .await
+    .await;
+
+    SystemRouter::new(GraphQLRouter::new(system_resolver))
 }
 
 pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {

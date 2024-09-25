@@ -18,7 +18,7 @@ response: |
   {
     "errors": [
       {
-        "message": "Argument(s) '[\"ownerId\"]' invalid for 'updateDocument'",
+        "message": "Argument(s) '[ownerId]' invalid for 'updateDocument'",
         "locations": [
           {
             "line": 2,
