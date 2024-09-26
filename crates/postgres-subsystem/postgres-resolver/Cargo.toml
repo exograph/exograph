@@ -22,7 +22,7 @@ indexmap.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 maybe-owned.workspace = true
 serde.workspace = true
-thiserror = "1.0.32"
+thiserror.workspace = true
 tokio.workspace = true
 tokio-postgres = { workspace = true, default-features = false }
 tracing.workspace = true
