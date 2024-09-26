@@ -95,7 +95,7 @@ serde_json = "1"
 serde_yaml = "0.9.34"
 tempfile = "3.0.0"
 test-log = "0.2.16"
-thiserror = "1.0.31"
+thiserror = "1.0.64"
 tracing = "0.1"
 tokio = "1"
 tokio-postgres = { version = "0.7.12", default-features = false }
