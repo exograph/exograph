@@ -14,10 +14,7 @@ use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_JWT_SECRET,
     EXO_POSTGRES_URL,
 };
-use core_plugin_interface::trusted_documents::TrustedDocumentEnforcement;
-use core_resolver::http::RequestHead;
-use core_resolver::http::RequestPayload;
-use core_resolver::system_resolver::{SystemResolutionError, SystemResolver};
+use common::http::{RequestHead, RequestPayload};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::future::OptionFuture;
@@ -25,9 +22,8 @@ use futures::FutureExt;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
-use resolver::{create_system_resolver, resolve_in_memory};
+use router::SystemRouter;
 use serde_json::{json, Map, Value};
-use unescape::unescape;
 
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
@@ -45,7 +41,7 @@ use super::{TestResult, TestResultKind};
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
 struct TestfileContext {
-    server: SystemResolver,
+    router: SystemRouter,
     jwtsecret: String,
     cookies: HashMap<String, String>,
     testvariables: HashMap<String, serde_json::Value>,
@@ -154,7 +150,7 @@ impl IntegrationTest {
                 extra_envs.insert("OTEL_SERVICE_NAME".to_string(), self.name());
             }
 
-            let server = {
+            let router = {
                 let static_loaders = server_common::create_static_loaders();
 
                 let exo_ir_file = self.exo_ir_file_path(project_dir).display().to_string();
@@ -178,11 +174,11 @@ impl IntegrationTest {
 
                 let env = MapEnvironment::from(env);
 
-                create_system_resolver(&exo_ir_file, static_loaders, Box::new(env)).await?
+                SystemRouter::new_from_file(&exo_ir_file, static_loaders, Box::new(env)).await?
             };
 
             TestfileContext {
-                server,
+                router,
                 jwtsecret,
                 cookies: HashMap::new(),
                 testvariables: HashMap::new(),
@@ -424,7 +420,7 @@ async fn run_operation(
 
     let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
     // run the operation
-    let body = run_query(request, &ctx.server, &mut ctx.cookies).await;
+    let body = run_query(request, &ctx.router, &mut ctx.cookies).await;
 
     // resolve testvariables from the result of our current operation
     // and extend our collection with them
@@ -471,56 +467,40 @@ async fn run_operation(
 }
 
 pub async fn run_query(
-    request: impl RequestPayload,
-    server: &SystemResolver,
+    request: impl RequestPayload + Send + Sync,
+    router: &SystemRouter,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
-    let res = resolve_in_memory(request, server, TrustedDocumentEnforcement::DoNotEnforce).await;
+    let res = router.route::<String>(request, true).await;
 
-    match res {
-        Ok(res) => {
-            res.iter().for_each(|(_, r)| {
-                r.headers.iter().for_each(|(k, v)| {
-                    if k.to_ascii_lowercase() == "set-cookie" {
-                        let cookie = v.split(';').next().unwrap();
-                        let mut cookie = cookie.split('=');
-                        let key = cookie.next().unwrap();
-                        let value = cookie.next().unwrap();
-                        cookies.insert(key.to_string(), value.to_string());
-                    }
-                });
-            });
-
-            serde_json::json!({
-                "data": res.iter().map(|(name, result)| {
-                    (name.clone(), result.body.to_json().unwrap())
-                }).collect::<HashMap<String, Value>>(),
-            })
+    res.headers.iter().for_each(|(k, v)| {
+        if k.to_ascii_lowercase() == "set-cookie" {
+            let cookie = v.split(';').next().unwrap();
+            let mut cookie = cookie.split('=');
+            let key = cookie.next().unwrap();
+            let value = cookie.next().unwrap();
+            cookies.insert(key.to_string(), value.to_string());
         }
-        Err(err) => {
-            let mut out = serde_json::json!({
-                "errors": [{
-                    "message": unescape(&err.user_error_message()).unwrap()
-                }]
-            });
+    });
 
-            if let SystemResolutionError::Validation(err) = err {
-                let locations = err
-                    .positions()
-                    .iter()
-                    .map(|e| {
-                        serde_json::json!({
-                            "line": e.line,
-                            "column": e.column,
-                        })
-                    })
-                    .collect::<Vec<_>>();
+    use futures::StreamExt;
 
-                out["errors"][0]["locations"] = locations.into();
-            }
+    match res.stream {
+        Some(stream) => {
+            let bytes = stream
+                .map(|chunks| chunks.unwrap())
+                .collect::<Vec<_>>()
+                .await;
 
-            out
+            let bytes: Vec<u8> = bytes.into_iter().flat_map(|bytes| bytes.to_vec()).collect();
+
+            let body = std::str::from_utf8(&bytes)
+                .expect("Response stream is not UTF-8")
+                .to_string();
+
+            serde_json::from_str(&body).expect("Response stream is not valid JSON")
         }
+        None => Value::String("".to_string()),
     }
 }
 

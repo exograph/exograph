@@ -14,10 +14,10 @@ use cookie::Cookie;
 use serde_json::Value;
 use tokio::sync::OnceCell;
 
-use crate::{
-    context::{context_extractor::ContextExtractor, error::ContextExtractionError, RequestContext},
-    http::RequestHead,
+use crate::context::{
+    context_extractor::ContextExtractor, error::ContextExtractionError, RequestContext,
 };
+use common::http::RequestHead;
 
 pub struct CookieExtractor {
     // Use OnceCell to process cookies only once per request (and not per cookie annotation)

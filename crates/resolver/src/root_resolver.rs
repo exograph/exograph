@@ -8,16 +8,16 @@
 // by the Apache License, Version 2.0.
 
 use std::pin::Pin;
-use std::process::exit;
 use std::{fs::File, io::BufReader, path::Path};
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
+use common::api_router::ApiRouter;
 #[cfg(not(target_family = "wasm"))]
 use common::env_const::is_production;
+use common::http::{Headers, RequestPayload, ResponsePayload};
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
-use core_resolver::http::{Headers, RequestPayload, ResponsePayload};
 use core_resolver::QueryResponse;
 use http::StatusCode;
 
@@ -80,126 +80,143 @@ pub async fn resolve_in_memory<'a>(
         .and(response)
 }
 
-/// Resolves an incoming query, returning a response stream containing JSON and a set
-/// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
-/// if something went wrong.
-///
-/// In a typical use case (for example server-actix), the caller will
-/// first call `create_system_resolver_or_exit` to create a [SystemResolver] object, and
-/// then call `resolve` with that object.
-#[instrument(
-    name = "resolver::resolve"
-    skip(system_resolver, request)
-)]
-pub async fn resolve<'a, E: 'static>(
-    request: impl RequestPayload,
-    system_resolver: &SystemResolver,
-    playground_request: bool,
-) -> ResponsePayload<E> {
-    #[cfg(not(target_family = "wasm"))]
-    let is_production = is_production();
-    #[cfg(target_family = "wasm")]
-    let is_production = !playground_request;
+pub struct GraphQLRouter {
+    system_resolver: SystemResolver,
+}
 
-    let response = resolve_in_memory(
-        request,
-        system_resolver,
-        if playground_request && !is_production {
-            TrustedDocumentEnforcement::DoNotEnforce
-        } else {
-            TrustedDocumentEnforcement::Enforce
-        },
-    )
-    .await;
-
-    if let Err(SystemResolutionError::RequestError(e)) = response {
-        tracing::error!("Error while resolving request: {:?}", e);
-        return ResponsePayload {
-            stream: None,
-            headers: Headers::new(),
-            status_code: StatusCode::BAD_REQUEST,
-        };
+impl GraphQLRouter {
+    pub fn new(system_resolver: SystemResolver) -> Self {
+        Self { system_resolver }
     }
 
-    let mut headers = if let Ok(ref response) = response {
-        response
-            .iter()
-            .flat_map(|(_, qr)| qr.headers.clone())
-            .collect()
-    } else {
-        vec![]
-    };
+    pub fn allow_introspection(&self) -> bool {
+        self.system_resolver.allow_introspection()
+    }
+}
 
-    headers.push(("content-type".into(), "application/json".into()));
+#[async_trait::async_trait]
+impl ApiRouter for GraphQLRouter {
+    /// Resolves an incoming query, returning a response stream containing JSON and a set
+    /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
+    /// if something went wrong.
+    ///
+    /// In a typical use case (for example server-actix), the caller will
+    /// first call `create_system_resolver_or_exit` to create a [SystemResolver] object, and
+    /// then call `resolve` with that object.
+    #[instrument(
+        name = "resolver::resolve"
+        skip(self, request)
+    )]
+    async fn route<E: 'static>(
+        &self,
+        request: impl RequestPayload + Send,
+        playground_request: bool,
+    ) -> ResponsePayload<E> {
+        #[cfg(not(target_family = "wasm"))]
+        let is_production = is_production();
+        #[cfg(target_family = "wasm")]
+        let is_production = !playground_request;
 
-    let stream = try_stream! {
-        macro_rules! report_position {
-            ($position:expr) => {
-                let p: Pos = $position;
+        let response = resolve_in_memory(
+            request,
+            &self.system_resolver,
+            if playground_request && !is_production {
+                TrustedDocumentEnforcement::DoNotEnforce
+            } else {
+                TrustedDocumentEnforcement::Enforce
+            },
+        )
+        .await;
 
-                yield Bytes::from_static(br#"{"line": "#);
-                yield Bytes::from(p.line.to_string());
-                yield Bytes::from_static(br#", "column": "#);
-                yield Bytes::from(p.column.to_string());
-                yield Bytes::from_static(br#"}"#);
+        if let Err(SystemResolutionError::RequestError(e)) = response {
+            tracing::error!("Error while resolving request: {:?}", e);
+            return ResponsePayload {
+                stream: None,
+                headers: Headers::new(),
+                status_code: StatusCode::BAD_REQUEST,
             };
         }
 
-        macro_rules! report_positions {
-            ($positions:expr) => {
-                let mut first = true;
-                for p in $positions {
-                    if !first {
-                        yield Bytes::from_static(b", ");
+        let mut headers = if let Ok(ref response) = response {
+            response
+                .iter()
+                .flat_map(|(_, qr)| qr.headers.clone())
+                .collect()
+        } else {
+            vec![]
+        };
+
+        headers.push(("content-type".into(), "application/json".into()));
+
+        let stream = try_stream! {
+            macro_rules! report_position {
+                ($position:expr) => {
+                    let p: Pos = $position;
+
+                    yield Bytes::from_static(br#"{"line": "#);
+                    yield Bytes::from(p.line.to_string());
+                    yield Bytes::from_static(br#", "column": "#);
+                    yield Bytes::from(p.column.to_string());
+                    yield Bytes::from_static(br#"}"#);
+                };
+            }
+
+            macro_rules! report_positions {
+                ($positions:expr) => {
+                    let mut first = true;
+                    for p in $positions {
+                        if !first {
+                            yield Bytes::from_static(b", ");
+                        }
+                        first = false;
+                        report_position!(p);
                     }
-                    first = false;
-                    report_position!(p);
-                }
-            };
-        }
+                };
+            }
 
-        match response {
-            Ok(parts) => {
-                let parts_len = parts.len();
-                yield Bytes::from_static(br#"{"data": {"#);
-                for (index, part) in parts.into_iter().enumerate() {
-                    yield Bytes::from_static(b"\"");
-                    yield Bytes::from(part.0);
-                    yield Bytes::from_static(br#"":"#);
-                    match part.1.body {
-                        QueryResponseBody::Json(value) => yield Bytes::from(value.to_string()),
-                        QueryResponseBody::Raw(Some(value)) => yield Bytes::from(value),
-                        QueryResponseBody::Raw(None) => yield Bytes::from_static(b"null"),
+            match response {
+                Ok(parts) => {
+                    let parts_len = parts.len();
+                    yield Bytes::from_static(br#"{"data": {"#);
+                    for (index, part) in parts.into_iter().enumerate() {
+                        yield Bytes::from_static(b"\"");
+                        yield Bytes::from(part.0);
+                        yield Bytes::from_static(br#"":"#);
+                        match part.1.body {
+                            QueryResponseBody::Json(value) => yield Bytes::from(value.to_string()),
+                            QueryResponseBody::Raw(Some(value)) => yield Bytes::from(value),
+                            QueryResponseBody::Raw(None) => yield Bytes::from_static(b"null"),
+                        };
+                        if index != parts_len - 1 {
+                            yield Bytes::from_static(b", ");
+                        }
                     };
-                    if index != parts_len - 1 {
-                        yield Bytes::from_static(b", ");
-                    }
-                };
-                yield Bytes::from_static(b"}}");
-            },
-            Err(err) => {
-                yield Bytes::from_static(br#"{"errors": [{"message":""#);
-                yield Bytes::from(
-                    err.user_error_message().to_string()
-                        .replace('\"', "")
-                        .replace('\n', "; ")
-                );
-                yield Bytes::from_static(br#"""#);
-                if let SystemResolutionError::Validation(err) = err {
-                    yield Bytes::from_static(br#", "locations": ["#);
-                    report_positions!(err.positions());
-                    yield Bytes::from_static(br#"]"#);
-                };
-                yield Bytes::from_static(br#"}"#);
-                yield Bytes::from_static(b"]}");
-            },
-        }
-    };
+                    yield Bytes::from_static(b"}}");
+                },
+                Err(err) => {
+                    yield Bytes::from_static(br#"{"errors": [{"message":""#);
+                    yield Bytes::from(
+                        err.user_error_message().to_string()
+                            .replace('\"', "")
+                            .replace('\n', "; ")
+                    );
+                    yield Bytes::from_static(br#"""#);
+                    if let SystemResolutionError::Validation(err) = err {
+                        yield Bytes::from_static(br#", "locations": ["#);
+                        report_positions!(err.positions());
+                        yield Bytes::from_static(br#"]"#);
+                    };
+                    yield Bytes::from_static(br#"}"#);
+                    yield Bytes::from_static(b"]}");
+                },
+            }
+        };
 
-    ResponsePayload {
-        stream: Some(Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>),
-        headers,
-        status_code: StatusCode::OK,
+        ResponsePayload {
+            stream: Some(Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>),
+            headers,
+            status_code: StatusCode::OK,
+        }
     }
 }
 
@@ -235,18 +252,4 @@ pub async fn create_system_resolver_from_system(
     env: Box<dyn Environment>,
 ) -> Result<SystemResolver, SystemLoadingError> {
     SystemLoader::load_from_system(system, static_loaders, env).await
-}
-
-pub async fn create_system_resolver_or_exit(
-    exo_ir_file: &str,
-    static_loaders: StaticLoaders,
-    env: Box<dyn Environment>,
-) -> SystemResolver {
-    match create_system_resolver(exo_ir_file, static_loaders, env).await {
-        Ok(system_resolver) => system_resolver,
-        Err(error) => {
-            println!("{error}");
-            exit(1);
-        }
-    }
 }

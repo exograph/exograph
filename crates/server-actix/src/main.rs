@@ -13,7 +13,7 @@ use actix_web::{middleware, web, App, HttpServer};
 use resolver::{
     get_endpoint_http_path, get_playground_http_path, introspection_mode, IntrospectionMode,
 };
-use server_actix::{configure_playground, configure_resolver};
+use server_actix::{configure_playground, configure_router};
 use thiserror::Error;
 use tracing_actix_web::TracingLogger;
 
@@ -51,7 +51,7 @@ impl std::fmt::Debug for ServerError {
 async fn main() -> Result<(), ServerError> {
     let start_time = time::SystemTime::now();
 
-    let system_resolver = web::Data::new(server_common::init().await);
+    let system_router = web::Data::new(server_common::init().await);
 
     let server_port = env::var(EXO_SERVER_PORT)
         .map(|port_str| {
@@ -70,7 +70,7 @@ async fn main() -> Result<(), ServerError> {
                 middleware::TrailingSlash::Trim,
             ))
             .wrap(cors)
-            .configure(configure_resolver(system_resolver.clone()))
+            .configure(configure_router(system_router.clone()))
             .configure(configure_playground)
     });
 

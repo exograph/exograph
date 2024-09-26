@@ -1,0 +1,14 @@
+[package]
+name = "router"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+common = { path = "../common" }
+resolver = { path = "../resolver" }
+core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
+exo-env = { path = "../../libs/exo-env" }
+
+[lib]
+doctest = false

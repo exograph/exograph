@@ -9,7 +9,7 @@
 
 #![cfg(target_os = "linux")]
 
-use core_resolver::http::RequestHead;
+use common::http::RequestHead;
 use lambda_runtime::LambdaEvent;
 use serde_json::Value;
 

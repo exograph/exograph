@@ -9,7 +9,9 @@
 
 use async_recursion::async_recursion;
 
-use crate::{http::RequestHead, system_resolver::SystemResolver, value::Val};
+use common::http::RequestHead;
+
+use crate::{system_resolver::SystemResolver, value::Val};
 
 use super::{
     context_extractor::BoxedContextExtractor, error::ContextExtractionError,

@@ -10,10 +10,8 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::{
-    context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext},
-    http::RequestHead,
-};
+use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
+use common::http::RequestHead;
 
 pub struct IpExtractor;
 

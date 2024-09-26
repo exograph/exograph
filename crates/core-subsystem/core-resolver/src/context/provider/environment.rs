@@ -11,10 +11,8 @@ use async_trait::async_trait;
 use exo_env::Environment;
 use serde_json::Value;
 
-use crate::{
-    context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext},
-    http::RequestHead,
-};
+use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
+use common::http::RequestHead;
 
 pub struct EnvironmentContextExtractor<'a> {
     pub env: &'a dyn Environment,

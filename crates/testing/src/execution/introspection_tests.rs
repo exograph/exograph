@@ -13,7 +13,7 @@ use colored::Colorize;
 use core_plugin_interface::{
     serializable_system::SerializableSystem, trusted_documents::TrustedDocumentEnforcement,
 };
-use core_resolver::{system_resolver::SystemResolver, OperationsPayload};
+use core_resolver::OperationsPayload;
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,
@@ -22,7 +22,8 @@ use exo_deno::{
 };
 use exo_env::MapEnvironment;
 use include_dir::{include_dir, Dir};
-use resolver::{create_system_resolver, resolve_in_memory, SystemLoader};
+use resolver::{resolve_in_memory, SystemLoader};
+use router::SystemRouter;
 use serde_json::Value;
 use std::{collections::HashMap, path::Path};
 
@@ -43,7 +44,7 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
 
     let exo_ir_file = format!("{}/target/index.exo_ir", model_path.display()).to_string();
 
-    let resolver = {
+    let router = {
         let static_loaders = server_common::create_static_loaders();
 
         let env = MapEnvironment::from([
@@ -53,10 +54,10 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
             (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
         ]);
 
-        create_system_resolver(&exo_ir_file, static_loaders, Box::new(env)).await?
+        SystemRouter::new_from_file(&exo_ir_file, static_loaders, Box::new(env)).await?
     };
 
-    let result = check_introspection(&resolver).await?;
+    let result = check_introspection(&router).await?;
 
     match result {
         Ok(()) => Ok(TestResult {
@@ -200,12 +201,12 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
     }))
 }
 
-async fn check_introspection(server: &SystemResolver) -> Result<Result<()>> {
+async fn check_introspection(router: &SystemRouter) -> Result<Result<()>> {
     let mut deno_module = create_introspection_deno_module().await?;
 
     let request = create_introspection_request().await?;
 
-    let result = run_query(request, server, &mut HashMap::new()).await;
+    let result = run_query(request, router, &mut HashMap::new()).await;
 
     let result = deno_module
         .execute_function(

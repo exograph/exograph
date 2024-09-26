@@ -11,13 +11,11 @@
 
 mod request;
 
-use core_resolver::{
-    http::{RequestHead, RequestPayload, ResponsePayload},
-    system_resolver::SystemResolver,
-};
+use common::http::{RequestHead, RequestPayload, ResponsePayload};
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use request::LambdaRequest;
+use router::SystemRouter;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
@@ -38,7 +36,7 @@ impl<'a> RequestPayload for AwsLambdaRequestPayload<'a> {
 
 pub async fn resolve(
     event: LambdaEvent<Value>,
-    system_resolver: Arc<SystemResolver>,
+    system_router: Arc<SystemRouter>,
 ) -> Result<Value, Error> {
     let request_payload = AwsLambdaRequestPayload {
         head: LambdaRequest::new(&event),
@@ -49,7 +47,7 @@ pub async fn resolve(
         stream,
         headers,
         status_code,
-    } = resolver::resolve::<Error>(request_payload, &system_resolver, false).await;
+    } = system_router.route::<Error>(request_payload, false).await;
 
     let body_string = match stream {
         Some(stream) => {
