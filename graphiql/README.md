@@ -14,8 +14,8 @@ npm run prod-build
 When working solely on the UI aspect of the playground, you can get faster iteration times by running it as a standalone app. To do so, temporarily modify "index.html" as follows:
 
 1. Comment out the existing `<base ...` and add `<base href="/" />`
-2. Comment out `window.exoGraphQLEndpoint`, `window.enableSchemaLiveUpdate`, and `window.exoOidcUrl`
-3. Add `window.exoGraphQLEndpoint = "http://localhost:9876/graphql";`
+2. Comment out `window.exoGraphQLHttpPath`, `window.enableSchemaLiveUpdate`, and `window.exoOidcUrl`
+3. Add `window.exoGraphQLHttpPath = "http://localhost:9876/graphql";`
 4. When exploring OIDC, add `window.exoOidcUrl = "<provider>";`
 
 Then, from the `graphiql/lib` directory, run:

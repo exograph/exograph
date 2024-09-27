@@ -21,7 +21,7 @@ use url::Url;
 use common::env_const::{get_deployment_mode, DeploymentMode};
 use common::http::{RequestHead, RequestPayload, ResponsePayload};
 use request::ActixRequestHead;
-use resolver::{get_endpoint_http_path, get_playground_http_path, graphiql};
+use resolver::{get_graphql_http_path, get_playground_http_path, graphiql};
 use router::SystemRouter;
 use serde_json::Value;
 
@@ -32,7 +32,7 @@ macro_rules! error_msg {
 }
 
 pub fn configure_router(system_router: web::Data<SystemRouter>) -> impl FnOnce(&mut ServiceConfig) {
-    let resolve_path = get_endpoint_http_path();
+    let resolve_path = get_graphql_http_path();
 
     let endpoint_url = match get_deployment_mode() {
         Ok(DeploymentMode::Playground(url)) => Some(Url::parse(&url).unwrap()),

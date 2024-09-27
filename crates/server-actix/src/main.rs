@@ -10,7 +10,7 @@
 use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpServer};
 
-use resolver::{get_endpoint_http_path, get_playground_http_path};
+use resolver::{get_graphql_http_path, get_playground_http_path};
 use server_actix::{configure_playground, configure_router};
 use thiserror::Error;
 use tracing_actix_web::TracingLogger;
@@ -111,7 +111,7 @@ async fn main() -> Result<(), ServerError> {
                     start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
                 );
                 println!("- Endpoint hosted at:");
-                println!("\thttp://{pretty_addr}{}", get_endpoint_http_path());
+                println!("\thttp://{pretty_addr}{}", get_graphql_http_path());
             };
 
             let print_playground_info = || {

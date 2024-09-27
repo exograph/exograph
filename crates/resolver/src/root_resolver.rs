@@ -36,7 +36,7 @@ use core_resolver::{context::RequestContext, QueryResponseBody};
 use exo_env::Environment;
 
 const EXO_PLAYGROUND_HTTP_PATH: &str = "EXO_PLAYGROUND_HTTP_PATH";
-const EXO_ENDPOINT_HTTP_PATH: &str = "EXO_ENDPOINT_HTTP_PATH";
+const EXO_GRAPHQL_HTTP_PATH: &str = "EXO_GRAPHQL_HTTP_PATH";
 
 #[instrument(
     name = "resolver::resolve_in_memory"
@@ -87,7 +87,7 @@ impl GraphQLRouter {
 #[async_trait]
 impl ApiRouter for GraphQLRouter {
     async fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
-        request_head.get_path() == get_endpoint_http_path()
+        request_head.get_path() == get_graphql_http_path()
             && request_head.get_method() == http::Method::POST
     }
 
@@ -219,8 +219,8 @@ pub fn get_playground_http_path() -> String {
     std::env::var(EXO_PLAYGROUND_HTTP_PATH).unwrap_or_else(|_| "/playground".to_string())
 }
 
-pub fn get_endpoint_http_path() -> String {
-    std::env::var(EXO_ENDPOINT_HTTP_PATH).unwrap_or_else(|_| "/graphql".to_string())
+pub fn get_graphql_http_path() -> String {
+    std::env::var(EXO_GRAPHQL_HTTP_PATH).unwrap_or_else(|_| "/graphql".to_string())
 }
 
 pub async fn create_system_resolver(

@@ -11,7 +11,7 @@ Both [development](development/overview.md) and [production](production/exo-serv
 - `EXO_SERVER_HOST`: The host address of the server. Defaults to `localhost` in development and `0.0.0.0` in production.
 - `EXO_SERVER_PORT`: The port of the server. Defaults to `9876`.
 - `EXO_PLAYGROUND_HTTP_PATH`: The path to serve the GraphQL playground. Defaults to `/playground`.
-- `EXO_ENDPOINT_HTTP_PATH`: The path to serve the GraphQL endpoint. Defaults to `/graphql`.
+- `EXO_GRAPHQL_HTTP_PATH`: The path to serve the GraphQL endpoint. Defaults to `/graphql`.
 - `EXO_CORS_DOMAINS`: A comma-separated list of domains to allow CORS requests from. Defaults to `*` in development and empty in production.
 
 ## Authentication

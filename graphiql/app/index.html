@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <base href="%%PLAYGROUND_URL%%/" />
+    <base href="%%PLAYGROUND_HTTP_PATH%%/" />
 
     <link rel="icon" href="playground-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,7 +11,7 @@
 
     <title>Exograph Playground</title>
     <script>
-      window.exoGraphQLEndpoint = "%%ENDPOINT_URL%%";
+      window.exoGraphQLHttpPath = "%%GRAPHQL_HTTP_PATH%%";
       window.exoUpstreamGraphQLEndpoint = "%%UPSTREAM_ENDPOINT_URL%%";
       window.enableSchemaLiveUpdate = %%ENABLE_INTROSPECTION_LIVE_UPDATE%%;
       window.exoOidcUrl = "%%OIDC_URL%%";
