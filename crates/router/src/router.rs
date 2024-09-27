@@ -39,11 +39,11 @@ impl SystemRouter {
         })
     }
 
-    pub async fn route<E: 'static>(
+    pub async fn route(
         &self,
         request: impl RequestPayload + Send,
         playground_request: bool,
-    ) -> ResponsePayload<E> {
+    ) -> ResponsePayload {
         ApiRouter::route(&self.graphql_router, request, playground_request).await
     }
 

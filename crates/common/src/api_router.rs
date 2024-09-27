@@ -12,9 +12,9 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait ApiRouter: Sync {
-    async fn route<E: 'static>(
+    async fn route(
         &self,
         request: impl RequestPayload + Send,
         playground_request: bool,
-    ) -> ResponsePayload<E>;
+    ) -> ResponsePayload;
 }

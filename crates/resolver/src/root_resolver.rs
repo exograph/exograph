@@ -7,8 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::pin::Pin;
 use std::{fs::File, io::BufReader, path::Path};
+
+use async_trait::async_trait;
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
@@ -30,7 +31,6 @@ use core_resolver::system_resolver::SystemResolver;
 use core_resolver::system_resolver::{RequestError, SystemResolutionError};
 pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
-use futures::Stream;
 
 use exo_env::Environment;
 
@@ -94,7 +94,7 @@ impl GraphQLRouter {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl ApiRouter for GraphQLRouter {
     /// Resolves an incoming query, returning a response stream containing JSON and a set
     /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
@@ -107,11 +107,11 @@ impl ApiRouter for GraphQLRouter {
         name = "resolver::resolve"
         skip(self, request)
     )]
-    async fn route<E: 'static>(
+    async fn route(
         &self,
         request: impl RequestPayload + Send,
         playground_request: bool,
-    ) -> ResponsePayload<E> {
+    ) -> ResponsePayload {
         #[cfg(not(target_family = "wasm"))]
         let is_production = is_production();
         #[cfg(target_family = "wasm")]
@@ -213,7 +213,7 @@ impl ApiRouter for GraphQLRouter {
         };
 
         ResponsePayload {
-            stream: Some(Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>),
+            stream: Some(Box::pin(stream)),
             headers,
             status_code: StatusCode::OK,
         }

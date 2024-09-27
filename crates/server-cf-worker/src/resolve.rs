@@ -95,7 +95,7 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
         stream,
         headers,
         status_code,
-    } = system_router.route::<JsValue>(request, false).await;
+    } = system_router.route(request, false).await;
 
     let response = match stream {
         Some(stream) => {

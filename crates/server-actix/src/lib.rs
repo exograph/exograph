@@ -14,7 +14,7 @@ use std::path::Path;
 use actix_web::{
     http::header::{CacheControl, CacheDirective},
     web::{self, Redirect, ServiceConfig},
-    Error, HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
+    HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
 };
 use url::Url;
 
@@ -126,7 +126,7 @@ async fn resolve_locally(
         status_code,
     } = system_router
         .as_ref()
-        .route::<Error>(request, playground_request)
+        .route(request, playground_request)
         .await;
 
     let mut builder = HttpResponse::build(status_code);
