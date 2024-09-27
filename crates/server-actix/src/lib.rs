@@ -16,10 +16,14 @@ use actix_web::{
     web::{self, Redirect, ServiceConfig},
     HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
 };
+use reqwest::StatusCode;
 use url::Url;
 
-use common::env_const::{get_deployment_mode, DeploymentMode};
-use common::http::{RequestHead, RequestPayload, ResponsePayload};
+use common::http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload};
+use common::{
+    env_const::{get_deployment_mode, DeploymentMode},
+    http::RedirectType,
+};
 use request::ActixRequestHead;
 use resolver::{get_graphql_http_path, get_playground_http_path, graphiql};
 use router::SystemRouter;
@@ -121,7 +125,7 @@ async fn resolve_locally(
     };
 
     let ResponsePayload {
-        stream,
+        body,
         headers,
         status_code,
     } = system_router
@@ -135,9 +139,19 @@ async fn resolve_locally(
         builder.append_header(header);
     }
 
-    match stream {
-        Some(stream) => builder.streaming(stream),
-        None => builder.finish(),
+    match body {
+        ResponseBody::Stream(stream) => builder.streaming(stream),
+        ResponseBody::Redirect(url, redirect_type) => {
+            let status = match redirect_type {
+                RedirectType::Temporary => StatusCode::TEMPORARY_REDIRECT,
+                RedirectType::Permanent => StatusCode::PERMANENT_REDIRECT,
+            };
+
+            HttpResponse::build(status)
+                .append_header(("Location", url))
+                .body("")
+        }
+        ResponseBody::None => builder.body(""),
     }
 }
 

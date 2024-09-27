@@ -17,7 +17,7 @@ use crate::system_loader::{StaticLoaders, SystemLoadingError};
 use common::api_router::ApiRouter;
 #[cfg(not(target_family = "wasm"))]
 use common::env_const::is_production;
-use common::http::{Headers, RequestHead, RequestPayload, ResponsePayload};
+use common::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::QueryResponse;
@@ -126,7 +126,7 @@ impl ApiRouter for GraphQLRouter {
         if let Err(SystemResolutionError::RequestError(e)) = response {
             tracing::error!("Error while resolving request: {:?}", e);
             return ResponsePayload {
-                stream: None,
+                body: ResponseBody::None,
                 headers: Headers::new(),
                 status_code: StatusCode::BAD_REQUEST,
             };
@@ -208,7 +208,7 @@ impl ApiRouter for GraphQLRouter {
         };
 
         ResponsePayload {
-            stream: Some(Box::pin(stream)),
+            body: ResponseBody::Stream(Box::pin(stream)),
             headers,
             status_code: StatusCode::OK,
         }

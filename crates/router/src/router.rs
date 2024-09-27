@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use common::{
     api_router::ApiRouter,
-    http::{RequestPayload, ResponsePayload},
+    http::{RequestPayload, ResponseBody, ResponsePayload},
     introspection::{introspection_mode, IntrospectionMode},
 };
 use core_plugin_interface::serializable_system::SerializableSystem;
@@ -56,7 +56,7 @@ impl SystemRouter {
             ApiRouter::route(&self.graphql_router, request, playground_request).await
         } else {
             ResponsePayload {
-                stream: None,
+                body: ResponseBody::None,
                 headers: vec![],
                 status_code: StatusCode::NOT_FOUND,
             }

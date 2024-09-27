@@ -23,9 +23,20 @@ type PinnedStream<E> = Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;
 pub type Headers = Vec<(String, String)>;
 
 pub struct ResponsePayload {
-    pub stream: Option<PinnedStream<std::io::Error>>,
+    pub body: ResponseBody,
     pub headers: Headers,
     pub status_code: StatusCode,
+}
+
+pub enum ResponseBody {
+    Stream(PinnedStream<std::io::Error>),
+    Redirect(String, RedirectType),
+    None,
+}
+
+pub enum RedirectType {
+    Permanent,
+    Temporary,
 }
 
 /// Represents a HTTP request from which information can be extracted

@@ -11,7 +11,7 @@ use common::env_const::{EXO_INTROSPECTION_LIVE_UPDATE, _EXO_UPSTREAM_ENDPOINT_UR
 use include_dir::{include_dir, Dir};
 use std::path::Path;
 
-use crate::root_resolver::{get_graphql_http_path, get_playground_http_path};
+use crate::{get_graphql_http_path, get_playground_http_path};
 
 static GRAPHIQL_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/app/dist");
 
