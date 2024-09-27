@@ -15,6 +15,7 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 bytes.workspace = true
 futures.workspace = true
 async-trait.workspace = true
+exo-env = { path = "../../libs/exo-env" }
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }

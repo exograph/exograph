@@ -1443,6 +1443,7 @@ version = "0.9.9"
 dependencies = [
  "async-trait",
  "bytes",
+ "exo-env",
  "futures",
  "http 0.2.11",
  "opentelemetry 0.23.0",

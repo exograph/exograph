@@ -187,8 +187,8 @@ async fn forward_request(
     }
 }
 
-async fn playground(req: HttpRequest, resolver: web::Data<SystemRouter>) -> impl Responder {
-    if !resolver.allow_introspection() {
+async fn playground(req: HttpRequest, router: web::Data<SystemRouter>) -> impl Responder {
+    if !router.allow_introspection() {
         return HttpResponse::Forbidden().body("Introspection is not enabled");
     }
 

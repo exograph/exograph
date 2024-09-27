@@ -1,4 +1,4 @@
-use std::cell::OnceCell;
+use std::{cell::OnceCell, sync::Arc};
 
 use exo_env::Environment;
 use tracing::level_filters::LevelFilter;
@@ -102,7 +102,7 @@ impl SystemRouterHolder {
             vec![Box::new(postgres_resolver::PostgresSubsystemLoader {
                 existing_client: Some(client),
             })],
-            Box::new(env),
+            Arc::new(env),
         )
         .await
         .map_err(|e| JsValue::from_str(&format!("Error creating system resolver: {:?}", e)))?;

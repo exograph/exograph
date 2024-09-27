@@ -10,9 +10,7 @@
 use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpServer};
 
-use resolver::{
-    get_endpoint_http_path, get_playground_http_path, introspection_mode, IntrospectionMode,
-};
+use resolver::{get_endpoint_http_path, get_playground_http_path};
 use server_actix::{configure_playground, configure_router};
 use thiserror::Error;
 use tracing_actix_web::TracingLogger;
@@ -22,7 +20,10 @@ use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::time;
 
-use common::env_const::{get_deployment_mode, DeploymentMode, EXO_CORS_DOMAINS, EXO_SERVER_PORT};
+use common::{
+    env_const::{get_deployment_mode, DeploymentMode, EXO_CORS_DOMAINS, EXO_SERVER_PORT},
+    introspection::{introspection_mode, IntrospectionMode},
+};
 
 use exo_env::SystemEnvironment;
 

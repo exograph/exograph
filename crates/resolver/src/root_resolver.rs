@@ -7,6 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
 use std::{fs::File, io::BufReader, path::Path};
 
 use async_trait::async_trait;
@@ -87,10 +88,6 @@ pub struct GraphQLRouter {
 impl GraphQLRouter {
     pub fn new(system_resolver: SystemResolver) -> Self {
         Self { system_resolver }
-    }
-
-    pub fn allow_introspection(&self) -> bool {
-        self.system_resolver.allow_introspection()
     }
 }
 
@@ -231,7 +228,7 @@ pub fn get_endpoint_http_path() -> String {
 pub async fn create_system_resolver(
     exo_ir_file: &str,
     static_loaders: StaticLoaders,
-    env: Box<dyn Environment>,
+    env: Arc<dyn Environment>,
 ) -> Result<SystemResolver, SystemLoadingError> {
     if !Path::new(&exo_ir_file).exists() {
         return Err(SystemLoadingError::FileNotFound(exo_ir_file.to_string()));
@@ -240,7 +237,7 @@ pub async fn create_system_resolver(
         Ok(file) => {
             let exo_ir_file_buffer = BufReader::new(file);
 
-            SystemLoader::load(exo_ir_file_buffer, static_loaders, env).await
+            SystemLoader::load(exo_ir_file_buffer, static_loaders, env.clone()).await
         }
         Err(e) => Err(SystemLoadingError::FileOpen(exo_ir_file.into(), e)),
     }
@@ -249,7 +246,7 @@ pub async fn create_system_resolver(
 pub async fn create_system_resolver_from_system(
     system: SerializableSystem,
     static_loaders: StaticLoaders,
-    env: Box<dyn Environment>,
+    env: Arc<dyn Environment>,
 ) -> Result<SystemResolver, SystemLoadingError> {
     SystemLoader::load_from_system(system, static_loaders, env).await
 }

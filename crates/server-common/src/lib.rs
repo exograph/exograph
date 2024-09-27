@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{env, process::exit};
+use std::{env, process::exit, sync::Arc};
 
 use common::logging_tracing;
 use core_plugin_interface::interface::SubsystemLoader;
@@ -33,7 +33,7 @@ pub async fn init() -> SystemRouter {
     match SystemRouter::new_from_file(
         &exo_ir_file,
         create_static_loaders(),
-        Box::new(SystemEnvironment),
+        Arc::new(SystemEnvironment),
     )
     .await
     {
