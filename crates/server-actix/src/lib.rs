@@ -14,7 +14,7 @@ use std::path::Path;
 use actix_web::{
     http::header::{CacheControl, CacheDirective},
     web::{self, Redirect, ServiceConfig},
-    Error, HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
+    HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
 };
 use url::Url;
 
@@ -126,7 +126,7 @@ async fn resolve_locally(
         status_code,
     } = system_router
         .as_ref()
-        .route::<Error>(request, playground_request)
+        .route(request, playground_request)
         .await;
 
     let mut builder = HttpResponse::build(status_code);
@@ -187,8 +187,8 @@ async fn forward_request(
     }
 }
 
-async fn playground(req: HttpRequest, resolver: web::Data<SystemRouter>) -> impl Responder {
-    if !resolver.allow_introspection() {
+async fn playground(req: HttpRequest, router: web::Data<SystemRouter>) -> impl Responder {
+    if !router.allow_introspection() {
         return HttpResponse::Forbidden().body("Introspection is not enabled");
     }
 

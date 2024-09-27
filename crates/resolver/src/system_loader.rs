@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use common::env_const::EXO_INTROSPECTION;
+use common::introspection::{introspection_mode, IntrospectionMode};
 use common::EnvError;
 use core_resolver::context::JwtAuthenticator;
 use introspection_resolver::IntrospectionResolver;
@@ -38,18 +38,18 @@ impl SystemLoader {
     pub async fn load(
         ir: impl std::io::Read,
         static_loaders: StaticLoaders,
-        env: Box<dyn Environment>,
+        env: Arc<dyn Environment>,
     ) -> Result<SystemResolver, SystemLoadingError> {
         let serialized_system = SerializableSystem::deserialize_reader(ir)
             .map_err(SystemLoadingError::ModelSerializationError)?;
 
-        Self::load_from_system(serialized_system, static_loaders, env).await
+        Self::load_from_system(serialized_system, static_loaders, env.clone()).await
     }
 
     pub async fn load_from_system(
         serialized_system: SerializableSystem,
         mut static_loaders: StaticLoaders,
-        env: Box<dyn Environment>,
+        env: Arc<dyn Environment>,
     ) -> Result<SystemResolver, SystemLoadingError> {
         let SerializableSystem {
             subsystems,
@@ -151,31 +151,6 @@ impl SystemLoader {
                 vec![introspection_resolver]
             }
         })
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum IntrospectionMode {
-    Enabled,  // Introspection queries are allowed (typically dev/yolo mode)
-    Disabled, // Introspection queries are not allowed (typically in production)
-    Only,     // Only introspection queries are allowed (to support "exo playground")
-}
-
-pub fn introspection_mode(env: &dyn Environment) -> Result<IntrospectionMode, EnvError> {
-    match env.get(EXO_INTROSPECTION) {
-        Some(e) => match e.to_lowercase().as_str() {
-            "true" | "enabled" | "1" => Ok(IntrospectionMode::Enabled),
-            "false" | "disabled" => Ok(IntrospectionMode::Disabled),
-            "only" => Ok(IntrospectionMode::Only),
-            _ => Err(EnvError::InvalidEnum {
-                env_key: EXO_INTROSPECTION,
-                env_value: e,
-                message: "Must be set to either true, enabled, 1, false, disabled, or only"
-                    .to_string(),
-            }),
-        },
-
-        None => Ok(IntrospectionMode::Disabled),
     }
 }
 

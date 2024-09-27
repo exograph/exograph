@@ -62,7 +62,7 @@ pub struct SystemResolver {
     trusted_documents: TrustedDocuments,
     schema: Schema,
     pub jwt_authenticator: Arc<Option<JwtAuthenticator>>,
-    pub env: Box<dyn Environment>,
+    pub env: Arc<dyn Environment>,
     normal_query_depth_limit: usize,
     introspection_query_depth_limit: usize,
 }
@@ -76,7 +76,7 @@ impl SystemResolver {
         trusted_documents: TrustedDocuments,
         schema: Schema,
         jwt_authenticator: Arc<Option<JwtAuthenticator>>,
-        env: Box<dyn Environment>,
+        env: Arc<dyn Environment>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
     ) -> Self {
@@ -98,7 +98,7 @@ impl SystemResolver {
             trusted_documents,
             schema,
             jwt_authenticator,
-            env,
+            env: env.clone(),
             normal_query_depth_limit,
             introspection_query_depth_limit,
         }
@@ -189,16 +189,6 @@ impl SystemResolver {
         operation
             .resolve_fields(&operation.fields, self, request_context)
             .await
-    }
-
-    /// Should we allow introspection queries?
-    ///
-    /// Implementation note: This works in conjunction with `SystemLoader`, which doesn't create the
-    /// "introspection" subsystem if introspection is disabled.
-    pub fn allow_introspection(&self) -> bool {
-        self.subsystem_resolvers
-            .iter()
-            .any(|subsystem_resolver| subsystem_resolver.id() == "introspection")
     }
 
     /// Obtain the interception tree associated with the given operation

@@ -7,8 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::pin::Pin;
+use std::sync::Arc;
 use std::{fs::File, io::BufReader, path::Path};
+
+use async_trait::async_trait;
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
@@ -30,7 +32,6 @@ use core_resolver::system_resolver::SystemResolver;
 use core_resolver::system_resolver::{RequestError, SystemResolutionError};
 pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
-use futures::Stream;
 
 use exo_env::Environment;
 
@@ -88,13 +89,9 @@ impl GraphQLRouter {
     pub fn new(system_resolver: SystemResolver) -> Self {
         Self { system_resolver }
     }
-
-    pub fn allow_introspection(&self) -> bool {
-        self.system_resolver.allow_introspection()
-    }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl ApiRouter for GraphQLRouter {
     /// Resolves an incoming query, returning a response stream containing JSON and a set
     /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
@@ -107,11 +104,11 @@ impl ApiRouter for GraphQLRouter {
         name = "resolver::resolve"
         skip(self, request)
     )]
-    async fn route<E: 'static>(
+    async fn route(
         &self,
         request: impl RequestPayload + Send,
         playground_request: bool,
-    ) -> ResponsePayload<E> {
+    ) -> ResponsePayload {
         #[cfg(not(target_family = "wasm"))]
         let is_production = is_production();
         #[cfg(target_family = "wasm")]
@@ -213,7 +210,7 @@ impl ApiRouter for GraphQLRouter {
         };
 
         ResponsePayload {
-            stream: Some(Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>),
+            stream: Some(Box::pin(stream)),
             headers,
             status_code: StatusCode::OK,
         }
@@ -231,7 +228,7 @@ pub fn get_endpoint_http_path() -> String {
 pub async fn create_system_resolver(
     exo_ir_file: &str,
     static_loaders: StaticLoaders,
-    env: Box<dyn Environment>,
+    env: Arc<dyn Environment>,
 ) -> Result<SystemResolver, SystemLoadingError> {
     if !Path::new(&exo_ir_file).exists() {
         return Err(SystemLoadingError::FileNotFound(exo_ir_file.to_string()));
@@ -240,7 +237,7 @@ pub async fn create_system_resolver(
         Ok(file) => {
             let exo_ir_file_buffer = BufReader::new(file);
 
-            SystemLoader::load(exo_ir_file_buffer, static_loaders, env).await
+            SystemLoader::load(exo_ir_file_buffer, static_loaders, env.clone()).await
         }
         Err(e) => Err(SystemLoadingError::FileOpen(exo_ir_file.into(), e)),
     }
@@ -249,7 +246,7 @@ pub async fn create_system_resolver(
 pub async fn create_system_resolver_from_system(
     system: SerializableSystem,
     static_loaders: StaticLoaders,
-    env: Box<dyn Environment>,
+    env: Arc<dyn Environment>,
 ) -> Result<SystemResolver, SystemLoadingError> {
     SystemLoader::load_from_system(system, static_loaders, env).await
 }

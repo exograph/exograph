@@ -21,6 +21,4 @@ pub use root_resolver::{
     create_system_resolver, create_system_resolver_from_system, get_endpoint_http_path,
     get_playground_http_path, resolve_in_memory, GraphQLRouter,
 };
-pub use system_loader::{
-    introspection_mode, IntrospectionMode, StaticLoaders, SystemLoader, SystemLoadingError,
-};
+pub use system_loader::{StaticLoaders, SystemLoader, SystemLoadingError};

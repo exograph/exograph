@@ -363,7 +363,7 @@ fn literal_column(value: Val) -> ColumnPath {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, sync::Arc};
 
     use core_plugin_interface::{
         core_model::{
@@ -504,7 +504,7 @@ mod tests {
             TrustedDocuments::all(),
             Schema::new(vec![], vec![], vec![]),
             None.into(),
-            Box::new(MapEnvironment::from(HashMap::new())),
+            Arc::new(MapEnvironment::from(HashMap::new())),
             10,
             10,
         );

@@ -47,7 +47,7 @@ pub async fn resolve(
         stream,
         headers,
         status_code,
-    } = system_router.route::<Error>(request_payload, false).await;
+    } = system_router.route(request_payload, false).await;
 
     let body_string = match stream {
         Some(stream) => {

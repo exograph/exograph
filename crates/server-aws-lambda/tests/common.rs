@@ -33,7 +33,7 @@ pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
         .unwrap();
 
     let system_router =
-        SystemRouter::new_from_system(model_system, create_static_loaders(), Box::new(env))
+        SystemRouter::new_from_system(model_system, create_static_loaders(), Arc::new(env))
             .await
             .unwrap();
 

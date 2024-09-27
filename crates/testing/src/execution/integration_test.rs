@@ -28,6 +28,7 @@ use serde_json::{json, Map, Value};
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, time::SystemTime};
 
@@ -174,7 +175,7 @@ impl IntegrationTest {
 
                 let env = MapEnvironment::from(env);
 
-                SystemRouter::new_from_file(&exo_ir_file, static_loaders, Box::new(env)).await?
+                SystemRouter::new_from_file(&exo_ir_file, static_loaders, Arc::new(env)).await?
             };
 
             TestfileContext {
@@ -471,7 +472,7 @@ pub async fn run_query(
     router: &SystemRouter,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
-    let res = router.route::<String>(request, true).await;
+    let res = router.route(request, true).await;
 
     res.headers.iter().for_each(|(k, v)| {
         if k.to_ascii_lowercase() == "set-cookie" {

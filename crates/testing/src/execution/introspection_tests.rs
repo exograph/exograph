@@ -25,7 +25,7 @@ use include_dir::{include_dir, Dir};
 use resolver::{resolve_in_memory, SystemLoader};
 use router::SystemRouter;
 use serde_json::Value;
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_POSTGRES_URL,
@@ -54,7 +54,7 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
             (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
         ]);
 
-        SystemRouter::new_from_file(&exo_ir_file, static_loaders, Box::new(env)).await?
+        SystemRouter::new_from_file(&exo_ir_file, static_loaders, Arc::new(env)).await?
     };
 
     let result = check_introspection(&router).await?;
@@ -183,7 +183,7 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
                         (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
                     ]);
 
-                    SystemLoader::load_from_system(serialized_system, static_loaders, Box::new(env))
+                    SystemLoader::load_from_system(serialized_system, static_loaders, Arc::new(env))
                         .await?
                 };
                 resolve_in_memory(request, &resolver, TrustedDocumentEnforcement::DoNotEnforce)

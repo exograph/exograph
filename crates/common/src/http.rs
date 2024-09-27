@@ -22,8 +22,8 @@ pub trait RequestPayload {
 type PinnedStream<E> = Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;
 pub type Headers = Vec<(String, String)>;
 
-pub struct ResponsePayload<E> {
-    pub stream: Option<PinnedStream<E>>,
+pub struct ResponsePayload {
+    pub stream: Option<PinnedStream<std::io::Error>>,
     pub headers: Headers,
     pub status_code: StatusCode,
 }
