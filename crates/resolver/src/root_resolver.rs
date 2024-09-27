@@ -17,7 +17,7 @@ use crate::system_loader::{StaticLoaders, SystemLoadingError};
 use common::api_router::ApiRouter;
 #[cfg(not(target_family = "wasm"))]
 use common::env_const::is_production;
-use common::http::{Headers, RequestPayload, ResponsePayload};
+use common::http::{Headers, RequestHead, RequestPayload, ResponsePayload};
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::QueryResponse;
@@ -47,13 +47,6 @@ pub async fn resolve_in_memory<'a>(
     system_resolver: &SystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
-    let method = request.get_head().get_method();
-    if method != http::Method::POST {
-        return Err(SystemResolutionError::RequestError(
-            RequestError::RouteNotFound(method.clone(), request.get_head().get_path().to_string()),
-        ));
-    }
-
     let body = request.take_body();
     let request_head = request.get_head();
 
@@ -93,6 +86,11 @@ impl GraphQLRouter {
 
 #[async_trait]
 impl ApiRouter for GraphQLRouter {
+    async fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
+        request_head.get_path() == get_endpoint_http_path()
+            && request_head.get_method() == http::Method::POST
+    }
+
     /// Resolves an incoming query, returning a response stream containing JSON and a set
     /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
     /// if something went wrong.

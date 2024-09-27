@@ -394,9 +394,6 @@ fn parse_query(query: &str) -> Result<ExecutableDocument, ValidationError> {
 pub enum RequestError {
     #[error("Invalid body JSON {0}")]
     InvalidBodyJson(serde_json::Error),
-
-    #[error("Not found: {0} {1}")]
-    RouteNotFound(http::Method, String),
 }
 
 #[derive(Error, Debug)]

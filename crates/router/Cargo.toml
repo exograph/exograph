@@ -5,6 +5,8 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+http.workspace = true
+
 common = { path = "../common" }
 resolver = { path = "../resolver" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }

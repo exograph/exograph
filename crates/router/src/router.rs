@@ -7,6 +7,7 @@ use common::{
 };
 use core_plugin_interface::serializable_system::SerializableSystem;
 use exo_env::Environment;
+use http::StatusCode;
 use resolver::{
     create_system_resolver, create_system_resolver_from_system, GraphQLRouter, StaticLoaders,
     SystemLoadingError,
@@ -51,7 +52,15 @@ impl SystemRouter {
         request: impl RequestPayload + Send,
         playground_request: bool,
     ) -> ResponsePayload {
-        ApiRouter::route(&self.graphql_router, request, playground_request).await
+        if self.graphql_router.suitable(request.get_head()).await {
+            ApiRouter::route(&self.graphql_router, request, playground_request).await
+        } else {
+            ResponsePayload {
+                stream: None,
+                headers: vec![],
+                status_code: StatusCode::NOT_FOUND,
+            }
+        }
     }
 
     /// Should we allow introspection queries?

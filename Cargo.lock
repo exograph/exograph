@@ -7266,6 +7266,7 @@ dependencies = [
  "common",
  "core-plugin-interface",
  "exo-env",
+ "http 0.2.11",
  "resolver",
 ]
 
