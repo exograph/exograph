@@ -14,12 +14,15 @@ use lambda_runtime::Error;
 #[cfg(target_os = "linux")]
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    use common::env_const::EXO_GRAPHQL_HTTP_PATH;
     use lambda_runtime::LambdaEvent;
 
     use serde_json::Value;
     use server_aws_lambda::resolve;
 
     use std::sync::Arc;
+
+    std::env::set_var(EXO_GRAPHQL_HTTP_PATH, "/");
 
     let system_resolver = Arc::new(server_common::init().await);
 

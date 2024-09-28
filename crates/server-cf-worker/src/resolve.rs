@@ -111,6 +111,19 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
 
             response.with_status(status_code.into())
         }
+        ResponseBody::Bytes(bytes) => {
+            let mut response = WorkerResponse::from_bytes(bytes)
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+
+            for header in headers.into_iter() {
+                response
+                    .headers_mut()
+                    .append(&header.0, &header.1)
+                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+            }
+
+            response.with_status(status_code.into())
+        }
         ResponseBody::Redirect(url, _) => {
             let url = url::Url::parse(&url)
                 .map_err(|e| JsValue::from_str(&format!("Bad redirect url {:?}", e)))?;

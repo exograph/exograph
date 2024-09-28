@@ -3,11 +3,13 @@ use std::sync::Arc;
 use common::{
     api_router::ApiRouter,
     http::{RequestPayload, ResponseBody, ResponsePayload},
-    introspection::{introspection_mode, IntrospectionMode},
 };
-use core_plugin_interface::serializable_system::SerializableSystem;
+use core_plugin_interface::{
+    core_resolver::system_resolver::SystemResolver, serializable_system::SerializableSystem,
+};
 use exo_env::Environment;
 use http::StatusCode;
+use playground_router::PlaygroundRouter;
 use resolver::{
     create_system_resolver, create_system_resolver_from_system, GraphQLRouter, StaticLoaders,
     SystemLoadingError,
@@ -16,7 +18,7 @@ use resolver::{
 pub struct SystemRouter {
     // TODO: add other routers here (or use a vector of routers)
     graphql_router: GraphQLRouter,
-    env: Arc<dyn Environment>,
+    playground_router: PlaygroundRouter,
 }
 
 impl SystemRouter {
@@ -27,10 +29,7 @@ impl SystemRouter {
     ) -> Result<Self, SystemLoadingError> {
         let resolver = create_system_resolver(exo_ir_file, static_loaders, env.clone()).await?;
 
-        Ok(Self {
-            graphql_router: GraphQLRouter::new(resolver),
-            env: env.clone(),
-        })
+        Self::new_from_resolver(resolver, env)
     }
 
     pub async fn new_from_system(
@@ -41,9 +40,16 @@ impl SystemRouter {
         let resolver =
             create_system_resolver_from_system(system, static_loaders, env.clone()).await?;
 
+        Self::new_from_resolver(resolver, env)
+    }
+
+    fn new_from_resolver(
+        resolver: SystemResolver,
+        env: Arc<dyn Environment>,
+    ) -> Result<Self, SystemLoadingError> {
         Ok(Self {
-            graphql_router: GraphQLRouter::new(resolver),
-            env: env.clone(),
+            graphql_router: GraphQLRouter::new(resolver, env.clone()),
+            playground_router: PlaygroundRouter::new(env.clone()),
         })
     }
 
@@ -54,6 +60,8 @@ impl SystemRouter {
     ) -> ResponsePayload {
         if self.graphql_router.suitable(request.get_head()).await {
             ApiRouter::route(&self.graphql_router, request, playground_request).await
+        } else if self.playground_router.suitable(request.get_head()).await {
+            ApiRouter::route(&self.playground_router, request, playground_request).await
         } else {
             ResponsePayload {
                 body: ResponseBody::None,
@@ -61,11 +69,5 @@ impl SystemRouter {
                 status_code: StatusCode::NOT_FOUND,
             }
         }
-    }
-
-    /// Should we allow introspection queries?
-    pub fn allow_introspection(&self) -> bool {
-        introspection_mode(self.env.as_ref()).unwrap_or(IntrospectionMode::Disabled)
-            == IntrospectionMode::Enabled
     }
 }

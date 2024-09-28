@@ -36,8 +36,5 @@ exo-env = { path = "../../libs/exo-env" }
 tokio.workspace = true
 builder = { path = "../builder" }
 
-[build-dependencies]
-which.workspace = true
-
 [lib]
 doctest = false

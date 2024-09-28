@@ -501,6 +501,13 @@ pub async fn run_query(
 
             serde_json::from_str(&body).expect("Response stream is not valid JSON")
         }
+        ResponseBody::Bytes(bytes) => {
+            let body = std::str::from_utf8(&bytes)
+                .expect("Response stream is not UTF-8")
+                .to_string();
+
+            serde_json::from_str(&body).expect("Response stream is not valid JSON")
+        }
         ResponseBody::Redirect(..) => Value::String("Unexpected redirect".to_string()),
         ResponseBody::None => Value::String("".to_string()),
     }

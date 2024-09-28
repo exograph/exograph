@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::{fs::File, io::BufReader, path::Path};
 
 use async_trait::async_trait;
+use common::env_const::get_graphql_http_path;
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
@@ -34,9 +35,6 @@ pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
 
 use exo_env::Environment;
-
-const EXO_PLAYGROUND_HTTP_PATH: &str = "EXO_PLAYGROUND_HTTP_PATH";
-const EXO_GRAPHQL_HTTP_PATH: &str = "EXO_GRAPHQL_HTTP_PATH";
 
 #[instrument(
     name = "resolver::resolve_in_memory"
@@ -76,18 +74,22 @@ pub async fn resolve_in_memory<'a>(
 
 pub struct GraphQLRouter {
     system_resolver: SystemResolver,
+    env: Arc<dyn Environment>,
 }
 
 impl GraphQLRouter {
-    pub fn new(system_resolver: SystemResolver) -> Self {
-        Self { system_resolver }
+    pub fn new(system_resolver: SystemResolver, env: Arc<dyn Environment>) -> Self {
+        Self {
+            system_resolver,
+            env,
+        }
     }
 }
 
 #[async_trait]
 impl ApiRouter for GraphQLRouter {
     async fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
-        request_head.get_path() == get_graphql_http_path()
+        request_head.get_path() == get_graphql_http_path(self.env.as_ref())
             && request_head.get_method() == http::Method::POST
     }
 
@@ -108,7 +110,7 @@ impl ApiRouter for GraphQLRouter {
         playground_request: bool,
     ) -> ResponsePayload {
         #[cfg(not(target_family = "wasm"))]
-        let is_production = is_production();
+        let is_production = is_production(self.env.as_ref());
         #[cfg(target_family = "wasm")]
         let is_production = !playground_request;
 
@@ -213,14 +215,6 @@ impl ApiRouter for GraphQLRouter {
             status_code: StatusCode::OK,
         }
     }
-}
-
-pub fn get_playground_http_path() -> String {
-    std::env::var(EXO_PLAYGROUND_HTTP_PATH).unwrap_or_else(|_| "/playground".to_string())
-}
-
-pub fn get_graphql_http_path() -> String {
-    std::env::var(EXO_GRAPHQL_HTTP_PATH).unwrap_or_else(|_| "/graphql".to_string())
 }
 
 pub async fn create_system_resolver(

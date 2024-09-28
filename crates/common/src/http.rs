@@ -30,6 +30,7 @@ pub struct ResponsePayload {
 
 pub enum ResponseBody {
     Stream(PinnedStream<std::io::Error>),
+    Bytes(Vec<u8>),
     Redirect(String, RedirectType),
     None,
 }
@@ -56,4 +57,12 @@ pub trait RequestHead {
     fn get_query(&self) -> serde_json::Value;
 
     fn get_method(&self) -> &http::Method;
+}
+
+pub fn strip_leading_slash(path: &str) -> String {
+    strip_leading(path, "/").to_string()
+}
+
+pub fn strip_leading(path: &str, leading: &str) -> String {
+    path.strip_prefix(leading).unwrap_or(path).to_string()
 }

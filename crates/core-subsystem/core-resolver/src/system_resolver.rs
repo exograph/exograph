@@ -81,15 +81,16 @@ impl SystemResolver {
         introspection_query_depth_limit: usize,
     ) -> Self {
         #[cfg(not(target_family = "wasm"))]
-        let trusted_documents = if is_production() || get_enforce_trusted_documents() {
-            trusted_documents
-        } else {
-            // In a non-prod environment, we let enforcement be overridden by the environment
-            match trusted_documents {
-                TrustedDocuments::MatchingOnly(mapping) => TrustedDocuments::All(mapping),
-                _ => trusted_documents,
-            }
-        };
+        let trusted_documents =
+            if is_production(env.as_ref()) || get_enforce_trusted_documents(env.as_ref()) {
+                trusted_documents
+            } else {
+                // In a non-prod environment, we let enforcement be overridden by the environment
+                match trusted_documents {
+                    TrustedDocuments::MatchingOnly(mapping) => TrustedDocuments::All(mapping),
+                    _ => trusted_documents,
+                }
+            };
 
         Self {
             subsystem_resolvers,

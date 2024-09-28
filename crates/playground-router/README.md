@@ -1,0 +1,1 @@
+Resolver for playground assets.
