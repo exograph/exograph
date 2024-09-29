@@ -9,19 +9,22 @@
 
 mod request;
 
-use std::path::Path;
+use std::sync::Arc;
 
 use actix_web::{
-    http::header::{CacheControl, CacheDirective},
-    web::{self, Redirect, ServiceConfig},
+    web::{self, ServiceConfig},
     HttpRequest, HttpResponse, HttpResponseBuilder, Responder,
 };
+use exo_env::Environment;
+use reqwest::StatusCode;
 use url::Url;
 
-use common::env_const::{get_deployment_mode, DeploymentMode};
-use common::http::{RequestHead, RequestPayload, ResponsePayload};
+use common::http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload};
+use common::{
+    env_const::{get_deployment_mode, DeploymentMode},
+    http::RedirectType,
+};
 use request::ActixRequestHead;
-use resolver::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use router::SystemRouter;
 use serde_json::Value;
 
@@ -31,10 +34,11 @@ macro_rules! error_msg {
     };
 }
 
-pub fn configure_router(system_router: web::Data<SystemRouter>) -> impl FnOnce(&mut ServiceConfig) {
-    let resolve_path = get_endpoint_http_path();
-
-    let endpoint_url = match get_deployment_mode() {
+pub fn configure_router(
+    system_router: web::Data<SystemRouter>,
+    env: Arc<dyn Environment>,
+) -> impl FnOnce(&mut ServiceConfig) {
+    let endpoint_url = match get_deployment_mode(env.as_ref()) {
         Ok(DeploymentMode::Playground(url)) => Some(Url::parse(&url).unwrap()),
         _ => None,
     };
@@ -42,24 +46,8 @@ pub fn configure_router(system_router: web::Data<SystemRouter>) -> impl FnOnce(&
     move |app| {
         app.app_data(system_router)
             .app_data(web::Data::new(endpoint_url))
-            .service(web::scope(&resolve_path).route("", web::to(resolve)));
+            .default_service(web::to(resolve));
     }
-}
-
-pub fn configure_playground(cfg: &mut ServiceConfig) {
-    let playground_path = get_playground_http_path();
-    let playground_path_subpaths = format!("{playground_path}/{{path:.*}}");
-
-    async fn playground_redirect() -> impl Responder {
-        Redirect::to(get_playground_http_path()).permanent()
-    }
-
-    // Serve GraphiQL playground from the playground path and all subpaths. Also set up a redirect
-    // from the root path to the playground path (this way, users don't see an error ""No webpage
-    // was found for the web address" when they go to the root path).
-    cfg.route(&playground_path, web::get().to(playground))
-        .route(&playground_path_subpaths, web::get().to(playground))
-        .route("/", web::get().to(playground_redirect));
 }
 
 /// Resolve a GraphQL request
@@ -68,7 +56,7 @@ pub fn configure_playground(cfg: &mut ServiceConfig) {
 /// * `endpoint_url` - The target URL for resolving data (None implies that the current server is also the target)
 async fn resolve(
     http_request: HttpRequest,
-    body: web::Json<Value>,
+    body: Option<web::Json<Value>>,
     query: web::Query<Value>,
     endpoint_url: web::Data<Option<Url>>,
     system_router: web::Data<SystemRouter>,
@@ -105,7 +93,7 @@ impl RequestPayload for ActixRequestPayload {
 
 async fn resolve_locally(
     req: HttpRequest,
-    body: web::Json<Value>,
+    body: Option<web::Json<Value>>,
     query: Value,
     system_router: web::Data<SystemRouter>,
 ) -> HttpResponse {
@@ -117,11 +105,11 @@ async fn resolve_locally(
 
     let request = ActixRequestPayload {
         head: ActixRequestHead::from_request(req, query),
-        body: body.into_inner(),
+        body: body.map(|b| b.into_inner()).unwrap_or(Value::Null),
     };
 
     let ResponsePayload {
-        stream,
+        body,
         headers,
         status_code,
     } = system_router
@@ -135,21 +123,34 @@ async fn resolve_locally(
         builder.append_header(header);
     }
 
-    match stream {
-        Some(stream) => builder.streaming(stream),
-        None => builder.finish(),
+    match body {
+        ResponseBody::Stream(stream) => builder.streaming(stream),
+        ResponseBody::Bytes(bytes) => builder.body(bytes),
+        ResponseBody::Redirect(url, redirect_type) => {
+            let status = match redirect_type {
+                RedirectType::Temporary => StatusCode::TEMPORARY_REDIRECT,
+                RedirectType::Permanent => StatusCode::PERMANENT_REDIRECT,
+            };
+
+            HttpResponse::build(status)
+                .append_header(("Location", url))
+                .body("")
+        }
+        ResponseBody::None => builder.body(""),
     }
 }
 
 async fn forward_request(
     req: HttpRequest,
-    body: web::Json<Value>,
+    body: Option<web::Json<Value>>,
     forward_url: &Url,
 ) -> HttpResponse {
     let mut forward_url = forward_url.clone();
     forward_url.set_query(req.uri().query());
 
-    let body = body.into_inner().to_string();
+    let body = body
+        .map(|b| b.into_inner().to_string())
+        .unwrap_or("".to_string());
 
     let forwarded_req = reqwest::Client::default()
         .request(req.method().clone(), forward_url)
@@ -184,45 +185,5 @@ async fn forward_request(
             tracing::error!("Error reading response body from endpoint: {}", err);
             client_resp.body(error_msg!("Error reading response body from endpoint"))
         }
-    }
-}
-
-async fn playground(req: HttpRequest, router: web::Data<SystemRouter>) -> impl Responder {
-    if !router.allow_introspection() {
-        return HttpResponse::Forbidden().body("Introspection is not enabled");
-    }
-
-    let asset_path = req.match_info().get("path");
-
-    // Adjust the path for "index.html" (which is requested with and empty path)
-    let index = "index.html";
-    let asset_path = asset_path
-        .map(|path| if path.is_empty() { index } else { path })
-        .unwrap_or(index);
-
-    let asset_path = Path::new(asset_path);
-    let extension = asset_path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or(""); // If no extension, set it to an empty string, to use `actix_files::file_extension_to_mime`'s default behavior
-
-    let content_type = actix_files::file_extension_to_mime(extension);
-
-    // we shouldn't cache the index page, as we substitute in the endpoint path dynamically
-    let cache_control = if index == "index.html" {
-        CacheControl(vec![CacheDirective::NoCache])
-    } else {
-        CacheControl(vec![
-            CacheDirective::Public,
-            CacheDirective::MaxAge(60 * 60 * 24 * 365), // seconds in one year
-        ])
-    };
-
-    match graphiql::get_asset_bytes(asset_path) {
-        Some(asset) => HttpResponse::Ok()
-            .content_type(content_type)
-            .insert_header(cache_control)
-            .body(asset),
-        None => HttpResponse::NotFound().body("Not found"),
     }
 }

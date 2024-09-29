@@ -11,7 +11,7 @@
 
 mod request;
 
-use common::http::{RequestHead, RequestPayload, ResponsePayload};
+use common::http::{RedirectType, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use request::LambdaRequest;
@@ -44,13 +44,13 @@ pub async fn resolve(
     };
 
     let ResponsePayload {
-        stream,
+        body,
         headers,
         status_code,
     } = system_router.route(request_payload, false).await;
 
-    let body_string = match stream {
-        Some(stream) => {
+    let body_string = match body {
+        ResponseBody::Stream(stream) => {
             let bytes = stream
                 .map(|chunks| chunks.unwrap())
                 .collect::<Vec<_>>()
@@ -65,7 +65,22 @@ pub async fn resolve(
                 .expect("Response stream is not UTF-8")
                 .to_string()
         }
-        None => "".to_string(),
+        ResponseBody::Bytes(bytes) => std::str::from_utf8(&bytes)
+            .expect("Response bytes are not UTF-8")
+            .to_string(),
+        ResponseBody::None => "".to_string(),
+        ResponseBody::Redirect(url, redirect_type) => {
+            return Ok(json!({
+                "statusCode": match redirect_type {
+                    RedirectType::Temporary => 302,
+                    RedirectType::Permanent => 301,
+                },
+                "headers": {
+                    "Location": url
+                },
+                "body": ""
+            }))
+        }
     };
 
     Ok(json!({

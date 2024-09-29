@@ -19,7 +19,6 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 serde.workspace = true
 tokio.workspace = true
 thiserror.workspace = true
-include_dir.workspace = true
 bincode.workspace = true
 http.workspace = true
 tracing = { version = "0.1", features = ["log"] }
@@ -35,9 +34,6 @@ exo-env = { path = "../../libs/exo-env" }
 [dev-dependencies]
 tokio.workspace = true
 builder = { path = "../builder" }
-
-[build-dependencies]
-which.workspace = true
 
 [lib]
 doctest = false

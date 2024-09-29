@@ -23,7 +23,6 @@ actix-web = { version = "4.8.0", default-features = false, features = [
   "cookies",
 ] }
 actix-cors = "0.7.0"
-actix-files = "0.6.6"
 thiserror.workspace = true
 
 serde_json = { workspace = true, features = ["preserve_order"] }

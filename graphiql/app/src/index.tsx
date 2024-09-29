@@ -17,7 +17,7 @@ import {
 } from "exograph-playground-lib";
 
 const urlFetcher: Fetcher = createGraphiQLFetcher({
-  url: (window as any).exoGraphQLEndpoint,
+  url: (window as any).exoGraphQLHttpPath,
 });
 
 const container = document.getElementById("root");

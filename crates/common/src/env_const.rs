@@ -1,3 +1,5 @@
+use exo_env::Environment;
+
 #[cfg(not(target_family = "wasm"))]
 use super::EnvError;
 
@@ -21,6 +23,9 @@ pub const _EXO_ENFORCE_TRUSTED_DOCUMENTS: &str = "_EXO_ENFORCE_TRUSTED_DOCUMENTS
 
 pub const _EXO_UPSTREAM_ENDPOINT_URL: &str = "_EXO_UPSTREAM_ENDPOINT_URL";
 
+pub const EXO_PLAYGROUND_HTTP_PATH: &str = "EXO_PLAYGROUND_HTTP_PATH";
+pub const EXO_GRAPHQL_HTTP_PATH: &str = "EXO_GRAPHQL_HTTP_PATH";
+
 #[derive(Debug)]
 pub enum DeploymentMode {
     Yolo,
@@ -30,21 +35,24 @@ pub enum DeploymentMode {
 }
 
 #[cfg(not(target_family = "wasm"))]
-pub fn get_deployment_mode() -> Result<DeploymentMode, EnvError> {
-    match std::env::var(_EXO_DEPLOYMENT_MODE).as_deref() {
-        Ok("yolo") => Ok(DeploymentMode::Yolo),
-        Ok("dev") => Ok(DeploymentMode::Dev),
-        Ok("playground") => {
+pub fn get_deployment_mode(env: &dyn Environment) -> Result<DeploymentMode, EnvError> {
+    let deployment_mode = env.get(_EXO_DEPLOYMENT_MODE);
+
+    match deployment_mode.as_deref() {
+        Some("yolo") => Ok(DeploymentMode::Yolo),
+        Some("dev") => Ok(DeploymentMode::Dev),
+        Some("playground") => {
             let endpoint_url =
-                std::env::var(_EXO_UPSTREAM_ENDPOINT_URL).map_err(|_| EnvError::InvalidEnum {
-                    env_key: _EXO_UPSTREAM_ENDPOINT_URL,
-                    env_value: "".to_string(),
-                    message: "Must be set to a valid URL".to_string(),
-                })?;
+                env.get(_EXO_UPSTREAM_ENDPOINT_URL)
+                    .ok_or(EnvError::InvalidEnum {
+                        env_key: _EXO_UPSTREAM_ENDPOINT_URL,
+                        env_value: "".to_string(),
+                        message: "Must be set to a valid URL".to_string(),
+                    })?;
             Ok(DeploymentMode::Playground(endpoint_url))
         }
-        Ok("prod") | Err(_) => Ok(DeploymentMode::Prod),
-        Ok(other) => Err(EnvError::InvalidEnum {
+        Some("prod") | None => Ok(DeploymentMode::Prod),
+        Some(other) => Err(EnvError::InvalidEnum {
             env_key: _EXO_DEPLOYMENT_MODE,
             env_value: other.to_string(),
             message: "Must be one of 'yolo', 'dev', 'playground', or 'prod'".to_string(),
@@ -53,13 +61,23 @@ pub fn get_deployment_mode() -> Result<DeploymentMode, EnvError> {
 }
 
 #[cfg(not(target_family = "wasm"))]
-pub fn is_production() -> bool {
-    matches!(get_deployment_mode(), Ok(DeploymentMode::Prod) | Err(_))
+pub fn is_production(env: &dyn Environment) -> bool {
+    matches!(get_deployment_mode(env), Ok(DeploymentMode::Prod) | Err(_))
 }
 
 #[cfg(not(target_family = "wasm"))]
-pub fn get_enforce_trusted_documents() -> bool {
-    std::env::var(_EXO_ENFORCE_TRUSTED_DOCUMENTS)
+pub fn get_enforce_trusted_documents(env: &dyn Environment) -> bool {
+    env.get(_EXO_ENFORCE_TRUSTED_DOCUMENTS)
         .map(|value| value != "false")
         .unwrap_or(true)
+}
+
+pub fn get_playground_http_path(env: &dyn Environment) -> String {
+    env.get(EXO_PLAYGROUND_HTTP_PATH)
+        .unwrap_or_else(|| "/playground".to_string())
+}
+
+pub fn get_graphql_http_path(env: &dyn Environment) -> String {
+    env.get(EXO_GRAPHQL_HTTP_PATH)
+        .unwrap_or_else(|| "/graphql".to_string())
 }

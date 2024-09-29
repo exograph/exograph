@@ -10,22 +10,23 @@
 use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpServer};
 
-use resolver::{get_endpoint_http_path, get_playground_http_path};
-use server_actix::{configure_playground, configure_router};
+use server_actix::configure_router;
 use thiserror::Error;
 use tracing_actix_web::TracingLogger;
 
-use std::env;
-use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::time;
+use std::{io::ErrorKind, sync::Arc};
 
 use common::{
-    env_const::{get_deployment_mode, DeploymentMode, EXO_CORS_DOMAINS, EXO_SERVER_PORT},
+    env_const::{
+        get_deployment_mode, get_graphql_http_path, get_playground_http_path, DeploymentMode,
+        EXO_CORS_DOMAINS, EXO_SERVER_PORT,
+    },
     introspection::{introspection_mode, IntrospectionMode},
 };
 
-use exo_env::SystemEnvironment;
+use exo_env::{Environment, SystemEnvironment};
 
 const EXO_SERVER_HOST: &str = "EXO_SERVER_HOST";
 
@@ -52,9 +53,12 @@ impl std::fmt::Debug for ServerError {
 async fn main() -> Result<(), ServerError> {
     let start_time = time::SystemTime::now();
 
+    let env = Arc::new(SystemEnvironment);
+
     let system_router = web::Data::new(server_common::init().await);
 
-    let server_port = env::var(EXO_SERVER_PORT)
+    let server_port = env
+        .get(EXO_SERVER_PORT)
         .map(|port_str| {
             port_str
                 .parse::<u16>()
@@ -62,8 +66,10 @@ async fn main() -> Result<(), ServerError> {
         })
         .unwrap_or(9876);
 
+    let env_clone = env.clone();
+
     let server = HttpServer::new(move || {
-        let cors = cors_from_env();
+        let cors = cors_from_env(env_clone.as_ref());
 
         App::new()
             .wrap(TracingLogger::default())
@@ -71,16 +77,15 @@ async fn main() -> Result<(), ServerError> {
                 middleware::TrailingSlash::Trim,
             ))
             .wrap(cors)
-            .configure(configure_router(system_router.clone()))
-            .configure(configure_playground)
+            .configure(configure_router(system_router.clone(), env_clone.clone()))
     });
 
-    let server_host = env::var(EXO_SERVER_HOST);
+    let server_host = env.as_ref().get(EXO_SERVER_HOST);
 
     let server = match server_host {
-        Ok(host) => server.bind((host, server_port)),
-        Err(_) => {
-            match get_deployment_mode()? {
+        Some(host) => server.bind((host, server_port)),
+        None => {
+            match get_deployment_mode(env.as_ref())? {
                 DeploymentMode::Dev | DeploymentMode::Yolo | DeploymentMode::Playground(_) => {
                     // Bind to "localhost" (needed for development). By binding to "localhost" we
                     // bind to both IPv4 and IPv6 loopback addresses ([::1]:9876, 127.0.0.1:9876)
@@ -111,12 +116,18 @@ async fn main() -> Result<(), ServerError> {
                     start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
                 );
                 println!("- Endpoint hosted at:");
-                println!("\thttp://{pretty_addr}{}", get_endpoint_http_path());
+                println!(
+                    "\thttp://{pretty_addr}{}",
+                    get_graphql_http_path(env.as_ref())
+                );
             };
 
             let print_playground_info = || {
                 println!("- Playground hosted at:");
-                println!("\thttp://{pretty_addr}{}", get_playground_http_path());
+                println!(
+                    "\thttp://{pretty_addr}{}",
+                    get_playground_http_path(env.as_ref())
+                );
             };
 
             match introspection_mode(&SystemEnvironment)? {
@@ -156,8 +167,8 @@ fn pretty_addr(addrs: &[SocketAddr]) -> String {
     }
 }
 
-fn cors_from_env() -> Cors {
-    match env::var(EXO_CORS_DOMAINS).ok() {
+fn cors_from_env(env: &dyn Environment) -> Cors {
+    match env.get(EXO_CORS_DOMAINS) {
         Some(domains) => {
             let domains_list = domains.split(',');
 

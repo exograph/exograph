@@ -7,11 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::http::{RequestPayload, ResponsePayload};
+use crate::http::{RequestHead, RequestPayload, ResponsePayload};
 use async_trait::async_trait;
 
 #[async_trait]
 pub trait ApiRouter: Sync {
+    async fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool;
+
     async fn route(
         &self,
         request: impl RequestPayload + Send,

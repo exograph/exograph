@@ -12,7 +12,6 @@ futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 thiserror.workspace = true
 wasmtime.workspace = true
-wasmtime-wasi.workspace = true
 
 exo-env = { path = "../../../libs/exo-env" }
 exo-wasm = { path = "../../../libs/exo-wasm" }
@@ -21,7 +20,6 @@ wasm-model = { path = "../wasm-model" }
 
 
 [dev-dependencies]
-
 
 [lib]
 crate-type = ["lib"]

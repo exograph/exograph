@@ -1,17 +1,23 @@
 [package]
-name = "router"
+name = "playground-router"
 version.workspace = true
 edition.workspace = true
 publish = false
 
 [dependencies]
+mime_guess = "2.0.5"
+async-trait.workspace = true
+include_dir.workspace = true
 http.workspace = true
 
 common = { path = "../common" }
-resolver = { path = "../resolver" }
-playground-router = { path = "../playground-router" }
-core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 exo-env = { path = "../../libs/exo-env" }
+
+[dev-dependencies]
+tokio.workspace = true
+
+[build-dependencies]
+which.workspace = true
 
 [lib]
 doctest = false

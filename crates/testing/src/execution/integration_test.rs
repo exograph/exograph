@@ -14,7 +14,7 @@ use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_JWT_SECRET,
     EXO_POSTGRES_URL,
 };
-use common::http::{RequestHead, RequestPayload};
+use common::http::{RequestHead, RequestPayload, ResponseBody};
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::future::OptionFuture;
@@ -486,8 +486,8 @@ pub async fn run_query(
 
     use futures::StreamExt;
 
-    match res.stream {
-        Some(stream) => {
+    match res.body {
+        ResponseBody::Stream(stream) => {
             let bytes = stream
                 .map(|chunks| chunks.unwrap())
                 .collect::<Vec<_>>()
@@ -501,7 +501,15 @@ pub async fn run_query(
 
             serde_json::from_str(&body).expect("Response stream is not valid JSON")
         }
-        None => Value::String("".to_string()),
+        ResponseBody::Bytes(bytes) => {
+            let body = std::str::from_utf8(&bytes)
+                .expect("Response stream is not UTF-8")
+                .to_string();
+
+            serde_json::from_str(&body).expect("Response stream is not valid JSON")
+        }
+        ResponseBody::Redirect(..) => Value::String("Unexpected redirect".to_string()),
+        ResponseBody::None => Value::String("".to_string()),
     }
 }
 

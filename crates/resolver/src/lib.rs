@@ -15,10 +15,7 @@
 mod root_resolver;
 mod system_loader;
 
-#[cfg(not(target_family = "wasm"))]
-pub mod graphiql;
 pub use root_resolver::{
-    create_system_resolver, create_system_resolver_from_system, get_endpoint_http_path,
-    get_playground_http_path, resolve_in_memory, GraphQLRouter,
+    create_system_resolver, create_system_resolver_from_system, resolve_in_memory, GraphQLRouter,
 };
 pub use system_loader::{StaticLoaders, SystemLoader, SystemLoadingError};

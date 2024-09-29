@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 serde.workspace = true
-tokio.workspace = true
 codemap-diagnostic.workspace = true
 codemap.workspace = true
 
@@ -16,6 +15,7 @@ core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 subsystem-model-util = { path = "../subsystem-model-util" }
 
 [dev-dependencies]
+tokio.workspace = true
 builder = { path = "../../builder" }
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]

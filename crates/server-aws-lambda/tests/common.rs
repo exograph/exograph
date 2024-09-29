@@ -12,6 +12,7 @@
 use std::sync::Arc;
 
 use ::common::env_const::{EXO_CHECK_CONNECTION_ON_STARTUP, EXO_POSTGRES_URL};
+use common::env_const::EXO_GRAPHQL_HTTP_PATH;
 use exo_env::MapEnvironment;
 use router::SystemRouter;
 use serde_json::Value;
@@ -26,6 +27,7 @@ pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
     let env = MapEnvironment::from([
         (EXO_POSTGRES_URL, "postgres://a@localhost:0"),
         (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
+        (EXO_GRAPHQL_HTTP_PATH, "/"),
     ]);
 
     let model_system = builder::build_system_from_str(exo_model, "index.exo".to_string(), vec![])
