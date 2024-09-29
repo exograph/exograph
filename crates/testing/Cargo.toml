@@ -33,7 +33,6 @@ http.workspace = true
 md5 = "0.7"
 wildmatch.workspace = true
 include_dir.workspace = true
-unescape = "0.1.0"
 
 common = { path = "../common" }
 

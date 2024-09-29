@@ -9,7 +9,6 @@ anyhow.workspace = true
 thiserror.workspace = true
 async-trait.workspace = true
 wasmtime.workspace = true
-wasmtime-wasi.workspace = true
 wasi-common.workspace = true
 serde.workspace = true
 serde_json.workspace = true

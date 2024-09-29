@@ -1046,18 +1046,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cap-net-ext"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "799c81d79ea9c71a1438efd417c788214bc9e7986046d3710b6bbe60da4d8275"
-dependencies = [
- "cap-primitives",
- "cap-std",
- "rustix",
- "smallvec",
-]
-
-[[package]]
 name = "cap-primitives"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3521,7 +3509,6 @@ version = "0.9.9"
 dependencies = [
  "bytes",
  "chrono",
- "common",
  "deadpool-postgres",
  "futures",
  "lazy_static",
@@ -3565,7 +3552,6 @@ dependencies = [
  "tracing",
  "wasi-common",
  "wasmtime",
- "wasmtime-wasi",
 ]
 
 [[package]]
@@ -7175,7 +7161,6 @@ dependencies = [
  "exo-env",
  "futures",
  "http 0.2.11",
- "include_dir",
  "introspection-resolver",
  "serde",
  "serde_json",
@@ -8877,7 +8862,6 @@ dependencies = [
  "server-common",
  "tokio",
  "tokio-postgres",
- "unescape",
  "which 6.0.1",
  "wildmatch",
 ]
@@ -9603,12 +9587,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed646292ffc8188ef8ea4d1e0e0150fb15a5c2e12ad9b8fc191ae7a8a7f3c4b9"
 
 [[package]]
-name = "unescape"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccb97dac3243214f8d8507998906ca3e2e0b900bf9bf4870477f125b82e68f6e"
-
-[[package]]
 name = "unic-char-property"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10100,7 +10078,6 @@ dependencies = [
  "thiserror",
  "wasm-model",
  "wasmtime",
- "wasmtime-wasi",
 ]
 
 [[package]]
@@ -10383,37 +10360,6 @@ dependencies = [
  "proc-macro2 1.0.78",
  "quote 1.0.35",
  "syn 2.0.52",
-]
-
-[[package]]
-name = "wasmtime-wasi"
-version = "22.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8abb1301089ed8e0b4840f539cba316a73ac382090f1b25d22d8c8eed8df49c7"
-dependencies = [
- "anyhow",
- "async-trait",
- "bitflags 2.5.0",
- "bytes",
- "cap-fs-ext",
- "cap-net-ext",
- "cap-rand",
- "cap-std",
- "cap-time-ext",
- "fs-set-times",
- "futures",
- "io-extras",
- "io-lifetimes",
- "once_cell",
- "rustix",
- "system-interface",
- "thiserror",
- "tokio",
- "tracing",
- "url",
- "wasmtime",
- "wiggle",
- "windows-sys 0.52.0",
 ]
 
 [[package]]
