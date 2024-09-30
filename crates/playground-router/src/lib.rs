@@ -10,4 +10,5 @@
 mod graphiql;
 mod playground_router;
 
+#[cfg(not(target_family = "wasm"))]
 pub use playground_router::PlaygroundRouter;

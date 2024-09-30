@@ -9,10 +9,10 @@
 
 use thiserror::Error;
 
-pub mod api_router;
 pub mod env_const;
 pub mod http;
 pub mod introspection;
+pub mod router;
 
 #[derive(Error, Debug)]
 pub enum EnvError {

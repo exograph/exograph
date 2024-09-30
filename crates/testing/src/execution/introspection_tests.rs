@@ -23,12 +23,16 @@ use exo_deno::{
 use exo_env::MapEnvironment;
 use include_dir::{include_dir, Dir};
 use resolver::{resolve_in_memory, SystemLoader};
-use router::SystemRouter;
+use router::system_router::create_system_router_from_file;
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};
 
-use common::env_const::{
-    EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_POSTGRES_URL,
+use common::{
+    env_const::{
+        EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION,
+        EXO_POSTGRES_URL,
+    },
+    router::CompositeRouter,
 };
 
 use super::{integration_test::MemoryRequestPayload, TestResult, TestResultKind};
@@ -54,7 +58,7 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
             (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
         ]);
 
-        SystemRouter::new_from_file(&exo_ir_file, static_loaders, Arc::new(env)).await?
+        create_system_router_from_file(&exo_ir_file, static_loaders, Arc::new(env)).await?
     };
 
     let result = check_introspection(&router).await?;
@@ -166,7 +170,7 @@ async fn create_introspection_request() -> Result<MemoryRequestPayload> {
 // Needed for `exp graphql schema` command
 // TODO: Find a better home for this and associated functions
 pub async fn get_introspection_result(serialized_system: SerializableSystem) -> Result<Value> {
-    let request = create_introspection_request()
+    let mut request = create_introspection_request()
         .await
         .map_err(|e| anyhow!("Error getting introspection result: {:?}", e))?;
 
@@ -186,9 +190,13 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
                     SystemLoader::load_from_system(serialized_system, static_loaders, Arc::new(env))
                         .await?
                 };
-                resolve_in_memory(request, &resolver, TrustedDocumentEnforcement::DoNotEnforce)
-                    .await
-                    .map_err(|e| anyhow!("Error getting introspection result: {:?}", e))
+                resolve_in_memory(
+                    &mut request,
+                    &resolver,
+                    TrustedDocumentEnforcement::DoNotEnforce,
+                )
+                .await
+                .map_err(|e| anyhow!("Error getting introspection result: {:?}", e))
             })
         }
     })
@@ -201,12 +209,12 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
     }))
 }
 
-async fn check_introspection(router: &SystemRouter) -> Result<Result<()>> {
+async fn check_introspection(system_router: &CompositeRouter) -> Result<Result<()>> {
     let mut deno_module = create_introspection_deno_module().await?;
 
     let request = create_introspection_request().await?;
 
-    let result = run_query(request, router, &mut HashMap::new()).await;
+    let result = run_query(request, system_router, &mut HashMap::new()).await;
 
     let result = deno_module
         .execute_function(

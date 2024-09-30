@@ -1,8 +1,10 @@
+use http::StatusCode;
 use serde_json::Value;
 
 use worker::{Request as WorkerRequest, Response as WorkerResponse};
 
 use common::http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload};
+use common::router::Router;
 
 use wasm_bindgen::prelude::*;
 
@@ -86,52 +88,57 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
         .await
         .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
 
-    let request = WorkerRequestPayload {
+    let mut request = WorkerRequestPayload {
         body: body_json,
         head: worker_request,
     };
 
-    let ResponsePayload {
-        body,
-        headers,
-        status_code,
-    } = system_router.route(request, false).await;
+    let response_payload = system_router.route(&mut request, true).await;
 
-    let response = match body {
-        ResponseBody::Stream(stream) => {
-            let mut response = WorkerResponse::from_stream(stream)
-                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-
-            for header in headers.into_iter() {
-                response
-                    .headers_mut()
-                    .append(&header.0, &header.1)
+    let response = match response_payload {
+        Some(ResponsePayload {
+            body,
+            headers,
+            status_code,
+        }) => match body {
+            ResponseBody::Stream(stream) => {
+                let mut response = WorkerResponse::from_stream(stream)
                     .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+
+                for header in headers.into_iter() {
+                    response
+                        .headers_mut()
+                        .append(&header.0, &header.1)
+                        .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+                }
+
+                response.with_status(status_code.into())
             }
-
-            response.with_status(status_code.into())
-        }
-        ResponseBody::Bytes(bytes) => {
-            let mut response = WorkerResponse::from_bytes(bytes)
-                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-
-            for header in headers.into_iter() {
-                response
-                    .headers_mut()
-                    .append(&header.0, &header.1)
+            ResponseBody::Bytes(bytes) => {
+                let mut response = WorkerResponse::from_bytes(bytes)
                     .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-            }
 
-            response.with_status(status_code.into())
-        }
-        ResponseBody::Redirect(url, _) => {
-            let url = url::Url::parse(&url)
-                .map_err(|e| JsValue::from_str(&format!("Bad redirect url {:?}", e)))?;
-            WorkerResponse::redirect(url)
-                .map_err(|e| JsValue::from_str(&format!("Failed to redirect {:?}", e)))?
-        }
-        ResponseBody::None => WorkerResponse::builder()
-            .with_status(status_code.into())
+                for header in headers.into_iter() {
+                    response
+                        .headers_mut()
+                        .append(&header.0, &header.1)
+                        .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+                }
+
+                response.with_status(status_code.into())
+            }
+            ResponseBody::Redirect(url, _) => {
+                let url = url::Url::parse(&url)
+                    .map_err(|e| JsValue::from_str(&format!("Bad redirect url {:?}", e)))?;
+                WorkerResponse::redirect(url)
+                    .map_err(|e| JsValue::from_str(&format!("Failed to redirect {:?}", e)))?
+            }
+            ResponseBody::None => WorkerResponse::builder()
+                .with_status(status_code.into())
+                .body(worker::ResponseBody::Empty),
+        },
+        None => WorkerResponse::builder()
+            .with_status(StatusCode::NOT_FOUND.into())
             .body(worker::ResponseBody::Empty),
     };
 

@@ -19,13 +19,16 @@ use exo_env::Environment;
 use reqwest::StatusCode;
 use url::Url;
 
-use common::http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use common::{
     env_const::{get_deployment_mode, DeploymentMode},
     http::RedirectType,
+    router::Router,
+};
+use common::{
+    http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload},
+    router::CompositeRouter,
 };
 use request::ActixRequestHead;
-use router::SystemRouter;
 use serde_json::Value;
 
 macro_rules! error_msg {
@@ -35,7 +38,7 @@ macro_rules! error_msg {
 }
 
 pub fn configure_router(
-    system_router: web::Data<SystemRouter>,
+    system_router: web::Data<CompositeRouter>,
     env: Arc<dyn Environment>,
 ) -> impl FnOnce(&mut ServiceConfig) {
     let endpoint_url = match get_deployment_mode(env.as_ref()) {
@@ -59,7 +62,7 @@ async fn resolve(
     body: Option<web::Json<Value>>,
     query: web::Query<Value>,
     endpoint_url: web::Data<Option<Url>>,
-    system_router: web::Data<SystemRouter>,
+    system_router: web::Data<CompositeRouter>,
 ) -> impl Responder {
     match endpoint_url.as_ref() {
         Some(endpoint_url) => match http_request.headers().get("_exo_operation_kind") {
@@ -95,7 +98,7 @@ async fn resolve_locally(
     req: HttpRequest,
     body: Option<web::Json<Value>>,
     query: Value,
-    system_router: web::Data<SystemRouter>,
+    system_router: web::Data<CompositeRouter>,
 ) -> HttpResponse {
     let playground_request = req
         .headers()
@@ -103,40 +106,43 @@ async fn resolve_locally(
         .map(|value| value == "true")
         .unwrap_or(false);
 
-    let request = ActixRequestPayload {
+    let mut request = ActixRequestPayload {
         head: ActixRequestHead::from_request(req, query),
         body: body.map(|b| b.into_inner()).unwrap_or(Value::Null),
     };
 
-    let ResponsePayload {
-        body,
-        headers,
-        status_code,
-    } = system_router
-        .as_ref()
-        .route(request, playground_request)
-        .await;
+    let response = system_router.route(&mut request, playground_request).await;
 
-    let mut builder = HttpResponse::build(status_code);
+    match response {
+        Some(ResponsePayload {
+            body,
+            headers,
+            status_code,
+        }) => {
+            let mut builder = HttpResponse::build(status_code);
 
-    for header in headers.into_iter() {
-        builder.append_header(header);
-    }
+            for header in headers.into_iter() {
+                builder.append_header(header);
+            }
 
-    match body {
-        ResponseBody::Stream(stream) => builder.streaming(stream),
-        ResponseBody::Bytes(bytes) => builder.body(bytes),
-        ResponseBody::Redirect(url, redirect_type) => {
-            let status = match redirect_type {
-                RedirectType::Temporary => StatusCode::TEMPORARY_REDIRECT,
-                RedirectType::Permanent => StatusCode::PERMANENT_REDIRECT,
-            };
+            match body {
+                ResponseBody::Stream(stream) => builder.streaming(stream),
+                ResponseBody::Bytes(bytes) => builder.body(bytes),
+                ResponseBody::Redirect(url, redirect_type) => {
+                    let status = match redirect_type {
+                        RedirectType::Temporary => StatusCode::TEMPORARY_REDIRECT,
+                        RedirectType::Permanent => StatusCode::PERMANENT_REDIRECT,
+                    };
 
-            HttpResponse::build(status)
-                .append_header(("Location", url))
-                .body("")
+                    HttpResponse::build(status)
+                        .append_header(("Location", url))
+                        .body("")
+                }
+                ResponseBody::None => builder.body(""),
+            }
         }
-        ResponseBody::None => builder.body(""),
+        None => HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(error_msg!("Error resolving request")),
     }
 }
 

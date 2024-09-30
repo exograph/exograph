@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 http.workspace = true
-
+async-trait.workspace = true
 common = { path = "../common" }
 resolver = { path = "../resolver" }
 playground-router = { path = "../playground-router" }

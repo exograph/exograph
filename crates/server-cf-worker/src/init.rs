@@ -1,6 +1,8 @@
 use std::{cell::OnceCell, sync::Arc};
 
+use common::router::CompositeRouter;
 use exo_env::Environment;
+use router::system_router::create_system_router_from_system;
 use tracing::level_filters::LevelFilter;
 use wasm_bindgen::prelude::*;
 
@@ -9,7 +11,6 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
-use router::SystemRouter;
 
 use worker::console_error;
 
@@ -61,7 +62,7 @@ fn setup_tracing(env: &WorkerEnvironment) {
     let _ = tracing_subscriber::registry().with(fmt_layer).try_init();
 }
 
-pub(crate) fn get_system_router() -> Result<&'static SystemRouter, JsValue> {
+pub(crate) fn get_system_router() -> Result<&'static CompositeRouter, JsValue> {
     let system_router = ROUTER
         .system_router
         .get()
@@ -71,7 +72,7 @@ pub(crate) fn get_system_router() -> Result<&'static SystemRouter, JsValue> {
 }
 
 struct SystemRouterHolder {
-    system_router: OnceCell<SystemRouter>,
+    system_router: OnceCell<CompositeRouter>,
 }
 
 unsafe impl Send for SystemRouterHolder {}
@@ -97,7 +98,7 @@ impl SystemRouterHolder {
 
         let client = WorkerPostgresConnect::create_client(&env).await?;
 
-        let system_router = SystemRouter::new_from_system(
+        let system_router = create_system_router_from_system(
             system,
             vec![Box::new(postgres_resolver::PostgresSubsystemLoader {
                 existing_client: Some(client),

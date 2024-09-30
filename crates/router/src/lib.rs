@@ -8,5 +8,3 @@
 // by the Apache License, Version 2.0.
 
 pub mod system_router;
-
-pub use system_router::SystemRouter;

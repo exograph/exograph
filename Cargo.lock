@@ -7232,6 +7232,7 @@ dependencies = [
 name = "router"
 version = "0.9.9"
 dependencies = [
+ "async-trait",
  "common",
  "core-plugin-interface",
  "exo-env",

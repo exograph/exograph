@@ -10,10 +10,11 @@
 use std::{env, process::exit, sync::Arc};
 
 use common::logging_tracing;
+use common::router::CompositeRouter;
 use core_plugin_interface::interface::SubsystemLoader;
 
 use exo_env::SystemEnvironment;
-use router::SystemRouter;
+use router::system_router::create_system_router_from_file;
 
 /// Initialize the server by:
 /// - Initializing tracing
@@ -25,12 +26,12 @@ use router::SystemRouter;
 ///
 /// # Exit codes
 /// - 1 - If the exo_ir file doesn't exist or can't be loaded.
-pub async fn init() -> SystemRouter {
+pub async fn init() -> CompositeRouter {
     logging_tracing::init();
 
     let exo_ir_file = get_exo_ir_file_name();
 
-    match SystemRouter::new_from_file(
+    match create_system_router_from_file(
         &exo_ir_file,
         create_static_loaders(),
         Arc::new(SystemEnvironment),
