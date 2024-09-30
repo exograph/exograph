@@ -14,7 +14,7 @@ use std::sync::Arc;
 use ::common::env_const::{EXO_CHECK_CONNECTION_ON_STARTUP, EXO_POSTGRES_URL};
 use common::env_const::EXO_GRAPHQL_HTTP_PATH;
 use exo_env::MapEnvironment;
-use router::SystemRouter;
+use router::system_router::create_system_router_from_system;
 use serde_json::Value;
 use server_aws_lambda::resolve;
 use server_common::create_static_loaders;
@@ -35,7 +35,7 @@ pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
         .unwrap();
 
     let system_router =
-        SystemRouter::new_from_system(model_system, create_static_loaders(), Arc::new(env))
+        create_system_router_from_system(model_system, create_static_loaders(), Arc::new(env))
             .await
             .unwrap();
 

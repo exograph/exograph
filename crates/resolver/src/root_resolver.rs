@@ -15,10 +15,10 @@ use common::env_const::get_graphql_http_path;
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
-use common::api_router::ApiRouter;
 #[cfg(not(target_family = "wasm"))]
 use common::env_const::is_production;
 use common::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
+use common::router::Router;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::QueryResponse;
@@ -41,7 +41,7 @@ use exo_env::Environment;
     skip(system_resolver, request)
 )]
 pub async fn resolve_in_memory<'a>(
-    mut request: impl RequestPayload,
+    request: &mut (dyn RequestPayload + Send),
     system_resolver: &SystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
@@ -84,15 +84,15 @@ impl GraphQLRouter {
             env,
         }
     }
-}
 
-#[async_trait]
-impl ApiRouter for GraphQLRouter {
-    async fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
+    fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
         request_head.get_path() == get_graphql_http_path(self.env.as_ref())
             && request_head.get_method() == http::Method::POST
     }
+}
 
+#[async_trait]
+impl Router for GraphQLRouter {
     /// Resolves an incoming query, returning a response stream containing JSON and a set
     /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
     /// if something went wrong.
@@ -106,9 +106,13 @@ impl ApiRouter for GraphQLRouter {
     )]
     async fn route(
         &self,
-        request: impl RequestPayload + Send,
+        request: &mut (dyn RequestPayload + Send),
         playground_request: bool,
-    ) -> ResponsePayload {
+    ) -> Option<ResponsePayload> {
+        if !self.suitable(request.get_head()) {
+            return None;
+        }
+
         #[cfg(not(target_family = "wasm"))]
         let is_production = is_production(self.env.as_ref());
         #[cfg(target_family = "wasm")]
@@ -127,11 +131,11 @@ impl ApiRouter for GraphQLRouter {
 
         if let Err(SystemResolutionError::RequestError(e)) = response {
             tracing::error!("Error while resolving request: {:?}", e);
-            return ResponsePayload {
+            return Some(ResponsePayload {
                 body: ResponseBody::None,
                 headers: Headers::new(),
                 status_code: StatusCode::BAD_REQUEST,
-            };
+            });
         }
 
         let mut headers = if let Ok(ref response) = response {
@@ -209,11 +213,11 @@ impl ApiRouter for GraphQLRouter {
             }
         };
 
-        ResponsePayload {
+        Some(ResponsePayload {
             body: ResponseBody::Stream(Box::pin(stream)),
             headers,
             status_code: StatusCode::OK,
-        }
+        })
     }
 }
 

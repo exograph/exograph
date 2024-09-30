@@ -7,25 +7,23 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+#![cfg(not(target_family = "wasm"))]
+
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use common::api_router::ApiRouter;
 use common::http::{RedirectType, RequestHead, RequestPayload, ResponsePayload};
-#[cfg(not(target_family = "wasm"))]
+use common::router::Router;
 use common::{
     env_const::get_playground_http_path,
     http::{strip_leading, strip_leading_slash, ResponseBody},
     introspection::allow_introspection,
 };
 use exo_env::Environment;
-#[cfg(not(target_family = "wasm"))]
 use http::StatusCode;
 
-#[cfg(not(target_family = "wasm"))]
 use crate::graphiql;
 
-#[cfg(not(target_family = "wasm"))]
 pub struct PlaygroundRouter {
     /// The path to the playground, without the leading / (typically "playground")
     playground_path: String,
@@ -41,30 +39,33 @@ impl PlaygroundRouter {
             env: env.clone(),
         }
     }
-}
 
-#[cfg(not(target_family = "wasm"))]
-#[async_trait]
-impl ApiRouter for PlaygroundRouter {
-    async fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
+    fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
         let request_path = strip_leading_slash(request_head.get_path());
 
         (request_path.starts_with(&self.playground_path) || request_path.is_empty())
             && request_head.get_method() == http::Method::GET
     }
+}
 
+#[async_trait]
+impl Router for PlaygroundRouter {
     async fn route(
         &self,
-        request: impl RequestPayload + Send,
+        request: &mut (dyn RequestPayload + Send),
         _playground_request: bool,
-    ) -> ResponsePayload {
+    ) -> Option<ResponsePayload> {
+        if !self.suitable(request.get_head()) {
+            return None;
+        }
+
         let introspection_enabled = allow_introspection(self.env.as_ref());
         if !introspection_enabled {
-            return ResponsePayload {
+            return Some(ResponsePayload {
                 body: ResponseBody::Bytes("Introspection is disabled".as_bytes().to_vec()),
                 headers: vec![],
                 status_code: StatusCode::OK,
-            };
+            });
         }
 
         let path = strip_leading_slash(request.get_head().get_path());
@@ -72,11 +73,11 @@ impl ApiRouter for PlaygroundRouter {
         // We redirect to the playground path if the path is empty. This provides a better user experience
         // as the user will be redirected to the playground path without having to add it manually.
         if path.is_empty() {
-            return ResponsePayload {
+            return Some(ResponsePayload {
                 body: ResponseBody::Redirect(self.playground_path.clone(), RedirectType::Permanent),
                 headers: vec![],
                 status_code: StatusCode::PERMANENT_REDIRECT,
-            };
+            });
         }
 
         // remove the leading self.playground_path from the path
@@ -111,43 +112,17 @@ impl ApiRouter for PlaygroundRouter {
                     content_type.to_string(),
                 )]);
 
-                ResponsePayload {
+                Some(ResponsePayload {
                     body: ResponseBody::Bytes(asset),
                     headers: headers.collect(),
                     status_code: StatusCode::OK,
-                }
+                })
             }
-            None => ResponsePayload {
+            None => Some(ResponsePayload {
                 body: ResponseBody::None,
                 headers: vec![],
                 status_code: StatusCode::NOT_FOUND,
-            },
+            }),
         }
-    }
-}
-
-#[cfg(target_family = "wasm")]
-pub struct PlaygroundRouter {}
-
-#[cfg(target_family = "wasm")]
-impl PlaygroundRouter {
-    pub fn new(_env: Arc<dyn Environment>) -> Self {
-        Self {}
-    }
-}
-
-#[cfg(target_family = "wasm")]
-#[async_trait]
-impl ApiRouter for PlaygroundRouter {
-    async fn suitable(&self, _request_head: &(dyn RequestHead + Sync)) -> bool {
-        false
-    }
-
-    async fn route(
-        &self,
-        _request: impl RequestPayload + Send,
-        _playground_request: bool,
-    ) -> ResponsePayload {
-        panic!("PlaygroundRouter::route called, but we are in wasm mode");
     }
 }
