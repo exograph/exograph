@@ -16,4 +16,4 @@ This will start a container with the development environment and drop you into a
 
 Once in the shell, you can follow the steps in the [Getting Started](./index.md) guide.
 
-
+You can also run this image for other purposes, which we will explore in the [Docker Deployment](../deployment/docker.md) guide.
