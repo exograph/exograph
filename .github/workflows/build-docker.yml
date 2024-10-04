@@ -31,6 +31,7 @@ jobs:
         include:
           - image: cli
           - image: server
+          - image: dev
 
     steps:
       - uses: actions/checkout@v4

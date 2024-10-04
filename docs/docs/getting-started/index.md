@@ -37,6 +37,10 @@ irm https://raw.githubusercontent.com/exograph/exograph/main/installer/install.p
   </TabItem>
 </Tabs>
 
+:::note Want to use Docker, instead?
+An alternative to installing Exograph directly on your machine is to use Docker. See the [Docker](/docs/getting-started/docker.md) guide for more information.
+:::
+
 ### Install the VS Code extension
 
 Click [here](vscode:extension/exograph.exograph) to install the Exograph VS Code extension.
