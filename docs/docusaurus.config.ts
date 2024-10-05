@@ -60,7 +60,7 @@ const config: Config = {
     prism: {
       theme: require("./src/theme/prism/light"),
       darkTheme: require("./src/theme/prism/dark"),
-      additionalLanguages: ['rust', "shell-session", "toml"],
+      additionalLanguages: ['rust', "shell-session", "toml", "docker"],
       magicComments: [
         {
           className: 'theme-code-block-highlighted-line',
