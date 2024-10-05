@@ -43,7 +43,8 @@ docker run --rm --platform linux/x86_64 \
   --mount type=bind,source="$(pwd)",target=/usr/src/app \
   -e EXO_POSTGRES_URL=<postgres-url> \
   -e EXO_INTROSPECTION=true \
-  -p 9876:9876 -it ghcr.io/exograph/dev:latest exo-server
+  -p 9876:9876 \
+  -it ghcr.io/exograph/dev:latest exo-server
 ```
 
 The URL form will depend on the database you are using.
@@ -51,13 +52,13 @@ The URL form will depend on the database you are using.
 - **Cloud database**: If you use a cloud Postgres database such as [Neon](https://neon.tech/), simply pass the connection URL given to you by the database provider.
 - **Local database**: If you use a local Postgres database, you may use `host.docker.internal` as the host since this is a special DNS name that resolves to the host machine. That URL will be of the form `postgres://<user>:<password>@host.docker.internal:5432/<database>`.
 
-Of course, you may pass any additional environment such as `EXO_INTROSPECTION`.
+You may pass any additional environment such as `EXO_JWT_SECRET` and `EXO_OIDC_URL` to configure authentication and `EXO_INTROSPECTION` to enable introspection, etc.
 
 ## Building a Docker image
 
 If you need a generic (cloud-provider-agnostic) Docker image for your application, you can start with the following Dockerfile:
 
-```Dockerfile
+```dockerfile
 FROM ghcr.io/exograph/cli:latest as builder
 
 WORKDIR /app
@@ -67,7 +68,7 @@ COPY ./src ./src
 RUN exo build
 
 # You may add additional build steps such as
-# `exo schema migrate` to run migrations automatically.
+# `RUN exo schema migrate` to run migrations automatically.
 
 FROM ghcr.io/exograph/server:latest
 
@@ -104,6 +105,6 @@ docker run \
 
 You must pass `-e EXO_SERVER_HOST=0.0.0.0` since the container needs to bind to all network interfaces.
 
-You can pass additional environment variables to the server such as `EXO_INTROSPECTION`.
+Of course, you may pass any additional environment such as `EXO_JWT_SECRET` and `EXO_OIDC_URL` to configure authentication and `EXO_INTROSPECTION` to enable introspection, etc.
 
 Note the use of `-d` to run the container in detached mode. It will free up the terminal for you to continue using. If you need to go into the container, you can use `docker exec -it todo-api bash` and if you need to stop it, you can use `docker stop todo-api`.
