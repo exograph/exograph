@@ -65,6 +65,8 @@ WORKDIR /app
 
 COPY ./src ./src
 
+# In some setups, we need to run `exo build` as root (otherwise, we get permission errors)
+USER root
 RUN exo build
 
 # You may add additional build steps such as
