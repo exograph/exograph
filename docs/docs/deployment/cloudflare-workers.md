@@ -11,6 +11,10 @@ Let's deploy our application to [Cloudflare Workers](https://developers.cloudfla
 
 The application needs a Postgres database. We will use [Neon](https://neon.tech/), a "multi-cloud fully managed Postgres with a generous free tier". This free tier is perfect for this tutorial. If you want to use other Postgres providers, the basic steps remain the same: create a database and set the `EXO_POSTGRES_URL` environment variable to point to it.
 
+:::info Only Postgres is supported
+Currently, Exograph supports only Postgres modules—that is, it does not support Deno modules. We are working on utilizing the host JavaScript engine to support JavaScript/TypeScript modules instead of Deno modules to offer the same functionality.
+:::
+
 ## Creating a new application
 
 If you already have an application, you can skip this step.
