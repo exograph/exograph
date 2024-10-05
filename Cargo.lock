@@ -1634,6 +1634,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "core-rest-model"
+version = "0.10.1"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "countme"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6919,6 +6926,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-rest-model"
+version = "0.10.1"
+dependencies = [
+ "bincode",
+ "core-plugin-interface",
+ "core-rest-model",
+ "http 1.1.0",
+ "serde",
+]
+
+[[package]]
+name = "postgres-rest-model-builder"
+version = "0.10.1"
+dependencies = [
+ "async-trait",
+ "core-plugin-interface",
+ "http 1.1.0",
+ "postgres-rest-model",
+ "serde",
+]
+
+[[package]]
+name = "postgres-rest-resolver"
+version = "0.10.1"
+dependencies = [
+ "http 1.1.0",
+ "postgres-rest-model",
+ "serde",
+]
+
+[[package]]
 name = "postgres-types"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7613,6 +7651,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rest-router"
+version = "0.10.1"
+dependencies = [
+ "async-trait",
+ "common",
+ "exo-env",
+]
+
+[[package]]
 name = "rexpect"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7682,6 +7729,7 @@ dependencies = [
  "http 1.1.0",
  "playground-router",
  "resolver",
+ "rest-router",
 ]
 
 [[package]]

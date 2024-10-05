@@ -1,0 +1,20 @@
+[package]
+name = "postgres-rest-model-builder"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+http.workspace = true
+async-trait.workspace = true
+
+postgres-rest-model = { path = "../postgres-rest-model" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+
+
+
+[dev-dependencies]
+
+[lib]
+doctest = false

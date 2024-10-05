@@ -19,6 +19,7 @@ use crate::core_model_builder::{
 use crate::core_resolver::plugin::SubsystemResolver;
 use crate::error::ModelSerializationError;
 use async_trait::async_trait;
+use core_model_builder::plugin::RestSubsystemBuild;
 use core_model_builder::typechecker::typ::TypecheckedSystem;
 use thiserror::Error;
 
@@ -83,6 +84,17 @@ pub trait SubsystemBuilder {
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError>;
+}
+
+#[async_trait]
+pub trait RestSubsystemBuilder {
+    fn id(&self) -> &'static str;
+
+    async fn build(
+        &self,
+        typechecked_system: &TypecheckedSystem,
+        base_system: &BaseModelSystem,
+    ) -> Result<Option<RestSubsystemBuild>, ModelBuildingError>;
 }
 
 #[async_trait]

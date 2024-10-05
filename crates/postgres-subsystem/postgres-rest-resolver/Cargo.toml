@@ -1,0 +1,16 @@
+[package]
+name = "postgres-rest-resolver"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+http.workspace = true
+
+postgres-rest-model = { path = "../postgres-rest-model" }
+
+[dev-dependencies]
+
+[lib]
+doctest = false

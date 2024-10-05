@@ -17,6 +17,7 @@ use resolver::{
     create_system_resolver, create_system_resolver_from_system, GraphQLRouter, StaticLoaders,
     SystemLoadingError,
 };
+use rest_router::RestRouter;
 
 pub async fn create_system_router_from_file(
     exo_ir_file: &str,
@@ -45,6 +46,7 @@ fn create_system_router_from_resolver(
     Ok(SystemRouter::new(
         vec![
             Box::new(GraphQLRouter::new(resolver, env.clone())),
+            Box::new(RestRouter::new(env.clone())),
             #[cfg(not(target_family = "wasm"))]
             Box::new(PlaygroundRouter::new(env.clone())),
         ],

@@ -24,3 +24,8 @@ pub struct Interception {
     pub kind: InterceptorKind,
     pub index: InterceptorIndex,
 }
+
+pub struct RestSubsystemBuild {
+    pub id: String,
+    pub serialized_subsystem: Vec<u8>,
+}
