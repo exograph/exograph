@@ -12,7 +12,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use common::http::{RedirectType, RequestHead, RequestPayload, ResponsePayload};
+use common::http::{Headers, RedirectType, RequestHead, RequestPayload, ResponsePayload};
 use common::router::Router;
 use common::{
     env_const::get_playground_http_path,
@@ -63,7 +63,7 @@ impl Router for PlaygroundRouter {
         if !introspection_enabled {
             return Some(ResponsePayload {
                 body: ResponseBody::Bytes("Introspection is disabled".as_bytes().to_vec()),
-                headers: vec![],
+                headers: Headers::new(),
                 status_code: StatusCode::OK,
             });
         }
@@ -75,7 +75,7 @@ impl Router for PlaygroundRouter {
         if path.is_empty() {
             return Some(ResponsePayload {
                 body: ResponseBody::Redirect(self.playground_path.clone(), RedirectType::Permanent),
-                headers: vec![],
+                headers: Headers::new(),
                 status_code: StatusCode::PERMANENT_REDIRECT,
             });
         }
@@ -114,13 +114,13 @@ impl Router for PlaygroundRouter {
 
                 Some(ResponsePayload {
                     body: ResponseBody::Bytes(asset),
-                    headers: headers.collect(),
+                    headers: Headers::from_vec(headers.collect()),
                     status_code: StatusCode::OK,
                 })
             }
             None => Some(ResponsePayload {
                 body: ResponseBody::None,
-                headers: vec![],
+                headers: Headers::new(),
                 status_code: StatusCode::NOT_FOUND,
             }),
         }

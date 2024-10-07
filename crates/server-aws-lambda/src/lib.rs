@@ -13,12 +13,12 @@ mod request;
 
 use common::{
     http::{RedirectType, RequestHead, RequestPayload, ResponseBody, ResponsePayload},
-    router::CompositeRouter,
     router::Router,
 };
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use request::LambdaRequest;
+use router::system_router::SystemRouter;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
@@ -39,7 +39,7 @@ impl<'a> RequestPayload for AwsLambdaRequestPayload<'a> {
 
 pub async fn resolve(
     event: LambdaEvent<Value>,
-    system_router: Arc<CompositeRouter>,
+    system_router: Arc<SystemRouter>,
 ) -> Result<Value, Error> {
     let mut request_payload = AwsLambdaRequestPayload {
         head: LambdaRequest::new(&event),

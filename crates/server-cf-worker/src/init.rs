@@ -1,8 +1,7 @@
 use std::{cell::OnceCell, sync::Arc};
 
-use common::router::CompositeRouter;
 use exo_env::Environment;
-use router::system_router::create_system_router_from_system;
+use router::system_router::{create_system_router_from_system, SystemRouter};
 use tracing::level_filters::LevelFilter;
 use wasm_bindgen::prelude::*;
 
@@ -62,7 +61,7 @@ fn setup_tracing(env: &WorkerEnvironment) {
     let _ = tracing_subscriber::registry().with(fmt_layer).try_init();
 }
 
-pub(crate) fn get_system_router() -> Result<&'static CompositeRouter, JsValue> {
+pub(crate) fn get_system_router() -> Result<&'static SystemRouter, JsValue> {
     let system_router = ROUTER
         .system_router
         .get()
@@ -72,7 +71,7 @@ pub(crate) fn get_system_router() -> Result<&'static CompositeRouter, JsValue> {
 }
 
 struct SystemRouterHolder {
-    system_router: OnceCell<CompositeRouter>,
+    system_router: OnceCell<SystemRouter>,
 }
 
 unsafe impl Send for SystemRouterHolder {}

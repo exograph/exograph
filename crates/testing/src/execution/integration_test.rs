@@ -15,7 +15,7 @@ use common::env_const::{
     EXO_POSTGRES_URL,
 };
 use common::http::{RequestHead, RequestPayload, ResponseBody};
-use common::router::{CompositeRouter, Router};
+use common::router::Router;
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::future::OptionFuture;
@@ -23,7 +23,7 @@ use futures::FutureExt;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
-use router::system_router::create_system_router_from_file;
+use router::system_router::{create_system_router_from_file, SystemRouter};
 use serde_json::{json, Map, Value};
 
 use std::net::{IpAddr, Ipv4Addr};
@@ -43,7 +43,7 @@ use super::{TestResult, TestResultKind};
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
 struct TestfileContext {
-    router: CompositeRouter,
+    router: SystemRouter,
     jwtsecret: String,
     cookies: HashMap<String, String>,
     testvariables: HashMap<String, serde_json::Value>,
@@ -470,13 +470,13 @@ async fn run_operation(
 
 pub async fn run_query(
     request: impl RequestPayload + Send + Sync,
-    router: &CompositeRouter,
+    router: &SystemRouter,
     cookies: &mut HashMap<String, String>,
 ) -> Value {
     let mut request = request;
     let res = router.route(&mut request, true).await.unwrap();
 
-    res.headers.iter().for_each(|(k, v)| {
+    res.headers.into_iter().for_each(|(k, v)| {
         if k.to_ascii_lowercase() == "set-cookie" {
             let cookie = v.split(';').next().unwrap();
             let mut cookie = cookie.split('=');

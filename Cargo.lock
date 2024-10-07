@@ -30,21 +30,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-cors"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9e772b3bcafe335042b5db010ab7c09013dad6eac4915c91d8d50902769f331"
-dependencies = [
- "actix-utils",
- "actix-web",
- "derive_more",
- "futures-util",
- "log",
- "once_cell",
- "smallvec",
-]
-
-[[package]]
 name = "actix-http"
 version = "3.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1417,6 +1402,7 @@ dependencies = [
  "opentelemetry_sdk",
  "serde_json",
  "thiserror",
+ "tokio",
  "tonic",
  "tracing",
  "tracing-opentelemetry",
@@ -7767,7 +7753,6 @@ dependencies = [
 name = "server-actix"
 version = "0.9.9"
 dependencies = [
- "actix-cors",
  "actix-web",
  "async-trait",
  "common",
