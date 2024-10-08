@@ -119,7 +119,7 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
                     .with_status(status_code.into()),
                 headers,
             )?,
-            ResponseBody::Redirect(url, _) => {
+            ResponseBody::Redirect(url) => {
                 let url = url::Url::parse(&url)
                     .map_err(|e| JsValue::from_str(&format!("Bad redirect url {:?}", e)))?;
                 with_headers(

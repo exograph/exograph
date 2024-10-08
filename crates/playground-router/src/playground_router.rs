@@ -12,7 +12,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use common::http::{Headers, RedirectType, RequestHead, RequestPayload, ResponsePayload};
+use common::http::{Headers, RequestHead, RequestPayload, ResponsePayload};
 use common::router::Router;
 use common::{
     env_const::get_playground_http_path,
@@ -74,7 +74,7 @@ impl Router for PlaygroundRouter {
         // as the user will be redirected to the playground path without having to add it manually.
         if path.is_empty() {
             return Some(ResponsePayload {
-                body: ResponseBody::Redirect(self.playground_path.clone(), RedirectType::Permanent),
+                body: ResponseBody::Redirect(self.playground_path.clone()),
                 headers: Headers::new(),
                 status_code: StatusCode::PERMANENT_REDIRECT,
             });

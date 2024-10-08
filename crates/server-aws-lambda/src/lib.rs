@@ -12,7 +12,7 @@
 mod request;
 
 use common::{
-    http::{RedirectType, RequestHead, RequestPayload, ResponseBody, ResponsePayload},
+    http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload},
     router::Router,
 };
 use futures::StreamExt;
@@ -41,9 +41,15 @@ pub async fn resolve(
     event: LambdaEvent<Value>,
     system_router: Arc<SystemRouter>,
 ) -> Result<Value, Error> {
+    let body_str = event.payload["body"].as_str();
+    let body = match body_str {
+        Some(body_str) => serde_json::from_str(body_str)?,
+        None => Value::Null,
+    };
+
     let mut request_payload = AwsLambdaRequestPayload {
         head: LambdaRequest::new(&event),
-        body: serde_json::from_str(event.payload["body"].as_str().unwrap()).unwrap(),
+        body,
     };
 
     let response_payload = system_router.route(&mut request_payload, false).await;
@@ -54,7 +60,7 @@ pub async fn resolve(
             headers,
             status_code,
         }) => {
-            let body_string = match body {
+            let (body_string, additional_headers) = match body {
                 ResponseBody::Stream(stream) => {
                     let bytes = stream
                         .map(|chunks| chunks.unwrap())
@@ -67,33 +73,37 @@ pub async fn resolve(
                     // it would be nice to just pass `bytes` as the body,
                     // but lambda_http sets "isBase64Encoded" for the Lambda integration response if
                     // the body is not a string, and so our response gets base64'd if we do
-                    std::str::from_utf8(&bytes)
-                        .expect("Response stream is not UTF-8")
-                        .to_string()
+                    (
+                        std::str::from_utf8(&bytes)
+                            .expect("Response stream is not UTF-8")
+                            .to_string(),
+                        Headers::new(),
+                    )
                 }
-                ResponseBody::Bytes(bytes) => std::str::from_utf8(&bytes)
-                    .expect("Response bytes are not UTF-8")
-                    .to_string(),
-                ResponseBody::None => "".to_string(),
-                ResponseBody::Redirect(url, redirect_type) => {
-                    return Ok(json!({
-                        "statusCode": match redirect_type {
-                            RedirectType::Temporary => 302,
-                            RedirectType::Permanent => 301,
-                        },
-                        "headers": {
-                            "Location": url
-                        },
-                        "body": ""
-                    }))
+                ResponseBody::Bytes(bytes) => (
+                    std::str::from_utf8(&bytes)
+                        .expect("Response bytes are not UTF-8")
+                        .to_string(),
+                    Headers::new(),
+                ),
+                ResponseBody::None => ("".to_string(), Headers::new()),
+                ResponseBody::Redirect(url) => {
+                    let redirect_headers =
+                        Headers::from_vec(vec![(http::header::LOCATION.to_string(), url)]);
+                    ("".to_string(), redirect_headers)
                 }
             };
+
+            let all_headers: Vec<(String, String)> = headers
+                .into_iter()
+                .chain(additional_headers.into_iter())
+                .collect();
 
             Ok(json!({
                 "isBase64Encoded": false,
                 "statusCode": status_code.as_u16(),
                 "headers": {},
-                "multiValueHeaders": headers
+                "multiValueHeaders": all_headers
                     .into_iter()
                     .fold(json!({}), |mut acc, (k, v)| {
                         if let Some(value) = acc.get_mut(&k) {

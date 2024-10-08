@@ -23,7 +23,6 @@ use url::Url;
 use common::http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use common::{
     env_const::{get_deployment_mode, DeploymentMode},
-    http::RedirectType,
     router::Router,
 };
 use request::ActixRequestHead;
@@ -126,16 +125,7 @@ async fn resolve_locally(
             match body {
                 ResponseBody::Stream(stream) => builder.streaming(stream),
                 ResponseBody::Bytes(bytes) => builder.body(bytes),
-                ResponseBody::Redirect(url, redirect_type) => {
-                    let status = match redirect_type {
-                        RedirectType::Temporary => StatusCode::TEMPORARY_REDIRECT,
-                        RedirectType::Permanent => StatusCode::PERMANENT_REDIRECT,
-                    };
-
-                    HttpResponse::build(status)
-                        .append_header(("Location", url))
-                        .body("")
-                }
+                ResponseBody::Redirect(url) => builder.append_header(("Location", url)).body(""),
                 ResponseBody::None => builder.body(""),
             }
         }

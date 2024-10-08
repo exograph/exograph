@@ -40,7 +40,7 @@ impl<'a> LambdaRequest<'a> {
             None => http::Method::GET,
         };
 
-        let path = event.payload["path"].as_str().unwrap();
+        let path = event.payload["path"].as_str().unwrap_or("/");
         let query = event
             .payload
             .get("queryStringParameters")

@@ -76,13 +76,8 @@ pub struct ResponsePayload {
 pub enum ResponseBody {
     Stream(PinnedStream<std::io::Error>),
     Bytes(Vec<u8>),
-    Redirect(String, RedirectType),
+    Redirect(String),
     None,
-}
-
-pub enum RedirectType {
-    Permanent,
-    Temporary,
 }
 
 /// Represents a HTTP request from which information can be extracted

@@ -2,3 +2,4 @@
 channel = "1.81.0"
 components = ["clippy", "rustfmt"]
 targets = ["wasm32-wasi", "wasm32-unknown-unknown"]
+profile = "minimal"
