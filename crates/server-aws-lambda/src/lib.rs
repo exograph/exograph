@@ -111,7 +111,7 @@ pub async fn resolve(
                             array.push(v.into());
                         } else {
                             let map = acc.as_object_mut().unwrap();
-                            map.insert(k, v.into());
+                            map.insert(k, Value::Array(vec![v.into()]));
                         }
 
                         acc
