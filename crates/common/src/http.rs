@@ -12,7 +12,7 @@ use serde_json::Value;
 
 use bytes::Bytes;
 use futures::Stream;
-use std::pin::Pin;
+use std::{collections::HashMap, pin::Pin};
 
 pub trait RequestPayload {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync);
@@ -20,7 +20,52 @@ pub trait RequestPayload {
 }
 
 type PinnedStream<E> = Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;
-pub type Headers = Vec<(String, String)>;
+
+#[derive(Debug, Clone)]
+pub struct Headers {
+    inner: HashMap<String, String>,
+}
+
+impl Headers {
+    pub fn new() -> Self {
+        Self {
+            inner: HashMap::new(),
+        }
+    }
+
+    pub fn from_map(map: HashMap<String, String>) -> Self {
+        Self { inner: map }
+    }
+
+    pub fn from_vec(vec: Vec<(String, String)>) -> Self {
+        let mut map = HashMap::new();
+        for (key, value) in vec {
+            map.insert(key.to_lowercase(), value);
+        }
+        Self { inner: map }
+    }
+
+    pub fn get(&self, key: &str) -> Option<String> {
+        self.inner.get(&key.to_lowercase()).map(|v| v.clone())
+    }
+
+    pub fn insert(&mut self, key: String, value: String) {
+        self.inner.insert(key.to_lowercase(), value);
+    }
+
+    pub fn remove(&mut self, key: &str) -> Option<String> {
+        self.inner.remove(&key.to_lowercase())
+    }
+}
+
+impl IntoIterator for Headers {
+    type Item = (String, String);
+    type IntoIter = std::collections::hash_map::IntoIter<String, String>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
+}
 
 pub struct ResponsePayload {
     pub body: ResponseBody,
@@ -31,13 +76,8 @@ pub struct ResponsePayload {
 pub enum ResponseBody {
     Stream(PinnedStream<std::io::Error>),
     Bytes(Vec<u8>),
-    Redirect(String, RedirectType),
+    Redirect(String),
     None,
-}
-
-pub enum RedirectType {
-    Permanent,
-    Temporary,
 }
 
 /// Represents a HTTP request from which information can be extracted

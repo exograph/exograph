@@ -209,19 +209,16 @@ Now that we have deployed the function, it is time to test it. We will use the A
 
 Visit the [AWS Lambda Console](https://console.aws.amazon.com/lambda/home) to see your function. You will need to provide a test payload. The `body` part of the payload needs to match the GraphQL spec and other attributes need to match the AWS Lambda event payload specification.
 
-Exograph responds to both `GET` or `POST` methods, so you can use either. After providing the payload, click the "Test" button. Here is an example of a payload for a `GET` request (using the default `httpMethod`):
+Exograph responds to the `POST` method (on the path specified by the `EXO_GRAPHQL_HTTP_PATH` environment variable, defaulting to `/graphql`). After providing the payload, click the "Test" button. Here is an example payload:
 
 ```json
 {
-  "body": "{\"query\":\"{\\n\\ttodos {\\n\\t  id\\n\\t}\\n}\"}"
-}
-```
-
-The same payload for a `POST` request looks like this:
-
-```json
-{
-  "httpMethod": "POST",
+  "requestContext": {
+    "http": {
+      "method": "POST"
+    }
+  },
+  "path": "/graphql",
   "body": "{\"query\":\"{\\n\\ttodos {\\n\\t  id\\n\\t}\\n}\"}"
 }
 ```
@@ -230,7 +227,7 @@ You should get back a result. Nice, but specifying the payload this way is cumbe
 
 ### Through Postman
 
-Visit the [AWS Lambda Console](https://console.aws.amazon.com/lambda/home). Click on the just created function, then switch to the "Configuration" tab and the "Function URL". Click on the "Create Function URL" button and choose "NONE" for "Auth type" (you will be exposing your URL publicly, which may be fine for this exploration, but later you can set appropriate restrictions). You will get a URL for your function.
+Visit the [AWS Lambda Console](https://console.aws.amazon.com/lambda/home). Click on the just created function, then switch to the "Configuration" tab and the "Function URL". Click on the "Create Function URL" button and choose "NONE" for "Auth type" (you will be exposing your URL publicly, which may be fine for this exploration, but later you can set appropriate restrictions). You will get a URL for your function. You may choose to also enable the "CORS" option by choosing the "Configure cross-origin resource sharing (CORS)" option and setting values for "Allowed origins", "Allowed headers", "Allowed methods", and "Allowed credentials".
 
 Download Postman from [here](https://www.postman.com/downloads/) and open it. Create a new request and set the method to "POST" and the URL to the function URL you just created. Switch to the "Body" tab and select "GraphQL" from the dropdown. Enter the following query:
 

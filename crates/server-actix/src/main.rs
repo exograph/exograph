@@ -7,7 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpServer};
 
 use server_actix::configure_router;
@@ -21,7 +20,7 @@ use std::{io::ErrorKind, sync::Arc};
 use common::{
     env_const::{
         get_deployment_mode, get_graphql_http_path, get_playground_http_path, DeploymentMode,
-        EXO_CORS_DOMAINS, EXO_SERVER_PORT,
+        EXO_SERVER_PORT,
     },
     introspection::{introspection_mode, IntrospectionMode},
 };
@@ -69,14 +68,11 @@ async fn main() -> Result<(), ServerError> {
     let env_clone = env.clone();
 
     let server = HttpServer::new(move || {
-        let cors = cors_from_env(env_clone.as_ref());
-
         App::new()
             .wrap(TracingLogger::default())
             .wrap(middleware::NormalizePath::new(
                 middleware::TrailingSlash::Trim,
             ))
-            .wrap(cors)
             .configure(configure_router(system_router.clone(), env_clone.clone()))
     });
 
@@ -164,27 +160,5 @@ fn pretty_addr(addrs: &[SocketAddr]) -> String {
                 format!("{addrs:?}")
             }
         },
-    }
-}
-
-fn cors_from_env(env: &dyn Environment) -> Cors {
-    match env.get(EXO_CORS_DOMAINS) {
-        Some(domains) => {
-            let domains_list = domains.split(',');
-
-            let cors = domains_list.fold(Cors::default(), |cors, domain| {
-                if domain == "*" {
-                    cors.allow_any_origin()
-                } else {
-                    cors.allowed_origin(domain)
-                }
-            });
-
-            // TODO: Allow more control over headers, max_age etc
-            cors.allowed_methods(vec!["GET", "POST"])
-                .allow_any_header()
-                .max_age(3600)
-        }
-        None => Cors::default(),
     }
 }

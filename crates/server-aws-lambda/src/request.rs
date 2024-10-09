@@ -24,7 +24,7 @@ pub struct LambdaRequest<'a> {
 
 impl<'a> LambdaRequest<'a> {
     pub fn new(event: &'a LambdaEvent<Value>) -> LambdaRequest<'a> {
-        let method = match event.payload["httpMethod"].as_str() {
+        let method = match event.payload["requestContext"]["http"]["method"].as_str() {
             Some(method) => match method {
                 "GET" => http::Method::GET,
                 "POST" => http::Method::POST,
@@ -40,7 +40,7 @@ impl<'a> LambdaRequest<'a> {
             None => http::Method::GET,
         };
 
-        let path = event.payload["path"].as_str().unwrap();
+        let path = event.payload["path"].as_str().unwrap_or("/");
         let query = event
             .payload
             .get("queryStringParameters")

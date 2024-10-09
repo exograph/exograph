@@ -1,8 +1,8 @@
 # Build setup for Amazon Linux 2023 
 
 # Install NodeJS (needed by tree-sitter and to build the GraphiQL app)
-RUN curl -sL https://rpm.nodesource.com/setup_16.x | bash -
-RUN yum install -y file gcc make nodejs openssl-devel zlib-devel unzip
+RUN curl -sL https://rpm.nodesource.com/setup_20.x | bash -
+RUN yum install -y tar gzip zip unzip file gcc make cmake nodejs openssl-devel zlib-devel git
 
 # Install protoc (the yum install version is 2.x, which is too old for grpc needed by opentelemetry)
 RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
@@ -11,5 +11,6 @@ ENV PATH="/root/.local/bin:$PATH"
 
 # Need to install Rust manually (not through yum, which is a bit older version 
 # and since it doesn't install rustup, it doesn't respect rust-toolchain.toml settings)
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+#RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 ENV PATH="/root/.cargo/bin:$PATH"

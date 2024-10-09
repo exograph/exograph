@@ -10,8 +10,8 @@ buildType="$1" # "release" or "debug"
 # TODO: Resolve the openssl issues and then "RUNTIME_IMAGE=debian:buster-slim"
 
 ## DEFAULTS ##
-BUILD_IMAGE=rust:1.72.1-buster # image to build Exograph with
-RUNTIME_IMAGE=rust:1.72.1-slim-buster # image to use when actually running Exograph
+BUILD_IMAGE=rust:1.81.0-bullseye # image to build Exograph with
+RUNTIME_IMAGE=rust:1.81.0-slim-bullseye # image to use when actually running Exograph
 DEPENDENCY_STYLE=deb # how to install or setup dependencies
 TAG_SUFFIX="" # docker tag suffix
 
@@ -39,10 +39,15 @@ declare -a SUBCRATES=(
     "cli bin crates"
     "server-actix bin crates"
     "server-aws-lambda bin crates"
+    "server-cf-worker lib crates"
     "server-common lib crates"
+    "common lib crates"
     "builder lib crates"
     "resolver lib crates"
+    "router lib crates"
+    "playground-router lib crates"
     "testing lib crates"
+    "exo-env lib libs"
     "exo-sql lib libs"
     "exo-deno lib libs"
     "exo-wasm lib libs"
@@ -59,6 +64,7 @@ declare -a SUBCRATES=(
     "deno-resolver lib crates\/deno-subsystem"
     "wasm-model lib crates\/wasm-subsystem"
     "wasm-model-builder lib crates\/wasm-subsystem"
+    "wasm-resolver lib crates\/wasm-subsystem"
     "wasm-resolver-dynamic lib crates\/wasm-subsystem"
     "introspection-resolver lib crates\/introspection-subsystem"
     "subsystem-model-builder-util lib crates\/subsystem-util"
@@ -134,9 +140,9 @@ docker_build() {
         echo "Building regularly with Debian"
     elif [ "$buildKind" == "aws" ]
     then
-        echo "Building with Amazon Linux 2" # Can't use amazonlinux:2023 yet because it isn't available as a lambda runtime
-        BUILD_IMAGE=amazonlinux:2
-        RUNTIME_IMAGE=amazonlinux:2
+        echo "Building with Amazon Linux 2023" 
+        BUILD_IMAGE=amazonlinux:2023
+        RUNTIME_IMAGE=amazonlinux:2023
         DEPENDENCY_STYLE=aws
         TAG_SUFFIX="$TAG_SUFFIX-aws"
     else
@@ -171,6 +177,7 @@ docker_build() {
     sed -i "s/%%RM_DEPS%%/$RM_DEPS/g" $GENERATED_DOCKERFILE
 
     docker build \
+            --platform linux/x86_64 \
             -t $TAG \
             -f $GENERATED_DOCKERFILE \
             --build-arg BUILD_DIR="$BUILD_DIR" \
@@ -182,5 +189,5 @@ docker_build() {
 }
 
 # docker_build "debian" "exo$TAG_SUFFIX" "exo" # Currenty, we don't need Dockerfile with "exo dev/build" commands
-docker_build "debian" "exo-server$TAG_SUFFIX" "exo-server"
+# docker_build "debian" "exo-server$TAG_SUFFIX" "exo-server"
 docker_build "aws" "exo-server-aws-lambda$TAG_SUFFIX" "exo-server-aws-lambda"

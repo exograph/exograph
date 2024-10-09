@@ -1,5 +1,5 @@
 # Build setup for systems based on apt-get
 # Install NodeJS (needed by tree-sitter and to build the GraphiQL app)
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
 RUN apt-get update
 RUN apt-get install -y protobuf-compiler

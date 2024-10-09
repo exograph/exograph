@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::http::{RequestPayload, ResponseBody, ResponsePayload};
+use crate::http::{Headers, RequestPayload, ResponseBody, ResponsePayload};
 use async_trait::async_trait;
 use http::StatusCode;
 
@@ -45,7 +45,7 @@ impl Router for CompositeRouter {
 
         Some(ResponsePayload {
             body: ResponseBody::None,
-            headers: vec![],
+            headers: Headers::new(),
             status_code: StatusCode::NOT_FOUND,
         })
     }

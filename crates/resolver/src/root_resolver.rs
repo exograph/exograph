@@ -139,15 +139,17 @@ impl Router for GraphQLRouter {
         }
 
         let mut headers = if let Ok(ref response) = response {
-            response
-                .iter()
-                .flat_map(|(_, qr)| qr.headers.clone())
-                .collect()
+            Headers::from_vec(
+                response
+                    .iter()
+                    .flat_map(|(_, qr)| qr.headers.clone())
+                    .collect(),
+            )
         } else {
-            vec![]
+            Headers::new()
         };
 
-        headers.push(("content-type".into(), "application/json".into()));
+        headers.insert("content-type".into(), "application/json".into());
 
         let stream = try_stream! {
             macro_rules! report_position {

@@ -35,5 +35,8 @@ opentelemetry-otlp = { version = "0.16.0", features = [
 # Tonic isn't used directly but we need these flags to establish a TLS connection
 tonic = { version = "0.11.0", features = ["tls", "tls-roots"], optional = true }
 
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+
 [lib]
 doctest = false

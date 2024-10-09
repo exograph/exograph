@@ -23,16 +23,12 @@ use exo_deno::{
 use exo_env::MapEnvironment;
 use include_dir::{include_dir, Dir};
 use resolver::{resolve_in_memory, SystemLoader};
-use router::system_router::create_system_router_from_file;
+use router::system_router::{create_system_router_from_file, SystemRouter};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};
 
-use common::{
-    env_const::{
-        EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION,
-        EXO_POSTGRES_URL,
-    },
-    router::CompositeRouter,
+use common::env_const::{
+    EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_POSTGRES_URL,
 };
 
 use super::{integration_test::MemoryRequestPayload, TestResult, TestResultKind};
@@ -209,7 +205,7 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
     }))
 }
 
-async fn check_introspection(system_router: &CompositeRouter) -> Result<Result<()>> {
+async fn check_introspection(system_router: &SystemRouter) -> Result<Result<()>> {
     let mut deno_module = create_introspection_deno_module().await?;
 
     let request = create_introspection_request().await?;
