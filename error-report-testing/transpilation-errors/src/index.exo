@@ -1,0 +1,5 @@
+@deno("todo.ts")
+module TodoService {
+  @access(true)
+  query todoCount(): Int
+}

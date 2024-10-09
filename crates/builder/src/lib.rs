@@ -409,13 +409,13 @@ fn emit_diagnostics(
             collect_diagnostics(diagnostics, codemap, report_collector);
             emitter.emit(diagnostics);
         }
-        ParserError::ModelBuildingError(ModelBuildingError::ExternalResourceParsing(e)) => {
+        ParserError::ModelBuildingError(ModelBuildingError::TSJSParsingError(error)) => {
             // This is an error in a JavaScript/TypeScript file, so we
             // have emit it directly to stderr (can't use the emitter, which is tied to exo sources)
             emitter.emit(&[Diagnostic {
                 level: Level::Error,
                 code: None,
-                message: e.to_string(),
+                message: error.to_string(),
                 spans: vec![],
             }]);
         }

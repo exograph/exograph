@@ -16,7 +16,7 @@ if (!exo_executable) {
       exo_executable = path.resolve(__dirname, "../../target/release/exo");
       break;
     default:
-      console.error(`Unknown mode: ${MODE} for EXECUTABLE_MODE`);
+      console.error(`Unknown mode: ${MODE} for EXECUTABLE_MODE. Expected "debug" or "release"`);
       process.exit(1);
   }
 }

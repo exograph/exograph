@@ -22,8 +22,8 @@ pub enum ModelBuildingError {
     #[error("{0}")]
     Generic(String),
 
-    #[error("{0}")]
-    ExternalResourceParsing(String),
+    #[error("Could not parse TypeScript/JavaScript files")]
+    TSJSParsingError(String),
 
     #[error("Unable to serialize model {0}")]
     Serialize(#[source] ModelSerializationError),

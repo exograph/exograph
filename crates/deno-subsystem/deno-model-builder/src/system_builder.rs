@@ -515,15 +515,24 @@ async fn walk_module_graph(
                             capture_tokens: false,
                             scope_analysis: false,
                             maybe_syntax: None,
-                        })
-                        .unwrap();
-                        // TODO(shadaj): fail gracefully here
-                        parsed
+                        });
+
+                        let parsed = parsed
+                            .map_err(|e| ModelBuildingError::TSJSParsingError(e.to_string()))?;
+
+                        let transpiled = match parsed
                             .transpile(&Default::default(), &EmitOptions::default())
-                            .unwrap()
+                        {
+                            Ok(parsed) => parsed,
+                            Err(e) => {
+                                return Err(ModelBuildingError::TSJSParsingError(e.to_string()));
+                            }
+                        };
+
+                        transpiled
                             .into_source()
                             .into_string()
-                            .unwrap()
+                            .map_err(|e| ModelBuildingError::TSJSParsingError(e.to_string()))?
                             .text
                     } else {
                         module_source
@@ -544,7 +553,7 @@ async fn walk_module_graph(
                 modules.insert(specifier.clone(), ResolvedModule::Redirect(to.clone()));
             }
             ModuleEntryRef::Err(e) => {
-                return Err(ModelBuildingError::ExternalResourceParsing(
+                return Err(ModelBuildingError::TSJSParsingError(
                     e.to_string_with_range(),
                 ))
             }
