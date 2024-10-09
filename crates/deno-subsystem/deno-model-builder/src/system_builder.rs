@@ -124,6 +124,7 @@ fn process_script(
     let root = Url::from_file_path(std::fs::canonicalize(module_fs_path).unwrap()).unwrap();
     let root_clone = root.clone();
 
+    let module_fs_path = module_fs_path.to_path_buf();
     // TODO: Make the process_script function async. Currently, we can't because `CliOptions` isn't a
     // `Send`. But to make this useful as a callback, we would make this function return a
     // `BoxFuture`, which has the `Send` requirement.
@@ -180,17 +181,17 @@ fn process_script(
             );
 
             let managed_npm = npm_resolver.as_managed().unwrap();
-            let root_path = npm_resolver
+            let npm_cache_folder = npm_resolver
                 .as_managed()
                 .unwrap()
                 .global_cache_root_folder()
                 .join("registry.npmjs.org");
 
-            if !root_path.exists() {
-                std::fs::create_dir_all(&root_path).unwrap();
+            if !npm_cache_folder.exists() {
+                std::fs::create_dir_all(&npm_cache_folder).unwrap();
             }
 
-            let vfs = if let Ok(mut builder) = VfsBuilder::new(root_path.clone()) {
+            let vfs = if let Ok(mut builder) = VfsBuilder::new(npm_cache_folder.clone()) {
                 for package in managed_npm.all_system_packages(&Default::default()) {
                     let folder = managed_npm
                         .resolve_pkg_folder_from_pkg_id(&package.id)
@@ -213,6 +214,7 @@ fn process_script(
 
             Ok::<DenoScriptDefn, ModelBuildingError>(DenoScriptDefn {
                 modules: walk_module_graph(
+                    &module_fs_path,
                     graph,
                     npm_loader,
                     node_resolver.clone(),
@@ -220,7 +222,7 @@ fn process_script(
                     code_translator,
                     parsed_source_cache,
                     module_info_cache,
-                    root_path,
+                    npm_cache_folder,
                 )
                 .await?,
                 npm_snapshot: Some((
@@ -417,6 +419,7 @@ async fn walk_node_resolutions(
 
 #[allow(clippy::too_many_arguments)]
 async fn walk_module_graph(
+    module_fs_path: &Path,
     graph: ModuleGraph,
     npm_loader: NpmModuleLoader,
     node_resolver: Arc<NodeResolver>,
@@ -424,7 +427,7 @@ async fn walk_module_graph(
     code_translator: Arc<NodeCodeTranslator<CliCjsCodeAnalyzer>>,
     parsed_source_cache: Arc<ParsedSourceCache>,
     module_info_cache: Arc<ModuleInfoCache>,
-    root_path: PathBuf,
+    npm_cache_folder: PathBuf,
 ) -> Result<HashMap<Url, ResolvedModule>, ModelBuildingError> {
     let mut modules: HashMap<Url, ResolvedModule> = HashMap::new();
 
@@ -475,7 +478,7 @@ async fn walk_module_graph(
                             &code_translator,
                             &parsed_source_cache,
                             &module_info_cache,
-                            &root_path,
+                            &npm_cache_folder,
                             &mut modules,
                         )
                         .await
@@ -515,15 +518,34 @@ async fn walk_module_graph(
                             capture_tokens: false,
                             scope_analysis: false,
                             maybe_syntax: None,
-                        })
-                        .unwrap();
-                        // TODO(shadaj): fail gracefully here
-                        parsed
-                            .transpile(&Default::default(), &EmitOptions::default())
-                            .unwrap()
+                        });
+
+                        let parsed = parsed.map_err(|e| {
+                            ModelBuildingError::tsjs_error(e.to_string(), module_fs_path, specifier)
+                        })?;
+
+                        let transpiled =
+                            match parsed.transpile(&Default::default(), &EmitOptions::default()) {
+                                Ok(parsed) => parsed,
+                                Err(e) => {
+                                    return Err(ModelBuildingError::tsjs_error(
+                                        e.to_string(),
+                                        module_fs_path,
+                                        specifier,
+                                    ));
+                                }
+                            };
+
+                        transpiled
                             .into_source()
                             .into_string()
-                            .unwrap()
+                            .map_err(|e| {
+                                ModelBuildingError::tsjs_error(
+                                    e.to_string(),
+                                    module_fs_path,
+                                    specifier,
+                                )
+                            })?
                             .text
                     } else {
                         module_source
@@ -544,9 +566,11 @@ async fn walk_module_graph(
                 modules.insert(specifier.clone(), ResolvedModule::Redirect(to.clone()));
             }
             ModuleEntryRef::Err(e) => {
-                return Err(ModelBuildingError::ExternalResourceParsing(
+                return Err(ModelBuildingError::tsjs_error(
                     e.to_string_with_range(),
-                ))
+                    module_fs_path,
+                    specifier,
+                ));
             }
         };
     }

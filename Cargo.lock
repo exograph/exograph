@@ -1534,6 +1534,7 @@ dependencies = [
  "core-plugin-shared",
  "serde",
  "thiserror",
+ "url",
 ]
 
 [[package]]

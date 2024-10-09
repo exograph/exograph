@@ -1,0 +1,7 @@
+error: Expected '}', got '<eof>' at src/todo.ts:2:3
+
+  	5
+   ~
+
+Error: Parser error: Could not parse TypeScript/JavaScript files
+
