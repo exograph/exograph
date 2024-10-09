@@ -1,4 +1,4 @@
-error: Expected '}', got '<eof>' at file:///Users/ramnivas/exograph-org/exograph/error-report-testing/transpilation-errors/src/todo.ts:2:3
+error: Expected '}', got '<eof>' at src/todo.ts:2:3
 
   	5
    ~
