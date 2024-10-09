@@ -102,6 +102,16 @@ function checkExographProjects(directories: string[]): Array<Failure> {
 
 function diffFiles(expectedFile: string, actualFile: string): string {
   const diff = spawnSync('diff', ["-b", expectedFile, actualFile], { encoding: 'utf-8', stdio: 'pipe' });
+
+  // If the diff command fails, replace Windows-style paths with Unix-style paths in actualFile and try again
+  // This is not foolproof (we may be replacing non-path strings, too, but if the CI passes on other platforms 
+  // AND it passes on Windows after the adjustment, we're good)
+  if (diff.stdout && process.platform === 'win32') {
+    spawnSync('sed', ['-i', 's/\\/\//g', actualFile]);
+    const adjustedDiff = spawnSync('diff', ["-b", expectedFile, actualFile], { encoding: 'utf-8', stdio: 'pipe' });
+    return adjustedDiff.stdout || "";
+  }
+
   return diff.stdout || "";
 }
 
