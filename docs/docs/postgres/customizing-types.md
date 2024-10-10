@@ -177,7 +177,7 @@ type Venue {
 
 ### Specifying a default value
 
-The default value of a column is specified using an assignment in the field definition. For example, as we have seen in the [previous](#primary-key)[ section](#primary-key), you can set the default value of an `Int` field to `autoIncrement()` to make it auto-incrementing and the default value of a `Uuid` field to `generate_uuid()` to make it auto-generated.
+The default value of a column is specified using an assignment in the field definition. For example, as we have seen in the [previous section](#assigning-primary-key), you can set the default value of an `Int` field to `autoIncrement()` to make it auto-incrementing and the default value of a `Uuid` field to `generate_uuid()` to make it auto-generated.
 
 Similarly, you can set the default value of a scalar column to a constant value. For example, if you want to set the default value of the `price` field to `50`, you can use the following definition:
 
