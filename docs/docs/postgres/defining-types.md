@@ -154,7 +154,7 @@ type Performance {
 }
 ```
 
-Please see the [uniqueness](customizing-types.md#uniqueness) section for more details on using the `@unique` annotation.
+Please see the [uniqueness](customizing-types.md#constraining-uniqueness) section for more details on using the `@unique` annotation.
 
 ### One-to-one relationship
 

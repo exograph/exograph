@@ -7,9 +7,9 @@ sidebar_position: 5
 Many cloud providers support running Docker containers. Thus, Exograph can be deployed through Docker. This document provides instructions on performing specific tasks and running an Exograph server locally for development using Docker.
 
 :::info Explicitly supported providers
-Exograph explicitly supports running a server in [Fly.io](../flyio) and [Railway](../railway). While the underlying mechanism uses Docker, you should follow the specific deployment guides for these providers.
+Exograph explicitly supports running a server in [Fly.io](flyio.md) and [Railway](railway.md). While the underlying mechanism uses Docker, you should follow the specific deployment guides for these providers.
 
-Exograph does **not** use a Docker container for AWS Lambda or Cloudflare Workers. To deploy in those environments, please follow the [AWS Lambda](../aws-lambda) or [Cloudflare Workers](../cloudflare-workers) guides.
+Exograph does **not** use a Docker container for AWS Lambda or Cloudflare Workers. To deploy in those environments, please follow the [AWS Lambda](aws-lambda.md) or [Cloudflare Workers](cloudflare-workers.md) guides.
 :::
 
 Exograph provides three Docker images:
