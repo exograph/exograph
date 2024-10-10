@@ -1,8 +1,0 @@
-@postgres
-module LoggingModule {
-    @access(true)
-    type Log {
-        @pk id: Int = autoIncrement()
-        message: String
-    }
-}

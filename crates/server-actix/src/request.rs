@@ -48,12 +48,12 @@ impl RequestHead for ActixRequestHead {
             .and_then(|realip| realip.parse().ok())
     }
 
-    fn get_method(&self) -> &actix_web::http::Method {
-        &self.method
+    fn get_method(&self) -> actix_web::http::Method {
+        self.method.clone()
     }
 
-    fn get_path(&self) -> &str {
-        &self.path
+    fn get_path(&self) -> String {
+        self.path.clone()
     }
 
     fn get_query(&self) -> serde_json::Value {

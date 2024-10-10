@@ -93,10 +93,10 @@ pub trait RequestHead {
     // return the IP address used to make the request
     fn get_ip(&self) -> Option<std::net::IpAddr>;
 
-    fn get_path(&self) -> &str;
+    fn get_path(&self) -> String;
     fn get_query(&self) -> serde_json::Value;
 
-    fn get_method(&self) -> &http::Method;
+    fn get_method(&self) -> http::Method;
 }
 
 pub fn strip_leading_slash(path: &str) -> String {

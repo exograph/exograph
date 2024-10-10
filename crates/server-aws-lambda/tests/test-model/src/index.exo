@@ -1,0 +1,22 @@
+context RequestContext {
+  @clientIp ip: String?
+  @header("api-key") apiKey: String?
+  @header("client-key") clientKey: String?
+  @cookie("session-id") sessionId: String?
+}
+
+@deno("echo.js")
+module EchoService {
+  @access(true)
+  type EchoHeadersResponse {
+    apiKey: String?
+    clientKey: String?
+    sessionId: String?
+  }
+
+  @access(true)
+  query whatsMyIp(@inject requestContext: RequestContext): String
+
+  @access(true)
+  query requestContext(@inject requestContext: RequestContext): EchoHeadersResponse
+}
