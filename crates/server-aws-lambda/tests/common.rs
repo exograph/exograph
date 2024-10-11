@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-#![cfg(target_os = "macos")]
+#![cfg(target_os = "linux")]
 
 use std::{collections::HashMap, path::Path, sync::Arc};
 
@@ -55,8 +55,8 @@ pub struct TestResponse<'a> {
 }
 
 pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_>) {
-    let current_dir = std::env::current_dir().expect("Failed to get current directory");
-    let project_dir = current_dir.join("tests/test-model");
+    let project_root = env!("CARGO_MANIFEST_DIR");
+    let project_dir = Path::new(project_root).join("tests/test-model");
 
     std::env::set_current_dir(project_dir.clone()).expect(&format!(
         "Failed to set current directory to {}",
@@ -131,7 +131,4 @@ pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_
 
         assert_eq!(expected_value, actual_value, "Mismatch for key: {}", key);
     }
-
-    std::env::set_current_dir(current_dir)
-        .expect("Failed to set current directory back to the original");
 }

@@ -8,10 +8,10 @@
 // by the Apache License, Version 2.0.
 
 /// Run the server in production mode with a compiled exo_ir file
-#[cfg(target_os = "macos")]
+#[cfg(target_os = "linux")]
 use lambda_runtime::Error;
 
-#[cfg(target_os = "macos")]
+#[cfg(target_os = "linux")]
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     use lambda_runtime::LambdaEvent;
@@ -32,7 +32,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(target_os = "linux"))]
 fn main() {
     panic!("This binary is only intended to run on Linux.")
 }
