@@ -83,7 +83,7 @@ impl Router for CorsRouter {
 
         let cors_response = self
             .config
-            .allow_origin(origin_header.as_deref(), request.get_head().get_method());
+            .allow_origin(origin_header.as_deref(), &request.get_head().get_method());
 
         if request.get_head().get_method() == Method::OPTIONS {
             match cors_response {
@@ -450,16 +450,16 @@ mod tests {
             None
         }
 
-        fn get_path(&self) -> &str {
-            &self.path
+        fn get_path(&self) -> String {
+            self.path.clone()
         }
 
         fn get_query(&self) -> serde_json::Value {
             Value::Null
         }
 
-        fn get_method(&self) -> &http::Method {
-            &self.method
+        fn get_method(&self) -> http::Method {
+            self.method.clone()
         }
     }
 

@@ -405,12 +405,12 @@ mod tests {
             None
         }
 
-        fn get_method(&self) -> &http::Method {
-            &http::Method::POST
+        fn get_method(&self) -> http::Method {
+            http::Method::POST
         }
 
-        fn get_path(&self) -> &str {
-            ""
+        fn get_path(&self) -> String {
+            "".to_string()
         }
 
         fn get_query(&self) -> serde_json::Value {

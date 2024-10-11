@@ -15,49 +15,52 @@ use serde_json::Value;
 
 // as lambda_runtime::LambdaEvent and core_resolver::request_context::Request are in different crates
 // from this one, we must wrap the request with our own struct
+// Reference: https://docs.aws.amazon.com/lambda/latest/dg/urls-invocation.html#urls-payloads
 pub struct LambdaRequest<'a> {
     event: &'a LambdaEvent<Value>,
-    path: &'a str,
-    method: http::Method,
-    query: serde_json::Value,
 }
 
 impl<'a> LambdaRequest<'a> {
     pub fn new(event: &'a LambdaEvent<Value>) -> LambdaRequest<'a> {
-        let method = match event.payload["requestContext"]["http"]["method"].as_str() {
-            Some(method) => match method {
-                "GET" => http::Method::GET,
-                "POST" => http::Method::POST,
-                "PUT" => http::Method::PUT,
-                "DELETE" => http::Method::DELETE,
-                "PATCH" => http::Method::PATCH,
-                "OPTIONS" => http::Method::OPTIONS,
-                "HEAD" => http::Method::HEAD,
-                "TRACE" => http::Method::TRACE,
-                "CONNECT" => http::Method::CONNECT,
-                _ => http::Method::GET,
-            },
-            None => http::Method::GET,
-        };
+        LambdaRequest { event }
+    }
+}
 
-        let path = event.payload["path"].as_str().unwrap_or("/");
-        let query = event
-            .payload
-            .get("queryStringParameters")
-            .cloned()
-            .unwrap_or_default();
-
-        LambdaRequest {
-            event,
-            path,
-            method,
-            query,
-        }
+impl LambdaRequest<'_> {
+    fn http_payload(&self) -> &Value {
+        &self.event.payload["requestContext"]["http"]
     }
 }
 
 impl RequestHead for LambdaRequest<'_> {
     fn get_headers(&self, key: &str) -> Vec<String> {
+        if key == "cookie" {
+            let cookies_payload = self.event.payload["cookies"].clone();
+
+            if cookies_payload.is_null() {
+                return vec![];
+            }
+
+            let cookies_array = cookies_payload.as_array();
+
+            return match cookies_array {
+                Some(cookies_array) => {
+                    if cookies_array.is_empty() {
+                        vec![]
+                    } else {
+                        let cookies_string = cookies_array
+                            .into_iter()
+                            .flat_map(|cookie| cookie.as_str().map(|s| s.to_string()))
+                            .collect::<Vec<String>>()
+                            .join("; ");
+
+                        vec![cookies_string]
+                    }
+                }
+                None => vec![],
+            };
+        }
+
         // handle "headers" field
         let mut headers: Vec<String> = self.event.payload["headers"]
             .as_object()
@@ -93,25 +96,40 @@ impl RequestHead for LambdaRequest<'_> {
     }
 
     fn get_ip(&self) -> Option<std::net::IpAddr> {
-        let event: &Value = &self.event.payload;
-
-        event
-            .get("requestContext")
-            .and_then(|ctx| ctx.get("identity"))
-            .and_then(|ident| ident.get("sourceIp"))
+        self.http_payload()
+            .get("sourceIp")
             .and_then(|source_ip| source_ip.as_str())
             .and_then(|str| str.parse::<std::net::IpAddr>().ok())
     }
 
-    fn get_method(&self) -> &http::Method {
-        &self.method
+    fn get_method(&self) -> http::Method {
+        match self.http_payload()["method"].as_str() {
+            Some(method) => match method {
+                "GET" => http::Method::GET,
+                "POST" => http::Method::POST,
+                "PUT" => http::Method::PUT,
+                "DELETE" => http::Method::DELETE,
+                "PATCH" => http::Method::PATCH,
+                "OPTIONS" => http::Method::OPTIONS,
+                "HEAD" => http::Method::HEAD,
+                _ => http::Method::GET,
+            },
+            None => http::Method::GET,
+        }
     }
 
-    fn get_path(&self) -> &str {
-        self.path
+    fn get_path(&self) -> String {
+        self.http_payload()["path"]
+            .as_str()
+            .unwrap_or("/")
+            .to_string()
     }
 
     fn get_query(&self) -> serde_json::Value {
-        self.query.clone()
+        self.event
+            .payload
+            .get("queryStringParameters")
+            .cloned()
+            .unwrap_or_default()
     }
 }

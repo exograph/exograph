@@ -41,7 +41,7 @@ impl PlaygroundRouter {
     }
 
     fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
-        let request_path = strip_leading_slash(request_head.get_path());
+        let request_path = strip_leading_slash(&request_head.get_path());
 
         (request_path.starts_with(&self.playground_path) || request_path.is_empty())
             && request_head.get_method() == http::Method::GET
@@ -68,7 +68,7 @@ impl Router for PlaygroundRouter {
             });
         }
 
-        let path = strip_leading_slash(request.get_head().get_path());
+        let path = strip_leading_slash(&request.get_head().get_path());
 
         // We redirect to the playground path if the path is empty. This provides a better user experience
         // as the user will be redirected to the playground path without having to add it manually.

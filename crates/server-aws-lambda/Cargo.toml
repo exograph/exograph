@@ -14,7 +14,7 @@ repository = "https://github.com/exograph/exograph"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 async-trait.workspace = true
-lambda_runtime = "0.12.0"
+lambda_runtime = "0.13.0"
 futures.workspace = true
 opentelemetry = { version = "0.17", default-features = false, features = [
   "trace",

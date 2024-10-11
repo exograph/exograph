@@ -1,3 +1,12 @@
+// Copyright Exograph, Inc. All rights reserved.
+//
+// Use of this software is governed by the Business Source License
+// included in the LICENSE file at the root of this repository.
+//
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0.
+
 use http::StatusCode;
 use serde_json::Value;
 
@@ -8,7 +17,7 @@ use common::router::Router;
 
 use wasm_bindgen::prelude::*;
 
-struct WorkerRequestWrapper(WorkerRequest, String, Value);
+struct WorkerRequestWrapper(WorkerRequest, Value);
 
 unsafe impl Send for WorkerRequestWrapper {}
 unsafe impl Sync for WorkerRequestWrapper {}
@@ -27,26 +36,26 @@ impl RequestHead for WorkerRequestWrapper {
         None
     }
 
-    fn get_method(&self) -> &http::Method {
+    fn get_method(&self) -> http::Method {
         match self.0.method() {
-            worker::Method::Head => &http::Method::HEAD,
-            worker::Method::Get => &http::Method::GET,
-            worker::Method::Post => &http::Method::POST,
-            worker::Method::Put => &http::Method::PUT,
-            worker::Method::Patch => &http::Method::PATCH,
-            worker::Method::Delete => &http::Method::DELETE,
-            worker::Method::Options => &http::Method::OPTIONS,
-            worker::Method::Connect => &http::Method::CONNECT,
-            worker::Method::Trace => &http::Method::TRACE,
+            worker::Method::Head => http::Method::HEAD,
+            worker::Method::Get => http::Method::GET,
+            worker::Method::Post => http::Method::POST,
+            worker::Method::Put => http::Method::PUT,
+            worker::Method::Patch => http::Method::PATCH,
+            worker::Method::Delete => http::Method::DELETE,
+            worker::Method::Options => http::Method::OPTIONS,
+            worker::Method::Connect => http::Method::CONNECT,
+            worker::Method::Trace => http::Method::TRACE,
         }
     }
 
-    fn get_path(&self) -> &str {
-        &self.1
+    fn get_path(&self) -> String {
+        self.0.path()
     }
 
     fn get_query(&self) -> Value {
-        self.2.clone()
+        self.1.clone()
     }
 }
 
@@ -79,7 +88,6 @@ fn with_headers(mut response: WorkerResponse, headers: Headers) -> Result<Worker
 pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response, JsValue> {
     let url =
         url::Url::parse(&raw_request.url()).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
-    let path = url.path().to_string();
     let query = url
         .query_pairs()
         .map(|q| {
@@ -88,8 +96,7 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
         })
         .collect();
 
-    let mut worker_request =
-        WorkerRequestWrapper(WorkerRequest::from(raw_request), path.into(), query);
+    let mut worker_request = WorkerRequestWrapper(WorkerRequest::from(raw_request), query);
 
     let body_json: Value = worker_request.0.json().await.unwrap_or(Value::Null);
 

@@ -9,44 +9,126 @@
 
 #![cfg(target_os = "linux")]
 
-use std::sync::Arc;
+use std::{collections::HashMap, path::Path, sync::Arc};
 
-use ::common::env_const::{EXO_CHECK_CONNECTION_ON_STARTUP, EXO_POSTGRES_URL};
 use exo_env::MapEnvironment;
 use router::system_router::create_system_router_from_system;
-use serde_json::Value;
+use serde_json::{json, Value};
 use server_aws_lambda::resolve;
 use server_common::create_static_loaders;
 
-pub async fn test_query(json_input: Value, exo_model: &str, expected: Value) {
+fn create_graphql_event(test_request: TestRequest<'_>) -> Value {
+    let query_part = json!({
+        "query": test_request.query,
+        "variables": null
+    });
+    json!(
+    {
+        "cookies": test_request.cookies.into_iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<String>>(),
+        "headers": Value::from(serde_json::Map::from_iter(test_request.headers.into_iter().map(|(k, v)| (k.to_string(), Value::from(v.to_string()))))),
+        "requestContext": {
+            "http": {
+                "method": test_request.method.to_string(),
+                "path": test_request.path,
+                "sourceIp": test_request.ip
+            }
+        },
+        "multiValueHeaders": null,
+        "body": serde_json::to_string(&query_part).unwrap()
+    })
+}
+
+pub struct TestRequest<'a> {
+    pub query: &'a str,
+    pub headers: HashMap<&'a str, &'a str>,
+    pub ip: &'a str,
+    pub cookies: Vec<(&'a str, &'a str)>,
+    pub method: http::Method,
+    pub path: &'a str,
+}
+
+pub struct TestResponse<'a> {
+    pub body: Value,
+    pub headers: HashMap<&'a str, &'a str>,
+    pub cookies: Vec<(&'a str, &'a str)>,
+    pub status_code: u16,
+}
+
+pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_>) {
+    let project_root = env!("CARGO_MANIFEST_DIR");
+    let project_dir = Path::new(project_root).join("tests/test-model");
+
+    std::env::set_current_dir(project_dir.clone()).expect(&format!(
+        "Failed to set current directory to {}",
+        project_dir.display()
+    ));
+    let model_path = project_dir.join("src/index.exo");
+
     let context = lambda_runtime::Context::default();
-    let event = lambda_runtime::LambdaEvent::new(json_input, context);
 
-    // HACK: some env vars need to be set to create a SystemContext
-    let env = MapEnvironment::from([
-        (EXO_POSTGRES_URL, "postgres://a@localhost:0"),
-        (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
-    ]);
-
-    let model_system = builder::build_system_from_str(exo_model, "index.exo".to_string(), vec![])
+    let model_system = builder::build_system(model_path, None::<&Path>, vec![])
         .await
-        .unwrap();
+        .expect("Failed to build system");
 
-    let system_router =
-        create_system_router_from_system(model_system, create_static_loaders(), Arc::new(env))
-            .await
-            .unwrap();
+    let system_router = create_system_router_from_system(
+        model_system,
+        create_static_loaders(),
+        Arc::new(MapEnvironment::from([])),
+    )
+    .await
+    .expect("Failed to create system router");
 
-    let result = resolve(event, Arc::new(system_router)).await.unwrap();
+    let event = lambda_runtime::LambdaEvent::new(create_graphql_event(test_request), context);
+
+    let result = resolve(event, Arc::new(system_router))
+        .await
+        .expect("Failed to resolve");
+
+    let expected_multi_value_headers = expected
+        .headers
+        .into_iter()
+        .chain(HashMap::from([("content-type", "application/json")]))
+        .map(|(k, v)| {
+            (
+                k.to_string(),
+                serde_json::Value::Array(vec![v.to_string().into()]),
+            )
+        });
+
+    let expected_json = json!({
+        "isBase64Encoded": false,
+        "statusCode": expected.status_code,
+        "headers": {},
+        "multiValueHeaders": serde_json::Map::from_iter(expected_multi_value_headers),
+        "cookies": expected.cookies.into_iter().map(|(k, v)| format!("{}={}", k, v)).collect::<Vec<_>>(),
+        "body": expected.body
+    });
 
     println!(
         "!! expected: {}",
-        serde_json::to_string_pretty(&expected).unwrap()
+        serde_json::to_string_pretty(&expected_json).unwrap()
     );
     println!(
         "!! actual: {}",
         serde_json::to_string_pretty(&result).unwrap()
     );
 
-    assert_eq!(expected, result)
+    assert_eq!(
+        expected_json.as_object().unwrap().keys().len(),
+        result.as_object().unwrap().keys().len()
+    );
+    for key in expected_json.as_object().unwrap().keys() {
+        // Body comes as a string, so parse it into a JSON object to normalize spaces in it
+        let (expected_value, actual_value) = if key == "body" {
+            let expected_json_body: Value = expected_json["body"].clone();
+            let actual_json_body: Value =
+                serde_json::from_str(&result["body"].as_str().unwrap()).unwrap();
+
+            (expected_json_body, actual_json_body)
+        } else {
+            (expected_json[key].clone(), result[key].clone())
+        };
+
+        assert_eq!(expected_value, actual_value, "Mismatch for key: {}", key);
+    }
 }

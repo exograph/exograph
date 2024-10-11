@@ -215,11 +215,12 @@ Exograph responds to the `POST` method (on the path specified by the `EXO_GRAPHQ
 {
   "requestContext": {
     "http": {
-      "method": "POST"
+      "method": "POST",
+      "path": "/graphql"
     }
   },
   "path": "/graphql",
-  "body": "{\"query\":\"{\\n\\ttodos {\\n\\t  id\\n\\t}\\n}\"}"
+  "body": "{\"query\":\"{ todos { id } }\"}"
 }
 ```
 
