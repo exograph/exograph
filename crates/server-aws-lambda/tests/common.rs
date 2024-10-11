@@ -38,7 +38,7 @@ fn create_graphql_event(test_request: TestRequest<'_>) -> Value {
     })
 }
 
-pub(super) struct TestRequest<'a> {
+pub struct TestRequest<'a> {
     pub query: &'a str,
     pub headers: HashMap<&'a str, &'a str>,
     pub ip: &'a str,
@@ -47,7 +47,7 @@ pub(super) struct TestRequest<'a> {
     pub path: &'a str,
 }
 
-pub(super) struct TestResponse<'a> {
+pub struct TestResponse<'a> {
     pub body: Value,
     pub headers: HashMap<&'a str, &'a str>,
     pub cookies: Vec<(&'a str, &'a str)>,
