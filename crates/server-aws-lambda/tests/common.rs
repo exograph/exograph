@@ -55,17 +55,20 @@ pub struct TestResponse<'a> {
 }
 
 pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_>) {
-    let current_dir = std::env::current_dir().unwrap();
+    let current_dir = std::env::current_dir().expect("Failed to get current directory");
     let project_dir = current_dir.join("tests/test-model");
 
-    std::env::set_current_dir(project_dir.clone()).unwrap();
+    std::env::set_current_dir(project_dir.clone()).expect(
+        "Failed to set current directory to {}",
+        project_dir.display(),
+    );
     let model_path = project_dir.join("src/index.exo");
 
     let context = lambda_runtime::Context::default();
 
     let model_system = builder::build_system(model_path, None::<&Path>, vec![])
         .await
-        .unwrap();
+        .expect("Failed to build system");
 
     let system_router = create_system_router_from_system(
         model_system,
@@ -73,11 +76,13 @@ pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_
         Arc::new(MapEnvironment::from([])),
     )
     .await
-    .unwrap();
+    .expect("Failed to create system router");
 
     let event = lambda_runtime::LambdaEvent::new(create_graphql_event(test_request), context);
 
-    let result = resolve(event, Arc::new(system_router)).await.unwrap();
+    let result = resolve(event, Arc::new(system_router))
+        .await
+        .expect("Failed to resolve");
 
     let expected_multi_value_headers = expected
         .headers
@@ -127,5 +132,6 @@ pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_
         assert_eq!(expected_value, actual_value, "Mismatch for key: {}", key);
     }
 
-    std::env::set_current_dir(current_dir).unwrap();
+    std::env::set_current_dir(current_dir)
+        .expect("Failed to set current directory back to the original");
 }
