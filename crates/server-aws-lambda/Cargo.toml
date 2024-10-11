@@ -3,7 +3,7 @@
 # Once https://github.com/rust-lang/cargo/issues/5220 is resolved,
 # we will be able to include this crate in the workspace only for the linux target.
 # Until then, we need to scope dependencies to the linux target as well as mark
-# each source file as `#![cfg(target_os = "linux")]`.
+# each source file as `#![cfg(target_os = "macos")]`.
 
 [package]
 name = "server-aws-lambda"
@@ -12,7 +12,7 @@ version.workspace = true
 edition.workspace = true
 repository = "https://github.com/exograph/exograph"
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(target_os = "macos")'.dependencies]
 async-trait.workspace = true
 lambda_runtime = "0.13.0"
 futures.workspace = true
@@ -30,7 +30,7 @@ server-common = { path = "../server-common" }
 common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }
 
-[target.'cfg(target_os = "linux")'.dev-dependencies]
+[target.'cfg(target_os = "macos")'.dev-dependencies]
 builder = { path = "../builder" }
 
 [features]

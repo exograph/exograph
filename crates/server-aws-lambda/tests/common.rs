@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-#![cfg(target_os = "linux")]
+#![cfg(target_os = "macos")]
 
 use std::{collections::HashMap, path::Path, sync::Arc};
 
@@ -58,10 +58,10 @@ pub async fn test_query(test_request: TestRequest<'_>, expected: TestResponse<'_
     let current_dir = std::env::current_dir().expect("Failed to get current directory");
     let project_dir = current_dir.join("tests/test-model");
 
-    std::env::set_current_dir(project_dir.clone()).expect(
+    std::env::set_current_dir(project_dir.clone()).expect(&format!(
         "Failed to set current directory to {}",
-        project_dir.display(),
-    );
+        project_dir.display()
+    ));
     let model_path = project_dir.join("src/index.exo");
 
     let context = lambda_runtime::Context::default();
