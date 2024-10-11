@@ -11,6 +11,7 @@
 
 use std::collections::HashMap;
 
+use common::{TestRequest, TestResponse};
 use serde_json::json;
 
 mod common;
@@ -30,23 +31,25 @@ const WHATS_MY_IP_QUERY: &str = r#"query {
 #[tokio::test]
 async fn whats_my_ip() {
     common::test_query(
-        WHATS_MY_IP_QUERY,
-        HashMap::new(),
-        "1.2.3.4",
-        vec![],
-        http::Method::POST,
-        "/graphql",
-        json!({
-            "isBase64Encoded": false,
-            "statusCode": 200,
-            "headers": {},
-            "multiValueHeaders": {"content-type": ["application/json"]},
-            "body": serde_json::to_string(&json!({
+        TestRequest {
+            query: WHATS_MY_IP_QUERY,
+            headers: HashMap::new(),
+            ip: "1.2.3.4",
+            cookies: vec![],
+            method: http::Method::POST,
+            path: "/graphql",
+        },
+        TestResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            cookies: vec![],
+            body: json!({
+
                 "data": {
                     "whatsMyIp": "1.2.3.4"
                 }
-            })).unwrap()
-        }),
+            }),
+        },
     )
     .await;
 }
@@ -54,18 +57,19 @@ async fn whats_my_ip() {
 #[tokio::test]
 async fn no_headers() {
     common::test_query(
-        REQUEST_CONTEXT_QUERY,
-        HashMap::new(),
-        "1.2.3.4",
-        vec![],
-        http::Method::POST,
-        "/graphql",
-        json!({
-            "isBase64Encoded": false,
-            "statusCode": 200,
-            "headers": {},
-            "multiValueHeaders": {"content-type": ["application/json"]},
-            "body": serde_json::to_string(&json!({
+        TestRequest {
+            query: REQUEST_CONTEXT_QUERY,
+            headers: HashMap::new(),
+            ip: "1.2.3.4",
+            cookies: vec![],
+            method: http::Method::POST,
+            path: "/graphql",
+        },
+        TestResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            cookies: vec![],
+            body: json!({
                 "data": {
                     "requestContext": {
                         "apiKey": null,
@@ -73,8 +77,8 @@ async fn no_headers() {
                         "sessionId": null
                     }
                 }
-            })).unwrap()
-        }),
+            }),
+        },
     )
     .await;
 }
@@ -82,18 +86,19 @@ async fn no_headers() {
 #[tokio::test]
 async fn with_request_headers() {
     common::test_query(
-        REQUEST_CONTEXT_QUERY,
-        HashMap::from([("api-key", "apiKeyValue"), ("client-key", "clientKeyValue")]),
-        "1.2.3.4",
-        vec![],
-        http::Method::POST,
-        "/graphql",
-        json!({
-            "isBase64Encoded": false,
-            "statusCode": 200,
-            "headers": {},
-            "multiValueHeaders": {"content-type": ["application/json"]},
-            "body": serde_json::to_string(&json!({
+        TestRequest {
+            query: REQUEST_CONTEXT_QUERY,
+            headers: HashMap::from([("api-key", "apiKeyValue"), ("client-key", "clientKeyValue")]),
+            ip: "1.2.3.4",
+            cookies: vec![],
+            method: http::Method::POST,
+            path: "/graphql",
+        },
+        TestResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            cookies: vec![],
+            body: json!({
                 "data": {
                     "requestContext": {
                         "apiKey": "apiKeyValue",
@@ -101,8 +106,8 @@ async fn with_request_headers() {
                         "sessionId": null
                     }
                 }
-            })).unwrap()
-        }),
+            }),
+        },
     )
     .await;
 }
@@ -110,18 +115,19 @@ async fn with_request_headers() {
 #[tokio::test]
 async fn with_request_cookies() {
     common::test_query(
-        REQUEST_CONTEXT_QUERY,
-        HashMap::from([]),
-        "1.2.3.4",
-        vec![("session-id", "sessionIdValue")],
-        http::Method::POST,
-        "/graphql",
-        json!({
-            "isBase64Encoded": false,
-            "statusCode": 200,
-            "headers": {},
-            "multiValueHeaders": {"content-type": ["application/json"]},
-            "body": serde_json::to_string(&json!({
+        TestRequest {
+            query: REQUEST_CONTEXT_QUERY,
+            headers: HashMap::new(),
+            ip: "1.2.3.4",
+            cookies: vec![("session-id", "sessionIdValue")],
+            method: http::Method::POST,
+            path: "/graphql",
+        },
+        TestResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            cookies: vec![],
+            body: json!({
                 "data": {
                     "requestContext": {
                         "apiKey": null,
@@ -129,8 +135,58 @@ async fn with_request_cookies() {
                         "sessionId": "sessionIdValue"
                     }
                 }
-            })).unwrap()
-        }),
+            }),
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn add_response_header() {
+    common::test_query(
+        TestRequest {
+            query: "{ addResponseHeader(name: \"x-test\", value: \"x-test-value\") }",
+            headers: HashMap::new(),
+            ip: "1.2.3.4",
+            cookies: vec![],
+            method: http::Method::POST,
+            path: "/graphql",
+        },
+        TestResponse {
+            status_code: 200,
+            headers: HashMap::from([("x-test", "x-test-value")]),
+            cookies: vec![],
+            body: json!({
+                "data": {
+                    "addResponseHeader": "ok"
+                }
+            }),
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn set_cookie() {
+    common::test_query(
+        TestRequest {
+            query: "{ addResponseCookie(name: \"x-test-cookie\", value: \"x-test-cookie-value\") }",
+            headers: HashMap::new(),
+            ip: "1.2.3.4",
+            cookies: vec![],
+            method: http::Method::POST,
+            path: "/graphql",
+        },
+        TestResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            cookies: vec![("x-test-cookie", "x-test-cookie-value")],
+            body: json!({
+                "data": {
+                    "addResponseCookie": "ok"
+                }
+            }),
+        },
     )
     .await;
 }

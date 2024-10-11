@@ -19,4 +19,10 @@ module EchoService {
 
   @access(true)
   query requestContext(@inject requestContext: RequestContext): EchoHeadersResponse
+
+  @access(true)
+  query addResponseCookie(name: String, value: String, @inject exograph: Exograph): String
+  
+  @access(true)
+  query addResponseHeader(name: String, value: String, @inject exograph: Exograph): String
 }

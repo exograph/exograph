@@ -94,6 +94,12 @@ pub async fn resolve(
                 }
             };
 
+            let (cookie_headers, headers): (Vec<_>, Vec<_>) = headers
+                .into_iter()
+                .partition(|(name, _)| name == "set-cookie");
+
+            let cookie_headers = cookie_headers.into_iter().map(|(_, v)| (v.to_string()));
+
             let all_headers: Vec<(String, String)> = headers
                 .into_iter()
                 .chain(additional_headers.into_iter())
@@ -116,6 +122,7 @@ pub async fn resolve(
 
                         acc
                     }),
+                "cookies": serde_json::Value::from(cookie_headers.map(|value| Value::String(value)).collect::<Vec<_>>()),
                 "body": body_string
             }))
         }
