@@ -71,11 +71,7 @@ impl SystemRouter {
 
 #[async_trait::async_trait]
 impl Router for SystemRouter {
-    async fn route(
-        &self,
-        request: &mut (dyn RequestPayload + Send),
-        playground_request: bool,
-    ) -> Option<ResponsePayload> {
-        self.underlying.route(request, playground_request).await
+    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
+        self.underlying.route(request).await
     }
 }

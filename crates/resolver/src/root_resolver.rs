@@ -104,11 +104,7 @@ impl Router for GraphQLRouter {
         name = "resolver::resolve"
         skip(self, request)
     )]
-    async fn route(
-        &self,
-        request: &mut (dyn RequestPayload + Send),
-        playground_request: bool,
-    ) -> Option<ResponsePayload> {
+    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
         if !self.suitable(request.get_head()) {
             return None;
         }
@@ -118,6 +114,11 @@ impl Router for GraphQLRouter {
         #[cfg(target_family = "wasm")]
         let is_production = !playground_request;
 
+        let playground_request = request
+            .get_head()
+            .get_header("_exo_playground")
+            .map(|value| value == "true")
+            .unwrap_or(false);
         let response = resolve_in_memory(
             request,
             &self.system_resolver,

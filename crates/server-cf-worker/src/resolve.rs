@@ -106,7 +106,7 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
     };
 
     let system_router = crate::init::get_system_router()?;
-    let response_payload = system_router.route(&mut request, true).await;
+    let response_payload = system_router.route(&mut request).await;
 
     let response = match response_payload {
         Some(ResponsePayload {
