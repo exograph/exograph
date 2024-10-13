@@ -52,7 +52,7 @@ pub async fn resolve(
         body,
     };
 
-    let response_payload = system_router.route(&mut request_payloads).await;
+    let response_payload = system_router.route(&mut request_payload).await;
 
     match response_payload {
         Some(ResponsePayload {
