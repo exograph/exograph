@@ -1,6 +1,5 @@
 use exo_env::Environment;
 
-#[cfg(not(target_family = "wasm"))]
 use super::EnvError;
 
 pub const EXO_INTROSPECTION: &str = "EXO_INTROSPECTION";
@@ -34,7 +33,6 @@ pub enum DeploymentMode {
     Prod,
 }
 
-#[cfg(not(target_family = "wasm"))]
 pub fn get_deployment_mode(env: &dyn Environment) -> Result<DeploymentMode, EnvError> {
     let deployment_mode = env.get(_EXO_DEPLOYMENT_MODE);
 
@@ -60,7 +58,6 @@ pub fn get_deployment_mode(env: &dyn Environment) -> Result<DeploymentMode, EnvE
     }
 }
 
-#[cfg(not(target_family = "wasm"))]
 pub fn is_production(env: &dyn Environment) -> bool {
     matches!(get_deployment_mode(env), Ok(DeploymentMode::Prod) | Err(_))
 }

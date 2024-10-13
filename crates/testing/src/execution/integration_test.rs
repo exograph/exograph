@@ -474,7 +474,7 @@ pub async fn run_query(
     cookies: &mut HashMap<String, String>,
 ) -> Value {
     let mut request = request;
-    let res = router.route(&mut request, true).await.unwrap();
+    let res = router.route(&mut request).await.unwrap();
 
     res.headers.into_iter().for_each(|(k, v)| {
         if k.to_ascii_lowercase() == "set-cookie" {

@@ -15,7 +15,6 @@ use common::env_const::get_graphql_http_path;
 
 use crate::system_loader::{StaticLoaders, SystemLoadingError};
 
-#[cfg(not(target_family = "wasm"))]
 use common::env_const::is_production;
 use common::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use common::router::Router;
@@ -104,30 +103,29 @@ impl Router for GraphQLRouter {
         name = "resolver::resolve"
         skip(self, request)
     )]
-    async fn route(
-        &self,
-        request: &mut (dyn RequestPayload + Send),
-        playground_request: bool,
-    ) -> Option<ResponsePayload> {
+    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
         if !self.suitable(request.get_head()) {
             return None;
         }
 
-        #[cfg(not(target_family = "wasm"))]
-        let is_production = is_production(self.env.as_ref());
-        #[cfg(target_family = "wasm")]
-        let is_production = !playground_request;
+        let playground_request = request
+            .get_head()
+            .get_header("_exo_playground")
+            .map(|value| value == "true")
+            .unwrap_or(false);
 
-        let response = resolve_in_memory(
-            request,
-            &self.system_resolver,
-            if playground_request && !is_production {
-                TrustedDocumentEnforcement::DoNotEnforce
-            } else {
-                TrustedDocumentEnforcement::Enforce
-            },
-        )
-        .await;
+        let is_production = is_production(self.env.as_ref());
+
+        // If the server is in production mode, enforce trusted documents regardless of
+        // the `_exo_playground` header
+        let trusted_document_enforcement = if is_production || !playground_request {
+            TrustedDocumentEnforcement::Enforce
+        } else {
+            TrustedDocumentEnforcement::DoNotEnforce
+        };
+
+        let response =
+            resolve_in_memory(request, &self.system_resolver, trusted_document_enforcement).await;
 
         if let Err(SystemResolutionError::RequestError(e)) = response {
             tracing::error!("Error while resolving request: {:?}", e);

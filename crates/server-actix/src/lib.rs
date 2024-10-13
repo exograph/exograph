@@ -97,18 +97,12 @@ async fn resolve_locally(
     query: Value,
     system_router: web::Data<SystemRouter>,
 ) -> HttpResponse {
-    let playground_request = req
-        .headers()
-        .get("_exo_playground")
-        .map(|value| value == "true")
-        .unwrap_or(false);
-
     let mut request = ActixRequestPayload {
         head: ActixRequestHead::from_request(req, query),
         body: body.map(|b| b.into_inner()).unwrap_or(Value::Null),
     };
 
-    let response = system_router.route(&mut request, playground_request).await;
+    let response = system_router.route(&mut request).await;
 
     match response {
         Some(ResponsePayload {

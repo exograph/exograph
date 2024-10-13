@@ -39,11 +39,7 @@ impl Router for CorsRouter {
     /// specified standard, but https://github.com/whatwg/fetch/issues/172 makes sense.
     /// It suggests the possibility of adding more details in the body, but also cautions
     /// to not reveal too much information. Therefore, we don't add a body.
-    async fn route(
-        &self,
-        request: &mut (dyn RequestPayload + Send),
-        playground_request: bool,
-    ) -> Option<ResponsePayload> {
+    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
         let origin_header = request.get_head().get_header(http::header::ORIGIN.as_str());
 
         let add_cors_headers = |response: &mut ResponsePayload, origin: &str| {
@@ -102,7 +98,7 @@ impl Router for CorsRouter {
         } else {
             match cors_response {
                 CorsResponse::Allow(origin) => {
-                    let mut response = self.underlying.route(request, playground_request).await;
+                    let mut response = self.underlying.route(request).await;
 
                     if let Some(ref mut response) = response {
                         add_cors_headers(response, origin);
@@ -110,9 +106,7 @@ impl Router for CorsRouter {
 
                     response
                 }
-                CorsResponse::NoCorsHeaders => {
-                    self.underlying.route(request, playground_request).await
-                }
+                CorsResponse::NoCorsHeaders => self.underlying.route(request).await,
                 CorsResponse::Deny => Some(forbidden_response()),
             }
         }
@@ -340,7 +334,7 @@ mod tests {
 
         RESPONSE_PAYLOAD
             .scope(Arc::new(underlying_response), async move {
-                cors_router.route(&mut request, false).await
+                cors_router.route(&mut request).await
             })
             .await
     }
@@ -388,7 +382,6 @@ mod tests {
         async fn route(
             &self,
             _request: &mut (dyn RequestPayload + Send),
-            _playground_request: bool,
         ) -> Option<ResponsePayload> {
             let mock_response = RESPONSE_PAYLOAD.get();
 

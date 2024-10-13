@@ -13,11 +13,7 @@ use http::StatusCode;
 
 #[async_trait]
 pub trait Router: Sync {
-    async fn route(
-        &self,
-        request: &mut (dyn RequestPayload + Send),
-        playground_request: bool,
-    ) -> Option<ResponsePayload>;
+    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload>;
 }
 
 pub struct CompositeRouter {
@@ -32,13 +28,9 @@ impl CompositeRouter {
 
 #[async_trait::async_trait]
 impl Router for CompositeRouter {
-    async fn route(
-        &self,
-        request: &mut (dyn RequestPayload + Send),
-        playground_request: bool,
-    ) -> Option<ResponsePayload> {
+    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
         for router in self.routers.iter() {
-            if let Some(response) = router.route(request, playground_request).await {
+            if let Some(response) = router.route(request).await {
                 return Some(response);
             }
         }

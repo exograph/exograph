@@ -50,11 +50,7 @@ impl PlaygroundRouter {
 
 #[async_trait]
 impl Router for PlaygroundRouter {
-    async fn route(
-        &self,
-        request: &mut (dyn RequestPayload + Send),
-        _playground_request: bool,
-    ) -> Option<ResponsePayload> {
+    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
         if !self.suitable(request.get_head()) {
             return None;
         }
