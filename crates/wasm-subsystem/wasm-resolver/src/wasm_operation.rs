@@ -58,7 +58,7 @@ impl<'a> WasmOperation<'a> {
             .iter()
             .map(|arg| {
                 if let Some(val) = mapped_args.get(&arg.name) {
-                    val.clone()
+                    *val
                 } else {
                     todo!()
                 }
