@@ -54,6 +54,11 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         field_argument_definition: &[&InputValueDefinition],
     ) -> Result<IndexMap<String, Val>, ValidationError> {
+
+        //println!("{:?}", &self.schema);
+        //println!("{:?}", &self.schema.type_definitions);
+        //println!("{:?}", &self.schema.schema_field_definition);
+        //println!("{:?}", &self.schema.type_field_definition);
         self.validate_arguments(field_argument_definition, &self.field.node.arguments)
     }
 
@@ -62,6 +67,8 @@ impl<'a> ArgumentValidator<'a> {
         field_argument_definitions: &[&InputValueDefinition],
         field_arguments: &[(Positioned<Name>, Positioned<Value>)],
     ) -> Result<IndexMap<String, Val>, ValidationError> {
+        //println!("{:?}", field_argument_definitions);
+        //println!("{:?}", field_arguments);
         let field_name = self.field.node.name.node.as_str();
 
         // Stray arguments tracking: 1. Maintain a hashmap of all the arguments supplied in the query
@@ -201,6 +208,9 @@ impl<'a> ArgumentValidator<'a> {
         number: &Number,
         pos: Pos,
     ) -> Result<Val, ValidationError> {
+        // println!("{:?}", argument_definition);
+        // returns InputValueDefinition { description: None, name: Positioned { pos: Pos(0:0), node: Name("limit") }, ty: Positioned { pos: Pos(0:0), node: Type { base: Named(Name("Int")), nullable: false } }, default_value: None, directives: [] }
+
         // TODO: Use the types from PrimitiveType (but that is currently in the builder crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "Number",

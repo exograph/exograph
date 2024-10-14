@@ -1,0 +1,15 @@
+operation: |
+    mutation {
+      createExample(data: { limit: 1337 }) {
+        id
+        limit
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Internal server error"
+        }
+      ]
+    }
