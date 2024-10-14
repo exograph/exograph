@@ -768,7 +768,6 @@ mod tests {
                     let serialized = insta::_macro_support::serialize_value(
                         &to_check,
                         insta::_macro_support::SerializationFormat::Yaml,
-                        insta::_macro_support::SnapshotLocation::File
                     );
                     assert_eq!(split_expected, serialized);
                 }
