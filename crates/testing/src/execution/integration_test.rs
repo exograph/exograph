@@ -157,11 +157,19 @@ impl IntegrationTest {
 
                 let exo_ir_file = self.exo_ir_file_path(project_dir).display().to_string();
 
+                let separator = match db_instance.url().contains("?") {
+                    true => "&",
+                    false => "?",
+                };
                 let mut env = HashMap::from([
                     (
                         EXO_POSTGRES_URL.to_string(),
                         // set a common timezone for tests for consistency "-c TimeZone=UTC+00"
-                        format!("{}?options=-c%20TimeZone%3DUTC%2B00", db_instance.url()),
+                        format!(
+                            "{}{}options=-c%20TimeZone%3DUTC%2B00",
+                            db_instance.url(),
+                            separator
+                        ),
                     ),
                     (EXO_JWT_SECRET.to_string(), jwtsecret.to_string()),
                     (EXO_CONNECTION_POOL_SIZE.to_string(), "1".to_string()),
