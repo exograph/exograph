@@ -57,8 +57,14 @@ pub async fn build(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
 ) -> Result<Option<ModelDenoSystemWithInterceptors>, ModelBuildingError> {
-    let module_selection_closure =
-        |module: &AstModule<Typed>| module.annotations.get("deno").map(|_| "deno".to_string());
+    let module_selection_closure = |module: &AstModule<Typed>| match (
+        module.annotations.get("deno"),
+        module.annotations.get("postgres"),
+    ) {
+        (Some(_), _) => Some("deno".to_string()),
+        (_, Some(_)) => Some("postgres".to_string()),
+        _ => None,
+    };
 
     let module_system = subsystem_model_builder_util::build_with_selection(
         typechecked_system,
@@ -107,6 +113,11 @@ fn process_script(
     module_fs_path: &Path,
 ) -> Result<(String, Vec<u8>), ModelBuildingError> {
     module_skeleton_generator::generate_module_skeleton(module, base_system, module_fs_path)?;
+
+    // Only @deno modules has script files to run.
+    if module.annotations.get("deno").is_none() {
+        return Ok((String::new(), vec![]));
+    }
 
     fn run_local<F, R>(future: F) -> R
     where
