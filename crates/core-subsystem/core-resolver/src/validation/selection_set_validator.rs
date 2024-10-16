@@ -18,11 +18,10 @@ use async_graphql_parser::{
 };
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name};
 
-use crate::validation::field::ValidatedField;
-use core_model::type_normalization::TypeDefinitionIntrospection;
+use crate::{introspection::definition::schema::SchemaFieldDefinition, validation::field::ValidatedField};
 
 use crate::{
-    introspection::definition::schema::{Schema, QUERY_ROOT_TYPENAME},
+    introspection::definition::schema::{Schema, SchemaTypeDefinition, QUERY_ROOT_TYPENAME},
     validation::validation_error::ValidationError,
 };
 
@@ -33,7 +32,7 @@ use super::{arguments_validator::ArgumentValidator, underlying_type};
 pub struct SelectionSetValidator<'a> {
     schema: &'a Schema,
     /// The parent type of this field.
-    container_type: &'a TypeDefinition,
+    container_type: &'a SchemaTypeDefinition,
     variables: &'a HashMap<Name, ConstValue>,
     fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
     is_introspection: Option<bool>,
@@ -43,7 +42,7 @@ impl<'a> SelectionSetValidator<'a> {
     #[must_use]
     pub fn new(
         schema: &'a Schema,
-        container_type: &'a TypeDefinition,
+        container_type: &'a SchemaTypeDefinition,
         variables: &'a HashMap<Name, ConstValue>,
         fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
         is_introspection: Option<bool>,
@@ -241,7 +240,7 @@ impl<'a> SelectionSetValidator<'a> {
             }
         } else {
             let (field_definition, is_introspection) =
-                if self.container_type.name.node.as_str() == QUERY_ROOT_TYPENAME {
+                if self.container_type.name.as_str() == QUERY_ROOT_TYPENAME {
                     // We have to treat the query root type specially, since its __schema and __type fields are not
                     // "ordinary" fields, but are instead special-cased in the introspection query (much the same way
                     // as the __typename field).
@@ -334,8 +333,8 @@ impl<'a> SelectionSetValidator<'a> {
 
     fn get_field_definition(
         &'a self,
-        field: &Positioned<Field>,
-    ) -> Result<&FieldDefinition, ValidationError> {
+        field: &SchemaFieldDefinition,
+    ) -> Result<&SchemaFieldDefinition, ValidationError> {
         let field_definition = &self
             .container_type
             .fields()
@@ -344,8 +343,8 @@ impl<'a> SelectionSetValidator<'a> {
 
         match field_definition {
             None => Err(ValidationError::InvalidField(
-                field.node.name.node.as_str().to_string(),
-                self.container_type.name.node.to_string(),
+                field.name.to_string(),
+                self.container_type.name.to_string(),
                 field.pos,
             )),
             Some(field_definition) => Ok(field_definition),
