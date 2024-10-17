@@ -110,7 +110,16 @@ async fn resolve_locally(
             headers,
             status_code,
         }) => {
-            let mut builder = HttpResponse::build(status_code);
+            let actix_status_code = match StatusCode::from_u16(status_code.as_u16()) {
+                Ok(status_code) => status_code,
+                Err(err) => {
+                    tracing::error!("Invalid status code: {}", err);
+                    return HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(error_msg!("Invalid status code"));
+                }
+            };
+
+            let mut builder = HttpResponse::build(actix_status_code);
 
             for header in headers.into_iter() {
                 builder.append_header(header);
