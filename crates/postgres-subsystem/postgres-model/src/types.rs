@@ -177,6 +177,12 @@ pub struct PostgresField<CT> {
     pub dynamic_default_value: Option<ContextSelection>,
     pub readonly: bool,
     pub access: Access,
+    pub type_props: Option<TypeProps>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum TypeProps {
+    Int { range: (i64, i64) },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
