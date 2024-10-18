@@ -45,7 +45,7 @@ use postgres_model::{
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{
         get_field_id, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
-        TypeIndex,
+        TypeIndex, TypeProps,
     },
     vector_distance::{VectorDistanceField, VectorDistanceType},
 };
@@ -640,7 +640,26 @@ fn create_persistent_field(
         has_default_value: field.default_value.is_some(),
         dynamic_default_value: None,
         readonly: field.readonly || field.update_sync,
+        type_props: get_type_props(&field.type_hint),
     })
+}
+
+pub fn get_type_props(type_hint: &Option<ResolvedTypeHint>) -> Option<TypeProps> {
+    if let Some(hint) = type_hint {
+        let h = match hint {
+            ResolvedTypeHint::Int { bits: _, range } => {
+                if let Some(r) = range {
+                    return Some(TypeProps::Int {
+                        range: r.to_owned(),
+                    });
+                }
+                return None;
+            }
+            _ => None,
+        };
+        return h;
+    }
+    None
 }
 
 fn create_agg_field(

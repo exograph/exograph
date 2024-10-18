@@ -69,6 +69,7 @@ fn expanded_reference_types(
                 has_default_value: field.has_default_value,
                 dynamic_default_value: None,
                 readonly: field.readonly,
+                type_props: None,
             }),
             _ => None,
         })
