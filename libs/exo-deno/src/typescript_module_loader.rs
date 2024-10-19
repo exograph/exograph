@@ -76,14 +76,25 @@ impl ModuleLoader for TypescriptLoader {
                 "http" | "https" => {
                     let path = PathBuf::from(module_specifier.path());
 
-                    let mut writer = Vec::new();
-                    let res = http_req::request::get(&module_specifier, &mut writer)?;
+                    let module_specifier_string = module_specifier.to_string();
 
-                    if !res.status_code().is_success() {
-                        bail!("Failed to fetch {}: {}", module_specifier, res.reason())
-                    }
+                    let code = std::thread::spawn(move || {
+                        let res = reqwest::blocking::get(&module_specifier_string)?;
 
-                    (Code::Vec(writer), MediaType::from_path(&path))
+                        if !res.status().is_success() {
+                            bail!(
+                                "Failed to fetch {}: {:?}",
+                                module_specifier_string,
+                                res.status()
+                            )
+                        }
+
+                        Ok(res.bytes()?.to_vec())
+                    })
+                    .join()
+                    .unwrap()?;
+
+                    (Code::Vec(code), MediaType::from_path(&path))
                 }
 
                 "file" => {

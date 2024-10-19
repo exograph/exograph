@@ -2843,7 +2843,7 @@ dependencies = [
  "rustls-webpki 0.101.7",
  "serde",
  "tokio",
- "webpki-roots 0.25.4",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -3496,9 +3496,9 @@ dependencies = [
  "deno_semver",
  "deno_virtual_fs",
  "futures",
- "http_req",
  "include_dir",
  "lazy_static",
+ "reqwest",
  "serde",
  "serde_json",
  "tempfile",
@@ -4335,20 +4335,6 @@ checksum = "0f056c8559e3757392c8d091e796416e4649d8e49e88b8d76df6c002f05027fd"
 dependencies = [
  "http 1.1.0",
  "serde",
-]
-
-[[package]]
-name = "http_req"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd68fe813419e7fd8982607f1b39e2a393226a98cf4cc905e716ba328e2a488f"
-dependencies = [
- "rustls 0.23.10",
- "rustls-pemfile 2.1.3",
- "rustls-pki-types",
- "unicase",
- "webpki",
- "webpki-roots 0.26.3",
 ]
 
 [[package]]
@@ -7157,7 +7143,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams 0.3.0",
  "web-sys",
- "webpki-roots 0.25.4",
+ "webpki-roots",
  "winreg",
 ]
 
@@ -10540,29 +10526,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "webpki"
-version = "0.22.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed63aea5ce73d0ff405984102c42de94fc55a6b75765d621c65262469b3c9b53"
-dependencies = [
- "ring",
- "untrusted",
-]
-
-[[package]]
 name = "webpki-roots"
 version = "0.25.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f20c57d8d7db6d3b86154206ae5d8fba62dd39573114de97c2cb0578251f8e1"
-
-[[package]]
-name = "webpki-roots"
-version = "0.26.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd7c23921eeb1713a4e851530e9b9756e4fb0e89978582942612524cf09f01cd"
-dependencies = [
- "rustls-pki-types",
-]
 
 [[package]]
 name = "wgpu-core"
