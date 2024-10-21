@@ -1,7 +1,7 @@
 stages:
   - operation: |
         mutation {
-          createExample(data: { limit: -1 }) {
+          updateExample(id: 1, data: { limit: -1 }) {
             id
             limit
           }
@@ -14,7 +14,7 @@ stages:
               "locations": [
                 {
                   "line": 2,
-                  "column": 23
+                  "column": 30
                 }
               ]
             }
@@ -22,7 +22,7 @@ stages:
         }
   - operation: |
         mutation {
-          createExample(data: { limit: 3 }) {
+          updateExample(id: 1, data: { limit: 3 }) {
             id
             limit
           }
@@ -35,7 +35,7 @@ stages:
               "locations": [
                 {
                   "line": 2,
-                  "column": 23
+                  "column": 30
                 }
               ]
             }
