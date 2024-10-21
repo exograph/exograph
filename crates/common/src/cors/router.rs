@@ -383,21 +383,21 @@ mod tests {
             &self,
             _request: &mut (dyn RequestPayload + Send),
         ) -> Option<ResponsePayload> {
-            let mock_response = RESPONSE_PAYLOAD.get();
-
-            Some(ResponsePayload {
-                body: ResponseBody::Bytes(
-                    mock_response
-                        .as_ref()
-                        .body
-                        .clone()
-                        .unwrap_or(Value::Null)
-                        .to_string()
-                        .as_bytes()
-                        .to_vec(),
-                ),
-                headers: mock_response.headers.clone(),
-                status_code: mock_response.status_code,
+            RESPONSE_PAYLOAD.with(|mock_response| {
+                Some(ResponsePayload {
+                    body: ResponseBody::Bytes(
+                        mock_response
+                            .as_ref()
+                            .body
+                            .clone()
+                            .unwrap_or(Value::Null)
+                            .to_string()
+                            .as_bytes()
+                            .to_vec(),
+                    ),
+                    headers: mock_response.headers.clone(),
+                    status_code: mock_response.status_code,
+                })
             })
         }
     }

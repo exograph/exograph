@@ -3,9 +3,8 @@ fn main() {
     use std::path::PathBuf;
 
     let snapshot_options = SnapshotOptions {
-        deno_version: deno::version::deno().to_string(),
-        ts_version: deno::version::TYPESCRIPT.to_string(),
-        v8_version: deno_core::v8_version(),
+        ts_version: deno::version::DENO_VERSION_INFO.typescript.to_string(),
+        v8_version: deno_core::v8::VERSION_STRING,
         target: std::env::var("TARGET").unwrap(),
     };
 

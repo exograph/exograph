@@ -43,11 +43,9 @@ use node_resolver::errors::PackageFolderResolveErrorKind;
 use node_resolver::errors::ReferrerNotFoundError;
 use node_resolver::errors::{PackageFolderResolveError, PackageNotFoundError};
 use node_resolver::{NodeResolver, NpmResolver};
-use tempfile::tempfile;
 use tracing::error;
 
 use std::cell::RefCell;
-use std::io::Write;
 use std::path::PathBuf;
 use tracing::instrument;
 
@@ -332,11 +330,6 @@ impl DenoModule {
 
         let (fs, npm_resolver): (Arc<dyn FileSystem>, Option<Arc<SnapshotNpmResolver>>) =
             if let Some((resolution, vfs, contents)) = npm_snapshot {
-                let mut temp_file = tempfile().unwrap();
-                for buffer in contents {
-                    temp_file.write_all(&buffer).unwrap();
-                }
-
                 #[cfg(target_os = "windows")]
                 let absolute_root = PathBuf::from("C:\\EXOGRAPH_NPM_MODULES_SNAPSHOT");
 
@@ -345,7 +338,7 @@ impl DenoModule {
 
                 (
                     Arc::new(DenoCompileFileSystem::new(FileBackedVfs::new(
-                        temp_file,
+                        contents.into_iter().flatten().collect(),
                         VfsRoot {
                             dir: vfs,
                             root_path: absolute_root.clone(),
@@ -373,6 +366,7 @@ impl DenoModule {
 
         let options = WorkerOptions {
             bootstrap: BootstrapOptions {
+                deno_version: deno::version::DENO_VERSION_INFO.deno.to_string(),
                 args: vec![],
                 cpu_count: 1,
                 log_level: Default::default(),
