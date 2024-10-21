@@ -31,7 +31,7 @@ use ctor::ctor;
 #[ctor]
 // Make sure deno runtime is initialized in the main thread in test executables.
 fn init_deno_runtime() {
-    deno_core::JsRuntime::init_platform(None);
+    deno_core::JsRuntime::init_platform(None, true);
 }
 
 /// Loads test files from the supplied directory and runs them using a thread pool.
@@ -44,7 +44,7 @@ pub fn run(
     // on Linux issue. The tests are run in parallel and will initialize the deno module
     // (and the deno runtime) in child threads, which will cause the crash if we don't do it
     // here first.
-    deno_core::JsRuntime::init_platform(None);
+    deno_core::JsRuntime::init_platform(None, true);
 
     let root_directory_str = root_directory.to_str().unwrap();
     println!(
