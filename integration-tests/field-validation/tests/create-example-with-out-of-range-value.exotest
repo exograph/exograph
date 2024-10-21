@@ -1,0 +1,21 @@
+operation: |
+    mutation {
+      createExample(data: { limit: 1337 }) {
+        id
+        limit
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Invalid value for 'range': max = 2, provided value = 1337",
+          "locations": [
+            {
+              "line": 2,
+              "column": 23
+            }
+          ]
+        }
+      ]
+    }

@@ -74,6 +74,14 @@ pub enum ValidationError {
 
     #[error("Selection set too deep")]
     SelectionSetTooDeep(Pos),
+
+    #[error("Invalid value for '{value_name}': {range_detail}, {value_detail}")]
+    ValueOutOfRange {
+        value_name: String,
+        range_detail: String,
+        value_detail: String,
+        pos: Pos,
+    },
 }
 
 impl ValidationError {
@@ -99,6 +107,7 @@ impl ValidationError {
             ValidationError::InvalidArgumentType { pos, .. } => vec![*pos],
             ValidationError::FragmentCycle(_, pos) => vec![*pos],
             ValidationError::SelectionSetTooDeep(pos) => vec![*pos],
+            ValidationError::ValueOutOfRange { pos, .. } => vec![*pos],
         }
     }
 }
