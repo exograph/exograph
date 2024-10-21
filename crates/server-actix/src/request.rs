@@ -10,6 +10,8 @@
 use actix_web::{dev::ConnectionInfo, http::header::HeaderMap, HttpRequest};
 use common::http::RequestHead;
 
+use crate::to_reqwest_method;
+
 pub struct ActixRequestHead {
     // we cannot refer to HttpRequest directly, as it holds an Rc (and therefore does
     // not impl Send or Sync)
@@ -49,24 +51,7 @@ impl RequestHead for ActixRequestHead {
     }
 
     fn get_method(&self) -> http::Method {
-        // Actix uses http-0.2. However, the rest of the system uses
-        // http-1.x, so we need to convert between the two.
-        // Once Actix 5.x is released (which uses http-1.x), we can remove this mapping.
-        match self.method {
-            actix_web::http::Method::CONNECT => http::Method::CONNECT,
-            actix_web::http::Method::GET => http::Method::GET,
-            actix_web::http::Method::HEAD => http::Method::HEAD,
-            actix_web::http::Method::OPTIONS => http::Method::OPTIONS,
-            actix_web::http::Method::POST => http::Method::POST,
-            actix_web::http::Method::PUT => http::Method::PUT,
-            actix_web::http::Method::DELETE => http::Method::DELETE,
-            actix_web::http::Method::PATCH => http::Method::PATCH,
-            actix_web::http::Method::TRACE => http::Method::TRACE,
-            _ => {
-                tracing::error!("Unsupported method: {}", self.method);
-                panic!("Unsupported method: {}", self.method);
-            }
-        }
+        to_reqwest_method(&self.method)
     }
 
     fn get_path(&self) -> String {

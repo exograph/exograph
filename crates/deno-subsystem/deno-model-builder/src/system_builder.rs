@@ -28,6 +28,9 @@ use deno::{
     CliFactory, Flags, PathBuf,
 };
 use deno_ast::{EmitOptions, MediaType, ParseParams};
+use deno_config::workspace::{
+    VendorEnablement, WorkspaceDirectory, WorkspaceDirectoryEmptyOptions,
+};
 use deno_graph::{
     DependencyDescriptor, DynamicArgument, Module, ModuleAnalyzer, ModuleEntryRef, ModuleGraph,
     ModuleSpecifier, WalkOptions,
@@ -38,11 +41,14 @@ use deno_model::{
     subsystem::DenoSubsystem,
 };
 use deno_npm::NpmSystemInfo;
-use deno_runtime::deno_node::{
-    analyze::NodeCodeTranslator, NodeResolution, NodeResolutionMode, NodeResolver,
-};
+use deno_runtime::deno_node::{DenoFsNodeResolverEnv, NodeResolver};
 use deno_virtual_fs::virtual_fs::{VfsBuilder, VirtualDirectory};
-use exo_deno::deno_executor_pool::{DenoScriptDefn, ResolvedModule};
+use exo_deno::{
+    deno_executor_pool::{DenoScriptDefn, ResolvedModule},
+    node_resolver::{
+        analyze::NodeCodeTranslator, NodeModuleKind, NodeResolution, NodeResolutionMode,
+    },
+};
 use url::Url;
 
 use crate::module_skeleton_generator;
@@ -131,12 +137,14 @@ fn process_script(
     let script_defn = std::thread::spawn(move || {
         let future = async move {
             let cli_options = CliOptions::new(
-                Flags::default(),
+                Flags::default().into(),
                 std::env::current_dir().unwrap(),
                 None,
-                None,
-                None,
                 create_default_npmrc(),
+                Arc::new(WorkspaceDirectory::empty(WorkspaceDirectoryEmptyOptions {
+                    root_dir: root_clone.clone().into(),
+                    use_vendor_dir: VendorEnablement::Disable,
+                })),
                 false,
             )
             .unwrap();
@@ -199,7 +207,9 @@ fn process_script(
                     builder.add_dir_recursive(&folder).unwrap();
                 }
 
-                builder.set_root_dir_name("EXOGRAPH_NPM_MODULES_SNAPSHOT".to_string());
+                builder.with_root_dir(|vd| {
+                    vd.name = "EXOGRAPH_NPM_MODULES_SNAPSHOT".to_string();
+                });
 
                 builder.into_dir_and_files()
             } else {
@@ -248,7 +258,7 @@ async fn walk_node_resolutions(
     root: NodeResolution,
     npm_loader: &NpmModuleLoader,
     node_resolver: &Arc<NodeResolver>,
-    code_translator: &Arc<NodeCodeTranslator<CliCjsCodeAnalyzer>>,
+    code_translator: &Arc<NodeCodeTranslator<CliCjsCodeAnalyzer, DenoFsNodeResolverEnv>>,
     parsed_source_cache: &Arc<ParsedSourceCache>,
     module_info_cache: &Arc<ModuleInfoCache>,
     root_path: &PathBuf,
@@ -388,9 +398,9 @@ async fn walk_node_resolutions(
                         .resolve(
                             specifier,
                             &esm_specifier,
-                            deno_runtime::deno_node::NodeResolutionMode::Execution,
+                            NodeModuleKind::Esm,
+                            exo_deno::node_resolver::NodeResolutionMode::Execution,
                         )
-                        .expect("Failed to resolve dependency of an ESM NPM module")
                         .expect("Failed to resolve dependency of an ESM NPM module");
 
                     walk_node_resolutions(
@@ -424,7 +434,7 @@ async fn walk_module_graph(
     npm_loader: NpmModuleLoader,
     node_resolver: Arc<NodeResolver>,
     npm_resolver: &ManagedCliNpmResolver,
-    code_translator: Arc<NodeCodeTranslator<CliCjsCodeAnalyzer>>,
+    code_translator: Arc<NodeCodeTranslator<CliCjsCodeAnalyzer, DenoFsNodeResolverEnv>>,
     parsed_source_cache: Arc<ParsedSourceCache>,
     module_info_cache: Arc<ModuleInfoCache>,
     npm_cache_folder: PathBuf,
@@ -465,10 +475,9 @@ async fn walk_module_graph(
                                 &containing_folder,
                                 npm.nv_reference.sub_path(),
                                 // this uses the module as its own referrer, but this seems to be fine
-                                specifier,
+                                Some(specifier),
                                 NodeResolutionMode::Execution,
                             )
-                            .unwrap()
                             .unwrap();
 
                         walk_node_resolutions(

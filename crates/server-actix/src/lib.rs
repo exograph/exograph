@@ -110,11 +110,11 @@ async fn resolve_locally(
             headers,
             status_code,
         }) => {
-            let actix_status_code = match StatusCode::from_u16(status_code.as_u16()) {
+            let actix_status_code = match to_actix_status_code(status_code) {
                 Ok(status_code) => status_code,
                 Err(err) => {
                     tracing::error!("Invalid status code: {}", err);
-                    return HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
+                    return HttpResponse::build(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
                         .body(error_msg!("Invalid status code"));
                 }
             };
@@ -132,7 +132,7 @@ async fn resolve_locally(
                 ResponseBody::None => builder.body(""),
             }
         }
-        None => HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
+        None => HttpResponse::build(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
             .body(error_msg!("Error resolving request")),
     }
 }
@@ -150,7 +150,7 @@ async fn forward_request(
         .unwrap_or("".to_string());
 
     let forwarded_req = reqwest::Client::default()
-        .request(req.method().clone(), forward_url)
+        .request(to_reqwest_method(req.method()), forward_url)
         .body(body);
 
     let forwarded_req = req
@@ -170,10 +170,10 @@ async fn forward_request(
         }
     };
 
-    let mut client_resp = HttpResponseBuilder::new(res.status());
+    let mut client_resp = HttpResponseBuilder::new(to_actix_status_code(res.status()).unwrap());
 
     for (header_name, header_value) in res.headers().iter().filter(|(h, _)| *h != "connection") {
-        client_resp.insert_header((header_name.clone(), header_value.clone()));
+        client_resp.insert_header((header_name.as_str(), header_value.as_bytes()));
     }
 
     match res.bytes().await {
@@ -181,6 +181,32 @@ async fn forward_request(
         Err(err) => {
             tracing::error!("Error reading response body from endpoint: {}", err);
             client_resp.body(error_msg!("Error reading response body from endpoint"))
+        }
+    }
+}
+
+fn to_actix_status_code(status_code: StatusCode) -> Result<actix_web::http::StatusCode, String> {
+    actix_web::http::StatusCode::from_u16(status_code.as_u16())
+        .map_err(|_| "Invalid status code".to_string())
+}
+
+// Actix uses http-0.2. However, the rest of the system uses
+// http-1.x, so we need to convert between the two.
+// Once Actix 5.x is released (which uses http-1.x), we can remove this mapping.
+fn to_reqwest_method(method: &actix_web::http::Method) -> reqwest::Method {
+    match *method {
+        actix_web::http::Method::CONNECT => reqwest::Method::CONNECT,
+        actix_web::http::Method::GET => reqwest::Method::GET,
+        actix_web::http::Method::HEAD => reqwest::Method::HEAD,
+        actix_web::http::Method::OPTIONS => reqwest::Method::OPTIONS,
+        actix_web::http::Method::POST => reqwest::Method::POST,
+        actix_web::http::Method::PUT => reqwest::Method::PUT,
+        actix_web::http::Method::DELETE => reqwest::Method::DELETE,
+        actix_web::http::Method::PATCH => reqwest::Method::PATCH,
+        actix_web::http::Method::TRACE => reqwest::Method::TRACE,
+        _ => {
+            tracing::error!("Unsupported method: {}", method);
+            panic!("Unsupported method: {}", method);
         }
     }
 }
