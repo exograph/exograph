@@ -124,6 +124,11 @@ jobs:
           key: wasm32-unknown-unknown
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
       - name: Get wasm-bindgen version
         id: wasm-bindgen-version
         run: echo "VERSION=$(cargo pkgid wasm-bindgen-shared | cut -d '@' -f2)" >> "$GITHUB_OUTPUT"

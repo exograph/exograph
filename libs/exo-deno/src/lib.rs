@@ -42,5 +42,5 @@ use ctor::ctor;
 #[ctor]
 // Make sure deno runtime is initialized in the main thread in test executables.
 fn init_deno_runtime() {
-    deno_core::JsRuntime::init_platform(None);
+    deno_core::JsRuntime::init_platform(None, true);
 }
