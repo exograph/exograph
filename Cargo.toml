@@ -115,8 +115,8 @@ wasmtime-wasi = "25.0.2"
 wasi-common = "25.0.2"
 wildmatch = "2.1.0"
 which = "6.0.1"
-wasm-bindgen-test = "0.3.42"
-wasm-bindgen-test-macro = "0.3.42"
+wasm-bindgen-test = "0.3.45"
+wasm-bindgen-test-macro = "0.3.45"
 multiplatform_test = "0.1.0"
 
 # reduce binary size, does not affect stack traces
