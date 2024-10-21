@@ -202,59 +202,13 @@ impl<'a> ArgumentValidator<'a> {
         number: &Number,
         pos: Pos,
     ) -> Result<Val, ValidationError> {
-        let int_directives: Vec<ConstDirective> = self
-            .schema
-            .type_definitions
-            .iter()
-            .filter(|td| matches!(&td.kind, TypeKind::Object(_)))
-            .flat_map(|td| {
-                td.fields()
-                    .unwrap()
-                    .iter()
-                    .filter(|x| x.node.ty.node.base.to_string() == "Int") // todo: cover also float
-                    .map(|x| x.to_owned().node.directives)
-            })
-            .map(|cd| cd.iter().map(|x| x.node.clone()).collect::<Vec<_>>())
-            .flatten()
-            .collect();
+        let int_directives = get_schema_directives(self.schema, "Int");
+        // TODO: float
 
-        let mut int_min: Option<i64> = None;
-        let mut int_max: Option<i64> = None;
-        if let Some(range) = int_directives.iter().find(|x| x.name.node == "range") {
-            if let Some(x) = range.arguments.iter().find(|x| x.0.node == "min") {
-                if let ConstValue::Number(n) = &x.1.node {
-                    int_min = n.to_owned().as_i64();
-                }
+        if !int_directives.is_empty() {
+            if let Some(value) = number.clone().as_i64() {
+                validate_int_range(int_directives, value, pos)?
             }
-            if let Some(x) = range.arguments.iter().find(|x| x.0.node == "max") {
-                if let ConstValue::Number(n) = &x.1.node {
-                    int_max = n.to_owned().as_i64();
-                }
-            }
-        }
-        println!(
-            "min: {:?}; val: {:?}; max: {:?}",
-            int_min,
-            number.clone().as_i64(),
-            int_max
-        );
-        let range = (int_min.unwrap(), int_max.unwrap());
-        let value = number.clone().as_i64().unwrap();
-        if range.0 > value {
-            return Err(ValidationError::ValueOutOfRange {
-                value_name: "range".into(),
-                range_detail: format!("min = {}", range.0),
-                value_detail: format!("provided value = {}", value),
-                pos,
-            });
-        }
-        if value > range.1 {
-            return Err(ValidationError::ValueOutOfRange {
-                value_name: "range".into(),
-                range_detail: format!("max = {}", range.1),
-                value_detail: format!("provided value = {}", value),
-                pos,
-            });
         }
 
         // TODO: Use the types from PrimitiveType (but that is currently in the builder crate, which we don't want to depend on)
@@ -466,4 +420,64 @@ impl<'a> ArgumentValidator<'a> {
             }
         }
     }
+}
+
+fn get_schema_directives(schema: &Schema, base_type_name: &str) -> Vec<ConstDirective> {
+    schema
+        .type_definitions
+        .iter()
+        .filter(|td| matches!(&td.kind, TypeKind::Object(_)))
+        .flat_map(|td| {
+            td.fields()
+                .unwrap()
+                .iter()
+                .filter(|x| x.node.ty.node.base.to_string() == base_type_name)
+                .map(|x| x.to_owned().node.directives)
+        })
+        .flat_map(|cd| cd.iter().map(|x| x.node.clone()).collect::<Vec<_>>())
+        .collect()
+}
+
+fn validate_int_range(
+    int_directives: Vec<ConstDirective>,
+    value: i64,
+    pos: Pos,
+) -> Result<(), ValidationError> {
+    let mut int_min: Option<i64> = None;
+    let mut int_max: Option<i64> = None;
+    if let Some(range) = int_directives.iter().find(|x| x.name.node == "range") {
+        if let Some(x) = range.arguments.iter().find(|x| x.0.node == "min") {
+            if let ConstValue::Number(n) = &x.1.node {
+                int_min = n.to_owned().as_i64();
+            }
+        }
+        if let Some(x) = range.arguments.iter().find(|x| x.0.node == "max") {
+            if let ConstValue::Number(n) = &x.1.node {
+                int_max = n.to_owned().as_i64();
+            }
+        }
+    }
+
+    if let Some(r) = int_min {
+        if r > value {
+            return Err(ValidationError::ValueOutOfRange {
+                value_name: "range".into(),
+                range_detail: format!("min = {}", r),
+                value_detail: format!("provided value = {}", value),
+                pos,
+            });
+        }
+    }
+    if let Some(r) = int_max {
+        if value > r {
+            return Err(ValidationError::ValueOutOfRange {
+                value_name: "range".into(),
+                range_detail: format!("max = {}", r),
+                value_detail: format!("provided value = {}", value),
+                pos,
+            });
+        }
+    }
+
+    Ok(())
 }
