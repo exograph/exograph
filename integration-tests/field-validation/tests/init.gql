@@ -1,0 +1,7 @@
+operation: |
+    mutation {
+        e1: createExample(data: { limit: 1 }) {
+              id
+              limit
+        }
+    }

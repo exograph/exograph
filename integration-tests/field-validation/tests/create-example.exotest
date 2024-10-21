@@ -1,0 +1,33 @@
+stages:
+  - operation: |
+        mutation {
+          createExample(data: { limit: 0 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createExample": {
+              "id": 2,
+              "limit": 0
+            }
+          }
+        }
+  - operation: |
+        mutation {
+          createExample(data: { limit: 2 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createExample": {
+              "id": 3,
+              "limit": 2
+            }
+          }
+        }

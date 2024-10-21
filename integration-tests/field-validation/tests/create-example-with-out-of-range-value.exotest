@@ -1,0 +1,43 @@
+stages:
+  - operation: |
+        mutation {
+          createExample(data: { limit: -1 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': min = 0, provided value = -1",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 23
+                }
+              ]
+            }
+          ]
+        }
+  - operation: |
+        mutation {
+          createExample(data: { limit: 3 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': max = 2, provided value = 3",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 23
+                }
+              ]
+            }
+          ]
+        }
