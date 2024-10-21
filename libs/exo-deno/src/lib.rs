@@ -20,6 +20,8 @@ pub mod deno_module;
 pub use deno_executor_pool::DenoExecutorPool;
 pub use deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
+pub use node_resolver;
+
 mod deno_actor;
 mod embedded_module_loader;
 #[cfg(feature = "typescript-loader")]

@@ -23,8 +23,10 @@ use deno_npm::resolution::SerializedNpmResolutionSnapshot;
 use deno_npm::NpmPackageCacheFolderId;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_io::Stdio;
-use deno_runtime::deno_node::NodeResolver;
-use deno_runtime::deno_node::NpmResolver;
+use deno_runtime::deno_node::DenoFsNodeResolverEnv;
+use deno_runtime::deno_node::NodeExtInitServices;
+use deno_runtime::deno_node::NodeRequireResolver;
+use deno_runtime::deno_node::NpmProcessStateProvider;
 use deno_runtime::deno_permissions::PermissionsContainer;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::worker::MainWorker;
@@ -37,6 +39,10 @@ use deno_virtual_fs::file_system::DenoCompileFileSystem;
 use deno_virtual_fs::virtual_fs::FileBackedVfs;
 use deno_virtual_fs::virtual_fs::VfsRoot;
 use include_dir::Dir;
+use node_resolver::errors::PackageFolderResolveErrorKind;
+use node_resolver::errors::ReferrerNotFoundError;
+use node_resolver::errors::{PackageFolderResolveError, PackageNotFoundError};
+use node_resolver::{NodeResolver, NpmResolver};
 use tempfile::tempfile;
 use tracing::error;
 
@@ -103,7 +109,7 @@ impl NpmResolver for SnapshotNpmResolver {
         &self,
         specifier: &str,
         referrer: &ModuleSpecifier,
-    ) -> Result<PathBuf, AnyError> {
+    ) -> Result<PathBuf, PackageFolderResolveError> {
         if let Ok(referrer_path) = referrer.to_file_path() {
             if let Ok(without_registry) = referrer_path.strip_prefix(&self.registry_base) {
                 let mut without_registry_vec = without_registry.iter().collect::<Vec<_>>();
@@ -142,17 +148,37 @@ impl NpmResolver for SnapshotNpmResolver {
 
                 let resolved = self
                     .snapshot
-                    .resolve_package_from_package(specifier, &referrer_id)?;
+                    .resolve_package_from_package(specifier, &referrer_id)
+                    .map_err(|e| {
+                        PackageFolderResolveError(Box::new(
+                            PackageFolderResolveErrorKind::ReferrerNotFound(
+                                ReferrerNotFoundError {
+                                    referrer: referrer.clone(),
+                                    referrer_extra: Some(e.to_string()),
+                                },
+                            ),
+                        ))
+                    })?;
 
                 Ok(self
                     .registry_base
                     .join(&resolved.id.nv.name)
                     .join(resolved.id.nv.version.to_string()))
             } else {
-                bail!("Expected referrer module to also be in the registry")
+                Err(PackageNotFoundError {
+                    package_name: specifier.to_string(),
+                    referrer: referrer.clone(),
+                    referrer_extra: None,
+                }
+                .into())
             }
         } else {
-            bail!("Expected referrer module to be a file path")
+            Err(PackageNotFoundError {
+                package_name: specifier.to_string(),
+                referrer: referrer.clone(),
+                referrer_extra: None,
+            }
+            .into())
         }
     }
 
@@ -161,7 +187,9 @@ impl NpmResolver for SnapshotNpmResolver {
             .to_file_path()
             .is_ok_and(|p| p.starts_with(&self.registry_base))
     }
+}
 
+impl NodeRequireResolver for SnapshotNpmResolver {
     fn ensure_read_permission(
         &self,
         _permissions: &mut dyn deno_runtime::deno_node::NodePermissions,
@@ -172,6 +200,12 @@ impl NpmResolver for SnapshotNpmResolver {
         } else {
             bail!("Expected path to be in the registry")
         }
+    }
+}
+
+impl NpmProcessStateProvider for SnapshotNpmResolver {
+    fn get_npm_process_state(&self) -> String {
+        String::new()
     }
 }
 
@@ -296,7 +330,7 @@ impl DenoModule {
             todo!("Web workers are not supported");
         });
 
-        let (fs, npm_resolver): (Arc<dyn FileSystem>, Option<Arc<dyn NpmResolver>>) =
+        let (fs, npm_resolver): (Arc<dyn FileSystem>, Option<Arc<SnapshotNpmResolver>>) =
             if let Some((resolution, vfs, contents)) = npm_snapshot {
                 let mut temp_file = tempfile().unwrap();
                 for buffer in contents {
@@ -327,9 +361,9 @@ impl DenoModule {
                 (Arc::new(deno_fs::RealFs), None)
             };
 
-        let node_resolver: Option<Arc<_>> = npm_resolver
-            .as_ref()
-            .map(|npm_resolver| NodeResolver::new(fs.clone(), npm_resolver.clone()).into());
+        let node_resolver: Option<Arc<_>> = npm_resolver.as_ref().map(|npm_resolver| {
+            NodeResolver::new(DenoFsNodeResolverEnv::new(fs.clone()), npm_resolver.clone()).into()
+        });
 
         let module_loader = Rc::new(EmbeddedModuleLoader {
             source_code_map: Rc::new(RefCell::new(script_modules)),
@@ -345,6 +379,7 @@ impl DenoModule {
                 enable_testing_features: false,
                 location: None,
                 no_color: false,
+                color_level: deno_terminal::colors::get_color_level(),
                 unstable: true,
                 mode: WorkerExecutionMode::None,
                 is_stdout_tty: false,
@@ -379,18 +414,23 @@ impl DenoModule {
             broadcast_channel: shared_state.broadcast_channel,
             shared_array_buffer_store: None,
             compiled_wasm_module_store: None,
-            source_map_getter: None,
             format_js_error_fn: None,
             fs,
             stdio: Stdio::default(),
-            npm_resolver,
+            node_services: (npm_resolver.zip(node_resolver)).map(
+                |(npm_resolver, node_resolver)| NodeExtInitServices {
+                    node_require_resolver: npm_resolver.clone(),
+                    node_resolver: node_resolver.clone(),
+                    npm_process_state_provider: npm_resolver.clone(),
+                    npm_resolver: npm_resolver.clone(),
+                },
+            ),
             cache_storage_dir: None,
             should_wait_for_inspector_session: false,
             startup_snapshot: Some(crate::deno_snapshot()),
             feature_checker: Default::default(),
             skip_op_registration: false,
             strace_ops: None,
-            node_resolver: node_resolver.clone(),
             v8_code_cache: None,
         };
 

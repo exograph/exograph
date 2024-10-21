@@ -14,7 +14,7 @@ typescript-loader = ["dep:deno_ast"]
 [build-dependencies]
 deno.workspace = true
 deno_core.workspace = true
-deno_runtime = { workspace = true, features = ["include_js_files_for_snapshotting"] }
+deno_runtime = { workspace = true, features = ["hmr"] }
 
 [dependencies]
 thiserror.workspace = true
@@ -26,8 +26,10 @@ deno_virtual_fs.workspace = true
 deno_ast = { workspace = true, features = ["transpiling"], optional = true }
 deno_semver.workspace = true
 deno_npm.workspace = true
+node_resolver.workspace = true
+deno_terminal = "0.2.0"
 tokio.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["blocking"] }
 futures.workspace = true
 lazy_static.workspace = true
 serde = { workspace = true, features = ["derive"] }

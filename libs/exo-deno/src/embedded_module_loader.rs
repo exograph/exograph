@@ -17,6 +17,7 @@ use deno_core::ModuleSpecifier;
 use deno_core::RequestedModuleType;
 use deno_core::ResolutionKind;
 use deno_runtime::deno_node::NodeResolver;
+use node_resolver::NodeModuleKind;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -47,10 +48,11 @@ impl ModuleLoader for EmbeddedModuleLoader {
         if let Some(node_resolver) = &self.node_resolver {
             if let Ok(referrer) = ModuleSpecifier::parse(referrer) {
                 if node_resolver.in_npm_package(&referrer) {
-                    if let Ok(Some(res)) = node_resolver.resolve(
+                    if let Ok(res) = node_resolver.resolve(
                         specifier,
                         &referrer,
-                        deno_runtime::deno_node::NodeResolutionMode::Execution,
+                        NodeModuleKind::Esm,
+                        node_resolver::NodeResolutionMode::Execution,
                     ) {
                         return Ok(res.into_url());
                     }
