@@ -138,7 +138,17 @@ deno_core::extension!(
         dir "extension",
         "__init.js",
          "exograph:ops.js" = "exograph.js",
-    ]
+    ],
+    customizer = |ext: &mut Extension| {
+        use deno_core::ascii_str_include;
+        use deno_core::ExtensionFileSource;
+        ext.esm_files.to_mut().clear();
+        // Without this, the esm_files are of the `LoadedFromFsDuringSnapshot` kind (and loaded from the path of the build machine).
+        // By explicitly adding the files here, we ensure that they are of the `IncludedInBinary` kind (and loaded from the binary).
+        ext.esm_files.to_mut().push(ExtensionFileSource::new("exograph:ops.js", ascii_str_include!("../extension/exograph.js")));
+        ext.esm_files.to_mut().push(ExtensionFileSource::new("ext:exograph/__init.js", ascii_str_include!("../extension/__init.js")));
+        ext.esm_entry_point = Some("ext:exograph/__init.js");
+      }
 );
 
 pub fn exo_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
@@ -169,15 +179,12 @@ mod tests {
     #[allow(deprecated)]
     fn check_extension_esm_is_embedded() {
         let extension = exograph::init_ops_and_esm();
-        let init_file = extension
-            .esm_files
-            .first()
-            .expect("There should be at least one esm file in the extension");
-
-        assert!(matches!(
-            init_file.code,
-            deno_core::ExtensionFileSourceCode::IncludedInBinary(_)
-        ));
+        extension.esm_files.iter().for_each(|esm_file| {
+            assert!(matches!(
+                esm_file.code,
+                deno_core::ExtensionFileSourceCode::IncludedInBinary(_)
+            ));
+        });
     }
 
     #[test(tokio::test)]
