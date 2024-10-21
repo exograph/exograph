@@ -177,11 +177,11 @@ pub struct PostgresField<CT> {
     pub dynamic_default_value: Option<ContextSelection>,
     pub readonly: bool,
     pub access: Access,
-    pub type_props: Option<TypeProps>,
+    pub type_validation: Option<TypeValidation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum TypeProps {
+pub enum TypeValidation {
     Int { range: (i64, i64) },
 }
 
@@ -307,8 +307,8 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
         }
 
         if self.typ.name() == "Int" {
-            if let Some(props) = &self.type_props {
-                let TypeProps::Int { range } = props;
+            if let Some(props) = &self.type_validation {
+                let TypeValidation::Int { range } = props;
                 let (min, max) = range.to_owned();
                 let range_directive = ConstDirective {
                     name: default_positioned_name("range"),

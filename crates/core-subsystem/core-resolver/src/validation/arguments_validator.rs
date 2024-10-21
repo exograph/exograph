@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use async_graphql_parser::{
-    types::{BaseType, ConstDirective, Field, InputValueDefinition, TypeKind},
+    types::{BaseType, ConstDirective, Field, FieldDefinition, InputValueDefinition, TypeKind},
     Pos, Positioned,
 };
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
@@ -423,13 +423,14 @@ impl<'a> ArgumentValidator<'a> {
 }
 
 fn get_schema_directives(schema: &Schema, base_type_name: &str) -> Vec<ConstDirective> {
+    let placeholder: Vec<Positioned<FieldDefinition>> = vec![];
     schema
         .type_definitions
         .iter()
         .filter(|td| matches!(&td.kind, TypeKind::Object(_)))
         .flat_map(|td| {
             td.fields()
-                .unwrap()
+                .unwrap_or(&placeholder)
                 .iter()
                 .filter(|x| x.node.ty.node.base.to_string() == base_type_name)
                 .map(|x| x.to_owned().node.directives)
@@ -443,22 +444,22 @@ fn validate_int_range(
     value: i64,
     pos: Pos,
 ) -> Result<(), ValidationError> {
-    let mut int_min: Option<i64> = None;
-    let mut int_max: Option<i64> = None;
+    let mut min: Option<i64> = None;
+    let mut max: Option<i64> = None;
     if let Some(range) = int_directives.iter().find(|x| x.name.node == "range") {
         if let Some(x) = range.arguments.iter().find(|x| x.0.node == "min") {
             if let ConstValue::Number(n) = &x.1.node {
-                int_min = n.to_owned().as_i64();
+                min = n.to_owned().as_i64();
             }
         }
         if let Some(x) = range.arguments.iter().find(|x| x.0.node == "max") {
             if let ConstValue::Number(n) = &x.1.node {
-                int_max = n.to_owned().as_i64();
+                max = n.to_owned().as_i64();
             }
         }
     }
 
-    if let Some(r) = int_min {
+    if let Some(r) = min {
         if r > value {
             return Err(ValidationError::ValueOutOfRange {
                 value_name: "range".into(),
@@ -468,7 +469,7 @@ fn validate_int_range(
             });
         }
     }
-    if let Some(r) = int_max {
+    if let Some(r) = max {
         if value > r {
             return Err(ValidationError::ValueOutOfRange {
                 value_name: "range".into(),
