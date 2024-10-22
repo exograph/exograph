@@ -33,3 +33,35 @@ stages:
             }
           }
         }
+  - operation: |
+        mutation {
+          updateExample(id: 1, data: { flimit: 0.0 }) {
+            id
+            flimit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "updateExample": {
+              "id": 1,
+              "flimit": 0.0
+            }
+          }
+        }
+  - operation: |
+        mutation {
+          updateExample(id: 1, data: { flimit: 2.0 }) {
+            id
+            flimit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "updateExample": {
+              "id": 1,
+              "flimit": 2.0
+            }
+          }
+        }

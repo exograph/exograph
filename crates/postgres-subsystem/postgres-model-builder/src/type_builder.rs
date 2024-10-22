@@ -963,7 +963,7 @@ fn determine_column_type<'a>(
                 }
             }
 
-            ResolvedTypeHint::Float { bits } => {
+            ResolvedTypeHint::Float { bits, .. } => {
                 assert!(matches!(pt, PrimitiveType::Float));
 
                 let bits = *bits;

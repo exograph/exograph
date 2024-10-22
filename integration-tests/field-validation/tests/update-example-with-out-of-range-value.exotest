@@ -41,3 +41,45 @@ stages:
             }
           ]
         }
+  - operation: |
+        mutation {
+          updateExample(id: 1, data: { flimit: -0.1 }) {
+            id
+            flimit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': min = 0, provided value = -0.1",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 30
+                }
+              ]
+            }
+          ]
+        }
+  - operation: |
+        mutation {
+          updateExample(id: 1, data: { flimit: 2.1 }) {
+            id
+            flimit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': max = 2, provided value = 2.1",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 30
+                }
+              ]
+            }
+          ]
+        }

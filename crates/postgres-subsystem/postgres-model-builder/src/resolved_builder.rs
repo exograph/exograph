@@ -162,7 +162,7 @@ impl ResolvedField {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedTypeHint {
     Explicit {
         dbtype: String,
@@ -173,6 +173,7 @@ pub enum ResolvedTypeHint {
     },
     Float {
         bits: usize,
+        range: Option<(f64, f64)>,
     },
     Decimal {
         precision: Option<usize>,
@@ -196,6 +197,14 @@ impl TypeValidationProvider for ResolvedTypeHint {
             ResolvedTypeHint::Int { bits: _, range } => {
                 if let Some(r) = range {
                     return Some(TypeValidation::Int {
+                        range: r.to_owned(),
+                    });
+                }
+                None
+            }
+            ResolvedTypeHint::Float { bits: _, range } => {
+                if let Some(r) = range {
+                    return Some(TypeValidation::Float {
                         range: r.to_owned(),
                     });
                 }
@@ -555,6 +564,51 @@ fn build_type_hint(
         if field.typ.get_underlying_typename(types).unwrap() != "Float" {
             None
         } else {
+            let mut range_hint = None;
+            if let Some(params) = field.annotations.get("range") {
+                let min = params
+                    .as_map()
+                    .get("min")
+                    .unwrap()
+                    .as_string()
+                    .parse::<f64>();
+                let max = params
+                    .as_map()
+                    .get("max")
+                    .unwrap()
+                    .as_string()
+                    .parse::<f64>();
+
+                if min.is_err() || max.is_err() {
+                    if min.is_err() {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: "Cannot parse @range 'min' as f64".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: field.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                    if max.is_err() {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: "Cannot parse @range 'max' as f64".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: field.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                } else {
+                    range_hint = Some((min.unwrap(), max.unwrap()));
+                }
+            };
+
             let is_single_precision = field.annotations.contains("singlePrecision");
             let is_double_precision = field.annotations.contains("doublePrecision");
 
@@ -578,7 +632,10 @@ fn build_type_hint(
                 }
             };
 
-            bits_hint.map(|bits| ResolvedTypeHint::Float { bits })
+            bits_hint.map(|bits| ResolvedTypeHint::Float {
+                bits,
+                range: range_hint,
+            })
         }
     };
 
