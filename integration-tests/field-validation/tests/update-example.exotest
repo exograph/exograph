@@ -1,9 +1,10 @@
 stages:
   - operation: |
         mutation {
-          updateExample(id: 1, data: { limit: 0 }) {
+          updateExample(id: 1, data: { limit: 0, age: 1337 }) {
             id
             limit
+            age
           }
         }
     response: |
@@ -11,7 +12,8 @@ stages:
           "data": {
             "updateExample": {
               "id": 1,
-              "limit": 0
+              "limit": 0,
+              "age": 1337
             }
           }
         }
