@@ -202,12 +202,12 @@ impl<'a> ArgumentValidator<'a> {
         number: &Number,
         pos: Pos,
     ) -> Result<Val, ValidationError> {
-        let int_directives = get_schema_directives(self.schema, "Int");
+        let directives = get_schema_directives(self.schema, argument_definition.name.node.as_str());
         // TODO: float
 
-        if !int_directives.is_empty() {
+        if !directives.is_empty() {
             if let Some(value) = number.clone().as_i64() {
-                validate_int_range(int_directives, value, pos)?
+                validate_int_range(directives, value, pos)?
             }
         }
 
@@ -422,7 +422,7 @@ impl<'a> ArgumentValidator<'a> {
     }
 }
 
-fn get_schema_directives(schema: &Schema, base_type_name: &str) -> Vec<ConstDirective> {
+fn get_schema_directives(schema: &Schema, argument_name: &str) -> Vec<ConstDirective> {
     let placeholder: Vec<Positioned<FieldDefinition>> = vec![];
     schema
         .type_definitions
@@ -432,7 +432,7 @@ fn get_schema_directives(schema: &Schema, base_type_name: &str) -> Vec<ConstDire
             td.fields()
                 .unwrap_or(&placeholder)
                 .iter()
-                .filter(|x| x.node.ty.node.base.to_string() == base_type_name)
+                .find(|x| x.node.name.node.as_str() == argument_name)
                 .map(|x| x.to_owned().node.directives)
         })
         .flat_map(|cd| cd.iter().map(|x| x.node.clone()).collect::<Vec<_>>())

@@ -1,7 +1,8 @@
 operation: |
     mutation {
-        e1: createExample(data: { limit: 1 }) {
+        e1: createExample(data: { limit: 1, age: 20 }) {
               id
               limit
+              age
         }
     }
