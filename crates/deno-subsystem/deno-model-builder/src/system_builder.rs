@@ -20,7 +20,7 @@ use core_plugin_interface::{
 };
 
 use deno::{
-    args::{create_default_npmrc, CliOptions},
+    args::{create_default_npmrc, CliOptions, PermissionFlags},
     cache::{ModuleInfoCache, ParsedSourceCache},
     node::CliCjsCodeAnalyzer,
     npm::ManagedCliNpmResolver,
@@ -32,8 +32,8 @@ use deno_config::workspace::{
     VendorEnablement, WorkspaceDirectory, WorkspaceDirectoryEmptyOptions,
 };
 use deno_graph::{
-    DependencyDescriptor, DynamicArgument, Module, ModuleAnalyzer, ModuleEntryRef, ModuleGraph,
-    ModuleSpecifier, WalkOptions,
+    DependencyDescriptor, DynamicArgument, GraphKind, Module, ModuleAnalyzer, ModuleEntryRef,
+    ModuleGraph, ModuleSpecifier, WalkOptions,
 };
 use deno_model::{
     interceptor::Interceptor,
@@ -136,8 +136,15 @@ fn process_script(
     // `BoxFuture`, which has the `Send` requirement.
     let script_defn = std::thread::spawn(move || {
         let future = async move {
+            let permissive_cli_flags = Flags {
+                permissions: PermissionFlags {
+                    allow_all: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
             let cli_options = CliOptions::new(
-                Flags::default().into(),
+                permissive_cli_flags.into(),
                 std::env::current_dir().unwrap(),
                 None,
                 create_default_npmrc(),
@@ -263,15 +270,21 @@ async fn walk_node_resolutions(
     module_info_cache: &Arc<ModuleInfoCache>,
     root_path: &PathBuf,
     modules: &mut HashMap<Url, ResolvedModule>,
-) -> Option<(String, MediaType, ModuleSpecifier, bool)> {
+) -> Result<Option<(String, MediaType, ModuleSpecifier, bool)>, ModelBuildingError> {
     match root {
-        NodeResolution::BuiltIn(_) => None,
+        NodeResolution::BuiltIn(_) => Ok(None),
         NodeResolution::CommonJs(cjs_specifier) => {
-            let loaded = npm_loader
-                .load_if_in_npm_package(&cjs_specifier, None)
-                .await
-                .unwrap()
-                .unwrap();
+            let loaded = if npm_loader.if_in_npm_package(&cjs_specifier) {
+                npm_loader.load(&cjs_specifier, None).await.map_err(|e| {
+                    ModelBuildingError::Generic(format!(
+                        "While loading CJS specifier {cjs_specifier}: {e:?}"
+                    ))
+                })?
+            } else {
+                return Err(ModelBuildingError::Generic(format!(
+                    "CJS specifier {cjs_specifier} is not in any NPM package",
+                )));
+            };
 
             let loaded_rewritten = code_translator
                 .translate_cjs_to_esm(
@@ -326,19 +339,25 @@ async fn walk_node_resolutions(
                 );
             }
 
-            Some((
+            Ok(Some((
                 root_replaced,
                 MediaType::JavaScript,
                 root_replaced_specifier,
                 true,
-            ))
+            )))
         }
         NodeResolution::Esm(esm_specifier) => {
-            let loaded = npm_loader
-                .load_if_in_npm_package(&esm_specifier, None)
-                .await
-                .unwrap()
-                .unwrap();
+            let loaded = if npm_loader.if_in_npm_package(&esm_specifier) {
+                npm_loader.load(&esm_specifier, None).await.map_err(|e| {
+                    ModelBuildingError::Generic(format!(
+                        "While loading ESM specifier {esm_specifier}: {e:?}"
+                    ))
+                })?
+            } else {
+                return Err(ModelBuildingError::Generic(format!(
+                    "EMS specifier {esm_specifier} is not in any NPM package",
+                )));
+            };
 
             let esm_path = esm_specifier.to_file_path().unwrap();
 
@@ -413,16 +432,16 @@ async fn walk_node_resolutions(
                         root_path,
                         modules,
                     )
-                    .await;
+                    .await?;
                 }
             }
 
-            Some((
+            Ok(Some((
                 String::from_utf8(loaded.code.as_bytes().to_vec()).unwrap(),
                 MediaType::JavaScript,
                 root_replaced_specifier,
                 false,
-            ))
+            )))
         }
     }
 }
@@ -445,7 +464,7 @@ async fn walk_module_graph(
         graph.roots.iter(),
         WalkOptions {
             follow_dynamic: true,
-            follow_type_only: false,
+            kind: GraphKind::All,
             check_js: true,
             prefer_fast_check_graph: false,
         },
@@ -490,7 +509,7 @@ async fn walk_module_graph(
                             &npm_cache_folder,
                             &mut modules,
                         )
-                        .await
+                        .await?
                     }
                     o => {
                         return Err(ModelBuildingError::Generic(format!(
