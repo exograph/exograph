@@ -2,3 +2,5 @@ target
 *.exo_ir
 .vscode
 Session.vim*
+tags
+*.swp

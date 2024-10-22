@@ -10,11 +10,12 @@
 use std::collections::HashMap;
 
 use async_graphql_parser::{
-    types::{BaseType, Field, InputValueDefinition, TypeKind},
+    types::{BaseType, ConstDirective, Field, FieldDefinition, InputValueDefinition, TypeKind},
     Pos, Positioned,
 };
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
 use bytes::Bytes;
+use core_model::type_normalization::TypeDefinitionIntrospection;
 
 use crate::{
     introspection::definition::schema::Schema,
@@ -201,6 +202,15 @@ impl<'a> ArgumentValidator<'a> {
         number: &Number,
         pos: Pos,
     ) -> Result<Val, ValidationError> {
+        let directives = get_schema_directives(self.schema, argument_definition.name.node.as_str());
+        // TODO: float
+
+        if !directives.is_empty() {
+            if let Some(value) = number.clone().as_i64() {
+                validate_int_range(directives, value, pos)?
+            }
+        }
+
         // TODO: Use the types from PrimitiveType (but that is currently in the builder crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "Number",
@@ -410,4 +420,65 @@ impl<'a> ArgumentValidator<'a> {
             }
         }
     }
+}
+
+fn get_schema_directives(schema: &Schema, argument_name: &str) -> Vec<ConstDirective> {
+    let placeholder: Vec<Positioned<FieldDefinition>> = vec![];
+    schema
+        .type_definitions
+        .iter()
+        .filter(|td| matches!(&td.kind, TypeKind::Object(_)))
+        .flat_map(|td| {
+            td.fields()
+                .unwrap_or(&placeholder)
+                .iter()
+                .find(|x| x.node.name.node.as_str() == argument_name)
+                .map(|x| x.to_owned().node.directives)
+        })
+        .flat_map(|cd| cd.iter().map(|x| x.node.clone()).collect::<Vec<_>>())
+        .collect()
+}
+
+fn validate_int_range(
+    int_directives: Vec<ConstDirective>,
+    value: i64,
+    pos: Pos,
+) -> Result<(), ValidationError> {
+    let mut min: Option<i64> = None;
+    let mut max: Option<i64> = None;
+    if let Some(range) = int_directives.iter().find(|x| x.name.node == "range") {
+        if let Some(x) = range.arguments.iter().find(|x| x.0.node == "min") {
+            if let ConstValue::Number(n) = &x.1.node {
+                min = n.to_owned().as_i64();
+            }
+        }
+        if let Some(x) = range.arguments.iter().find(|x| x.0.node == "max") {
+            if let ConstValue::Number(n) = &x.1.node {
+                max = n.to_owned().as_i64();
+            }
+        }
+    }
+
+    if let Some(r) = min {
+        if r > value {
+            return Err(ValidationError::ValueOutOfRange {
+                value_name: "range".into(),
+                range_detail: format!("min = {}", r),
+                value_detail: format!("provided value = {}", value),
+                pos,
+            });
+        }
+    }
+    if let Some(r) = max {
+        if value > r {
+            return Err(ValidationError::ValueOutOfRange {
+                value_name: "range".into(),
+                range_detail: format!("max = {}", r),
+                value_detail: format!("provided value = {}", value),
+                pos,
+            });
+        }
+    }
+
+    Ok(())
 }

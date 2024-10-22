@@ -1,0 +1,9 @@
+@postgres
+module ExampleDatabase {
+  @access(true)
+  type Example {
+    @pk id: Int = autoIncrement()
+    @range(min = 0, max = 2) limit: Int?
+    age: Int?
+  }
+}

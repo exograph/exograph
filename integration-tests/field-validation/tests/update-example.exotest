@@ -1,0 +1,35 @@
+stages:
+  - operation: |
+        mutation {
+          updateExample(id: 1, data: { limit: 0, age: 1337 }) {
+            id
+            limit
+            age
+          }
+        }
+    response: |
+        {
+          "data": {
+            "updateExample": {
+              "id": 1,
+              "limit": 0,
+              "age": 1337
+            }
+          }
+        }
+  - operation: |
+        mutation {
+          updateExample(id: 1, data: { limit: 2 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "updateExample": {
+              "id": 1,
+              "limit": 2
+            }
+          }
+        }

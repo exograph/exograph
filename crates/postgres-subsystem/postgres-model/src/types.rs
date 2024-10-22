@@ -16,7 +16,7 @@ use crate::relation::OneToManyRelation;
 use crate::subsystem::PostgresSubsystem;
 use crate::vector_distance::VectorDistanceField;
 use async_graphql_parser::types::{
-    FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
+    ConstDirective, FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
 use core_plugin_interface::core_model::context_type::ContextSelection;
@@ -177,6 +177,16 @@ pub struct PostgresField<CT> {
     pub dynamic_default_value: Option<ContextSelection>,
     pub readonly: bool,
     pub access: Access,
+    pub type_validation: Option<TypeValidation>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum TypeValidation {
+    Int { range: (i64, i64) },
+}
+
+pub trait TypeValidationProvider {
+    fn get_type_validation(&self) -> Option<TypeValidation>;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -280,6 +290,7 @@ impl TypeDefinitionProvider<PostgresSubsystem> for MutationType {
 impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
     fn field_definition(&self, system: &PostgresSubsystem) -> FieldDefinition {
         let field_type = default_positioned((&self.typ).into());
+        let mut directives = vec![];
 
         // Special case for Vector. Even though it is a "scalar" from the perspective of the
         // database, it is a list of floats from the perspective of the GraphQL schema.
@@ -295,8 +306,29 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
                     base: base_list_type,
                     nullable: matches!(self.typ, FieldType::Optional(_)),
                 }),
-                directives: vec![],
+                directives,
             };
+        }
+
+        if self.typ.name() == "Int" {
+            if let Some(props) = &self.type_validation {
+                let TypeValidation::Int { range } = props;
+                let (min, max) = range.to_owned();
+                let range_directive = ConstDirective {
+                    name: default_positioned_name("range"),
+                    arguments: vec![
+                        (
+                            default_positioned_name("min"),
+                            default_positioned(min.into()),
+                        ),
+                        (
+                            default_positioned_name("max"),
+                            default_positioned(max.into()),
+                        ),
+                    ],
+                };
+                directives.push(default_positioned(range_directive));
+            }
         }
 
         let arguments = match self.relation {
@@ -335,7 +367,7 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
             name: default_positioned_name(&self.name),
             arguments,
             ty: field_type,
-            directives: vec![],
+            directives,
         }
     }
 }
