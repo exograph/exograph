@@ -38,6 +38,7 @@ use core_plugin_interface::{
     },
 };
 use exo_sql::{PhysicalTableName, VectorDistanceFunction};
+use postgres_model::types::{TypeValidation, TypeValidationProvider};
 
 use super::{
     access_builder::{build_access, ResolvedAccess},
@@ -187,6 +188,22 @@ pub enum ResolvedTypeHint {
         size: Option<usize>,
         distance_function: Option<VectorDistanceFunction>,
     },
+}
+
+impl TypeValidationProvider for ResolvedTypeHint {
+    fn get_type_validation(&self) -> Option<TypeValidation> {
+        match self {
+            ResolvedTypeHint::Int { bits: _, range } => {
+                if let Some(r) = range {
+                    return Some(TypeValidation::Int {
+                        range: r.to_owned(),
+                    });
+                }
+                None
+            }
+            _ => None,
+        }
+    }
 }
 
 impl ResolvedCompositeType {

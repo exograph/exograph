@@ -45,7 +45,7 @@ use postgres_model::{
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{
         get_field_id, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
-        TypeIndex, TypeValidation,
+        TypeIndex, TypeValidationProvider,
     },
     vector_distance::{VectorDistanceField, VectorDistanceType},
 };
@@ -631,6 +631,10 @@ fn create_persistent_field(
     let relation = create_relation(field, *type_id, building, env, expand_foreign_relations);
 
     let access = compute_access(&field.access, *type_id, env, building)?;
+    let type_validation = match &field.type_hint {
+        Some(th) => th.get_type_validation(),
+        None => None,
+    };
 
     Ok(PostgresField {
         name: field.name.to_owned(),
@@ -640,26 +644,8 @@ fn create_persistent_field(
         has_default_value: field.default_value.is_some(),
         dynamic_default_value: None,
         readonly: field.readonly || field.update_sync,
-        type_validation: get_type_validation(&field.type_hint),
+        type_validation,
     })
-}
-
-pub fn get_type_validation(type_hint: &Option<ResolvedTypeHint>) -> Option<TypeValidation> {
-    if let Some(hint) = type_hint {
-        let h = match hint {
-            ResolvedTypeHint::Int { bits: _, range } => {
-                if let Some(r) = range {
-                    return Some(TypeValidation::Int {
-                        range: r.to_owned(),
-                    });
-                }
-                return None;
-            }
-            _ => None,
-        };
-        return h;
-    }
-    None
 }
 
 fn create_agg_field(

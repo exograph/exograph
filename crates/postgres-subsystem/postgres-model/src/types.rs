@@ -185,6 +185,10 @@ pub enum TypeValidation {
     Int { range: (i64, i64) },
 }
 
+pub trait TypeValidationProvider {
+    fn get_type_validation(&self) -> Option<TypeValidation>;
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresFieldType<CT> {
     pub type_id: TypeIndex<CT>,
