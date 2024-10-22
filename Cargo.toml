@@ -108,7 +108,7 @@ tree-sitter = "0.20.10"
 tree-sitter-c2rust = "0.20.11-pre.1"
 tree-sitter-cli = "0.20.8"
 typed-generational-arena = { version = "0.2.5", features = ["serde"] }
-uuid = "1.1.2"
+uuid = "1.11.0"
 url = "2.3.1"
 wasmtime = "25.0.2"
 wasmtime-wasi = "25.0.2"
