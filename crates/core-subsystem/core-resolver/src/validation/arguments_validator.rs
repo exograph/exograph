@@ -203,7 +203,6 @@ impl<'a> ArgumentValidator<'a> {
         pos: Pos,
     ) -> Result<Val, ValidationError> {
         let directives = get_schema_directives(self.schema, argument_definition.name.node.as_str());
-        // TODO: float
 
         if !directives.is_empty() {
             if let Some(value) = number.clone().as_i64() {

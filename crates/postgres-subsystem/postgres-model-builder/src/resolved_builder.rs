@@ -172,7 +172,7 @@ pub enum ResolvedTypeHint {
         range: Option<(i64, i64)>,
     },
     Float {
-        bits: usize,
+        bits: Option<usize>,
         range: Option<(f64, f64)>,
     },
     Decimal {
@@ -632,10 +632,14 @@ fn build_type_hint(
                 }
             };
 
-            bits_hint.map(|bits| ResolvedTypeHint::Float {
-                bits,
-                range: range_hint,
-            })
+            if bits_hint.is_some() || range_hint.is_some() {
+                Some(ResolvedTypeHint::Float {
+                    bits: bits_hint,
+                    range: range_hint,
+                })
+            } else {
+                None
+            }
         }
     };
 

@@ -43,7 +43,7 @@ stages:
         }
   - operation: |
         mutation {
-          createExample(data: { flimit: -0.1 }) {
+          createExample(data: { flimit: -1.1 }) {
             id
             flimit
           }
@@ -52,7 +52,7 @@ stages:
         {
           "errors": [
             {
-              "message": "Invalid value for 'range': min = 0, provided value = -0.1",
+              "message": "Invalid value for 'range': min = -1, provided value = -1.1",
               "locations": [
                 {
                   "line": 2,
@@ -64,7 +64,7 @@ stages:
         }
   - operation: |
         mutation {
-          createExample(data: { flimit: 2.1 }) {
+          createExample(data: { flimit: 3.1 }) {
             id
             flimit
           }
@@ -73,7 +73,7 @@ stages:
         {
           "errors": [
             {
-              "message": "Invalid value for 'range': max = 2, provided value = 2.1",
+              "message": "Invalid value for 'range': max = 3, provided value = 3.1",
               "locations": [
                 {
                   "line": 2,

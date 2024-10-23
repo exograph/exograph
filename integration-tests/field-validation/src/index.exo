@@ -5,6 +5,7 @@ module ExampleDatabase {
     @pk id: Int = autoIncrement()
     @range(min = 0, max = 2) limit: Int?
     age: Int?
-    @range(min = "0.0", max = "2.0") flimit: Float?
+    @range(min = "-1.0", max = "3.0") flimit: Float?
+    price: Float?
   }
 }

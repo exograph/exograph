@@ -35,7 +35,7 @@ stages:
         }
   - operation: |
         mutation {
-          updateExample(id: 1, data: { flimit: 0.0 }) {
+          updateExample(id: 1, data: { flimit: -0.1 }) {
             id
             flimit
           }
@@ -45,13 +45,13 @@ stages:
           "data": {
             "updateExample": {
               "id": 1,
-              "flimit": 0.0
+              "flimit": -0.1
             }
           }
         }
   - operation: |
         mutation {
-          updateExample(id: 1, data: { flimit: 2.0 }) {
+          updateExample(id: 1, data: { flimit: 3.0 }) {
             id
             flimit
           }
@@ -61,7 +61,7 @@ stages:
           "data": {
             "updateExample": {
               "id": 1,
-              "flimit": 2.0
+              "flimit": 3.0
             }
           }
         }

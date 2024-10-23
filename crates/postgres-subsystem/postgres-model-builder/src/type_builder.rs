@@ -966,18 +966,22 @@ fn determine_column_type<'a>(
             ResolvedTypeHint::Float { bits, .. } => {
                 assert!(matches!(pt, PrimitiveType::Float));
 
-                let bits = *bits;
-
-                if (1..=24).contains(&bits) {
+                if let Some(bits) = *bits {
+                    if (1..=24).contains(&bits) {
+                        PhysicalColumnType::Float {
+                            bits: FloatBits::_24,
+                        }
+                    } else if bits > 24 && bits <= 53 {
+                        PhysicalColumnType::Float {
+                            bits: FloatBits::_53,
+                        }
+                    } else {
+                        panic!("Invalid bits")
+                    }
+                } else {
                     PhysicalColumnType::Float {
                         bits: FloatBits::_24,
                     }
-                } else if bits > 24 && bits <= 53 {
-                    PhysicalColumnType::Float {
-                        bits: FloatBits::_53,
-                    }
-                } else {
-                    panic!("Invalid bits")
                 }
             }
 
