@@ -5,4 +5,9 @@ operation: |
               limit
               age
         }
+        e2: createSthElse(data: { limit: 1337, age: 20 }) {
+              id
+              limit
+              age
+        }
     }

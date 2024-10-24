@@ -6,4 +6,11 @@ module ExampleDatabase {
     @range(min = 0, max = 2) limit: Int?
     age: Int?
   }
+
+  @access(true)
+  type SthElse {
+    @pk id: Int = autoIncrement()
+    @range(min = 0, max = 12345) limit: Int?
+    age: Int?
+  }
 }

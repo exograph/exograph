@@ -202,7 +202,11 @@ impl<'a> ArgumentValidator<'a> {
         number: &Number,
         pos: Pos,
     ) -> Result<Val, ValidationError> {
-        let directives = get_schema_directives(self.schema, argument_definition.name.node.as_str());
+        let directives = get_schema_directives(
+            self.schema,
+            self.field.node.name.node.as_str(),
+            argument_definition.name.node.as_str(),
+        );
         // TODO: float
 
         if !directives.is_empty() {
@@ -422,12 +426,19 @@ impl<'a> ArgumentValidator<'a> {
     }
 }
 
-fn get_schema_directives(schema: &Schema, argument_name: &str) -> Vec<ConstDirective> {
+fn get_schema_directives(
+    schema: &Schema,
+    field_name: &str,
+    argument_name: &str,
+) -> Vec<ConstDirective> {
     let placeholder: Vec<Positioned<FieldDefinition>> = vec![];
     schema
         .type_definitions
         .iter()
-        .filter(|td| matches!(&td.kind, TypeKind::Object(_)))
+        .filter(|td| {
+            is_operation_related_to_type_definition(field_name, td.name.node.as_str())
+                && matches!(&td.kind, TypeKind::Object(_))
+        })
         .flat_map(|td| {
             td.fields()
                 .unwrap_or(&placeholder)
@@ -437,6 +448,17 @@ fn get_schema_directives(schema: &Schema, argument_name: &str) -> Vec<ConstDirec
         })
         .flat_map(|cd| cd.iter().map(|x| x.node.clone()).collect::<Vec<_>>())
         .collect()
+}
+
+fn is_operation_related_to_type_definition(
+    operation_name: &str,
+    schema_type_definition_name: &str,
+) -> bool {
+    let related_operations = [
+        format!("create{schema_type_definition_name}"),
+        format!("update{schema_type_definition_name}"),
+    ];
+    related_operations.contains(&operation_name.to_string())
 }
 
 fn validate_int_range(
