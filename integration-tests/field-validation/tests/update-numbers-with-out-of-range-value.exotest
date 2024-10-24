@@ -1,7 +1,7 @@
 stages:
   - operation: |
         mutation {
-          createExample(data: { limit: -1 }) {
+          updateNumbers(id: 1, data: { limit: -1 }) {
             id
             limit
           }
@@ -14,7 +14,7 @@ stages:
               "locations": [
                 {
                   "line": 2,
-                  "column": 23
+                  "column": 30
                 }
               ]
             }
@@ -22,7 +22,7 @@ stages:
         }
   - operation: |
         mutation {
-          createExample(data: { limit: 3 }) {
+          updateNumbers(id: 1, data: { limit: 3 }) {
             id
             limit
           }
@@ -35,7 +35,7 @@ stages:
               "locations": [
                 {
                   "line": 2,
-                  "column": 23
+                  "column": 30
                 }
               ]
             }
@@ -43,9 +43,9 @@ stages:
         }
   - operation: |
         mutation {
-          createExample(data: { flimit: -1.1 }) {
+          updateNumbers(id: 1, data: { float_limit: -1.1 }) {
             id
-            flimit
+            float_limit
           }
         }
     response: |
@@ -56,7 +56,7 @@ stages:
               "locations": [
                 {
                   "line": 2,
-                  "column": 23
+                  "column": 30
                 }
               ]
             }
@@ -64,9 +64,9 @@ stages:
         }
   - operation: |
         mutation {
-          createExample(data: { flimit: 3.1 }) {
+          updateNumbers(id: 1, data: { float_limit: 3.1 }) {
             id
-            flimit
+            float_limit
           }
         }
     response: |
@@ -77,7 +77,7 @@ stages:
               "locations": [
                 {
                   "line": 2,
-                  "column": 23
+                  "column": 30
                 }
               ]
             }

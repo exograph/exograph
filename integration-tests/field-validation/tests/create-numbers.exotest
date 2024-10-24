@@ -1,7 +1,7 @@
 stages:
   - operation: |
         mutation {
-          createExample(data: { limit: 0, age: 1337 }) {
+          createNumbers(data: { limit: 0, age: 1337 }) {
             id
             limit
             age
@@ -10,7 +10,7 @@ stages:
     response: |
         {
           "data": {
-            "createExample": {
+            "createNumbers": {
               "id": 2,
               "limit": 0,
               "age": 1337
@@ -19,7 +19,7 @@ stages:
         }
   - operation: |
         mutation {
-          createExample(data: { limit: 2 }) {
+          createNumbers(data: { limit: 2 }) {
             id
             limit
           }
@@ -27,7 +27,7 @@ stages:
     response: |
         {
           "data": {
-            "createExample": {
+            "createNumbers": {
               "id": 3,
               "limit": 2
             }
@@ -35,33 +35,33 @@ stages:
         }
   - operation: |
         mutation {
-          createExample(data: { flimit: 0.0 }) {
+          createNumbers(data: { float_limit: 0.0 }) {
             id
-            flimit
+            float_limit
           }
         }
     response: |
         {
           "data": {
-            "createExample": {
+            "createNumbers": {
               "id": 4,
-              "flimit": 0.0
+              "float_limit": 0.0
             }
           }
         }
   - operation: |
         mutation {
-          createExample(data: { flimit: 2.0 }) {
+          createNumbers(data: { float_limit: 2.0 }) {
             id
-            flimit
+            float_limit
           }
         }
     response: |
         {
           "data": {
-            "createExample": {
+            "createNumbers": {
               "id": 5,
-              "flimit": 2.0
+              "float_limit": 2.0
             }
           }
         }

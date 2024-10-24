@@ -1,7 +1,7 @@
 stages:
   - operation: |
         mutation {
-          updateExample(id: 1, data: { limit: 0, age: 1337 }) {
+          updateNumbers(id: 1, data: { limit: 0, age: 1337 }) {
             id
             limit
             age
@@ -10,7 +10,7 @@ stages:
     response: |
         {
           "data": {
-            "updateExample": {
+            "updateNumbers": {
               "id": 1,
               "limit": 0,
               "age": 1337
@@ -19,7 +19,7 @@ stages:
         }
   - operation: |
         mutation {
-          updateExample(id: 1, data: { limit: 2 }) {
+          updateNumbers(id: 1, data: { limit: 2 }) {
             id
             limit
           }
@@ -27,7 +27,7 @@ stages:
     response: |
         {
           "data": {
-            "updateExample": {
+            "updateNumbers": {
               "id": 1,
               "limit": 2
             }
@@ -35,33 +35,33 @@ stages:
         }
   - operation: |
         mutation {
-          updateExample(id: 1, data: { flimit: -0.1 }) {
+          updateNumbers(id: 1, data: { float_limit: -0.1 }) {
             id
-            flimit
+            float_limit
           }
         }
     response: |
         {
           "data": {
-            "updateExample": {
+            "updateNumbers": {
               "id": 1,
-              "flimit": -0.1
+              "float_limit": -0.1
             }
           }
         }
   - operation: |
         mutation {
-          updateExample(id: 1, data: { flimit: 3.0 }) {
+          updateNumbers(id: 1, data: { float_limit: 3.0 }) {
             id
-            flimit
+            float_limit
           }
         }
     response: |
         {
           "data": {
-            "updateExample": {
+            "updateNumbers": {
               "id": 1,
-              "flimit": 3.0
+              "float_limit": 3.0
             }
           }
         }
