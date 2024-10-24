@@ -980,7 +980,7 @@ fn determine_column_type<'a>(
                     }
                 } else {
                     PhysicalColumnType::Float {
-                        bits: FloatBits::_24,
+                        bits: FloatBits::_53,
                     }
                 }
             }
