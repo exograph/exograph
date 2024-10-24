@@ -18,6 +18,8 @@ use crate::vector_distance::VectorDistanceField;
 use async_graphql_parser::types::{
     ConstDirective, FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
+use async_graphql_parser::Positioned;
+use async_graphql_value::ConstValue;
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
 use core_plugin_interface::core_model::context_type::ContextSelection;
 use core_plugin_interface::core_model::primitive_type::vector_introspection_base_type;
@@ -183,10 +185,15 @@ pub struct PostgresField<CT> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum TypeValidation {
     Int { range: (i64, i64) },
+    Float { range: (f64, f64) },
 }
 
 pub trait TypeValidationProvider {
     fn get_type_validation(&self) -> Option<TypeValidation>;
+}
+
+trait DirectivesProvider {
+    fn get_directives(&self) -> Vec<Positioned<ConstDirective>>;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -292,6 +299,10 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
         let field_type = default_positioned((&self.typ).into());
         let mut directives = vec![];
 
+        if let Some(type_validation) = &self.type_validation {
+            directives = type_validation.get_directives();
+        }
+
         // Special case for Vector. Even though it is a "scalar" from the perspective of the
         // database, it is a list of floats from the perspective of the GraphQL schema.
         // TODO: This should be handled in a more general way (probably best done with https://github.com/exograph/exograph/issues/603)
@@ -308,27 +319,6 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
                 }),
                 directives,
             };
-        }
-
-        if self.typ.name() == "Int" {
-            if let Some(props) = &self.type_validation {
-                let TypeValidation::Int { range } = props;
-                let (min, max) = range.to_owned();
-                let range_directive = ConstDirective {
-                    name: default_positioned_name("range"),
-                    arguments: vec![
-                        (
-                            default_positioned_name("min"),
-                            default_positioned(min.into()),
-                        ),
-                        (
-                            default_positioned_name("max"),
-                            default_positioned(max.into()),
-                        ),
-                    ],
-                };
-                directives.push(default_positioned(range_directive));
-            }
         }
 
         let arguments = match self.relation {
@@ -379,5 +369,40 @@ impl<CT> Parameter for PostgresField<CT> {
 
     fn typ(&self) -> Type {
         (&self.typ).into()
+    }
+}
+
+impl DirectivesProvider for TypeValidation {
+    fn get_directives(&self) -> Vec<Positioned<ConstDirective>> {
+        let mut directives = vec![];
+        match self {
+            TypeValidation::Int { range } => {
+                let (min, max) = range.to_owned();
+                directives.push(default_positioned(get_range_directive(min, max)));
+                directives
+            }
+
+            TypeValidation::Float { range } => {
+                let (min, max) = range.to_owned();
+                directives.push(default_positioned(get_range_directive(min, max)));
+                directives
+            }
+        }
+    }
+}
+
+fn get_range_directive<T: Into<ConstValue>>(min: T, max: T) -> ConstDirective {
+    ConstDirective {
+        name: default_positioned_name("range"),
+        arguments: vec![
+            (
+                default_positioned_name("min"),
+                default_positioned(min.into()),
+            ),
+            (
+                default_positioned_name("max"),
+                default_positioned(max.into()),
+            ),
+        ],
     }
 }

@@ -1,9 +1,11 @@
 @postgres
-module ExampleDatabase {
+module RuntimeValidations {
   @access(true)
-  type Example {
+  type Numbers {
     @pk id: Int = autoIncrement()
     @range(min = 0, max = 2) limit: Int?
     age: Int?
+    @range(min = "-1.0", max = "3.0") float_limit: Float?
+    price: Float?
   }
 }

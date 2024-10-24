@@ -203,11 +203,12 @@ impl<'a> ArgumentValidator<'a> {
         pos: Pos,
     ) -> Result<Val, ValidationError> {
         let directives = get_schema_directives(self.schema, argument_definition.name.node.as_str());
-        // TODO: float
 
         if !directives.is_empty() {
             if let Some(value) = number.clone().as_i64() {
                 validate_int_range(directives, value, pos)?
+            } else if let Some(value) = number.clone().as_f64() {
+                validate_float_range(directives, value, pos)?
             }
         }
 
@@ -440,13 +441,13 @@ fn get_schema_directives(schema: &Schema, argument_name: &str) -> Vec<ConstDirec
 }
 
 fn validate_int_range(
-    int_directives: Vec<ConstDirective>,
+    directives: Vec<ConstDirective>,
     value: i64,
     pos: Pos,
 ) -> Result<(), ValidationError> {
     let mut min: Option<i64> = None;
     let mut max: Option<i64> = None;
-    if let Some(range) = int_directives.iter().find(|x| x.name.node == "range") {
+    if let Some(range) = directives.iter().find(|x| x.name.node == "range") {
         if let Some(x) = range.arguments.iter().find(|x| x.0.node == "min") {
             if let ConstValue::Number(n) = &x.1.node {
                 min = n.to_owned().as_i64();
@@ -459,6 +460,41 @@ fn validate_int_range(
         }
     }
 
+    validate_generic_range((min, max), value, pos)
+}
+
+fn validate_float_range(
+    directives: Vec<ConstDirective>,
+    value: f64,
+    pos: Pos,
+) -> Result<(), ValidationError> {
+    let mut min: Option<f64> = None;
+    let mut max: Option<f64> = None;
+    if let Some(range) = directives.iter().find(|x| x.name.node == "range") {
+        if let Some(x) = range.arguments.iter().find(|x| x.0.node == "min") {
+            if let ConstValue::Number(n) = &x.1.node {
+                min = n.to_owned().as_f64();
+            }
+        }
+        if let Some(x) = range.arguments.iter().find(|x| x.0.node == "max") {
+            if let ConstValue::Number(n) = &x.1.node {
+                max = n.to_owned().as_f64();
+            }
+        }
+    }
+
+    validate_generic_range((min, max), value, pos)
+}
+
+fn validate_generic_range<T>(
+    range: (Option<T>, Option<T>),
+    value: T,
+    pos: Pos,
+) -> Result<(), ValidationError>
+where
+    T: std::cmp::PartialOrd + std::fmt::Display,
+{
+    let (min, max) = range;
     if let Some(r) = min {
         if r > value {
             return Err(ValidationError::ValueOutOfRange {

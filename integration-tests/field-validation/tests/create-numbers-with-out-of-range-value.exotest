@@ -1,0 +1,85 @@
+stages:
+  - operation: |
+        mutation {
+          createNumbers(data: { limit: -1 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': min = 0, provided value = -1",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 23
+                }
+              ]
+            }
+          ]
+        }
+  - operation: |
+        mutation {
+          createNumbers(data: { limit: 3 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': max = 2, provided value = 3",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 23
+                }
+              ]
+            }
+          ]
+        }
+  - operation: |
+        mutation {
+          createNumbers(data: { float_limit: -1.1 }) {
+            id
+            float_limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': min = -1, provided value = -1.1",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 23
+                }
+              ]
+            }
+          ]
+        }
+  - operation: |
+        mutation {
+          createNumbers(data: { float_limit: 3.1 }) {
+            id
+            float_limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': max = 3, provided value = 3.1",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 23
+                }
+              ]
+            }
+          ]
+        }

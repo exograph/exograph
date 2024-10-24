@@ -1,0 +1,67 @@
+stages:
+  - operation: |
+        mutation {
+          createNumbers(data: { limit: 0, age: 1337 }) {
+            id
+            limit
+            age
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createNumbers": {
+              "id": 2,
+              "limit": 0,
+              "age": 1337
+            }
+          }
+        }
+  - operation: |
+        mutation {
+          createNumbers(data: { limit: 2 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createNumbers": {
+              "id": 3,
+              "limit": 2
+            }
+          }
+        }
+  - operation: |
+        mutation {
+          createNumbers(data: { float_limit: 0.0 }) {
+            id
+            float_limit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createNumbers": {
+              "id": 4,
+              "float_limit": 0.0
+            }
+          }
+        }
+  - operation: |
+        mutation {
+          createNumbers(data: { float_limit: 2.0 }) {
+            id
+            float_limit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createNumbers": {
+              "id": 5,
+              "float_limit": 2.0
+            }
+          }
+        }
