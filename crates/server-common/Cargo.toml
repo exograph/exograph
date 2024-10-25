@@ -5,9 +5,11 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+thiserror.workspace = true
 common = { path = "../common", features = ["opentelemetry"] }
 graphql-router = { path = "../graphql-router" }
 system-router = { path = "../system-router" }
+core-router = { path = "../core-subsystem/core-router" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 postgres-resolver = { path = "../postgres-subsystem/postgres-resolver", features = [

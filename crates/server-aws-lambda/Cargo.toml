@@ -16,10 +16,6 @@ repository = "https://github.com/exograph/exograph"
 async-trait.workspace = true
 lambda_runtime = "0.13.0"
 futures.workspace = true
-opentelemetry = { version = "0.17", default-features = false, features = [
-  "trace",
-] }
-opentelemetry-jaeger = "0.22"
 serde_json = { workspace = true, features = ["preserve_order"] }
 tokio = { workspace = true, features = ["full"] }
 http.workspace = true

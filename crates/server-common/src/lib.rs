@@ -8,10 +8,12 @@
 // by the Apache License, Version 2.0.
 
 use std::{env, process::exit, sync::Arc};
+use thiserror::Error;
 
-use common::logging_tracing;
+use common::logging_tracing::{self, OtelError};
 use core_plugin_interface::interface::SubsystemLoader;
 
+use core_router::SystemLoadingError;
 use exo_env::SystemEnvironment;
 use system_router::{create_system_router_from_file, SystemRouter};
 
@@ -25,24 +27,17 @@ use system_router::{create_system_router_from_file, SystemRouter};
 ///
 /// # Exit codes
 /// - 1 - If the exo_ir file doesn't exist or can't be loaded.
-pub async fn init() -> SystemRouter {
-    logging_tracing::init();
+pub async fn init() -> Result<SystemRouter, ServerInitError> {
+    logging_tracing::init()?;
 
     let exo_ir_file = get_exo_ir_file_name();
 
-    match create_system_router_from_file(
+    Ok(create_system_router_from_file(
         &exo_ir_file,
         create_static_loaders(),
         Arc::new(SystemEnvironment),
     )
-    .await
-    {
-        Ok(system_router) => system_router,
-        Err(error) => {
-            println!("{error}");
-            exit(1);
-        }
-    }
+    .await?)
 }
 
 pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {
@@ -67,4 +62,13 @@ fn get_exo_ir_file_name() -> String {
 
     // $ exo-server
     "target/index.exo_ir".to_string()
+}
+
+#[derive(Error, Debug)]
+pub enum ServerInitError {
+    #[error(transparent)]
+    OtelError(#[from] OtelError),
+
+    #[error(transparent)]
+    SystemLoadingError(#[from] SystemLoadingError),
 }

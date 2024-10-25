@@ -6,7 +6,7 @@ publish = false
 
 [features]
 default = []
-opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "tonic"]
+opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "opentelemetry-appender-tracing", "tonic"]
 
 [dependencies]
 thiserror.workspace = true
@@ -19,21 +19,22 @@ exo-env = { path = "../../libs/exo-env" }
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
-tracing-opentelemetry = "0.24.0"
-opentelemetry = { version = "0.23.0", default-features = false, features = [
+tracing-opentelemetry = "0.27"
+opentelemetry = { version = "0.27", default-features = false, features = [
   "trace",
 ] }
-opentelemetry_sdk = { version = "0.23.0", features = [
+opentelemetry_sdk = { version = "0.27", features = [
   "rt-tokio",
 ], optional = true }
-opentelemetry-otlp = { version = "0.16.0", features = [
+opentelemetry-otlp = { version = "0.27", features = [
   "reqwest-client",
   "reqwest-rustls",
   "http-proto",
   "tls",
 ], optional = true }
+opentelemetry-appender-tracing = { version = "0.27", optional = true }
 # Tonic isn't used directly but we need these flags to establish a TLS connection
-tonic = { version = "0.11.0", features = ["tls", "tls-roots"], optional = true }
+tonic = { version = "0.12.3", features = ["tls", "tls-roots"], optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }

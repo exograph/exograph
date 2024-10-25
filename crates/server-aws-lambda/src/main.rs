@@ -21,10 +21,10 @@ async fn main() -> Result<(), Error> {
 
     use std::sync::Arc;
 
-    let system_resolver = Arc::new(server_common::init().await);
+    let system_router = Arc::new(server_common::init().await?);
 
     let module = lambda_runtime::service_fn(|event: LambdaEvent<Value>| async {
-        resolve(event, system_resolver.clone()).await
+        resolve(event, system_router.clone()).await
     });
 
     lambda_runtime::run(module).await?;

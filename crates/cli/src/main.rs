@@ -46,7 +46,7 @@ pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    logging_tracing::init();
+    logging_tracing::init()?;
 
     // register a sigint handler
     ctrlc::set_handler(move || {
