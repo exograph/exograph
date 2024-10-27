@@ -18,14 +18,15 @@ use postgres_model::{
 };
 use std::collections::HashMap;
 
-use crate::{resolved_builder::ResolvedTypeHint, shallow::Shallow, type_builder::ResolvedTypeEnv};
+use crate::shallow::Shallow;
 
-use super::{
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
-};
+use super::system_builder::SystemContextBuilding;
 use postgres_model::predicate::{
     PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
+};
+
+use postgres_core_builder::resolved_type::{
+    ResolvedCompositeType, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 
 use lazy_static::lazy_static;

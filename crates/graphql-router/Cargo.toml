@@ -1,5 +1,5 @@
 [package]
-name = "resolver"
+name = "graphql-router"
 version.workspace = true
 edition.workspace = true
 publish = false

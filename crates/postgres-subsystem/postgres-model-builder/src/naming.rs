@@ -1,42 +1,5 @@
-// Copyright Exograph, Inc. All rights reserved.
-//
-// Use of this software is governed by the Business Source License
-// included in the LICENSE file at the root of this repository.
-//
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0.
-
-use heck::ToLowerCamelCase;
-use heck::ToSnakeCase;
-use heck::ToUpperCamelCase;
-use postgres_model::types::EntityType;
-
-/// A type with both singular and plural versions of itself.
-pub(super) trait ToPlural {
-    fn to_singular(&self) -> String;
-    fn to_plural(&self) -> String;
-}
-
-impl ToPlural for str {
-    fn to_singular(&self) -> String {
-        self.to_owned()
-    }
-
-    fn to_plural(&self) -> String {
-        format!("{self}s")
-    }
-}
-
-impl ToPlural for EntityType {
-    fn to_singular(&self) -> String {
-        self.name.clone()
-    }
-
-    fn to_plural(&self) -> String {
-        self.plural_name.clone()
-    }
-}
+use heck::{ToLowerCamelCase, ToUpperCamelCase};
+use postgres_core_builder::naming::ToPlural;
 
 /// A type that can generate GraphQL query names.
 pub(super) trait ToPostgresQueryName {
@@ -54,6 +17,56 @@ pub(super) trait ToPostgresQueryName {
 
 fn to_query(name: &str) -> String {
     name.to_lower_camel_case()
+}
+
+/// A type that can generate GraphQL type names.
+pub(crate) trait ToPostgresTypeNames {
+    /// Creation type name (e.g. `ConcertCreationInput`)
+    fn creation_type(&self) -> String;
+    /// Update type name (e.g. `ConcertUpdateInput`)
+    fn update_type(&self) -> String;
+    /// Reference type name (e.g. `ConcertReferenceInput`)
+    fn reference_type(&self) -> String;
+}
+
+fn to_creation_type(name: &str) -> String {
+    format!("{name}CreationInput")
+}
+
+fn to_update_type(name: &str) -> String {
+    format!("{name}UpdateInput")
+}
+
+fn to_reference_type(name: &str) -> String {
+    format!("{name}ReferenceInput")
+}
+
+impl ToPostgresTypeNames for str {
+    fn creation_type(&self) -> String {
+        to_creation_type(self)
+    }
+
+    fn update_type(&self) -> String {
+        to_update_type(self)
+    }
+
+    fn reference_type(&self) -> String {
+        to_reference_type(self)
+    }
+}
+
+impl<T: ToPlural> ToPostgresTypeNames for T {
+    fn creation_type(&self) -> String {
+        to_creation_type(&self.to_singular())
+    }
+
+    fn update_type(&self) -> String {
+        to_update_type(&self.to_singular())
+    }
+
+    fn reference_type(&self) -> String {
+        to_reference_type(&self.to_singular())
+    }
 }
 
 impl<T: ToPlural> ToPostgresQueryName for T {
@@ -91,7 +104,7 @@ fn to_update(name: &str) -> String {
 }
 
 /// A type that can generate GraphQL mutation names.
-pub(crate) trait ToPostgresMutationNames {
+pub trait ToPostgresMutationNames {
     /// Single create name (e.g. `createConcert`)
     fn pk_create(&self) -> String;
     /// Single delete name (e.g. `deleteConcert`)
@@ -129,85 +142,5 @@ impl<T: ToPlural> ToPostgresMutationNames for T {
 
     fn collection_update(&self) -> String {
         to_update(&self.to_plural())
-    }
-}
-
-fn to_creation_type(name: &str) -> String {
-    format!("{name}CreationInput")
-}
-
-fn to_update_type(name: &str) -> String {
-    format!("{name}UpdateInput")
-}
-
-fn to_reference_type(name: &str) -> String {
-    format!("{name}ReferenceInput")
-}
-
-/// A type that can generate GraphQL type names.
-pub(crate) trait ToPostgresTypeNames {
-    /// Creation type name (e.g. `ConcertCreationInput`)
-    fn creation_type(&self) -> String;
-    /// Update type name (e.g. `ConcertUpdateInput`)
-    fn update_type(&self) -> String;
-    /// Reference type name (e.g. `ConcertReferenceInput`)
-    fn reference_type(&self) -> String;
-}
-
-impl ToPostgresTypeNames for str {
-    fn creation_type(&self) -> String {
-        to_creation_type(self)
-    }
-
-    fn update_type(&self) -> String {
-        to_update_type(self)
-    }
-
-    fn reference_type(&self) -> String {
-        to_reference_type(self)
-    }
-}
-
-impl<T: ToPlural> ToPostgresTypeNames for T {
-    fn creation_type(&self) -> String {
-        to_creation_type(&self.to_singular())
-    }
-
-    fn update_type(&self) -> String {
-        to_update_type(&self.to_singular())
-    }
-
-    fn reference_type(&self) -> String {
-        to_reference_type(&self.to_singular())
-    }
-}
-
-pub(crate) trait ToTableName {
-    fn table_name(&self, plural_name: Option<String>) -> String;
-}
-
-impl ToTableName for str {
-    fn table_name(&self, plural_name: Option<String>) -> String {
-        match plural_name {
-            Some(plural_name) => plural_name.to_snake_case(),
-            None => self.to_plural().to_snake_case(),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use multiplatform_test::multiplatform_test;
-
-    #[multiplatform_test]
-    fn table_names() {
-        assert_eq!("concerts", "Concert".table_name(None));
-        assert_eq!(
-            "cons_foos",
-            "Concert".table_name(Some("consFoos".to_string()))
-        );
-
-        assert_eq!("concert_artists", "ConcertArtist".table_name(None));
     }
 }

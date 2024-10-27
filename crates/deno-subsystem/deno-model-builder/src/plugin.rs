@@ -13,20 +13,30 @@ use core_plugin_interface::{
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,
-        plugin::{Interception, SubsystemBuild},
+        plugin::{GraphQLSubsystemBuild, Interception},
         typechecker::{
             annotation::{AnnotationSpec, AnnotationTarget},
             typ::TypecheckedSystem,
         },
     },
     interception::InterceptorIndex,
-    interface::SubsystemBuilder,
+    interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
     system_serializer::SystemSerializer,
 };
 
 use crate::system_builder::ModelDenoSystemWithInterceptors;
 
-pub struct DenoSubsystemBuilder {}
+pub struct DenoSubsystemBuilder {
+    graphql_builder: DenoGraphQLSubsystemBuilder,
+}
+
+impl Default for DenoSubsystemBuilder {
+    fn default() -> Self {
+        Self {
+            graphql_builder: DenoGraphQLSubsystemBuilder {},
+        }
+    }
+}
 
 #[async_trait]
 impl SubsystemBuilder for DenoSubsystemBuilder {
@@ -51,6 +61,32 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
+        let graphql_subsystem = self
+            .graphql_builder
+            .build(typechecked_system, base_system)
+            .await?;
+
+        Ok(graphql_subsystem.map(|graphql_subsystem| SubsystemBuild {
+            id: self.id(),
+            graphql: Some(graphql_subsystem),
+            rest: None,
+        }))
+    }
+}
+
+struct DenoGraphQLSubsystemBuilder {}
+
+#[async_trait]
+impl GraphQLSubsystemBuilder for DenoGraphQLSubsystemBuilder {
+    fn id(&self) -> &'static str {
+        "deno"
+    }
+
+    async fn build(
+        &self,
+        typechecked_system: &TypecheckedSystem,
+        base_system: &BaseModelSystem,
+    ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError> {
         let subsystem = crate::system_builder::build(typechecked_system, base_system).await?;
 
         let Some(ModelDenoSystemWithInterceptors {
@@ -79,7 +115,7 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
             })
             .collect();
 
-        Ok(Some(SubsystemBuild {
+        Ok(Some(GraphQLSubsystemBuild {
             id: "deno".to_string(),
             serialized_subsystem,
             query_names: subsystem

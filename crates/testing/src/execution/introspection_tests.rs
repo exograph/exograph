@@ -21,8 +21,8 @@ use exo_deno::{
     Arg, DenoModule, DenoModuleSharedState, UserCode,
 };
 use exo_env::MapEnvironment;
+use graphql_router::{resolve_in_memory, SystemLoader};
 use include_dir::{include_dir, Dir};
-use resolver::{resolve_in_memory, SystemLoader};
 use router::system_router::{create_system_router_from_file, SystemRouter};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};

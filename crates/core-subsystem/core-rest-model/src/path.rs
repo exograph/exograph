@@ -20,3 +20,12 @@ pub enum PathTemplateSegment {
     // TODO: Replace `String` with an enum to specify more specific parameter types
     Parameter(String), // e.g. "id" in /todos/{id}
 }
+
+impl PathTemplate {
+    pub fn simple(path: &str) -> Self {
+        assert!(path.find('/').is_none());
+        PathTemplate {
+            segments: vec![PathTemplateSegment::Literal(path.to_string())],
+        }
+    }
+}

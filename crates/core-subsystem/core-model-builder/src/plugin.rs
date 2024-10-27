@@ -10,7 +10,8 @@
 use core_plugin_shared::interception::{InterceptorIndex, InterceptorKind};
 
 use crate::{ast::ast_types::AstExpr, typechecker::Typed};
-pub struct SubsystemBuild {
+
+pub struct GraphQLSubsystemBuild {
     pub id: String,
     pub serialized_subsystem: Vec<u8>,
     pub query_names: Vec<String>,

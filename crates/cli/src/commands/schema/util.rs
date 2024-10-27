@@ -34,9 +34,10 @@ fn deserialize_postgres_subsystem(
         .into_iter()
         .find_map(|subsystem| {
             if subsystem.id == "postgres" {
-                Some(PostgresSubsystem::deserialize(
-                    subsystem.serialized_subsystem,
-                ))
+                subsystem
+                    .serialized_subsystem
+                    .0
+                    .map(PostgresSubsystem::deserialize)
             } else {
                 None
             }

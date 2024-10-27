@@ -16,7 +16,8 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 use exo_env::Environment;
-use exo_sql::{DatabaseClientManager, DatabaseExecutor};
+use exo_sql::DatabaseClientManager;
+use postgres_core_resolver::create_database_executor;
 use postgres_model::subsystem::PostgresSubsystem;
 
 pub struct PostgresSubsystemLoader {
@@ -31,44 +32,14 @@ impl SubsystemLoader for PostgresSubsystemLoader {
 
     async fn init(
         &mut self,
-        serialized_subsystem: Vec<u8>,
+        serialized_subsystem: (Option<Vec<u8>>, Option<Vec<u8>>),
         env: &dyn Environment,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
-        let subsystem = PostgresSubsystem::deserialize(serialized_subsystem)?;
+        let subsystem = PostgresSubsystem::deserialize(serialized_subsystem.0.unwrap())?;
 
-        let database_client = if let Some(existing) = self.existing_client.take() {
-            existing
-        } else {
-            #[cfg(feature = "network")]
-            {
-                use common::env_const::{DATABASE_URL, EXO_POSTGRES_URL};
-
-                let url = env
-                    .get(EXO_POSTGRES_URL)
-                    .or(env.get(DATABASE_URL))
-                    .ok_or_else(|| {
-                        SubsystemLoadingError::Config("Env EXO_POSTGRES_URL not set".to_string())
-                    })?;
-                let pool_size: Option<usize> = env
-                    .get("EXO_CONNECTION_POOL_SIZE")
-                    .and_then(|s| s.parse().ok());
-                let check_connection = env
-                    .get("EXO_CHECK_CONNECTION_ON_STARTUP")
-                    .map(|s| s == "true")
-                    .unwrap_or(true);
-
-                DatabaseClientManager::from_url(&url, check_connection, pool_size)
-                    .await
-                    .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?
-            }
-
-            #[cfg(not(feature = "network"))]
-            {
-                let _ = env;
-                panic!("Postgres URL feature is not enabled");
-            }
-        };
-        let executor = DatabaseExecutor { database_client };
+        let executor = create_database_executor(self.existing_client.take(), env)
+            .await
+            .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?;
 
         Ok(Box::new(PostgresSubsystemResolver {
             id: self.id(),

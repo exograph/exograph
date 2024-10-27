@@ -150,7 +150,7 @@ fn serialize_header_and_system(
 pub struct SerializableSubsystem {
     pub id: String,
     pub subsystem_index: usize,
-    pub serialized_subsystem: Vec<u8>,
+    pub serialized_subsystem: (Option<Vec<u8>>, Option<Vec<u8>>), // (graphql, rest) TODO: Improve this to be more explicit
 }
 
 #[cfg(test)]

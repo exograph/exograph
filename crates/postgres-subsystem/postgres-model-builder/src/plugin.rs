@@ -10,243 +10,26 @@
 use core_plugin_interface::{
     async_trait::async_trait,
     core_model_builder::{
-        builder::system_builder::BaseModelSystem,
-        error::ModelBuildingError,
-        plugin::SubsystemBuild,
-        typechecker::{
-            annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
-            typ::TypecheckedSystem,
-        },
+        builder::system_builder::BaseModelSystem, error::ModelBuildingError,
+        plugin::GraphQLSubsystemBuild, typechecker::typ::TypecheckedSystem,
     },
-    interface::SubsystemBuilder,
+    interface::GraphQLSubsystemBuilder,
     system_serializer::SystemSerializer,
 };
 
-pub struct PostgresSubsystemBuilder {}
+pub struct PostgresGraphQLSubsystemBuilder {}
 
 #[async_trait]
-impl SubsystemBuilder for PostgresSubsystemBuilder {
+impl GraphQLSubsystemBuilder for PostgresGraphQLSubsystemBuilder {
     fn id(&self) -> &'static str {
-        "postgres"
-    }
-
-    fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
-        vec![
-            (
-                "postgres",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Module],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "column",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "dbtype",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "maxLength",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "pk",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "plural",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Type],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "precision",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "range",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: false,
-                    mapped_params: Some(&[
-                        MappedAnnotationParamSpec {
-                            name: "min",
-                            optional: false,
-                        },
-                        MappedAnnotationParamSpec {
-                            name: "max",
-                            optional: false,
-                        },
-                    ]),
-                },
-            ),
-            (
-                "scale",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "bits16",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "bits32",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "bits64",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "singlePrecision",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "size", // vector size
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "distanceFunction", // vector distance function
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "doublePrecision",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: false,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "table",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Type],
-                    no_params: false,
-                    single_params: true,
-                    mapped_params: Some(&[
-                        MappedAnnotationParamSpec {
-                            name: "name",
-                            optional: true,
-                        },
-                        MappedAnnotationParamSpec {
-                            name: "schema",
-                            optional: true,
-                        },
-                    ]),
-                },
-            ),
-            (
-                "unique",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "index",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "readonly",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-            (
-                "update",
-                AnnotationSpec {
-                    targets: &[AnnotationTarget::Field],
-                    no_params: true,
-                    single_params: true,
-                    mapped_params: None,
-                },
-            ),
-        ]
+        "postgres/graphql"
     }
 
     async fn build(
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
-    ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
+    ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError> {
         let subsystem = crate::system_builder::build(typechecked_system, base_system)?;
         let Some(subsystem) = subsystem else {
             return Ok(None);
@@ -256,7 +39,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
             .serialize()
             .map_err(ModelBuildingError::Serialize)?;
 
-        Ok(Some(SubsystemBuild {
+        Ok(Some(GraphQLSubsystemBuild {
             id: "postgres".to_string(),
             serialized_subsystem,
             query_names: {

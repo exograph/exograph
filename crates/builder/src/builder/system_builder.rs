@@ -10,6 +10,7 @@
 use super::interceptor_weaver::{self, OperationKind};
 use core_model_builder::error::ModelBuildingError;
 use core_model_builder::typechecker::typ::TypecheckedSystem;
+use core_plugin_interface::interface::SubsystemBuild;
 use core_plugin_interface::interface::SubsystemBuilder;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
 use core_plugin_shared::serializable_system::SerializableSystem;
@@ -59,14 +60,29 @@ pub async fn build(
     .flatten()
     .enumerate()
     .map(|(subsystem_index, build_info)| {
-        subsystem_interceptions.push((subsystem_index, build_info.interceptions));
-        query_names.extend(build_info.query_names);
-        mutation_names.extend(build_info.mutation_names);
+        let SubsystemBuild { id, graphql, rest } = build_info;
+
+        // The builder's contract is that it must return a subsystem only if it found a relevant
+        // module in the exo file, in which case it must return GraphQL or REST subsystem.
+        assert!(graphql.is_some() || rest.is_some());
+
+        let mut serialized_subsystem = (None, None);
+
+        if let Some(graphql) = graphql {
+            subsystem_interceptions.push((subsystem_index, graphql.interceptions));
+            query_names.extend(graphql.query_names);
+            mutation_names.extend(graphql.mutation_names);
+            serialized_subsystem.0 = Some(graphql.serialized_subsystem);
+        }
+
+        if let Some(rest) = rest {
+            serialized_subsystem.1 = Some(rest.serialized_subsystem);
+        }
 
         SerializableSubsystem {
-            id: build_info.id,
+            id: id.to_string(),
             subsystem_index,
-            serialized_subsystem: build_info.serialized_subsystem,
+            serialized_subsystem,
         }
     })
     .collect();

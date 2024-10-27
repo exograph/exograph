@@ -9,7 +9,7 @@
 
 //! Dynamic loader for postgres-model-builder.
 use core_plugin_interface::interface::SubsystemBuilder;
-use postgres_model_builder::PostgresSubsystemBuilder;
+use postgres_builder::PostgresSubsystemBuilder;
 
 // See comments in `postgres-resolver-dynamic/src/lib.rs`.
-core_plugin_interface::export_subsystem_builder!(PostgresSubsystemBuilder {});
+core_plugin_interface::export_subsystem_builder!(PostgresSubsystemBuilder::default());

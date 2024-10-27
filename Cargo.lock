@@ -934,6 +934,7 @@ dependencies = [
  "futures",
  "insta",
  "multiplatform_test",
+ "postgres-builder",
  "postgres-model-builder",
  "regex",
  "serde",
@@ -1287,8 +1288,8 @@ dependencies = [
  "inquire",
  "lazy_static",
  "notify-debouncer-mini",
+ "postgres-builder",
  "postgres-model",
- "postgres-model-builder",
  "rand",
  "reqwest 0.12.8",
  "rexpect",
@@ -1620,6 +1621,7 @@ dependencies = [
  "jsonwebtoken",
  "multiplatform_test",
  "oidc-jwt-validator",
+ "postgres-builder",
  "postgres-model-builder",
  "postgres-resolver",
  "reqwest 0.12.8",
@@ -4345,6 +4347,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "graphql-router"
+version = "0.10.1"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-stream",
+ "async-trait",
+ "bincode",
+ "builder",
+ "bytes",
+ "common",
+ "core-model",
+ "core-plugin-interface",
+ "core-plugin-shared",
+ "core-resolver",
+ "exo-env",
+ "futures",
+ "http 1.1.0",
+ "introspection-resolver",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "group"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6817,6 +6847,67 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-builder"
+version = "0.10.1"
+dependencies = [
+ "async-trait",
+ "builder",
+ "core-plugin-interface",
+ "exo-sql",
+ "multiplatform_test",
+ "postgres-model",
+ "postgres-model-builder",
+ "postgres-rest-builder",
+ "tokio",
+]
+
+[[package]]
+name = "postgres-core-builder"
+version = "0.10.1"
+dependencies = [
+ "async-trait",
+ "bincode",
+ "builder",
+ "codemap",
+ "codemap-diagnostic",
+ "core-plugin-interface",
+ "deno-model-builder",
+ "exo-sql",
+ "heck 0.5.0",
+ "insta",
+ "lazy_static",
+ "multiplatform_test",
+ "postgres-builder",
+ "postgres-model",
+ "serde",
+ "tokio",
+ "typed-generational-arena",
+ "wasm-bindgen-test",
+ "wasm-bindgen-test-macro",
+]
+
+[[package]]
+name = "postgres-core-resolver"
+version = "0.10.1"
+dependencies = [
+ "builder",
+ "common",
+ "core-plugin-interface",
+ "core-resolver",
+ "exo-env",
+ "exo-sql",
+ "graphql-router",
+ "http 1.1.0",
+ "postgres-model",
+ "postgres-model-builder",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "postgres-model"
 version = "0.10.1"
 dependencies = [
@@ -6827,6 +6918,7 @@ dependencies = [
  "builder",
  "core-plugin-interface",
  "exo-sql",
+ "postgres-builder",
  "postgres-model-builder",
  "serde",
  "stripmargin",
@@ -6840,7 +6932,6 @@ name = "postgres-model-builder"
 version = "0.10.1"
 dependencies = [
  "bincode",
- "builder",
  "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
@@ -6850,6 +6941,7 @@ dependencies = [
  "insta",
  "lazy_static",
  "multiplatform_test",
+ "postgres-core-builder",
  "postgres-model",
  "serde",
  "tokio",
@@ -6863,6 +6955,7 @@ name = "postgres-model-builder-dynamic"
 version = "0.10.1"
 dependencies = [
  "core-plugin-interface",
+ "postgres-builder",
  "postgres-model-builder",
 ]
 
@@ -6901,12 +6994,13 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
+ "graphql-router",
  "http 1.1.0",
  "indexmap 2.2.5",
  "maybe-owned",
+ "postgres-builder",
+ "postgres-core-resolver",
  "postgres-model",
- "postgres-model-builder",
- "resolver",
  "serde",
  "serde_json",
  "thiserror",
@@ -6926,6 +7020,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-rest-builder"
+version = "0.10.1"
+dependencies = [
+ "async-trait",
+ "core-plugin-interface",
+ "core-rest-model",
+ "http 1.1.0",
+ "postgres-core-builder",
+ "postgres-rest-model",
+ "serde",
+]
+
+[[package]]
 name = "postgres-rest-model"
 version = "0.10.1"
 dependencies = [
@@ -6933,17 +7040,6 @@ dependencies = [
  "core-plugin-interface",
  "core-rest-model",
  "http 1.1.0",
- "serde",
-]
-
-[[package]]
-name = "postgres-rest-model-builder"
-version = "0.10.1"
-dependencies = [
- "async-trait",
- "core-plugin-interface",
- "http 1.1.0",
- "postgres-rest-model",
  "serde",
 ]
 
@@ -7623,34 +7719,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "resolver"
-version = "0.10.1"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
- "async-stream",
- "async-trait",
- "bincode",
- "builder",
- "bytes",
- "common",
- "core-model",
- "core-plugin-interface",
- "core-plugin-shared",
- "core-resolver",
- "exo-env",
- "futures",
- "http 1.1.0",
- "introspection-resolver",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "rest-router"
 version = "0.10.1"
 dependencies = [
@@ -7726,9 +7794,9 @@ dependencies = [
  "common",
  "core-plugin-interface",
  "exo-env",
+ "graphql-router",
  "http 1.1.0",
  "playground-router",
- "resolver",
  "rest-router",
 ]
 
@@ -8323,9 +8391,9 @@ dependencies = [
  "core-resolver",
  "exo-env",
  "futures",
+ "graphql-router",
  "http 1.1.0",
  "reqwest 0.12.8",
- "resolver",
  "router",
  "serde_json",
  "server-common",
@@ -8392,8 +8460,8 @@ dependencies = [
  "core-resolver",
  "deno-resolver",
  "exo-env",
+ "graphql-router",
  "postgres-resolver",
- "resolver",
  "router",
  "wasm-resolver",
 ]
@@ -9465,6 +9533,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
+ "graphql-router",
  "http 1.1.0",
  "include_dir",
  "insta",
@@ -9473,7 +9542,6 @@ dependencies = [
  "num_cpus",
  "rand",
  "regex",
- "resolver",
  "router",
  "serde",
  "serde_json",

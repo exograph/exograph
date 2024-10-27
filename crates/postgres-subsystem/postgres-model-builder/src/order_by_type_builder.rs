@@ -20,15 +20,12 @@ use postgres_model::{
     types::{EntityType, PostgresField, PostgresPrimitiveType, PostgresType},
 };
 
-use crate::{
-    resolved_builder::{ResolvedField, ResolvedTypeHint},
-    shallow::Shallow,
-};
+use crate::shallow::Shallow;
 
-use super::{
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
-    type_builder::ResolvedTypeEnv,
+use super::system_builder::SystemContextBuilding;
+
+use postgres_core_builder::resolved_type::{
+    ResolvedCompositeType, ResolvedField, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 
 impl Shallow for OrderByParameter {

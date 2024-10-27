@@ -17,10 +17,10 @@ use postgres_model::types::MutationType;
 
 use crate::shallow::Shallow;
 
-use super::{
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
-};
+use super::system_builder::SystemContextBuilding;
+
+use postgres_core_builder::resolved_type::ResolvedCompositeType;
+use postgres_core_builder::resolved_type::ResolvedType;
 
 // TODO: Ensure it works for all builders (this one makes the assumption that it is building only input types)
 // TODO: Abstract out build_expanded (currently loops in it are repeated in each implementation)

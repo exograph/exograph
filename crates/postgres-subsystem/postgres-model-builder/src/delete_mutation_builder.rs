@@ -22,13 +22,12 @@ use postgres_model::mutation::PostgresMutationParameters;
 use postgres_model::types::EntityType;
 
 use super::{
-    builder::Builder,
-    mutation_builder::MutationBuilder,
-    naming::ToPostgresMutationNames,
-    query_builder,
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
+    builder::Builder, mutation_builder::MutationBuilder, naming::ToPostgresMutationNames,
+    query_builder, system_builder::SystemContextBuilding,
 };
+
+use postgres_core_builder::resolved_type::ResolvedCompositeType;
+use postgres_core_builder::resolved_type::ResolvedType;
 
 pub struct DeleteMutationBuilder;
 

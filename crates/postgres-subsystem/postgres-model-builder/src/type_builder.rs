@@ -9,20 +9,22 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::{
-    aggregate_type_builder::aggregate_type_name, naming::ToPlural,
-    resolved_builder::ResolvedFieldTypeHelper, shallow::Shallow,
+use core_plugin_interface::core_model::access::AccessPredicateExpression;
+use postgres_core_builder::access_builder::ResolvedAccess;
+use postgres_core_builder::naming::ToPlural;
+use postgres_core_builder::resolved_type::{
+    ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType,
+    ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 
-use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::ResolvedFieldType};
+use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
+
+use super::access_utils;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_plugin_interface::{
     core_model::{
-        access::AccessPredicateExpression,
-        context_type::ContextType,
-        function_defn::FunctionDefinition,
-        mapped_arena::{MappedArena, SerializableSlabIndex},
+        mapped_arena::SerializableSlabIndex,
         primitive_type::PrimitiveType,
         types::{FieldType, Named},
     },
@@ -50,26 +52,8 @@ use postgres_model::{
     vector_distance::{VectorDistanceField, VectorDistanceType},
 };
 
-use super::{
-    naming::ToPostgresQueryName,
-    resolved_builder::{
-        ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedType, ResolvedTypeHint,
-    },
-    system_builder::SystemContextBuilding,
-};
-
-#[derive(Debug, Clone)]
-pub struct ResolvedTypeEnv<'a> {
-    pub contexts: &'a MappedArena<ContextType>,
-    pub resolved_types: MappedArena<ResolvedType>,
-    pub function_definitions: &'a MappedArena<FunctionDefinition>,
-}
-
-impl<'a> ResolvedTypeEnv<'a> {
-    pub fn get_by_key(&self, key: &str) -> Option<&ResolvedType> {
-        self.resolved_types.get_by_key(key)
-    }
-}
+use super::naming::ToPostgresQueryName;
+use super::system_builder::SystemContextBuilding;
 
 pub(super) fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (_, resolved_type) in resolved_env.resolved_types.iter() {

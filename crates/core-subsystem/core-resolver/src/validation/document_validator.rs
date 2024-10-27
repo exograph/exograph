@@ -847,7 +847,7 @@ mod tests {
             model_str,
             file_name,
             vec![Box::new(
-                postgres_model_builder::PostgresSubsystemBuilder {},
+                postgres_builder::PostgresSubsystemBuilder::default(),
             )],
         )
         .await

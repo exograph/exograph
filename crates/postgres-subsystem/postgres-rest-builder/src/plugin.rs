@@ -19,6 +19,10 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 
+use core_rest_model::path::PathTemplate;
+use postgres_core_builder::resolved_builder;
+use postgres_core_builder::resolved_type::ResolvedType;
+use postgres_rest_model::operation::{Method, PostgresOperation};
 use postgres_rest_model::subsystem::PostgresRestSubsystem;
 
 pub struct PostgresRestSubsystemBuilder {}
@@ -32,9 +36,26 @@ impl RestSubsystemBuilder for PostgresRestSubsystemBuilder {
     async fn build(
         &self,
         typechecked_system: &TypecheckedSystem,
-        base_system: &BaseModelSystem,
+        _base_system: &BaseModelSystem,
     ) -> Result<Option<RestSubsystemBuild>, ModelBuildingError> {
-        let subsystem = PostgresRestSubsystem { operations: vec![] };
+        let resolved_types = resolved_builder::build(typechecked_system)?;
+
+        let mut operations = vec![];
+
+        for typ in resolved_types.iter() {
+            if let ResolvedType::Composite(composite) = typ.1 {
+                operations.push(PostgresOperation {
+                    method: Method::Get,
+                    path_template: PathTemplate::simple(&composite.plural_name),
+                });
+            }
+        }
+
+        if operations.is_empty() {
+            return Ok(None);
+        }
+
+        let subsystem = PostgresRestSubsystem { operations };
 
         let serialized_subsystem = subsystem
             .serialize()

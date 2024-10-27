@@ -9,7 +9,7 @@ http.workspace = true
 async-trait.workspace = true
 
 common = { path = "../common" }
-resolver = { path = "../resolver" }
+graphql-router = { path = "../graphql-router" }
 rest-router = { path = "../rest-router" }
 playground-router = { path = "../playground-router" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }

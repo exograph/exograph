@@ -11,12 +11,12 @@ use core_plugin_interface::{
     core_resolver::system_resolver::SystemResolver, serializable_system::SerializableSystem,
 };
 use exo_env::Environment;
-#[cfg(not(target_family = "wasm"))]
-use playground_router::PlaygroundRouter;
-use resolver::{
+use graphql_router::{
     create_system_resolver, create_system_resolver_from_system, GraphQLRouter, StaticLoaders,
     SystemLoadingError,
 };
+#[cfg(not(target_family = "wasm"))]
+use playground_router::PlaygroundRouter;
 use rest_router::RestRouter;
 
 pub async fn create_system_router_from_file(

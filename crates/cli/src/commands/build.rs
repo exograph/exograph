@@ -11,6 +11,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use builder::error::ParserError;
 use clap::{ArgMatches, Command};
+use core_plugin_interface::interface::SubsystemBuilder;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::system_serializer::SystemSerializer;
 
@@ -21,8 +22,6 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::{fs::File, io::BufWriter};
-
-use core_plugin_interface::interface::SubsystemBuilder;
 
 use crate::commands::command::default_model_file;
 
@@ -69,9 +68,9 @@ pub(crate) async fn build_system_with_static_builders(
     trusted_documents_dir: Option<&Path>,
 ) -> Result<SerializableSystem, ParserError> {
     let static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>> = vec![
-        Box::new(postgres_model_builder::PostgresSubsystemBuilder {}),
-        Box::new(deno_model_builder::DenoSubsystemBuilder {}),
-        Box::new(wasm_model_builder::WasmSubsystemBuilder {}),
+        Box::new(postgres_builder::PostgresSubsystemBuilder::default()),
+        Box::new(deno_model_builder::DenoSubsystemBuilder::default()),
+        Box::new(wasm_model_builder::WasmSubsystemBuilder::default()),
     ];
 
     builder::build_system(model, trusted_documents_dir, static_builders).await

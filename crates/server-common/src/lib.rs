@@ -58,6 +58,12 @@ pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {
     ]
 }
 
+// pub fn create_static_rest_loaders() -> Vec<Box<dyn RestSubsystemLoader>> {
+//     vec![Box::new(
+//         // postgres_rest_builder::PostgresRestSubsystemLoader {},
+//     )]
+// }
+
 fn get_exo_ir_file_name() -> String {
     if env::args().len() > 1 {
         // $ exo-server <model-file-name> extra-arguments...

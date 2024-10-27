@@ -13,8 +13,8 @@ use std::path::PathBuf;
 use std::{env::current_exe, path::Path};
 
 use crate::core_model_builder::{
-    builder::system_builder::BaseModelSystem, error::ModelBuildingError, plugin::SubsystemBuild,
-    typechecker::annotation::AnnotationSpec,
+    builder::system_builder::BaseModelSystem, error::ModelBuildingError,
+    plugin::GraphQLSubsystemBuild, typechecker::annotation::AnnotationSpec,
 };
 use crate::core_resolver::plugin::SubsystemResolver;
 use crate::error::ModelSerializationError;
@@ -25,6 +25,12 @@ use thiserror::Error;
 
 use crate::build_info::SubsystemCheckError;
 use exo_env::Environment;
+
+pub struct SubsystemBuild {
+    pub id: &'static str,
+    pub graphql: Option<GraphQLSubsystemBuild>,
+    pub rest: Option<RestSubsystemBuild>,
+}
 
 #[async_trait]
 pub trait SubsystemBuilder {
@@ -66,6 +72,19 @@ pub trait SubsystemBuilder {
     ///
     fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)>;
 
+    async fn build(
+        &self,
+        typechecked_system: &TypecheckedSystem,
+        base_system: &BaseModelSystem,
+    ) -> Result<Option<SubsystemBuild>, ModelBuildingError>;
+}
+
+#[async_trait]
+pub trait GraphQLSubsystemBuilder {
+    /// Unique string to identify the subsystem by. Should be shared with the corresponding
+    /// [SubsystemLoader].
+    fn id(&self) -> &'static str;
+
     /// Build a subsystem's model, producing an [`Option<SubsystemBuild>`].
     ///
     /// - `typechecked_system`: A partially typechecked system. This contains the set of all types
@@ -83,7 +102,7 @@ pub trait SubsystemBuilder {
         &self,
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
-    ) -> Result<Option<SubsystemBuild>, ModelBuildingError>;
+    ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError>;
 }
 
 #[async_trait]
@@ -106,7 +125,7 @@ pub trait SubsystemLoader {
     /// Loads and initializes the subsystem, producing a [SubsystemResolver].
     async fn init(
         &mut self,
-        serialized_subsystem: Vec<u8>,
+        serialized_subsystem: (Option<Vec<u8>>, Option<Vec<u8>>),
         env: &dyn Environment,
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError>;
 }
