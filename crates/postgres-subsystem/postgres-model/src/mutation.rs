@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{predicate::PredicateParameter, types::MutationType};
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::type_normalization::Parameter;
-use core_plugin_interface::core_model::types::{FieldType, Named};
+use core_plugin_interface::core_model::types::{FieldType, Named, TypeValidation};
 
 use super::operation::{OperationParameters, PostgresOperation};
 
@@ -65,6 +65,8 @@ pub struct DataParameter {
     /// Type of the parameter.
     /// Multiple data input will be represented by the [`FieldType::List`] variant for mutations like `createTodos` (note the plural).
     pub typ: FieldType<DataParameterType>,
+    /// Type validation for the parameter.
+    pub type_validation: Option<TypeValidation>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -75,6 +77,8 @@ pub struct DataParameterType {
     pub name: String,
     /// The id of the type such as `TodoCreateInput`.
     pub type_id: SerializableSlabIndex<MutationType>,
+    /// Type validation for the type.
+    pub type_validation: Option<TypeValidation>,
 }
 
 impl Named for DataParameterType {
@@ -90,5 +94,9 @@ impl Parameter for DataParameter {
 
     fn typ(&self) -> Type {
         (&self.typ).into()
+    }
+
+    fn type_validation(&self) -> Option<TypeValidation> {
+       None
     }
 }

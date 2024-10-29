@@ -12,7 +12,7 @@ use async_graphql_parser::types::{Type, TypeDefinition, TypeKind};
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{default_positioned_name, Parameter, TypeDefinitionProvider},
-    types::{FieldType, Named},
+    types::{FieldType, Named, TypeValidation},
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +41,10 @@ impl Parameter for LimitParameter {
 
     fn typ(&self) -> Type {
         (&self.typ).into()
+    }
+
+    fn type_validation(&self) -> Option<TypeValidation> {
+       None
     }
 }
 
@@ -81,6 +85,10 @@ impl Parameter for OffsetParameter {
 
     fn typ(&self) -> Type {
         (&self.typ).into()
+    }
+
+    fn type_validation(&self) -> Option<TypeValidation> {
+        None
     }
 }
 
