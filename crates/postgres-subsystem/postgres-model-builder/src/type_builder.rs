@@ -24,7 +24,7 @@ use core_plugin_interface::{
         function_defn::FunctionDefinition,
         mapped_arena::{MappedArena, SerializableSlabIndex},
         primitive_type::PrimitiveType,
-        types::{FieldType, Named},
+        types::{FieldType, Named, TypeValidationProvider},
     },
     core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed},
 };
@@ -45,7 +45,7 @@ use postgres_model::{
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{
         get_field_id, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
-        TypeIndex, TypeValidationProvider,
+        TypeIndex,
     },
     vector_distance::{VectorDistanceField, VectorDistanceType},
 };

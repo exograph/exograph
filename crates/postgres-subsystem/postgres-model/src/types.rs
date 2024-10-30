@@ -16,13 +16,12 @@ use crate::relation::OneToManyRelation;
 use crate::subsystem::PostgresSubsystem;
 use crate::vector_distance::VectorDistanceField;
 use async_graphql_parser::types::{
-    ConstDirective, FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
+    FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
-use async_graphql_parser::Positioned;
-use async_graphql_value::ConstValue;
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
 use core_plugin_interface::core_model::context_type::ContextSelection;
 use core_plugin_interface::core_model::primitive_type::vector_introspection_base_type;
+use core_plugin_interface::core_model::types::{DirectivesProvider, TypeValidation};
 use core_plugin_interface::core_model::{
     mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
@@ -183,20 +182,6 @@ pub struct PostgresField<CT> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum TypeValidation {
-    Int { range: (i64, i64) },
-    Float { range: (f64, f64) },
-}
-
-pub trait TypeValidationProvider {
-    fn get_type_validation(&self) -> Option<TypeValidation>;
-}
-
-trait DirectivesProvider {
-    fn get_directives(&self) -> Vec<Positioned<ConstDirective>>;
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresFieldType<CT> {
     pub type_id: TypeIndex<CT>,
     pub type_name: String,
@@ -300,7 +285,11 @@ impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
         let mut directives = vec![];
 
         if let Some(type_validation) = &self.type_validation {
-            directives = type_validation.get_directives();
+            directives = type_validation
+                .get_directives()
+                .iter()
+                .map(|d| default_positioned(d.to_owned()))
+                .collect();
         }
 
         // Special case for Vector. Even though it is a "scalar" from the perspective of the
@@ -370,39 +359,8 @@ impl<CT> Parameter for PostgresField<CT> {
     fn typ(&self) -> Type {
         (&self.typ).into()
     }
-}
 
-impl DirectivesProvider for TypeValidation {
-    fn get_directives(&self) -> Vec<Positioned<ConstDirective>> {
-        let mut directives = vec![];
-        match self {
-            TypeValidation::Int { range } => {
-                let (min, max) = range.to_owned();
-                directives.push(default_positioned(get_range_directive(min, max)));
-                directives
-            }
-
-            TypeValidation::Float { range } => {
-                let (min, max) = range.to_owned();
-                directives.push(default_positioned(get_range_directive(min, max)));
-                directives
-            }
-        }
-    }
-}
-
-fn get_range_directive<T: Into<ConstValue>>(min: T, max: T) -> ConstDirective {
-    ConstDirective {
-        name: default_positioned_name("range"),
-        arguments: vec![
-            (
-                default_positioned_name("min"),
-                default_positioned(min.into()),
-            ),
-            (
-                default_positioned_name("max"),
-                default_positioned(max.into()),
-            ),
-        ],
+    fn type_validation(&self) -> Option<TypeValidation> {
+        self.type_validation.clone()
     }
 }

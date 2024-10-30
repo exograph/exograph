@@ -17,7 +17,7 @@ use core_model::{
         default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
         Parameter, TypeDefinitionProvider,
     },
-    types::{FieldType, Named, OperationReturnType},
+    types::{FieldType, Named, OperationReturnType, TypeValidation},
 };
 
 use serde::{Deserialize, Serialize};
@@ -130,6 +130,10 @@ impl Parameter for ModuleField {
 
     fn typ(&self) -> Type {
         (&self.typ).into()
+    }
+
+    fn type_validation(&self) -> Option<TypeValidation> {
+        None
     }
 }
 

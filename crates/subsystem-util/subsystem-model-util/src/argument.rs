@@ -16,7 +16,7 @@ use core_model::{
     type_normalization::{
         default_positioned_name, Parameter, TypeDefinitionIntrospection, TypeDefinitionProvider,
     },
-    types::{FieldType, Named},
+    types::{FieldType, Named, TypeValidation},
 };
 use serde::{Deserialize, Serialize};
 
@@ -48,6 +48,10 @@ impl Parameter for ArgumentParameter {
 
     fn typ(&self) -> Type {
         (&self.typ).into()
+    }
+
+    fn type_validation(&self) -> Option<TypeValidation> {
+        None
     }
 }
 

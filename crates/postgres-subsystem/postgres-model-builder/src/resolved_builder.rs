@@ -22,7 +22,7 @@ use core_plugin_interface::{
     core_model::{
         mapped_arena::MappedArena,
         primitive_type::PrimitiveType,
-        types::{FieldType, Named},
+        types::{FieldType, Named, TypeValidation, TypeValidationProvider},
     },
     core_model_builder::{
         ast::ast_types::{
@@ -38,7 +38,6 @@ use core_plugin_interface::{
     },
 };
 use exo_sql::{PhysicalTableName, VectorDistanceFunction};
-use postgres_model::types::{TypeValidation, TypeValidationProvider};
 
 use super::{
     access_builder::{build_access, ResolvedAccess},
