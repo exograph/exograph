@@ -44,7 +44,7 @@ impl Parameter for LimitParameter {
     }
 
     fn type_validation(&self) -> Option<TypeValidation> {
-       None
+        None
     }
 }
 

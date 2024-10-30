@@ -81,9 +81,8 @@ impl<T: Parameter> InputValueProvider for T {
             directives: self
                 .type_validation()
                 .iter()
-                .map(|tv| tv.get_directives())
-                .flatten()
-                .map(|d| default_positioned(d))
+                .flat_map(|tv| tv.get_directives())
+                .map(default_positioned)
                 .collect(),
         }
     }

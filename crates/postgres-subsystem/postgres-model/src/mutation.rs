@@ -97,6 +97,6 @@ impl Parameter for DataParameter {
     }
 
     fn type_validation(&self) -> Option<TypeValidation> {
-       None
+        None
     }
 }

@@ -133,7 +133,7 @@ impl Parameter for ModuleField {
     }
 
     fn type_validation(&self) -> Option<TypeValidation> {
-        None 
+        None
     }
 }
 
