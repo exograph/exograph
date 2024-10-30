@@ -65,3 +65,69 @@ stages:
             }
           }
         }
+  - operation: |
+        mutation {
+          createOtherNumbers(data: { limit: 11, age: 1337 }) {
+            id
+            limit
+            age
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createOtherNumbers": {
+              "id": 2,
+              "limit": 11,
+              "age": 1337
+            }
+          }
+        }
+  - operation: |
+        mutation {
+          createOtherNumbers(data: { limit: 12345 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createOtherNumbers": {
+              "id": 3,
+              "limit": 12345
+            }
+          }
+        }
+  - operation: |
+        mutation {
+          createOtherNumbers(data: { float_limit: -5.0 }) {
+            id
+            float_limit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createOtherNumbers": {
+              "id": 4,
+              "float_limit": -5.0
+            }
+          }
+        }
+  - operation: |
+        mutation {
+          createOtherNumbers(data: { float_limit: 12345.0 }) {
+            id
+            float_limit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "createOtherNumbers": {
+              "id": 5,
+              "float_limit": 12345.0
+            }
+          }
+        }

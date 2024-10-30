@@ -83,3 +83,96 @@ stages:
             }
           ]
         }
+
+
+
+
+
+
+
+
+
+  - operation: |
+        mutation {
+          updateOtherNumbers(id: 1, data: { limit: 9 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': min = 10, provided value = 9",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 35
+                }
+              ]
+            }
+          ]
+        }
+  - operation: |
+        mutation {
+          updateOtherNumbers(id: 1, data: { limit: 12346 }) {
+            id
+            limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': max = 12345, provided value = 12346",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 35
+                }
+              ]
+            }
+          ]
+        }
+  - operation: |
+        mutation {
+          updateOtherNumbers(id: 1, data: { float_limit: -5.1 }) {
+            id
+            float_limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': min = -5, provided value = -5.1",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 35
+                }
+              ]
+            }
+          ]
+        }
+  - operation: |
+        mutation {
+          updateOtherNumbers(id: 1, data: { float_limit: 12345.1 }) {
+            id
+            float_limit
+          }
+        }
+    response: |
+        {
+          "errors": [
+            {
+              "message": "Invalid value for 'range': max = 12345, provided value = 12345.1",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 35
+                }
+              ]
+            }
+          ]
+        }

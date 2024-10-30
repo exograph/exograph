@@ -12,9 +12,9 @@ module RuntimeValidations {
   @access(true)
   type OtherNumbers {
     @pk id: Int = autoIncrement()
-    @range(min = 0, max = 12345) limit: Int?
+    @range(min = 10, max = 12345) limit: Int?
     age: Int?
-    @range(min = "-1.0", max = "12345.0") float_limit: Float?
+    @range(min = "-5.0", max = "12345.0") float_limit: Float?
     price: Float?
   }
 }
