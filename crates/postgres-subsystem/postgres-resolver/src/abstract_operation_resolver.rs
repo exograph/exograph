@@ -16,7 +16,7 @@ use tokio_postgres::types::FromSqlOwned;
 use tokio_postgres::Row;
 
 use crate::{
-    plugin::subsystem_resolver::PostgresSubsystemResolver,
+    plugin::subsystem_graphql_resolver::PostgresSubsystemResolver,
     postgres_execution_error::PostgresExecutionError,
 };
 

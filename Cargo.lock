@@ -7001,6 +7001,7 @@ dependencies = [
  "postgres-builder",
  "postgres-core-resolver",
  "postgres-model",
+ "postgres-rest-model",
  "serde",
  "serde_json",
  "thiserror",
@@ -7724,7 +7725,10 @@ version = "0.10.1"
 dependencies = [
  "async-trait",
  "common",
+ "core-resolver",
  "exo-env",
+ "http 1.1.0",
+ "tracing",
 ]
 
 [[package]]

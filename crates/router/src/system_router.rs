@@ -13,6 +13,7 @@ use core_plugin_interface::{
     core_resolver::{
         context::JwtAuthenticator,
         plugin::{SubsystemGraphQLResolver, SubsystemRestResolver},
+        system_rest_resolver::SystemRestResolver,
     },
     interception::InterceptionMap,
     interface::{SubsystemLoader, SubsystemResolver},
@@ -89,7 +90,9 @@ pub async fn create_system_router_from_system(
     .await?;
 
     let graphql_router = GraphQLRouter::new(graphql_resolver, env.clone());
-    let rest_router = RestRouter::new(env.clone());
+
+    let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
+    let rest_router = RestRouter::new(rest_resolver, env.clone());
 
     create_system_router_from_resolver(graphql_router, rest_router, env)
 }

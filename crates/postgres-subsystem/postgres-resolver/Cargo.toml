@@ -35,6 +35,7 @@ exo-env = { path = "../../../libs/exo-env" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-core-resolver = { path = "../postgres-core-resolver", features = ["network"] }
 postgres-model = { path = "../postgres-model" }
+postgres-rest-model = { path = "../postgres-rest-model" }
 common = { path = "../../common" }
 
 [dev-dependencies]

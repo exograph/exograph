@@ -7,12 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 
-use super::PostgresSubsystemResolver;
+use super::{PostgresSubsystemResolver, PostgresSubsystemRestResolver};
 
 use core_plugin_interface::{
-    core_resolver::plugin::SubsystemGraphQLResolver,
+    core_resolver::plugin::{SubsystemGraphQLResolver, SubsystemRestResolver},
     interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
     serializable_system::SerializableSubsystem,
     system_serializer::SystemSerializer,
@@ -21,6 +23,7 @@ use exo_env::Environment;
 use exo_sql::DatabaseClientManager;
 use postgres_core_resolver::create_database_executor;
 use postgres_model::subsystem::PostgresSubsystem;
+use postgres_rest_model::subsystem::PostgresRestSubsystem;
 
 pub struct PostgresSubsystemLoader {
     pub existing_client: Option<DatabaseClientManager>,
@@ -37,24 +40,43 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         subsystem: SerializableSubsystem,
         env: &dyn Environment,
     ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
-        let executor = create_database_executor(self.existing_client.take(), env)
-            .await
-            .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?;
+        let executor = Arc::new(
+            create_database_executor(self.existing_client.take(), env)
+                .await
+                .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?,
+        );
 
-        let graphql_system = subsystem
-            .graphql
+        let SerializableSubsystem { graphql, rest, .. } = subsystem;
+
+        let graphql_system = graphql
             .map(|graphql| {
                 let subsystem = PostgresSubsystem::deserialize(graphql.0)?;
 
                 Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemResolver {
                     id: self.id(),
                     subsystem,
-                    executor,
+                    executor: executor.clone(),
                 })
                     as Box<dyn SubsystemGraphQLResolver + Send + Sync>)
             })
             .transpose()?;
 
-        Ok(Box::new(SubsystemResolver::new(graphql_system, None)))
+        let rest_system = rest
+            .map(|rest| {
+                let subsystem = PostgresRestSubsystem::deserialize(rest.0)?;
+
+                Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemRestResolver {
+                    id: self.id(),
+                    subsystem,
+                    executor,
+                })
+                    as Box<dyn SubsystemRestResolver + Send + Sync>)
+            })
+            .transpose()?;
+
+        Ok(Box::new(SubsystemResolver::new(
+            graphql_system,
+            rest_system,
+        )))
     }
 }

@@ -15,6 +15,7 @@ pub mod number_cmp;
 pub mod operation_resolver;
 pub mod plugin;
 pub mod system_resolver;
+pub mod system_rest_resolver;
 pub mod validation;
 pub mod value;
 

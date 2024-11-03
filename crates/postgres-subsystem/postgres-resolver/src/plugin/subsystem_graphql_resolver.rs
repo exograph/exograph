@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use crate::{
     abstract_operation_resolver::resolve_operation, operation_resolver::OperationResolver,
     postgres_execution_error::PostgresExecutionError,
@@ -29,7 +31,7 @@ use postgres_model::subsystem::PostgresSubsystem;
 pub struct PostgresSubsystemResolver {
     pub id: &'static str,
     pub subsystem: PostgresSubsystem,
-    pub executor: DatabaseExecutor,
+    pub executor: Arc<DatabaseExecutor>,
 }
 
 #[async_trait]
