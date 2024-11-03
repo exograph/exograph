@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use super::PostgresSubsystemResolver;
 
 use core_plugin_interface::{
+    core_resolver::plugin::SubsystemGraphQLResolver,
     interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
     serializable_system::SerializableSubsystem,
     system_serializer::SystemSerializer,
@@ -36,19 +37,24 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         subsystem: SerializableSubsystem,
         env: &dyn Environment,
     ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
-        let subsystem = PostgresSubsystem::deserialize(subsystem.graphql.unwrap().0)?;
-
         let executor = create_database_executor(self.existing_client.take(), env)
             .await
             .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?;
 
-        Ok(Box::new(SubsystemResolver::new(
-            Some(Box::new(PostgresSubsystemResolver {
-                id: self.id(),
-                subsystem,
-                executor,
-            })),
-            None,
-        )))
+        let graphql_system = subsystem
+            .graphql
+            .map(|graphql| {
+                let subsystem = PostgresSubsystem::deserialize(graphql.0)?;
+
+                Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemResolver {
+                    id: self.id(),
+                    subsystem,
+                    executor,
+                })
+                    as Box<dyn SubsystemGraphQLResolver + Send + Sync>)
+            })
+            .transpose()?;
+
+        Ok(Box::new(SubsystemResolver::new(graphql_system, None)))
     }
 }

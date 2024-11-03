@@ -27,48 +27,6 @@ pub struct SerializableSystem {
     pub trusted_documents: TrustedDocuments,
 }
 
-impl SerializableSystem {
-    pub fn separate_protocols(self) -> (SerializableGraphQLSystem, SerializableRestSystem) {
-        let mut graphql_subsystems = vec![];
-        let mut rest_subsystems = vec![];
-
-        let Self {
-            subsystems,
-            query_interception_map,
-            mutation_interception_map,
-            trusted_documents,
-        } = self;
-
-        for subsystem in subsystems.into_iter() {
-            let SerializableSubsystem {
-                id,
-                subsystem_index,
-                graphql,
-                rest,
-            } = subsystem;
-
-            if let Some(graphql) = graphql {
-                graphql_subsystems.push((id.clone(), subsystem_index, graphql));
-            }
-            if let Some(rest) = rest {
-                rest_subsystems.push((id.clone(), subsystem_index, rest));
-            }
-        }
-
-        (
-            SerializableGraphQLSystem {
-                serialized_subsystems: graphql_subsystems,
-                query_interception_map,
-                mutation_interception_map,
-                trusted_documents,
-            },
-            SerializableRestSystem {
-                serialized_subsystems: rest_subsystems,
-            },
-        )
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableSubsystem {
     pub id: String,
