@@ -16,7 +16,7 @@ use async_trait::async_trait;
 use core_plugin_interface::{
     core_resolver::{
         context::RequestContext,
-        plugin::{SubsystemResolutionError, SubsystemResolver},
+        plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
         system_resolver::SystemResolver,
         validation::field::ValidatedField,
         InterceptedOperation, QueryResponse,
@@ -33,7 +33,7 @@ pub struct PostgresSubsystemResolver {
 }
 
 #[async_trait]
-impl SubsystemResolver for PostgresSubsystemResolver {
+impl SubsystemGraphQLResolver for PostgresSubsystemResolver {
     fn id(&self) -> &'static str {
         self.id
     }

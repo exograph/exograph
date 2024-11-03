@@ -16,11 +16,13 @@ use crate::core_model_builder::{
     builder::system_builder::BaseModelSystem, error::ModelBuildingError,
     plugin::GraphQLSubsystemBuild, typechecker::annotation::AnnotationSpec,
 };
-use crate::core_resolver::plugin::SubsystemResolver;
+use crate::core_resolver::plugin::SubsystemGraphQLResolver;
 use crate::error::ModelSerializationError;
 use async_trait::async_trait;
 use core_model_builder::plugin::RestSubsystemBuild;
 use core_model_builder::typechecker::typ::TypecheckedSystem;
+use core_plugin_shared::serializable_system::SerializableSubsystem;
+use core_resolver::plugin::SubsystemRestResolver;
 use thiserror::Error;
 
 use crate::build_info::SubsystemCheckError;
@@ -116,6 +118,20 @@ pub trait RestSubsystemBuilder {
     ) -> Result<Option<RestSubsystemBuild>, ModelBuildingError>;
 }
 
+pub struct SubsystemResolver {
+    pub graphql: Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+    pub rest: Option<Box<dyn SubsystemRestResolver + Send + Sync>>,
+}
+
+impl SubsystemResolver {
+    pub fn new(
+        graphql: Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        rest: Option<Box<dyn SubsystemRestResolver + Send + Sync>>,
+    ) -> Self {
+        Self { graphql, rest }
+    }
+}
+
 #[async_trait]
 pub trait SubsystemLoader {
     /// Unique string to identify the subsystem by. Should be shared with the corresponding
@@ -125,9 +141,9 @@ pub trait SubsystemLoader {
     /// Loads and initializes the subsystem, producing a [SubsystemResolver].
     async fn init(
         &mut self,
-        serialized_subsystem: (Option<Vec<u8>>, Option<Vec<u8>>),
+        serialized_subsystem: SerializableSubsystem,
         env: &dyn Environment,
-    ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError>;
+    ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError>;
 }
 
 #[derive(Error, Debug)]

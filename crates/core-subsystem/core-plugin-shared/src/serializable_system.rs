@@ -21,10 +21,78 @@ const PREFIX_TAG_LEN: usize = PREFIX_TAG.len();
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableSystem {
-    pub subsystems: Vec<SerializableSubsystem>,
+    pub subsystems: Vec<SerializableSubsystem>, // [Postgres, Deno, ...] each with graphql and/or rest
     pub query_interception_map: InterceptionMap,
     pub mutation_interception_map: InterceptionMap,
     pub trusted_documents: TrustedDocuments,
+}
+
+impl SerializableSystem {
+    pub fn separate_protocols(self) -> (SerializableGraphQLSystem, SerializableRestSystem) {
+        let mut graphql_subsystems = vec![];
+        let mut rest_subsystems = vec![];
+
+        let Self {
+            subsystems,
+            query_interception_map,
+            mutation_interception_map,
+            trusted_documents,
+        } = self;
+
+        for subsystem in subsystems.into_iter() {
+            let SerializableSubsystem {
+                id,
+                subsystem_index,
+                graphql,
+                rest,
+            } = subsystem;
+
+            if let Some(graphql) = graphql {
+                graphql_subsystems.push((id.clone(), subsystem_index, graphql));
+            }
+            if let Some(rest) = rest {
+                rest_subsystems.push((id.clone(), subsystem_index, rest));
+            }
+        }
+
+        (
+            SerializableGraphQLSystem {
+                serialized_subsystems: graphql_subsystems,
+                query_interception_map,
+                mutation_interception_map,
+                trusted_documents,
+            },
+            SerializableRestSystem {
+                serialized_subsystems: rest_subsystems,
+            },
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SerializableSubsystem {
+    pub id: String,
+    pub subsystem_index: usize,
+    pub graphql: Option<SerializableGraphQLBytes>,
+    pub rest: Option<SerializableRestBytes>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SerializableGraphQLBytes(pub Vec<u8>);
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SerializableRestBytes(pub Vec<u8>);
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SerializableGraphQLSystem {
+    pub serialized_subsystems: Vec<(String, usize, SerializableGraphQLBytes)>,
+    pub query_interception_map: InterceptionMap,
+    pub mutation_interception_map: InterceptionMap,
+    pub trusted_documents: TrustedDocuments,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SerializableRestSystem {
+    pub serialized_subsystems: Vec<(String, usize, SerializableRestBytes)>,
 }
 
 /// File header data for exo_ir files.
@@ -146,16 +214,9 @@ fn serialize_header_and_system(
     Ok([PREFIX_TAG.to_vec(), header_len, header, system].concat())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SerializableSubsystem {
-    pub id: String,
-    pub subsystem_index: usize,
-    pub serialized_subsystem: (Option<Vec<u8>>, Option<Vec<u8>>), // (graphql, rest) TODO: Improve this to be more explicit
-}
-
 #[cfg(test)]
 mod test {
-    use super::SerializableSystem;
+    use super::{SerializableSubsystem, SerializableSystem};
     use crate::{interception::InterceptionMap, system_serializer::SystemSerializer};
     use multiplatform_test::multiplatform_test;
     use std::collections::HashMap;
@@ -168,10 +229,15 @@ mod test {
             map: HashMap::new(),
         };
         SerializableSystem {
-            subsystems: vec![],
             query_interception_map,
             mutation_interception_map,
             trusted_documents: super::TrustedDocuments::all(),
+            subsystems: vec![SerializableSubsystem {
+                id: "test".to_string(),
+                subsystem_index: 0,
+                graphql: Some(super::SerializableGraphQLBytes(vec![])),
+                rest: Some(super::SerializableRestBytes(vec![])),
+            }],
         }
     }
 

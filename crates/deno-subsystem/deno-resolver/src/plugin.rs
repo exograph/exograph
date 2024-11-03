@@ -15,13 +15,14 @@ use core_plugin_interface::{
     core_resolver::{
         context::RequestContext,
         exograph_execute_query,
-        plugin::{SubsystemResolutionError, SubsystemResolver},
+        plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
         system_resolver::SystemResolver,
         validation::field::ValidatedField,
         InterceptedOperation, QueryResponse, QueryResponseBody,
     },
     interception::InterceptorIndex,
-    interface::{SubsystemLoader, SubsystemLoadingError},
+    interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
+    serializable_system::SerializableSubsystem,
     system_serializer::SystemSerializer,
     trusted_documents::TrustedDocumentEnforcement,
 };
@@ -53,19 +54,26 @@ impl SubsystemLoader for DenoSubsystemLoader {
 
     async fn init(
         &mut self,
-        serialized_subsystem: (Option<Vec<u8>>, Option<Vec<u8>>),
+        serialized_subsystem: SerializableSubsystem,
         _env: &dyn Environment,
-    ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
+    ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
         deno_core::JsRuntime::init_platform(None, true);
-        let subsystem = DenoSubsystem::deserialize(serialized_subsystem.0.unwrap())?;
 
-        let executor = DenoExecutorPool::new_from_config(exo_config());
+        let graphql = match serialized_subsystem.graphql {
+            Some(graphql) => {
+                let subsystem = DenoSubsystem::deserialize(graphql.0)?;
+                let executor = DenoExecutorPool::new_from_config(exo_config());
+                Ok::<_, SubsystemLoadingError>(Some(Box::new(DenoSubsystemResolver {
+                    id: self.id(),
+                    subsystem,
+                    executor,
+                })
+                    as Box<dyn SubsystemGraphQLResolver + Send + Sync>))
+            }
+            None => Ok(None),
+        }?;
 
-        Ok(Box::new(DenoSubsystemResolver {
-            id: self.id(),
-            subsystem,
-            executor,
-        }))
+        Ok(Box::new(SubsystemResolver::new(graphql, None)))
     }
 }
 
@@ -76,7 +84,7 @@ pub struct DenoSubsystemResolver {
 }
 
 #[async_trait]
-impl SubsystemResolver for DenoSubsystemResolver {
+impl SubsystemGraphQLResolver for DenoSubsystemResolver {
     fn id(&self) -> &'static str {
         self.id
     }

@@ -13,7 +13,7 @@ use colored::Colorize;
 use core_plugin_interface::{
     serializable_system::SerializableSystem, trusted_documents::TrustedDocumentEnforcement,
 };
-use core_resolver::OperationsPayload;
+use core_resolver::{plugin::SubsystemGraphQLResolver, OperationsPayload};
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,
@@ -23,7 +23,9 @@ use exo_deno::{
 use exo_env::MapEnvironment;
 use graphql_router::{resolve_in_memory, SystemLoader};
 use include_dir::{include_dir, Dir};
-use router::system_router::{create_system_router_from_file, SystemRouter};
+use router::system_router::{
+    create_system_resolvers, create_system_router_from_file, SystemRouter,
+};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};
 
@@ -183,8 +185,28 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
                         (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
                     ]);
 
-                    SystemLoader::load_from_system(serialized_system, static_loaders, Arc::new(env))
-                        .await?
+                    let env = Arc::new(env);
+
+                    let (
+                        resolvers,
+                        query_interception_map,
+                        mutation_interception_map,
+                        trusted_documents,
+                    ) = create_system_resolvers(serialized_system, static_loaders, env.clone())
+                        .await?;
+
+                    let resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>> =
+                        resolvers.into_iter().flat_map(|r| r.graphql).collect();
+
+                    SystemLoader::create_system_resolver(
+                        resolvers,
+                        query_interception_map,
+                        mutation_interception_map,
+                        trusted_documents,
+                        None.into(),
+                        env,
+                    )
+                    .await?
                 };
                 resolve_in_memory(
                     &mut request,

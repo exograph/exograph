@@ -30,7 +30,7 @@ use tokio::runtime::Handle;
 /// take an additional argument (a [Handle]), and sets up the necessary context before
 /// invoking the actual implementation.
 #[async_trait]
-pub trait SubsystemResolver: Sync {
+pub trait SubsystemGraphQLResolver: Sync {
     /// The id of the subsystem (for debugging purposes)
     fn id(&self) -> &'static str;
 

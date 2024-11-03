@@ -15,7 +15,5 @@
 mod root_resolver;
 mod system_loader;
 
-pub use root_resolver::{
-    create_system_resolver, create_system_resolver_from_system, resolve_in_memory, GraphQLRouter,
-};
-pub use system_loader::{StaticLoaders, SystemLoader, SystemLoadingError};
+pub use root_resolver::{resolve_in_memory, GraphQLRouter};
+pub use system_loader::{SystemLoader, SystemLoadingError};

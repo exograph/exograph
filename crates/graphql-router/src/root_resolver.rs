@@ -8,22 +8,17 @@
 // by the Apache License, Version 2.0.
 
 use std::sync::Arc;
-use std::{fs::File, io::BufReader, path::Path};
 
 use async_trait::async_trait;
 use common::env_const::get_graphql_http_path;
 
-use crate::system_loader::{StaticLoaders, SystemLoadingError};
-
 use common::env_const::is_production;
 use common::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use common::router::Router;
-use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_resolver::QueryResponse;
 use http::StatusCode;
 
-use super::system_loader::SystemLoader;
 use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
@@ -219,30 +214,4 @@ impl Router for GraphQLRouter {
             status_code: StatusCode::OK,
         })
     }
-}
-
-pub async fn create_system_resolver(
-    exo_ir_file: &str,
-    static_loaders: StaticLoaders,
-    env: Arc<dyn Environment>,
-) -> Result<SystemResolver, SystemLoadingError> {
-    if !Path::new(&exo_ir_file).exists() {
-        return Err(SystemLoadingError::FileNotFound(exo_ir_file.to_string()));
-    }
-    match File::open(exo_ir_file) {
-        Ok(file) => {
-            let exo_ir_file_buffer = BufReader::new(file);
-
-            SystemLoader::load(exo_ir_file_buffer, static_loaders, env.clone()).await
-        }
-        Err(e) => Err(SystemLoadingError::FileOpen(exo_ir_file.into(), e)),
-    }
-}
-
-pub async fn create_system_resolver_from_system(
-    system: SerializableSystem,
-    static_loaders: StaticLoaders,
-    env: Arc<dyn Environment>,
-) -> Result<SystemResolver, SystemLoadingError> {
-    SystemLoader::load_from_system(system, static_loaders, env).await
 }

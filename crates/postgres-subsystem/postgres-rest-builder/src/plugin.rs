@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use core_plugin_interface::core_model_builder::plugin::RestSubsystemBuild;
 use core_plugin_interface::interface::RestSubsystemBuilder;
 
+use core_plugin_interface::serializable_system::SerializableRestBytes;
 use core_plugin_interface::{
     core_model_builder::{
         builder::system_builder::BaseModelSystem, error::ModelBuildingError,
@@ -63,7 +64,7 @@ impl RestSubsystemBuilder for PostgresRestSubsystemBuilder {
 
         Ok(Some(RestSubsystemBuild {
             id: self.id().to_string(),
-            serialized_subsystem,
+            serialized_subsystem: SerializableRestBytes(serialized_subsystem),
         }))
     }
 }

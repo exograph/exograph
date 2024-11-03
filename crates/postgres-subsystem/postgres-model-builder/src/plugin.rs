@@ -14,6 +14,7 @@ use core_plugin_interface::{
         plugin::GraphQLSubsystemBuild, typechecker::typ::TypecheckedSystem,
     },
     interface::GraphQLSubsystemBuilder,
+    serializable_system::SerializableGraphQLBytes,
     system_serializer::SystemSerializer,
 };
 
@@ -41,7 +42,7 @@ impl GraphQLSubsystemBuilder for PostgresGraphQLSubsystemBuilder {
 
         Ok(Some(GraphQLSubsystemBuild {
             id: "postgres".to_string(),
-            serialized_subsystem,
+            serialized_subsystem: SerializableGraphQLBytes(serialized_subsystem),
             query_names: {
                 let pk_query_names = subsystem.pk_queries.iter().map(|(_, q)| q.name.clone());
 

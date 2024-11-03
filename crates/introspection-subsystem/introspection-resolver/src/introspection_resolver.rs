@@ -12,7 +12,7 @@ use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
     context::RequestContext,
     introspection::definition::schema::Schema,
-    plugin::{SubsystemResolutionError, SubsystemResolver},
+    plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
     system_resolver::SystemResolver,
     validation::field::ValidatedField,
     InterceptedOperation, QueryResponse, QueryResponseBody,
@@ -30,7 +30,7 @@ impl IntrospectionResolver {
 }
 
 #[async_trait::async_trait]
-impl SubsystemResolver for IntrospectionResolver {
+impl SubsystemGraphQLResolver for IntrospectionResolver {
     fn id(&self) -> &'static str {
         "introspection"
     }

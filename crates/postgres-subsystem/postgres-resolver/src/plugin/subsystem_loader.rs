@@ -7,12 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::PostgresSubsystemResolver;
 use async_trait::async_trait;
 
+use super::PostgresSubsystemResolver;
+
 use core_plugin_interface::{
-    core_resolver::plugin::SubsystemResolver,
-    interface::{SubsystemLoader, SubsystemLoadingError},
+    interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
+    serializable_system::SerializableSubsystem,
     system_serializer::SystemSerializer,
 };
 use exo_env::Environment;
@@ -32,19 +33,22 @@ impl SubsystemLoader for PostgresSubsystemLoader {
 
     async fn init(
         &mut self,
-        serialized_subsystem: (Option<Vec<u8>>, Option<Vec<u8>>),
+        subsystem: SerializableSubsystem,
         env: &dyn Environment,
-    ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
-        let subsystem = PostgresSubsystem::deserialize(serialized_subsystem.0.unwrap())?;
+    ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
+        let subsystem = PostgresSubsystem::deserialize(subsystem.graphql.unwrap().0)?;
 
         let executor = create_database_executor(self.existing_client.take(), env)
             .await
             .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?;
 
-        Ok(Box::new(PostgresSubsystemResolver {
-            id: self.id(),
-            subsystem,
-            executor,
-        }))
+        Ok(Box::new(SubsystemResolver::new(
+            Some(Box::new(PostgresSubsystemResolver {
+                id: self.id(),
+                subsystem,
+                executor,
+            })),
+            None,
+        )))
     }
 }

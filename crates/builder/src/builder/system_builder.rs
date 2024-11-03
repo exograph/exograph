@@ -63,26 +63,28 @@ pub async fn build(
         let SubsystemBuild { id, graphql, rest } = build_info;
 
         // The builder's contract is that it must return a subsystem only if it found a relevant
-        // module in the exo file, in which case it must return GraphQL or REST subsystem.
+        // module in the exo file, in which case it must serve GraphQL and/or REST.
         assert!(graphql.is_some() || rest.is_some());
 
-        let mut serialized_subsystem = (None, None);
+        let mut serialized_graphql_subsystem = None;
+        let mut serialized_rest_subsystem = None;
 
         if let Some(graphql) = graphql {
             subsystem_interceptions.push((subsystem_index, graphql.interceptions));
             query_names.extend(graphql.query_names);
             mutation_names.extend(graphql.mutation_names);
-            serialized_subsystem.0 = Some(graphql.serialized_subsystem);
+            serialized_graphql_subsystem = Some(graphql.serialized_subsystem);
         }
 
         if let Some(rest) = rest {
-            serialized_subsystem.1 = Some(rest.serialized_subsystem);
+            serialized_rest_subsystem = Some(rest.serialized_subsystem);
         }
 
         SerializableSubsystem {
             id: id.to_string(),
             subsystem_index,
-            serialized_subsystem,
+            graphql: serialized_graphql_subsystem,
+            rest: serialized_rest_subsystem,
         }
     })
     .collect();

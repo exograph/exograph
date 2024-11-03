@@ -1731,10 +1731,7 @@ mod tests {
             .into_iter()
             .find_map(|subsystem| {
                 if subsystem.id == "postgres" {
-                    subsystem
-                        .serialized_subsystem
-                        .0
-                        .map(PostgresSubsystem::deserialize)
+                    Some(PostgresSubsystem::deserialize(subsystem.graphql.unwrap().0))
                 } else {
                     None
                 }

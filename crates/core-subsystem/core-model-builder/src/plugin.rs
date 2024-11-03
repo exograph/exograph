@@ -7,13 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_shared::interception::{InterceptorIndex, InterceptorKind};
-
 use crate::{ast::ast_types::AstExpr, typechecker::Typed};
+use core_plugin_shared::interception::{InterceptorIndex, InterceptorKind};
+use core_plugin_shared::serializable_system::{SerializableGraphQLBytes, SerializableRestBytes};
 
 pub struct GraphQLSubsystemBuild {
     pub id: String,
-    pub serialized_subsystem: Vec<u8>,
+    pub serialized_subsystem: SerializableGraphQLBytes,
     pub query_names: Vec<String>,
     pub mutation_names: Vec<String>,
     pub interceptions: Vec<Interception>,
@@ -28,5 +28,5 @@ pub struct Interception {
 
 pub struct RestSubsystemBuild {
     pub id: String,
-    pub serialized_subsystem: Vec<u8>,
+    pub serialized_subsystem: SerializableRestBytes,
 }

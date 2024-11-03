@@ -35,14 +35,14 @@ pub(crate) async fn create_postgres_system_from_str(
 fn deserialize_postgres_subsystem(
     system: SerializableSystem,
 ) -> Result<PostgresSubsystem, ModelSerializationError> {
-    system
-        .subsystems
+    let (graphql, _) = system.separate_protocols();
+
+    graphql
+        .serialized_subsystems
         .into_iter()
-        .find_map(|subsystem| {
-            if subsystem.id == "postgres" {
-                Some(PostgresSubsystem::deserialize(
-                    subsystem.serialized_subsystem.0.unwrap(),
-                ))
+        .find_map(|(id, _, serialized_subsystem)| {
+            if id == "postgres" {
+                Some(PostgresSubsystem::deserialize(serialized_subsystem.0))
             } else {
                 None
             }

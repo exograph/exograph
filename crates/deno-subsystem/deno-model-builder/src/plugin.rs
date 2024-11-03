@@ -21,6 +21,7 @@ use core_plugin_interface::{
     },
     interception::InterceptorIndex,
     interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
+    serializable_system::SerializableGraphQLBytes,
     system_serializer::SystemSerializer,
 };
 
@@ -117,7 +118,7 @@ impl GraphQLSubsystemBuilder for DenoGraphQLSubsystemBuilder {
 
         Ok(Some(GraphQLSubsystemBuild {
             id: "deno".to_string(),
-            serialized_subsystem,
+            serialized_subsystem: SerializableGraphQLBytes(serialized_subsystem),
             query_names: subsystem
                 .queries
                 .iter()

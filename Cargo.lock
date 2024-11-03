@@ -7798,6 +7798,7 @@ dependencies = [
  "http 1.1.0",
  "playground-router",
  "rest-router",
+ "tracing",
 ]
 
 [[package]]
