@@ -1297,7 +1297,7 @@ dependencies = [
  "postgres-builder",
  "postgres-model",
  "rand",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "rexpect",
  "serde",
  "serde_json",
@@ -1630,7 +1630,7 @@ dependencies = [
  "postgres-builder",
  "postgres-model-builder",
  "postgres-resolver",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde",
  "serde_json",
  "thiserror",
@@ -3772,7 +3772,7 @@ dependencies = [
  "include_dir",
  "lazy_static",
  "node_resolver",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde",
  "serde_json",
  "tempfile",
@@ -6217,7 +6217,7 @@ dependencies = [
  "base64 0.22.1",
  "jsonwebtoken",
  "log",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde",
  "thiserror",
  "tokio",
@@ -7672,9 +7672,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.12.8"
+version = "0.12.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f713147fbe92361e52392c73b8c9e48c04c6625bce969ef54dc901e58e042a7b"
+checksum = "a77c62af46e79de0a562e1a9849205ffcb7fc1238876e9bd743357570e04046f"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -8404,7 +8404,7 @@ dependencies = [
  "futures",
  "graphql-router",
  "http 1.1.0",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "router",
  "serde_json",
  "server-common",
