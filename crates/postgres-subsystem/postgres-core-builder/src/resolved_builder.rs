@@ -15,6 +15,14 @@
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 
+use super::{
+    access_builder::{build_access, ResolvedAccess},
+    naming::{ToPlural, ToTableName},
+};
+use crate::resolved_type::{
+    ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType, ResolvedType,
+    ResolvedTypeHint,
+};
 use core_plugin_interface::{
     core_model::{
         mapped_arena::MappedArena,
@@ -34,16 +42,6 @@ use core_plugin_interface::{
     },
 };
 use exo_sql::{PhysicalTableName, VectorDistanceFunction};
-
-use crate::resolved_type::{
-    ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType, ResolvedType,
-    ResolvedTypeHint,
-};
-
-use super::{
-    access_builder::{build_access, ResolvedAccess},
-    naming::{ToPlural, ToTableName},
-};
 
 use heck::ToSnakeCase;
 
@@ -356,6 +354,51 @@ fn build_type_hint(
         if field.typ.get_underlying_typename(types).unwrap() != "Float" {
             None
         } else {
+            let mut range_hint = None;
+            if let Some(params) = field.annotations.get("range") {
+                let min = params
+                    .as_map()
+                    .get("min")
+                    .unwrap()
+                    .as_string()
+                    .parse::<f64>();
+                let max = params
+                    .as_map()
+                    .get("max")
+                    .unwrap()
+                    .as_string()
+                    .parse::<f64>();
+
+                if min.is_err() || max.is_err() {
+                    if min.is_err() {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: "Cannot parse @range 'min' as f64".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: field.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                    if max.is_err() {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: "Cannot parse @range 'max' as f64".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: field.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                } else {
+                    range_hint = Some((min.unwrap(), max.unwrap()));
+                }
+            };
+
             let is_single_precision = field.annotations.contains("singlePrecision");
             let is_double_precision = field.annotations.contains("doublePrecision");
 
@@ -379,7 +422,14 @@ fn build_type_hint(
                 }
             };
 
-            bits_hint.map(|bits| ResolvedTypeHint::Float { bits })
+            if bits_hint.is_some() || range_hint.is_some() {
+                Some(ResolvedTypeHint::Float {
+                    bits: bits_hint,
+                    range: range_hint,
+                })
+            } else {
+                None
+            }
         }
     };
 
@@ -571,7 +621,6 @@ fn build_type_hint(
         None
     }
 }
-
 struct ColumnInfo {
     name: String,
     self_column: bool,

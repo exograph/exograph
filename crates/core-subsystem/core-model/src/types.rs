@@ -10,11 +10,14 @@
 //! Common support for representing GraphQL types such as `Int`, `List<Int>`, `Optional<Int>`, `Optional<List<Int>>`, etc.
 //!
 
-use async_graphql_parser::types::{BaseType, Type};
-use async_graphql_value::Name;
+use async_graphql_parser::types::{BaseType, ConstDirective, Type};
+use async_graphql_value::{ConstValue, Name};
 use serde::{Deserialize, Serialize};
 
-use crate::mapped_arena::{SerializableSlab, SerializableSlabIndex};
+use crate::{
+    mapped_arena::{SerializableSlab, SerializableSlabIndex},
+    type_normalization::{default_positioned, default_positioned_name},
+};
 
 /// A type that can be used as a type for fields and return types
 /// Currently supports only list and optional decorations
@@ -162,5 +165,54 @@ impl<T> OperationReturnType<T> {
                 underlying.type_name()
             }
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum TypeValidation {
+    Int { range: (i64, i64) },
+    Float { range: (f64, f64) },
+}
+
+pub trait TypeValidationProvider {
+    fn get_type_validation(&self) -> Option<TypeValidation>;
+}
+
+pub trait DirectivesProvider {
+    fn get_directives(&self) -> Vec<ConstDirective>;
+}
+
+impl DirectivesProvider for TypeValidation {
+    fn get_directives(&self) -> Vec<ConstDirective> {
+        let mut directives = vec![];
+        match self {
+            TypeValidation::Int { range } => {
+                let (min, max) = range.to_owned();
+                directives.push(get_range_directive(min, max));
+                directives
+            }
+
+            TypeValidation::Float { range } => {
+                let (min, max) = range.to_owned();
+                directives.push(get_range_directive(min, max));
+                directives
+            }
+        }
+    }
+}
+
+fn get_range_directive<T: Into<ConstValue>>(min: T, max: T) -> ConstDirective {
+    ConstDirective {
+        name: default_positioned_name("range"),
+        arguments: vec![
+            (
+                default_positioned_name("min"),
+                default_positioned(min.into()),
+            ),
+            (
+                default_positioned_name("max"),
+                default_positioned(max.into()),
+            ),
+        ],
     }
 }

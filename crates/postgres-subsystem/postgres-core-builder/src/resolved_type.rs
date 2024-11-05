@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use codemap::Span;
 use exo_sql::{PhysicalTableName, VectorDistanceFunction};
-use postgres_model::types::{TypeValidation, TypeValidationProvider};
 use serde::{Deserialize, Serialize};
 
 use core_plugin_interface::{
@@ -11,7 +10,7 @@ use core_plugin_interface::{
         function_defn::FunctionDefinition,
         mapped_arena::MappedArena,
         primitive_type::PrimitiveType,
-        types::{FieldType, Named},
+        types::{FieldType, Named, TypeValidation, TypeValidationProvider},
     },
     core_model_builder::{
         ast::ast_types::{default_span, AstExpr},
@@ -95,7 +94,7 @@ impl ResolvedField {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedTypeHint {
     Explicit {
         dbtype: String,
@@ -105,7 +104,8 @@ pub enum ResolvedTypeHint {
         range: Option<(i64, i64)>,
     },
     Float {
-        bits: usize,
+        bits: Option<usize>,
+        range: Option<(f64, f64)>,
     },
     Decimal {
         precision: Option<usize>,
@@ -129,6 +129,14 @@ impl TypeValidationProvider for ResolvedTypeHint {
             ResolvedTypeHint::Int { bits: _, range } => {
                 if let Some(r) = range {
                     return Some(TypeValidation::Int {
+                        range: r.to_owned(),
+                    });
+                }
+                None
+            }
+            ResolvedTypeHint::Float { bits: _, range } => {
+                if let Some(r) = range {
+                    return Some(TypeValidation::Float {
                         range: r.to_owned(),
                     });
                 }

@@ -1,8 +1,17 @@
 operation: |
     mutation {
-        e1: createExample(data: { limit: 1, age: 20 }) {
+        e1: createNumbers(data: { limit: 1, age: 20, float_limit: 1.1, price: 30.0 }) {
               id
               limit
               age
+              float_limit
+              price
+        }
+        e2: createOtherNumbers(data: { limit: 1337, age: 20, float_limit: 11.1, price: 30.0 }) {
+              id
+              limit
+              age
+              float_limit
+              price
         }
     }

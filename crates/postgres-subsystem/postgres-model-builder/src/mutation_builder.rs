@@ -250,7 +250,7 @@ pub trait DataParamBuilder<D> {
                         access: field.access.clone(),
                         dynamic_default_value: field.dynamic_default_value.clone(),
                         readonly: field.readonly,
-                        type_validation: None,
+                        type_validation: field.type_validation.clone(),
                     })
                 } else {
                     // Make the decision to include the pk column based on the default value for the
@@ -279,7 +279,7 @@ pub trait DataParamBuilder<D> {
                             has_default_value: field.has_default_value,
                             dynamic_default_value: field.dynamic_default_value.clone(),
                             readonly: field.readonly,
-                            type_validation: None,
+                            type_validation: field.type_validation.clone(),
                         })
                     }
                 }
@@ -296,7 +296,7 @@ pub trait DataParamBuilder<D> {
                 has_default_value: field.has_default_value,
                 dynamic_default_value: field.dynamic_default_value.clone(),
                 readonly: field.readonly,
-                type_validation: None,
+                type_validation: field.type_validation.clone(),
             }),
             PostgresRelation::OneToMany { .. } => {
                 self.compute_one_to_many_data_field(field, container_type, building)
@@ -330,7 +330,7 @@ pub trait DataParamBuilder<D> {
                         has_default_value: field.has_default_value,
                         dynamic_default_value: field.dynamic_default_value.clone(),
                         readonly: field.readonly,
-                        type_validation: None,
+                        type_validation: field.type_validation.clone(),
                     }),
                 }
             }
@@ -375,7 +375,7 @@ pub trait DataParamBuilder<D> {
                         has_default_value: field.has_default_value,
                         dynamic_default_value: field.dynamic_default_value.clone(),
                         readonly: field.readonly,
-                        type_validation: None,
+                        type_validation: field.type_validation.clone(),
                     }),
                 }
             })

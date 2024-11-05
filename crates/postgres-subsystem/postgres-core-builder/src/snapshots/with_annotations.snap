@@ -324,6 +324,7 @@ values:
             type_hint:
               Float:
                 bits: 24
+                range: ~
             unique_constraints: []
             indices: []
             default_value: ~

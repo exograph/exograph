@@ -10,12 +10,11 @@
 use std::collections::HashMap;
 
 use async_graphql_parser::{
-    types::{BaseType, ConstDirective, Field, FieldDefinition, InputValueDefinition, TypeKind},
+    types::{BaseType, ConstDirective, Field, InputValueDefinition, TypeKind},
     Pos, Positioned,
 };
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
 use bytes::Bytes;
-use core_model::type_normalization::TypeDefinitionIntrospection;
 
 use crate::{
     introspection::definition::schema::Schema,
@@ -202,12 +201,13 @@ impl<'a> ArgumentValidator<'a> {
         number: &Number,
         pos: Pos,
     ) -> Result<Val, ValidationError> {
-        let directives = get_schema_directives(self.schema, argument_definition.name.node.as_str());
-        // TODO: float
+        let directives = argument_definition.directives.clone();
 
         if !directives.is_empty() {
             if let Some(value) = number.clone().as_i64() {
                 validate_int_range(directives, value, pos)?
+            } else if let Some(value) = number.clone().as_f64() {
+                validate_float_range(directives, value, pos)?
             }
         }
 
@@ -422,43 +422,61 @@ impl<'a> ArgumentValidator<'a> {
     }
 }
 
-fn get_schema_directives(schema: &Schema, argument_name: &str) -> Vec<ConstDirective> {
-    let placeholder: Vec<Positioned<FieldDefinition>> = vec![];
-    schema
-        .type_definitions
-        .iter()
-        .filter(|td| matches!(&td.kind, TypeKind::Object(_)))
-        .flat_map(|td| {
-            td.fields()
-                .unwrap_or(&placeholder)
-                .iter()
-                .find(|x| x.node.name.node.as_str() == argument_name)
-                .map(|x| x.to_owned().node.directives)
-        })
-        .flat_map(|cd| cd.iter().map(|x| x.node.clone()).collect::<Vec<_>>())
-        .collect()
-}
-
 fn validate_int_range(
-    int_directives: Vec<ConstDirective>,
+    directives: Vec<Positioned<ConstDirective>>,
     value: i64,
     pos: Pos,
 ) -> Result<(), ValidationError> {
     let mut min: Option<i64> = None;
     let mut max: Option<i64> = None;
-    if let Some(range) = int_directives.iter().find(|x| x.name.node == "range") {
-        if let Some(x) = range.arguments.iter().find(|x| x.0.node == "min") {
+    if let Some(range) = directives.iter().find(|x| x.node.name.node == "range") {
+        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "min") {
             if let ConstValue::Number(n) = &x.1.node {
                 min = n.to_owned().as_i64();
             }
         }
-        if let Some(x) = range.arguments.iter().find(|x| x.0.node == "max") {
+        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "max") {
             if let ConstValue::Number(n) = &x.1.node {
                 max = n.to_owned().as_i64();
             }
         }
     }
 
+    validate_generic_range((min, max), value, pos)
+}
+
+fn validate_float_range(
+    directives: Vec<Positioned<ConstDirective>>,
+    value: f64,
+    pos: Pos,
+) -> Result<(), ValidationError> {
+    let mut min: Option<f64> = None;
+    let mut max: Option<f64> = None;
+    if let Some(range) = directives.iter().find(|x| x.node.name.node == "range") {
+        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "min") {
+            if let ConstValue::Number(n) = &x.1.node {
+                min = n.to_owned().as_f64();
+            }
+        }
+        if let Some(x) = range.node.arguments.iter().find(|x| x.0.node == "max") {
+            if let ConstValue::Number(n) = &x.1.node {
+                max = n.to_owned().as_f64();
+            }
+        }
+    }
+
+    validate_generic_range((min, max), value, pos)
+}
+
+fn validate_generic_range<T>(
+    range: (Option<T>, Option<T>),
+    value: T,
+    pos: Pos,
+) -> Result<(), ValidationError>
+where
+    T: std::cmp::PartialOrd + std::fmt::Display,
+{
+    let (min, max) = range;
     if let Some(r) = min {
         if r > value {
             return Err(ValidationError::ValueOutOfRange {

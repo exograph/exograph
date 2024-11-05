@@ -152,6 +152,7 @@ impl DataParamBuilder<DataParameter> for CreateMutationBuilder {
         let base_type = FieldType::Plain(DataParameterType {
             name: data_param_type_name,
             type_id: data_param_type_id,
+            type_validation: None,
         });
 
         DataParameter {
@@ -161,6 +162,7 @@ impl DataParamBuilder<DataParameter> for CreateMutationBuilder {
             } else {
                 base_type
             },
+            type_validation: None,
         }
     }
 }

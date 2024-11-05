@@ -26,7 +26,7 @@ use core_plugin_interface::{
     core_model::{
         mapped_arena::SerializableSlabIndex,
         primitive_type::PrimitiveType,
-        types::{FieldType, Named},
+        types::{FieldType, Named, TypeValidationProvider},
     },
     core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed},
 };
@@ -47,7 +47,7 @@ use postgres_model::{
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{
         get_field_id, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
-        TypeIndex, TypeValidationProvider,
+        TypeIndex,
     },
     vector_distance::{VectorDistanceField, VectorDistanceType},
 };
@@ -947,21 +947,25 @@ fn determine_column_type<'a>(
                 }
             }
 
-            ResolvedTypeHint::Float { bits } => {
+            ResolvedTypeHint::Float { bits, .. } => {
                 assert!(matches!(pt, PrimitiveType::Float));
 
-                let bits = *bits;
-
-                if (1..=24).contains(&bits) {
-                    PhysicalColumnType::Float {
-                        bits: FloatBits::_24,
+                if let Some(bits) = *bits {
+                    if (1..=24).contains(&bits) {
+                        PhysicalColumnType::Float {
+                            bits: FloatBits::_24,
+                        }
+                    } else if bits > 24 && bits <= 53 {
+                        PhysicalColumnType::Float {
+                            bits: FloatBits::_53,
+                        }
+                    } else {
+                        panic!("Invalid bits")
                     }
-                } else if bits > 24 && bits <= 53 {
+                } else {
                     PhysicalColumnType::Float {
                         bits: FloatBits::_53,
                     }
-                } else {
-                    panic!("Invalid bits")
                 }
             }
 

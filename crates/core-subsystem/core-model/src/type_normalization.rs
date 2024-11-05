@@ -16,7 +16,10 @@ use async_graphql_parser::{
 };
 use async_graphql_value::Name;
 
-use crate::primitive_type::vector_introspection_type;
+use crate::{
+    primitive_type::vector_introspection_type,
+    types::{DirectivesProvider, TypeValidation},
+};
 
 pub trait FieldDefinitionProvider<S> {
     fn field_definition(&self, system: &S) -> FieldDefinition;
@@ -50,6 +53,7 @@ pub trait Parameter {
     fn name(&self) -> &str;
     /// Type of the parameter such as `Int` or `[String]`
     fn typ(&self) -> Type;
+    fn type_validation(&self) -> Option<TypeValidation>;
 }
 
 fn innermost_typename(typ: &Type) -> &str {
@@ -74,7 +78,12 @@ impl<T: Parameter> InputValueProvider for T {
             name: default_positioned_name(self.name()),
             ty: field_type,
             default_value: None,
-            directives: vec![],
+            directives: self
+                .type_validation()
+                .iter()
+                .flat_map(|tv| tv.get_directives())
+                .map(default_positioned)
+                .collect(),
         }
     }
 }

@@ -24,7 +24,7 @@ use core_plugin_interface::core_model::{
         default_positioned, default_positioned_name, InputValueProvider, Parameter,
         TypeDefinitionProvider,
     },
-    types::{FieldType, Named},
+    types::{FieldType, Named, TypeValidation},
 };
 
 use exo_sql::{ColumnPathLink, VectorDistanceFunction};
@@ -82,6 +82,10 @@ impl Parameter for OrderByParameter {
 
     fn typ(&self) -> Type {
         (&self.typ).into()
+    }
+
+    fn type_validation(&self) -> Option<TypeValidation> {
+        None
     }
 }
 
