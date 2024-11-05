@@ -3,9 +3,8 @@ use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 use tracing::debug;
 
 use common::{
-    cors::CorsConfig,
-    cors::CorsRouter,
-    env_const::EXO_CORS_DOMAINS,
+    cors::{CorsConfig, CorsRouter},
+    env_const::{EXO_CORS_DOMAINS, EXO_UNSTABLE_ENABLE_REST_API},
     http::{RequestPayload, ResponsePayload},
     router::{CompositeRouter, Router},
 };
@@ -179,15 +178,16 @@ fn create_system_router_from_resolver(
     rest_router: RestRouter,
     env: Arc<dyn Environment>,
 ) -> Result<SystemRouter, SystemLoadingError> {
-    Ok(SystemRouter::new(
-        vec![
-            Box::new(graphql_router),
-            Box::new(rest_router),
-            #[cfg(not(target_family = "wasm"))]
-            Box::new(PlaygroundRouter::new(env.clone())),
-        ],
-        env.as_ref(),
-    ))
+    let mut routers: Vec<Box<dyn Router + Send>> = vec![Box::new(graphql_router)];
+
+    if env.enabled(EXO_UNSTABLE_ENABLE_REST_API, false) {
+        routers.push(Box::new(rest_router));
+    }
+
+    #[cfg(not(target_family = "wasm"))]
+    routers.push(Box::new(PlaygroundRouter::new(env.clone())));
+
+    Ok(SystemRouter::new(routers, env.as_ref()))
 }
 
 pub struct SystemRouter {

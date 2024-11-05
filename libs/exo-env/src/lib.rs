@@ -11,6 +11,13 @@ use std::collections::HashMap;
 
 pub trait Environment: Send + Sync {
     fn get(&self, key: &str) -> Option<String>;
+
+    fn enabled(&self, key: &str, default_value: bool) -> bool {
+        match self.get(key) {
+            Some(value) => value == "true" || value == "1",
+            None => default_value,
+        }
+    }
 }
 
 pub struct SystemEnvironment;
