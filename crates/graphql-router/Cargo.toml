@@ -1,5 +1,5 @@
 [package]
-name = "resolver"
+name = "graphql-router"
 version.workspace = true
 edition.workspace = true
 publish = false
@@ -17,7 +17,6 @@ bytes.workspace = true
 futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 serde.workspace = true
-tokio.workspace = true
 thiserror.workspace = true
 bincode.workspace = true
 http.workspace = true

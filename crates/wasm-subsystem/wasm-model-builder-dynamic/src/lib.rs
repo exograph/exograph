@@ -12,4 +12,4 @@ use core_plugin_interface::interface::SubsystemBuilder;
 use wasm_model_builder::WasmSubsystemBuilder;
 
 // See comments in `postgres-resolver-dynamic/src/lib.rs`.
-core_plugin_interface::export_subsystem_builder!(WasmSubsystemBuilder {});
+core_plugin_interface::export_subsystem_builder!(WasmSubsystemBuilder::default());

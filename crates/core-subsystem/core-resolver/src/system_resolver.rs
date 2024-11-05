@@ -34,7 +34,7 @@ use crate::{context::provider::jwt::JwtAuthenticator, OperationsPayload};
 use crate::{
     context::RequestContext,
     introspection::definition::schema::Schema,
-    plugin::{subsystem_resolver::SubsystemResolver, SubsystemResolutionError},
+    plugin::{subsystem_graphql_resolver::SubsystemGraphQLResolver, SubsystemResolutionError},
     validation::{
         document_validator::DocumentValidator, field::ValidatedField,
         operation::ValidatedOperation, validation_error::ValidationError,
@@ -56,7 +56,7 @@ pub type ExographExecuteQueryFn<'a> = dyn Fn(
 ///
 /// Delegates to subsystem resolvers to resolve individual operations.
 pub struct SystemResolver {
-    subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
+    subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
     query_interception_map: InterceptionMap,
     mutation_interception_map: InterceptionMap,
     trusted_documents: TrustedDocuments,
@@ -70,7 +70,7 @@ pub struct SystemResolver {
 impl SystemResolver {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
+        subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
         trusted_documents: TrustedDocuments,

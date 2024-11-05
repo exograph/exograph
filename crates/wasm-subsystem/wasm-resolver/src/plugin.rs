@@ -14,13 +14,14 @@ use core_plugin_interface::{
     core_model::mapped_arena::SerializableSlabIndex,
     core_resolver::{
         context::RequestContext,
-        plugin::{SubsystemResolutionError, SubsystemResolver},
+        plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
         system_resolver::SystemResolver,
         validation::field::ValidatedField,
         InterceptedOperation, QueryResponse,
     },
     interception::InterceptorIndex,
-    interface::{SubsystemLoader, SubsystemLoadingError},
+    interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
+    serializable_system::SerializableSubsystem,
     system_serializer::SystemSerializer,
 };
 use exo_env::Environment;
@@ -37,18 +38,26 @@ impl SubsystemLoader for WasmSubsystemLoader {
 
     async fn init(
         &mut self,
-        serialized_subsystem: Vec<u8>,
+        serialized_subsystem: SerializableSubsystem,
         _env: &dyn Environment,
-    ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
-        let subsystem = WasmSubsystem::deserialize(serialized_subsystem)?;
-
+    ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
         let executor = WasmExecutorPool::default();
 
-        Ok(Box::new(WasmSubsystemResolver {
-            id: self.id(),
-            subsystem,
-            executor,
-        }))
+        let graphql = match serialized_subsystem.graphql {
+            Some(graphql) => {
+                let subsystem = WasmSubsystem::deserialize(graphql.0)?;
+
+                Ok::<_, SubsystemLoadingError>(Some(Box::new(WasmSubsystemResolver {
+                    id: self.id(),
+                    subsystem,
+                    executor,
+                })
+                    as Box<dyn SubsystemGraphQLResolver + Send + Sync>))
+            }
+            None => Ok(None),
+        }?;
+
+        Ok(Box::new(SubsystemResolver::new(graphql, None)))
     }
 }
 
@@ -59,7 +68,7 @@ pub struct WasmSubsystemResolver {
 }
 
 #[async_trait]
-impl SubsystemResolver for WasmSubsystemResolver {
+impl SubsystemGraphQLResolver for WasmSubsystemResolver {
     fn id(&self) -> &'static str {
         self.id
     }

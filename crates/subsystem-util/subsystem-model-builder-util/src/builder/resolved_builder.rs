@@ -644,9 +644,10 @@ mod tests {
 
     async fn create_resolved_system(src: &str) -> Result<ResolvedModuleSystem, ModelBuildingError> {
         let mut codemap = CodeMap::new();
-        let subsystem_builders =
-            load_subsystem_builders(vec![Box::new(deno_model_builder::DenoSubsystemBuilder {})])
-                .unwrap();
+        let subsystem_builders = load_subsystem_builders(vec![Box::new(
+            deno_model_builder::DenoSubsystemBuilder::default(),
+        )])
+        .unwrap();
         let parsed = parser::parse_str(src, &mut codemap, "input.exo")
             .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
         let types = typechecker::build(&subsystem_builders, parsed)

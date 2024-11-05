@@ -31,6 +31,7 @@ tempfile.workspace = true
 
 [dev-dependencies]
 postgres-model-builder = { path = "../postgres-subsystem/postgres-model-builder" }
+postgres-builder = { path = "../postgres-subsystem/postgres-builder" }
 serde_json.workspace = true
 serde_yaml.workspace = true
 wasm-bindgen-test.workspace = true

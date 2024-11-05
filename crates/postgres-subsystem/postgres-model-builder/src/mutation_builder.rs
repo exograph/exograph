@@ -29,23 +29,20 @@ use postgres_model::{
     },
 };
 
-use crate::{
-    access_utils::parent_predicate,
-    resolved_builder::{ResolvedField, ResolvedFieldTypeHelper},
-    shallow::Shallow,
-    utils::to_mutation_type,
+use crate::{access_utils::parent_predicate, shallow::Shallow, utils::to_mutation_type};
+
+use postgres_core_builder::resolved_type::{
+    ResolvedCompositeType, ResolvedField, ResolvedFieldTypeHelper, ResolvedType,
 };
 
 use super::{
-    builder::Builder,
-    create_mutation_builder::CreateMutationBuilder,
+    builder::Builder, create_mutation_builder::CreateMutationBuilder,
     delete_mutation_builder::DeleteMutationBuilder,
-    naming::ToPostgresTypeNames,
-    reference_input_type_builder::ReferenceInputTypeBuilder,
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
+    reference_input_type_builder::ReferenceInputTypeBuilder, system_builder::SystemContextBuilding,
     update_mutation_builder::UpdateMutationBuilder,
 };
+
+use super::naming::ToPostgresTypeNames;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataParamRole {

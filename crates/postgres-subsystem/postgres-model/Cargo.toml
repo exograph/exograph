@@ -21,6 +21,7 @@ wasm-bindgen-test.workspace = true
 stripmargin = "0.1.1"
 
 builder = { path = "../../builder" }
+postgres-builder = { path = "../postgres-builder" }
 postgres-model-builder = { path = "../postgres-model-builder" }
 
 [lib]

@@ -29,10 +29,13 @@ use crate::mutation_builder::DataParamRole;
 use super::{
     builder::Builder,
     mutation_builder::{DataParamBuilder, MutationBuilder},
-    naming::{ToPostgresMutationNames, ToPostgresTypeNames},
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    naming::ToPostgresMutationNames,
+    naming::ToPostgresTypeNames,
     system_builder::SystemContextBuilding,
 };
+
+use postgres_core_builder::resolved_type::ResolvedCompositeType;
+use postgres_core_builder::resolved_type::ResolvedType;
 
 pub struct CreateMutationBuilder;
 

@@ -27,13 +27,13 @@ use postgres_model::{
 
 use crate::{
     aggregate_type_builder::aggregate_type_name, predicate_builder::get_unique_filter_type_name,
-    resolved_builder::ResolvedCompositeType, shallow::Shallow, type_builder::ResolvedTypeEnv,
+    shallow::Shallow,
 };
 
-use super::{
-    naming::ToPostgresQueryName, order_by_type_builder, predicate_builder,
-    resolved_builder::ResolvedType, system_builder::SystemContextBuilding,
-};
+use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
+
+use super::naming::ToPostgresQueryName;
+use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType, ResolvedTypeEnv};
 
 pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, typ) in types.iter() {

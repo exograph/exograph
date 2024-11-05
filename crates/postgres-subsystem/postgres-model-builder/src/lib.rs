@@ -7,9 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub use plugin::PostgresSubsystemBuilder;
+pub use plugin::PostgresGraphQLSubsystemBuilder;
 
-mod access_builder;
 mod access_utils;
 mod aggregate_type_builder;
 mod builder;
@@ -22,12 +21,8 @@ mod plugin;
 mod predicate_builder;
 mod query_builder;
 mod reference_input_type_builder;
-mod resolved_builder;
 mod shallow;
 mod system_builder;
 mod type_builder;
 mod update_mutation_builder;
 mod utils;
-
-#[cfg(test)]
-mod test_utils;

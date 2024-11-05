@@ -24,6 +24,9 @@ pub const _EXO_UPSTREAM_ENDPOINT_URL: &str = "_EXO_UPSTREAM_ENDPOINT_URL";
 
 pub const EXO_PLAYGROUND_HTTP_PATH: &str = "EXO_PLAYGROUND_HTTP_PATH";
 pub const EXO_GRAPHQL_HTTP_PATH: &str = "EXO_GRAPHQL_HTTP_PATH";
+pub const EXO_REST_HTTP_PATH: &str = "EXO_REST_HTTP_PATH";
+
+pub const EXO_UNSTABLE_ENABLE_REST_API: &str = "EXO_UNSTABLE_ENABLE_REST_API";
 
 #[derive(Debug)]
 pub enum DeploymentMode {
@@ -77,4 +80,9 @@ pub fn get_playground_http_path(env: &dyn Environment) -> String {
 pub fn get_graphql_http_path(env: &dyn Environment) -> String {
     env.get(EXO_GRAPHQL_HTTP_PATH)
         .unwrap_or_else(|| "/graphql".to_string())
+}
+
+pub fn get_rest_http_path(env: &dyn Environment) -> String {
+    env.get(EXO_REST_HTTP_PATH)
+        .unwrap_or_else(|| "/api".to_string())
 }

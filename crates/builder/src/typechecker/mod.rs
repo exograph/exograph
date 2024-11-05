@@ -457,7 +457,7 @@ pub mod test_support {
         let mut codemap = CodeMap::new();
         let parsed = parse_str(src, &mut codemap, "input.exo")?;
         let subsystem_builders = load_subsystem_builders(vec![Box::new(
-            postgres_model_builder::PostgresSubsystemBuilder {},
+            postgres_builder::PostgresSubsystemBuilder::default(),
         )])
         .unwrap();
         super::build(&subsystem_builders, parsed)

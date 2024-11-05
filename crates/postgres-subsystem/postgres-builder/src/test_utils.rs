@@ -23,7 +23,7 @@ pub(crate) async fn create_postgres_system_from_str(
     let system = builder::build_system_from_str(
         model_str,
         file_name,
-        vec![Box::new(crate::PostgresSubsystemBuilder {})],
+        vec![Box::new(crate::PostgresSubsystemBuilder::default())],
     )
     .await
     .unwrap();
@@ -40,9 +40,9 @@ fn deserialize_postgres_subsystem(
         .into_iter()
         .find_map(|subsystem| {
             if subsystem.id == "postgres" {
-                Some(PostgresSubsystem::deserialize(
-                    subsystem.serialized_subsystem,
-                ))
+                subsystem
+                    .graphql
+                    .map(|graphql| PostgresSubsystem::deserialize(graphql.0))
             } else {
                 None
             }

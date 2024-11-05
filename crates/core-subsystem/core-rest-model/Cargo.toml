@@ -1,0 +1,13 @@
+[package]
+name = "core-rest-model"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+
+[lib]
+doctest = false

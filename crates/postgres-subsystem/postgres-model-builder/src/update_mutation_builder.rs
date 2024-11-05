@@ -31,9 +31,10 @@ use super::{
     mutation_builder::{DataParamBuilder, MutationBuilder},
     naming::{ToPostgresMutationNames, ToPostgresTypeNames},
     query_builder,
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
 };
+
+use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType};
 
 pub struct UpdateMutationBuilder;
 

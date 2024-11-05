@@ -401,9 +401,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.92"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74f37166d7d48a0284b99dd824694c26119c700b53bf0d1540cdb147dbdaaf13"
+checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 dependencies = [
  "backtrace",
 ]
@@ -934,6 +934,7 @@ dependencies = [
  "futures",
  "insta",
  "multiplatform_test",
+ "postgres-builder",
  "postgres-model-builder",
  "regex",
  "serde",
@@ -1293,8 +1294,8 @@ dependencies = [
  "inquire",
  "lazy_static",
  "notify-debouncer-mini",
+ "postgres-builder",
  "postgres-model",
- "postgres-model-builder",
  "rand",
  "reqwest 0.12.9",
  "rexpect",
@@ -1626,6 +1627,7 @@ dependencies = [
  "jsonwebtoken",
  "multiplatform_test",
  "oidc-jwt-validator",
+ "postgres-builder",
  "postgres-model-builder",
  "postgres-resolver",
  "reqwest 0.12.9",
@@ -1637,6 +1639,13 @@ dependencies = [
  "tracing",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
+]
+
+[[package]]
+name = "core-rest-model"
+version = "0.10.1"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -4344,6 +4353,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "graphql-router"
+version = "0.10.1"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-stream",
+ "async-trait",
+ "bincode",
+ "builder",
+ "bytes",
+ "common",
+ "core-model",
+ "core-plugin-interface",
+ "core-plugin-shared",
+ "core-resolver",
+ "exo-env",
+ "futures",
+ "http 1.1.0",
+ "introspection-resolver",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "group"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6816,6 +6853,67 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-builder"
+version = "0.10.1"
+dependencies = [
+ "async-trait",
+ "builder",
+ "core-plugin-interface",
+ "exo-sql",
+ "multiplatform_test",
+ "postgres-model",
+ "postgres-model-builder",
+ "postgres-rest-builder",
+ "tokio",
+ "wasm-bindgen-test",
+ "wasm-bindgen-test-macro",
+]
+
+[[package]]
+name = "postgres-core-builder"
+version = "0.10.1"
+dependencies = [
+ "async-trait",
+ "bincode",
+ "builder",
+ "codemap",
+ "codemap-diagnostic",
+ "core-plugin-interface",
+ "deno-model-builder",
+ "exo-sql",
+ "heck 0.5.0",
+ "insta",
+ "lazy_static",
+ "multiplatform_test",
+ "postgres-builder",
+ "postgres-model",
+ "serde",
+ "tokio",
+ "typed-generational-arena",
+ "wasm-bindgen-test",
+ "wasm-bindgen-test-macro",
+]
+
+[[package]]
+name = "postgres-core-resolver"
+version = "0.10.1"
+dependencies = [
+ "builder",
+ "common",
+ "core-resolver",
+ "exo-env",
+ "exo-sql",
+ "graphql-router",
+ "http 1.1.0",
+ "postgres-model-builder",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "postgres-model"
 version = "0.10.1"
 dependencies = [
@@ -6826,6 +6924,7 @@ dependencies = [
  "builder",
  "core-plugin-interface",
  "exo-sql",
+ "postgres-builder",
  "postgres-model-builder",
  "serde",
  "stripmargin",
@@ -6839,7 +6938,6 @@ name = "postgres-model-builder"
 version = "0.10.1"
 dependencies = [
  "bincode",
- "builder",
  "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
@@ -6849,6 +6947,7 @@ dependencies = [
  "insta",
  "lazy_static",
  "multiplatform_test",
+ "postgres-core-builder",
  "postgres-model",
  "serde",
  "tokio",
@@ -6862,6 +6961,7 @@ name = "postgres-model-builder-dynamic"
 version = "0.10.1"
 dependencies = [
  "core-plugin-interface",
+ "postgres-builder",
  "postgres-model-builder",
 ]
 
@@ -6900,12 +7000,14 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
+ "graphql-router",
  "http 1.1.0",
  "indexmap 2.2.5",
  "maybe-owned",
+ "postgres-builder",
+ "postgres-core-resolver",
  "postgres-model",
- "postgres-model-builder",
- "resolver",
+ "postgres-rest-model",
  "serde",
  "serde_json",
  "thiserror",
@@ -6922,6 +7024,39 @@ version = "0.10.1"
 dependencies = [
  "core-plugin-interface",
  "postgres-resolver",
+]
+
+[[package]]
+name = "postgres-rest-builder"
+version = "0.10.1"
+dependencies = [
+ "async-trait",
+ "core-plugin-interface",
+ "core-rest-model",
+ "http 1.1.0",
+ "postgres-core-builder",
+ "postgres-rest-model",
+ "serde",
+]
+
+[[package]]
+name = "postgres-rest-model"
+version = "0.10.1"
+dependencies = [
+ "bincode",
+ "core-plugin-interface",
+ "core-rest-model",
+ "http 1.1.0",
+ "serde",
+]
+
+[[package]]
+name = "postgres-rest-resolver"
+version = "0.10.1"
+dependencies = [
+ "http 1.1.0",
+ "postgres-rest-model",
+ "serde",
 ]
 
 [[package]]
@@ -7591,30 +7726,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "resolver"
+name = "rest-router"
 version = "0.10.1"
 dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
- "async-stream",
  "async-trait",
- "bincode",
- "builder",
- "bytes",
  "common",
- "core-model",
- "core-plugin-interface",
- "core-plugin-shared",
  "core-resolver",
  "exo-env",
- "futures",
  "http 1.1.0",
- "introspection-resolver",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
  "tracing",
 ]
 
@@ -7685,9 +7804,11 @@ dependencies = [
  "common",
  "core-plugin-interface",
  "exo-env",
+ "graphql-router",
  "http 1.1.0",
  "playground-router",
- "resolver",
+ "rest-router",
+ "tracing",
 ]
 
 [[package]]
@@ -8281,9 +8402,9 @@ dependencies = [
  "core-resolver",
  "exo-env",
  "futures",
+ "graphql-router",
  "http 1.1.0",
  "reqwest 0.12.9",
- "resolver",
  "router",
  "serde_json",
  "server-common",
@@ -8350,8 +8471,8 @@ dependencies = [
  "core-resolver",
  "deno-resolver",
  "exo-env",
+ "graphql-router",
  "postgres-resolver",
- "resolver",
  "router",
  "wasm-resolver",
 ]
@@ -9423,6 +9544,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
+ "graphql-router",
  "http 1.1.0",
  "include_dir",
  "insta",
@@ -9431,7 +9553,6 @@ dependencies = [
  "num_cpus",
  "rand",
  "regex",
- "resolver",
  "router",
  "serde",
  "serde_json",
@@ -10178,7 +10299,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "rand",
  "static_assertions",
 ]

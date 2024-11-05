@@ -15,17 +15,29 @@ use core_plugin_interface::{
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,
-        plugin::{Interception, SubsystemBuild},
+        plugin::{GraphQLSubsystemBuild, Interception},
         typechecker::{
             annotation::{AnnotationSpec, AnnotationTarget},
             typ::TypecheckedSystem,
         },
     },
     interception::InterceptorIndex,
-    interface::SubsystemBuilder,
+    interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
+    serializable_system::SerializableGraphQLBytes,
     system_serializer::SystemSerializer,
 };
-pub struct WasmSubsystemBuilder {}
+
+pub struct WasmSubsystemBuilder {
+    pub graphql_builder: GraphQLWasmSubsystemBuilder,
+}
+
+impl Default for WasmSubsystemBuilder {
+    fn default() -> Self {
+        Self {
+            graphql_builder: GraphQLWasmSubsystemBuilder {},
+        }
+    }
+}
 
 #[async_trait]
 impl SubsystemBuilder for WasmSubsystemBuilder {
@@ -50,6 +62,32 @@ impl SubsystemBuilder for WasmSubsystemBuilder {
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
+        let graphql_subsystem = self
+            .graphql_builder
+            .build(typechecked_system, base_system)
+            .await?;
+
+        Ok(graphql_subsystem.map(|graphql_subsystem| SubsystemBuild {
+            id: self.id(),
+            graphql: Some(graphql_subsystem),
+            rest: None,
+        }))
+    }
+}
+
+pub struct GraphQLWasmSubsystemBuilder {}
+
+#[async_trait]
+impl GraphQLSubsystemBuilder for GraphQLWasmSubsystemBuilder {
+    fn id(&self) -> &'static str {
+        "wasm/graphql"
+    }
+
+    async fn build(
+        &self,
+        typechecked_system: &TypecheckedSystem,
+        base_system: &BaseModelSystem,
+    ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError> {
         let subsystem = crate::system_builder::build(typechecked_system, base_system).await?;
 
         let Some(ModelWasmSystemWithInterceptors {
@@ -78,9 +116,9 @@ impl SubsystemBuilder for WasmSubsystemBuilder {
             })
             .collect();
 
-        Ok(Some(SubsystemBuild {
+        Ok(Some(GraphQLSubsystemBuild {
             id: "wasm".to_string(),
-            serialized_subsystem,
+            serialized_subsystem: SerializableGraphQLBytes(serialized_subsystem),
             query_names: subsystem
                 .queries
                 .iter()

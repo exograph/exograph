@@ -817,9 +817,17 @@ mod tests {
             create_postgres_system_from_str(test_exo, "test.exo".to_string()).await;
 
         Schema::new(
-            postgres_subsystem.schema_types(),
-            postgres_subsystem.schema_queries(),
-            postgres_subsystem.schema_mutations(),
+            postgres_subsystem.graphql.as_ref().unwrap().schema_types(),
+            postgres_subsystem
+                .graphql
+                .as_ref()
+                .unwrap()
+                .schema_queries(),
+            postgres_subsystem
+                .graphql
+                .as_ref()
+                .unwrap()
+                .schema_mutations(),
         )
     }
 
@@ -842,12 +850,12 @@ mod tests {
     pub async fn create_postgres_system_from_str(
         model_str: &str,
         file_name: String,
-    ) -> Box<dyn core_plugin_interface::core_resolver::plugin::SubsystemResolver> {
+    ) -> Box<core_plugin_interface::interface::SubsystemResolver> {
         let system = builder::build_system_from_str(
             model_str,
             file_name,
             vec![Box::new(
-                postgres_model_builder::PostgresSubsystemBuilder {},
+                postgres_builder::PostgresSubsystemBuilder::default(),
             )],
         )
         .await
@@ -859,8 +867,7 @@ mod tests {
             .subsystems
             .into_iter()
             .find(|subsystem| subsystem.id == subsystem_id)
-            .unwrap()
-            .serialized_subsystem;
+            .unwrap();
 
         struct FakeConnect {}
         impl exo_sql::Connect for FakeConnect {

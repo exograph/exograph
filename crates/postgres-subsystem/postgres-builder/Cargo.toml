@@ -1,0 +1,25 @@
+[package]
+name = "postgres-builder"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+postgres-model = { path = "../postgres-model" }
+postgres-model-builder = { path = "../postgres-model-builder" }
+postgres-rest-builder = { path = "../postgres-rest-builder" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+
+[dev-dependencies]
+tokio.workspace = true
+multiplatform_test.workspace = true
+wasm-bindgen-test.workspace = true
+wasm-bindgen-test-macro.workspace = true
+
+builder = { path = "../../builder" }
+exo-sql = { path = "../../../libs/exo-sql" }
+
+[lib]
+crate-type = ["lib"]
+doctest = false

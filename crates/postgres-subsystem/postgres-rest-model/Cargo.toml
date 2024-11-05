@@ -1,0 +1,18 @@
+[package]
+name = "postgres-rest-model"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+http.workspace = true
+bincode.workspace = true
+
+core-rest-model = { path = "../../core-subsystem/core-rest-model" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+
+[dev-dependencies]
+
+[lib]
+doctest = false

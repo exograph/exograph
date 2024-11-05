@@ -1,0 +1,20 @@
+[package]
+name = "rest-router"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+tracing.workspace = true
+http.workspace = true
+
+common = { path = "../common" }
+exo-env = { path = "../../libs/exo-env" }
+core-resolver = { path = "../core-subsystem/core-resolver" }
+
+[dev-dependencies]
+
+
+[lib]
+doctest = false

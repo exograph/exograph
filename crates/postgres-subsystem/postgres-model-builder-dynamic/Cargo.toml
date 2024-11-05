@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+postgres-builder = { path = "../postgres-builder" }
 postgres-model-builder = { path = "../postgres-model-builder" }
 
 [dev-dependencies]

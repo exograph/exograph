@@ -1712,7 +1712,7 @@ mod tests {
             model_str,
             file_name,
             vec![Box::new(
-                postgres_model_builder::PostgresSubsystemBuilder {},
+                postgres_builder::PostgresSubsystemBuilder::default(),
             )],
         )
         .await
@@ -1731,9 +1731,7 @@ mod tests {
             .into_iter()
             .find_map(|subsystem| {
                 if subsystem.id == "postgres" {
-                    Some(PostgresSubsystem::deserialize(
-                        subsystem.serialized_subsystem,
-                    ))
+                    Some(PostgresSubsystem::deserialize(subsystem.graphql.unwrap().0))
                 } else {
                     None
                 }

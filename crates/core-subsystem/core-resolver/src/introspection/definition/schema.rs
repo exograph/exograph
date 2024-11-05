@@ -21,7 +21,7 @@ use core_model::type_normalization::{
     default_positioned, default_positioned_name, TypeDefinitionIntrospection,
 };
 
-use crate::{plugin::SubsystemResolver, validation::underlying_type};
+use crate::{plugin::SubsystemGraphQLResolver, validation::underlying_type};
 
 #[derive(Debug, Clone)]
 pub struct Schema {
@@ -36,7 +36,7 @@ pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
 impl Schema {
     pub fn new_from_resolvers(
-        subsystem_resolvers: &[Box<dyn SubsystemResolver + Send + Sync>],
+        subsystem_resolvers: &[Box<dyn SubsystemGraphQLResolver + Send + Sync>],
     ) -> Schema {
         let type_definitions: Vec<TypeDefinition> = {
             let mut typedefs = subsystem_resolvers

@@ -20,12 +20,8 @@ use postgres_model::{
 
 use crate::utils::to_mutation_type;
 
-use super::{
-    builder::Builder,
-    naming::ToPostgresTypeNames,
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
-};
+use super::{builder::Builder, naming::ToPostgresTypeNames, system_builder::SystemContextBuilding};
+use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType};
 
 pub struct ReferenceInputTypeBuilder;
 
