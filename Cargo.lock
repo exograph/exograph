@@ -6865,6 +6865,8 @@ dependencies = [
  "postgres-model-builder",
  "postgres-rest-builder",
  "tokio",
+ "wasm-bindgen-test",
+ "wasm-bindgen-test-macro",
 ]
 
 [[package]]

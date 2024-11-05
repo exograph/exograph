@@ -10,6 +10,7 @@ network = [
     "exo-sql/postgres-url",
     "exo-sql/testing",
     "exo-sql/pool",
+    "postgres-core-resolver/network",
 ]
 bigdecimal = ["exo-sql/bigdecimal"]
 
@@ -33,7 +34,7 @@ uuid.workspace = true
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-postgres-core-resolver = { path = "../postgres-core-resolver", features = ["network"] }
+postgres-core-resolver = { path = "../postgres-core-resolver" }
 postgres-model = { path = "../postgres-model" }
 postgres-rest-model = { path = "../postgres-rest-model" }
 common = { path = "../../common" }

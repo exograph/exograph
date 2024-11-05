@@ -13,8 +13,11 @@ core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 
 [dev-dependencies]
 tokio.workspace = true
-builder = { path = "../../builder" }
 multiplatform_test.workspace = true
+wasm-bindgen-test.workspace = true
+wasm-bindgen-test-macro.workspace = true
+
+builder = { path = "../../builder" }
 exo-sql = { path = "../../../libs/exo-sql" }
 
 [lib]
