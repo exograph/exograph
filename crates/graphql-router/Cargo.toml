@@ -4,9 +4,6 @@ version.workspace = true
 edition.workspace = true
 publish = false
 
-[features]
-oidc = ["core-resolver/oidc"]
-
 [dependencies]
 async-recursion.workspace = true
 async-graphql-parser.workspace = true

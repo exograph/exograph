@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 common = { path = "../common", features = ["opentelemetry"] }
-graphql-router = { path = "../graphql-router", features = ["oidc"] }
+graphql-router = { path = "../graphql-router" }
 router = { path = "../router" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
