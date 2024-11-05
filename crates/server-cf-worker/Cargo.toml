@@ -43,6 +43,4 @@ exo-env = { path = "../../libs/exo-env" }
 console_error_panic_hook = { version = "0.1.7", optional = true }
 
 [features]
-default = ["oidc"]
 panic_hook = ["console_error_panic_hook"]
-oidc = ["core-resolver/oidc"]

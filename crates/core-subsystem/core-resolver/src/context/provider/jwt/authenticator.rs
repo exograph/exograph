@@ -1,5 +1,4 @@
 use common::env_const::EXO_JWT_SECRET;
-#[cfg(feature = "oidc")]
 use common::env_const::EXO_OIDC_URL;
 use exo_env::Environment;
 use jsonwebtoken::{decode, DecodingKey, Validation};
@@ -11,14 +10,12 @@ use tracing::error;
 use crate::context::error::ContextExtractionError;
 use common::http::RequestHead;
 
-#[cfg(feature = "oidc")]
 use super::oidc::Oidc;
 
 /// Authenticator with information about how to validate JWT tokens
 /// It can be either a secret or a OIDC url
 pub enum JwtAuthenticator {
     Secret(String),
-    #[cfg(feature = "oidc")]
     Oidc(Oidc),
 }
 
@@ -50,23 +47,15 @@ impl JwtAuthenticator {
     ) -> Result<Option<Self>, JwtConfigurationError> {
         let secret = env.get(EXO_JWT_SECRET);
 
-        #[cfg(feature = "oidc")]
         let oidc_url = env.get(EXO_OIDC_URL);
-
-        #[cfg(not(feature = "oidc"))]
-        let oidc_url: Option<String> = None;
 
         match (secret, oidc_url) {
             (Some(secret), None) => Ok(Some(JwtAuthenticator::Secret(secret))),
-            #[cfg(feature = "oidc")]
             (None, Some(oidc_url)) => Ok(Some(JwtAuthenticator::Oidc(Oidc::new(oidc_url).await?))),
-            #[cfg(feature = "oidc")]
             (Some(_), Some(_)) => {
                 Err(JwtConfigurationError::InvalidSetup(format!("Both {EXO_JWT_SECRET} and {EXO_OIDC_URL} are set. Only one of them can be set at a time")))
             }
             (None, None) => Ok(None),
-            #[cfg(not(feature = "oidc"))]
-            (_, Some(_)) => unreachable!()
         }
     }
 
@@ -88,7 +77,6 @@ impl JwtAuthenticator {
             )
             .map_err(map_jwt_error)?
             .claims),
-            #[cfg(feature = "oidc")]
             JwtAuthenticator::Oidc(oidc) => oidc.validate(token).await.map_err(|err| match err {
                 oidc_jwt_validator::ValidationError::ValidationFailed(err) => map_jwt_error(err),
                 err => {
