@@ -20,8 +20,6 @@ tracing.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }
-core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-postgres-model = { path = "../postgres-model" }
 common = { path = "../../common" }
 
 [dev-dependencies]
