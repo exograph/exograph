@@ -93,7 +93,7 @@ pub async fn create_system_router_from_system(
     let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
     let rest_router = RestRouter::new(rest_resolver, env.clone());
 
-    create_system_router_from_resolver(graphql_router, rest_router, env)
+    create_system_router(graphql_router, rest_router, env)
 }
 
 pub async fn create_system_resolvers(
@@ -173,7 +173,7 @@ pub async fn create_system_resolvers(
     ))
 }
 
-fn create_system_router_from_resolver(
+fn create_system_router(
     graphql_router: GraphQLRouter,
     rest_router: RestRouter,
     env: Arc<dyn Environment>,

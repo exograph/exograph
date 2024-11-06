@@ -10,10 +10,8 @@
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 
-use core_plugin_interface::{
-    serializable_system::SerializableSystem, trusted_documents::TrustedDocumentEnforcement,
-};
-use core_resolver::{plugin::SubsystemGraphQLResolver, OperationsPayload};
+use core_plugin_interface::serializable_system::SerializableSystem;
+use core_resolver::OperationsPayload;
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,
@@ -21,10 +19,9 @@ use exo_deno::{
     Arg, DenoModule, DenoModuleSharedState, UserCode,
 };
 use exo_env::MapEnvironment;
-use graphql_router::{resolve_in_memory, SystemLoader};
 use include_dir::{include_dir, Dir};
 use router::system_router::{
-    create_system_resolvers, create_system_router_from_file, SystemRouter,
+    create_system_router_from_file, create_system_router_from_system, SystemRouter,
 };
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -168,14 +165,14 @@ async fn create_introspection_request() -> Result<MemoryRequestPayload> {
 // Needed for `exp graphql schema` command
 // TODO: Find a better home for this and associated functions
 pub async fn get_introspection_result(serialized_system: SerializableSystem) -> Result<Value> {
-    let mut request = create_introspection_request()
+    let request = create_introspection_request()
         .await
         .map_err(|e| anyhow!("Error getting introspection result: {:?}", e))?;
 
-    let result = tokio::task::spawn_blocking({
+    tokio::task::spawn_blocking({
         move || {
             tokio::runtime::Handle::current().block_on(async move {
-                let resolver = {
+                let router = {
                     let static_loaders = server_common::create_static_loaders();
 
                     let env = MapEnvironment::from([
@@ -187,44 +184,14 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
 
                     let env = Arc::new(env);
 
-                    let (
-                        resolvers,
-                        query_interception_map,
-                        mutation_interception_map,
-                        trusted_documents,
-                    ) = create_system_resolvers(serialized_system, static_loaders, env.clone())
-                        .await?;
-
-                    let resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>> =
-                        resolvers.into_iter().flat_map(|r| r.graphql).collect();
-
-                    SystemLoader::create_system_resolver(
-                        resolvers,
-                        query_interception_map,
-                        mutation_interception_map,
-                        trusted_documents,
-                        None.into(),
-                        env,
-                    )
-                    .await?
+                    create_system_router_from_system(serialized_system, static_loaders, env).await?
                 };
-                resolve_in_memory(
-                    &mut request,
-                    &resolver,
-                    TrustedDocumentEnforcement::DoNotEnforce,
-                )
-                .await
-                .map_err(|e| anyhow!("Error getting introspection result: {:?}", e))
+
+                Ok::<_, anyhow::Error>(run_query(request, &router, &mut HashMap::new()).await)
             })
         }
     })
-    .await??;
-
-    Ok(serde_json::json!({
-        "data": result.iter().map(|(name, result)| {
-            (name.clone(), result.body.to_json().unwrap())
-        }).collect::<HashMap<String, Value>>(),
-    }))
+    .await?
 }
 
 async fn check_introspection(system_router: &SystemRouter) -> Result<Result<()>> {
