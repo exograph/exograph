@@ -12,8 +12,8 @@
 ///
 /// The `resolve` function is responsible for doing the work, using information
 /// extracted from an incoming request, and returning the response as a stream.
-mod root_resolver;
+mod graphql_router;
 mod system_loader;
 
-pub use root_resolver::{resolve_in_memory, GraphQLRouter};
+pub use graphql_router::GraphQLRouter;
 pub use system_loader::{SystemLoader, SystemLoadingError};

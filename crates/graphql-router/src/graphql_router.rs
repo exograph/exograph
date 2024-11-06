@@ -30,42 +30,6 @@ use core_resolver::{context::RequestContext, QueryResponseBody};
 
 use exo_env::Environment;
 
-#[instrument(
-    name = "resolver::resolve_in_memory"
-    skip(system_resolver, request)
-)]
-pub async fn resolve_in_memory<'a>(
-    request: &mut (dyn RequestPayload + Send),
-    system_resolver: &SystemResolver,
-    trusted_document_enforcement: TrustedDocumentEnforcement,
-) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
-    let body = request.take_body();
-    let request_head = request.get_head();
-
-    let operations_payload = OperationsPayload::from_json(body.clone())
-        .map_err(|e| SystemResolutionError::RequestError(RequestError::InvalidBodyJson(e)))?;
-    let request_context = RequestContext::new(request_head, vec![], system_resolver);
-
-    let response = system_resolver
-        .resolve_operations(
-            operations_payload,
-            &request_context,
-            trusted_document_enforcement,
-        )
-        .await;
-
-    let ctx = request_context.get_base_context();
-    let mut tx_holder = ctx.transaction_holder.try_lock().unwrap();
-
-    tx_holder
-        .finalize(response.is_ok())
-        .await
-        .map_err(|e| {
-            SystemResolutionError::Generic(format!("Error while finalizing transaction: {e}"))
-        })
-        .and(response)
-}
-
 pub struct GraphQLRouter {
     system_resolver: SystemResolver,
     env: Arc<dyn Environment>,
@@ -214,4 +178,40 @@ impl Router for GraphQLRouter {
             status_code: StatusCode::OK,
         })
     }
+}
+
+#[instrument(
+    name = "resolver::resolve_in_memory"
+    skip(system_resolver, request)
+)]
+async fn resolve_in_memory<'a>(
+    request: &mut (dyn RequestPayload + Send),
+    system_resolver: &SystemResolver,
+    trusted_document_enforcement: TrustedDocumentEnforcement,
+) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
+    let body = request.take_body();
+    let request_head = request.get_head();
+
+    let operations_payload = OperationsPayload::from_json(body.clone())
+        .map_err(|e| SystemResolutionError::RequestError(RequestError::InvalidBodyJson(e)))?;
+    let request_context = RequestContext::new(request_head, vec![], system_resolver);
+
+    let response = system_resolver
+        .resolve_operations(
+            operations_payload,
+            &request_context,
+            trusted_document_enforcement,
+        )
+        .await;
+
+    let ctx = request_context.get_base_context();
+    let mut tx_holder = ctx.transaction_holder.try_lock().unwrap();
+
+    tx_holder
+        .finalize(response.is_ok())
+        .await
+        .map_err(|e| {
+            SystemResolutionError::Generic(format!("Error while finalizing transaction: {e}"))
+        })
+        .and(response)
 }
