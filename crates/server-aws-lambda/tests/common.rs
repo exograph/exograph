@@ -12,10 +12,10 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
 use exo_env::MapEnvironment;
-use router::system_router::create_system_router_from_system;
 use serde_json::{json, Value};
 use server_aws_lambda::resolve;
 use server_common::create_static_loaders;
+use system_router::create_system_router_from_system;
 
 fn create_graphql_event(test_request: TestRequest<'_>) -> Value {
     let query_part = json!({
