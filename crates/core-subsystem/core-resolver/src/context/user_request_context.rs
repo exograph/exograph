@@ -15,7 +15,7 @@ use exo_sql::TransactionHolder;
 
 use common::http::RequestHead;
 
-use crate::{system_resolver::SystemResolver, value::Val};
+use crate::{system_resolver::GraphQLSystemResolver, value::Val};
 
 use super::provider::jwt::JwtExtractor;
 use super::provider::{
@@ -41,7 +41,7 @@ impl<'a> UserRequestContext<'a> {
     pub fn new(
         request_head: &'a (dyn RequestHead + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a GraphQLSystemResolver,
     ) -> UserRequestContext<'a> {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedContextExtractor> = vec![

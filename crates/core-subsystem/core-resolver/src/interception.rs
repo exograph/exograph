@@ -14,13 +14,13 @@ use core_plugin_shared::interception::{InterceptionTree, InterceptorIndexWithSub
 
 use super::{context::RequestContext, validation::field::ValidatedField, QueryResponse};
 
-use crate::system_resolver::{SystemResolutionError, SystemResolver};
+use crate::system_resolver::{GraphQLSystemResolver, SystemResolutionError};
 
 pub struct InterceptedOperation<'a> {
     interception_tree: Option<&'a InterceptionTree>,
     operation_type: OperationType,
     operation: &'a ValidatedField,
-    system_resolver: &'a SystemResolver,
+    system_resolver: &'a GraphQLSystemResolver,
 }
 
 impl<'a> InterceptedOperation<'a> {
@@ -28,7 +28,7 @@ impl<'a> InterceptedOperation<'a> {
         interception_tree: Option<&'a InterceptionTree>,
         operation_type: OperationType,
         operation: &'a ValidatedField,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a GraphQLSystemResolver,
     ) -> Self {
         Self {
             operation_type,

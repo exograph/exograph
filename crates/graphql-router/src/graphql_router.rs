@@ -15,28 +15,35 @@ use common::env_const::get_graphql_http_path;
 use common::env_const::is_production;
 use common::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use common::router::Router;
+use core_plugin_shared::interception::InterceptionMap;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
+use core_plugin_shared::trusted_documents::TrustedDocuments;
+use core_resolver::context::JwtAuthenticator;
+use core_resolver::plugin::SubsystemGraphQLResolver;
 use core_resolver::QueryResponse;
+use core_router::SystemLoadingError;
 use http::StatusCode;
 
 use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bytes::Bytes;
-use core_resolver::system_resolver::SystemResolver;
+use core_resolver::system_resolver::GraphQLSystemResolver;
 use core_resolver::system_resolver::{RequestError, SystemResolutionError};
 pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
 
 use exo_env::Environment;
 
+use crate::system_loader::SystemLoader;
+
 pub struct GraphQLRouter {
-    system_resolver: SystemResolver,
+    system_resolver: GraphQLSystemResolver,
     env: Arc<dyn Environment>,
 }
 
 impl GraphQLRouter {
-    pub fn new(system_resolver: SystemResolver, env: Arc<dyn Environment>) -> Self {
+    pub fn new(system_resolver: GraphQLSystemResolver, env: Arc<dyn Environment>) -> Self {
         Self {
             system_resolver,
             env,
@@ -46,6 +53,27 @@ impl GraphQLRouter {
     fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
         request_head.get_path() == get_graphql_http_path(self.env.as_ref())
             && request_head.get_method() == http::Method::POST
+    }
+
+    pub async fn from_resolvers(
+        graphql_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
+        query_interception_map: InterceptionMap,
+        mutation_interception_map: InterceptionMap,
+        trusted_documents: TrustedDocuments,
+        authenticator: Arc<Option<JwtAuthenticator>>,
+        env: Arc<dyn Environment>,
+    ) -> Result<Self, SystemLoadingError> {
+        let graphql_resolver = SystemLoader::create_system_resolver(
+            graphql_resolvers,
+            query_interception_map,
+            mutation_interception_map,
+            trusted_documents,
+            authenticator,
+            env.clone(),
+        )
+        .await?;
+
+        Ok(Self::new(graphql_resolver, env))
     }
 }
 
@@ -186,7 +214,7 @@ impl Router for GraphQLRouter {
 )]
 async fn resolve_in_memory<'a>(
     request: &mut (dyn RequestPayload + Send),
-    system_resolver: &SystemResolver,
+    system_resolver: &GraphQLSystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
     let body = request.take_body();

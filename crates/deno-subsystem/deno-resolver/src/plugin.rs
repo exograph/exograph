@@ -16,7 +16,7 @@ use core_plugin_interface::{
         context::RequestContext,
         exograph_execute_query,
         plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
-        system_resolver::SystemResolver,
+        system_resolver::GraphQLSystemResolver,
         validation::field::ValidatedField,
         InterceptedOperation, QueryResponse, QueryResponseBody,
     },
@@ -94,7 +94,7 @@ impl SubsystemGraphQLResolver for DenoSubsystemResolver {
         operation: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext<'a>,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a GraphQLSystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         // If the top-level operation is Deno, we can't be sure what the JS code will do, so we must
         // ensure a transaction.
@@ -146,7 +146,7 @@ impl SubsystemGraphQLResolver for DenoSubsystemResolver {
         interceptor_index: InterceptorIndex,
         intercepted_operation: &'a InterceptedOperation<'a>,
         request_context: &'a RequestContext<'a>,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a GraphQLSystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let interceptor =
             &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
@@ -191,7 +191,7 @@ pub(crate) fn create_deno_operation<'a>(
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
     subsystem_resolver: &'a DenoSubsystemResolver,
-    system_resolver: &'a SystemResolver,
+    system_resolver: &'a GraphQLSystemResolver,
 ) -> Result<DenoOperation<'a>, DenoExecutionError> {
     // TODO: Remove unwrap() by changing the type of method_id
     let method = &system.methods[method_id.unwrap()];

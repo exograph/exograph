@@ -1649,6 +1649,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "core-router"
+version = "0.10.1"
+dependencies = [
+ "common",
+ "core-plugin-interface",
+ "core-plugin-shared",
+ "exo-env",
+ "exo-sql",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "countme"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4369,6 +4382,7 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "core-resolver",
+ "core-router",
  "exo-env",
  "futures",
  "http 1.1.0",
@@ -9442,6 +9456,7 @@ dependencies = [
  "async-trait",
  "common",
  "core-plugin-interface",
+ "core-router",
  "exo-env",
  "graphql-router",
  "http 1.1.0",
