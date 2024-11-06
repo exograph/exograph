@@ -14,14 +14,13 @@ use common::EnvError;
 use core_plugin_shared::interception::InterceptionMap;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
 use core_resolver::context::JwtAuthenticator;
+use core_router::SystemLoadingError;
 use introspection_resolver::IntrospectionResolver;
-use thiserror::Error;
-
-use core_plugin_interface::interface::{LibraryLoadingError, SubsystemLoadingError};
-use core_plugin_shared::error::ModelSerializationError;
 
 use core_resolver::plugin::SubsystemGraphQLResolver;
-use core_resolver::{introspection::definition::schema::Schema, system_resolver::SystemResolver};
+use core_resolver::{
+    introspection::definition::schema::Schema, system_resolver::GraphQLSystemResolver,
+};
 use exo_env::Environment;
 
 pub struct SystemLoader;
@@ -36,8 +35,7 @@ impl SystemLoader {
         trusted_documents: TrustedDocuments,
         authenticator: Arc<Option<JwtAuthenticator>>,
         env: Arc<dyn Environment>,
-    ) -> Result<SystemResolver, SystemLoadingError> {
-        // Then use those resolvers to build the schema
+    ) -> Result<GraphQLSystemResolver, SystemLoadingError> {
         let schema = Schema::new_from_resolvers(&subsystem_resolvers);
 
         let subsystem_resolvers =
@@ -46,7 +44,7 @@ impl SystemLoader {
         let (normal_query_depth_limit, introspection_query_depth_limit) =
             query_depth_limits(env.as_ref())?;
 
-        Ok(SystemResolver::new(
+        Ok(GraphQLSystemResolver::new(
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
@@ -62,7 +60,7 @@ impl SystemLoader {
     fn with_introspection_resolver(
         mut subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
         env: &dyn Environment,
-    ) -> Result<Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>, SystemLoadingError> {
+    ) -> Result<Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>, EnvError> {
         let schema = || Schema::new_from_resolvers(&subsystem_resolvers);
 
         Ok(match introspection_mode(env)? {
@@ -99,28 +97,4 @@ pub fn query_depth_limits(env: &dyn Environment) -> Result<(usize, usize), Syste
     }?;
 
     Ok((query_depth, DEFAULT_INTROSPECTION_QUERY_DEPTH))
-}
-
-#[derive(Error, Debug)]
-pub enum SystemLoadingError {
-    #[error("System serialization error: {0}")]
-    ModelSerializationError(#[from] ModelSerializationError),
-
-    #[error("Error while trying to load subsystem library: {0}")]
-    LibraryLoadingError(#[from] LibraryLoadingError),
-
-    #[error("Subsystem loading error: {0}")]
-    SubsystemLoadingError(#[from] SubsystemLoadingError),
-
-    #[error("No such file {0}")]
-    FileNotFound(String),
-
-    #[error("Failed to open file {0}")]
-    FileOpen(String, #[source] std::io::Error),
-
-    #[error("Configuration error: {0}")]
-    Config(String),
-
-    #[error("{0}")]
-    EnvError(#[from] EnvError),
 }

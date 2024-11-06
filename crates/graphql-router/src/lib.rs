@@ -16,4 +16,3 @@ mod graphql_router;
 mod system_loader;
 
 pub use graphql_router::GraphQLRouter;
-pub use system_loader::{SystemLoader, SystemLoadingError};

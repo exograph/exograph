@@ -20,11 +20,11 @@ use exo_deno::{
 };
 use exo_env::MapEnvironment;
 use include_dir::{include_dir, Dir};
-use router::system_router::{
-    create_system_router_from_file, create_system_router_from_system, SystemRouter,
-};
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};
+use system_router::{
+    create_system_router_from_file, create_system_router_from_system, SystemRouter,
+};
 
 use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_POSTGRES_URL,

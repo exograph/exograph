@@ -15,7 +15,7 @@ use core_plugin_interface::{
     core_resolver::{
         context::RequestContext,
         plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
-        system_resolver::SystemResolver,
+        system_resolver::GraphQLSystemResolver,
         validation::field::ValidatedField,
         InterceptedOperation, QueryResponse,
     },
@@ -78,7 +78,7 @@ impl SubsystemGraphQLResolver for WasmSubsystemResolver {
         field: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext<'a>,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a GraphQLSystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         // If the top-level operation is WASM, we can't be sure what the code will do, so we must
         // ensure a transaction.
@@ -131,7 +131,7 @@ impl SubsystemGraphQLResolver for WasmSubsystemResolver {
         _interceptor_index: InterceptorIndex,
         _intercepted_operation: &'a InterceptedOperation<'a>,
         _request_context: &'a RequestContext<'a>,
-        _system_resolver: &'a SystemResolver,
+        _system_resolver: &'a GraphQLSystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         Err(SubsystemResolutionError::NoInterceptorFound)
     }
@@ -155,7 +155,7 @@ pub(crate) fn create_wasm_operation<'a>(
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
     subsystem_resolver: &'a WasmSubsystemResolver,
-    system_resolver: &'a SystemResolver,
+    system_resolver: &'a GraphQLSystemResolver,
 ) -> Result<WasmOperation<'a>, WasmExecutionError> {
     // TODO: Remove unwrap() by changing the type of method_id
     let method = &system.methods[method_id.unwrap()];

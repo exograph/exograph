@@ -35,7 +35,7 @@ tokio = { workspace = true }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 postgres-resolver = { path = "../postgres-subsystem/postgres-resolver" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
-router = { path = "../router" }
+system-router = { path = "../system-router" }
 common = { path = "../common" }
 exo-sql = { path = "../../libs/exo-sql" }
 exo-env = { path = "../../libs/exo-env" }

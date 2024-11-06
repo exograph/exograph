@@ -1,3 +1,12 @@
+// Copyright Exograph, Inc. All rights reserved.
+//
+// Use of this software is governed by the Business Source License
+// included in the LICENSE file at the root of this repository.
+//
+// As of the Change Date specified in that file, in accordance with
+// the Business Source License, use of this software will be governed
+// by the Apache License, Version 2.0.
+
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
 use tracing::debug;
@@ -20,8 +29,9 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
     trusted_documents::TrustedDocuments,
 };
+use core_router::SystemLoadingError;
 use exo_env::Environment;
-use graphql_router::{GraphQLRouter, SystemLoader, SystemLoadingError};
+use graphql_router::GraphQLRouter;
 
 #[cfg(not(target_family = "wasm"))]
 use playground_router::PlaygroundRouter;
@@ -78,7 +88,7 @@ pub async fn create_system_router_from_system(
         }
     }
 
-    let graphql_resolver = SystemLoader::create_system_resolver(
+    let graphql_router = GraphQLRouter::from_resolvers(
         graphql_resolvers,
         query_interception_map,
         mutation_interception_map,
@@ -87,8 +97,6 @@ pub async fn create_system_router_from_system(
         env.clone(),
     )
     .await?;
-
-    let graphql_router = GraphQLRouter::new(graphql_resolver, env.clone());
 
     let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
     let rest_router = RestRouter::new(rest_resolver, env.clone());

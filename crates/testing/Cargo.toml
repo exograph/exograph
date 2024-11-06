@@ -46,7 +46,7 @@ exo-deno = { path = "../../libs/exo-deno", features = ["typescript-loader"] }
 exo-env = { path = "../../libs/exo-env" }
 
 core-resolver = { path = "../core-subsystem/core-resolver" }
-router = { path = "../router" }
+system-router = { path = "../system-router" }
 
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 

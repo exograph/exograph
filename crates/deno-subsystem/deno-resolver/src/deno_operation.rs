@@ -15,7 +15,7 @@ use core_plugin_interface::{
         context::RequestContext,
         context_extractor::ContextExtractor,
         exograph_execute_query,
-        system_resolver::{ExographExecuteQueryFn, SystemResolver},
+        system_resolver::{ExographExecuteQueryFn, GraphQLSystemResolver},
         validation::field::ValidatedField,
         value::Val,
         QueryResponse, QueryResponseBody,
@@ -44,7 +44,7 @@ pub struct DenoOperation<'a> {
     pub field: &'a ValidatedField,
     pub request_context: &'a RequestContext<'a>,
     pub subsystem_resolver: &'a DenoSubsystemResolver,
-    pub system_resolver: &'a SystemResolver,
+    pub system_resolver: &'a GraphQLSystemResolver,
 }
 
 impl<'a> DenoOperation<'a> {

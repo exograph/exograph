@@ -12,7 +12,7 @@ use core_plugin_shared::interception::InterceptionTree;
 use serde_json::Value;
 
 use crate::interception::InterceptedOperation;
-use crate::system_resolver::{SystemResolutionError, SystemResolver};
+use crate::system_resolver::{GraphQLSystemResolver, SystemResolutionError};
 use crate::validation::field::ValidatedField;
 use crate::validation::operation::ValidatedOperation;
 use crate::{context::RequestContext, QueryResponse};
@@ -23,11 +23,13 @@ use crate::{FieldResolver, QueryResponseBody};
 /// The operation may be a query or a mutation and may be for data or for introspection.
 ///
 #[async_trait]
-impl FieldResolver<QueryResponse, SystemResolutionError, SystemResolver> for ValidatedOperation {
+impl FieldResolver<QueryResponse, SystemResolutionError, GraphQLSystemResolver>
+    for ValidatedOperation
+{
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        system_resolver: &'e SystemResolver,
+        system_resolver: &'e GraphQLSystemResolver,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse, SystemResolutionError> {
         // If the operation is an interception tree, we need to ensure that a transaction is used.

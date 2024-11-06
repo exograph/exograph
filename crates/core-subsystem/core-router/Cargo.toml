@@ -1,0 +1,24 @@
+[package]
+name = "core-router"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[features]
+default = []
+test-context = []
+
+[dependencies]
+thiserror.workspace = true
+tracing.workspace = true
+
+exo-sql = { path = "../../../libs/exo-sql" }
+exo-env = { path = "../../../libs/exo-env" }
+common = { path = "../../common" }
+
+core-plugin-shared = { path = "../core-plugin-shared" }
+core-plugin-interface = { path = "../core-plugin-interface" }
+
+
+[lib]
+doctest = false

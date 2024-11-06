@@ -55,7 +55,7 @@ pub type ExographExecuteQueryFn<'a> = dyn Fn(
 /// The top-level system resolver.
 ///
 /// Delegates to subsystem resolvers to resolve individual operations.
-pub struct SystemResolver {
+pub struct GraphQLSystemResolver {
     subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
     query_interception_map: InterceptionMap,
     mutation_interception_map: InterceptionMap,
@@ -67,7 +67,7 @@ pub struct SystemResolver {
     introspection_query_depth_limit: usize,
 }
 
-impl SystemResolver {
+impl GraphQLSystemResolver {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         subsystem_resolvers: Vec<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,

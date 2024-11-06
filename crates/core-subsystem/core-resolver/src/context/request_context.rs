@@ -11,7 +11,7 @@ use async_recursion::async_recursion;
 
 use common::http::RequestHead;
 
-use crate::{system_resolver::SystemResolver, value::Val};
+use crate::{system_resolver::GraphQLSystemResolver, value::Val};
 
 use super::{
     context_extractor::BoxedContextExtractor, error::ContextExtractionError,
@@ -32,7 +32,7 @@ impl<'a> RequestContext<'a> {
     pub fn new(
         request_head: &'a (dyn RequestHead + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_resolver: &'a SystemResolver,
+        system_resolver: &'a GraphQLSystemResolver,
     ) -> RequestContext<'a> {
         RequestContext::User(UserRequestContext::new(
             request_head,

@@ -18,9 +18,9 @@ use common::{
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use request::LambdaRequest;
-use router::system_router::SystemRouter;
 use serde_json::{json, Value};
 use std::sync::Arc;
+use system_router::SystemRouter;
 
 struct AwsLambdaRequestPayload<'a> {
     head: LambdaRequest<'a>,
