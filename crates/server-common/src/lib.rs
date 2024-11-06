@@ -13,7 +13,7 @@ use common::logging_tracing;
 use core_plugin_interface::interface::SubsystemLoader;
 
 use exo_env::SystemEnvironment;
-use router::system_router::{create_system_router_from_file, SystemRouter};
+use system_router::{create_system_router_from_file, SystemRouter};
 
 /// Initialize the server by:
 /// - Initializing tracing

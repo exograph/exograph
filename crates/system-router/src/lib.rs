@@ -8,3 +8,7 @@
 // by the Apache License, Version 2.0.
 
 pub mod system_router;
+
+pub use system_router::{
+    create_system_router_from_file, create_system_router_from_system, SystemRouter,
+};

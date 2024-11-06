@@ -1,5 +1,5 @@
 [package]
-name = "router"
+name = "system-router"
 version.workspace = true
 edition.workspace = true
 publish = false

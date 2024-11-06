@@ -32,7 +32,7 @@ url.workspace = true
 reqwest.workspace = true
 http.workspace = true
 graphql-router = { path = "../graphql-router" }
-router = { path = "../router" }
+system-router = { path = "../system-router" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 common = { path = "../common" }

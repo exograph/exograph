@@ -7,7 +7,7 @@ edition = "2021"
 members = [
   "crates/builder",
   "crates/cli",
-  "crates/router",
+  "crates/system-router",
   "crates/graphql-router",
   "crates/rest-router",
   "crates/playground-router",
@@ -33,7 +33,7 @@ members = [
 default-members = [
   "crates/builder",
   "crates/cli",
-  "crates/router",
+  "crates/system-router",
   "crates/graphql-router",
   "crates/rest-router",
   "crates/playground-router",

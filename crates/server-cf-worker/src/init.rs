@@ -1,7 +1,7 @@
 use std::{cell::OnceCell, sync::Arc};
 
 use exo_env::Environment;
-use router::system_router::{create_system_router_from_system, SystemRouter};
+use system_router::{create_system_router_from_system, SystemRouter};
 use tracing::level_filters::LevelFilter;
 use wasm_bindgen::prelude::*;
 

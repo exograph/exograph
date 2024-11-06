@@ -7797,21 +7797,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "router"
-version = "0.10.1"
-dependencies = [
- "async-trait",
- "common",
- "core-plugin-interface",
- "exo-env",
- "graphql-router",
- "http 1.1.0",
- "playground-router",
- "rest-router",
- "tracing",
-]
-
-[[package]]
 name = "rowan"
 version = "0.15.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8405,9 +8390,9 @@ dependencies = [
  "graphql-router",
  "http 1.1.0",
  "reqwest 0.12.9",
- "router",
  "serde_json",
  "server-common",
+ "system-router",
  "thiserror",
  "tracing",
  "tracing-actix-web",
@@ -8428,9 +8413,9 @@ dependencies = [
  "lambda_runtime",
  "opentelemetry 0.17.0",
  "opentelemetry-jaeger",
- "router",
  "serde_json",
  "server-common",
+ "system-router",
  "tokio",
 ]
 
@@ -8446,10 +8431,10 @@ dependencies = [
  "exo-sql",
  "http 1.1.0",
  "postgres-resolver",
- "router",
  "serde",
  "serde-wasm-bindgen 0.6.5",
  "serde_json",
+ "system-router",
  "tokio",
  "tokio-postgres",
  "tracing",
@@ -8473,7 +8458,7 @@ dependencies = [
  "exo-env",
  "graphql-router",
  "postgres-resolver",
- "router",
+ "system-router",
  "wasm-resolver",
 ]
 
@@ -9451,6 +9436,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "system-router"
+version = "0.10.1"
+dependencies = [
+ "async-trait",
+ "common",
+ "core-plugin-interface",
+ "exo-env",
+ "graphql-router",
+ "http 1.1.0",
+ "playground-router",
+ "rest-router",
+ "tracing",
+]
+
+[[package]]
 name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9552,11 +9552,11 @@ dependencies = [
  "num_cpus",
  "rand",
  "regex",
- "router",
  "serde",
  "serde_json",
  "serde_yaml",
  "server-common",
+ "system-router",
  "tokio",
  "tokio-postgres",
  "which 6.0.1",
