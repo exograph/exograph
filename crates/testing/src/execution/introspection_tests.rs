@@ -187,7 +187,7 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
                     create_system_router_from_system(serialized_system, static_loaders, env).await?
                 };
 
-                Ok::<_, anyhow::Error>(run_query(request, &router, &mut HashMap::new()).await)
+                Ok(run_query(request, &router, &mut HashMap::new()).await?)
             })
         }
     })
@@ -199,7 +199,7 @@ async fn check_introspection(system_router: &SystemRouter) -> Result<Result<()>>
 
     let request = create_introspection_request().await?;
 
-    let result = run_query(request, system_router, &mut HashMap::new()).await;
+    let result = run_query(request, system_router, &mut HashMap::new()).await?;
 
     let result = deno_module
         .execute_function(

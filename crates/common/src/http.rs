@@ -103,3 +103,40 @@ pub fn strip_leading_slash(path: &str) -> String {
 pub fn strip_leading(path: &str, leading: &str) -> String {
     path.strip_prefix(leading).unwrap_or(path).to_string()
 }
+
+impl ResponseBody {
+    pub async fn to_string(self) -> Result<String, ResponseBodyError> {
+        match self {
+            ResponseBody::Stream(stream) => {
+                use futures::StreamExt;
+
+                let bytes = stream
+                    .map(|chunks| chunks.unwrap())
+                    .collect::<Vec<_>>()
+                    .await;
+
+                let bytes: Vec<u8> = bytes.into_iter().flat_map(|bytes| bytes.to_vec()).collect();
+
+                Ok(std::str::from_utf8(&bytes)?.to_string())
+            }
+            ResponseBody::Bytes(bytes) => Ok(std::str::from_utf8(&bytes)?.to_string()),
+            ResponseBody::Redirect(..) => Err(ResponseBodyError::UnexpectedRedirect),
+            ResponseBody::None => Ok("".to_string()),
+        }
+    }
+
+    pub async fn to_json(self) -> Result<Value, ResponseBodyError> {
+        let body = self.to_string().await?;
+        Ok(serde_json::from_str(&body)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ResponseBodyError {
+    #[error("Response stream is not UTF-8")]
+    Utf8(#[from] std::str::Utf8Error),
+    #[error("Unexpected redirect")]
+    UnexpectedRedirect,
+    #[error("Response stream is not valid JSON")]
+    Json(#[from] serde_json::Error),
+}

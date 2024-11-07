@@ -14,7 +14,7 @@ use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_JWT_SECRET,
     EXO_POSTGRES_URL,
 };
-use common::http::{RequestHead, RequestPayload, ResponseBody};
+use common::http::{RequestHead, RequestPayload, ResponseBodyError};
 use common::router::Router;
 use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
@@ -430,7 +430,7 @@ async fn run_operation(
 
     let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
     // run the operation
-    let body = run_query(request, &ctx.router, &mut ctx.cookies).await;
+    let body = run_query(request, &ctx.router, &mut ctx.cookies).await?;
 
     // resolve testvariables from the result of our current operation
     // and extend our collection with them
@@ -480,7 +480,7 @@ pub async fn run_query(
     request: impl RequestPayload + Send + Sync,
     router: &SystemRouter,
     cookies: &mut HashMap<String, String>,
-) -> Value {
+) -> Result<Value, ResponseBodyError> {
     let mut request = request;
     let res = router.route(&mut request).await.unwrap();
 
@@ -494,33 +494,7 @@ pub async fn run_query(
         }
     });
 
-    use futures::StreamExt;
-
-    match res.body {
-        ResponseBody::Stream(stream) => {
-            let bytes = stream
-                .map(|chunks| chunks.unwrap())
-                .collect::<Vec<_>>()
-                .await;
-
-            let bytes: Vec<u8> = bytes.into_iter().flat_map(|bytes| bytes.to_vec()).collect();
-
-            let body = std::str::from_utf8(&bytes)
-                .expect("Response stream is not UTF-8")
-                .to_string();
-
-            serde_json::from_str(&body).expect("Response stream is not valid JSON")
-        }
-        ResponseBody::Bytes(bytes) => {
-            let body = std::str::from_utf8(&bytes)
-                .expect("Response stream is not UTF-8")
-                .to_string();
-
-            serde_json::from_str(&body).expect("Response stream is not valid JSON")
-        }
-        ResponseBody::Redirect(..) => Value::String("Unexpected redirect".to_string()),
-        ResponseBody::None => Value::String("".to_string()),
-    }
+    res.body.to_json().await
 }
 
 use std::process::Command;
