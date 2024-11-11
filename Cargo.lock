@@ -1305,7 +1305,7 @@ dependencies = [
  "testing",
  "tokio",
  "wasm-model-builder",
- "which 6.0.1",
+ "which 6.0.3",
  "zip 0.6.6",
 ]
 
@@ -3817,7 +3817,7 @@ dependencies = [
  "uuid",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
- "which 6.0.1",
+ "which 6.0.3",
 ]
 
 [[package]]
@@ -6791,7 +6791,7 @@ dependencies = [
  "include_dir",
  "mime_guess",
  "tokio",
- "which 6.0.1",
+ "which 6.0.3",
 ]
 
 [[package]]
@@ -9569,7 +9569,7 @@ dependencies = [
  "system-router",
  "tokio",
  "tokio-postgres",
- "which 6.0.1",
+ "which 6.0.3",
  "wildmatch",
 ]
 
@@ -10546,7 +10546,7 @@ dependencies = [
  "miniz_oxide 0.7.2",
  "once_cell",
  "paste",
- "which 6.0.1",
+ "which 6.0.3",
 ]
 
 [[package]]
@@ -11325,9 +11325,9 @@ dependencies = [
 
 [[package]]
 name = "which"
-version = "6.0.1"
+version = "6.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8211e4f58a2b2805adfbefbc07bab82958fc91e3836339b1ab7ae32465dce0d7"
+checksum = "b4ee928febd44d98f2f459a4a79bd4d928591333a494a10a868418ac1b39cf1f"
 dependencies = [
  "either",
  "home",
