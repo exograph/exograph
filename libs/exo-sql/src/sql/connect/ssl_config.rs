@@ -139,7 +139,7 @@ impl SslConfig {
                         .any(|host| matches!(host, tokio_postgres::config::Host::Tcp(_)));
 
                     if needs_certs {
-                        root_store.add_parsable_certificates(load_native_certs()?);
+                        root_store.add_parsable_certificates(load_native_certs().certs);
                     }
                 }
             }
