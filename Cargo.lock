@@ -5798,9 +5798,9 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 
 [[package]]
 name = "multiplatform_test"
-version = "0.1.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c30b261c5421b0163d0c93db5ec8db19ef2492f5803931308f9789229aacfd8"
+checksum = "7a9c208ea506a2405667b42fc83d951e8534f049885d26fcd009b18f5ab4fd43"
 dependencies = [
  "proc-macro2 1.0.78",
  "quote 1.0.35",
