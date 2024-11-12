@@ -35,72 +35,89 @@
 //! $ docker run -d --name jaeger -e COLLECTOR_OTLP_ENABLED=true -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:latest
 //! ```
 //!
+
+use thiserror::Error;
+
+use opentelemetry_otlp::{SpanExporter, WithTonicConfig};
+use opentelemetry_sdk::{
+    runtime,
+    trace::{Config, TracerProvider},
+};
 use std::str::FromStr;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
 
 const EXO_LOG: &str = "EXO_LOG";
+
 /// Initialize the tracing subscriber.
 ///
 /// Creates a `tracing_subscriber::fmt` layer by default and adds a `tracing_opentelemetry`
 /// layer if OpenTelemetry, exporting traces with `opentelemetry_otlp` if any OpenTelemetry
 /// environment variables are set.
-pub fn init() {
-    let fmt_layer = tracing_subscriber::fmt::layer().compact();
-    let telemetry_layer =
-        create_otlp_tracer().map(|t| tracing_opentelemetry::layer().with_tracer(t));
-    let filter = EnvFilter::builder()
-        .with_default_directive(LevelFilter::WARN.into())
-        .with_env_var(EXO_LOG)
-        .from_env_lossy();
+pub fn init() -> Result<(), OtelError> {
+    let trace_provider = init_trace_provider()?;
 
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(fmt_layer)
-        .with(telemetry_layer)
-        .init();
+    if let Some(trace_provider) = trace_provider {
+        opentelemetry::global::set_tracer_provider(trace_provider);
+
+        let fmt_layer = tracing_subscriber::fmt::layer().compact();
+        let filter = EnvFilter::builder()
+            .with_default_directive(LevelFilter::WARN.into())
+            .with_env_var(EXO_LOG)
+            .from_env_lossy();
+
+        tracing_subscriber::registry()
+            .with(filter)
+            .with(fmt_layer)
+            .init();
+    }
+
+    Ok(())
 }
 
-fn create_otlp_tracer() -> Option<opentelemetry_sdk::trace::Tracer> {
+fn init_trace_provider() -> Result<Option<opentelemetry_sdk::trace::TracerProvider>, OtelError> {
     if !std::env::vars().any(|(name, _)| name.starts_with("OTEL_")) {
-        return None;
+        return Ok(None);
     }
     let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
 
-    let base_tracer = opentelemetry_otlp::new_pipeline().tracing();
     let headers = parse_otlp_headers_from_env();
+    use opentelemetry_otlp::WithExportConfig;
 
-    let tracer = match protocol.as_str() {
+    let exporter = match protocol.as_str() {
         "grpc" => {
-            let mut exporter = opentelemetry_otlp::new_exporter()
-                .tonic()
+            let mut exporter = SpanExporter::builder()
+                .with_tonic()
                 .with_metadata(metadata_from_headers(headers));
 
-            // Check if we need TLS
             if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
-                if endpoint.starts_with("https") {
+                // Check if we need TLS
+                if endpoint.as_str().starts_with("https") {
                     exporter = exporter.with_tls_config(Default::default());
                 }
+                exporter = exporter.with_endpoint(endpoint);
             }
-            base_tracer.with_exporter(exporter)
+            Ok(exporter.build()?)
         }
         "http/protobuf" => {
-            let exporter = opentelemetry_otlp::new_exporter()
-                .http()
+            use opentelemetry_otlp::WithHttpConfig;
+            let mut exporter = SpanExporter::builder()
+                .with_http()
                 .with_headers(headers.into_iter().collect());
-            base_tracer.with_exporter(exporter)
-        }
-        p => panic!("Unsupported protocol {}", p),
-    };
 
-    // Use the simple exporter if running the integration tests and using
-    // opentelemetry. Otherwise the test server will be killed before the batched
-    // spans are exported.
-    // Some(tracer.install_simple().unwrap())
-    Some(
-        tracer
-            .install_batch(opentelemetry_sdk::runtime::Tokio)
-            .unwrap(),
-    )
+            if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
+                exporter = exporter.with_endpoint(endpoint);
+            }
+            Ok(exporter.build()?)
+        }
+        p => Err(OtelError::UnsupportedProtocol(p.to_string())),
+    }?;
+
+    Ok(Some(
+        TracerProvider::builder()
+            .with_config(Config::default())
+            .with_batch_exporter(exporter, runtime::Tokio)
+            .build(),
+    ))
 }
 
 fn metadata_from_headers(headers: Vec<(String, String)>) -> tonic::metadata::MetadataMap {
@@ -130,4 +147,13 @@ fn parse_otlp_headers_from_env() -> Vec<(String, String)> {
             .for_each(|(name, value)| headers.push((name.to_owned(), value.to_owned())));
     }
     headers
+}
+
+#[derive(Error, Debug)]
+pub enum OtelError {
+    #[error(transparent)]
+    TraceError(#[from] opentelemetry::trace::TraceError),
+
+    #[error("Unsupported protocol {0}")]
+    UnsupportedProtocol(String),
 }

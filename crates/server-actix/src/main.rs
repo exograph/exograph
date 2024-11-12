@@ -37,6 +37,8 @@ enum ServerError {
     Io(#[from] std::io::Error),
     #[error("{0}")]
     EnvError(#[from] common::EnvError),
+    #[error("{0}")]
+    ServerInitError(#[from] server_common::ServerInitError),
 }
 
 // A custom `Debug` implementation for `ServerError` (that delegate to the `Display` impl), so that
@@ -54,7 +56,7 @@ async fn main() -> Result<(), ServerError> {
 
     let env = Arc::new(SystemEnvironment);
 
-    let system_router = web::Data::new(server_common::init().await);
+    let system_router = web::Data::new(server_common::init().await?);
 
     let server_port = env
         .get(EXO_SERVER_PORT)
