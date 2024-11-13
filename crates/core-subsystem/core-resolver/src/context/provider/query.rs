@@ -12,8 +12,8 @@ use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
 use crate::system_resolver::GraphQLSystemResolver;
-use crate::OperationsPayload;
 use common::http::RequestHead;
+use common::operation_payload::OperationsPayload;
 
 pub struct QueryExtractor<'a> {
     system_resolver: &'a GraphQLSystemResolver,

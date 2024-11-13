@@ -28,9 +28,9 @@ use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bytes::Bytes;
+use common::operation_payload::OperationsPayload;
 use core_resolver::system_resolver::GraphQLSystemResolver;
 use core_resolver::system_resolver::{RequestError, SystemResolutionError};
-pub use core_resolver::OperationsPayload;
 use core_resolver::{context::RequestContext, QueryResponseBody};
 
 use exo_env::Environment;

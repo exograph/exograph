@@ -13,6 +13,7 @@ pub mod cors;
 pub mod env_const;
 pub mod http;
 pub mod introspection;
+pub mod operation_payload;
 pub mod router;
 
 #[derive(Error, Debug)]

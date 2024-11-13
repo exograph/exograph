@@ -10,8 +10,8 @@
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 
+use common::operation_payload::OperationsPayload;
 use core_plugin_interface::serializable_system::SerializableSystem;
-use core_resolver::OperationsPayload;
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,

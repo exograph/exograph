@@ -15,8 +15,8 @@ use common::env_const::{
     EXO_POSTGRES_URL,
 };
 use common::http::{RequestHead, RequestPayload, ResponseBodyError};
+use common::operation_payload::OperationsPayload;
 use common::router::Router;
-use core_resolver::OperationsPayload;
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::future::OptionFuture;
 use futures::FutureExt;

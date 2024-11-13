@@ -29,7 +29,8 @@ use tracing::{error, instrument, warn};
 
 use exo_env::Environment;
 
-use crate::{context::provider::jwt::JwtAuthenticator, OperationsPayload};
+use crate::context::provider::jwt::JwtAuthenticator;
+use common::operation_payload::OperationsPayload;
 
 use crate::{
     context::RequestContext,
@@ -295,7 +296,8 @@ macro_rules! exograph_execute_query {
                variables: Option<serde_json::Map<String, serde_json::Value>>,
                enforce_trusted_documents: TrustedDocumentEnforcement,
                context_override: serde_json::Value| {
-            use core_plugin_interface::core_resolver::{OperationsPayload, QueryResponseBody};
+            use common::operation_payload::OperationsPayload;
+            use core_plugin_interface::core_resolver::QueryResponseBody;
             use futures::FutureExt;
 
             let new_request_context = $request_context.with_override(context_override);
