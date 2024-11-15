@@ -20,7 +20,7 @@ use core_model::{
 };
 use futures::StreamExt;
 
-use crate::{
+use common::{
     context::{ContextExtractionError, RequestContext},
     value::Val,
 };
@@ -135,9 +135,9 @@ pub trait ContextExtractor {
                                         });
 
                                         Ok(Some(if res {
-                                            &crate::value::val::TRUE
+                                            &common::value::val::TRUE
                                         } else {
-                                            &crate::value::val::FALSE
+                                            &common::value::val::FALSE
                                         }))
                                     }
                                     _ => Err(ContextExtractionError::TypeMismatch {
@@ -146,7 +146,7 @@ pub trait ContextExtractor {
                                     }),
                                 }
                             }
-                            None => Ok(Some(&crate::value::val::FALSE)),
+                            None => Ok(Some(&common::value::val::FALSE)),
                         }
                     } else {
                         Err(

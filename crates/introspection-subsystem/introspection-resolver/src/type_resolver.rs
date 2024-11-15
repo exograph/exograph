@@ -7,9 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use common::context::RequestContext;
 use core_resolver::introspection::definition::schema::Schema;
+use core_resolver::plugin::SubsystemResolutionError;
 use core_resolver::validation::field::ValidatedField;
-use core_resolver::{context::RequestContext, plugin::SubsystemResolutionError};
 
 use async_graphql_parser::types::{BaseType, Type, TypeDefinition};
 use async_trait::async_trait;

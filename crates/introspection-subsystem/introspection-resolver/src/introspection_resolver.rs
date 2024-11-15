@@ -8,9 +8,9 @@
 // by the Apache License, Version 2.0.
 
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
+use common::context::RequestContext;
 use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
-    context::RequestContext,
     introspection::definition::schema::Schema,
     plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
     system_resolver::GraphQLSystemResolver,

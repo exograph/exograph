@@ -59,7 +59,7 @@ async fn resolve(
     body: Option<web::Json<Value>>,
     query: web::Query<Value>,
     endpoint_url: web::Data<Option<Url>>,
-    system_router: web::Data<SystemRouter>,
+    system_router: web::Data<SystemRouter<'static>>,
 ) -> impl Responder {
     match endpoint_url.as_ref() {
         Some(endpoint_url) => match http_request.headers().get("_exo_operation_kind") {
@@ -86,8 +86,8 @@ impl RequestPayload for ActixRequestPayload {
         &self.head
     }
 
-    fn take_body(&mut self) -> Value {
-        self.body.take()
+    fn take_body(&self) -> Value {
+        self.body.clone()
     }
 }
 
@@ -95,14 +95,14 @@ async fn resolve_locally(
     req: HttpRequest,
     body: Option<web::Json<Value>>,
     query: Value,
-    system_router: web::Data<SystemRouter>,
+    system_router: web::Data<SystemRouter<'static>>,
 ) -> HttpResponse {
     let mut request = ActixRequestPayload {
         head: ActixRequestHead::from_request(req, query),
         body: body.map(|b| b.into_inner()).unwrap_or(Value::Null),
     };
 
-    let response = system_router.route(&mut request).await;
+    let response = system_router.route(&mut request, &()).await;
 
     match response {
         Some(ResponsePayload {

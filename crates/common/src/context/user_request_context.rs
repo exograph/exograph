@@ -7,21 +7,23 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use exo_env::Environment;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
 use elsa::sync::FrozenMap;
 use exo_sql::TransactionHolder;
 
-use common::http::RequestHead;
+use crate::http::RequestHead;
 
-use crate::{system_resolver::GraphQLSystemResolver, value::Val};
+use crate::{router::Router, value::Val};
 
 use super::provider::jwt::JwtExtractor;
 use super::provider::{
     cookie::CookieExtractor, environment::EnvironmentContextExtractor, header::HeaderExtractor,
     ip::IpExtractor, query::QueryExtractor,
 };
+use super::JwtAuthenticator;
 use super::{
     context_extractor::BoxedContextExtractor, error::ContextExtractionError, RequestContext,
 };
@@ -38,21 +40,24 @@ pub struct UserRequestContext<'a> {
 
 impl<'a> UserRequestContext<'a> {
     // Constructs a UserRequestContext from a vector of parsed contexts and a request.
-    pub fn new(
-        request_head: &'a (dyn RequestHead + Send + Sync),
+    pub fn new<'request_context>(
+        request_head: &'request_context (dyn RequestHead + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_resolver: &'a GraphQLSystemResolver,
-    ) -> UserRequestContext<'a> {
+        system_router: &'a (dyn Router<()> + Sync),
+        jwt_authenticator: Arc<Option<JwtAuthenticator>>,
+        env: Arc<dyn Environment>,
+    ) -> UserRequestContext<'request_context>
+    where
+        'a: 'request_context,
+    {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedContextExtractor> = vec![
-            Box::new(EnvironmentContextExtractor {
-                env: system_resolver.env.as_ref(),
-            }),
-            Box::new(QueryExtractor::new(system_resolver)),
+            Box::new(EnvironmentContextExtractor { env }),
+            Box::new(QueryExtractor::new(system_router)),
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
             Box::new(CookieExtractor::new()),
-            Box::new(JwtExtractor::new(system_resolver.jwt_authenticator.clone())),
+            Box::new(JwtExtractor::new(jwt_authenticator.clone())),
         ];
 
         UserRequestContext {

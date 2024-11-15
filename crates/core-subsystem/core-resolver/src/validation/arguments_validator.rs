@@ -17,10 +17,9 @@ use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
 use bytes::Bytes;
 
 use crate::{
-    introspection::definition::schema::Schema,
-    validation::validation_error::ValidationError,
-    value::{UnresolvedVal, Val},
+    introspection::definition::schema::Schema, validation::validation_error::ValidationError,
 };
+use common::value::{UnresolvedVal, Val};
 
 use super::underlying_type;
 

@@ -7,12 +7,15 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use async_recursion::async_recursion;
+use exo_env::Environment;
 
-use common::http::RequestHead;
+use crate::http::RequestHead;
+use crate::{router::Router, value::Val};
 
-use crate::{system_resolver::GraphQLSystemResolver, value::Val};
-
+use super::JwtAuthenticator;
 use super::{
     context_extractor::BoxedContextExtractor, error::ContextExtractionError,
     overridden_context::OverriddenContext, user_request_context::UserRequestContext,
@@ -32,12 +35,16 @@ impl<'a> RequestContext<'a> {
     pub fn new(
         request_head: &'a (dyn RequestHead + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_resolver: &'a GraphQLSystemResolver,
+        system_router: &'a (dyn Router<()> + Send + Sync),
+        jwt_authenticator: Arc<Option<JwtAuthenticator>>,
+        env: Arc<dyn Environment>,
     ) -> RequestContext<'a> {
         RequestContext::User(UserRequestContext::new(
             request_head,
             parsed_contexts,
-            system_resolver,
+            system_router,
+            jwt_authenticator,
+            env,
         ))
     }
 

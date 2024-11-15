@@ -7,10 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
+use common::http::RequestHead;
 use tracing::debug;
 
+use common::context::{JwtAuthenticator, RequestContext};
 use common::{
     cors::{CorsConfig, CorsRouter},
     env_const::{EXO_CORS_DOMAINS, EXO_UNSTABLE_ENABLE_REST_API},
@@ -19,7 +22,6 @@ use common::{
 };
 use core_plugin_interface::{
     core_resolver::{
-        context::JwtAuthenticator,
         plugin::{SubsystemGraphQLResolver, SubsystemRestResolver},
         system_rest_resolver::SystemRestResolver,
     },
@@ -39,11 +41,11 @@ use rest_router::RestRouter;
 
 pub type StaticLoaders = Vec<Box<dyn SubsystemLoader>>;
 
-pub async fn create_system_router_from_file(
+pub async fn create_system_router_from_file<'a: 'static>(
     exo_ir_file: &str,
     static_loaders: StaticLoaders,
     env: Arc<dyn Environment>,
-) -> Result<SystemRouter, SystemLoadingError> {
+) -> Result<SystemRouter<'a>, SystemLoadingError> {
     if !Path::new(&exo_ir_file).exists() {
         return Err(SystemLoadingError::FileNotFound(exo_ir_file.to_string()));
     }
@@ -61,15 +63,11 @@ pub async fn create_system_router_from_file(
     }
 }
 
-pub async fn create_system_router_from_system(
+pub async fn create_system_router_from_system<'a: 'static>(
     system: SerializableSystem,
     static_loaders: StaticLoaders,
     env: Arc<dyn Environment>,
-) -> Result<SystemRouter, SystemLoadingError> {
-    let authenticator = JwtAuthenticator::new_from_env(env.as_ref())
-        .await
-        .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
-
+) -> Result<SystemRouter<'a>, SystemLoadingError> {
     let (subsystem_resolvers, query_interception_map, mutation_interception_map, trusted_documents) =
         create_system_resolvers(system, static_loaders, env.clone()).await?;
 
@@ -93,7 +91,6 @@ pub async fn create_system_router_from_system(
         query_interception_map,
         mutation_interception_map,
         trusted_documents,
-        authenticator.into(),
         env.clone(),
     )
     .await?;
@@ -101,7 +98,7 @@ pub async fn create_system_router_from_system(
     let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
     let rest_router = RestRouter::new(rest_resolver, env.clone());
 
-    create_system_router(graphql_router, rest_router, env)
+    create_system_router(graphql_router, rest_router, env).await
 }
 
 pub async fn create_system_resolvers(
@@ -181,12 +178,13 @@ pub async fn create_system_resolvers(
     ))
 }
 
-fn create_system_router(
+async fn create_system_router<'a: 'static>(
     graphql_router: GraphQLRouter,
     rest_router: RestRouter,
     env: Arc<dyn Environment>,
-) -> Result<SystemRouter, SystemLoadingError> {
-    let mut routers: Vec<Box<dyn Router + Send>> = vec![Box::new(graphql_router)];
+) -> Result<SystemRouter<'a>, SystemLoadingError> {
+    let mut routers: Vec<Box<dyn Router<RequestContext<'a>> + Send + Sync>> =
+        vec![Box::new(graphql_router)];
 
     if env.enabled(EXO_UNSTABLE_ENABLE_REST_API, false) {
         routers.push(Box::new(rest_router));
@@ -195,29 +193,57 @@ fn create_system_router(
     #[cfg(not(target_family = "wasm"))]
     routers.push(Box::new(PlaygroundRouter::new(env.clone())));
 
-    Ok(SystemRouter::new(routers, env.as_ref()))
+    SystemRouter::new(routers, env.clone()).await
 }
 
-pub struct SystemRouter {
-    underlying: CorsRouter,
+pub struct SystemRouter<'a> {
+    underlying: CorsRouter<RequestContext<'a>>,
+    env: Arc<dyn Environment>,
+    authenticator: Arc<Option<JwtAuthenticator>>,
 }
 
-impl SystemRouter {
-    pub fn new(routers: Vec<Box<dyn Router + Send>>, env: &dyn Environment) -> Self {
+impl<'a: 'static> SystemRouter<'a> {
+    pub async fn new(
+        routers: Vec<Box<dyn Router<RequestContext<'a>> + Send + Sync>>,
+        env: Arc<dyn Environment>,
+    ) -> Result<Self, SystemLoadingError> {
         let cors_domains = env.get(EXO_CORS_DOMAINS);
 
-        Self {
+        let authenticator = JwtAuthenticator::new_from_env(env.as_ref())
+            .await
+            .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
+
+        Ok(Self {
             underlying: CorsRouter::new(
                 Arc::new(CompositeRouter::new(routers)),
                 CorsConfig::from_env(cors_domains),
             ),
-        }
+            env,
+            authenticator: Arc::new(authenticator),
+        })
     }
 }
 
 #[async_trait::async_trait]
-impl Router for SystemRouter {
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
-        self.underlying.route(request).await
+impl<'a> Router<()> for SystemRouter<'a> {
+    async fn route(
+        &self,
+        request: &(dyn RequestPayload + Send + Sync),
+        _request_context: &(),
+    ) -> Option<ResponsePayload> {
+        // let request_head = request.get_head();
+
+        let request_head = unsafe { std::mem::transmute(request.get_head()) };
+        let x: &SystemRouter = unsafe { std::mem::transmute(self) };
+
+        let request_context = RequestContext::new(
+            request_head,
+            vec![],
+            x,
+            self.authenticator.clone(),
+            self.env.clone(),
+        );
+
+        self.underlying.route(request, &request_context).await
     }
 }

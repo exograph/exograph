@@ -12,6 +12,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use common::context::RequestContext;
 use common::http::{Headers, RequestHead, RequestPayload, ResponsePayload};
 use common::router::Router;
 use common::{
@@ -49,8 +50,12 @@ impl PlaygroundRouter {
 }
 
 #[async_trait]
-impl Router for PlaygroundRouter {
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
+impl<'a> Router<RequestContext<'a>> for PlaygroundRouter {
+    async fn route(
+        &self,
+        request: &(dyn RequestPayload + Send + Sync),
+        _request_context: &RequestContext<'a>,
+    ) -> Option<ResponsePayload> {
         if !self.suitable(request.get_head()) {
             return None;
         }

@@ -14,10 +14,9 @@ use super::{
 use crate::operation_resolver::OperationSelectionResolver;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
+use common::context::RequestContext;
 use core_plugin_interface::core_model::types::OperationReturnType;
-use core_plugin_interface::core_resolver::{
-    context::RequestContext, validation::field::ValidatedField,
-};
+use core_plugin_interface::core_resolver::validation::field::ValidatedField;
 use exo_sql::{
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, SelectionCardinality,
     SelectionElement,

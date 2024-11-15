@@ -6,17 +6,28 @@ publish = false
 
 [features]
 default = []
+test-context = []
 opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "opentelemetry-appender-tracing", "tonic"]
 
 [dependencies]
 thiserror.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
 http.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["preserve_order"] }
 bytes.workspace = true
 futures.workspace = true
 async-trait.workspace = true
+async-recursion.workspace = true
+jsonwebtoken.workspace = true
+oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", branch = "exograph" }
+cookie = "0.18.1"
+elsa = "1.8.1"
+async-graphql-value.workspace = true
+
 exo-env = { path = "../../libs/exo-env" }
+exo-sql = { path = "../../libs/exo-sql" }
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }

@@ -13,24 +13,32 @@ use http::StatusCode;
 
 #[async_trait]
 pub trait Router: Sync {
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload>;
+    async fn route<RQ: Send + Sync>(
+        &self,
+        request: &(dyn RequestPayload + Send + Sync),
+        request_context: &RQ,
+    ) -> Option<ResponsePayload>;
 }
 
-pub struct CompositeRouter {
-    routers: Vec<Box<dyn Router + Send>>,
+pub struct CompositeRouter<RQ: Send + Sync> {
+    routers: Vec<Box<dyn Router<RQ> + Send + Sync>>,
 }
 
-impl CompositeRouter {
-    pub fn new(routers: Vec<Box<dyn Router + Send>>) -> Self {
+impl<RQ: Send + Sync> CompositeRouter<RQ> {
+    pub fn new(routers: Vec<Box<dyn Router<RQ> + Send + Sync>>) -> Self {
         Self { routers }
     }
 }
 
 #[async_trait::async_trait]
-impl Router for CompositeRouter {
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
+impl<RQ: Send + Sync> Router<RQ> for CompositeRouter<RQ> {
+    async fn route(
+        &self,
+        request: &(dyn RequestPayload + Send + Sync),
+        request_context: &RQ,
+    ) -> Option<ResponsePayload> {
         for router in self.routers.iter() {
-            if let Some(response) = router.route(request).await {
+            if let Some(response) = router.route(request, request_context).await {
                 return Some(response);
             }
         }

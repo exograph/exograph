@@ -15,8 +15,8 @@ use crate::{
     auth_util::check_retrieve_access, column_path_util::to_column_path,
     postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper,
 };
-use core_plugin_interface::core_resolver::context::RequestContext;
-use core_plugin_interface::core_resolver::value::Val;
+use common::context::RequestContext;
+use common::value::Val;
 use exo_sql::{
     AbstractOrderBy, AbstractOrderByExpr, AbstractPredicate, Ordering, PhysicalColumnPath,
 };

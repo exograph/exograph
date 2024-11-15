@@ -12,13 +12,13 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use common::env_const::get_graphql_http_path;
 
+use common::context::JwtAuthenticator;
 use common::env_const::is_production;
 use common::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use common::router::Router;
 use core_plugin_shared::interception::InterceptionMap;
 use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
-use core_resolver::context::JwtAuthenticator;
 use core_resolver::plugin::SubsystemGraphQLResolver;
 use core_resolver::QueryResponse;
 use core_router::SystemLoadingError;
@@ -28,10 +28,11 @@ use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bytes::Bytes;
+use common::context::RequestContext;
 use common::operation_payload::OperationsPayload;
 use core_resolver::system_resolver::GraphQLSystemResolver;
 use core_resolver::system_resolver::{RequestError, SystemResolutionError};
-use core_resolver::{context::RequestContext, QueryResponseBody};
+use core_resolver::QueryResponseBody;
 
 use exo_env::Environment;
 
@@ -60,7 +61,6 @@ impl GraphQLRouter {
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
         trusted_documents: TrustedDocuments,
-        authenticator: Arc<Option<JwtAuthenticator>>,
         env: Arc<dyn Environment>,
     ) -> Result<Self, SystemLoadingError> {
         let graphql_resolver = SystemLoader::create_system_resolver(
@@ -68,7 +68,6 @@ impl GraphQLRouter {
             query_interception_map,
             mutation_interception_map,
             trusted_documents,
-            authenticator,
             env.clone(),
         )
         .await?;
@@ -78,7 +77,7 @@ impl GraphQLRouter {
 }
 
 #[async_trait]
-impl Router for GraphQLRouter {
+impl<'a> Router<RequestContext<'a>> for GraphQLRouter {
     /// Resolves an incoming query, returning a response stream containing JSON and a set
     /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
     /// if something went wrong.
@@ -88,9 +87,13 @@ impl Router for GraphQLRouter {
     /// then call `resolve` with that object.
     #[instrument(
         name = "resolver::resolve"
-        skip(self, request)
+        skip(self, request, request_context)
     )]
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
+    async fn route(
+        &self,
+        request: &(dyn RequestPayload + Send + Sync),
+        request_context: &RequestContext<'a>,
+    ) -> Option<ResponsePayload> {
         if !self.suitable(request.get_head()) {
             return None;
         }
@@ -111,8 +114,13 @@ impl Router for GraphQLRouter {
             TrustedDocumentEnforcement::DoNotEnforce
         };
 
-        let response =
-            resolve_in_memory(request, &self.system_resolver, trusted_document_enforcement).await;
+        let response = resolve_in_memory(
+            request,
+            &self.system_resolver,
+            trusted_document_enforcement,
+            &request_context,
+        )
+        .await;
 
         if let Err(SystemResolutionError::RequestError(e)) = response {
             tracing::error!("Error while resolving request: {:?}", e);
@@ -210,24 +218,23 @@ impl Router for GraphQLRouter {
 
 #[instrument(
     name = "resolver::resolve_in_memory"
-    skip(system_resolver, request)
+    skip(system_resolver, request, request_context)
 )]
 async fn resolve_in_memory<'a>(
-    request: &mut (dyn RequestPayload + Send),
+    request: &(dyn RequestPayload + Sync),
     system_resolver: &GraphQLSystemResolver,
     trusted_document_enforcement: TrustedDocumentEnforcement,
+    request_context: &RequestContext<'a>,
 ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
     let body = request.take_body();
-    let request_head = request.get_head();
 
     let operations_payload = OperationsPayload::from_json(body.clone())
         .map_err(|e| SystemResolutionError::RequestError(RequestError::InvalidBodyJson(e)))?;
-    let request_context = RequestContext::new(request_head, vec![], system_resolver);
 
     let response = system_resolver
         .resolve_operations(
             operations_payload,
-            &request_context,
+            request_context,
             trusted_document_enforcement,
         )
         .await;

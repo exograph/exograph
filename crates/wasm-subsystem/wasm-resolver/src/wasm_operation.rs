@@ -8,10 +8,11 @@
 // by the Apache License, Version 2.0.
 
 use crate::{plugin::WasmSubsystemResolver, wasm_execution_error::WasmExecutionError};
-use core_plugin_interface::core_resolver::value::val::Val as ExoVal;
+use common::context::RequestContext;
+use common::value::Val as ExoVal;
 use core_plugin_interface::core_resolver::{
-    context::RequestContext, system_resolver::GraphQLSystemResolver,
-    validation::field::ValidatedField, QueryResponse, QueryResponseBody,
+    system_resolver::GraphQLSystemResolver, validation::field::ValidatedField, QueryResponse,
+    QueryResponseBody,
 };
 use std::collections::HashMap;
 use wasm_model::module::ModuleMethod;

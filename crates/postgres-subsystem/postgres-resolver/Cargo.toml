@@ -42,9 +42,8 @@ common = { path = "../../common" }
 [dev-dependencies]
 tokio.workspace = true
 builder = { path = "../../builder" }
-core-resolver = { path = "../../core-subsystem/core-resolver", features = [
-    "test-context",
-] }
+core-resolver = { path = "../../core-subsystem/core-resolver"}
+common = { path = "../../common", features = ["test-context"] }
 graphql-router = { path = "../../graphql-router" }
 postgres-builder = { path = "../postgres-builder" }
 http.workspace = true

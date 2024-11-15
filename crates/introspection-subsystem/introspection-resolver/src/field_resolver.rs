@@ -10,10 +10,8 @@
 use async_trait::async_trait;
 use futures::StreamExt;
 
-use core_resolver::{
-    context::RequestContext, introspection::definition::schema::Schema,
-    validation::field::ValidatedField,
-};
+use common::context::RequestContext;
+use core_resolver::{introspection::definition::schema::Schema, validation::field::ValidatedField};
 
 // TODO: This is duplicated from core-resolver to avoid the orphan rule. Find a better solution.
 #[async_trait]

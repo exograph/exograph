@@ -16,7 +16,7 @@ use std::pin::Pin;
 
 pub trait RequestPayload {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync);
-    fn take_body(&mut self) -> Value;
+    fn take_body(&self) -> Value;
 }
 
 type PinnedStream<E> = Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;

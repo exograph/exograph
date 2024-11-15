@@ -11,15 +11,13 @@
 
 use async_trait::async_trait;
 
+use common::context::RequestContext;
+use common::value::Val;
 use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
-    core_resolver::{
-        access_solver::{
-            eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-            reduce_common_primitive_expression, AccessPredicate, AccessSolver, AccessSolverError,
-        },
-        context::RequestContext,
-        value::Val,
+    core_resolver::access_solver::{
+        eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
+        reduce_common_primitive_expression, AccessPredicate, AccessSolver, AccessSolverError,
     },
 };
 

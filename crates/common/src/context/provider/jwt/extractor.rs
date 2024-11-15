@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
 #[cfg(not(target_family = "wasm"))]
-use common::env_const::{EXO_JWT_SECRET, EXO_OIDC_URL};
+use crate::env_const::{EXO_JWT_SECRET, EXO_OIDC_URL};
+use async_trait::async_trait;
 use serde_json::Value;
 use tokio::sync::OnceCell;
 use tracing::warn;
@@ -10,7 +10,7 @@ use tracing::warn;
 use crate::context::context_extractor::ContextExtractor;
 use crate::context::error::ContextExtractionError;
 use crate::context::RequestContext;
-use common::http::RequestHead;
+use crate::http::RequestHead;
 
 use super::JwtAuthenticator;
 

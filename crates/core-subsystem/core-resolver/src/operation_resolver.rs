@@ -15,9 +15,10 @@ use crate::interception::InterceptedOperation;
 use crate::system_resolver::{GraphQLSystemResolver, SystemResolutionError};
 use crate::validation::field::ValidatedField;
 use crate::validation::operation::ValidatedOperation;
-use crate::{context::RequestContext, QueryResponse};
+use crate::QueryResponse;
 use crate::{FieldResolver, QueryResponseBody};
 
+use common::context::RequestContext;
 /// Resolver for the root operation.
 ///
 /// The operation may be a query or a mutation and may be for data or for introspection.

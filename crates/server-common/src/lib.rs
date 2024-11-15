@@ -27,7 +27,7 @@ use system_router::{create_system_router_from_file, SystemRouter};
 ///
 /// # Exit codes
 /// - 1 - If the exo_ir file doesn't exist or can't be loaded.
-pub async fn init() -> Result<SystemRouter, ServerInitError> {
+pub async fn init() -> Result<SystemRouter<'static>, ServerInitError> {
     logging_tracing::init()?;
 
     let exo_ir_file = get_exo_ir_file_name();

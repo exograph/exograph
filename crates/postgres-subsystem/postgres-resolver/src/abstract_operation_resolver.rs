@@ -9,9 +9,8 @@
 
 use exo_sql::AbstractOperation;
 
-use core_plugin_interface::core_resolver::{
-    context::RequestContext, QueryResponse, QueryResponseBody,
-};
+use common::context::RequestContext;
+use core_plugin_interface::core_resolver::{QueryResponse, QueryResponseBody};
 use tokio_postgres::types::FromSqlOwned;
 use tokio_postgres::Row;
 

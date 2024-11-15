@@ -8,11 +8,12 @@
 // by the Apache License, Version 2.0.
 
 use crate::{
-    context::RequestContext, system_resolver::GraphQLSystemResolver,
-    validation::field::ValidatedField, InterceptedOperation, QueryResponse,
+    system_resolver::GraphQLSystemResolver, validation::field::ValidatedField,
+    InterceptedOperation, QueryResponse,
 };
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use async_trait::async_trait;
+use common::context::RequestContext;
 use core_plugin_shared::interception::InterceptorIndex;
 use thiserror::Error;
 use tokio::runtime::Handle;

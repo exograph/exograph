@@ -21,12 +21,12 @@ use super::config::CorsResponse;
 
 /// Reference: https://fetch.spec.whatwg.org/#http-requests
 pub struct CorsRouter {
-    underlying: Arc<dyn Router + Send>,
+    underlying: Arc<dyn Router + Send + Sync>,
     config: CorsConfig,
 }
 
-impl CorsRouter {
-    pub fn new(underlying: Arc<dyn Router + Send>, config: CorsConfig) -> Self {
+impl<RQ: Send + Sync> CorsRouter<RQ> {
+    pub fn new(underlying: Arc<dyn Router + Send + Sync>, config: CorsConfig) -> Self {
         Self { underlying, config }
     }
 }
@@ -39,7 +39,11 @@ impl Router for CorsRouter {
     /// specified standard, but https://github.com/whatwg/fetch/issues/172 makes sense.
     /// It suggests the possibility of adding more details in the body, but also cautions
     /// to not reveal too much information. Therefore, we don't add a body.
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
+    async fn route<RQ: Send + Sync>(
+        &self,
+        request: &(dyn RequestPayload + Send + Sync),
+        request_context: &RQ,
+    ) -> Option<ResponsePayload> {
         let origin_header = request.get_head().get_header(http::header::ORIGIN.as_str());
 
         let add_cors_headers = |response: &mut ResponsePayload, origin: &str| {
@@ -98,7 +102,7 @@ impl Router for CorsRouter {
         } else {
             match cors_response {
                 CorsResponse::Allow(origin) => {
-                    let mut response = self.underlying.route(request).await;
+                    let mut response = self.underlying.route(request, request_context).await;
 
                     if let Some(ref mut response) = response {
                         add_cors_headers(response, origin);
@@ -106,7 +110,9 @@ impl Router for CorsRouter {
 
                     response
                 }
-                CorsResponse::NoCorsHeaders => self.underlying.route(request).await,
+                CorsResponse::NoCorsHeaders => {
+                    self.underlying.route(request, request_context).await
+                }
                 CorsResponse::Deny => Some(forbidden_response()),
             }
         }
@@ -334,7 +340,7 @@ mod tests {
 
         RESPONSE_PAYLOAD
             .scope(Arc::new(underlying_response), async move {
-                cors_router.route(&mut request).await
+                cors_router.route(&request, &()).await
             })
             .await
     }
@@ -378,10 +384,11 @@ mod tests {
     struct MockRouter {}
 
     #[async_trait::async_trait]
-    impl Router for MockRouter {
+    impl<'request> Router<'request, ()> for MockRouter {
         async fn route(
             &self,
-            _request: &mut (dyn RequestPayload + Send),
+            _request: &'request (dyn RequestPayload + Send + Sync),
+            _request_context: &'request (),
         ) -> Option<ResponsePayload> {
             RESPONSE_PAYLOAD.with(|mock_response| {
                 Some(ResponsePayload {
@@ -426,8 +433,8 @@ mod tests {
             self
         }
 
-        fn take_body(&mut self) -> Value {
-            self.body.take().unwrap_or(Value::Null)
+        fn take_body(&self) -> Value {
+            self.body.clone().unwrap_or(Value::Null)
         }
     }
 

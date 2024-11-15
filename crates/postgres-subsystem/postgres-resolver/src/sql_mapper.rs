@@ -8,8 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
-use core_plugin_interface::core_resolver::context::RequestContext;
-use core_plugin_interface::core_resolver::value::Val;
+use common::context::RequestContext;
+use common::value::Val;
 use postgres_model::subsystem::PostgresSubsystem;
 
 use crate::util::{find_arg, Arguments};

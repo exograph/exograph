@@ -26,7 +26,7 @@ impl SubsystemRestResolver for PostgresSubsystemRestResolver {
 
     async fn resolve(
         &self,
-        request: &mut (dyn RequestPayload + Send),
+        request: &(dyn RequestPayload + Send + Sync),
     ) -> Result<Option<ResponsePayload>, SubsystemResolutionError> {
         todo!(
             "PostgresSubsystemRestResolver: {}",

@@ -17,7 +17,7 @@ use tokio::sync::OnceCell;
 use crate::context::{
     context_extractor::ContextExtractor, error::ContextExtractionError, RequestContext,
 };
-use common::http::RequestHead;
+use crate::http::RequestHead;
 
 pub struct CookieExtractor {
     // Use OnceCell to process cookies only once per request (and not per cookie annotation)

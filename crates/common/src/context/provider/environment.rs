@@ -7,19 +7,21 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use exo_env::Environment;
 use serde_json::Value;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
-use common::http::RequestHead;
+use crate::http::RequestHead;
 
-pub struct EnvironmentContextExtractor<'a> {
-    pub env: &'a dyn Environment,
+pub struct EnvironmentContextExtractor {
+    pub env: Arc<dyn Environment>,
 }
 
 #[async_trait]
-impl<'a> ContextExtractor for EnvironmentContextExtractor<'a> {
+impl ContextExtractor for EnvironmentContextExtractor {
     fn annotation_name(&self) -> &str {
         "env"
     }

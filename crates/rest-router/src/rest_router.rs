@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use http::StatusCode;
 
 use common::{
+    context::RequestContext,
     env_const::get_rest_http_path,
     http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload},
     router::Router,
@@ -33,8 +34,12 @@ impl RestRouter {
 }
 
 #[async_trait]
-impl Router for RestRouter {
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
+impl<'a> Router<RequestContext<'a>> for RestRouter {
+    async fn route(
+        &self,
+        request: &(dyn RequestPayload + Send + Sync),
+        _request_context: &RequestContext<'a>,
+    ) -> Option<ResponsePayload> {
         if !self.suitable(request.get_head()) {
             return None;
         }

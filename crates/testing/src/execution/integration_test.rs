@@ -43,7 +43,7 @@ use super::{TestResult, TestResultKind};
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
 struct TestfileContext {
-    router: SystemRouter,
+    router: SystemRouter<'static>,
     jwtsecret: String,
     cookies: HashMap<String, String>,
     testvariables: HashMap<String, serde_json::Value>,
@@ -329,8 +329,8 @@ impl MemoryRequestPayload {
 }
 
 impl RequestPayload for MemoryRequestPayload {
-    fn take_body(&mut self) -> Value {
-        self.body.take()
+    fn take_body(&self) -> Value {
+        self.body.clone()
     }
 
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
@@ -478,11 +478,11 @@ async fn run_operation(
 
 pub async fn run_query(
     request: impl RequestPayload + Send + Sync,
-    router: &SystemRouter,
+    router: &SystemRouter<'static>,
     cookies: &mut HashMap<String, String>,
 ) -> Result<Value, ResponseBodyError> {
     let mut request = request;
-    let res = router.route(&mut request).await.unwrap();
+    let res = router.route(&mut request, &()).await.unwrap();
 
     res.headers.into_iter().for_each(|(k, v)| {
         if k.to_ascii_lowercase() == "set-cookie" {
