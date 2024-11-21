@@ -445,7 +445,7 @@ mod tests {
     impl Router<()> for TestRouter {
         async fn route(
             &self,
-            _request: &mut (dyn RequestPayload + Send),
+            _request: &(dyn RequestPayload + Send + Sync),
             _request_context: &(),
         ) -> Option<ResponsePayload> {
             None
@@ -593,6 +593,8 @@ mod tests {
             test_system_router,
             ..
         } = &test_system;
+
+        let test_system_router = test_system_router.as_ref();
 
         let relational_op = |lhs, rhs| AccessPredicateExpression::RelationalOp(op(lhs, rhs));
 
@@ -857,6 +859,8 @@ mod tests {
             ..
         } = &test_system;
 
+        let test_system_router = test_system_router.as_ref();
+
         {
             // Two literals
             // context is irrelevant
@@ -1017,6 +1021,8 @@ mod tests {
             ..
         } = &test_system;
 
+        let test_system_router = test_system_router.as_ref();
+
         {
             // A literal
 
@@ -1088,6 +1094,8 @@ mod tests {
             ..
         } = test_system().await;
 
+        let test_system_router = test_system_router.as_ref();
+
         let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             context_selection_expr("AccessContext", "role"),
             Box::new(DatabaseAccessPrimitiveExpression::Common(
@@ -1095,11 +1103,11 @@ mod tests {
             )),
         ));
 
-        let context = test_request_context(json!({"role": "ROLE_ADMIN"} ), &test_system_router);
+        let context = test_request_context(json!({"role": "ROLE_ADMIN"} ), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, &system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
-        let context = test_request_context(json!({"role": "ROLE_USER"} ), &test_system_router);
+        let context = test_request_context(json!({"role": "ROLE_USER"} ), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, &system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
@@ -1117,6 +1125,8 @@ mod tests {
             ..
         } = &test_system;
 
+        let test_system_router = test_system_router.as_ref();
+
         let test_ae = {
             let admin_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
                 context_selection_expr("AccessContext", "role"),
@@ -1132,11 +1142,11 @@ mod tests {
             ))
         };
 
-        let context = test_request_context(json!({"role": "ROLE_ADMIN"} ), &test_system_router);
+        let context = test_request_context(json!({"role": "ROLE_ADMIN"} ), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
-        let context = test_request_context(json!({"role": "ROLE_USER"} ), &test_system_router);
+        let context = test_request_context(json!({"role": "ROLE_USER"} ), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -1160,6 +1170,8 @@ mod tests {
             ..
         } = &test_system;
 
+        let test_system_router = test_system_router.as_ref();
+
         let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             context_selection_expr("AccessContext", "user_id"),
             Box::new(DatabaseAccessPrimitiveExpression::Column(
@@ -1168,7 +1180,7 @@ mod tests {
             )),
         ));
 
-        let context = test_request_context(json!({"user_id": "1"}), &test_system_router);
+        let context = test_request_context(json!({"user_id": "1"}), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -1178,7 +1190,7 @@ mod tests {
             )
         );
 
-        let context = test_request_context(json!({"user_id": "2"}), &test_system_router);
+        let context = test_request_context(json!({"user_id": "2"}), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -1201,6 +1213,8 @@ mod tests {
             test_system_router,
             ..
         } = &test_system;
+
+        let test_system_router = test_system_router.as_ref();
 
         let admin_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             context_selection_expr("AccessContext", "role"),
@@ -1239,12 +1253,12 @@ mod tests {
         ));
 
         // For admins, allow access without any further restrictions
-        let context = test_request_context(json!({"role": "ROLE_ADMIN"}), &test_system_router);
+        let context = test_request_context(json!({"role": "ROLE_ADMIN"}), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         // For users, allow only if the article is published
-        let context = test_request_context(json!({"role": "ROLE_USER"}), &test_system_router);
+        let context = test_request_context(json!({"role": "ROLE_USER"}), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -1255,17 +1269,17 @@ mod tests {
         );
 
         // For other roles, do not allow
-        let context = test_request_context(json!({"role": "ROLE_GUEST"}), &test_system_router);
+        let context = test_request_context(json!({"role": "ROLE_GUEST"}), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
 
         // For anonymous users, too, do not allow (irrelevant context content that doesn't define a user role)
-        let context = test_request_context(json!({ "Foo": "bar" }), &test_system_router);
+        let context = test_request_context(json!({ "Foo": "bar" }), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
 
         // For anonymous users, too, do not allow (no context content)
-        let context = test_request_context(Value::Null, &test_system_router);
+        let context = test_request_context(Value::Null, test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
@@ -1278,16 +1292,18 @@ mod tests {
             test_system_router, ..
         } = &test_system;
 
+        let test_system_router = test_system_router.as_ref();
+
         // Scenario: true or false
         let system = PostgresSubsystem::default();
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(true);
-        let context = test_request_context(Value::Null, &test_system_router); // irrelevant context content
+        let context = test_request_context(Value::Null, test_system_router); // irrelevant context content
         let solved_predicate = solve_access(&test_ae, &context, &system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(false);
-        let context = test_request_context(Value::Null, &test_system_router); // irrelevant context content
+        let context = test_request_context(Value::Null, test_system_router); // irrelevant context content
         let solved_predicate = solve_access(&test_ae, &context, &system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
@@ -1305,9 +1321,11 @@ mod tests {
             ..
         } = &test_system;
 
+        let test_system_router = test_system_router.as_ref();
+
         let test_ae = boolean_column_selection(published_column_path.clone());
 
-        let context = test_request_context(Value::Null, &test_system_router); // irrelevant context content
+        let context = test_request_context(Value::Null, test_system_router); // irrelevant context content
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -1330,17 +1348,19 @@ mod tests {
             ..
         } = &test_system;
 
+        let test_system_router = test_system_router.as_ref();
+
         let test_ae = boolean_context_selection(context_selection("AccessContext", "is_admin"));
 
-        let context = test_request_context(json!({"is_admin": true}), &test_system_router);
+        let context = test_request_context(json!({"is_admin": true}), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
-        let context = test_request_context(json!({"is_admin": false}), &test_system_router);
+        let context = test_request_context(json!({"is_admin": false}), test_system_router);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
 
-        let context = test_request_context(Value::Null, &test_system_router); // context not provided, so we should assume that the user is not an admin
+        let context = test_request_context(Value::Null, test_system_router); // context not provided, so we should assume that the user is not an admin
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
@@ -1356,7 +1376,9 @@ mod tests {
             ..
         } = &test_system;
 
-        let context = test_request_context(Value::Null, &test_system_router); // undefined context
+        let test_system_router = test_system_router.as_ref();
+
+        let context = test_request_context(Value::Null, test_system_router); // undefined context
 
         fn negate(
             expr: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
@@ -1442,7 +1464,7 @@ mod tests {
             ..
         } = test_system;
 
-        // let test_system_router = test_system_router.as_ref();
+        let test_system_router = test_system_router.as_ref();
         let system = &system;
 
         // Context isn't provided, however, `<missing-context-expression> || true` should still evaluate to true
@@ -1475,7 +1497,7 @@ mod tests {
         };
 
         {
-            let context = test_request_context(Value::Null, &test_system_router); // undefined context
+            let context = test_request_context(Value::Null, test_system_router); // undefined context
 
             for test_ae in test_aes() {
                 let solved_predicate = solve_access(&test_ae, &context, system).await;
@@ -1487,7 +1509,7 @@ mod tests {
             // Context is defined, but the value is null
             let context = test_request_context(
                 json!({"AccessContext": {"user_id": null}}),
-                &test_system_router,
+                test_system_router,
             );
 
             for test_ae in test_aes() {
@@ -1499,7 +1521,7 @@ mod tests {
 
     fn test_request_context<'a>(
         test_values: Value,
-        system_router: &'a (dyn Router<()> + Sync),
+        system_router: &'a (dyn Router<()> + Send + Sync),
     ) -> RequestContext<'a> {
         RequestContext::new(
             &REQUEST,

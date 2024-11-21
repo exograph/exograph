@@ -35,7 +35,7 @@ macro_rules! error_msg {
 }
 
 pub fn configure_router(
-    system_router: web::Data<SystemRouter>,
+    system_router: web::Data<SystemRouter<'static>>,
     env: Arc<dyn Environment>,
 ) -> impl FnOnce(&mut ServiceConfig) {
     let endpoint_url = match get_deployment_mode(env.as_ref()) {

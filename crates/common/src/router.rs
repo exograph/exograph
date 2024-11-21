@@ -12,8 +12,8 @@ use async_trait::async_trait;
 use http::StatusCode;
 
 #[async_trait]
-pub trait Router: Sync {
-    async fn route<RQ: Send + Sync>(
+pub trait Router<RQ: Send + Sync>: Sync {
+    async fn route(
         &self,
         request: &(dyn RequestPayload + Send + Sync),
         request_context: &RQ,

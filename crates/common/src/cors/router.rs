@@ -20,26 +20,26 @@ use crate::{
 use super::config::CorsResponse;
 
 /// Reference: https://fetch.spec.whatwg.org/#http-requests
-pub struct CorsRouter {
-    underlying: Arc<dyn Router + Send + Sync>,
+pub struct CorsRouter<RQ: Send + Sync> {
+    underlying: Arc<dyn Router<RQ> + Send + Sync>,
     config: CorsConfig,
 }
 
 impl<RQ: Send + Sync> CorsRouter<RQ> {
-    pub fn new(underlying: Arc<dyn Router + Send + Sync>, config: CorsConfig) -> Self {
+    pub fn new(underlying: Arc<dyn Router<RQ> + Send + Sync>, config: CorsConfig) -> Self {
         Self { underlying, config }
     }
 }
 
 #[async_trait::async_trait]
-impl Router for CorsRouter {
+impl<RQ: Send + Sync> Router<RQ> for CorsRouter<RQ> {
     /// Route a request applying CORS rules.
     ///
     /// For a denied cross-site request, we return 403 (Forbidden), since there is no
     /// specified standard, but https://github.com/whatwg/fetch/issues/172 makes sense.
     /// It suggests the possibility of adding more details in the body, but also cautions
     /// to not reveal too much information. Therefore, we don't add a body.
-    async fn route<RQ: Send + Sync>(
+    async fn route(
         &self,
         request: &(dyn RequestPayload + Send + Sync),
         request_context: &RQ,
@@ -384,11 +384,11 @@ mod tests {
     struct MockRouter {}
 
     #[async_trait::async_trait]
-    impl<'request> Router<'request, ()> for MockRouter {
+    impl Router<()> for MockRouter {
         async fn route(
             &self,
-            _request: &'request (dyn RequestPayload + Send + Sync),
-            _request_context: &'request (),
+            _request: &(dyn RequestPayload + Send + Sync),
+            _request_context: &(),
         ) -> Option<ResponsePayload> {
             RESPONSE_PAYLOAD.with(|mock_response| {
                 Some(ResponsePayload {
