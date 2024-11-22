@@ -10,6 +10,7 @@
 mod request;
 
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use actix_web::{
     web::{self, ServiceConfig},
@@ -81,7 +82,7 @@ async fn resolve(
 
 struct ActixRequestPayload {
     head: ActixRequestHead,
-    body: Value,
+    body: Mutex<Value>,
 }
 
 impl RequestPayload for ActixRequestPayload {
@@ -90,7 +91,7 @@ impl RequestPayload for ActixRequestPayload {
     }
 
     fn take_body(&self) -> Value {
-        self.body.clone()
+        self.body.lock().unwrap().take()
     }
 }
 
@@ -102,7 +103,7 @@ async fn resolve_locally(
 ) -> HttpResponse {
     let mut request = ActixRequestPayload {
         head: ActixRequestHead::from_request(req, query),
-        body: body.map(|b| b.into_inner()).unwrap_or(Value::Null),
+        body: Mutex::new(body.map(|b| b.into_inner()).unwrap_or(Value::Null)),
     };
 
     let response = system_router

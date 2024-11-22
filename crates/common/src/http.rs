@@ -7,15 +7,21 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Mutex;
+
 use http::StatusCode;
 use serde_json::Value;
 
 use bytes::Bytes;
 use futures::Stream;
-use std::pin::Pin;
+use std::{collections::HashMap, net::IpAddr, pin::Pin};
 
 pub trait RequestPayload {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync);
+
+    /// Take away the body from the request payload and return it
+    ///
+    /// Except for the first call, the return value will be `Value::Null`
     fn take_body(&self) -> Value;
 }
 
@@ -139,4 +145,95 @@ pub enum ResponseBodyError {
     UnexpectedRedirect,
     #[error("Response stream is not valid JSON")]
     Json(#[from] serde_json::Error),
+}
+
+pub struct MemoryRequestHead {
+    headers: HashMap<String, Vec<String>>,
+    cookies: HashMap<String, String>,
+    method: http::Method,
+    path: String,
+    query: Value,
+    ip: Option<String>,
+}
+
+impl MemoryRequestHead {
+    pub fn new(
+        cookies: HashMap<String, String>,
+        method: http::Method,
+        path: String,
+        query: Value,
+        ip: Option<String>,
+    ) -> Self {
+        Self {
+            headers: HashMap::new(),
+            cookies,
+            method,
+            path,
+            query,
+            ip,
+        }
+    }
+
+    pub fn add_header(&mut self, key: &str, value: &str) {
+        self.headers
+            .entry(key.to_string().to_ascii_lowercase())
+            .or_default()
+            .push(value.to_string());
+    }
+}
+
+impl RequestHead for MemoryRequestHead {
+    fn get_headers(&self, key: &str) -> Vec<String> {
+        if key.to_ascii_lowercase() == "cookie" {
+            return self
+                .cookies
+                .iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect();
+        } else {
+            self.headers
+                .get(&key.to_ascii_lowercase())
+                .unwrap_or(&vec![])
+                .clone()
+        }
+    }
+
+    fn get_ip(&self) -> Option<std::net::IpAddr> {
+        self.ip.as_ref().map(|ip| IpAddr::V4(ip.parse().unwrap()))
+    }
+
+    fn get_method(&self) -> http::Method {
+        self.method.clone()
+    }
+
+    fn get_path(&self) -> String {
+        self.path.clone()
+    }
+
+    fn get_query(&self) -> Value {
+        self.query.clone()
+    }
+}
+
+pub struct MemoryRequestPayload {
+    body: Mutex<Value>,
+    head: MemoryRequestHead,
+}
+
+impl MemoryRequestPayload {
+    pub fn new(body: Value, head: MemoryRequestHead) -> Self {
+        Self {
+            body: Mutex::new(body),
+            head,
+        }
+    }
+}
+
+impl RequestPayload for MemoryRequestPayload {
+    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        &self.head
+    }
+    fn take_body(&self) -> Value {
+        self.body.lock().unwrap().clone()
+    }
 }

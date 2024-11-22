@@ -114,6 +114,7 @@ impl<RQ: RequestPayload + Send + Sync, Rtr: Router<RQ>> Router<RQ> for CorsRoute
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
+    use std::sync::Mutex;
 
     use serde_json::Value;
     use tokio::task_local;
@@ -401,11 +402,10 @@ mod tests {
         }
     }
 
-    #[derive(Clone)]
     struct MockRequestPayload {
         method: Method,
         path: String,
-        body: Option<Value>,
+        body: Mutex<Option<Value>>,
         headers: Headers,
     }
 
@@ -414,7 +414,7 @@ mod tests {
             Self {
                 method,
                 path,
-                body,
+                body: Mutex::new(body),
                 headers,
             }
         }
@@ -426,7 +426,7 @@ mod tests {
         }
 
         fn take_body(&self) -> Value {
-            self.body.clone().unwrap_or(Value::Null)
+            self.body.lock().unwrap().take().unwrap_or(Value::Null)
         }
     }
 
