@@ -29,7 +29,6 @@ use tracing::{error, instrument, warn};
 
 use exo_env::Environment;
 
-use common::context::JwtAuthenticator;
 use common::context::RequestContext;
 use common::operation_payload::OperationsPayload;
 

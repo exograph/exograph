@@ -20,18 +20,29 @@ pub trait Router<RQ: Send + Sync>: Sync {
     ) -> Option<ResponsePayload>;
 }
 
-pub struct CompositeRouter<RQ: Send + Sync> {
-    routers: Vec<Box<dyn Router<RQ> + Send + Sync>>,
+#[async_trait]
+impl<Rtr: Sync + ?Sized + Router<RQ>, RQ: Send + Sync> Router<RQ> for Box<Rtr> {
+    async fn route(
+        &self,
+        request: &(dyn RequestPayload + Send + Sync),
+        request_context: &RQ,
+    ) -> Option<ResponsePayload> {
+        (**self).route(request, request_context).await
+    }
 }
 
-impl<RQ: Send + Sync> CompositeRouter<RQ> {
-    pub fn new(routers: Vec<Box<dyn Router<RQ> + Send + Sync>>) -> Self {
+pub struct CompositeRouter<Rtr> {
+    routers: Vec<Rtr>,
+}
+
+impl<Rtr> CompositeRouter<Rtr> {
+    pub fn new(routers: Vec<Rtr>) -> Self {
         Self { routers }
     }
 }
 
 #[async_trait::async_trait]
-impl<RQ: Send + Sync> Router<RQ> for CompositeRouter<RQ> {
+impl<RQ: Send + Sync, Rtr: Router<RQ>> Router<RQ> for CompositeRouter<Rtr> {
     async fn route(
         &self,
         request: &(dyn RequestPayload + Send + Sync),

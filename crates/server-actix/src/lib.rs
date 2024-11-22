@@ -35,7 +35,7 @@ macro_rules! error_msg {
 }
 
 pub fn configure_router(
-    system_router: web::Data<SystemRouter<'static>>,
+    system_router: web::Data<SystemRouter>,
     env: Arc<dyn Environment>,
 ) -> impl FnOnce(&mut ServiceConfig) {
     let endpoint_url = match get_deployment_mode(env.as_ref()) {
@@ -59,7 +59,7 @@ async fn resolve(
     body: Option<web::Json<Value>>,
     query: web::Query<Value>,
     endpoint_url: web::Data<Option<Url>>,
-    system_router: web::Data<SystemRouter<'static>>,
+    system_router: web::Data<SystemRouter>,
 ) -> impl Responder {
     match endpoint_url.as_ref() {
         Some(endpoint_url) => match http_request.headers().get("_exo_operation_kind") {
@@ -95,7 +95,7 @@ async fn resolve_locally(
     req: HttpRequest,
     body: Option<web::Json<Value>>,
     query: Value,
-    system_router: web::Data<SystemRouter<'static>>,
+    system_router: web::Data<SystemRouter>,
 ) -> HttpResponse {
     let mut request = ActixRequestPayload {
         head: ActixRequestHead::from_request(req, query),

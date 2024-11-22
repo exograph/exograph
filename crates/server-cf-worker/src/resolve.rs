@@ -69,8 +69,8 @@ impl RequestPayload for WorkerRequestPayload {
         &self.head
     }
 
-    fn take_body(&mut self) -> Value {
-        self.body.take()
+    fn take_body(&self) -> Value {
+        self.body.clone()
     }
 }
 
@@ -100,13 +100,13 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
 
     let body_json: Value = worker_request.0.json().await.unwrap_or(Value::Null);
 
-    let mut request = WorkerRequestPayload {
+    let request = WorkerRequestPayload {
         body: body_json,
         head: worker_request,
     };
 
     let system_router = crate::init::get_system_router()?;
-    let response_payload = system_router.route(&mut request).await;
+    let response_payload = system_router.route(&request, &()).await;
 
     let response = match response_payload {
         Some(ResponsePayload {

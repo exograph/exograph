@@ -194,7 +194,7 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
     .await?
 }
 
-async fn check_introspection(system_router: &SystemRouter<'static>) -> Result<Result<()>> {
+async fn check_introspection(system_router: &SystemRouter) -> Result<Result<()>> {
     let mut deno_module = create_introspection_deno_module().await?;
 
     let request = create_introspection_request().await?;

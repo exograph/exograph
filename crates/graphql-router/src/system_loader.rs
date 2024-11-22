@@ -9,7 +9,6 @@
 
 use std::sync::Arc;
 
-use common::context::JwtAuthenticator;
 use common::introspection::{introspection_mode, IntrospectionMode};
 use common::EnvError;
 use core_plugin_shared::interception::InterceptionMap;

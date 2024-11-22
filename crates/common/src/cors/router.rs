@@ -7,8 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::sync::Arc;
-
 use http::{Method, StatusCode};
 
 use crate::{
@@ -20,19 +18,19 @@ use crate::{
 use super::config::CorsResponse;
 
 /// Reference: https://fetch.spec.whatwg.org/#http-requests
-pub struct CorsRouter<RQ: Send + Sync> {
-    underlying: Arc<dyn Router<RQ> + Send + Sync>,
+pub struct CorsRouter<Rtr> {
+    underlying: Rtr,
     config: CorsConfig,
 }
 
-impl<RQ: Send + Sync> CorsRouter<RQ> {
-    pub fn new(underlying: Arc<dyn Router<RQ> + Send + Sync>, config: CorsConfig) -> Self {
+impl<Rtr> CorsRouter<Rtr> {
+    pub fn new(underlying: Rtr, config: CorsConfig) -> Self {
         Self { underlying, config }
     }
 }
 
 #[async_trait::async_trait]
-impl<RQ: Send + Sync> Router<RQ> for CorsRouter<RQ> {
+impl<RQ: Send + Sync, Rtr: Router<RQ>> Router<RQ> for CorsRouter<Rtr> {
     /// Route a request applying CORS rules.
     ///
     /// For a denied cross-site request, we return 403 (Forbidden), since there is no
@@ -121,6 +119,8 @@ impl<RQ: Send + Sync> Router<RQ> for CorsRouter<RQ> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use serde_json::Value;
     use tokio::task_local;
 
@@ -323,8 +323,10 @@ mod tests {
         method: &Method,
         origin: Option<String>,
     ) -> Option<ResponsePayload> {
-        let underlying = Arc::new(MockRouter {});
-        let cors_router = CorsRouter::new(underlying.clone(), config);
+        let cors_router = CorsRouter {
+            underlying: MockRouter {},
+            config,
+        };
 
         let mut request =
             MockRequestPayload::new(method.clone(), "/".to_string(), None, Headers::new());

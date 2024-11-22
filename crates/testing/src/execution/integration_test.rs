@@ -43,7 +43,7 @@ use super::{TestResult, TestResultKind};
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
 struct TestfileContext {
-    router: SystemRouter<'static>,
+    router: SystemRouter,
     jwtsecret: String,
     cookies: HashMap<String, String>,
     testvariables: HashMap<String, serde_json::Value>,
@@ -478,7 +478,7 @@ async fn run_operation(
 
 pub async fn run_query(
     request: impl RequestPayload + Send + Sync,
-    router: &SystemRouter<'static>,
+    router: &SystemRouter,
     cookies: &mut HashMap<String, String>,
 ) -> Result<Value, ResponseBodyError> {
     let mut request = request;

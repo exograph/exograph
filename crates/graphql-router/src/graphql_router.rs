@@ -12,7 +12,6 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use common::env_const::get_graphql_http_path;
 
-use common::context::JwtAuthenticator;
 use common::env_const::is_production;
 use common::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use common::router::Router;
