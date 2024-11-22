@@ -51,12 +51,8 @@ impl PlaygroundRouter {
 
 #[async_trait]
 impl<'a> Router<RequestContext<'a>> for PlaygroundRouter {
-    async fn route(
-        &self,
-        request: &(dyn RequestPayload + Send + Sync),
-        _request_context: &RequestContext<'a>,
-    ) -> Option<ResponsePayload> {
-        if !self.suitable(request.get_head()) {
+    async fn route(&self, request_context: &mut RequestContext<'a>) -> Option<ResponsePayload> {
+        if !self.suitable(request_context.get_head()) {
             return None;
         }
 
@@ -69,7 +65,7 @@ impl<'a> Router<RequestContext<'a>> for PlaygroundRouter {
             });
         }
 
-        let path = strip_leading_slash(&request.get_head().get_path());
+        let path = strip_leading_slash(&request_context.get_head().get_path());
 
         // We redirect to the playground path if the path is empty. This provides a better user experience
         // as the user will be redirected to the playground path without having to add it manually.

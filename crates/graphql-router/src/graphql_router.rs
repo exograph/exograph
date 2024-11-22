@@ -86,19 +86,15 @@ impl<'a> Router<RequestContext<'a>> for GraphQLRouter {
     /// then call `resolve` with that object.
     #[instrument(
         name = "resolver::resolve"
-        skip(self, request, request_context)
+        skip(self, request_context)
     )]
-    async fn route(
-        &self,
-        request: &(dyn RequestPayload + Send + Sync),
-        request_context: &RequestContext<'a>,
-    ) -> Option<ResponsePayload> {
-        if !self.suitable(request.get_head()) {
+    async fn route(&self, request_context: &mut RequestContext<'a>) -> Option<ResponsePayload> {
+        let request_head = request_context.get_head();
+        if !self.suitable(request_head) {
             return None;
         }
 
-        let playground_request = request
-            .get_head()
+        let playground_request = request_head
             .get_header("_exo_playground")
             .map(|value| value == "true")
             .unwrap_or(false);
@@ -114,7 +110,7 @@ impl<'a> Router<RequestContext<'a>> for GraphQLRouter {
         };
 
         let response = resolve_in_memory(
-            request,
+            request_context,
             &self.system_resolver,
             trusted_document_enforcement,
             &request_context,

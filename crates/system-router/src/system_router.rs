@@ -9,13 +9,14 @@
 
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
+use common::router::PlainRequestPayload;
 use tracing::debug;
 
 use common::context::{JwtAuthenticator, RequestContext};
 use common::{
     cors::{CorsConfig, CorsRouter},
     env_const::{EXO_CORS_DOMAINS, EXO_UNSTABLE_ENABLE_REST_API},
-    http::{RequestPayload, ResponsePayload},
+    http::ResponsePayload,
     router::{CompositeRouter, Router},
 };
 use core_plugin_interface::{
@@ -224,22 +225,19 @@ impl SystemRouter {
 }
 
 #[async_trait::async_trait]
-impl<'a> Router<()> for SystemRouter {
+impl<'a> Router<PlainRequestPayload<'a>> for SystemRouter {
     async fn route(
         &self,
-        request: &(dyn RequestPayload + Send + Sync),
-        _request_context: &(),
+        request_context: &mut PlainRequestPayload<'a>,
     ) -> Option<ResponsePayload> {
-        let request_head = request.get_head();
-
-        let request_context = RequestContext::new(
-            request_head,
+        let mut request_context = RequestContext::new(
+            request_context,
             vec![],
             self,
             self.authenticator.clone(),
             self.env.clone(),
         );
 
-        self.underlying.route(request, &request_context).await
+        self.underlying.route(&mut request_context).await
     }
 }

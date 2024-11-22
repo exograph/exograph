@@ -35,16 +35,12 @@ impl RestRouter {
 
 #[async_trait]
 impl<'a> Router<RequestContext<'a>> for RestRouter {
-    async fn route(
-        &self,
-        request: &(dyn RequestPayload + Send + Sync),
-        _request_context: &RequestContext<'a>,
-    ) -> Option<ResponsePayload> {
-        if !self.suitable(request.get_head()) {
+    async fn route(&self, request_context: &mut RequestContext<'a>) -> Option<ResponsePayload> {
+        if !self.suitable(request_context.get_head()) {
             return None;
         }
 
-        match self.system_resolver.resolve(request).await {
+        match self.system_resolver.resolve(request_context).await {
             Ok(Some(response)) => Some(response),
             Err(e) => {
                 tracing::error!("Error resolving subsystem: {}", e);

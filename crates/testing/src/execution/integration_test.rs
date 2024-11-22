@@ -16,7 +16,7 @@ use common::env_const::{
 };
 use common::http::{RequestHead, RequestPayload, ResponseBodyError};
 use common::operation_payload::OperationsPayload;
-use common::router::Router;
+use common::router::{PlainRequestPayload, Router};
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::future::OptionFuture;
 use futures::FutureExt;
@@ -477,12 +477,15 @@ async fn run_operation(
 }
 
 pub async fn run_query(
-    request: impl RequestPayload + Send + Sync,
+    request: impl RequestPayload + Send + Sync + 'static,
     router: &SystemRouter,
     cookies: &mut HashMap<String, String>,
 ) -> Result<Value, ResponseBodyError> {
     let mut request = request;
-    let res = router.route(&mut request, &()).await.unwrap();
+    let res = router
+        .route(&mut PlainRequestPayload::new(&mut request))
+        .await
+        .unwrap();
 
     res.headers.into_iter().for_each(|(k, v)| {
         if k.to_ascii_lowercase() == "set-cookie" {

@@ -7,27 +7,39 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::http::{Headers, RequestPayload, ResponseBody, ResponsePayload};
+use crate::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use async_trait::async_trait;
 use http::StatusCode;
 
 #[async_trait]
-pub trait Router<RQ: Send + Sync>: Sync {
-    async fn route(
-        &self,
-        request: &(dyn RequestPayload + Send + Sync),
-        request_context: &RQ,
-    ) -> Option<ResponsePayload>;
+pub trait Router<RQ: RequestPayload + Send + Sync + ?Sized>: Sync {
+    async fn route(&self, request_context: &mut RQ) -> Option<ResponsePayload>;
 }
 
 #[async_trait]
-impl<Rtr: Sync + ?Sized + Router<RQ>, RQ: Send + Sync> Router<RQ> for Box<Rtr> {
-    async fn route(
-        &self,
-        request: &(dyn RequestPayload + Send + Sync),
-        request_context: &RQ,
-    ) -> Option<ResponsePayload> {
-        (**self).route(request, request_context).await
+impl<Rtr: Sync + ?Sized + Router<RQ>, RQ: RequestPayload + Send + Sync> Router<RQ> for Box<Rtr> {
+    async fn route(&self, request_context: &mut RQ) -> Option<ResponsePayload> {
+        (**self).route(request_context).await
+    }
+}
+
+pub struct PlainRequestPayload<'a> {
+    request: &'a mut (dyn RequestPayload + Send + Sync),
+}
+
+impl<'a> PlainRequestPayload<'a> {
+    pub fn new(request: &'a mut (dyn RequestPayload + Send + Sync)) -> Self {
+        Self { request }
+    }
+}
+
+impl<'a> RequestPayload for PlainRequestPayload<'a> {
+    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        self.request.get_head()
+    }
+
+    fn take_body(&self) -> serde_json::Value {
+        self.request.take_body()
     }
 }
 
@@ -42,14 +54,10 @@ impl<Rtr> CompositeRouter<Rtr> {
 }
 
 #[async_trait::async_trait]
-impl<RQ: Send + Sync, Rtr: Router<RQ>> Router<RQ> for CompositeRouter<Rtr> {
-    async fn route(
-        &self,
-        request: &(dyn RequestPayload + Send + Sync),
-        request_context: &RQ,
-    ) -> Option<ResponsePayload> {
+impl<RQ: RequestPayload + Send + Sync, Rtr: Router<RQ>> Router<RQ> for CompositeRouter<Rtr> {
+    async fn route(&self, request_context: &mut RQ) -> Option<ResponsePayload> {
         for router in self.routers.iter() {
-            if let Some(response) = router.route(request, request_context).await {
+            if let Some(response) = router.route(request_context).await {
                 return Some(response);
             }
         }

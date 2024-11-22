@@ -363,23 +363,18 @@ fn literal_column(value: Val) -> ColumnPath {
 mod tests {
     use std::{collections::HashMap, sync::Arc};
 
-    use core_plugin_interface::{
-        core_model::{
-            access::{
-                AccessLogicalExpression, AccessPredicateExpression, CommonAccessPrimitiveExpression,
-            },
-            context_type::ContextSelection,
+    use core_plugin_interface::core_model::{
+        access::{
+            AccessLogicalExpression, AccessPredicateExpression, CommonAccessPrimitiveExpression,
         },
-        interception::InterceptionMap,
-        trusted_documents::TrustedDocuments,
+        context_type::ContextSelection,
     };
 
     use common::{
         http::{RequestHead, RequestPayload, ResponsePayload},
-        router::Router,
+        router::{PlainRequestPayload, Router},
     };
-    use core_resolver::introspection::definition::schema::Schema;
-    use core_resolver::system_resolver::GraphQLSystemResolver;
+
     use exo_env::MapEnvironment;
     use exo_sql::PhysicalTableName;
     use serde_json::{json, Value};
@@ -392,10 +387,20 @@ mod tests {
         owner_id_column_path: PhysicalColumnPath,
         dept1_id_column_path: PhysicalColumnPath,
         dept2_id_column_path: PhysicalColumnPath,
-        test_system_router: Box<dyn Router<()> + Send + Sync>,
+        test_system_router: Box<dyn for<'a> Router<PlainRequestPayload<'a>> + Send + Sync>,
     }
 
     struct TestRequest {}
+
+    impl RequestPayload for TestRequest {
+        fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+            self
+        }
+
+        fn take_body(&self) -> serde_json::Value {
+            Default::default()
+        }
+    }
 
     impl RequestHead for TestRequest {
         fn get_headers(&self, _key: &str) -> Vec<String> {
@@ -442,11 +447,10 @@ mod tests {
     struct TestRouter {}
 
     #[async_trait::async_trait]
-    impl Router<()> for TestRouter {
+    impl<'a> Router<PlainRequestPayload<'a>> for TestRouter {
         async fn route(
             &self,
-            _request: &(dyn RequestPayload + Send + Sync),
-            _request_context: &(),
+            _request_context: &mut PlainRequestPayload<'a>,
         ) -> Option<ResponsePayload> {
             None
         }
@@ -1521,7 +1525,7 @@ mod tests {
 
     fn test_request_context<'a>(
         test_values: Value,
-        system_router: &'a (dyn Router<()> + Send + Sync),
+        system_router: &'a (dyn Router<PlainRequestPayload<'a>> + Send + Sync),
     ) -> RequestContext<'a> {
         RequestContext::new(
             &REQUEST,

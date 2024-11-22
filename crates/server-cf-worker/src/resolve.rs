@@ -13,7 +13,7 @@ use serde_json::Value;
 use worker::{Request as WorkerRequest, Response as WorkerResponse};
 
 use common::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
-use common::router::Router;
+use common::router::{PlainRequestPayload, Router};
 
 use wasm_bindgen::prelude::*;
 
@@ -100,13 +100,15 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
 
     let body_json: Value = worker_request.0.json().await.unwrap_or(Value::Null);
 
-    let request = WorkerRequestPayload {
+    let mut request = WorkerRequestPayload {
         body: body_json,
         head: worker_request,
     };
 
     let system_router = crate::init::get_system_router()?;
-    let response_payload = system_router.route(&request, &()).await;
+    let response_payload = system_router
+        .route(&mut PlainRequestPayload::new(&mut request))
+        .await;
 
     let response = match response_payload {
         Some(ResponsePayload {

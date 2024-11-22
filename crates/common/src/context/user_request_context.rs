@@ -14,8 +14,9 @@ use tokio::sync::Mutex;
 use elsa::sync::FrozenMap;
 use exo_sql::TransactionHolder;
 
-use crate::http::RequestHead;
+use crate::http::{RequestHead, RequestPayload};
 
+use crate::router::PlainRequestPayload;
 use crate::{router::Router, value::Val};
 
 use super::provider::jwt::JwtExtractor;
@@ -33,7 +34,7 @@ pub struct UserRequestContext<'a> {
     // maps from an annotation to a parsed context
     parsed_context_map: HashMap<String, BoxedContextExtractor<'a>>,
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
-    request_head: &'a (dyn RequestHead + Send + Sync),
+    request: &'a (dyn RequestPayload + Send + Sync),
     // cache of context values so that we compute them only once per request
     context_cache: FrozenMap<(String, String), Box<Option<Val>>>,
 }
@@ -41,9 +42,9 @@ pub struct UserRequestContext<'a> {
 impl<'a> UserRequestContext<'a> {
     // Constructs a UserRequestContext from a vector of parsed contexts and a request.
     pub fn new<'request_context>(
-        request_head: &'request_context (dyn RequestHead + Send + Sync),
+        request: &'request_context (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_router: &'a (dyn Router<()> + Sync),
+        system_router: &'a (dyn Router<PlainRequestPayload<'a>> + Send + Sync),
         jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: Arc<dyn Environment>,
     ) -> UserRequestContext<'request_context>
@@ -67,7 +68,7 @@ impl<'a> UserRequestContext<'a> {
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
-            request_head,
+            request,
             context_cache: FrozenMap::new(),
         }
     }
@@ -121,7 +122,7 @@ impl<'a> UserRequestContext<'a> {
             .ok_or_else(|| ContextExtractionError::SourceNotFound(annotation.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(key, request_context, self.request_head)
+            .extract_context_field(key, request_context, self.request.get_head())
             .await?
             .map(Val::from))
     }
@@ -132,5 +133,13 @@ impl<'a> UserRequestContext<'a> {
             .lock()
             .await
             .ensure_transaction();
+    }
+
+    pub fn get_request(&self) -> &(dyn RequestPayload + Send + Sync) {
+        self.request
+    }
+
+    pub fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        self.request.get_head()
     }
 }

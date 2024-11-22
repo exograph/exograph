@@ -20,10 +20,13 @@ use reqwest::StatusCode;
 use system_router::SystemRouter;
 use url::Url;
 
-use common::http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use common::{
     env_const::{get_deployment_mode, DeploymentMode},
     router::Router,
+};
+use common::{
+    http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload},
+    router::PlainRequestPayload,
 };
 use request::ActixRequestHead;
 use serde_json::Value;
@@ -102,7 +105,9 @@ async fn resolve_locally(
         body: body.map(|b| b.into_inner()).unwrap_or(Value::Null),
     };
 
-    let response = system_router.route(&mut request, &()).await;
+    let response = system_router
+        .route(&mut PlainRequestPayload::new(&mut request))
+        .await;
 
     match response {
         Some(ResponsePayload {

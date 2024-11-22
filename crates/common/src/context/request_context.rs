@@ -12,7 +12,8 @@ use std::sync::Arc;
 use async_recursion::async_recursion;
 use exo_env::Environment;
 
-use crate::http::RequestHead;
+use crate::http::{RequestHead, RequestPayload};
+use crate::router::PlainRequestPayload;
 use crate::{router::Router, value::Val};
 
 use super::JwtAuthenticator;
@@ -33,14 +34,14 @@ pub enum RequestContext<'a> {
 
 impl<'a> RequestContext<'a> {
     pub fn new(
-        request_head: &'a (dyn RequestHead + Send + Sync),
+        request: &'a (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_router: &'a (dyn Router<()> + Send + Sync),
+        system_router: &'a (dyn Router<PlainRequestPayload<'a>> + Send + Sync),
         jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: Arc<dyn Environment>,
     ) -> RequestContext<'a> {
         RequestContext::User(UserRequestContext::new(
-            request_head,
+            request,
             parsed_contexts,
             system_router,
             jwt_authenticator,
@@ -105,5 +106,15 @@ impl<'a> RequestContext<'a> {
                 overridden_context.ensure_transaction().await;
             }
         }
+    }
+}
+
+impl<'a> RequestPayload for RequestContext<'a> {
+    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        self.get_base_context().get_head()
+    }
+
+    fn take_body(&self) -> Value {
+        self.get_base_context().get_request().take_body()
     }
 }

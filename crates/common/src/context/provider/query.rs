@@ -11,17 +11,19 @@ use async_trait::async_trait;
 // use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
-use crate::http::RequestHead;
+use crate::http::{RequestHead, RequestPayload};
 use crate::operation_payload::OperationsPayload;
-use crate::router::Router;
+use crate::router::{PlainRequestPayload, Router};
 // use crate::system_resolver::GraphQLSystemResolver;
 
 pub struct QueryExtractor<'a> {
-    system_router: &'a (dyn Router<()> + Sync),
+    system_router: &'a (dyn Router<PlainRequestPayload<'a>> + Send + Sync),
 }
 
 impl<'a> QueryExtractor<'a> {
-    pub fn new(system_router: &'a (dyn Router<()> + Sync)) -> QueryExtractor<'a> {
+    pub fn new(
+        system_router: &'a (dyn Router<PlainRequestPayload<'a>> + Send + Sync),
+    ) -> QueryExtractor<'a> {
         QueryExtractor { system_router }
     }
 }
