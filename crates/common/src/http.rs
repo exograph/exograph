@@ -25,7 +25,7 @@ pub trait RequestPayload {
     fn take_body(&self) -> Value;
 }
 
-type PinnedStream<E> = Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;
+type PinnedStream<E> = Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send>>;
 
 #[derive(Debug, Clone)]
 pub struct Headers {

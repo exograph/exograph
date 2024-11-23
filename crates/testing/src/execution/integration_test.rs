@@ -295,7 +295,7 @@ async fn run_operation(
         http::Method::POST,
         "/graphql".to_string(),
         Value::default(),
-        None,
+        Some("127.0.0.1".to_string()),
     );
 
     // add JWT token if specified in testfile
@@ -328,6 +328,7 @@ async fn run_operation(
 
     if let Some(Value::Object(map)) = headers {
         for (header, value) in map.iter() {
+            println!("-------- header: {header}, value: {value}");
             request_head.add_header(
                 header,
                 value.as_str().expect("expected string for header value"),
@@ -395,9 +396,8 @@ pub async fn run_query(
     router: &SystemRouter,
     cookies: &mut HashMap<String, String>,
 ) -> Result<Value, ResponseBodyError> {
-    let mut request = request;
     let res = router
-        .route(&mut PlainRequestPayload::new(&mut request))
+        .route(&PlainRequestPayload::new(Box::new(request)))
         .await
         .unwrap();
 

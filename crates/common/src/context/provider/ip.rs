@@ -24,9 +24,14 @@ impl ContextExtractor for IpExtractor {
     async fn extract_context_field(
         &self,
         _key: &str,
-        _request_context: &RequestContext,
-        request_head: &(dyn RequestHead + Send + Sync),
+        request_context: &RequestContext,
+        _request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
-        Ok(request_head.get_ip().map(|ip| ip.to_string().into()))
+        use crate::http::RequestPayload;
+
+        Ok(request_context
+            .get_head()
+            .get_ip()
+            .map(|ip| ip.to_string().into()))
     }
 }

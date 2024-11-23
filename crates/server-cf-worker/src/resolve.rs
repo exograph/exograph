@@ -102,14 +102,14 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
 
     let body_json: Value = worker_request.0.json().await.unwrap_or(Value::Null);
 
-    let mut request = WorkerRequestPayload {
+    let request = WorkerRequestPayload {
         body: Mutex::new(body_json),
         head: worker_request,
     };
 
     let system_router = crate::init::get_system_router()?;
     let response_payload = system_router
-        .route(&mut PlainRequestPayload::new(&mut request))
+        .route(&PlainRequestPayload::new(Box::new(request)))
         .await;
 
     let response = match response_payload {

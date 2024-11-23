@@ -101,13 +101,13 @@ async fn resolve_locally(
     query: Value,
     system_router: web::Data<SystemRouter>,
 ) -> HttpResponse {
-    let mut request = ActixRequestPayload {
+    let request = ActixRequestPayload {
         head: ActixRequestHead::from_request(req, query),
         body: Mutex::new(body.map(|b| b.into_inner()).unwrap_or(Value::Null)),
     };
 
     let response = system_router
-        .route(&mut PlainRequestPayload::new(&mut request))
+        .route(&PlainRequestPayload::new(Box::new(request)))
         .await;
 
     match response {

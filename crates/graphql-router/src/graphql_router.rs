@@ -88,7 +88,7 @@ impl<'a> Router<RequestContext<'a>> for GraphQLRouter {
         name = "resolver::resolve"
         skip(self, request_context)
     )]
-    async fn route(&self, request_context: &mut RequestContext<'a>) -> Option<ResponsePayload> {
+    async fn route(&self, request_context: &RequestContext<'a>) -> Option<ResponsePayload> {
         let request_head = request_context.get_head();
         if !self.suitable(request_head) {
             return None;

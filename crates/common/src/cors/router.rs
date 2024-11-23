@@ -37,7 +37,7 @@ impl<RQ: RequestPayload + Send + Sync, Rtr: Router<RQ>> Router<RQ> for CorsRoute
     /// specified standard, but https://github.com/whatwg/fetch/issues/172 makes sense.
     /// It suggests the possibility of adding more details in the body, but also cautions
     /// to not reveal too much information. Therefore, we don't add a body.
-    async fn route(&self, request: &mut RQ) -> Option<ResponsePayload> {
+    async fn route(&self, request: &RQ) -> Option<ResponsePayload> {
         let origin_header = request.get_head().get_header(http::header::ORIGIN.as_str());
 
         let add_cors_headers = |response: &mut ResponsePayload, origin: &str| {
@@ -382,7 +382,7 @@ mod tests {
 
     #[async_trait::async_trait]
     impl Router<MockRequestPayload> for MockRouter {
-        async fn route(&self, _request: &mut MockRequestPayload) -> Option<ResponsePayload> {
+        async fn route(&self, _request: &MockRequestPayload) -> Option<ResponsePayload> {
             RESPONSE_PAYLOAD.with(|mock_response| {
                 Some(ResponsePayload {
                     body: ResponseBody::Bytes(

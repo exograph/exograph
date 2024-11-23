@@ -36,7 +36,7 @@ impl<'a> RequestContext<'a> {
     pub fn new(
         request: &'a (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_router: &'a (dyn Router<PlainRequestPayload<'a>> + Send + Sync),
+        system_router: &'a (dyn Router<PlainRequestPayload> + Send + Sync),
         jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: Arc<dyn Environment>,
     ) -> RequestContext<'a> {

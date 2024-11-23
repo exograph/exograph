@@ -13,27 +13,27 @@ use http::StatusCode;
 
 #[async_trait]
 pub trait Router<RQ: RequestPayload + Send + Sync + ?Sized>: Sync {
-    async fn route(&self, request_context: &mut RQ) -> Option<ResponsePayload>;
+    async fn route(&self, request_context: &RQ) -> Option<ResponsePayload>;
 }
 
 #[async_trait]
 impl<Rtr: Sync + ?Sized + Router<RQ>, RQ: RequestPayload + Send + Sync> Router<RQ> for Box<Rtr> {
-    async fn route(&self, request_context: &mut RQ) -> Option<ResponsePayload> {
+    async fn route(&self, request_context: &RQ) -> Option<ResponsePayload> {
         (**self).route(request_context).await
     }
 }
 
-pub struct PlainRequestPayload<'a> {
-    request: &'a mut (dyn RequestPayload + Send + Sync),
+pub struct PlainRequestPayload {
+    request: Box<dyn RequestPayload + Send + Sync>,
 }
 
-impl<'a> PlainRequestPayload<'a> {
-    pub fn new(request: &'a mut (dyn RequestPayload + Send + Sync)) -> Self {
+impl PlainRequestPayload {
+    pub fn new(request: Box<dyn RequestPayload + Send + Sync>) -> Self {
         Self { request }
     }
 }
 
-impl<'a> RequestPayload for PlainRequestPayload<'a> {
+impl RequestPayload for PlainRequestPayload {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
         self.request.get_head()
     }
@@ -55,7 +55,7 @@ impl<Rtr> CompositeRouter<Rtr> {
 
 #[async_trait::async_trait]
 impl<RQ: RequestPayload + Send + Sync, Rtr: Router<RQ>> Router<RQ> for CompositeRouter<Rtr> {
-    async fn route(&self, request_context: &mut RQ) -> Option<ResponsePayload> {
+    async fn route(&self, request_context: &RQ) -> Option<ResponsePayload> {
         for router in self.routers.iter() {
             if let Some(response) = router.route(request_context).await {
                 return Some(response);

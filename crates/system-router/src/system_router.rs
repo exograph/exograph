@@ -225,11 +225,8 @@ impl SystemRouter {
 }
 
 #[async_trait::async_trait]
-impl<'a> Router<PlainRequestPayload<'a>> for SystemRouter {
-    async fn route(
-        &self,
-        request_context: &mut PlainRequestPayload<'a>,
-    ) -> Option<ResponsePayload> {
+impl Router<PlainRequestPayload> for SystemRouter {
+    async fn route(&self, request_context: &PlainRequestPayload) -> Option<ResponsePayload> {
         let mut request_context = RequestContext::new(
             request_context,
             vec![],
