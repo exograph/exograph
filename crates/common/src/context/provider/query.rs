@@ -22,7 +22,7 @@ use crate::router::PlainRequestPayload;
 pub struct QueryExtractor;
 
 #[async_trait]
-impl<'request> ContextExtractor<'request> for QueryExtractor {
+impl<'request> ContextExtractor for QueryExtractor {
     fn annotation_name(&self) -> &str {
         "query"
     }
@@ -30,7 +30,7 @@ impl<'request> ContextExtractor<'request> for QueryExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        request_context: &'request RequestContext<'request>,
+        request_context: &RequestContext,
     ) -> Result<Option<serde_json::Value>, ContextExtractionError> {
         let query = format!("query {{ {} }}", key.to_owned());
 

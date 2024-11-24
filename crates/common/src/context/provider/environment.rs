@@ -20,7 +20,7 @@ pub struct EnvironmentContextExtractor {
 }
 
 #[async_trait]
-impl<'request> ContextExtractor<'request> for EnvironmentContextExtractor {
+impl ContextExtractor for EnvironmentContextExtractor {
     fn annotation_name(&self) -> &str {
         "env"
     }
@@ -28,7 +28,7 @@ impl<'request> ContextExtractor<'request> for EnvironmentContextExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &'request RequestContext<'request>,
+        _request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self.env.get(key).map(|v| v.as_str().into()))
     }

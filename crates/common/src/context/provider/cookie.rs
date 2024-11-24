@@ -53,7 +53,7 @@ impl CookieExtractor {
 }
 
 #[async_trait]
-impl<'request> ContextExtractor<'request> for CookieExtractor {
+impl ContextExtractor for CookieExtractor {
     fn annotation_name(&self) -> &str {
         "cookie"
     }
@@ -61,7 +61,7 @@ impl<'request> ContextExtractor<'request> for CookieExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        request_context: &'request RequestContext<'request>,
+        request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
         use crate::http::RequestPayload;
 

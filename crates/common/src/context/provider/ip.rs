@@ -15,7 +15,7 @@ use crate::context::{context_extractor::ContextExtractor, ContextExtractionError
 pub struct IpExtractor;
 
 #[async_trait]
-impl<'request> ContextExtractor<'request> for IpExtractor {
+impl ContextExtractor for IpExtractor {
     fn annotation_name(&self) -> &str {
         "clientIp"
     }
@@ -23,7 +23,7 @@ impl<'request> ContextExtractor<'request> for IpExtractor {
     async fn extract_context_field(
         &self,
         _key: &str,
-        request_context: &'request RequestContext<'request>,
+        request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
         use crate::http::RequestPayload;
 

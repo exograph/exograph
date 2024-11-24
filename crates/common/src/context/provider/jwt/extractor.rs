@@ -48,7 +48,7 @@ impl JwtExtractor {
 }
 
 #[async_trait]
-impl<'request> ContextExtractor<'request> for JwtExtractor {
+impl ContextExtractor for JwtExtractor {
     fn annotation_name(&self) -> &str {
         "jwt"
     }
@@ -56,7 +56,7 @@ impl<'request> ContextExtractor<'request> for JwtExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        request_context: &'request RequestContext<'request>,
+        request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
         use crate::http::RequestPayload;
 

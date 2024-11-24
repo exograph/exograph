@@ -15,7 +15,7 @@ use crate::context::{context_extractor::ContextExtractor, ContextExtractionError
 pub struct HeaderExtractor;
 
 #[async_trait]
-impl<'request> ContextExtractor<'request> for HeaderExtractor {
+impl ContextExtractor for HeaderExtractor {
     fn annotation_name(&self) -> &str {
         "header"
     }
@@ -23,7 +23,7 @@ impl<'request> ContextExtractor<'request> for HeaderExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        request_context: &'request RequestContext<'request>,
+        request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(request_context
             .get_base_context()
