@@ -18,7 +18,7 @@ use super::{ContextExtractionError, RequestContext};
 ///
 /// This trait should be implemented on objects that represent a particular source of parsed context fields
 #[async_trait]
-pub trait ContextExtractor {
+pub trait ContextExtractor<'request> {
     // what annotation does this extractor provide values for?
     // e.g. "jwt", "header", etc.
     fn annotation_name(&self) -> &str;
@@ -27,11 +27,12 @@ pub trait ContextExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        request_context: &RequestContext,
+        request_context: &'request RequestContext<'request>,
         request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError>;
 }
-pub type BoxedContextExtractor<'a> = Box<dyn ContextExtractor + 'a + Send + Sync>;
+pub type BoxedContextExtractor<'a> =
+    Box<dyn for<'request> ContextExtractor<'request> + 'a + Send + Sync>;
 
 #[cfg(feature = "test-context")]
 pub struct TestRequestContext {
@@ -40,7 +41,7 @@ pub struct TestRequestContext {
 
 #[cfg(feature = "test-context")]
 #[async_trait]
-impl ContextExtractor for TestRequestContext {
+impl<'request> ContextExtractor<'request> for TestRequestContext {
     fn annotation_name(&self) -> &str {
         "test"
     }
@@ -48,7 +49,7 @@ impl ContextExtractor for TestRequestContext {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &RequestContext,
+        _request_context: &'request RequestContext<'request>,
         _request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self.test_values.get(key).cloned())

@@ -225,16 +225,26 @@ impl SystemRouter {
 }
 
 #[async_trait::async_trait]
-impl Router<PlainRequestPayload> for SystemRouter {
-    async fn route(&self, request_context: &PlainRequestPayload) -> Option<ResponsePayload> {
-        let mut request_context = RequestContext::new(
-            request_context,
-            vec![],
-            self,
-            self.authenticator.clone(),
-            self.env.clone(),
-        );
+impl<'request> Router<PlainRequestPayload<'request>> for SystemRouter {
+    async fn route(
+        &self,
+        request_context: &PlainRequestPayload<'request>,
+    ) -> Option<ResponsePayload> {
+        match request_context {
+            PlainRequestPayload::External(request) => {
+                let request_context = RequestContext::new(
+                    request.as_ref(),
+                    vec![],
+                    self,
+                    self.authenticator.clone(),
+                    self.env.clone(),
+                );
 
-        self.underlying.route(&mut request_context).await
+                self.underlying.route(&request_context).await
+            }
+            PlainRequestPayload::Internal(request_context) => {
+                self.underlying.route(request_context).await
+            }
+        }
     }
 }

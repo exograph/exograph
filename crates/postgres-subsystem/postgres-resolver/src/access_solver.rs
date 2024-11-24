@@ -387,7 +387,8 @@ mod tests {
         owner_id_column_path: PhysicalColumnPath,
         dept1_id_column_path: PhysicalColumnPath,
         dept2_id_column_path: PhysicalColumnPath,
-        test_system_router: Box<dyn Router<PlainRequestPayload> + Send + Sync>,
+        test_system_router:
+            Box<dyn for<'request> Router<PlainRequestPayload<'request>> + Send + Sync>,
     }
 
     struct TestRequest {}
@@ -447,8 +448,11 @@ mod tests {
     struct TestRouter {}
 
     #[async_trait::async_trait]
-    impl Router<PlainRequestPayload> for TestRouter {
-        async fn route(&self, _request_context: &PlainRequestPayload) -> Option<ResponsePayload> {
+    impl<'request> Router<PlainRequestPayload<'request>> for TestRouter {
+        async fn route(
+            &self,
+            _request_context: &PlainRequestPayload<'request>,
+        ) -> Option<ResponsePayload> {
             None
         }
     }
@@ -1522,7 +1526,7 @@ mod tests {
 
     fn test_request_context<'a>(
         test_values: Value,
-        system_router: &'a (dyn Router<PlainRequestPayload> + Send + Sync),
+        system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>> + Send + Sync),
     ) -> RequestContext<'a> {
         RequestContext::new(
             &REQUEST,

@@ -14,6 +14,9 @@ use crate::value::Val;
 
 use super::{ContextExtractionError, RequestContext};
 
+/// Represents a request context that has been overridden explicitly through
+/// a call to `ExographPriv` with overriddent context that should last only for that call (including any nested calls).
+/// In other words, once the call returns, the `base_context`
 pub struct OverriddenContext<'a> {
     pub base_context: &'a RequestContext<'a>,
     context_override: Value,
@@ -21,7 +24,7 @@ pub struct OverriddenContext<'a> {
 }
 
 impl<'a> OverriddenContext<'a> {
-    pub fn new(base_context: &'a RequestContext, context_override: Value) -> Self {
+    pub fn new(base_context: &'a RequestContext<'a>, context_override: Value) -> Self {
         Self {
             base_context,
             context_override,

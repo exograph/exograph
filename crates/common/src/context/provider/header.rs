@@ -16,7 +16,7 @@ use crate::http::RequestHead;
 pub struct HeaderExtractor;
 
 #[async_trait]
-impl ContextExtractor for HeaderExtractor {
+impl<'request> ContextExtractor<'request> for HeaderExtractor {
     fn annotation_name(&self) -> &str {
         "header"
     }
@@ -24,10 +24,12 @@ impl ContextExtractor for HeaderExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &RequestContext,
+        request_context: &'request RequestContext<'request>,
         request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
-        Ok(request_head
+        Ok(request_context
+            .get_base_context()
+            .get_head()
             .get_header(&key.to_ascii_lowercase())
             .map(|str| str.as_str().into()))
     }

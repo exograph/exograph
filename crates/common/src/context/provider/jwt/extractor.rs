@@ -48,7 +48,7 @@ impl JwtExtractor {
 }
 
 #[async_trait]
-impl ContextExtractor for JwtExtractor {
+impl<'request> ContextExtractor<'request> for JwtExtractor {
     fn annotation_name(&self) -> &str {
         "jwt"
     }
@@ -56,7 +56,7 @@ impl ContextExtractor for JwtExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &RequestContext,
+        _request_context: &'request RequestContext<'request>,
         request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self

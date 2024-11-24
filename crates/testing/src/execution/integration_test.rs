@@ -328,7 +328,6 @@ async fn run_operation(
 
     if let Some(Value::Object(map)) = headers {
         for (header, value) in map.iter() {
-            println!("-------- header: {header}, value: {value}");
             request_head.add_header(
                 header,
                 value.as_str().expect("expected string for header value"),
@@ -397,7 +396,7 @@ pub async fn run_query(
     cookies: &mut HashMap<String, String>,
 ) -> Result<Value, ResponseBodyError> {
     let res = router
-        .route(&PlainRequestPayload::new(Box::new(request)))
+        .route(&PlainRequestPayload::external(Box::new(request)))
         .await
         .unwrap();
 

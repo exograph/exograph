@@ -35,6 +35,10 @@ pub struct UserRequestContext<'a> {
     parsed_context_map: HashMap<String, BoxedContextExtractor<'a>>,
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
     request: &'a (dyn RequestPayload + Send + Sync),
+    pub system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>>),
+    jwt_authenticator: Arc<Option<JwtAuthenticator>>,
+    env: Arc<dyn Environment>,
+
     // cache of context values so that we compute them only once per request
     context_cache: FrozenMap<(String, String), Box<Option<Val>>>,
 }
@@ -44,7 +48,7 @@ impl<'a> UserRequestContext<'a> {
     pub fn new<'request_context>(
         request: &'request_context (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_router: &'a (dyn Router<PlainRequestPayload> + Send + Sync),
+        system_router: &'request_context (dyn for<'request> Router<PlainRequestPayload<'request>>),
         jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: Arc<dyn Environment>,
     ) -> UserRequestContext<'request_context>
@@ -53,8 +57,8 @@ impl<'a> UserRequestContext<'a> {
     {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedContextExtractor> = vec![
-            Box::new(EnvironmentContextExtractor { env }),
-            Box::new(QueryExtractor::new(system_router)),
+            Box::new(EnvironmentContextExtractor { env: env.clone() }),
+            Box::new(QueryExtractor {}),
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
             Box::new(CookieExtractor::new()),
@@ -69,8 +73,53 @@ impl<'a> UserRequestContext<'a> {
                 .collect(),
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
             request,
+            system_router,
+            jwt_authenticator,
+            env,
             context_cache: FrozenMap::new(),
         }
+    }
+
+    pub fn with_request(
+        &self,
+        request: &'a (dyn RequestPayload + Send + Sync),
+    ) -> UserRequestContext<'a> {
+        let generic_contexts: Vec<BoxedContextExtractor> = vec![
+            Box::new(EnvironmentContextExtractor {
+                env: self.env.clone(),
+            }),
+            Box::new(QueryExtractor),
+            Box::new(HeaderExtractor),
+            Box::new(IpExtractor),
+            Box::new(CookieExtractor::new()),
+            Box::new(JwtExtractor::new(self.jwt_authenticator.clone())),
+        ];
+
+        UserRequestContext {
+            request,
+            parsed_context_map: generic_contexts
+                .into_iter()
+                .map(|context| (context.annotation_name().to_owned(), context))
+                .collect(),
+            transaction_holder: self.transaction_holder.clone(),
+            context_cache: self.context_cache.clone(),
+            system_router: self.system_router,
+            jwt_authenticator: self.jwt_authenticator.clone(),
+            env: self.env.clone(),
+        }
+    }
+
+    fn create_generic_contexts(&self) -> Vec<BoxedContextExtractor> {
+        vec![
+            Box::new(EnvironmentContextExtractor {
+                env: self.env.clone(),
+            }),
+            Box::new(QueryExtractor),
+            Box::new(HeaderExtractor),
+            Box::new(IpExtractor),
+            Box::new(CookieExtractor::new()),
+            Box::new(JwtExtractor::new(self.jwt_authenticator.clone())),
+        ]
     }
 
     pub async fn extract_context_field(
@@ -78,7 +127,7 @@ impl<'a> UserRequestContext<'a> {
         annotation: &str,
         key: &str,
         coerce_value: &impl Fn(Val) -> Result<Val, ContextExtractionError>,
-        request_context: &RequestContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<Option<&'a Val>, ContextExtractionError> {
         // Check to see if there is a cached value for this field
         // If there is, return it. Otherwise, compute it, cache it, and return it.

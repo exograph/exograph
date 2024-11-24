@@ -45,6 +45,7 @@ export async function verifyCaptcha(exograph: Exograph, context: ICaptchaValidat
         "uuid": context.uuid
     });
 
+
     // return whether the CAPTCHA matches the proper response
     return (context.response == recordQuery.record.properResponse)
 }

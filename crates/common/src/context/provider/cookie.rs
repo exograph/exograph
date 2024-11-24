@@ -53,7 +53,7 @@ impl CookieExtractor {
 }
 
 #[async_trait]
-impl ContextExtractor for CookieExtractor {
+impl<'request> ContextExtractor<'request> for CookieExtractor {
     fn annotation_name(&self) -> &str {
         "cookie"
     }
@@ -61,7 +61,7 @@ impl ContextExtractor for CookieExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &RequestContext,
+        _request_context: &'request RequestContext<'request>,
         request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self

@@ -36,7 +36,7 @@ impl<'a> RequestContext<'a> {
     pub fn new(
         request: &'a (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_router: &'a (dyn Router<PlainRequestPayload> + Send + Sync),
+        system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>>),
         jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: Arc<dyn Environment>,
     ) -> RequestContext<'a> {
@@ -49,11 +49,18 @@ impl<'a> RequestContext<'a> {
         ))
     }
 
+    pub fn with_request(
+        &'a self,
+        request: &'a (dyn RequestPayload + Send + Sync),
+    ) -> RequestContext<'a> {
+        RequestContext::User(self.get_base_context().with_request(request))
+    }
+
     pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
         RequestContext::Overridden(OverriddenContext::new(self, context_override))
     }
 
-    pub fn get_base_context(&self) -> &UserRequestContext {
+    pub fn get_base_context(&self) -> &UserRequestContext<'a> {
         match &self {
             RequestContext::User(req) => req,
             RequestContext::Overridden(OverriddenContext { base_context, .. }) => {

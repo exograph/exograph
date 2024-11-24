@@ -107,7 +107,7 @@ async fn resolve_locally(
     };
 
     let response = system_router
-        .route(&PlainRequestPayload::new(Box::new(request)))
+        .route(&PlainRequestPayload::external(Box::new(request)))
         .await;
 
     match response {

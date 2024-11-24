@@ -7,7 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
+use crate::{
+    context::RequestContext,
+    http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload},
+};
 use async_trait::async_trait;
 use http::StatusCode;
 
@@ -23,23 +26,35 @@ impl<Rtr: Sync + ?Sized + Router<RQ>, RQ: RequestPayload + Send + Sync> Router<R
     }
 }
 
-pub struct PlainRequestPayload {
-    request: Box<dyn RequestPayload + Send + Sync>,
+pub enum PlainRequestPayload<'a> {
+    External(Box<dyn RequestPayload + Send + Sync>),
+    Internal(&'a RequestContext<'a>),
+    // request: Box<dyn RequestPayload + Send + Sync>,
 }
 
-impl PlainRequestPayload {
-    pub fn new(request: Box<dyn RequestPayload + Send + Sync>) -> Self {
-        Self { request }
+impl<'a> PlainRequestPayload<'a> {
+    pub fn external(request: Box<dyn RequestPayload + Send + Sync>) -> Self {
+        Self::External(request)
+    }
+
+    pub fn internal(request: &'a RequestContext<'a>) -> Self {
+        Self::Internal(request)
     }
 }
 
-impl RequestPayload for PlainRequestPayload {
+impl RequestPayload for PlainRequestPayload<'_> {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
-        self.request.get_head()
+        match self {
+            Self::External(request) => request.get_head(),
+            Self::Internal(request) => request.get_head(),
+        }
     }
 
     fn take_body(&self) -> serde_json::Value {
-        self.request.take_body()
+        match self {
+            Self::External(request) => request.take_body(),
+            Self::Internal(request) => request.take_body(),
+        }
     }
 }
 

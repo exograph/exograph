@@ -7,30 +7,22 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::HashMap;
+use std::sync::Mutex;
+
+use serde_json::Value;
 
 use async_trait::async_trait;
 // use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
-use crate::http::{MemoryRequestHead, MemoryRequestPayload, RequestHead};
+use crate::http::{RequestHead, RequestPayload};
 use crate::operation_payload::OperationsPayload;
-use crate::router::{PlainRequestPayload, Router};
+use crate::router::PlainRequestPayload;
 
-pub struct QueryExtractor<'a> {
-    system_router: &'a (dyn Router<PlainRequestPayload> + Send + Sync),
-}
-
-impl<'a> QueryExtractor<'a> {
-    pub fn new(
-        system_router: &'a (dyn Router<PlainRequestPayload> + Send + Sync),
-    ) -> QueryExtractor<'a> {
-        QueryExtractor { system_router }
-    }
-}
+pub struct QueryExtractor;
 
 #[async_trait]
-impl<'a> ContextExtractor for QueryExtractor<'a> {
+impl<'request> ContextExtractor<'request> for QueryExtractor {
     fn annotation_name(&self) -> &str {
         "query"
     }
@@ -38,7 +30,7 @@ impl<'a> ContextExtractor for QueryExtractor<'a> {
     async fn extract_context_field(
         &self,
         key: &str,
-        request_context: &RequestContext,
+        request_context: &'request RequestContext<'request>,
         _request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<serde_json::Value>, ContextExtractionError> {
         let query = format!("query {{ {} }}", key.to_owned());
@@ -50,20 +42,21 @@ impl<'a> ContextExtractor for QueryExtractor<'a> {
             query_hash: None,
         };
 
-        let request = MemoryRequestPayload::new(
-            operation_payload.to_json().unwrap(),
-            MemoryRequestHead::new(
-                HashMap::new(),
-                http::Method::POST,
-                "/graphql".to_string(),
-                serde_json::Value::Null,
-                None,
-            ),
-        );
+        let request_head = OverriddenRequestHead {
+            path: "/graphql".to_string(),
+            original_head: request_context.get_base_context().get_head(),
+        };
+        let request = OverriddenRequestPayload {
+            body: Mutex::new(operation_payload.to_json().unwrap()),
+            head: &request_head,
+        };
 
-        let response_payload = self
+        let new_request_context = request_context.with_request(&request);
+
+        let response_payload = request_context
+            .get_base_context()
             .system_router
-            .route(&PlainRequestPayload::new(Box::new(request)))
+            .route(&PlainRequestPayload::internal(&new_request_context))
             .await;
 
         let mut response_body_value = match response_payload {
@@ -107,5 +100,47 @@ impl<'a> ContextExtractor for QueryExtractor<'a> {
         }
 
         Ok(Some(matching_result.to_owned()))
+    }
+}
+
+pub struct OverriddenRequestPayload<'original> {
+    body: Mutex<Value>,
+    head: &'original (dyn RequestHead + Send + Sync),
+}
+
+impl<'original> RequestPayload for OverriddenRequestPayload<'original> {
+    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        self.head
+    }
+
+    fn take_body(&self) -> Value {
+        self.body.lock().unwrap().take()
+    }
+}
+
+struct OverriddenRequestHead<'original> {
+    path: String,
+    original_head: &'original (dyn RequestHead + Send + Sync),
+}
+
+impl<'original> RequestHead for OverriddenRequestHead<'original> {
+    fn get_path(&self) -> String {
+        self.path.clone()
+    }
+
+    fn get_headers(&self, key: &str) -> Vec<String> {
+        self.original_head.get_headers(key)
+    }
+
+    fn get_ip(&self) -> Option<std::net::IpAddr> {
+        self.original_head.get_ip()
+    }
+
+    fn get_query(&self) -> serde_json::Value {
+        self.original_head.get_query()
+    }
+
+    fn get_method(&self) -> http::Method {
+        self.original_head.get_method()
     }
 }

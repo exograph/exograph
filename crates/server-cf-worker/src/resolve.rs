@@ -109,7 +109,7 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
 
     let system_router = crate::init::get_system_router()?;
     let response_payload = system_router
-        .route(&PlainRequestPayload::new(Box::new(request)))
+        .route(&PlainRequestPayload::external(Box::new(request)))
         .await;
 
     let response = match response_payload {
