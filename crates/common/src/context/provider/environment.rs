@@ -26,8 +26,8 @@ impl ContextExtractor for EnvironmentContextExtractor {
         request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(request_context
-            .get_base_context()
-            .get_env()
+            .system_context
+            .env
             .get(key)
             .map(|v| v.as_str().into()))
     }

@@ -7,24 +7,19 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_env::Environment;
-use std::{collections::HashMap, sync::Arc};
-use tokio::sync::Mutex;
+use std::collections::HashMap;
 
 use elsa::sync::FrozenMap;
-use exo_sql::TransactionHolder;
 
 use crate::http::{RequestHead, RequestPayload};
 
-use crate::router::PlainRequestPayload;
-use crate::{router::Router, value::Val};
+use crate::value::Val;
 
 use super::provider::jwt::JwtExtractor;
 use super::provider::{
     cookie::CookieExtractor, environment::EnvironmentContextExtractor, header::HeaderExtractor,
     ip::IpExtractor, query::QueryExtractor,
 };
-use super::JwtAuthenticator;
 use super::{
     context_extractor::BoxedContextExtractor, error::ContextExtractionError, RequestContext,
 };
@@ -33,11 +28,7 @@ use super::{
 pub struct UserRequestContext<'a> {
     // maps from an annotation to a parsed context
     parsed_context_map: HashMap<String, BoxedContextExtractor<'a>>,
-    pub transaction_holder: Arc<Mutex<TransactionHolder>>,
     request: &'a (dyn RequestPayload + Send + Sync),
-    pub system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>>),
-    env: &'a dyn Environment,
-    pub jwt_authenticator: &'a Option<JwtAuthenticator>,
 
     // cache of context values so that we compute them only once per request
     context_cache: FrozenMap<(String, String), Box<Option<Val>>>,
@@ -48,9 +39,6 @@ impl<'a> UserRequestContext<'a> {
     pub fn new<'request_context>(
         request: &'request_context (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_router: &'request_context (dyn for<'request> Router<PlainRequestPayload<'request>>),
-        jwt_authenticator: &'a Option<JwtAuthenticator>,
-        env: &'request_context dyn Environment,
     ) -> UserRequestContext<'request_context>
     where
         'a: 'request_context,
@@ -71,11 +59,7 @@ impl<'a> UserRequestContext<'a> {
                 .chain(generic_contexts) // include agnostic contexts
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
-            transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
             request,
-            system_router,
-            env,
-            jwt_authenticator,
             context_cache: FrozenMap::new(),
         }
     }
@@ -134,32 +118,11 @@ impl<'a> UserRequestContext<'a> {
             .map(Val::from))
     }
 
-    pub async fn ensure_transaction(&self) {
-        self.transaction_holder
-            .as_ref()
-            .lock()
-            .await
-            .ensure_transaction();
-    }
-
-    pub async fn finalize_transaction(&self, commit: bool) -> Result<(), tokio_postgres::Error> {
-        self.transaction_holder
-            .as_ref()
-            .lock()
-            .await
-            .finalize(commit)
-            .await
-    }
-
     pub fn get_request(&self) -> &(dyn RequestPayload + Send + Sync) {
         self.request
     }
 
     pub fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
         self.request.get_head()
-    }
-
-    pub fn get_env(&self) -> &dyn Environment {
-        self.env
     }
 }

@@ -25,8 +25,9 @@ impl ContextExtractor for HeaderExtractor {
         key: &str,
         request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
+        use crate::http::RequestPayload;
+
         Ok(request_context
-            .get_base_context()
             .get_head()
             .get_header(&key.to_ascii_lowercase())
             .map(|str| str.as_str().into()))

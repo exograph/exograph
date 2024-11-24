@@ -17,7 +17,6 @@ use async_trait::async_trait;
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
 use crate::http::{RequestHead, RequestPayload};
 use crate::operation_payload::OperationsPayload;
-use crate::router::PlainRequestPayload;
 
 pub struct QueryExtractor;
 
@@ -52,11 +51,7 @@ impl<'request> ContextExtractor for QueryExtractor {
 
         let new_request_context = request_context.with_request(&request);
 
-        let response_payload = request_context
-            .get_base_context()
-            .system_router
-            .route(&PlainRequestPayload::internal(&new_request_context))
-            .await;
+        let response_payload = request_context.route(&new_request_context).await;
 
         let mut response_body_value = match response_payload {
             Some(response_payload) => {

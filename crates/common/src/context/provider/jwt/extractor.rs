@@ -62,7 +62,7 @@ impl ContextExtractor for JwtExtractor {
             .get_or_try_init(|| async {
                 self.extract_authentication(
                     request_context.get_head(),
-                    request_context.get_base_context().jwt_authenticator,
+                    request_context.system_context.jwt_authenticator,
                 )
                 .await
             })

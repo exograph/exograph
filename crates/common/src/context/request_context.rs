@@ -7,12 +7,16 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
 use async_recursion::async_recursion;
 use exo_env::Environment;
 
-use crate::http::{RequestHead, RequestPayload};
+use crate::http::{RequestHead, RequestPayload, ResponsePayload};
 use crate::router::PlainRequestPayload;
 use crate::{router::Router, value::Val};
+use exo_sql::TransactionHolder;
 
 use super::JwtAuthenticator;
 use super::{
@@ -22,17 +26,17 @@ use super::{
 
 use serde_json::Value;
 
-pub enum RequestContext<'a> {
-    // The original request context (before any overrides)
-    User(UserRequestContext<'a>),
+pub struct RequestContext<'a> {
+    core: CoreRequestContext<'a>,
+    pub system_context: SystemRequestContext<'a>,
+}
 
-    // The recursive nature allows stacking overrides
-    Overridden(OverriddenContext<'a>),
-
-    OverriddenRequest(
-        &'a RequestContext<'a>,
-        &'a (dyn RequestPayload + Send + Sync),
-    ),
+#[derive(Clone)]
+pub struct SystemRequestContext<'a> {
+    pub env: &'a dyn Environment,
+    pub jwt_authenticator: &'a Option<JwtAuthenticator>,
+    pub system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>>),
+    pub transaction_holder: Arc<Mutex<TransactionHolder>>,
 }
 
 impl<'a> RequestContext<'a> {
@@ -43,33 +47,140 @@ impl<'a> RequestContext<'a> {
         jwt_authenticator: &'a Option<JwtAuthenticator>,
         env: &'a dyn Environment,
     ) -> RequestContext<'a> {
-        RequestContext::User(UserRequestContext::new(
-            request,
-            parsed_contexts,
-            system_router,
-            jwt_authenticator,
-            env,
-        ))
+        Self {
+            core: CoreRequestContext::new(request, parsed_contexts),
+            system_context: SystemRequestContext {
+                env,
+                jwt_authenticator,
+                system_router,
+                transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
+            },
+        }
+    }
+
+    pub async fn extract_context_field(
+        &'a self,
+        context_type_name: &str,
+        source_annotation: &str,
+        source_annotation_key: &Option<&str>,
+        field_name: &str,
+        coerce_value: &(impl Fn(Val) -> Result<Val, ContextExtractionError> + std::marker::Sync),
+    ) -> Result<Option<&'a Val>, ContextExtractionError> {
+        self.core
+            .extract_context_field(
+                context_type_name,
+                source_annotation,
+                source_annotation_key,
+                field_name,
+                coerce_value,
+                self,
+            )
+            .await
+    }
+
+    pub async fn ensure_transaction(&self) {
+        self.system_context
+            .transaction_holder
+            .as_ref()
+            .lock()
+            .await
+            .ensure_transaction();
+    }
+
+    pub async fn finalize_transaction(&self, commit: bool) -> Result<(), tokio_postgres::Error> {
+        match self.core {
+            // Do not finalize internal requests (currently made through the QueryExtractor)
+            CoreRequestContext::OverriddenRequest(..) => Ok(()),
+            _ => {
+                self.system_context
+                    .transaction_holder
+                    .as_ref()
+                    .lock()
+                    .await
+                    .finalize(commit)
+                    .await
+            }
+        }
+    }
+
+    pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
+        Self {
+            core: self.core.with_override(context_override),
+            system_context: self.system_context.clone(),
+        }
     }
 
     pub fn with_request(
         &'a self,
         request: &'a (dyn RequestPayload + Send + Sync),
     ) -> RequestContext<'a> {
-        RequestContext::OverriddenRequest(self, request)
+        Self {
+            core: self.core.with_request(request),
+            system_context: self.system_context.clone(),
+        }
     }
 
-    pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
-        RequestContext::Overridden(OverriddenContext::new(self, context_override))
+    pub fn get_base_context(&self) -> &UserRequestContext<'a> {
+        self.core.get_base_context()
+    }
+
+    pub async fn route(&self, request: &'a RequestContext<'a>) -> Option<ResponsePayload> {
+        self.system_context
+            .system_router
+            .route(&PlainRequestPayload::internal(request))
+            .await
+    }
+}
+
+impl<'a> RequestPayload for RequestContext<'a> {
+    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        self.core.get_head()
+    }
+
+    fn take_body(&self) -> Value {
+        self.core.take_body()
+    }
+}
+
+pub(super) enum CoreRequestContext<'a> {
+    // The original request context (before any overrides)
+    User(UserRequestContext<'a>),
+
+    // The recursive nature allows stacking overrides
+    Overridden(OverriddenContext<'a>),
+
+    OverriddenRequest(
+        &'a CoreRequestContext<'a>,
+        &'a (dyn RequestPayload + Send + Sync),
+    ),
+}
+
+impl<'a> CoreRequestContext<'a> {
+    pub fn new(
+        request: &'a (dyn RequestPayload + Send + Sync),
+        parsed_contexts: Vec<BoxedContextExtractor<'a>>,
+    ) -> CoreRequestContext<'a> {
+        Self::User(UserRequestContext::new(request, parsed_contexts))
+    }
+
+    pub fn with_request(
+        &'a self,
+        request: &'a (dyn RequestPayload + Send + Sync),
+    ) -> CoreRequestContext<'a> {
+        Self::OverriddenRequest(self, request)
+    }
+
+    pub fn with_override(&'a self, context_override: Value) -> CoreRequestContext<'a> {
+        Self::Overridden(OverriddenContext::new(self, context_override))
     }
 
     pub fn get_base_context(&self) -> &UserRequestContext<'a> {
         match &self {
-            RequestContext::User(req) => req,
-            RequestContext::Overridden(OverriddenContext { base_context, .. }) => {
+            Self::User(req) => req,
+            Self::Overridden(OverriddenContext { base_context, .. }) => {
                 base_context.get_base_context()
             }
-            RequestContext::OverriddenRequest(base_context, ..) => base_context.get_base_context(),
+            Self::OverriddenRequest(base_context, ..) => base_context.get_base_context(),
         }
     }
 
@@ -81,19 +192,20 @@ impl<'a> RequestContext<'a> {
         source_annotation_key: &Option<&str>,
         field_name: &str,
         coerce_value: &(impl Fn(Val) -> Result<Val, ContextExtractionError> + std::marker::Sync),
+        request_context: &'a RequestContext<'a>,
     ) -> Result<Option<&'a Val>, ContextExtractionError> {
         match self {
-            RequestContext::User(user_request_context) => {
+            Self::User(user_request_context) => {
                 user_request_context
                     .extract_context_field(
                         source_annotation,
                         source_annotation_key.unwrap_or(field_name),
                         coerce_value,
-                        self,
+                        request_context,
                     )
                     .await
             }
-            RequestContext::Overridden(overridden_context) => {
+            Self::Overridden(overridden_context) => {
                 overridden_context
                     .extract_context_field(
                         context_type_name,
@@ -101,10 +213,11 @@ impl<'a> RequestContext<'a> {
                         source_annotation_key,
                         field_name,
                         coerce_value,
+                        request_context,
                     )
                     .await
             }
-            RequestContext::OverriddenRequest(base_context, ..) => {
+            Self::OverriddenRequest(base_context, ..) => {
                 base_context
                     .extract_context_field(
                         context_type_name,
@@ -112,52 +225,25 @@ impl<'a> RequestContext<'a> {
                         source_annotation_key,
                         field_name,
                         coerce_value,
+                        request_context,
                     )
                     .await
             }
         }
     }
-
-    pub fn get_env(&self) -> &dyn Environment {
-        self.get_base_context().get_env()
-    }
-
-    #[async_recursion]
-    pub async fn ensure_transaction(&self) {
-        match self {
-            RequestContext::User(user_request_context) => {
-                user_request_context.ensure_transaction().await;
-            }
-            RequestContext::Overridden(overridden_context) => {
-                overridden_context.ensure_transaction().await;
-            }
-            RequestContext::OverriddenRequest(base_context, ..) => {
-                base_context.ensure_transaction().await;
-            }
-        }
-    }
-
-    #[async_recursion]
-    pub async fn finalize_transaction(&self, commit: bool) -> Result<(), tokio_postgres::Error> {
-        match self {
-            // Do not finalize internal requests (currently made through the QueryExtractor)
-            RequestContext::OverriddenRequest(..) => Ok(()),
-            _ => self.get_base_context().finalize_transaction(commit).await,
-        }
-    }
 }
 
-impl<'a> RequestPayload for RequestContext<'a> {
+impl<'a> RequestPayload for CoreRequestContext<'a> {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
         match self {
-            RequestContext::OverriddenRequest(_, request) => request.get_head(),
+            Self::OverriddenRequest(_, request) => request.get_head(),
             _ => self.get_base_context().get_head(),
         }
     }
 
     fn take_body(&self) -> Value {
         match self {
-            RequestContext::OverriddenRequest(_, request) => request.take_body(),
+            Self::OverriddenRequest(_, request) => request.take_body(),
             _ => self.get_base_context().get_request().take_body(),
         }
     }

@@ -24,8 +24,11 @@ pub async fn resolve_operation<'e>(
     subsystem_resolver: &'e PostgresSubsystemResolver,
     request_context: &'e RequestContext<'e>,
 ) -> Result<QueryResponse, PostgresExecutionError> {
-    let ctx = request_context.get_base_context();
-    let mut tx = ctx.transaction_holder.try_lock().unwrap();
+    let mut tx = request_context
+        .system_context
+        .transaction_holder
+        .try_lock()
+        .unwrap();
 
     let mut result = subsystem_resolver
         .executor
