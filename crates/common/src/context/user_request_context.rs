@@ -125,7 +125,7 @@ impl<'a> UserRequestContext<'a> {
             .ok_or_else(|| ContextExtractionError::SourceNotFound(annotation.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(key, request_context, self.request.get_head())
+            .extract_context_field(key, request_context)
             .await?
             .map(Val::from))
     }

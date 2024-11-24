@@ -195,16 +195,17 @@ async fn create_system_router(
     SystemRouter::new(routers, env.clone()).await
 }
 
+type RequestContextRouter = Box<dyn for<'b> Router<RequestContext<'b>> + Send + Sync>;
+
 pub struct SystemRouter {
-    underlying:
-        CorsRouter<CompositeRouter<Box<dyn for<'a> Router<RequestContext<'a>> + Send + Sync>>>,
+    underlying: CorsRouter<CompositeRouter<RequestContextRouter>>,
     env: Arc<dyn Environment>,
     authenticator: Arc<Option<JwtAuthenticator>>,
 }
 
 impl SystemRouter {
     pub async fn new(
-        routers: Vec<Box<dyn for<'a> Router<RequestContext<'a>> + Send + Sync>>,
+        routers: Vec<RequestContextRouter>,
         env: Arc<dyn Environment>,
     ) -> Result<Self, SystemLoadingError> {
         let cors_domains = env.get(EXO_CORS_DOMAINS);

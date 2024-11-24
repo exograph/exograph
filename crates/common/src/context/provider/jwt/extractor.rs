@@ -56,12 +56,16 @@ impl<'request> ContextExtractor<'request> for JwtExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &'request RequestContext<'request>,
-        request_head: &(dyn RequestHead + Send + Sync),
+        request_context: &'request RequestContext<'request>,
     ) -> Result<Option<Value>, ContextExtractionError> {
+        use crate::http::RequestPayload;
+
         Ok(self
             .extracted_claims
-            .get_or_try_init(|| async { self.extract_authentication(request_head).await })
+            .get_or_try_init(|| async {
+                self.extract_authentication(request_context.get_head())
+                    .await
+            })
             .await?
             .get(key)
             .cloned())

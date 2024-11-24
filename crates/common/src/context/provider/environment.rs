@@ -14,7 +14,6 @@ use exo_env::Environment;
 use serde_json::Value;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
-use crate::http::RequestHead;
 
 pub struct EnvironmentContextExtractor {
     pub env: Arc<dyn Environment>,
@@ -30,7 +29,6 @@ impl<'request> ContextExtractor<'request> for EnvironmentContextExtractor {
         &self,
         key: &str,
         _request_context: &'request RequestContext<'request>,
-        _request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<Value>, ContextExtractionError> {
         Ok(self.env.get(key).map(|v| v.as_str().into()))
     }

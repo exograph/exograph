@@ -113,7 +113,7 @@ impl<'a> Router<RequestContext<'a>> for GraphQLRouter {
             request_context,
             &self.system_resolver,
             trusted_document_enforcement,
-            &request_context,
+            request_context,
         )
         .await;
 

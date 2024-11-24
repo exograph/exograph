@@ -61,12 +61,13 @@ impl<'request> ContextExtractor<'request> for CookieExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &'request RequestContext<'request>,
-        request_head: &(dyn RequestHead + Send + Sync),
+        request_context: &'request RequestContext<'request>,
     ) -> Result<Option<Value>, ContextExtractionError> {
+        use crate::http::RequestPayload;
+
         Ok(self
             .extracted_cookies
-            .get_or_try_init(|| futures::future::ready(Self::extract_cookies(request_head)))
+            .get_or_try_init(|| async { Self::extract_cookies(request_context.get_head()) })
             .await?
             .get(key)
             .cloned())

@@ -31,7 +31,6 @@ impl<'request> ContextExtractor<'request> for QueryExtractor {
         &self,
         key: &str,
         request_context: &'request RequestContext<'request>,
-        _request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Option<serde_json::Value>, ContextExtractionError> {
         let query = format!("query {{ {} }}", key.to_owned());
 
