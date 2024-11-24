@@ -36,8 +36,6 @@ pub struct UserRequestContext<'a> {
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
     request: &'a (dyn RequestPayload + Send + Sync),
     pub system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>>),
-    jwt_authenticator: Arc<Option<JwtAuthenticator>>,
-    env: Arc<dyn Environment>,
 
     // cache of context values so that we compute them only once per request
     context_cache: FrozenMap<(String, String), Box<Option<Val>>>,
@@ -74,52 +72,8 @@ impl<'a> UserRequestContext<'a> {
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
             request,
             system_router,
-            jwt_authenticator,
-            env,
             context_cache: FrozenMap::new(),
         }
-    }
-
-    pub fn with_request(
-        &self,
-        request: &'a (dyn RequestPayload + Send + Sync),
-    ) -> UserRequestContext<'a> {
-        let generic_contexts: Vec<BoxedContextExtractor> = vec![
-            Box::new(EnvironmentContextExtractor {
-                env: self.env.clone(),
-            }),
-            Box::new(QueryExtractor),
-            Box::new(HeaderExtractor),
-            Box::new(IpExtractor),
-            Box::new(CookieExtractor::new()),
-            Box::new(JwtExtractor::new(self.jwt_authenticator.clone())),
-        ];
-
-        UserRequestContext {
-            request,
-            parsed_context_map: generic_contexts
-                .into_iter()
-                .map(|context| (context.annotation_name().to_owned(), context))
-                .collect(),
-            transaction_holder: self.transaction_holder.clone(),
-            context_cache: self.context_cache.clone(),
-            system_router: self.system_router,
-            jwt_authenticator: self.jwt_authenticator.clone(),
-            env: self.env.clone(),
-        }
-    }
-
-    fn create_generic_contexts(&self) -> Vec<BoxedContextExtractor> {
-        vec![
-            Box::new(EnvironmentContextExtractor {
-                env: self.env.clone(),
-            }),
-            Box::new(QueryExtractor),
-            Box::new(HeaderExtractor),
-            Box::new(IpExtractor),
-            Box::new(CookieExtractor::new()),
-            Box::new(JwtExtractor::new(self.jwt_authenticator.clone())),
-        ]
     }
 
     pub async fn extract_context_field(
@@ -182,6 +136,15 @@ impl<'a> UserRequestContext<'a> {
             .lock()
             .await
             .ensure_transaction();
+    }
+
+    pub async fn finalize_transaction(&self, commit: bool) -> Result<(), tokio_postgres::Error> {
+        self.transaction_holder
+            .as_ref()
+            .lock()
+            .await
+            .finalize(commit)
+            .await
     }
 
     pub fn get_request(&self) -> &(dyn RequestPayload + Send + Sync) {

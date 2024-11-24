@@ -44,7 +44,7 @@ impl<'request> ContextExtractor<'request> for QueryExtractor {
 
         let request_head = OverriddenRequestHead {
             path: "/graphql".to_string(),
-            original_head: request_context.get_base_context().get_head(),
+            original_head: request_context.get_head(),
         };
         let request = OverriddenRequestPayload {
             body: Mutex::new(operation_payload.to_json().unwrap()),

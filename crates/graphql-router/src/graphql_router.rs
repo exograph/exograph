@@ -234,11 +234,8 @@ async fn resolve_in_memory<'a>(
         )
         .await;
 
-    let ctx = request_context.get_base_context();
-    let mut tx_holder = ctx.transaction_holder.try_lock().unwrap();
-
-    tx_holder
-        .finalize(response.is_ok())
+    request_context
+        .finalize_transaction(response.is_ok())
         .await
         .map_err(|e| {
             SystemResolutionError::Generic(format!("Error while finalizing transaction: {e}"))

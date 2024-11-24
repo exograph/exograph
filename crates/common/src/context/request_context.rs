@@ -30,6 +30,11 @@ pub enum RequestContext<'a> {
 
     // The recursive nature allows stacking overrides
     Overridden(OverriddenContext<'a>),
+
+    OverriddenRequest(
+        &'a RequestContext<'a>,
+        &'a (dyn RequestPayload + Send + Sync),
+    ),
 }
 
 impl<'a> RequestContext<'a> {
@@ -53,7 +58,7 @@ impl<'a> RequestContext<'a> {
         &'a self,
         request: &'a (dyn RequestPayload + Send + Sync),
     ) -> RequestContext<'a> {
-        RequestContext::User(self.get_base_context().with_request(request))
+        RequestContext::OverriddenRequest(self, request)
     }
 
     pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
@@ -66,6 +71,7 @@ impl<'a> RequestContext<'a> {
             RequestContext::Overridden(OverriddenContext { base_context, .. }) => {
                 base_context.get_base_context()
             }
+            RequestContext::OverriddenRequest(base_context, ..) => base_context.get_base_context(),
         }
     }
 
@@ -100,6 +106,17 @@ impl<'a> RequestContext<'a> {
                     )
                     .await
             }
+            RequestContext::OverriddenRequest(base_context, ..) => {
+                base_context
+                    .extract_context_field(
+                        context_type_name,
+                        source_annotation,
+                        source_annotation_key,
+                        field_name,
+                        coerce_value,
+                    )
+                    .await
+            }
         }
     }
 
@@ -112,16 +129,34 @@ impl<'a> RequestContext<'a> {
             RequestContext::Overridden(overridden_context) => {
                 overridden_context.ensure_transaction().await;
             }
+            RequestContext::OverriddenRequest(base_context, ..) => {
+                base_context.ensure_transaction().await;
+            }
+        }
+    }
+
+    #[async_recursion]
+    pub async fn finalize_transaction(&self, commit: bool) -> Result<(), tokio_postgres::Error> {
+        match self {
+            // Do not finalize internal requests (currently made through the QueryExtractor)
+            RequestContext::OverriddenRequest(..) => Ok(()),
+            _ => self.get_base_context().finalize_transaction(commit).await,
         }
     }
 }
 
 impl<'a> RequestPayload for RequestContext<'a> {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
-        self.get_base_context().get_head()
+        match self {
+            RequestContext::OverriddenRequest(_, request) => request.get_head(),
+            _ => self.get_base_context().get_head(),
+        }
     }
 
     fn take_body(&self) -> Value {
-        self.get_base_context().get_request().take_body()
+        match self {
+            RequestContext::OverriddenRequest(_, request) => request.take_body(),
+            _ => self.get_base_context().get_request().take_body(),
+        }
     }
 }

@@ -25,6 +25,7 @@ oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", b
 cookie = "0.18.1"
 elsa = "1.8.1"
 async-graphql-value.workspace = true
+tokio-postgres.workspace = true
 
 exo-env = { path = "../../libs/exo-env" }
 exo-sql = { path = "../../libs/exo-sql" }
