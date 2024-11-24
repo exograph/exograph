@@ -36,6 +36,8 @@ pub struct UserRequestContext<'a> {
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
     request: &'a (dyn RequestPayload + Send + Sync),
     pub system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>>),
+    env: &'a dyn Environment,
+    pub jwt_authenticator: &'a Option<JwtAuthenticator>,
 
     // cache of context values so that we compute them only once per request
     context_cache: FrozenMap<(String, String), Box<Option<Val>>>,
@@ -47,20 +49,20 @@ impl<'a> UserRequestContext<'a> {
         request: &'request_context (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
         system_router: &'request_context (dyn for<'request> Router<PlainRequestPayload<'request>>),
-        jwt_authenticator: Arc<Option<JwtAuthenticator>>,
-        env: Arc<dyn Environment>,
+        jwt_authenticator: &'a Option<JwtAuthenticator>,
+        env: &'request_context dyn Environment,
     ) -> UserRequestContext<'request_context>
     where
         'a: 'request_context,
     {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedContextExtractor> = vec![
-            Box::new(EnvironmentContextExtractor { env: env.clone() }),
+            Box::new(EnvironmentContextExtractor),
             Box::new(QueryExtractor {}),
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
             Box::new(CookieExtractor::new()),
-            Box::new(JwtExtractor::new(jwt_authenticator.clone())),
+            Box::new(JwtExtractor::new()),
         ];
 
         UserRequestContext {
@@ -72,6 +74,8 @@ impl<'a> UserRequestContext<'a> {
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
             request,
             system_router,
+            env,
+            jwt_authenticator,
             context_cache: FrozenMap::new(),
         }
     }
@@ -153,5 +157,9 @@ impl<'a> UserRequestContext<'a> {
 
     pub fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
         self.request.get_head()
+    }
+
+    pub fn get_env(&self) -> &dyn Environment {
+        self.env
     }
 }

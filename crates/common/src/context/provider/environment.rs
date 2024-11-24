@@ -7,17 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use exo_env::Environment;
 use serde_json::Value;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
 
-pub struct EnvironmentContextExtractor {
-    pub env: Arc<dyn Environment>,
-}
+pub struct EnvironmentContextExtractor;
 
 #[async_trait]
 impl ContextExtractor for EnvironmentContextExtractor {
@@ -28,8 +23,12 @@ impl ContextExtractor for EnvironmentContextExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &RequestContext,
+        request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
-        Ok(self.env.get(key).map(|v| v.as_str().into()))
+        Ok(request_context
+            .get_base_context()
+            .get_env()
+            .get(key)
+            .map(|v| v.as_str().into()))
     }
 }

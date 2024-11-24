@@ -237,8 +237,8 @@ impl<'request> Router<PlainRequestPayload<'request>> for SystemRouter {
                     request.as_ref(),
                     vec![],
                     self,
-                    self.authenticator.clone(),
-                    self.env.clone(),
+                    &self.authenticator,
+                    self.env.as_ref(),
                 );
 
                 self.underlying.route(&request_context).await

@@ -7,8 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::sync::Arc;
-
 use async_recursion::async_recursion;
 use exo_env::Environment;
 
@@ -42,8 +40,8 @@ impl<'a> RequestContext<'a> {
         request: &'a (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
         system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>>),
-        jwt_authenticator: Arc<Option<JwtAuthenticator>>,
-        env: Arc<dyn Environment>,
+        jwt_authenticator: &'a Option<JwtAuthenticator>,
+        env: &'a dyn Environment,
     ) -> RequestContext<'a> {
         RequestContext::User(UserRequestContext::new(
             request,
@@ -118,6 +116,10 @@ impl<'a> RequestContext<'a> {
                     .await
             }
         }
+    }
+
+    pub fn get_env(&self) -> &dyn Environment {
+        self.get_base_context().get_env()
     }
 
     #[async_recursion]
