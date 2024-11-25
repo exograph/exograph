@@ -1,5 +1,5 @@
 [package]
-name = "postgres-model-builder"
+name = "postgres-graphql-model-builder"
 version.workspace = true
 edition.workspace = true
 publish = false

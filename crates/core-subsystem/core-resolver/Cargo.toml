@@ -34,7 +34,7 @@ common = { path = "../../common" }
 [dev-dependencies]
 insta.workspace = true
 postgres-builder = { path = "../../postgres-subsystem/postgres-builder" }
-postgres-model-builder = { path = "../../postgres-subsystem/postgres-model-builder" }
+postgres-graphql-model-builder = { path = "../../postgres-subsystem/postgres-graphql-model-builder" }
 postgres-graphql-resolver = { path = "../../postgres-subsystem/postgres-graphql-resolver" }
 tokio-postgres.workspace = true
 wasm-bindgen-test.workspace = true

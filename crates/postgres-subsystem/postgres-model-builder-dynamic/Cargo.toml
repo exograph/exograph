@@ -1,5 +1,5 @@
 [package]
-name = "postgres-model-builder-dynamic"
+name = "postgres-graphql-model-builder-dynamic"
 version.workspace = true
 edition.workspace = true
 publish = false
@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-builder = { path = "../postgres-builder" }
-postgres-model-builder = { path = "../postgres-model-builder" }
+postgres-graphql-model-builder = { path = "../postgres-graphql-model-builder" }
 
 [dev-dependencies]
 

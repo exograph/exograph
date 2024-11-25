@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 async-trait.workspace = true
 postgres-graphql-model = { path = "../postgres-graphql-model" }
-postgres-model-builder = { path = "../postgres-model-builder" }
+postgres-graphql-model-builder = { path = "../postgres-graphql-model-builder" }
 postgres-rest-builder = { path = "../postgres-rest-builder" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 

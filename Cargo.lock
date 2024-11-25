@@ -927,7 +927,7 @@ dependencies = [
  "insta",
  "multiplatform_test",
  "postgres-builder",
- "postgres-model-builder",
+ "postgres-graphql-model-builder",
  "regex",
  "serde",
  "serde_json",
@@ -1627,8 +1627,8 @@ dependencies = [
  "insta",
  "multiplatform_test",
  "postgres-builder",
+ "postgres-graphql-model-builder",
  "postgres-graphql-resolver",
- "postgres-model-builder",
  "reqwest",
  "serde",
  "serde_json",
@@ -6845,7 +6845,7 @@ dependencies = [
  "exo-sql",
  "multiplatform_test",
  "postgres-graphql-model",
- "postgres-model-builder",
+ "postgres-graphql-model-builder",
  "postgres-rest-builder",
  "tokio",
  "wasm-bindgen-test",
@@ -6888,7 +6888,7 @@ dependencies = [
  "exo-sql",
  "graphql-router",
  "http 1.1.0",
- "postgres-model-builder",
+ "postgres-graphql-model-builder",
  "thiserror",
  "tokio",
  "tokio-postgres",
@@ -6908,12 +6908,44 @@ dependencies = [
  "core-plugin-interface",
  "exo-sql",
  "postgres-builder",
- "postgres-model-builder",
+ "postgres-graphql-model-builder",
  "serde",
  "stripmargin",
  "tokio",
  "typed-generational-arena",
  "wasm-bindgen-test",
+]
+
+[[package]]
+name = "postgres-graphql-model-builder"
+version = "0.10.2"
+dependencies = [
+ "bincode",
+ "codemap",
+ "codemap-diagnostic",
+ "core-plugin-interface",
+ "deno-model-builder",
+ "exo-sql",
+ "heck 0.5.0",
+ "insta",
+ "lazy_static",
+ "multiplatform_test",
+ "postgres-core-builder",
+ "postgres-graphql-model",
+ "serde",
+ "tokio",
+ "typed-generational-arena",
+ "wasm-bindgen-test",
+ "wasm-bindgen-test-macro",
+]
+
+[[package]]
+name = "postgres-graphql-model-builder-dynamic"
+version = "0.10.2"
+dependencies = [
+ "core-plugin-interface",
+ "postgres-builder",
+ "postgres-graphql-model-builder",
 ]
 
 [[package]]
@@ -6956,38 +6988,6 @@ version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
  "postgres-graphql-resolver",
-]
-
-[[package]]
-name = "postgres-model-builder"
-version = "0.10.2"
-dependencies = [
- "bincode",
- "codemap",
- "codemap-diagnostic",
- "core-plugin-interface",
- "deno-model-builder",
- "exo-sql",
- "heck 0.5.0",
- "insta",
- "lazy_static",
- "multiplatform_test",
- "postgres-core-builder",
- "postgres-graphql-model",
- "serde",
- "tokio",
- "typed-generational-arena",
- "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
-]
-
-[[package]]
-name = "postgres-model-builder-dynamic"
-version = "0.10.2"
-dependencies = [
- "core-plugin-interface",
- "postgres-builder",
- "postgres-model-builder",
 ]
 
 [[package]]
