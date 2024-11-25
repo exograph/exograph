@@ -11,6 +11,8 @@
 
 mod request;
 
+use std::sync::Mutex;
+
 use common::{
     http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload},
     router::Router,
@@ -19,12 +21,12 @@ use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use request::LambdaRequest;
 use serde_json::{json, Value};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use system_router::SystemRouter;
 
 struct AwsLambdaRequestPayload<'a> {
     head: LambdaRequest<'a>,
-    body: Value,
+    body: Mutex<Value>,
 }
 
 impl<'a> RequestPayload for AwsLambdaRequestPayload<'a> {
@@ -32,8 +34,8 @@ impl<'a> RequestPayload for AwsLambdaRequestPayload<'a> {
         &self.head
     }
 
-    fn take_body(&mut self) -> Value {
-        self.body.take()
+    fn take_body(&self) -> Value {
+        self.body.lock().unwrap().take()
     }
 }
 
