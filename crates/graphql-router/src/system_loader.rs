@@ -13,7 +13,6 @@ use common::introspection::{introspection_mode, IntrospectionMode};
 use common::EnvError;
 use core_plugin_shared::interception::InterceptionMap;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
-use core_resolver::context::JwtAuthenticator;
 use core_router::SystemLoadingError;
 use introspection_resolver::IntrospectionResolver;
 
@@ -33,7 +32,6 @@ impl SystemLoader {
         query_interception_map: InterceptionMap,
         mutation_interception_map: InterceptionMap,
         trusted_documents: TrustedDocuments,
-        authenticator: Arc<Option<JwtAuthenticator>>,
         env: Arc<dyn Environment>,
     ) -> Result<GraphQLSystemResolver, SystemLoadingError> {
         let schema = Schema::new_from_resolvers(&subsystem_resolvers);
@@ -50,7 +48,6 @@ impl SystemLoader {
             mutation_interception_map,
             trusted_documents,
             schema,
-            authenticator,
             env,
             normal_query_depth_limit,
             introspection_query_depth_limit,

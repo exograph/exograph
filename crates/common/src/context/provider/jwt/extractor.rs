@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
-use async_trait::async_trait;
 #[cfg(not(target_family = "wasm"))]
-use common::env_const::{EXO_JWT_SECRET, EXO_OIDC_URL};
+use crate::env_const::{EXO_JWT_SECRET, EXO_OIDC_URL};
+use async_trait::async_trait;
 use serde_json::Value;
 use tokio::sync::OnceCell;
 use tracing::warn;
@@ -10,19 +8,17 @@ use tracing::warn;
 use crate::context::context_extractor::ContextExtractor;
 use crate::context::error::ContextExtractionError;
 use crate::context::RequestContext;
-use common::http::RequestHead;
+use crate::http::RequestHead;
 
 use super::JwtAuthenticator;
 
 pub struct JwtExtractor {
-    jwt_authenticator: Arc<Option<JwtAuthenticator>>,
     extracted_claims: OnceCell<Value>,
 }
 
 impl JwtExtractor {
-    pub fn new(jwt_authenticator: Arc<Option<JwtAuthenticator>>) -> Self {
+    pub fn new() -> Self {
         Self {
-            jwt_authenticator,
             extracted_claims: OnceCell::new(),
         }
     }
@@ -30,8 +26,9 @@ impl JwtExtractor {
     async fn extract_authentication(
         &self,
         request_head: &(dyn RequestHead + Send + Sync),
+        jwt_authenticator: &Option<JwtAuthenticator>,
     ) -> Result<Value, ContextExtractionError> {
-        if let Some(jwt_authenticator) = self.jwt_authenticator.as_ref() {
+        if let Some(jwt_authenticator) = jwt_authenticator.as_ref() {
             jwt_authenticator.extract_authentication(request_head).await
         } else {
             #[cfg(target_family = "wasm")]
@@ -56,12 +53,19 @@ impl ContextExtractor for JwtExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &RequestContext,
-        request_head: &(dyn RequestHead + Send + Sync),
+        request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
+        use crate::http::RequestPayload;
+
         Ok(self
             .extracted_claims
-            .get_or_try_init(|| async { self.extract_authentication(request_head).await })
+            .get_or_try_init(|| async {
+                self.extract_authentication(
+                    request_context.get_head(),
+                    request_context.system_context.jwt_authenticator,
+                )
+                .await
+            })
             .await?
             .get(key)
             .cloned())

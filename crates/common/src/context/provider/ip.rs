@@ -8,28 +8,28 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
-use exo_env::Environment;
 use serde_json::Value;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
-use common::http::RequestHead;
 
-pub struct EnvironmentContextExtractor<'a> {
-    pub env: &'a dyn Environment,
-}
+pub struct IpExtractor;
 
 #[async_trait]
-impl<'a> ContextExtractor for EnvironmentContextExtractor<'a> {
+impl ContextExtractor for IpExtractor {
     fn annotation_name(&self) -> &str {
-        "env"
+        "clientIp"
     }
 
     async fn extract_context_field(
         &self,
-        key: &str,
-        _request_context: &RequestContext,
-        _request_head: &(dyn RequestHead + Send + Sync),
+        _key: &str,
+        request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
-        Ok(self.env.get(key).map(|v| v.as_str().into()))
+        use crate::http::RequestPayload;
+
+        Ok(request_context
+            .get_head()
+            .get_ip()
+            .map(|ip| ip.to_string().into()))
     }
 }

@@ -9,17 +9,18 @@
 
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
+use common::router::PlainRequestPayload;
 use tracing::debug;
 
+use common::context::{JwtAuthenticator, RequestContext};
 use common::{
     cors::{CorsConfig, CorsRouter},
     env_const::{EXO_CORS_DOMAINS, EXO_UNSTABLE_ENABLE_REST_API},
-    http::{RequestPayload, ResponsePayload},
+    http::ResponsePayload,
     router::{CompositeRouter, Router},
 };
 use core_plugin_interface::{
     core_resolver::{
-        context::JwtAuthenticator,
         plugin::{SubsystemGraphQLResolver, SubsystemRestResolver},
         system_rest_resolver::SystemRestResolver,
     },
@@ -66,10 +67,6 @@ pub async fn create_system_router_from_system(
     static_loaders: StaticLoaders,
     env: Arc<dyn Environment>,
 ) -> Result<SystemRouter, SystemLoadingError> {
-    let authenticator = JwtAuthenticator::new_from_env(env.as_ref())
-        .await
-        .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
-
     let (subsystem_resolvers, query_interception_map, mutation_interception_map, trusted_documents) =
         create_system_resolvers(system, static_loaders, env.clone()).await?;
 
@@ -93,7 +90,6 @@ pub async fn create_system_router_from_system(
         query_interception_map,
         mutation_interception_map,
         trusted_documents,
-        authenticator.into(),
         env.clone(),
     )
     .await?;
@@ -101,7 +97,7 @@ pub async fn create_system_router_from_system(
     let rest_resolver = SystemRestResolver::new(rest_resolvers, env.clone());
     let rest_router = RestRouter::new(rest_resolver, env.clone());
 
-    create_system_router(graphql_router, rest_router, env)
+    create_system_router(graphql_router, rest_router, env).await
 }
 
 pub async fn create_system_resolvers(
@@ -181,12 +177,13 @@ pub async fn create_system_resolvers(
     ))
 }
 
-fn create_system_router(
+async fn create_system_router(
     graphql_router: GraphQLRouter,
     rest_router: RestRouter,
     env: Arc<dyn Environment>,
 ) -> Result<SystemRouter, SystemLoadingError> {
-    let mut routers: Vec<Box<dyn Router + Send>> = vec![Box::new(graphql_router)];
+    let mut routers: Vec<Box<dyn for<'a> Router<RequestContext<'a>> + Send + Sync>> =
+        vec![Box::new(graphql_router)];
 
     if env.enabled(EXO_UNSTABLE_ENABLE_REST_API, false) {
         routers.push(Box::new(rest_router));
@@ -195,29 +192,60 @@ fn create_system_router(
     #[cfg(not(target_family = "wasm"))]
     routers.push(Box::new(PlaygroundRouter::new(env.clone())));
 
-    Ok(SystemRouter::new(routers, env.as_ref()))
+    SystemRouter::new(routers, env.clone()).await
 }
 
+type RequestContextRouter = Box<dyn for<'b> Router<RequestContext<'b>> + Send + Sync>;
+
 pub struct SystemRouter {
-    underlying: CorsRouter,
+    underlying: CorsRouter<CompositeRouter<RequestContextRouter>>,
+    env: Arc<dyn Environment>,
+    authenticator: Arc<Option<JwtAuthenticator>>,
 }
 
 impl SystemRouter {
-    pub fn new(routers: Vec<Box<dyn Router + Send>>, env: &dyn Environment) -> Self {
+    pub async fn new(
+        routers: Vec<RequestContextRouter>,
+        env: Arc<dyn Environment>,
+    ) -> Result<Self, SystemLoadingError> {
         let cors_domains = env.get(EXO_CORS_DOMAINS);
 
-        Self {
+        let authenticator = JwtAuthenticator::new_from_env(env.as_ref())
+            .await
+            .map_err(|e| SystemLoadingError::Config(e.to_string()))?;
+
+        Ok(Self {
             underlying: CorsRouter::new(
-                Arc::new(CompositeRouter::new(routers)),
+                CompositeRouter::new(routers),
                 CorsConfig::from_env(cors_domains),
             ),
-        }
+            env,
+            authenticator: Arc::new(authenticator),
+        })
     }
 }
 
 #[async_trait::async_trait]
-impl Router for SystemRouter {
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
-        self.underlying.route(request).await
+impl<'request> Router<PlainRequestPayload<'request>> for SystemRouter {
+    async fn route(
+        &self,
+        request_context: &PlainRequestPayload<'request>,
+    ) -> Option<ResponsePayload> {
+        match request_context {
+            PlainRequestPayload::External(request) => {
+                let request_context = RequestContext::new(
+                    request.as_ref(),
+                    vec![],
+                    self,
+                    &self.authenticator,
+                    self.env.as_ref(),
+                );
+
+                self.underlying.route(&request_context).await
+            }
+            PlainRequestPayload::Internal(request_context) => {
+                self.underlying.route(request_context).await
+            }
+        }
     }
 }

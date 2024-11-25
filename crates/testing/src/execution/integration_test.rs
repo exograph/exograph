@@ -14,9 +14,9 @@ use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_JWT_SECRET,
     EXO_POSTGRES_URL,
 };
-use common::http::{RequestHead, RequestPayload, ResponseBodyError};
-use common::router::Router;
-use core_resolver::OperationsPayload;
+use common::http::{MemoryRequestHead, MemoryRequestPayload, RequestPayload, ResponseBodyError};
+use common::operation_payload::OperationsPayload;
+use common::router::{PlainRequestPayload, Router};
 use exo_sql::testing::db::EphemeralDatabaseServer;
 use futures::future::OptionFuture;
 use futures::FutureExt;
@@ -26,7 +26,6 @@ use regex::Regex;
 use serde_json::{json, Map, Value};
 use system_router::{create_system_router_from_file, SystemRouter};
 
-use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -252,92 +251,6 @@ enum OperationResult {
     AssertFailed(anyhow::Error),
 }
 
-pub struct MemoryRequestHead {
-    headers: HashMap<String, Vec<String>>,
-    cookies: HashMap<String, String>,
-    method: http::Method,
-    path: String,
-    query: Value,
-}
-
-impl MemoryRequestHead {
-    pub fn new(
-        cookies: HashMap<String, String>,
-        method: http::Method,
-        path: String,
-        query: Value,
-    ) -> Self {
-        Self {
-            headers: HashMap::new(),
-            cookies,
-            method,
-            path,
-            query,
-        }
-    }
-
-    fn add_header(&mut self, key: &str, value: &str) {
-        self.headers
-            .entry(key.to_string().to_ascii_lowercase())
-            .or_default()
-            .push(value.to_string());
-    }
-}
-
-impl RequestHead for MemoryRequestHead {
-    fn get_headers(&self, key: &str) -> Vec<String> {
-        if key.to_ascii_lowercase() == "cookie" {
-            return self
-                .cookies
-                .iter()
-                .map(|(k, v)| format!("{k}={v}"))
-                .collect();
-        } else {
-            self.headers
-                .get(&key.to_ascii_lowercase())
-                .unwrap_or(&vec![])
-                .clone()
-        }
-    }
-
-    fn get_ip(&self) -> Option<std::net::IpAddr> {
-        Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
-    }
-
-    fn get_method(&self) -> http::Method {
-        self.method.clone()
-    }
-
-    fn get_path(&self) -> String {
-        self.path.clone()
-    }
-
-    fn get_query(&self) -> Value {
-        self.query.clone()
-    }
-}
-
-pub(super) struct MemoryRequestPayload {
-    body: Value,
-    head: MemoryRequestHead,
-}
-
-impl MemoryRequestPayload {
-    pub(super) fn new(body: Value, head: MemoryRequestHead) -> Self {
-        Self { body, head }
-    }
-}
-
-impl RequestPayload for MemoryRequestPayload {
-    fn take_body(&mut self) -> Value {
-        self.body.take()
-    }
-
-    fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
-        &self.head
-    }
-}
-
 async fn run_operation(
     gql: &IntegrationTestOperation,
     ctx: &mut TestfileContext,
@@ -381,7 +294,8 @@ async fn run_operation(
         ctx.cookies.clone(),
         http::Method::POST,
         "/graphql".to_string(),
-        Default::default(),
+        Value::default(),
+        Some("127.0.0.1".to_string()),
     );
 
     // add JWT token if specified in testfile
@@ -477,12 +391,14 @@ async fn run_operation(
 }
 
 pub async fn run_query(
-    request: impl RequestPayload + Send + Sync,
+    request: impl RequestPayload + Send + Sync + 'static,
     router: &SystemRouter,
     cookies: &mut HashMap<String, String>,
 ) -> Result<Value, ResponseBodyError> {
-    let mut request = request;
-    let res = router.route(&mut request).await.unwrap();
+    let res = router
+        .route(&PlainRequestPayload::external(Box::new(request)))
+        .await
+        .unwrap();
 
     res.headers.into_iter().for_each(|(k, v)| {
         if k.to_ascii_lowercase() == "set-cookie" {

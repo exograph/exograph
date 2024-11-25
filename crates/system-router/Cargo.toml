@@ -8,6 +8,7 @@ publish = false
 http.workspace = true
 async-trait.workspace = true
 tracing.workspace = true
+serde_json.workspace = true
 
 common = { path = "../common" }
 graphql-router = { path = "../graphql-router" }

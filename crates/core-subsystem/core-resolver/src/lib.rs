@@ -8,7 +8,6 @@
 // by the Apache License, Version 2.0.
 
 pub mod access_solver;
-pub mod context;
 pub mod context_extractor;
 pub mod introspection;
 pub mod number_cmp;
@@ -17,14 +16,11 @@ pub mod plugin;
 pub mod system_resolver;
 pub mod system_rest_resolver;
 pub mod validation;
-pub mod value;
 
 mod field_resolver;
 mod interception;
-mod operation_payload;
 mod query_response;
 
 pub use field_resolver::FieldResolver;
 pub use interception::InterceptedOperation;
-pub use operation_payload::OperationsPayload;
 pub use query_response::{QueryResponse, QueryResponseBody};

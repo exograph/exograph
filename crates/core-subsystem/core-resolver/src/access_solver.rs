@@ -14,12 +14,10 @@ use core_model::access::{
 };
 use thiserror::Error;
 
-use crate::{
-    context::{ContextExtractionError, RequestContext},
-    context_extractor::ContextExtractor,
-    number_cmp::NumberWrapper,
-    value::Val,
-};
+use common::context::{ContextExtractionError, RequestContext};
+use common::value::Val;
+
+use crate::{context_extractor::ContextExtractor, number_cmp::NumberWrapper};
 
 /// Access predicate that can be logically combined with other predicates.
 pub trait AccessPredicate<'a>:

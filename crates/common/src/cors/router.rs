@@ -7,8 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::sync::Arc;
-
 use http::{Method, StatusCode};
 
 use crate::{
@@ -20,26 +18,26 @@ use crate::{
 use super::config::CorsResponse;
 
 /// Reference: https://fetch.spec.whatwg.org/#http-requests
-pub struct CorsRouter {
-    underlying: Arc<dyn Router + Send>,
+pub struct CorsRouter<Rtr> {
+    underlying: Rtr,
     config: CorsConfig,
 }
 
-impl CorsRouter {
-    pub fn new(underlying: Arc<dyn Router + Send>, config: CorsConfig) -> Self {
+impl<Rtr> CorsRouter<Rtr> {
+    pub fn new(underlying: Rtr, config: CorsConfig) -> Self {
         Self { underlying, config }
     }
 }
 
 #[async_trait::async_trait]
-impl Router for CorsRouter {
+impl<RQ: RequestPayload + Send + Sync, Rtr: Router<RQ>> Router<RQ> for CorsRouter<Rtr> {
     /// Route a request applying CORS rules.
     ///
     /// For a denied cross-site request, we return 403 (Forbidden), since there is no
     /// specified standard, but https://github.com/whatwg/fetch/issues/172 makes sense.
     /// It suggests the possibility of adding more details in the body, but also cautions
     /// to not reveal too much information. Therefore, we don't add a body.
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
+    async fn route(&self, request: &RQ) -> Option<ResponsePayload> {
         let origin_header = request.get_head().get_header(http::header::ORIGIN.as_str());
 
         let add_cors_headers = |response: &mut ResponsePayload, origin: &str| {
@@ -115,6 +113,9 @@ impl Router for CorsRouter {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+    use std::sync::Mutex;
+
     use serde_json::Value;
     use tokio::task_local;
 
@@ -317,8 +318,10 @@ mod tests {
         method: &Method,
         origin: Option<String>,
     ) -> Option<ResponsePayload> {
-        let underlying = Arc::new(MockRouter {});
-        let cors_router = CorsRouter::new(underlying.clone(), config);
+        let cors_router = CorsRouter {
+            underlying: MockRouter {},
+            config,
+        };
 
         let mut request =
             MockRequestPayload::new(method.clone(), "/".to_string(), None, Headers::new());
@@ -378,11 +381,8 @@ mod tests {
     struct MockRouter {}
 
     #[async_trait::async_trait]
-    impl Router for MockRouter {
-        async fn route(
-            &self,
-            _request: &mut (dyn RequestPayload + Send),
-        ) -> Option<ResponsePayload> {
+    impl Router<MockRequestPayload> for MockRouter {
+        async fn route(&self, _request: &MockRequestPayload) -> Option<ResponsePayload> {
             RESPONSE_PAYLOAD.with(|mock_response| {
                 Some(ResponsePayload {
                     body: ResponseBody::Bytes(
@@ -402,11 +402,10 @@ mod tests {
         }
     }
 
-    #[derive(Clone)]
     struct MockRequestPayload {
         method: Method,
         path: String,
-        body: Option<Value>,
+        body: Mutex<Option<Value>>,
         headers: Headers,
     }
 
@@ -415,7 +414,7 @@ mod tests {
             Self {
                 method,
                 path,
-                body,
+                body: Mutex::new(body),
                 headers,
             }
         }
@@ -426,8 +425,8 @@ mod tests {
             self
         }
 
-        fn take_body(&mut self) -> Value {
-            self.body.take().unwrap_or(Value::Null)
+        fn take_body(&self) -> Value {
+            self.body.lock().unwrap().take().unwrap_or(Value::Null)
         }
     }
 

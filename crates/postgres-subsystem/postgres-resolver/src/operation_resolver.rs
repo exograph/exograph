@@ -8,9 +8,8 @@
 // by the Apache License, Version 2.0.
 
 use async_trait::async_trait;
-use core_plugin_interface::core_resolver::{
-    context::RequestContext, validation::field::ValidatedField,
-};
+use common::context::RequestContext;
+use core_plugin_interface::core_resolver::validation::field::ValidatedField;
 use exo_sql::{AbstractOperation, AbstractSelect};
 use postgres_model::subsystem::PostgresSubsystem;
 

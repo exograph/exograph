@@ -7,13 +7,15 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Mutex;
+
 use http::StatusCode;
 use serde_json::Value;
 
 use worker::{Request as WorkerRequest, Response as WorkerResponse};
 
 use common::http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload};
-use common::router::Router;
+use common::router::{PlainRequestPayload, Router};
 
 use wasm_bindgen::prelude::*;
 
@@ -60,7 +62,7 @@ impl RequestHead for WorkerRequestWrapper {
 }
 
 struct WorkerRequestPayload {
-    body: Value,
+    body: Mutex<Value>,
     head: WorkerRequestWrapper,
 }
 
@@ -69,8 +71,8 @@ impl RequestPayload for WorkerRequestPayload {
         &self.head
     }
 
-    fn take_body(&mut self) -> Value {
-        self.body.take()
+    fn take_body(&self) -> Value {
+        self.body.lock().unwrap().take()
     }
 }
 
@@ -100,13 +102,15 @@ pub async fn resolve(raw_request: web_sys::Request) -> Result<web_sys::Response,
 
     let body_json: Value = worker_request.0.json().await.unwrap_or(Value::Null);
 
-    let mut request = WorkerRequestPayload {
-        body: body_json,
+    let request = WorkerRequestPayload {
+        body: Mutex::new(body_json),
         head: worker_request,
     };
 
     let system_router = crate::init::get_system_router()?;
-    let response_payload = system_router.route(&mut request).await;
+    let response_payload = system_router
+        .route(&PlainRequestPayload::external(Box::new(request)))
+        .await;
 
     let response = match response_payload {
         Some(ResponsePayload {

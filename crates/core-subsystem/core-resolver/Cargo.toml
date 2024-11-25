@@ -6,7 +6,6 @@ publish = false
 
 [features]
 default = []
-test-context = []
 
 [dependencies]
 async-graphql-parser.workspace = true
@@ -17,16 +16,12 @@ async-trait.workspace = true
 bytes.workspace = true
 futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
-jsonwebtoken = { workspace = true }
 reqwest = { workspace = true }
-oidc-jwt-validator = { git = "https://github.com/exograph/oidc_jwt_validator", branch = "exograph" }
 serde.workspace = true
 thiserror.workspace = true
 async-stream.workspace = true
 http.workspace = true
-cookie = "0.18.1"
 tokio = { workspace = true, features = ["rt", "macros"] }
-elsa = "1.8.1"
 
 tracing.workspace = true
 

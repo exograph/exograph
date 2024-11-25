@@ -12,6 +12,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use common::context::RequestContext;
 use common::http::{Headers, RequestHead, RequestPayload, ResponsePayload};
 use common::router::Router;
 use common::{
@@ -49,9 +50,9 @@ impl PlaygroundRouter {
 }
 
 #[async_trait]
-impl Router for PlaygroundRouter {
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
-        if !self.suitable(request.get_head()) {
+impl<'a> Router<RequestContext<'a>> for PlaygroundRouter {
+    async fn route(&self, request_context: &RequestContext<'a>) -> Option<ResponsePayload> {
+        if !self.suitable(request_context.get_head()) {
             return None;
         }
 
@@ -64,7 +65,7 @@ impl Router for PlaygroundRouter {
             });
         }
 
-        let path = strip_leading_slash(&request.get_head().get_path());
+        let path = strip_leading_slash(&request_context.get_head().get_path());
 
         // We redirect to the playground path if the path is empty. This provides a better user experience
         // as the user will be redirected to the playground path without having to add it manually.

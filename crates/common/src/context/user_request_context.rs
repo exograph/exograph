@@ -7,15 +7,13 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{collections::HashMap, sync::Arc};
-use tokio::sync::Mutex;
+use std::collections::HashMap;
 
 use elsa::sync::FrozenMap;
-use exo_sql::TransactionHolder;
 
-use common::http::RequestHead;
+use crate::http::{RequestHead, RequestPayload};
 
-use crate::{system_resolver::GraphQLSystemResolver, value::Val};
+use crate::value::Val;
 
 use super::provider::jwt::JwtExtractor;
 use super::provider::{
@@ -30,29 +28,29 @@ use super::{
 pub struct UserRequestContext<'a> {
     // maps from an annotation to a parsed context
     parsed_context_map: HashMap<String, BoxedContextExtractor<'a>>,
-    pub transaction_holder: Arc<Mutex<TransactionHolder>>,
-    request_head: &'a (dyn RequestHead + Send + Sync),
+    request: &'a (dyn RequestPayload + Send + Sync),
+
     // cache of context values so that we compute them only once per request
     context_cache: FrozenMap<(String, String), Box<Option<Val>>>,
 }
 
 impl<'a> UserRequestContext<'a> {
     // Constructs a UserRequestContext from a vector of parsed contexts and a request.
-    pub fn new(
-        request_head: &'a (dyn RequestHead + Send + Sync),
+    pub fn new<'request_context>(
+        request: &'request_context (dyn RequestPayload + Send + Sync),
         parsed_contexts: Vec<BoxedContextExtractor<'a>>,
-        system_resolver: &'a GraphQLSystemResolver,
-    ) -> UserRequestContext<'a> {
+    ) -> UserRequestContext<'request_context>
+    where
+        'a: 'request_context,
+    {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedContextExtractor> = vec![
-            Box::new(EnvironmentContextExtractor {
-                env: system_resolver.env.as_ref(),
-            }),
-            Box::new(QueryExtractor::new(system_resolver)),
+            Box::new(EnvironmentContextExtractor),
+            Box::new(QueryExtractor {}),
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
             Box::new(CookieExtractor::new()),
-            Box::new(JwtExtractor::new(system_resolver.jwt_authenticator.clone())),
+            Box::new(JwtExtractor::new()),
         ];
 
         UserRequestContext {
@@ -61,8 +59,7 @@ impl<'a> UserRequestContext<'a> {
                 .chain(generic_contexts) // include agnostic contexts
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
-            transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
-            request_head,
+            request,
             context_cache: FrozenMap::new(),
         }
     }
@@ -72,7 +69,7 @@ impl<'a> UserRequestContext<'a> {
         annotation: &str,
         key: &str,
         coerce_value: &impl Fn(Val) -> Result<Val, ContextExtractionError>,
-        request_context: &RequestContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<Option<&'a Val>, ContextExtractionError> {
         // Check to see if there is a cached value for this field
         // If there is, return it. Otherwise, compute it, cache it, and return it.
@@ -116,16 +113,16 @@ impl<'a> UserRequestContext<'a> {
             .ok_or_else(|| ContextExtractionError::SourceNotFound(annotation.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(key, request_context, self.request_head)
+            .extract_context_field(key, request_context)
             .await?
             .map(Val::from))
     }
 
-    pub async fn ensure_transaction(&self) {
-        self.transaction_holder
-            .as_ref()
-            .lock()
-            .await
-            .ensure_transaction();
+    pub fn get_request(&self) -> &(dyn RequestPayload + Send + Sync) {
+        self.request
+    }
+
+    pub fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
+        self.request.get_head()
     }
 }

@@ -12,16 +12,19 @@ use serde_json::Value;
 
 use crate::value::Val;
 
-use super::{ContextExtractionError, RequestContext};
+use super::{request_context::CoreRequestContext, ContextExtractionError, RequestContext};
 
+/// Represents a request context that has been overridden explicitly through
+/// a call to `ExographPriv` with overriddent context that should last only for that call (including any nested calls).
+/// In other words, once the call returns, the `base_context`
 pub struct OverriddenContext<'a> {
-    pub base_context: &'a RequestContext<'a>,
+    pub base_context: &'a CoreRequestContext<'a>,
     context_override: Value,
     context_cache: FrozenMap<(String, String), Box<Option<Val>>>,
 }
 
 impl<'a> OverriddenContext<'a> {
-    pub fn new(base_context: &'a RequestContext, context_override: Value) -> Self {
+    pub fn new(base_context: &'a CoreRequestContext<'a>, context_override: Value) -> Self {
         Self {
             base_context,
             context_override,
@@ -36,6 +39,7 @@ impl<'a> OverriddenContext<'a> {
         source_annotation_key: &Option<&str>,
         field_name: &str,
         coerce_value: &(impl Fn(Val) -> Result<Val, ContextExtractionError> + std::marker::Sync),
+        request_context: &'a RequestContext<'a>,
     ) -> Result<Option<&'a Val>, ContextExtractionError> {
         let cache_key = (context_type_name.to_owned(), field_name.to_owned());
 
@@ -63,15 +67,12 @@ impl<'a> OverriddenContext<'a> {
                                 source_annotation_key,
                                 field_name,
                                 coerce_value,
+                                request_context,
                             )
                             .await
                     }
                 }
             }
         }
-    }
-
-    pub async fn ensure_transaction(&self) {
-        self.base_context.ensure_transaction().await;
     }
 }

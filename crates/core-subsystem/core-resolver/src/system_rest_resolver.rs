@@ -26,14 +26,14 @@ impl SystemRestResolver {
 
     pub async fn resolve(
         &self,
-        request: &mut (dyn RequestPayload + Send),
+        request: &(dyn RequestPayload + Send + Sync),
     ) -> Result<Option<ResponsePayload>, SubsystemResolutionError> {
         let resolver_stream = futures::stream::iter(self.subsystem_resolvers.iter());
 
         let request_mutex = Mutex::new(request);
 
         let stream = resolver_stream.then(|resolver| async {
-            let mut request = request_mutex.lock().await;
+            let request = request_mutex.lock().await;
             resolver.resolve(*request).await
         });
 

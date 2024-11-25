@@ -10,10 +10,10 @@
 use crate::{wasm_execution_error::WasmExecutionError, wasm_operation::WasmOperation};
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use async_trait::async_trait;
+use common::context::RequestContext;
 use core_plugin_interface::{
     core_model::mapped_arena::SerializableSlabIndex,
     core_resolver::{
-        context::RequestContext,
         plugin::{SubsystemGraphQLResolver, SubsystemResolutionError},
         system_resolver::GraphQLSystemResolver,
         validation::field::ValidatedField,

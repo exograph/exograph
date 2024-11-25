@@ -10,8 +10,11 @@
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 
+use common::{
+    http::{MemoryRequestHead, MemoryRequestPayload},
+    operation_payload::OperationsPayload,
+};
 use core_plugin_interface::serializable_system::SerializableSystem;
-use core_resolver::OperationsPayload;
 use exo_deno::{
     deno_core::{url::Url, ModuleType},
     deno_error::DenoError,
@@ -30,9 +33,9 @@ use common::env_const::{
     EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_INTROSPECTION, EXO_POSTGRES_URL,
 };
 
-use super::{integration_test::MemoryRequestPayload, TestResult, TestResultKind};
+use super::{TestResult, TestResultKind};
 
-use super::integration_test::{run_query, MemoryRequestHead};
+use super::integration_test::run_query;
 
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
 const GRAPHQL_NODE_MODULE: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/node_modules/graphql");
@@ -142,7 +145,8 @@ async fn create_introspection_request() -> Result<MemoryRequestPayload> {
         HashMap::new(),
         http::Method::POST,
         "/graphql".to_string(),
-        Default::default(),
+        Value::default(),
+        None,
     );
 
     let operations_payload = OperationsPayload {

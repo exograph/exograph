@@ -29,10 +29,10 @@ use tracing::{error, instrument, warn};
 
 use exo_env::Environment;
 
-use crate::{context::provider::jwt::JwtAuthenticator, OperationsPayload};
+use common::context::RequestContext;
+use common::operation_payload::OperationsPayload;
 
 use crate::{
-    context::RequestContext,
     introspection::definition::schema::Schema,
     plugin::{subsystem_graphql_resolver::SubsystemGraphQLResolver, SubsystemResolutionError},
     validation::{
@@ -61,8 +61,6 @@ pub struct GraphQLSystemResolver {
     mutation_interception_map: InterceptionMap,
     trusted_documents: TrustedDocuments,
     schema: Schema,
-    pub jwt_authenticator: Arc<Option<JwtAuthenticator>>,
-    pub env: Arc<dyn Environment>,
     normal_query_depth_limit: usize,
     introspection_query_depth_limit: usize,
 }
@@ -75,7 +73,6 @@ impl GraphQLSystemResolver {
         mutation_interception_map: InterceptionMap,
         trusted_documents: TrustedDocuments,
         schema: Schema,
-        jwt_authenticator: Arc<Option<JwtAuthenticator>>,
         env: Arc<dyn Environment>,
         normal_query_depth_limit: usize,
         introspection_query_depth_limit: usize,
@@ -98,8 +95,6 @@ impl GraphQLSystemResolver {
             mutation_interception_map,
             trusted_documents,
             schema,
-            jwt_authenticator,
-            env: env.clone(),
             normal_query_depth_limit,
             introspection_query_depth_limit,
         }
@@ -295,7 +290,8 @@ macro_rules! exograph_execute_query {
                variables: Option<serde_json::Map<String, serde_json::Value>>,
                enforce_trusted_documents: TrustedDocumentEnforcement,
                context_override: serde_json::Value| {
-            use core_plugin_interface::core_resolver::{OperationsPayload, QueryResponseBody};
+            use common::operation_payload::OperationsPayload;
+            use core_plugin_interface::core_resolver::QueryResponseBody;
             use futures::FutureExt;
 
             let new_request_context = $request_context.with_override(context_override);

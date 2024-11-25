@@ -10,6 +10,7 @@
 mod request;
 
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use actix_web::{
     web::{self, ServiceConfig},
@@ -20,10 +21,13 @@ use reqwest::StatusCode;
 use system_router::SystemRouter;
 use url::Url;
 
-use common::http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload};
 use common::{
     env_const::{get_deployment_mode, DeploymentMode},
     router::Router,
+};
+use common::{
+    http::{RequestHead, RequestPayload, ResponseBody, ResponsePayload},
+    router::PlainRequestPayload,
 };
 use request::ActixRequestHead;
 use serde_json::Value;
@@ -78,7 +82,7 @@ async fn resolve(
 
 struct ActixRequestPayload {
     head: ActixRequestHead,
-    body: Value,
+    body: Mutex<Value>,
 }
 
 impl RequestPayload for ActixRequestPayload {
@@ -86,8 +90,8 @@ impl RequestPayload for ActixRequestPayload {
         &self.head
     }
 
-    fn take_body(&mut self) -> Value {
-        self.body.take()
+    fn take_body(&self) -> Value {
+        self.body.lock().unwrap().take()
     }
 }
 
@@ -97,12 +101,14 @@ async fn resolve_locally(
     query: Value,
     system_router: web::Data<SystemRouter>,
 ) -> HttpResponse {
-    let mut request = ActixRequestPayload {
+    let request = ActixRequestPayload {
         head: ActixRequestHead::from_request(req, query),
-        body: body.map(|b| b.into_inner()).unwrap_or(Value::Null),
+        body: Mutex::new(body.map(|b| b.into_inner()).unwrap_or(Value::Null)),
     };
 
-    let response = system_router.route(&mut request).await;
+    let response = system_router
+        .route(&PlainRequestPayload::external(Box::new(request)))
+        .await;
 
     match response {
         Some(ResponsePayload {

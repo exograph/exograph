@@ -7,9 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use common::context::ContextExtractionError;
 use core_plugin_interface::core_resolver::{
-    access_solver::AccessSolverError, context::ContextExtractionError,
-    plugin::SubsystemResolutionError, system_resolver::SystemResolutionError,
+    access_solver::AccessSolverError, plugin::SubsystemResolutionError,
+    system_resolver::SystemResolutionError,
 };
 use thiserror::Error;
 

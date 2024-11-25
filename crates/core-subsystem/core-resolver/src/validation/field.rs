@@ -10,7 +10,7 @@
 use async_graphql_value::{indexmap::IndexMap, Name};
 use serde::Serialize;
 
-use crate::value::val::Val;
+use common::value::Val;
 
 #[derive(Debug, Serialize)]
 pub struct ValidatedField {

@@ -12,7 +12,9 @@ use async_recursion::async_recursion;
 
 use core_plugin_shared::interception::{InterceptionTree, InterceptorIndexWithSubsystemIndex};
 
-use super::{context::RequestContext, validation::field::ValidatedField, QueryResponse};
+use super::{validation::field::ValidatedField, QueryResponse};
+
+use common::context::RequestContext;
 
 use crate::system_resolver::{GraphQLSystemResolver, SystemResolutionError};
 

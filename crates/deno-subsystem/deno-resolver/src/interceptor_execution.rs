@@ -7,8 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use common::context::RequestContext;
 use core_plugin_interface::core_resolver::{
-    context::RequestContext, system_resolver::ExographExecuteQueryFn, InterceptedOperation,
+    system_resolver::ExographExecuteQueryFn, InterceptedOperation,
 };
 use deno_model::interceptor::Interceptor;
 use exo_deno::{deno_executor_pool::DenoScriptDefn, Arg};

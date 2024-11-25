@@ -16,6 +16,7 @@ mod user_request_context;
 
 pub use provider::jwt::JwtAuthenticator;
 
+pub use context_extractor::ContextExtractor;
 pub use error::ContextExtractionError;
 pub use request_context::RequestContext;
 

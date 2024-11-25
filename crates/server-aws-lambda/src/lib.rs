@@ -11,29 +11,31 @@
 
 mod request;
 
+use std::sync::{Arc, Mutex};
+
 use common::{
     http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload},
-    router::Router,
+    router::{PlainRequestPayload, Router},
 };
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use request::LambdaRequest;
 use serde_json::{json, Value};
-use std::sync::Arc;
+
 use system_router::SystemRouter;
 
-struct AwsLambdaRequestPayload<'a> {
-    head: LambdaRequest<'a>,
-    body: Value,
+struct AwsLambdaRequestPayload {
+    head: LambdaRequest,
+    body: Mutex<Value>,
 }
 
-impl<'a> RequestPayload for AwsLambdaRequestPayload<'a> {
+impl RequestPayload for AwsLambdaRequestPayload {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
         &self.head
     }
 
-    fn take_body(&mut self) -> Value {
-        self.body.take()
+    fn take_body(&self) -> Value {
+        self.body.lock().unwrap().take()
     }
 }
 
@@ -47,12 +49,14 @@ pub async fn resolve(
         None => Value::Null,
     };
 
-    let mut request_payload = AwsLambdaRequestPayload {
-        head: LambdaRequest::new(&event),
-        body,
+    let request_payload = AwsLambdaRequestPayload {
+        head: LambdaRequest::new(event),
+        body: Mutex::new(body),
     };
 
-    let response_payload = system_router.route(&mut request_payload).await;
+    let response_payload = system_router
+        .route(&PlainRequestPayload::external(Box::new(request_payload)))
+        .await;
 
     match response_payload {
         Some(ResponsePayload {

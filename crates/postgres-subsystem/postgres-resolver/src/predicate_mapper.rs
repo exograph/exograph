@@ -10,8 +10,8 @@
 use async_trait::async_trait;
 use futures::{StreamExt, TryStreamExt};
 
-use core_plugin_interface::core_resolver::context::RequestContext;
-use core_plugin_interface::core_resolver::value::Val;
+use common::context::RequestContext;
+use common::value::Val;
 use exo_sql::{
     AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, PhysicalColumnPath,
     PhysicalColumnType, Predicate,

@@ -17,7 +17,7 @@ use tokio::sync::OnceCell;
 use crate::context::{
     context_extractor::ContextExtractor, error::ContextExtractionError, RequestContext,
 };
-use common::http::RequestHead;
+use crate::http::RequestHead;
 
 pub struct CookieExtractor {
     // Use OnceCell to process cookies only once per request (and not per cookie annotation)
@@ -61,12 +61,13 @@ impl ContextExtractor for CookieExtractor {
     async fn extract_context_field(
         &self,
         key: &str,
-        _request_context: &RequestContext,
-        request_head: &(dyn RequestHead + Send + Sync),
+        request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
+        use crate::http::RequestPayload;
+
         Ok(self
             .extracted_cookies
-            .get_or_try_init(|| futures::future::ready(Self::extract_cookies(request_head)))
+            .get_or_try_init(|| async { Self::extract_cookies(request_context.get_head()) })
             .await?
             .get(key)
             .cloned())

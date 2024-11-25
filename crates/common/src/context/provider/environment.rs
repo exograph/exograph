@@ -11,22 +11,24 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
-use common::http::RequestHead;
 
-pub struct IpExtractor;
+pub struct EnvironmentContextExtractor;
 
 #[async_trait]
-impl ContextExtractor for IpExtractor {
+impl ContextExtractor for EnvironmentContextExtractor {
     fn annotation_name(&self) -> &str {
-        "clientIp"
+        "env"
     }
 
     async fn extract_context_field(
         &self,
-        _key: &str,
-        _request_context: &RequestContext,
-        request_head: &(dyn RequestHead + Send + Sync),
+        key: &str,
+        request_context: &RequestContext,
     ) -> Result<Option<Value>, ContextExtractionError> {
-        Ok(request_head.get_ip().map(|ip| ip.to_string().into()))
+        Ok(request_context
+            .system_context
+            .env
+            .get(key)
+            .map(|v| v.as_str().into()))
     }
 }

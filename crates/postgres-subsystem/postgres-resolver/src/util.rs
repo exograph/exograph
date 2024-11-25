@@ -11,8 +11,8 @@ use indexmap::IndexMap;
 
 use postgres_model::types::EntityType;
 
+use common::value::Val;
 use core_plugin_interface::core_model::types::OperationReturnType;
-use core_plugin_interface::core_resolver::value::Val;
 use exo_sql::TableId;
 use postgres_model::{
     query::{CollectionQuery, PkQuery},

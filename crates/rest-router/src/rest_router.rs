@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use http::StatusCode;
 
 use common::{
+    context::RequestContext,
     env_const::get_rest_http_path,
     http::{Headers, RequestHead, RequestPayload, ResponseBody, ResponsePayload},
     router::Router,
@@ -33,13 +34,13 @@ impl RestRouter {
 }
 
 #[async_trait]
-impl Router for RestRouter {
-    async fn route(&self, request: &mut (dyn RequestPayload + Send)) -> Option<ResponsePayload> {
-        if !self.suitable(request.get_head()) {
+impl<'a> Router<RequestContext<'a>> for RestRouter {
+    async fn route(&self, request_context: &RequestContext<'a>) -> Option<ResponsePayload> {
+        if !self.suitable(request_context.get_head()) {
             return None;
         }
 
-        match self.system_resolver.resolve(request).await {
+        match self.system_resolver.resolve(request_context).await {
             Ok(Some(response)) => Some(response),
             Err(e) => {
                 tracing::error!("Error resolving subsystem: {}", e);

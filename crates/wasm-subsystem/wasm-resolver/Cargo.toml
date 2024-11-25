@@ -16,6 +16,7 @@ wasmtime.workspace = true
 exo-env = { path = "../../../libs/exo-env" }
 exo-wasm = { path = "../../../libs/exo-wasm" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+common = { path = "../../common" }
 wasm-model = { path = "../wasm-model" }
 
 

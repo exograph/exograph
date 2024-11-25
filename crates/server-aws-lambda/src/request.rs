@@ -16,23 +16,23 @@ use serde_json::Value;
 // as lambda_runtime::LambdaEvent and core_resolver::request_context::Request are in different crates
 // from this one, we must wrap the request with our own struct
 // Reference: https://docs.aws.amazon.com/lambda/latest/dg/urls-invocation.html#urls-payloads
-pub struct LambdaRequest<'a> {
-    event: &'a LambdaEvent<Value>,
+pub struct LambdaRequest {
+    event: LambdaEvent<Value>,
 }
 
-impl<'a> LambdaRequest<'a> {
-    pub fn new(event: &'a LambdaEvent<Value>) -> LambdaRequest<'a> {
+impl LambdaRequest {
+    pub fn new(event: LambdaEvent<Value>) -> LambdaRequest {
         LambdaRequest { event }
     }
 }
 
-impl LambdaRequest<'_> {
+impl LambdaRequest {
     fn http_payload(&self) -> &Value {
         &self.event.payload["requestContext"]["http"]
     }
 }
 
-impl RequestHead for LambdaRequest<'_> {
+impl RequestHead for LambdaRequest {
     fn get_headers(&self, key: &str) -> Vec<String> {
         if key == "cookie" {
             let cookies_payload = self.event.payload["cookies"].clone();
