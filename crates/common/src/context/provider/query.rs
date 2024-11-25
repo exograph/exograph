@@ -12,10 +12,9 @@ use std::sync::Mutex;
 use serde_json::Value;
 
 use async_trait::async_trait;
-// use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
-use crate::env_const::EXO_GRAPHQL_HTTP_PATH;
+use crate::env_const::get_graphql_http_path;
 use crate::http::{RequestHead, RequestPayload};
 use crate::operation_payload::OperationsPayload;
 
@@ -41,11 +40,7 @@ impl<'request> ContextExtractor for QueryExtractor {
             query_hash: None,
         };
 
-        let graphql_path = request_context
-            .system_context
-            .env
-            .get(EXO_GRAPHQL_HTTP_PATH)
-            .unwrap();
+        let graphql_path = get_graphql_http_path(request_context.system_context.env);
 
         let request_head = OverriddenRequestHead {
             path: graphql_path,
