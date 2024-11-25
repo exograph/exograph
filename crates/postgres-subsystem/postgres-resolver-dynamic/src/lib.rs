@@ -10,7 +10,7 @@
 //! Dynamic loader for postgres-resolver.
 
 use core_plugin_interface::interface::SubsystemLoader;
-use postgres_resolver::PostgresSubsystemLoader;
+use postgres_graphql_resolver::PostgresSubsystemLoader;
 
 // Currently, Rust doesn't allow cfg attributes on crate-type (see
 // https://github.com/rust-lang/rust/issues/20267). If it did, we wouldn't need this crate. Instead,

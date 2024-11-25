@@ -33,7 +33,7 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 tokio = { workspace = true }
 
 core-resolver = { path = "../core-subsystem/core-resolver" }
-postgres-resolver = { path = "../postgres-subsystem/postgres-resolver" }
+postgres-graphql-resolver = { path = "../postgres-subsystem/postgres-graphql-resolver" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 system-router = { path = "../system-router" }
 common = { path = "../common" }

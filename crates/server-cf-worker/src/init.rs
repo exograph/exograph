@@ -99,9 +99,11 @@ impl SystemRouterHolder {
 
         let system_router = create_system_router_from_system(
             system,
-            vec![Box::new(postgres_resolver::PostgresSubsystemLoader {
-                existing_client: Some(client),
-            })],
+            vec![Box::new(
+                postgres_graphql_resolver::PostgresSubsystemLoader {
+                    existing_client: Some(client),
+                },
+            )],
             Arc::new(env),
         )
         .await

@@ -1627,8 +1627,8 @@ dependencies = [
  "insta",
  "multiplatform_test",
  "postgres-builder",
+ "postgres-graphql-resolver",
  "postgres-model-builder",
- "postgres-resolver",
  "reqwest",
  "serde",
  "serde_json",
@@ -6917,6 +6917,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-graphql-resolver"
+version = "0.10.2"
+dependencies = [
+ "async-graphql-parser",
+ "async-recursion",
+ "async-trait",
+ "base64 0.22.1",
+ "builder",
+ "chrono",
+ "common",
+ "core-plugin-interface",
+ "core-resolver",
+ "exo-env",
+ "exo-sql",
+ "futures",
+ "graphql-router",
+ "http 1.1.0",
+ "indexmap 2.2.5",
+ "maybe-owned",
+ "postgres-builder",
+ "postgres-core-resolver",
+ "postgres-graphql-model",
+ "postgres-rest-model",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "uuid",
+ "wasm-bindgen-test",
+]
+
+[[package]]
+name = "postgres-graphql-resolver-dynamic"
+version = "0.10.2"
+dependencies = [
+ "core-plugin-interface",
+ "postgres-graphql-resolver",
+]
+
+[[package]]
 name = "postgres-model-builder"
 version = "0.10.2"
 dependencies = [
@@ -6965,48 +7007,6 @@ dependencies = [
  "rand",
  "sha2",
  "stringprep",
-]
-
-[[package]]
-name = "postgres-resolver"
-version = "0.10.2"
-dependencies = [
- "async-graphql-parser",
- "async-recursion",
- "async-trait",
- "base64 0.22.1",
- "builder",
- "chrono",
- "common",
- "core-plugin-interface",
- "core-resolver",
- "exo-env",
- "exo-sql",
- "futures",
- "graphql-router",
- "http 1.1.0",
- "indexmap 2.2.5",
- "maybe-owned",
- "postgres-builder",
- "postgres-core-resolver",
- "postgres-graphql-model",
- "postgres-rest-model",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-postgres",
- "tracing",
- "uuid",
- "wasm-bindgen-test",
-]
-
-[[package]]
-name = "postgres-resolver-dynamic"
-version = "0.10.2"
-dependencies = [
- "core-plugin-interface",
- "postgres-resolver",
 ]
 
 [[package]]
@@ -8315,7 +8315,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "http 1.1.0",
- "postgres-resolver",
+ "postgres-graphql-resolver",
  "serde",
  "serde-wasm-bindgen 0.6.5",
  "serde_json",
@@ -8343,7 +8343,7 @@ dependencies = [
  "deno-resolver",
  "exo-env",
  "graphql-router",
- "postgres-resolver",
+ "postgres-graphql-resolver",
  "system-router",
  "thiserror",
  "wasm-resolver",

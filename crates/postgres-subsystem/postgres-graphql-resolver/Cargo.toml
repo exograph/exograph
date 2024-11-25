@@ -1,5 +1,5 @@
 [package]
-name = "postgres-resolver"
+name = "postgres-graphql-resolver"
 version.workspace = true
 edition.workspace = true
 publish = false
