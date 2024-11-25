@@ -13,7 +13,7 @@ use core_plugin_interface::{
     core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
     core_model_builder::error::ModelBuildingError,
 };
-use postgres_model::types::MutationType;
+use postgres_graphql_model::types::MutationType;
 
 use crate::shallow::Shallow;
 

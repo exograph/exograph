@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use postgres_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresSubsystem;
 
 use crate::util::{find_arg, Arguments};
 

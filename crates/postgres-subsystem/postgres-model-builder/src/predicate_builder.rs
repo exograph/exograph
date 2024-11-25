@@ -11,7 +11,7 @@ use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
     types::{FieldType, Named},
 };
-use postgres_model::{
+use postgres_graphql_model::{
     predicate::PredicateParameterTypeWrapper,
     relation::PostgresRelation,
     types::{EntityType, PostgresPrimitiveType},
@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use crate::shallow::Shallow;
 
 use super::system_builder::SystemContextBuilding;
-use postgres_model::predicate::{
+use postgres_graphql_model::predicate::{
     PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
 };
 

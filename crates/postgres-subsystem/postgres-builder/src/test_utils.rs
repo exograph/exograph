@@ -13,7 +13,7 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 #[cfg(test)]
-use postgres_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresSubsystem;
 
 #[cfg(test)]
 pub(crate) async fn create_postgres_system_from_str(

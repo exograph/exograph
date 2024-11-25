@@ -19,7 +19,7 @@ use core_plugin_interface::{
     core_model_builder::error::ModelBuildingError,
 };
 
-use postgres_model::{
+use postgres_graphql_model::{
     access::DatabaseAccessPrimitiveExpression,
     mutation::{PostgresMutation, PostgresMutationParameters},
     relation::PostgresRelation,

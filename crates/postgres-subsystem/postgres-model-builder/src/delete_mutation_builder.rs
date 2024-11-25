@@ -18,8 +18,8 @@ use core_plugin_interface::{
     },
     core_model_builder::error::ModelBuildingError,
 };
-use postgres_model::mutation::PostgresMutationParameters;
-use postgres_model::types::EntityType;
+use postgres_graphql_model::mutation::PostgresMutationParameters;
+use postgres_graphql_model::types::EntityType;
 
 use super::{
     builder::Builder, mutation_builder::MutationBuilder, naming::ToPostgresMutationNames,

@@ -18,7 +18,7 @@ use exo_sql::{
     NestedAbstractInsertSet, NestedAbstractUpdate, OneToMany, PhysicalColumnPath, Selection,
 };
 use futures::StreamExt;
-use postgres_model::{
+use postgres_graphql_model::{
     mutation::DataParameter,
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
     subsystem::PostgresSubsystem,

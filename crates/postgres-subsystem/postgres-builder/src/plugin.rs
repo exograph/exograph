@@ -279,7 +279,7 @@ mod tests {
     use exo_sql::{
         Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable,
     };
-    use postgres_model::subsystem::PostgresSubsystem;
+    use postgres_graphql_model::subsystem::PostgresSubsystem;
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]

@@ -9,12 +9,12 @@
 
 use indexmap::IndexMap;
 
-use postgres_model::types::EntityType;
+use postgres_graphql_model::types::EntityType;
 
 use common::value::Val;
 use core_plugin_interface::core_model::types::OperationReturnType;
 use exo_sql::TableId;
-use postgres_model::{
+use postgres_graphql_model::{
     query::{CollectionQuery, PkQuery},
     subsystem::PostgresSubsystem,
 };

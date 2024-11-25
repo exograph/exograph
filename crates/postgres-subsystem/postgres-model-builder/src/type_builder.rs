@@ -38,7 +38,7 @@ use exo_sql::{
 };
 
 use heck::ToSnakeCase;
-use postgres_model::{
+use postgres_graphql_model::{
     access::{
         Access, DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
         UpdateAccessExpression,

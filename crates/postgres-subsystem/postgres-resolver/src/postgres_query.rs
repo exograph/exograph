@@ -29,9 +29,9 @@ use exo_sql::{
 use exo_sql::{Function, SQLParamContainer};
 use futures::stream::TryStreamExt;
 use futures::StreamExt;
-use postgres_model::query::UniqueQuery;
-use postgres_model::vector_distance::VectorDistanceField;
-use postgres_model::{
+use postgres_graphql_model::query::UniqueQuery;
+use postgres_graphql_model::vector_distance::VectorDistanceField;
+use postgres_graphql_model::{
     aggregate::AggregateField,
     order::OrderByParameter,
     query::{CollectionQuery, CollectionQueryParameters, PkQuery},

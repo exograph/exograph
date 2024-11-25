@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
-use postgres_model::types::TypeIndex;
+use postgres_graphql_model::types::TypeIndex;
 
 /// A trait that allows a default-like value during shallow building
 ///

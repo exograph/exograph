@@ -20,7 +20,7 @@ use core_plugin_interface::{
     },
 };
 
-use postgres_model::{
+use postgres_graphql_model::{
     access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     aggregate::AggregateType,
     mutation::PostgresMutation,

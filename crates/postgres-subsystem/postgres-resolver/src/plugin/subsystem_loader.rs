@@ -22,7 +22,7 @@ use core_plugin_interface::{
 use exo_env::Environment;
 use exo_sql::DatabaseClientManager;
 use postgres_core_resolver::create_database_executor;
-use postgres_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresSubsystem;
 use postgres_rest_model::subsystem::PostgresRestSubsystem;
 
 pub struct PostgresSubsystemLoader {

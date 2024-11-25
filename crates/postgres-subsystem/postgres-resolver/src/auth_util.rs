@@ -9,10 +9,10 @@
 
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use futures::stream::TryStreamExt;
-use postgres_model::access::{
+use postgres_graphql_model::access::{
     DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression, UpdateAccessExpression,
 };
-use postgres_model::types::{EntityType, PostgresField};
+use postgres_graphql_model::types::{EntityType, PostgresField};
 
 use crate::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLOperationKind};
 use common::context::RequestContext;
@@ -22,7 +22,7 @@ use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver, validation::field::ValidatedField,
 };
 use exo_sql::{AbstractPredicate, Predicate};
-use postgres_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresSubsystem;
 
 pub(crate) async fn check_access<'a>(
     return_type: &'a EntityType,

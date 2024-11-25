@@ -26,7 +26,7 @@ use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
     AbstractUpdate, Predicate,
 };
-use postgres_model::{
+use postgres_graphql_model::{
     mutation::{DataParameter, PostgresMutation, PostgresMutationParameters},
     predicate::PredicateParameter,
     subsystem::PostgresSubsystem,

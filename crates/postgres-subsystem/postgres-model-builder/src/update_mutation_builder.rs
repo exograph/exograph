@@ -17,7 +17,7 @@ use core_plugin_interface::{
     },
     core_model_builder::error::ModelBuildingError,
 };
-use postgres_model::{
+use postgres_graphql_model::{
     mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
     relation::PostgresRelation,
     types::{EntityType, MutationType, PostgresField, PostgresFieldType, TypeIndex},

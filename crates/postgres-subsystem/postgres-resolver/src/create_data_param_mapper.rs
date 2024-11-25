@@ -17,7 +17,7 @@ use exo_sql::{
     ManyToOne, NestedInsertion,
 };
 use futures::future::{join_all, try_join_all};
-use postgres_model::{
+use postgres_graphql_model::{
     mutation::DataParameter,
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
     subsystem::PostgresSubsystem,

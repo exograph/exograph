@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use core_plugin_interface::core_resolver::validation::field::ValidatedField;
 use exo_sql::{AbstractOperation, AbstractSelect};
-use postgres_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresSubsystem;
 
 use crate::postgres_execution_error::PostgresExecutionError;
 

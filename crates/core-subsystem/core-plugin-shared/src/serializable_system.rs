@@ -40,6 +40,7 @@ pub struct SerializableGraphQLBytes(pub Vec<u8>);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableRestBytes(pub Vec<u8>);
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableGraphQLSystem {
     pub serialized_subsystems: Vec<(String, usize, SerializableGraphQLBytes)>,

@@ -15,7 +15,7 @@ typed-generational-arena.workspace = true
 tokio.workspace = true
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-postgres-model = { path = "../postgres-model" }
+postgres-graphql-model = { path = "../postgres-graphql-model" }
 exo-sql = { path = "../../../libs/exo-sql" }
 postgres-core-builder = { path = "../postgres-core-builder" }
 

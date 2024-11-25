@@ -20,7 +20,7 @@ use exo_sql::{
 use exo_sql::{NumericComparator, SQLParamContainer};
 
 use futures::future::try_join_all;
-use postgres_model::{
+use postgres_graphql_model::{
     predicate::{PredicateParameter, PredicateParameterTypeKind},
     subsystem::PostgresSubsystem,
 };

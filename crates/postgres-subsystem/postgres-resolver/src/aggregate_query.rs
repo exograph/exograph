@@ -22,7 +22,7 @@ use exo_sql::{
     SelectionElement,
 };
 use futures::StreamExt;
-use postgres_model::{
+use postgres_graphql_model::{
     query::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
     types::EntityType,
 };

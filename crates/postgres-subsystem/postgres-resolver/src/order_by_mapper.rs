@@ -23,7 +23,7 @@ use exo_sql::{
 
 use exo_sql::{ColumnPath, SQLParamContainer, VectorDistanceFunction};
 
-use postgres_model::{
+use postgres_graphql_model::{
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
     subsystem::PostgresSubsystem,
 };

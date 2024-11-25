@@ -26,7 +26,7 @@ use core_plugin_interface::{
     interception::InterceptorIndex,
 };
 use exo_sql::DatabaseExecutor;
-use postgres_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresSubsystem;
 
 pub struct PostgresSubsystemResolver {
     pub id: &'static str,

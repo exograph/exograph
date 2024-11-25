@@ -13,7 +13,7 @@ use core_plugin_interface::core_model::{
 };
 
 use exo_sql::{ColumnPathLink, Database};
-use postgres_model::{
+use postgres_graphql_model::{
     access::Access,
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},

@@ -16,7 +16,7 @@ use common::env_const::{
 };
 use exo_sql::DatabaseClientManager;
 use futures::FutureExt;
-use postgres_model::migration::{Migration, VerificationErrors};
+use postgres_graphql_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use super::command::{enforce_trusted_documents_arg, get, port_arg, CommandDefinition};

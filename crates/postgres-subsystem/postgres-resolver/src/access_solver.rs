@@ -27,7 +27,7 @@ use core_plugin_interface::{
     },
 };
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
-use postgres_model::{
+use postgres_graphql_model::{
     access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     subsystem::PostgresSubsystem,
 };

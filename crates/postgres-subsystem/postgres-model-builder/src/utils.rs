@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_model::types::FieldType;
-use postgres_model::types::{EntityType, MutationType, PostgresFieldType, TypeIndex};
+use postgres_graphql_model::types::{EntityType, MutationType, PostgresFieldType, TypeIndex};
 
 pub(super) fn to_mutation_type(
     field_type: &FieldType<PostgresFieldType<EntityType>>,

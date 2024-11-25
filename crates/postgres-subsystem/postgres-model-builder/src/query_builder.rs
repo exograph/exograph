@@ -13,7 +13,7 @@ use core_plugin_interface::core_model::{
 };
 
 use exo_sql::Database;
-use postgres_model::{
+use postgres_graphql_model::{
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     order::{OrderByParameter, OrderByParameterType},
     predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},

@@ -1287,7 +1287,7 @@ dependencies = [
  "lazy_static",
  "notify-debouncer-mini",
  "postgres-builder",
- "postgres-model",
+ "postgres-graphql-model",
  "rand",
  "reqwest",
  "rexpect",
@@ -6844,7 +6844,7 @@ dependencies = [
  "core-plugin-interface",
  "exo-sql",
  "multiplatform_test",
- "postgres-model",
+ "postgres-graphql-model",
  "postgres-model-builder",
  "postgres-rest-builder",
  "tokio",
@@ -6869,7 +6869,7 @@ dependencies = [
  "lazy_static",
  "multiplatform_test",
  "postgres-builder",
- "postgres-model",
+ "postgres-graphql-model",
  "serde",
  "tokio",
  "typed-generational-arena",
@@ -6897,7 +6897,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "postgres-model"
+name = "postgres-graphql-model"
 version = "0.10.2"
 dependencies = [
  "anyhow",
@@ -6931,7 +6931,7 @@ dependencies = [
  "lazy_static",
  "multiplatform_test",
  "postgres-core-builder",
- "postgres-model",
+ "postgres-graphql-model",
  "serde",
  "tokio",
  "typed-generational-arena",
@@ -6989,7 +6989,7 @@ dependencies = [
  "maybe-owned",
  "postgres-builder",
  "postgres-core-resolver",
- "postgres-model",
+ "postgres-graphql-model",
  "postgres-rest-model",
  "serde",
  "serde_json",
