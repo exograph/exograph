@@ -15,6 +15,7 @@ use async_trait::async_trait;
 // use core_plugin_shared::trusted_documents::TrustedDocumentEnforcement;
 
 use crate::context::{context_extractor::ContextExtractor, ContextExtractionError, RequestContext};
+use crate::env_const::EXO_GRAPHQL_HTTP_PATH;
 use crate::http::{RequestHead, RequestPayload};
 use crate::operation_payload::OperationsPayload;
 
@@ -40,8 +41,14 @@ impl<'request> ContextExtractor for QueryExtractor {
             query_hash: None,
         };
 
+        let graphql_path = request_context
+            .system_context
+            .env
+            .get(EXO_GRAPHQL_HTTP_PATH)
+            .unwrap();
+
         let request_head = OverriddenRequestHead {
-            path: "/graphql".to_string(),
+            path: graphql_path,
             original_head: request_context.get_head(),
         };
         let request = OverriddenRequestPayload {
