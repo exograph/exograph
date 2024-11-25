@@ -58,6 +58,10 @@ impl<'a> RequestContext<'a> {
         }
     }
 
+    pub fn is_internal(&self) -> bool {
+        matches!(self.core, CoreRequestContext::InternalRequest(..))
+    }
+
     pub async fn extract_context_field(
         &'a self,
         context_type_name: &str,
@@ -88,19 +92,18 @@ impl<'a> RequestContext<'a> {
     }
 
     pub async fn finalize_transaction(&self, commit: bool) -> Result<(), tokio_postgres::Error> {
-        match self.core {
-            // Do not finalize internal requests (currently made through the QueryExtractor)
-            CoreRequestContext::OverriddenRequest(..) => Ok(()),
-            _ => {
-                self.system_context
-                    .transaction_holder
-                    .as_ref()
-                    .lock()
-                    .await
-                    .finalize(commit)
-                    .await
-            }
+        // Do not finalize internal requests (currently made through the QueryExtractor)
+        if self.is_internal() {
+            return Ok(());
         }
+
+        self.system_context
+            .transaction_holder
+            .as_ref()
+            .lock()
+            .await
+            .finalize(commit)
+            .await
     }
 
     pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
@@ -149,7 +152,7 @@ pub(super) enum CoreRequestContext<'a> {
     // The recursive nature allows stacking overrides
     Overridden(OverriddenContext<'a>),
 
-    OverriddenRequest(
+    InternalRequest(
         &'a CoreRequestContext<'a>,
         &'a (dyn RequestPayload + Send + Sync),
     ),
@@ -167,7 +170,7 @@ impl<'a> CoreRequestContext<'a> {
         &'a self,
         request: &'a (dyn RequestPayload + Send + Sync),
     ) -> CoreRequestContext<'a> {
-        Self::OverriddenRequest(self, request)
+        Self::InternalRequest(self, request)
     }
 
     pub fn with_override(&'a self, context_override: Value) -> CoreRequestContext<'a> {
@@ -180,7 +183,7 @@ impl<'a> CoreRequestContext<'a> {
             Self::Overridden(OverriddenContext { base_context, .. }) => {
                 base_context.get_base_context()
             }
-            Self::OverriddenRequest(base_context, ..) => base_context.get_base_context(),
+            Self::InternalRequest(base_context, ..) => base_context.get_base_context(),
         }
     }
 
@@ -217,7 +220,7 @@ impl<'a> CoreRequestContext<'a> {
                     )
                     .await
             }
-            Self::OverriddenRequest(base_context, ..) => {
+            Self::InternalRequest(base_context, ..) => {
                 base_context
                     .extract_context_field(
                         context_type_name,
@@ -236,14 +239,14 @@ impl<'a> CoreRequestContext<'a> {
 impl<'a> RequestPayload for CoreRequestContext<'a> {
     fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
         match self {
-            Self::OverriddenRequest(_, request) => request.get_head(),
+            Self::InternalRequest(_, request) => request.get_head(),
             _ => self.get_base_context().get_head(),
         }
     }
 
     fn take_body(&self) -> Value {
         match self {
-            Self::OverriddenRequest(_, request) => request.take_body(),
+            Self::InternalRequest(_, request) => request.take_body(),
             _ => self.get_base_context().get_request().take_body(),
         }
     }

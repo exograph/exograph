@@ -100,10 +100,10 @@ impl<'a> Router<RequestContext<'a>> for GraphQLRouter {
             .unwrap_or(false);
 
         let is_production = is_production(self.env.as_ref());
+        let is_internal = request_context.is_internal();
 
-        // If the server is in production mode, enforce trusted documents regardless of
-        // the `_exo_playground` header
-        let trusted_document_enforcement = if is_production || !playground_request {
+        let should_enforce = !is_internal && (is_production || !playground_request);
+        let trusted_document_enforcement = if should_enforce {
             TrustedDocumentEnforcement::Enforce
         } else {
             TrustedDocumentEnforcement::DoNotEnforce
