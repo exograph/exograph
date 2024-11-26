@@ -43,13 +43,13 @@ pub async fn init() -> Result<SystemRouter, ServerInitError> {
 pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {
     vec![
         #[cfg(feature = "static-postgres-resolver")]
-        Box::new(postgres_resolver::PostgresSubsystemLoader {
+        Box::new(postgres_graphql_resolver::PostgresSubsystemLoader {
             existing_client: None,
         }),
         #[cfg(feature = "static-deno-resolver")]
-        Box::new(deno_resolver::DenoSubsystemLoader {}),
+        Box::new(deno_graphql_resolver::DenoSubsystemLoader {}),
         #[cfg(feature = "static-wasm-resolver")]
-        Box::new(wasm_resolver::WasmSubsystemLoader {}),
+        Box::new(wasm_graphql_resolver::WasmSubsystemLoader {}),
     ]
 }
 

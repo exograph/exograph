@@ -1,0 +1,27 @@
+[package]
+name = "wasm-graphql-resolver"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-graphql-parser.workspace = true
+async-recursion.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+thiserror.workspace = true
+wasmtime.workspace = true
+
+exo-env = { path = "../../../libs/exo-env" }
+exo-wasm = { path = "../../../libs/exo-wasm" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+common = { path = "../../common" }
+wasm-graphql-model = { path = "../wasm-graphql-model" }
+
+
+[dev-dependencies]
+
+[lib]
+crate-type = ["lib"]
+doctest = false

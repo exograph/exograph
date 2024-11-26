@@ -11,7 +11,7 @@ use std::{io, path::PathBuf};
 
 use anyhow::anyhow;
 use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
-use postgres_model::migration::Migration;
+use postgres_graphql_model::migration::Migration;
 
 use crate::{
     commands::command::{database_arg, default_model_file, get, output_arg, CommandDefinition},

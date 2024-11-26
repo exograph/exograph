@@ -927,7 +927,7 @@ dependencies = [
  "insta",
  "multiplatform_test",
  "postgres-builder",
- "postgres-model-builder",
+ "postgres-graphql-model-builder",
  "regex",
  "serde",
  "serde_json",
@@ -1277,7 +1277,7 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "ctrlc",
- "deno-model-builder",
+ "deno-graphql-model-builder",
  "exo-sql",
  "futures",
  "heck 0.5.0",
@@ -1287,7 +1287,7 @@ dependencies = [
  "lazy_static",
  "notify-debouncer-mini",
  "postgres-builder",
- "postgres-model",
+ "postgres-graphql-model",
  "rand",
  "reqwest",
  "rexpect",
@@ -1296,7 +1296,7 @@ dependencies = [
  "tempfile",
  "testing",
  "tokio",
- "wasm-model-builder",
+ "wasm-graphql-model-builder",
  "which 6.0.3",
  "zip 0.6.6",
 ]
@@ -1627,8 +1627,8 @@ dependencies = [
  "insta",
  "multiplatform_test",
  "postgres-builder",
- "postgres-model-builder",
- "postgres-resolver",
+ "postgres-graphql-model-builder",
+ "postgres-graphql-resolver",
  "reqwest",
  "serde",
  "serde_json",
@@ -2150,7 +2150,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno-model"
+name = "deno-graphql-model"
 version = "0.10.2"
 dependencies = [
  "async-graphql-parser",
@@ -2162,7 +2162,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno-model-builder"
+name = "deno-graphql-model-builder"
 version = "0.10.2"
 dependencies = [
  "anyhow",
@@ -2172,7 +2172,7 @@ dependencies = [
  "codemap",
  "core-plugin-interface",
  "deno",
- "deno-model",
+ "deno-graphql-model",
  "deno_ast",
  "deno_config",
  "deno_core",
@@ -2190,15 +2190,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno-model-builder-dynamic"
+name = "deno-graphql-model-builder-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
- "deno-model-builder",
+ "deno-graphql-model-builder",
 ]
 
 [[package]]
-name = "deno-resolver"
+name = "deno-graphql-resolver"
 version = "0.10.2"
 dependencies = [
  "anyhow",
@@ -2209,7 +2209,7 @@ dependencies = [
  "builder",
  "common",
  "core-plugin-interface",
- "deno-model",
+ "deno-graphql-model",
  "deno_core",
  "exo-deno",
  "exo-env",
@@ -2223,11 +2223,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno-resolver-dynamic"
+name = "deno-graphql-resolver-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
- "deno-resolver",
+ "deno-graphql-resolver",
 ]
 
 [[package]]
@@ -6835,8 +6835,8 @@ dependencies = [
  "core-plugin-interface",
  "exo-sql",
  "multiplatform_test",
- "postgres-model",
- "postgres-model-builder",
+ "postgres-graphql-model",
+ "postgres-graphql-model-builder",
  "postgres-rest-builder",
  "tokio",
  "wasm-bindgen-test",
@@ -6853,14 +6853,14 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
- "deno-model-builder",
+ "deno-graphql-model-builder",
  "exo-sql",
  "heck 0.5.0",
  "insta",
  "lazy_static",
  "multiplatform_test",
  "postgres-builder",
- "postgres-model",
+ "postgres-graphql-model",
  "serde",
  "tokio",
  "typed-generational-arena",
@@ -6879,7 +6879,7 @@ dependencies = [
  "exo-sql",
  "graphql-router",
  "http 1.1.0",
- "postgres-model-builder",
+ "postgres-graphql-model-builder",
  "thiserror",
  "tokio",
  "tokio-postgres",
@@ -6888,7 +6888,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "postgres-model"
+name = "postgres-graphql-model"
 version = "0.10.2"
 dependencies = [
  "anyhow",
@@ -6899,7 +6899,7 @@ dependencies = [
  "core-plugin-interface",
  "exo-sql",
  "postgres-builder",
- "postgres-model-builder",
+ "postgres-graphql-model-builder",
  "serde",
  "stripmargin",
  "tokio",
@@ -6908,21 +6908,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "postgres-model-builder"
+name = "postgres-graphql-model-builder"
 version = "0.10.2"
 dependencies = [
  "bincode",
  "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
- "deno-model-builder",
+ "deno-graphql-model-builder",
  "exo-sql",
  "heck 0.5.0",
  "insta",
  "lazy_static",
  "multiplatform_test",
  "postgres-core-builder",
- "postgres-model",
+ "postgres-graphql-model",
  "serde",
  "tokio",
  "typed-generational-arena",
@@ -6931,35 +6931,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "postgres-model-builder-dynamic"
+name = "postgres-graphql-model-builder-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
  "postgres-builder",
- "postgres-model-builder",
+ "postgres-graphql-model-builder",
 ]
 
 [[package]]
-name = "postgres-protocol"
-version = "0.6.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acda0ebdebc28befa84bee35e651e4c5f09073d668c7aed4cf7e23c3cda84b23"
-dependencies = [
- "base64 0.22.1",
- "byteorder",
- "bytes",
- "fallible-iterator 0.2.0",
- "getrandom",
- "hmac",
- "md-5",
- "memchr",
- "rand",
- "sha2",
- "stringprep",
-]
-
-[[package]]
-name = "postgres-resolver"
+name = "postgres-graphql-resolver"
 version = "0.10.2"
 dependencies = [
  "async-graphql-parser",
@@ -6980,7 +6961,7 @@ dependencies = [
  "maybe-owned",
  "postgres-builder",
  "postgres-core-resolver",
- "postgres-model",
+ "postgres-graphql-model",
  "postgres-rest-model",
  "serde",
  "serde_json",
@@ -6993,11 +6974,30 @@ dependencies = [
 ]
 
 [[package]]
-name = "postgres-resolver-dynamic"
+name = "postgres-graphql-resolver-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
- "postgres-resolver",
+ "postgres-graphql-resolver",
+]
+
+[[package]]
+name = "postgres-protocol"
+version = "0.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acda0ebdebc28befa84bee35e651e4c5f09073d668c7aed4cf7e23c3cda84b23"
+dependencies = [
+ "base64 0.22.1",
+ "byteorder",
+ "bytes",
+ "fallible-iterator 0.2.0",
+ "getrandom",
+ "hmac",
+ "md-5",
+ "memchr",
+ "rand",
+ "sha2",
+ "stringprep",
 ]
 
 [[package]]
@@ -8306,7 +8306,7 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "http 1.1.0",
- "postgres-resolver",
+ "postgres-graphql-resolver",
  "serde",
  "serde-wasm-bindgen 0.6.5",
  "serde_json",
@@ -8331,13 +8331,13 @@ dependencies = [
  "core-plugin-interface",
  "core-resolver",
  "core-router",
- "deno-resolver",
+ "deno-graphql-resolver",
  "exo-env",
  "graphql-router",
- "postgres-resolver",
+ "postgres-graphql-resolver",
  "system-router",
  "thiserror",
- "wasm-resolver",
+ "wasm-graphql-resolver",
 ]
 
 [[package]]
@@ -8756,7 +8756,7 @@ dependencies = [
  "core-model",
  "core-model-builder",
  "core-plugin-shared",
- "deno-model-builder",
+ "deno-graphql-model-builder",
  "serde",
  "subsystem-model-util",
  "tokio",
@@ -10640,7 +10640,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-model"
+name = "wasm-graphql-model"
 version = "0.10.2"
 dependencies = [
  "async-graphql-parser",
@@ -10651,24 +10651,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-model-builder"
+name = "wasm-graphql-model-builder"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
  "subsystem-model-builder-util",
- "wasm-model",
+ "wasm-graphql-model",
 ]
 
 [[package]]
-name = "wasm-model-builder-dynamic"
+name = "wasm-graphql-model-builder-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
- "wasm-model-builder",
+ "wasm-graphql-model-builder",
 ]
 
 [[package]]
-name = "wasm-resolver"
+name = "wasm-graphql-resolver"
 version = "0.10.2"
 dependencies = [
  "async-graphql-parser",
@@ -10681,16 +10681,16 @@ dependencies = [
  "futures",
  "serde_json",
  "thiserror",
- "wasm-model",
+ "wasm-graphql-model",
  "wasmtime",
 ]
 
 [[package]]
-name = "wasm-resolver-dynamic"
+name = "wasm-graphql-resolver-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
- "wasm-resolver",
+ "wasm-graphql-resolver",
 ]
 
 [[package]]

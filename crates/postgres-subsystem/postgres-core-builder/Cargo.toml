@@ -16,7 +16,7 @@ typed-generational-arena.workspace = true
 tokio.workspace = true
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-postgres-model = { path = "../postgres-model" }
+postgres-graphql-model = { path = "../postgres-graphql-model" }
 exo-sql = { path = "../../../libs/exo-sql" }
 
 [dev-dependencies]
@@ -30,7 +30,7 @@ exo-sql = { path = "../../../libs/exo-sql" }
 postgres-builder = { path = "../postgres-builder" }
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
-deno-model-builder = { path = "../../deno-subsystem/deno-model-builder" }
+deno-graphql-model-builder = { path = "../../deno-subsystem/deno-graphql-model-builder" }
 
 [lib]
 crate-type = ["lib"]

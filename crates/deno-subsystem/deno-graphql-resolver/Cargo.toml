@@ -1,0 +1,37 @@
+[package]
+name = "deno-graphql-resolver"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+async-graphql-parser.workspace = true
+indexmap.workspace = true
+async-recursion.workspace = true
+async-trait.workspace = true
+# Make sure deno_core version matches the one in the exo_deno's Cargo.toml
+# If we re-export the deno_core crate from the exo_deno crate (instead of declaring a dependency here), 
+# the #[op] macro panics (it looks for the deno_core crate in crate's local dependencies)
+deno_core.workspace = true
+futures.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+maybe-owned.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+bincode.workspace = true
+
+exo-deno = { path = "../../../libs/exo-deno" }
+exo-env = { path = "../../../libs/exo-env" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+deno-graphql-model = { path = "../deno-graphql-model" }
+common = { path = "../../common" }
+
+[dev-dependencies]
+tokio.workspace = true
+builder = { path = "../../builder" }
+test-log.workspace = true
+
+[lib]
+crate-type = ["lib"]
+doctest = false

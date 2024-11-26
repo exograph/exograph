@@ -15,7 +15,7 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
-use postgres_model::migration::{self, Migration};
+use postgres_graphql_model::migration::{self, Migration};
 use std::{
     path::{Path, PathBuf},
     sync::atomic::Ordering,

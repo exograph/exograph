@@ -18,7 +18,7 @@ use core_plugin_shared::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
 use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
-use postgres_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresSubsystem;
 
 use crate::commands::build::build_system_with_static_builders;
 use crate::commands::command::ensure_exo_project_dir;

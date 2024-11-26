@@ -1,0 +1,33 @@
+[package]
+name = "postgres-graphql-model-builder"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+heck.workspace = true
+bincode.workspace = true
+serde.workspace = true
+codemap-diagnostic.workspace = true
+codemap.workspace = true
+lazy_static.workspace = true
+typed-generational-arena.workspace = true
+tokio.workspace = true
+
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+postgres-graphql-model = { path = "../postgres-graphql-model" }
+exo-sql = { path = "../../../libs/exo-sql" }
+postgres-core-builder = { path = "../postgres-core-builder" }
+
+[dev-dependencies]
+insta.workspace = true
+wasm-bindgen-test.workspace = true
+wasm-bindgen-test-macro.workspace = true
+multiplatform_test.workspace = true
+
+[target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
+deno-graphql-model-builder = { path = "../../deno-subsystem/deno-graphql-model-builder" }
+
+[lib]
+crate-type = ["lib"]
+doctest = false
