@@ -1,5 +1,5 @@
 [package]
-name = "deno-resolver"
+name = "deno-graphql-resolver"
 version.workspace = true
 edition.workspace = true
 publish = false

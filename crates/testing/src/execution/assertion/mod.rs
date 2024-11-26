@@ -69,7 +69,7 @@ pub async fn dynamic_assert_using_deno(
         "ExographTest",
         vec![],
         vec![include_str!(
-            "../../../../deno-subsystem/deno-resolver/src/exograph_error.js"
+            "../../../../deno-subsystem/deno-graphql-resolver/src/exograph_error.js"
         )],
         vec![],
         DenoModuleSharedState::default(),

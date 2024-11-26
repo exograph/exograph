@@ -1,15 +1,17 @@
 [package]
-name = "wasm-resolver-dynamic"
+name = "wasm-graphql-model-builder"
 version.workspace = true
 edition.workspace = true
 publish = false
 
 [dependencies]
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-wasm-resolver = { path = "../wasm-resolver" }
+wasm-model = { path = "../wasm-model" }
+subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-builder-util" }
 
 [dev-dependencies]
 
+
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib"]
 doctest = false

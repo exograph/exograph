@@ -16,14 +16,14 @@ postgres-graphql-resolver = { path = "../postgres-subsystem/postgres-graphql-res
   "network",
   "bigdecimal",
 ], optional = true }
-deno-resolver = { path = "../deno-subsystem/deno-resolver", optional = true }
-wasm-resolver = { path = "../wasm-subsystem/wasm-resolver", optional = true }
+deno-graphql-resolver = { path = "../deno-subsystem/deno-graphql-resolver", optional = true }
+wasm-graphql-resolver = { path = "../wasm-subsystem/wasm-graphql-resolver", optional = true }
 exo-env = { path = "../../libs/exo-env" }
 
 [features]
 static-postgres-resolver = ["postgres-graphql-resolver"]
-static-deno-resolver = ["deno-resolver"]
-static-wasm-resolver = ["wasm-resolver"]
+static-deno-resolver = ["deno-graphql-resolver"]
+static-wasm-resolver = ["wasm-graphql-resolver"]
 
 [lib]
 doctest = false

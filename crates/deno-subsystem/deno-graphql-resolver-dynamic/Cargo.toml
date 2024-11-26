@@ -1,14 +1,12 @@
 [package]
-name = "wasm-model-builder-dynamic"
+name = "deno-graphql-resolver-dynamic"
 version.workspace = true
 edition.workspace = true
 publish = false
 
 [dependencies]
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-wasm-model-builder = { path = "../wasm-model-builder" }
-
-[dev-dependencies]
+deno-graphql-resolver = { path = "../deno-graphql-resolver" }
 
 [lib]
 crate-type = ["cdylib"]

@@ -41,8 +41,8 @@ core-model-builder = { path = "../core-subsystem/core-model-builder" }
 postgres-graphql-model = { path = "../postgres-subsystem/postgres-graphql-model" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 postgres-builder = { path = "../postgres-subsystem/postgres-builder" }
-deno-model-builder = { path = "../deno-subsystem/deno-model-builder" }
-wasm-model-builder = { path = "../wasm-subsystem/wasm-model-builder" }
+deno-graphql-model-builder = { path = "../deno-subsystem/deno-graphql-model-builder" }
+wasm-graphql-model-builder = { path = "../wasm-subsystem/wasm-graphql-model-builder" }
 
 [target.'cfg(unix)'.dev-dependencies]
 rexpect = "0.5.0"

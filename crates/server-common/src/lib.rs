@@ -47,9 +47,9 @@ pub fn create_static_loaders() -> Vec<Box<dyn SubsystemLoader>> {
             existing_client: None,
         }),
         #[cfg(feature = "static-deno-resolver")]
-        Box::new(deno_resolver::DenoSubsystemLoader {}),
+        Box::new(deno_graphql_resolver::DenoSubsystemLoader {}),
         #[cfg(feature = "static-wasm-resolver")]
-        Box::new(wasm_resolver::WasmSubsystemLoader {}),
+        Box::new(wasm_graphql_resolver::WasmSubsystemLoader {}),
     ]
 }
 

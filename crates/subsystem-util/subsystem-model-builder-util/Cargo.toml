@@ -19,7 +19,7 @@ tokio.workspace = true
 builder = { path = "../../builder" }
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
-deno-model-builder = { path = "../../deno-subsystem/deno-model-builder" }
+deno-graphql-model-builder = { path = "../../deno-subsystem/deno-graphql-model-builder" }
 
 [lib]
 doctest = false

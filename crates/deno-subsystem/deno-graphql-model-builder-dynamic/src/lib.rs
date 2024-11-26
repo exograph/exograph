@@ -7,11 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-//! Dynamic loader for wasm-resolver.
+//! Dynamic loader for deno-model-builder.
+use core_plugin_interface::interface::SubsystemBuilder;
+use deno_graphql_model_builder::DenoSubsystemBuilder;
 
-use core_plugin_interface::interface::SubsystemLoader;
-use wasm_resolver::WasmSubsystemLoader;
-
-// See comments in `postgres-resolver-dynamic/src/lib.rs`.
-
-core_plugin_interface::export_subsystem_loader!(WasmSubsystemLoader {});
+// See comments in `postgres-graphql-resolver-dynamic/src/lib.rs`.
+core_plugin_interface::export_subsystem_builder!(DenoSubsystemBuilder::default());

@@ -1,12 +1,14 @@
 [package]
-name = "deno-resolver-dynamic"
+name = "wasm-graphql-resolver-dynamic"
 version.workspace = true
 edition.workspace = true
 publish = false
 
 [dependencies]
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-deno-resolver = { path = "../deno-resolver" }
+wasm-graphql-resolver = { path = "../wasm-graphql-resolver" }
+
+[dev-dependencies]
 
 [lib]
 crate-type = ["cdylib"]
