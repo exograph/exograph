@@ -23,7 +23,7 @@ use core_plugin_interface::{
     trusted_documents::TrustedDocumentEnforcement,
 };
 
-use deno_model::{
+use deno_graphql_model::{
     module::{Argument, ModuleMethod},
     subsystem::DenoSubsystem,
     types::{ModuleCompositeType, ModuleOperationReturnType, ModuleTypeKind},

@@ -35,7 +35,7 @@ use deno_graph::{
     DependencyDescriptor, DynamicArgument, GraphKind, Module, ModuleAnalyzer, ModuleEntryRef,
     ModuleGraph, ModuleSpecifier, WalkOptions,
 };
-use deno_model::{
+use deno_graphql_model::{
     interceptor::Interceptor,
     operation::{DenoMutation, DenoQuery},
     subsystem::DenoSubsystem,

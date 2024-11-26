@@ -2150,6 +2150,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "deno-graphql-model"
+version = "0.10.2"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "bincode",
+ "core-plugin-interface",
+ "serde",
+ "subsystem-model-util",
+]
+
+[[package]]
 name = "deno-graphql-model-builder"
 version = "0.10.2"
 dependencies = [
@@ -2160,7 +2172,7 @@ dependencies = [
  "codemap",
  "core-plugin-interface",
  "deno",
- "deno-model",
+ "deno-graphql-model",
  "deno_ast",
  "deno_config",
  "deno_core",
@@ -2197,7 +2209,7 @@ dependencies = [
  "builder",
  "common",
  "core-plugin-interface",
- "deno-model",
+ "deno-graphql-model",
  "deno_core",
  "exo-deno",
  "exo-env",
@@ -2216,18 +2228,6 @@ version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
  "deno-graphql-resolver",
-]
-
-[[package]]
-name = "deno-model"
-version = "0.10.2"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "bincode",
- "core-plugin-interface",
- "serde",
- "subsystem-model-util",
 ]
 
 [[package]]
@@ -10643,12 +10643,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-graphql-model"
+version = "0.10.2"
+dependencies = [
+ "async-graphql-parser",
+ "bincode",
+ "core-plugin-interface",
+ "serde",
+ "subsystem-model-util",
+]
+
+[[package]]
 name = "wasm-graphql-model-builder"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
  "subsystem-model-builder-util",
- "wasm-model",
+ "wasm-graphql-model",
 ]
 
 [[package]]
@@ -10673,7 +10684,7 @@ dependencies = [
  "futures",
  "serde_json",
  "thiserror",
- "wasm-model",
+ "wasm-graphql-model",
  "wasmtime",
 ]
 
@@ -10683,17 +10694,6 @@ version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
  "wasm-graphql-resolver",
-]
-
-[[package]]
-name = "wasm-model"
-version = "0.10.2"
-dependencies = [
- "async-graphql-parser",
- "bincode",
- "core-plugin-interface",
- "serde",
- "subsystem-model-util",
 ]
 
 [[package]]

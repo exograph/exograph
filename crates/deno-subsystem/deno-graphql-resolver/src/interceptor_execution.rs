@@ -11,7 +11,7 @@ use common::context::RequestContext;
 use core_plugin_interface::core_resolver::{
     system_resolver::ExographExecuteQueryFn, InterceptedOperation,
 };
-use deno_model::interceptor::Interceptor;
+use deno_graphql_model::interceptor::Interceptor;
 use exo_deno::{deno_executor_pool::DenoScriptDefn, Arg};
 use indexmap::IndexMap;
 use serde_json::Value;

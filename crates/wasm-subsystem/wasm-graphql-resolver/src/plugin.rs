@@ -26,7 +26,7 @@ use core_plugin_interface::{
 };
 use exo_env::Environment;
 use exo_wasm::WasmExecutorPool;
-use wasm_model::{module::ModuleMethod, subsystem::WasmSubsystem};
+use wasm_graphql_model::{module::ModuleMethod, subsystem::WasmSubsystem};
 
 pub struct WasmSubsystemLoader {}
 

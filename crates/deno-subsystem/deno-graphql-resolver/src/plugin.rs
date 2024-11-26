@@ -27,7 +27,7 @@ use core_plugin_interface::{
     trusted_documents::TrustedDocumentEnforcement,
 };
 
-use deno_model::{module::ModuleMethod, subsystem::DenoSubsystem};
+use deno_graphql_model::{module::ModuleMethod, subsystem::DenoSubsystem};
 use exo_deno::DenoExecutorPool;
 use exo_env::Environment;
 

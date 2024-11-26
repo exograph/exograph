@@ -17,7 +17,7 @@ exo-env = { path = "../../../libs/exo-env" }
 exo-wasm = { path = "../../../libs/exo-wasm" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 common = { path = "../../common" }
-wasm-model = { path = "../wasm-model" }
+wasm-graphql-model = { path = "../wasm-graphql-model" }
 
 
 [dev-dependencies]

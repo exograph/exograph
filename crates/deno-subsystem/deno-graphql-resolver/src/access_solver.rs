@@ -21,7 +21,7 @@ use core_plugin_interface::{
     },
 };
 
-use deno_model::{access::ModuleAccessPrimitiveExpression, subsystem::DenoSubsystem};
+use deno_graphql_model::{access::ModuleAccessPrimitiveExpression, subsystem::DenoSubsystem};
 
 use crate::module_access_predicate::ModuleAccessPredicate;
 

@@ -17,7 +17,7 @@ use core_plugin_interface::{
     },
 };
 use std::path::Path;
-use wasm_model::{
+use wasm_graphql_model::{
     interceptor::Interceptor,
     operation::{WasmMutation, WasmQuery},
     subsystem::WasmSubsystem,

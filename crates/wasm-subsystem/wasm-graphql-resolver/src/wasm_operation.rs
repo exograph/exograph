@@ -15,7 +15,7 @@ use core_plugin_interface::core_resolver::{
     QueryResponseBody,
 };
 use std::collections::HashMap;
-use wasm_model::module::ModuleMethod;
+use wasm_graphql_model::module::ModuleMethod;
 use wasmtime::Val;
 
 pub struct WasmOperation<'a> {
