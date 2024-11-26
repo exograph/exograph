@@ -10,7 +10,7 @@ use core_plugin_interface::{
     },
     interface::{GraphQLSubsystemBuilder, RestSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
 };
-use postgres_graphql_model_builder::PostgresGraphQLSubsystemBuilder;
+use postgres_graphql_builder::PostgresGraphQLSubsystemBuilder;
 use postgres_rest_builder::PostgresRestSubsystemBuilder;
 
 pub struct PostgresSubsystemBuilder {

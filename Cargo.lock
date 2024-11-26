@@ -927,7 +927,7 @@ dependencies = [
  "insta",
  "multiplatform_test",
  "postgres-builder",
- "postgres-graphql-model-builder",
+ "postgres-graphql-builder",
  "regex",
  "serde",
  "serde_json",
@@ -1277,7 +1277,7 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "ctrlc",
- "deno-graphql-model-builder",
+ "deno-graphql-builder",
  "exo-sql",
  "futures",
  "heck 0.5.0",
@@ -1296,7 +1296,7 @@ dependencies = [
  "tempfile",
  "testing",
  "tokio",
- "wasm-graphql-model-builder",
+ "wasm-graphql-builder",
  "which 6.0.3",
  "zip 0.6.6",
 ]
@@ -1627,7 +1627,7 @@ dependencies = [
  "insta",
  "multiplatform_test",
  "postgres-builder",
- "postgres-graphql-model-builder",
+ "postgres-graphql-builder",
  "postgres-graphql-resolver",
  "reqwest",
  "serde",
@@ -2150,19 +2150,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno-graphql-model"
-version = "0.10.2"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "bincode",
- "core-plugin-interface",
- "serde",
- "subsystem-model-util",
-]
-
-[[package]]
-name = "deno-graphql-model-builder"
+name = "deno-graphql-builder"
 version = "0.10.2"
 dependencies = [
  "anyhow",
@@ -2190,11 +2178,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno-graphql-model-builder-dynamic"
+name = "deno-graphql-builder-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
- "deno-graphql-model-builder",
+ "deno-graphql-builder",
+]
+
+[[package]]
+name = "deno-graphql-model"
+version = "0.10.2"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "bincode",
+ "core-plugin-interface",
+ "serde",
+ "subsystem-model-util",
 ]
 
 [[package]]
@@ -6835,8 +6835,8 @@ dependencies = [
  "core-plugin-interface",
  "exo-sql",
  "multiplatform_test",
+ "postgres-graphql-builder",
  "postgres-graphql-model",
- "postgres-graphql-model-builder",
  "postgres-rest-builder",
  "tokio",
  "wasm-bindgen-test",
@@ -6853,7 +6853,7 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
- "deno-graphql-model-builder",
+ "deno-graphql-builder",
  "exo-sql",
  "heck 0.5.0",
  "insta",
@@ -6879,7 +6879,7 @@ dependencies = [
  "exo-sql",
  "graphql-router",
  "http 1.1.0",
- "postgres-graphql-model-builder",
+ "postgres-graphql-builder",
  "thiserror",
  "tokio",
  "tokio-postgres",
@@ -6888,34 +6888,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "postgres-graphql-model"
-version = "0.10.2"
-dependencies = [
- "anyhow",
- "async-graphql-parser",
- "async-graphql-value",
- "bincode",
- "builder",
- "core-plugin-interface",
- "exo-sql",
- "postgres-builder",
- "postgres-graphql-model-builder",
- "serde",
- "stripmargin",
- "tokio",
- "typed-generational-arena",
- "wasm-bindgen-test",
-]
-
-[[package]]
-name = "postgres-graphql-model-builder"
+name = "postgres-graphql-builder"
 version = "0.10.2"
 dependencies = [
  "bincode",
  "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
- "deno-graphql-model-builder",
+ "deno-graphql-builder",
  "exo-sql",
  "heck 0.5.0",
  "insta",
@@ -6931,12 +6911,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "postgres-graphql-model-builder-dynamic"
+name = "postgres-graphql-builder-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
  "postgres-builder",
- "postgres-graphql-model-builder",
+ "postgres-graphql-builder",
+]
+
+[[package]]
+name = "postgres-graphql-model"
+version = "0.10.2"
+dependencies = [
+ "anyhow",
+ "async-graphql-parser",
+ "async-graphql-value",
+ "bincode",
+ "builder",
+ "core-plugin-interface",
+ "exo-sql",
+ "postgres-builder",
+ "postgres-graphql-builder",
+ "serde",
+ "stripmargin",
+ "tokio",
+ "typed-generational-arena",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -8756,7 +8756,7 @@ dependencies = [
  "core-model",
  "core-model-builder",
  "core-plugin-shared",
- "deno-graphql-model-builder",
+ "deno-graphql-builder",
  "serde",
  "subsystem-model-util",
  "tokio",
@@ -10640,18 +10640,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-graphql-model"
-version = "0.10.2"
-dependencies = [
- "async-graphql-parser",
- "bincode",
- "core-plugin-interface",
- "serde",
- "subsystem-model-util",
-]
-
-[[package]]
-name = "wasm-graphql-model-builder"
+name = "wasm-graphql-builder"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
@@ -10660,11 +10649,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-graphql-model-builder-dynamic"
+name = "wasm-graphql-builder-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
- "wasm-graphql-model-builder",
+ "wasm-graphql-builder",
+]
+
+[[package]]
+name = "wasm-graphql-model"
+version = "0.10.2"
+dependencies = [
+ "async-graphql-parser",
+ "bincode",
+ "core-plugin-interface",
+ "serde",
+ "subsystem-model-util",
 ]
 
 [[package]]

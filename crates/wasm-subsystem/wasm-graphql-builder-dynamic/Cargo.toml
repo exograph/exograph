@@ -1,12 +1,12 @@
 [package]
-name = "deno-graphql-model-builder-dynamic"
+name = "wasm-graphql-builder-dynamic"
 version.workspace = true
 edition.workspace = true
 publish = false
 
 [dependencies]
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-deno-graphql-model-builder = { path = "../deno-graphql-model-builder" }
+wasm-graphql-builder = { path = "../wasm-graphql-builder" }
 
 [dev-dependencies]
 
