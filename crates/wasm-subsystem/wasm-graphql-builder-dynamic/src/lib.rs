@@ -7,9 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-//! Dynamic loader for wasm-graphql-model-builder.
+//! Dynamic loader for wasm-graphql-builder.
 use core_plugin_interface::interface::SubsystemBuilder;
-use wasm_graphql_model_builder::WasmSubsystemBuilder;
+use wasm_graphql_builder::WasmSubsystemBuilder;
 
 // See comments in `postgres-graphqlresolver-dynamic/src/lib.rs`.
 core_plugin_interface::export_subsystem_builder!(WasmSubsystemBuilder::default());

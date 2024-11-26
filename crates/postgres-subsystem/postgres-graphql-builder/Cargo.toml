@@ -1,5 +1,5 @@
 [package]
-name = "postgres-graphql-model-builder"
+name = "postgres-graphql-builder"
 version.workspace = true
 edition.workspace = true
 publish = false
@@ -26,7 +26,7 @@ wasm-bindgen-test-macro.workspace = true
 multiplatform_test.workspace = true
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
-deno-graphql-model-builder = { path = "../../deno-subsystem/deno-graphql-model-builder" }
+deno-graphql-builder = { path = "../../deno-subsystem/deno-graphql-builder" }
 
 [lib]
 crate-type = ["lib"]

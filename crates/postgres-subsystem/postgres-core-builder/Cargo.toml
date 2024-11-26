@@ -30,7 +30,7 @@ exo-sql = { path = "../../../libs/exo-sql" }
 postgres-builder = { path = "../postgres-builder" }
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
-deno-graphql-model-builder = { path = "../../deno-subsystem/deno-graphql-model-builder" }
+deno-graphql-builder = { path = "../../deno-subsystem/deno-graphql-builder" }
 
 [lib]
 crate-type = ["lib"]

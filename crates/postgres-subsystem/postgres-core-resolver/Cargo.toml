@@ -27,7 +27,7 @@ tokio.workspace = true
 builder = { path = "../../builder" }
 core-resolver = { path = "../../core-subsystem/core-resolver"}
 graphql-router = { path = "../../graphql-router" }
-postgres-graphql-model-builder = { path = "../postgres-graphql-model-builder" }
+postgres-graphql-builder = { path = "../postgres-graphql-builder" }
 http.workspace = true
 wasm-bindgen-test.workspace = true
 

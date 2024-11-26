@@ -1,5 +1,5 @@
 [package]
-name = "deno-graphql-model-builder"
+name = "deno-graphql-builder"
 version.workspace = true
 edition.workspace = true
 publish = false

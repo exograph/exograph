@@ -9,7 +9,7 @@
 
 //! Dynamic loader for deno-model-builder.
 use core_plugin_interface::interface::SubsystemBuilder;
-use deno_graphql_model_builder::DenoSubsystemBuilder;
+use deno_graphql_builder::DenoSubsystemBuilder;
 
 // See comments in `postgres-graphql-resolver-dynamic/src/lib.rs`.
 core_plugin_interface::export_subsystem_builder!(DenoSubsystemBuilder::default());
