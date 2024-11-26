@@ -14,31 +14,31 @@
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.2.4",
-    "@clerk/clerk-react": "^4.30.10",
-    "@clerk/themes": "^2.1.10",
+    "@clerk/clerk-react": "5.17.1",
+    "@clerk/themes": "2.1.48",
     "@codemirror/lang-json": "^6.0.1",
-    "@graphiql/plugin-explorer": "^3.1.0",
-    "@graphiql/toolkit": "^0.9.1",
-    "@uiw/codemirror-themes": "^4.23.3",
-    "@uiw/react-codemirror": "^4.23.0",
+    "@graphiql/plugin-explorer": "3.2.3",
+    "@graphiql/toolkit": "0.11.1",
+    "@uiw/codemirror-themes": "4.23.6",
+    "@uiw/react-codemirror": "4.23.6",
     "cross-env": "^7.0.3",
-    "graphiql": "3.3.2",
+    "graphiql": "3.7.2",
     "graphql-ws": "^5.16.0",
-    "jose": "^5.6.3"
+    "jose": "5.9.6"
   },
   "peerDependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@types/node": "^20.14.10",
+    "@types/node": "22.10.0",
     "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.0",
-    "@typescript-eslint/eslint-plugin": "^7.15.0",
-    "@typescript-eslint/parser": "^7.15.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react-hooks": "^4.6.2",
-    "eslint-plugin-react-refresh": "^0.4.8",
-    "typescript": "^5.5.3"
+    "@types/react-dom": "18.3.1",
+    "@typescript-eslint/eslint-plugin": "8.16.0",
+    "@typescript-eslint/parser": "8.16.0",
+    "eslint": "9.15.0",
+    "eslint-plugin-react-hooks": "5.0.0",
+    "eslint-plugin-react-refresh": "0.4.14",
+    "typescript": "5.7.2"
   }
 }
