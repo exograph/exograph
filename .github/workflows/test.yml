@@ -143,8 +143,8 @@ jobs:
         run: cargo test --workspace --target wasm32-unknown-unknown
           --exclude cli
           --exclude postgres-graphql-resolver-dynamic
-          --exclude "deno-*"
-          --exclude "wasm-*""
+          --exclude 'deno-*'
+          --exclude 'wasm-*'
           --exclude server-common --exclude server-actix --exclude server-aws-lambda
           --exclude testing
           --exclude exo-deno --exclude exo-wasm
