@@ -5,8 +5,6 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-serde.workspace = true
-http.workspace = true
 async-trait.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }

@@ -5,32 +5,21 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-async-recursion.workspace = true
 async-graphql-parser.workspace = true
-async-graphql-value.workspace = true
 async-stream.workspace = true
 async-trait.workspace = true
 bytes.workspace = true
-futures.workspace = true
-serde_json = { workspace = true, features = ["preserve_order"] }
-serde.workspace = true
-thiserror.workspace = true
-bincode.workspace = true
 http.workspace = true
 tracing = { version = "0.1", features = ["log"] }
 
-core-model = { path = "../core-subsystem/core-model" }
 core-router = { path = "../core-subsystem/core-router" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
-core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 core-resolver = { path = "../core-subsystem/core-resolver" }
 introspection-resolver = { path = "../introspection-subsystem/introspection-resolver" }
 common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }
 
 [dev-dependencies]
-tokio.workspace = true
-builder = { path = "../builder" }
 
 [lib]
 doctest = false

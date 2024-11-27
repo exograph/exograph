@@ -7,11 +7,9 @@ publish = false
 [dependencies]
 async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
-async-recursion.workspace = true
 futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 async-trait.workspace = true
-tokio.workspace = true
 
 core-resolver = { path = "../../core-subsystem/core-resolver" }
 core-model = { path = "../../core-subsystem/core-model" }

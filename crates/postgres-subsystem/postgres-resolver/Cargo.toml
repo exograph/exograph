@@ -15,21 +15,7 @@ network = [
 bigdecimal = ["postgres-graphql-resolver/bigdecimal"]
 
 [dependencies]
-async-graphql-parser.workspace = true
-async-recursion.workspace = true
 async-trait.workspace = true
-futures.workspace = true
-indexmap.workspace = true
-serde_json = { workspace = true, features = ["preserve_order"] }
-maybe-owned.workspace = true
-serde.workspace = true
-thiserror.workspace = true
-tokio.workspace = true
-tokio-postgres = { workspace = true, default-features = false }
-tracing.workspace = true
-base64 = "0.22.1"
-chrono.workspace = true
-uuid.workspace = true
 
 postgres-graphql-resolver = { path = "../postgres-graphql-resolver" }
 postgres-rest-resolver = { path = "../postgres-rest-resolver" }
@@ -40,16 +26,8 @@ core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-core-resolver = { path = "../postgres-core-resolver" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
 postgres-rest-model = { path = "../postgres-rest-model" }
-common = { path = "../../common" }
 
 [dev-dependencies]
-tokio.workspace = true
-builder = { path = "../../builder" }
-core-resolver = { path = "../../core-subsystem/core-resolver"}
-common = { path = "../../common", features = ["test-context"] }
-graphql-router = { path = "../../graphql-router" }
-postgres-builder = { path = "../postgres-builder" }
-http.workspace = true
 wasm-bindgen-test.workspace = true
 
 [lib]

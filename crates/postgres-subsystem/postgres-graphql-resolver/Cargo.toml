@@ -20,8 +20,6 @@ async-trait.workspace = true
 futures.workspace = true
 indexmap.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
-maybe-owned.workspace = true
-serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-postgres = { workspace = true, default-features = false }
@@ -39,9 +37,7 @@ common = { path = "../../common" }
 [dev-dependencies]
 tokio.workspace = true
 builder = { path = "../../builder" }
-core-resolver = { path = "../../core-subsystem/core-resolver"}
 common = { path = "../../common", features = ["test-context"] }
-graphql-router = { path = "../../graphql-router" }
 postgres-builder = { path = "../postgres-builder" }
 http.workspace = true
 wasm-bindgen-test.workspace = true

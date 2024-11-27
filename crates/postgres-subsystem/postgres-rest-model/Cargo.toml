@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 serde.workspace = true
-http.workspace = true
 bincode.workspace = true
 
 core-rest-model = { path = "../../core-subsystem/core-rest-model" }
