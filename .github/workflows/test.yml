@@ -142,9 +142,10 @@ jobs:
           RUST_BACKTRACE: 1
         run: cargo test --workspace --target wasm32-unknown-unknown
           --exclude cli
-          --exclude postgres-graphql-resolver-dynamic
+          --exclude postgres-resolver-dynamic
           --exclude 'deno-*'
           --exclude 'wasm-*'
+          --exclude subsystem-model-builder-util
           --exclude server-common --exclude server-actix --exclude server-aws-lambda
           --exclude testing
           --exclude exo-deno --exclude exo-wasm
