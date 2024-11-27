@@ -69,8 +69,8 @@ pub(crate) async fn build_system_with_static_builders(
 ) -> Result<SerializableSystem, ParserError> {
     let static_builders: Vec<Box<dyn SubsystemBuilder + Send + Sync>> = vec![
         Box::new(postgres_builder::PostgresSubsystemBuilder::default()),
-        Box::new(deno_graphql_builder::DenoSubsystemBuilder::default()),
-        Box::new(wasm_graphql_builder::WasmSubsystemBuilder::default()),
+        Box::new(deno_builder::DenoSubsystemBuilder::default()),
+        Box::new(wasm_builder::WasmSubsystemBuilder::default()),
     ];
 
     builder::build_system(model, trusted_documents_dir, static_builders).await

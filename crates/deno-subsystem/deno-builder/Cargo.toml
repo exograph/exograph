@@ -1,0 +1,18 @@
+[package]
+name = "deno-builder"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+
+deno-graphql-builder = { path = "../deno-graphql-builder" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+
+
+[dev-dependencies]
+
+[lib]
+crate-type = ["lib"]
+doctest = false

@@ -34,7 +34,7 @@ use futures::StreamExt;
 
 use crate::{
     deno_execution_error::DenoExecutionError, exo_execution::ExoCallbackProcessor,
-    module_access_predicate::ModuleAccessPredicate, plugin::DenoSubsystemResolver,
+    module_access_predicate::ModuleAccessPredicate, DenoSubsystemResolver,
 };
 
 use std::collections::HashMap;

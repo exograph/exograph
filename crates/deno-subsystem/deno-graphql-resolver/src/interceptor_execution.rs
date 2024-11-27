@@ -16,7 +16,7 @@ use exo_deno::{deno_executor_pool::DenoScriptDefn, Arg};
 use indexmap::IndexMap;
 use serde_json::Value;
 
-use crate::{deno_operation::construct_arg_sequence, plugin::DenoSubsystemResolver};
+use crate::{deno_operation::construct_arg_sequence, DenoSubsystemResolver};
 
 use super::{
     deno_execution_error::DenoExecutionError,

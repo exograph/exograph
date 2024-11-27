@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub use plugin::PostgresSubsystemLoader;
+pub use resolver::PostgresSubsystemResolver;
 
 mod abstract_operation_resolver;
 mod access_solver;
@@ -19,11 +19,11 @@ mod create_data_param_mapper;
 mod limit_offset_mapper;
 mod operation_resolver;
 mod order_by_mapper;
-mod plugin;
 mod postgres_execution_error;
 mod postgres_mutation;
 mod postgres_query;
 mod predicate_mapper;
+mod resolver;
 mod sql_mapper;
 mod update_data_param_mapper;
 mod util;

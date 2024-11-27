@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 async-trait.workspace = true
-postgres-graphql-model = { path = "../postgres-graphql-model" }
 postgres-graphql-builder = { path = "../postgres-graphql-builder" }
 postgres-rest-builder = { path = "../postgres-rest-builder" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
@@ -19,6 +18,7 @@ wasm-bindgen-test-macro.workspace = true
 
 builder = { path = "../../builder" }
 exo-sql = { path = "../../../libs/exo-sql" }
+postgres-graphql-model = { path = "../postgres-graphql-model" }
 
 [lib]
 crate-type = ["lib"]

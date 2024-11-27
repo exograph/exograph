@@ -7,8 +7,13 @@ publish = false
 [dependencies]
 serde.workspace = true
 http.workspace = true
+async-trait.workspace = true
 
+exo-sql = { path = "../../../libs/exo-sql" }
+
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-rest-model = { path = "../postgres-rest-model" }
+common = { path = "../../common" }
 
 [dev-dependencies]
 

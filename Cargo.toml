@@ -132,3 +132,6 @@ strip = true
 
 [profile.release.package.server-cf-worker]
 opt-level = "s" # optimize for size in release builds
+
+[workspace.metadata.cargo-shear]
+ignored = ["wasm-bindgen-test", "wasm-bindgen-test-macro"]
