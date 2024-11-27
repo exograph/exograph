@@ -1087,7 +1087,7 @@ mod tests {
         let subsystem_builders = load_subsystem_builders(vec![
             Box::new(postgres_builder::PostgresSubsystemBuilder::default()),
             #[cfg(not(target_family = "wasm"))]
-            Box::new(deno_graphql_builder::DenoSubsystemBuilder::default()),
+            Box::new(deno_builder::DenoSubsystemBuilder::default()),
         ])
         .unwrap();
         let parsed = parser::parse_str(src, &mut codemap, "input.exo")

@@ -30,10 +30,8 @@ tree-sitter-cli.workspace = true
 tempfile.workspace = true
 
 [dev-dependencies]
-postgres-graphql-builder = { path = "../postgres-subsystem/postgres-graphql-builder" }
 postgres-builder = { path = "../postgres-subsystem/postgres-builder" }
 serde_json.workspace = true
-serde_yaml.workspace = true
 wasm-bindgen-test.workspace = true
 wasm-bindgen-test-macro.workspace = true
 multiplatform_test.workspace = true

@@ -113,7 +113,6 @@ typed-generational-arena = { version = "0.2.5", features = ["serde"] }
 uuid = "1.11.0"
 url = "2.3.1"
 wasmtime = "26.0.1"
-wasmtime-wasi = "26.0.1"
 wasi-common = "26.0.1"
 wildmatch = "2.4.0"
 which = "6.0.3"
@@ -132,3 +131,6 @@ strip = true
 
 [profile.release.package.server-cf-worker]
 opt-level = "s" # optimize for size in release builds
+
+[workspace.metadata.cargo-shear]
+ignored = ["wasm-bindgen-test", "wasm-bindgen-test-macro"]

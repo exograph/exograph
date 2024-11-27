@@ -15,20 +15,12 @@ bigdecimal = ["exo-sql/bigdecimal"]
 
 [dependencies]
 thiserror.workspace = true
-tokio-postgres = { workspace = true, default-features = false }
-tracing.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }
 common = { path = "../../common" }
 
 [dev-dependencies]
-tokio.workspace = true
-builder = { path = "../../builder" }
-core-resolver = { path = "../../core-subsystem/core-resolver"}
-graphql-router = { path = "../../graphql-router" }
-postgres-graphql-builder = { path = "../postgres-graphql-builder" }
-http.workspace = true
 wasm-bindgen-test.workspace = true
 
 [lib]

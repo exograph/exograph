@@ -10,17 +10,13 @@ default = []
 [dependencies]
 async-graphql-parser.workspace = true
 async-graphql-value.workspace = true
-indexmap.workspace = true
 async-recursion.workspace = true
 async-trait.workspace = true
 bytes.workspace = true
 futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
-reqwest = { workspace = true }
 serde.workspace = true
 thiserror.workspace = true
-async-stream.workspace = true
-http.workspace = true
 tokio = { workspace = true, features = ["rt", "macros"] }
 
 tracing.workspace = true
@@ -34,8 +30,7 @@ common = { path = "../../common" }
 [dev-dependencies]
 insta.workspace = true
 postgres-builder = { path = "../../postgres-subsystem/postgres-builder" }
-postgres-graphql-builder = { path = "../../postgres-subsystem/postgres-graphql-builder" }
-postgres-graphql-resolver = { path = "../../postgres-subsystem/postgres-graphql-resolver" }
+postgres-resolver = { path = "../../postgres-subsystem/postgres-resolver" }
 tokio-postgres.workspace = true
 wasm-bindgen-test.workspace = true
 wasm-bindgen-test-macro.workspace = true

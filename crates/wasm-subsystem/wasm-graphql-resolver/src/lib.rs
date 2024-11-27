@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub use plugin::WasmSubsystemLoader;
+pub use plugin::WasmSubsystemResolver;
 
 mod plugin;
 mod wasm_execution_error;

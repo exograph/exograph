@@ -900,7 +900,7 @@ mod tests {
         .unwrap();
 
         use core_plugin_interface::interface::SubsystemLoader;
-        postgres_graphql_resolver::PostgresSubsystemLoader {
+        postgres_resolver::PostgresSubsystemLoader {
             existing_client: Some(client),
         }
         .init(subsystem, &MapEnvironment::from([]))

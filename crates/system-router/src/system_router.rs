@@ -134,7 +134,7 @@ pub async fn create_system_resolvers(
             {
                 // Otherwise try to load a dynamic loader
                 debug!("Using dynamic loader for {}", subsystem_id);
-                let subsystem_library_name = format!("{subsystem_id}_graphql_resolver_dynamic");
+                let subsystem_library_name = format!("{subsystem_id}_resolver_dynamic");
 
                 let loader = core_plugin_interface::interface::load_subsystem_loader(
                     &subsystem_library_name,

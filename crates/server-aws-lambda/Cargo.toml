@@ -13,7 +13,6 @@ edition.workspace = true
 repository = "https://github.com/exograph/exograph"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-async-trait.workspace = true
 lambda_runtime = "0.13.0"
 futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
@@ -21,7 +20,6 @@ tokio = { workspace = true, features = ["full"] }
 http.workspace = true
 
 system-router = { path = "../system-router" }
-core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }

@@ -129,7 +129,7 @@ pub fn load_subsystem_builders(
         dir.pop();
 
         let pattern = format!(
-            "{}(.+)_graphql_builder_dynamic\\{}",
+            "{}(.+)_builder_dynamic\\{}",
             std::env::consts::DLL_PREFIX,
             std::env::consts::DLL_SUFFIX
         );

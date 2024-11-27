@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 async-recursion.workspace = true
-bincode.workspace = true
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 subsystem-model-builder-util = { path = "../../subsystem-util/subsystem-model-builder-util" }
@@ -14,9 +13,6 @@ deno-graphql-model = { path = "../deno-graphql-model" }
 exo-deno = { path = "../../../libs/exo-deno" }
 url.workspace = true
 tokio.workspace = true
-async-trait.workspace = true
-anyhow.workspace = true
-futures = "0.3"
 
 deno.workspace = true
 deno_core.workspace = true

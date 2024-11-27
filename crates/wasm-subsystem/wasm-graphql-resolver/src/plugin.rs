@@ -20,46 +20,9 @@ use core_plugin_interface::{
         InterceptedOperation, QueryResponse,
     },
     interception::InterceptorIndex,
-    interface::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
-    serializable_system::SerializableSubsystem,
-    system_serializer::SystemSerializer,
 };
-use exo_env::Environment;
 use exo_wasm::WasmExecutorPool;
 use wasm_graphql_model::{module::ModuleMethod, subsystem::WasmSubsystem};
-
-pub struct WasmSubsystemLoader {}
-
-#[async_trait]
-impl SubsystemLoader for WasmSubsystemLoader {
-    fn id(&self) -> &'static str {
-        "wasm"
-    }
-
-    async fn init(
-        &mut self,
-        serialized_subsystem: SerializableSubsystem,
-        _env: &dyn Environment,
-    ) -> Result<Box<SubsystemResolver>, SubsystemLoadingError> {
-        let executor = WasmExecutorPool::default();
-
-        let graphql = match serialized_subsystem.graphql {
-            Some(graphql) => {
-                let subsystem = WasmSubsystem::deserialize(graphql.0)?;
-
-                Ok::<_, SubsystemLoadingError>(Some(Box::new(WasmSubsystemResolver {
-                    id: self.id(),
-                    subsystem,
-                    executor,
-                })
-                    as Box<dyn SubsystemGraphQLResolver + Send + Sync>))
-            }
-            None => Ok(None),
-        }?;
-
-        Ok(Box::new(SubsystemResolver::new(graphql, None)))
-    }
-}
 
 pub struct WasmSubsystemResolver {
     pub id: &'static str,

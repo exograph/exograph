@@ -14,7 +14,6 @@ common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }
 
 [dev-dependencies]
-tokio.workspace = true
 
 [build-dependencies]
 which.workspace = true

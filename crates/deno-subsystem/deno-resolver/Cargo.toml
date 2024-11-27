@@ -1,0 +1,25 @@
+[package]
+name = "deno-resolver"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+# Make sure deno_core version matches the one in the exo_deno's Cargo.toml
+# If we re-export the deno_core crate from the exo_deno crate (instead of declaring a dependency here), 
+# the #[op] macro panics (it looks for the deno_core crate in crate's local dependencies)
+deno_core.workspace = true
+
+deno-graphql-resolver = { path = "../deno-graphql-resolver" }
+deno-graphql-model = { path = "../deno-graphql-model" }
+exo-deno = { path = "../../../libs/exo-deno" }
+exo-env = { path = "../../../libs/exo-env" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+
+[dev-dependencies]
+
+
+[lib]
+crate-type = ["lib"]
+doctest = false

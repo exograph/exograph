@@ -1,0 +1,21 @@
+[package]
+name = "wasm-resolver"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+
+exo-env = { path = "../../../libs/exo-env" }
+exo-wasm = { path = "../../../libs/exo-wasm" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+wasm-graphql-model = { path = "../wasm-graphql-model" }
+wasm-graphql-resolver = { path = "../wasm-graphql-resolver" }
+
+
+[dev-dependencies]
+
+[lib]
+crate-type = ["lib"]
+doctest = false

@@ -1,0 +1,35 @@
+[package]
+name = "postgres-resolver"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[features]
+network = [
+    "exo-sql/tls",
+    "exo-sql/postgres-url",
+    "exo-sql/testing",
+    "exo-sql/pool",
+    "postgres-core-resolver/network",
+]
+bigdecimal = ["postgres-graphql-resolver/bigdecimal"]
+
+[dependencies]
+async-trait.workspace = true
+
+postgres-graphql-resolver = { path = "../postgres-graphql-resolver" }
+postgres-rest-resolver = { path = "../postgres-rest-resolver" }
+
+exo-sql = { path = "../../../libs/exo-sql" }
+exo-env = { path = "../../../libs/exo-env" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+postgres-core-resolver = { path = "../postgres-core-resolver" }
+postgres-graphql-model = { path = "../postgres-graphql-model" }
+postgres-rest-model = { path = "../postgres-rest-model" }
+
+[dev-dependencies]
+wasm-bindgen-test.workspace = true
+
+[lib]
+crate-type = ["lib"]
+doctest = false

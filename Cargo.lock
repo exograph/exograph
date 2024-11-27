@@ -927,11 +927,9 @@ dependencies = [
  "insta",
  "multiplatform_test",
  "postgres-builder",
- "postgres-graphql-builder",
  "regex",
  "serde",
  "serde_json",
- "serde_yaml",
  "tempfile",
  "thiserror",
  "tree-sitter",
@@ -1273,11 +1271,10 @@ dependencies = [
  "clap 4.5.20",
  "colored",
  "common",
- "core-model-builder",
  "core-plugin-interface",
  "core-plugin-shared",
  "ctrlc",
- "deno-graphql-builder",
+ "deno-builder",
  "exo-sql",
  "futures",
  "heck 0.5.0",
@@ -1291,12 +1288,11 @@ dependencies = [
  "rand",
  "reqwest",
  "rexpect",
- "serde",
  "serde_json",
  "tempfile",
  "testing",
  "tokio",
- "wasm-graphql-builder",
+ "wasm-builder",
  "which 6.0.3",
  "zip 0.6.6",
 ]
@@ -1611,7 +1607,6 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "async-recursion",
- "async-stream",
  "async-trait",
  "builder",
  "bytes",
@@ -1622,14 +1617,10 @@ dependencies = [
  "exo-env",
  "exo-sql",
  "futures",
- "http 1.1.0",
- "indexmap 2.2.5",
  "insta",
  "multiplatform_test",
  "postgres-builder",
- "postgres-graphql-builder",
- "postgres-graphql-resolver",
- "reqwest",
+ "postgres-resolver",
  "serde",
  "serde_json",
  "thiserror",
@@ -1654,10 +1645,7 @@ dependencies = [
  "common",
  "core-plugin-interface",
  "core-plugin-shared",
- "exo-env",
- "exo-sql",
  "thiserror",
- "tracing",
 ]
 
 [[package]]
@@ -2150,13 +2138,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "deno-builder"
+version = "0.10.2"
+dependencies = [
+ "async-trait",
+ "core-plugin-interface",
+ "deno-graphql-builder",
+]
+
+[[package]]
+name = "deno-builder-dynamic"
+version = "0.10.2"
+dependencies = [
+ "core-plugin-interface",
+ "deno-builder",
+]
+
+[[package]]
 name = "deno-graphql-builder"
 version = "0.10.2"
 dependencies = [
- "anyhow",
  "async-recursion",
- "async-trait",
- "bincode",
  "codemap",
  "core-plugin-interface",
  "deno",
@@ -2169,7 +2171,6 @@ dependencies = [
  "deno_runtime",
  "deno_virtual_fs",
  "exo-deno",
- "futures",
  "serde_json",
  "subsystem-model-builder-util",
  "tempfile",
@@ -2178,19 +2179,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno-graphql-builder-dynamic"
-version = "0.10.2"
-dependencies = [
- "core-plugin-interface",
- "deno-graphql-builder",
-]
-
-[[package]]
 name = "deno-graphql-model"
 version = "0.10.2"
 dependencies = [
  "async-graphql-parser",
- "async-graphql-value",
  "bincode",
  "core-plugin-interface",
  "serde",
@@ -2203,19 +2195,14 @@ version = "0.10.2"
 dependencies = [
  "anyhow",
  "async-graphql-parser",
- "async-recursion",
  "async-trait",
- "bincode",
- "builder",
  "common",
  "core-plugin-interface",
  "deno-graphql-model",
  "deno_core",
  "exo-deno",
- "exo-env",
  "futures",
  "indexmap 2.2.5",
- "maybe-owned",
  "serde_json",
  "test-log",
  "thiserror",
@@ -2223,11 +2210,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno-graphql-resolver-dynamic"
+name = "deno-resolver"
+version = "0.10.2"
+dependencies = [
+ "async-trait",
+ "core-plugin-interface",
+ "deno-graphql-model",
+ "deno-graphql-resolver",
+ "deno_core",
+ "exo-deno",
+ "exo-env",
+]
+
+[[package]]
+name = "deno-resolver-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
- "deno-graphql-resolver",
+ "deno-resolver",
 ]
 
 [[package]]
@@ -3768,12 +3768,10 @@ dependencies = [
  "deno_virtual_fs",
  "futures",
  "include_dir",
- "lazy_static",
  "node_resolver",
  "reqwest",
  "serde",
  "serde_json",
- "tempfile",
  "test-log",
  "thiserror",
  "tokio",
@@ -3795,7 +3793,6 @@ dependencies = [
  "lazy_static",
  "maybe-owned",
  "multiplatform_test",
- "once_cell",
  "pg_bigdecimal",
  "postgres_array",
  "rand",
@@ -3826,11 +3823,8 @@ name = "exo-wasm"
 version = "0.10.2"
 dependencies = [
  "anyhow",
- "async-trait",
- "serde",
  "serde_json",
  "thiserror",
- "tracing",
  "wasi-common",
  "wasmtime",
 ]
@@ -4361,27 +4355,16 @@ name = "graphql-router"
 version = "0.10.2"
 dependencies = [
  "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
  "async-stream",
  "async-trait",
- "bincode",
- "builder",
  "bytes",
  "common",
- "core-model",
- "core-plugin-interface",
  "core-plugin-shared",
  "core-resolver",
  "core-router",
  "exo-env",
- "futures",
  "http 1.1.0",
  "introspection-resolver",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
  "tracing",
 ]
 
@@ -4986,7 +4969,6 @@ version = "0.10.2"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
- "async-recursion",
  "async-trait",
  "common",
  "core-model",
@@ -4994,7 +4976,6 @@ dependencies = [
  "core-resolver",
  "futures",
  "serde_json",
- "tokio",
 ]
 
 [[package]]
@@ -6766,7 +6747,6 @@ dependencies = [
  "http 1.1.0",
  "include_dir",
  "mime_guess",
- "tokio",
  "which 6.0.3",
 ]
 
@@ -6834,7 +6814,6 @@ dependencies = [
  "builder",
  "core-plugin-interface",
  "exo-sql",
- "multiplatform_test",
  "postgres-graphql-builder",
  "postgres-graphql-model",
  "postgres-rest-builder",
@@ -6844,26 +6823,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-builder-dynamic"
+version = "0.10.2"
+dependencies = [
+ "core-plugin-interface",
+ "postgres-builder",
+]
+
+[[package]]
 name = "postgres-core-builder"
 version = "0.10.2"
 dependencies = [
- "async-trait",
- "bincode",
  "builder",
  "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
- "deno-graphql-builder",
+ "deno-builder",
  "exo-sql",
  "heck 0.5.0",
  "insta",
- "lazy_static",
  "multiplatform_test",
  "postgres-builder",
  "postgres-graphql-model",
  "serde",
- "tokio",
- "typed-generational-arena",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
 ]
@@ -6872,18 +6854,10 @@ dependencies = [
 name = "postgres-core-resolver"
 version = "0.10.2"
 dependencies = [
- "builder",
  "common",
- "core-resolver",
  "exo-env",
  "exo-sql",
- "graphql-router",
- "http 1.1.0",
- "postgres-graphql-builder",
  "thiserror",
- "tokio",
- "tokio-postgres",
- "tracing",
  "wasm-bindgen-test",
 ]
 
@@ -6891,32 +6865,13 @@ dependencies = [
 name = "postgres-graphql-builder"
 version = "0.10.2"
 dependencies = [
- "bincode",
- "codemap",
  "codemap-diagnostic",
  "core-plugin-interface",
- "deno-graphql-builder",
  "exo-sql",
  "heck 0.5.0",
- "insta",
  "lazy_static",
- "multiplatform_test",
  "postgres-core-builder",
  "postgres-graphql-model",
- "serde",
- "tokio",
- "typed-generational-arena",
- "wasm-bindgen-test",
- "wasm-bindgen-test-macro",
-]
-
-[[package]]
-name = "postgres-graphql-builder-dynamic"
-version = "0.10.2"
-dependencies = [
- "core-plugin-interface",
- "postgres-builder",
- "postgres-graphql-builder",
 ]
 
 [[package]]
@@ -6931,11 +6886,9 @@ dependencies = [
  "core-plugin-interface",
  "exo-sql",
  "postgres-builder",
- "postgres-graphql-builder",
  "serde",
  "stripmargin",
  "tokio",
- "typed-generational-arena",
  "wasm-bindgen-test",
 ]
 
@@ -6951,19 +6904,13 @@ dependencies = [
  "chrono",
  "common",
  "core-plugin-interface",
- "core-resolver",
  "exo-env",
  "exo-sql",
  "futures",
- "graphql-router",
  "http 1.1.0",
  "indexmap 2.2.5",
- "maybe-owned",
  "postgres-builder",
- "postgres-core-resolver",
  "postgres-graphql-model",
- "postgres-rest-model",
- "serde",
  "serde_json",
  "thiserror",
  "tokio",
@@ -6971,14 +6918,6 @@ dependencies = [
  "tracing",
  "uuid",
  "wasm-bindgen-test",
-]
-
-[[package]]
-name = "postgres-graphql-resolver-dynamic"
-version = "0.10.2"
-dependencies = [
- "core-plugin-interface",
- "postgres-graphql-resolver",
 ]
 
 [[package]]
@@ -7001,16 +6940,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-resolver"
+version = "0.10.2"
+dependencies = [
+ "async-trait",
+ "core-plugin-interface",
+ "exo-env",
+ "exo-sql",
+ "postgres-core-resolver",
+ "postgres-graphql-model",
+ "postgres-graphql-resolver",
+ "postgres-rest-model",
+ "postgres-rest-resolver",
+ "wasm-bindgen-test",
+]
+
+[[package]]
+name = "postgres-resolver-dynamic"
+version = "0.10.2"
+dependencies = [
+ "core-plugin-interface",
+ "postgres-resolver",
+]
+
+[[package]]
 name = "postgres-rest-builder"
 version = "0.10.2"
 dependencies = [
  "async-trait",
  "core-plugin-interface",
  "core-rest-model",
- "http 1.1.0",
  "postgres-core-builder",
  "postgres-rest-model",
- "serde",
 ]
 
 [[package]]
@@ -7020,7 +6981,6 @@ dependencies = [
  "bincode",
  "core-plugin-interface",
  "core-rest-model",
- "http 1.1.0",
  "serde",
 ]
 
@@ -7028,9 +6988,11 @@ dependencies = [
 name = "postgres-rest-resolver"
 version = "0.10.2"
 dependencies = [
- "http 1.1.0",
+ "async-trait",
+ "common",
+ "core-plugin-interface",
+ "exo-sql",
  "postgres-rest-model",
- "serde",
 ]
 
 [[package]]
@@ -8260,12 +8222,8 @@ name = "server-actix"
 version = "0.10.2"
 dependencies = [
  "actix-web",
- "async-trait",
  "common",
- "core-resolver",
  "exo-env",
- "futures",
- "graphql-router",
  "http 1.1.0",
  "reqwest",
  "serde_json",
@@ -8281,10 +8239,8 @@ dependencies = [
 name = "server-aws-lambda"
 version = "0.10.2"
 dependencies = [
- "async-trait",
  "builder",
  "common",
- "core-resolver",
  "exo-env",
  "futures",
  "http 1.1.0",
@@ -8302,13 +8258,10 @@ dependencies = [
  "common",
  "console_error_panic_hook",
  "core-plugin-shared",
- "core-resolver",
  "exo-env",
  "exo-sql",
  "http 1.1.0",
- "postgres-graphql-resolver",
- "serde",
- "serde-wasm-bindgen 0.6.5",
+ "postgres-resolver",
  "serde_json",
  "system-router",
  "tokio",
@@ -8329,15 +8282,13 @@ version = "0.10.2"
 dependencies = [
  "common",
  "core-plugin-interface",
- "core-resolver",
  "core-router",
- "deno-graphql-resolver",
+ "deno-resolver",
  "exo-env",
- "graphql-router",
- "postgres-graphql-resolver",
+ "postgres-resolver",
  "system-router",
  "thiserror",
- "wasm-graphql-resolver",
+ "wasm-resolver",
 ]
 
 [[package]]
@@ -8756,7 +8707,7 @@ dependencies = [
  "core-model",
  "core-model-builder",
  "core-plugin-shared",
- "deno-graphql-builder",
+ "deno-builder",
  "serde",
  "subsystem-model-util",
  "tokio",
@@ -8767,11 +8718,9 @@ name = "subsystem-model-util"
 version = "0.10.2"
 dependencies = [
  "async-graphql-parser",
- "async-graphql-value",
  "core-model",
  "core-plugin-shared",
  "serde",
- "typed-generational-arena",
 ]
 
 [[package]]
@@ -9317,10 +9266,8 @@ dependencies = [
  "core-router",
  "exo-env",
  "graphql-router",
- "http 1.1.0",
  "playground-router",
  "rest-router",
- "serde_json",
  "tracing",
 ]
 
@@ -9411,7 +9358,6 @@ dependencies = [
  "colored",
  "common",
  "core-plugin-interface",
- "core-resolver",
  "crossbeam-channel",
  "ctor",
  "deno_core",
@@ -9433,7 +9379,6 @@ dependencies = [
  "server-common",
  "system-router",
  "tokio",
- "tokio-postgres",
  "which 6.0.3",
  "wildmatch",
 ]
@@ -10621,6 +10566,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-builder"
+version = "0.10.2"
+dependencies = [
+ "core-plugin-interface",
+ "wasm-graphql-builder",
+]
+
+[[package]]
+name = "wasm-builder-dynamic"
+version = "0.10.2"
+dependencies = [
+ "core-plugin-interface",
+ "wasm-builder",
+]
+
+[[package]]
 name = "wasm-encoder"
 version = "0.218.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10649,14 +10610,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-graphql-builder-dynamic"
-version = "0.10.2"
-dependencies = [
- "core-plugin-interface",
- "wasm-graphql-builder",
-]
-
-[[package]]
 name = "wasm-graphql-model"
 version = "0.10.2"
 dependencies = [
@@ -10672,25 +10625,33 @@ name = "wasm-graphql-resolver"
 version = "0.10.2"
 dependencies = [
  "async-graphql-parser",
- "async-recursion",
  "async-trait",
  "common",
  "core-plugin-interface",
- "exo-env",
  "exo-wasm",
- "futures",
- "serde_json",
  "thiserror",
  "wasm-graphql-model",
  "wasmtime",
 ]
 
 [[package]]
-name = "wasm-graphql-resolver-dynamic"
+name = "wasm-resolver"
+version = "0.10.2"
+dependencies = [
+ "async-trait",
+ "core-plugin-interface",
+ "exo-env",
+ "exo-wasm",
+ "wasm-graphql-model",
+ "wasm-graphql-resolver",
+]
+
+[[package]]
+name = "wasm-resolver-dynamic"
 version = "0.10.2"
 dependencies = [
  "core-plugin-interface",
- "wasm-graphql-resolver",
+ "wasm-resolver",
 ]
 
 [[package]]

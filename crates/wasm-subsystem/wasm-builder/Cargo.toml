@@ -1,0 +1,16 @@
+[package]
+name = "wasm-builder"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+wasm-graphql-builder = { path = "../wasm-graphql-builder" }
+
+[dev-dependencies]
+
+
+[lib]
+crate-type = ["lib"]
+doctest = false

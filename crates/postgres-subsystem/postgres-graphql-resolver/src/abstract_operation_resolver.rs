@@ -14,10 +14,8 @@ use core_plugin_interface::core_resolver::{QueryResponse, QueryResponseBody};
 use tokio_postgres::types::FromSqlOwned;
 use tokio_postgres::Row;
 
-use crate::{
-    plugin::subsystem_graphql_resolver::PostgresSubsystemResolver,
-    postgres_execution_error::PostgresExecutionError,
-};
+use super::PostgresSubsystemResolver;
+use crate::postgres_execution_error::PostgresExecutionError;
 
 pub async fn resolve_operation<'e>(
     op: &AbstractOperation,

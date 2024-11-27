@@ -5,15 +5,10 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-async-trait.workspace = true
 heck.workspace = true
-bincode.workspace = true
 serde.workspace = true
 codemap-diagnostic.workspace = true
 codemap.workspace = true
-lazy_static.workspace = true
-typed-generational-arena.workspace = true
-tokio.workspace = true
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
@@ -30,7 +25,7 @@ exo-sql = { path = "../../../libs/exo-sql" }
 postgres-builder = { path = "../postgres-builder" }
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
-deno-graphql-builder = { path = "../../deno-subsystem/deno-graphql-builder" }
+deno-builder = { path = "../../deno-subsystem/deno-builder" }
 
 [lib]
 crate-type = ["lib"]

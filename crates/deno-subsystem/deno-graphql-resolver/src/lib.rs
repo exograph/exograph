@@ -7,7 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub use plugin::DenoSubsystemLoader;
+pub use exo_execution::exo_config;
+pub use resolver::DenoSubsystemResolver;
 
 mod access_solver;
 mod deno_execution_error;
@@ -16,4 +17,4 @@ mod exo_execution;
 mod exograph_ops;
 mod interceptor_execution;
 mod module_access_predicate;
-mod plugin;
+mod resolver;

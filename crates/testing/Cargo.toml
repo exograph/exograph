@@ -23,7 +23,6 @@ serde.workspace = true
 jsonwebtoken.workspace = true
 serde_yaml.workspace = true
 serde_json.workspace = true
-tokio-postgres.workspace = true
 rand.workspace = true
 regex.workspace = true
 tokio.workspace = true
@@ -45,7 +44,6 @@ exo-sql = { path = "../../libs/exo-sql", features = [
 exo-deno = { path = "../../libs/exo-deno", features = ["typescript-loader"] }
 exo-env = { path = "../../libs/exo-env" }
 
-core-resolver = { path = "../core-subsystem/core-resolver" }
 system-router = { path = "../system-router" }
 
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }

@@ -17,7 +17,6 @@ static-deno-resolver = ["server-common/static-deno-resolver"]
 static-wasm-resolver = ["server-common/static-wasm-resolver"]
 
 [dependencies]
-async-trait.workspace = true
 actix-web = { version = "4.9.0", default-features = false, features = [
   "macros",
   "cookies",
@@ -25,15 +24,12 @@ actix-web = { version = "4.9.0", default-features = false, features = [
 thiserror.workspace = true
 
 serde_json = { workspace = true, features = ["preserve_order"] }
-futures.workspace = true
 tracing.workspace = true
 tracing-actix-web = "0.7.11"
 url.workspace = true
 reqwest.workspace = true
 http.workspace = true
-graphql-router = { path = "../graphql-router" }
 system-router = { path = "../system-router" }
-core-resolver = { path = "../core-subsystem/core-resolver" }
 server-common = { path = "../server-common" }
 common = { path = "../common" }
 exo-env = { path = "../../libs/exo-env" }
