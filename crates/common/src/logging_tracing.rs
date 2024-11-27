@@ -50,31 +50,30 @@ const EXO_LOG: &str = "EXO_LOG";
 
 /// Initialize the tracing subscriber.
 ///
-/// Creates a `tracing_subscriber::fmt` layer by default and adds a `tracing_opentelemetry`
-/// layer if OpenTelemetry, exporting traces with `opentelemetry_otlp` if any OpenTelemetry
-/// environment variables are set.
+/// Creates a `tracing_subscriber::fmt` layer by default and adds a OpenTelemetry layer
+/// if any OpenTelemetry environment variables are set, exporting traces with `opentelemetry_otlp`.
 pub fn init() -> Result<(), OtelError> {
-    let trace_provider = init_trace_provider()?;
+    let trace_provider = create_oltp_trace_provider()?;
+
+    let fmt_layer = tracing_subscriber::fmt::layer().compact();
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::WARN.into())
+        .with_env_var(EXO_LOG)
+        .from_env_lossy();
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt_layer)
+        .init();
 
     if let Some(trace_provider) = trace_provider {
         opentelemetry::global::set_tracer_provider(trace_provider);
-
-        let fmt_layer = tracing_subscriber::fmt::layer().compact();
-        let filter = EnvFilter::builder()
-            .with_default_directive(LevelFilter::WARN.into())
-            .with_env_var(EXO_LOG)
-            .from_env_lossy();
-
-        tracing_subscriber::registry()
-            .with(filter)
-            .with(fmt_layer)
-            .init();
     }
 
     Ok(())
 }
 
-fn init_trace_provider() -> Result<Option<opentelemetry_sdk::trace::TracerProvider>, OtelError> {
+fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelError> {
     if !std::env::vars().any(|(name, _)| name.starts_with("OTEL_")) {
         return Ok(None);
     }
