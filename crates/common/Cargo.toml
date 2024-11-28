@@ -7,7 +7,7 @@ publish = false
 [features]
 default = []
 test-context = []
-opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "opentelemetry-appender-tracing", "tonic"]
+opentelemetry = ["opentelemetry_sdk", "opentelemetry-otlp", "tonic"]
 
 [dependencies]
 thiserror.workspace = true
@@ -32,7 +32,7 @@ exo-sql = { path = "../../libs/exo-sql" }
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
-tracing-opentelemetry = "0.27"
+tracing-opentelemetry = "0.28"
 opentelemetry = { version = "0.27", default-features = false, features = [
   "trace",
 ] }
@@ -45,7 +45,6 @@ opentelemetry-otlp = { version = "0.27", features = [
   "http-proto",
   "tls",
 ], optional = true }
-opentelemetry-appender-tracing = { version = "0.27", optional = true }
 # Tonic isn't used directly but we need these flags to establish a TLS connection
 tonic = { version = "0.12.3", features = ["tls", "tls-roots"], optional = true }
 

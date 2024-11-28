@@ -44,37 +44,41 @@ use opentelemetry_sdk::{
     trace::{Config, TracerProvider},
 };
 use std::str::FromStr;
+use tonic::transport::ClientTlsConfig;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
 
 const EXO_LOG: &str = "EXO_LOG";
 
 /// Initialize the tracing subscriber.
 ///
-/// Creates a `tracing_subscriber::fmt` layer by default and adds a `tracing_opentelemetry`
-/// layer if OpenTelemetry, exporting traces with `opentelemetry_otlp` if any OpenTelemetry
-/// environment variables are set.
+/// Creates a `tracing_subscriber::fmt` layer by default and adds a OpenTelemetry layer
+/// if any OpenTelemetry environment variables are set, exporting traces with `opentelemetry_otlp`.
 pub fn init() -> Result<(), OtelError> {
-    let trace_provider = init_trace_provider()?;
+    let telemetry_layer = {
+        let oltp_trace_provider = create_oltp_trace_provider()?;
 
-    if let Some(trace_provider) = trace_provider {
-        opentelemetry::global::set_tracer_provider(trace_provider);
+        use opentelemetry::trace::TracerProvider as _;
+        let oltp_tracer = oltp_trace_provider.map(|provider| provider.tracer("Exograph"));
 
-        let fmt_layer = tracing_subscriber::fmt::layer().compact();
-        let filter = EnvFilter::builder()
-            .with_default_directive(LevelFilter::WARN.into())
-            .with_env_var(EXO_LOG)
-            .from_env_lossy();
+        oltp_tracer.map(|tracer| tracing_opentelemetry::layer().with_tracer(tracer))
+    };
 
-        tracing_subscriber::registry()
-            .with(filter)
-            .with(fmt_layer)
-            .init();
-    }
+    let fmt_layer = tracing_subscriber::fmt::layer().compact();
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::WARN.into())
+        .with_env_var(EXO_LOG)
+        .from_env_lossy();
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt_layer)
+        .with(telemetry_layer)
+        .init();
 
     Ok(())
 }
 
-fn init_trace_provider() -> Result<Option<opentelemetry_sdk::trace::TracerProvider>, OtelError> {
+fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelError> {
     if !std::env::vars().any(|(name, _)| name.starts_with("OTEL_")) {
         return Ok(None);
     }
@@ -92,7 +96,8 @@ fn init_trace_provider() -> Result<Option<opentelemetry_sdk::trace::TracerProvid
             if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
                 // Check if we need TLS
                 if endpoint.as_str().starts_with("https") {
-                    exporter = exporter.with_tls_config(Default::default());
+                    exporter =
+                        exporter.with_tls_config(ClientTlsConfig::default().with_native_roots());
                 }
                 exporter = exporter.with_endpoint(endpoint);
             }
