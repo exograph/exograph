@@ -7,7 +7,10 @@ publish = false
 [dependencies]
 serde.workspace = true
 bincode.workspace = true
+http.workspace = true
+matchit = "0.8.5"
 
+common = { path = "../../common" }
 core-rest-model = { path = "../../core-subsystem/core-rest-model" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 

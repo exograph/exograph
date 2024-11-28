@@ -635,7 +635,7 @@ dependencies = [
  "http-body 1.0.0",
  "http-body-util",
  "itoa",
- "matchit",
+ "matchit 0.7.3",
  "memchr",
  "mime",
  "percent-encoding",
@@ -1633,9 +1633,6 @@ dependencies = [
 [[package]]
 name = "core-rest-model"
 version = "0.10.2"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "core-router"
@@ -5582,6 +5579,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
 
 [[package]]
+name = "matchit"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd0aa4b8ca861b08d68afc8702af3250776898c1508b278e1da9d01e01d4b45c"
+
+[[package]]
 name = "maybe-owned"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6899,6 +6902,7 @@ name = "postgres-resolver"
 version = "0.10.2"
 dependencies = [
  "async-trait",
+ "common",
  "core-plugin-interface",
  "exo-env",
  "exo-sql",
@@ -6934,8 +6938,11 @@ name = "postgres-rest-model"
 version = "0.10.2"
 dependencies = [
  "bincode",
+ "common",
  "core-plugin-interface",
  "core-rest-model",
+ "http 1.1.0",
+ "matchit 0.8.5",
  "serde",
 ]
 
@@ -11548,7 +11555,7 @@ dependencies = [
  "http 1.1.0",
  "http-body 1.0.0",
  "js-sys",
- "matchit",
+ "matchit 0.7.3",
  "pin-project",
  "serde",
  "serde-wasm-bindgen 0.6.5",

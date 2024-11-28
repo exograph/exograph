@@ -22,6 +22,7 @@ postgres-rest-resolver = { path = "../postgres-rest-resolver" }
 
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }
+common = { path = "../../common" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-core-resolver = { path = "../postgres-core-resolver" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }

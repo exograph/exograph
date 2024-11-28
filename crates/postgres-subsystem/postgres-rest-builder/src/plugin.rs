@@ -20,10 +20,10 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 
-use core_rest_model::path::PathTemplate;
 use postgres_core_builder::resolved_builder;
 use postgres_core_builder::resolved_type::ResolvedType;
-use postgres_rest_model::operation::{Method, PostgresOperation};
+use postgres_rest_model::method::Method;
+use postgres_rest_model::operation::PostgresOperation;
 use postgres_rest_model::subsystem::PostgresRestSubsystem;
 
 pub struct PostgresRestSubsystemBuilder {}
@@ -45,10 +45,11 @@ impl RestSubsystemBuilder for PostgresRestSubsystemBuilder {
 
         for typ in resolved_types.iter() {
             if let ResolvedType::Composite(composite) = typ.1 {
-                operations.push(PostgresOperation {
-                    method: Method::Get,
-                    path_template: PathTemplate::simple(&composite.plural_name),
-                });
+                operations.push((
+                    Method::Get,
+                    composite.plural_name.to_lowercase(),
+                    PostgresOperation {},
+                ));
             }
         }
 

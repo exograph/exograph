@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
+use common::env_const::get_rest_http_path;
 use postgres_graphql_resolver::PostgresSubsystemResolver;
 
 use core_plugin_interface::{
@@ -23,7 +24,7 @@ use exo_env::Environment;
 use exo_sql::DatabaseClientManager;
 use postgres_core_resolver::create_database_executor;
 use postgres_graphql_model::subsystem::PostgresSubsystem;
-use postgres_rest_model::subsystem::PostgresRestSubsystem;
+use postgres_rest_model::subsystem::{PostgresRestSubsystem, PostgresRestSubsystemWithRouter};
 use postgres_rest_resolver::PostgresSubsystemRestResolver;
 
 pub struct PostgresSubsystemLoader {
@@ -65,11 +66,15 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         let rest_system = rest
             .map(|rest| {
                 let subsystem = PostgresRestSubsystem::deserialize(rest.0)?;
+                let subsystem = PostgresRestSubsystemWithRouter::new(subsystem)?;
+
+                let api_path_prefix = format!("{}/", get_rest_http_path(env));
 
                 Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemRestResolver {
                     id: self.id(),
                     subsystem,
                     executor,
+                    api_path_prefix,
                 })
                     as Box<dyn SubsystemRestResolver + Send + Sync>)
             })
