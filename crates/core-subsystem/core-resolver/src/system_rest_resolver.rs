@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use futures::{lock::Mutex, StreamExt};
 
-use common::http::{RequestPayload, ResponsePayload};
+use common::{context::RequestContext, http::ResponsePayload};
 use exo_env::Environment;
 
 use crate::plugin::{SubsystemResolutionError, SubsystemRestResolver};
@@ -24,17 +24,17 @@ impl SystemRestResolver {
         }
     }
 
-    pub async fn resolve(
+    pub async fn resolve<'a>(
         &self,
-        request: &(dyn RequestPayload + Send + Sync),
+        request_context: &RequestContext<'a>,
     ) -> Result<Option<ResponsePayload>, SubsystemResolutionError> {
         let resolver_stream = futures::stream::iter(self.subsystem_resolvers.iter());
 
-        let request_mutex = Mutex::new(request);
+        let request_context_mutex = Mutex::new(request_context);
 
         let stream = resolver_stream.then(|resolver| async {
-            let request = request_mutex.lock().await;
-            resolver.resolve(*request).await
+            let request_context = request_context_mutex.lock().await;
+            resolver.resolve(*request_context).await
         });
 
         futures::pin_mut!(stream);

@@ -8,12 +8,14 @@
 // by the Apache License, Version 2.0.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use common::http::RequestHead;
 use core_plugin_interface::{
     error::ModelSerializationError, interface::SubsystemLoadingError,
     system_serializer::SystemSerializer,
 };
+use exo_sql::Database;
 use matchit::Router;
 use serde::{Deserialize, Serialize};
 
@@ -23,11 +25,13 @@ use crate::operation::PostgresOperation;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresRestSubsystem {
     pub operations: Vec<(Method, String, PostgresOperation)>,
+    pub database: Arc<Database>,
 }
 
 #[derive(Debug)]
 pub struct PostgresRestSubsystemWithRouter {
     pub routers: HashMap<http::Method, Router<PostgresOperation>>,
+    pub database: Arc<Database>,
 }
 
 impl PostgresRestSubsystemWithRouter {
@@ -40,7 +44,10 @@ impl PostgresRestSubsystemWithRouter {
                 .insert(path_template, operation)
                 .map_err(|e| SubsystemLoadingError::Config(e.to_string()))?;
         }
-        Ok(Self { routers })
+        Ok(Self {
+            routers,
+            database: subsystem.database,
+        })
     }
 }
 

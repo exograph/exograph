@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use common::http::{RequestPayload, ResponsePayload};
+use common::context::RequestContext;
+use common::http::ResponsePayload;
 
 use super::SubsystemResolutionError;
 
@@ -8,8 +9,8 @@ pub trait SubsystemRestResolver: Sync {
     /// The id of the subsystem (for debugging purposes)
     fn id(&self) -> &'static str;
 
-    async fn resolve(
+    async fn resolve<'a>(
         &self,
-        request: &(dyn RequestPayload + Send + Sync),
+        request_context: &'a RequestContext<'a>,
     ) -> Result<Option<ResponsePayload>, SubsystemResolutionError>;
 }

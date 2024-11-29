@@ -19,7 +19,7 @@ use postgres_graphql_model::{
     subsystem::PostgresSubsystem,
 };
 
-use crate::postgres_execution_error::PostgresExecutionError;
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
 pub type Arguments = IndexMap<String, Val>;
 

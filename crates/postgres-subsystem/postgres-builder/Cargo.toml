@@ -8,6 +8,7 @@ publish = false
 async-trait.workspace = true
 postgres-graphql-builder = { path = "../postgres-graphql-builder" }
 postgres-rest-builder = { path = "../postgres-rest-builder" }
+postgres-core-builder = { path = "../postgres-core-builder" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 
 [dev-dependencies]

@@ -14,7 +14,10 @@ use postgres_graphql_model::access::{
 };
 use postgres_graphql_model::types::{EntityType, PostgresField};
 
-use crate::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLOperationKind};
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
+
+use super::sql_mapper::SQLOperationKind;
+
 use common::context::RequestContext;
 use common::value::Val;
 use core_plugin_interface::core_model::access::AccessPredicateExpression;

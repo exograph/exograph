@@ -7,31 +7,29 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::sync::Arc;
+
 use core_plugin_interface::{
-    async_trait::async_trait,
     core_model_builder::{
         builder::system_builder::BaseModelSystem, error::ModelBuildingError,
-        plugin::GraphQLSubsystemBuild, typechecker::typ::TypecheckedSystem,
+        plugin::GraphQLSubsystemBuild,
     },
-    interface::GraphQLSubsystemBuilder,
     serializable_system::SerializableGraphQLBytes,
     system_serializer::SystemSerializer,
 };
+use exo_sql::Database;
+use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 
 pub struct PostgresGraphQLSubsystemBuilder {}
 
-#[async_trait]
-impl GraphQLSubsystemBuilder for PostgresGraphQLSubsystemBuilder {
-    fn id(&self) -> &'static str {
-        "postgres/graphql"
-    }
-
-    async fn build(
+impl PostgresGraphQLSubsystemBuilder {
+    pub async fn build<'a>(
         &self,
-        typechecked_system: &TypecheckedSystem,
+        resolved_env: &ResolvedTypeEnv<'a>,
         base_system: &BaseModelSystem,
+        database: Arc<Database>,
     ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError> {
-        let subsystem = crate::system_builder::build(typechecked_system, base_system)?;
+        let subsystem = crate::system_builder::build(resolved_env, base_system, database)?;
         let Some(subsystem) = subsystem else {
             return Ok(None);
         };

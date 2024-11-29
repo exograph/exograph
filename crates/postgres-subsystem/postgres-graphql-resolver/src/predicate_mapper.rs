@@ -27,15 +27,16 @@ use postgres_graphql_model::{
 
 use crate::{
     auth_util::check_retrieve_access,
-    cast::literal_column_path,
     column_path_util::to_column_path,
     sql_mapper::{extract_and_map, SQLMapper},
     util::{get_argument_field, Arguments},
 };
 
-use crate::{cast::cast_value, util::to_pg_vector};
+use postgres_core_resolver::cast::{cast_value, literal_column_path};
 
-use super::postgres_execution_error::PostgresExecutionError;
+use crate::util::to_pg_vector;
+
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
 #[derive(Debug)]
 struct PredicateParamInput<'a> {

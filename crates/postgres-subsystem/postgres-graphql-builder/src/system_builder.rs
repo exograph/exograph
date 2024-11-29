@@ -7,17 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::cell::RefCell;
+use std::{cell::RefCell, sync::Arc};
 
 use core_plugin_interface::{
     core_model::{
         access::AccessPredicateExpression,
         mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
     },
-    core_model_builder::{
-        builder::system_builder::BaseModelSystem, error::ModelBuildingError,
-        typechecker::typ::TypecheckedSystem,
-    },
+    core_model_builder::{builder::system_builder::BaseModelSystem, error::ModelBuildingError},
 };
 
 use postgres_graphql_model::{
@@ -39,25 +36,21 @@ use crate::aggregate_type_builder;
 use super::{
     mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder,
 };
-use postgres_core_builder::resolved_builder;
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 
 pub fn build(
-    typechecked_system: &TypecheckedSystem,
+    resolved_env: &ResolvedTypeEnv,
     base_system: &BaseModelSystem,
+    database: Arc<Database>,
 ) -> Result<Option<PostgresSubsystem>, ModelBuildingError> {
-    let mut building = SystemContextBuilding::default();
+    let mut building = SystemContextBuilding {
+        database,
+        ..SystemContextBuilding::default()
+    };
 
-    let resolved_types = resolved_builder::build(typechecked_system)?;
     let system = {
-        let resolved_env = ResolvedTypeEnv {
-            contexts: &base_system.contexts,
-            resolved_types,
-            function_definitions: &base_system.function_definitions,
-        };
-
-        build_shallow(&resolved_env, &mut building);
-        build_expanded(&resolved_env, &mut building)?;
+        build_shallow(resolved_env, &mut building);
+        build_expanded(resolved_env, &mut building)?;
 
         PostgresSubsystem {
             contexts: base_system.contexts.clone(),
@@ -154,7 +147,7 @@ pub struct SystemContextBuilding {
     pub database_access_expressions:
         RefCell<AccessExpressionsBuilding<DatabaseAccessPrimitiveExpression>>,
 
-    pub database: Database,
+    pub database: Arc<Database>,
 }
 
 /// Structure to keep track of access expressions arena and a special index for the oft-used restrictive access.

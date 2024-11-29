@@ -8,10 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use super::predicate_mapper::compute_predicate;
-use super::{
-    auth_util::check_access, postgres_execution_error::PostgresExecutionError,
-    sql_mapper::SQLOperationKind, util::Arguments,
-};
+use super::{auth_util::check_access, sql_mapper::SQLOperationKind, util::Arguments};
 use crate::util::to_pg_vector;
 use crate::{
     operation_resolver::OperationSelectionResolver, order_by_mapper::OrderByParameterInput,
@@ -29,6 +26,7 @@ use exo_sql::{
 use exo_sql::{Function, SQLParamContainer};
 use futures::stream::TryStreamExt;
 use futures::StreamExt;
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_graphql_model::query::UniqueQuery;
 use postgres_graphql_model::vector_distance::VectorDistanceField;
 use postgres_graphql_model::{

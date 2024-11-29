@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use core_plugin_interface::{
     core_model_builder::{
@@ -8,8 +10,9 @@ use core_plugin_interface::{
             typ::TypecheckedSystem,
         },
     },
-    interface::{GraphQLSubsystemBuilder, RestSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
+    interface::{SubsystemBuild, SubsystemBuilder},
 };
+use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 use postgres_graphql_builder::PostgresGraphQLSubsystemBuilder;
 use postgres_rest_builder::PostgresRestSubsystemBuilder;
 
@@ -250,13 +253,29 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
+        let resolved_types = postgres_core_builder::resolved_builder::build(typechecked_system)?;
+
+        let resolved_env = ResolvedTypeEnv {
+            contexts: &base_system.contexts,
+            resolved_types,
+            function_definitions: &base_system.function_definitions,
+        };
+
+        let database = Arc::new(postgres_core_builder::database_builder::build(
+            &resolved_env,
+        )?);
+
         let graphql_subsystem = match self.graphql_builder.as_ref() {
-            Some(builder) => builder.build(typechecked_system, base_system).await,
+            Some(builder) => {
+                builder
+                    .build(&resolved_env, base_system, database.clone())
+                    .await
+            }
             None => Ok(None),
         }?;
 
         let rest_subsystem = match self.rest_builder.as_ref() {
-            Some(builder) => builder.build(typechecked_system, base_system).await,
+            Some(builder) => builder.build(&resolved_env, base_system, database).await,
             None => Ok(None),
         }?;
 

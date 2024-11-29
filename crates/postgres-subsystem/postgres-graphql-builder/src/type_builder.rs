@@ -58,8 +58,6 @@ pub(super) fn build_expanded(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
-    building.database = postgres_core_builder::database_builder::build(resolved_env)?;
-
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
             expand_type_no_fields(c, building);

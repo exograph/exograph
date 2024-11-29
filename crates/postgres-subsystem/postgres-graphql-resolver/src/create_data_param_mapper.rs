@@ -29,7 +29,7 @@ use crate::{
     sql_mapper::{SQLMapper, SQLOperationKind},
 };
 
-use super::{
+use postgres_core_resolver::{
     cast,
     postgres_execution_error::{PostgresExecutionError, WithContext},
 };

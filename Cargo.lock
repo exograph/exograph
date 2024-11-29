@@ -6772,6 +6772,7 @@ dependencies = [
  "builder",
  "core-plugin-interface",
  "exo-sql",
+ "postgres-core-builder",
  "postgres-graphql-builder",
  "postgres-graphql-model",
  "postgres-rest-builder",
@@ -6812,10 +6813,17 @@ dependencies = [
 name = "postgres-core-resolver"
 version = "0.10.2"
 dependencies = [
+ "base64 0.22.1",
+ "chrono",
  "common",
+ "core-plugin-interface",
  "exo-env",
  "exo-sql",
+ "serde_json",
  "thiserror",
+ "tokio-postgres",
+ "tracing",
+ "uuid",
  "wasm-bindgen-test",
 ]
 
@@ -6857,9 +6865,7 @@ dependencies = [
  "async-graphql-parser",
  "async-recursion",
  "async-trait",
- "base64 0.22.1",
  "builder",
- "chrono",
  "common",
  "core-plugin-interface",
  "exo-env",
@@ -6868,13 +6874,10 @@ dependencies = [
  "http 1.1.0",
  "indexmap 2.2.5",
  "postgres-builder",
+ "postgres-core-resolver",
  "postgres-graphql-model",
  "serde_json",
- "thiserror",
  "tokio",
- "tokio-postgres",
- "tracing",
- "uuid",
  "wasm-bindgen-test",
 ]
 
@@ -6926,9 +6929,8 @@ dependencies = [
 name = "postgres-rest-builder"
 version = "0.10.2"
 dependencies = [
- "async-trait",
  "core-plugin-interface",
- "core-rest-model",
+ "exo-sql",
  "postgres-core-builder",
  "postgres-rest-model",
 ]
@@ -6940,7 +6942,6 @@ dependencies = [
  "bincode",
  "common",
  "core-plugin-interface",
- "core-rest-model",
  "exo-sql",
  "http 1.1.0",
  "matchit 0.8.5",
@@ -6955,6 +6956,8 @@ dependencies = [
  "common",
  "core-plugin-interface",
  "exo-sql",
+ "http 1.1.0",
+ "postgres-core-resolver",
  "postgres-rest-model",
 ]
 

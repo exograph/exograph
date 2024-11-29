@@ -11,11 +11,11 @@ use exo_sql::AbstractOperation;
 
 use common::context::RequestContext;
 use core_plugin_interface::core_resolver::{QueryResponse, QueryResponseBody};
-use tokio_postgres::types::FromSqlOwned;
-use tokio_postgres::Row;
+use postgres_core_resolver::database_helper::extractor;
+
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
 use super::PostgresSubsystemResolver;
-use crate::postgres_execution_error::PostgresExecutionError;
 
 pub async fn resolve_operation<'e>(
     op: &AbstractOperation,
@@ -47,11 +47,4 @@ pub async fn resolve_operation<'e>(
         body,
         headers: vec![], // we shouldn't get any HTTP headers from a SQL op
     })
-}
-
-fn extractor<T: FromSqlOwned>(row: Row) -> Result<T, PostgresExecutionError> {
-    match row.try_get(0) {
-        Ok(col) => Ok(col),
-        Err(err) => Err(PostgresExecutionError::EmptyRow(err)),
-    }
 }

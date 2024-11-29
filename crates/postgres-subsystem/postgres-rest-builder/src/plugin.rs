@@ -7,49 +7,50 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use async_trait::async_trait;
+use std::sync::Arc;
+
+use exo_sql::Database;
+
 use core_plugin_interface::core_model_builder::plugin::RestSubsystemBuild;
-use core_plugin_interface::interface::RestSubsystemBuilder;
 
 use core_plugin_interface::serializable_system::SerializableRestBytes;
 use core_plugin_interface::{
-    core_model_builder::{
-        builder::system_builder::BaseModelSystem, error::ModelBuildingError,
-        typechecker::typ::TypecheckedSystem,
-    },
+    core_model_builder::{builder::system_builder::BaseModelSystem, error::ModelBuildingError},
     system_serializer::SystemSerializer,
 };
 
-use postgres_core_builder::resolved_builder;
 use postgres_core_builder::resolved_type::ResolvedType;
+use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 use postgres_rest_model::method::Method;
-use postgres_rest_model::operation::PostgresOperation;
+use postgres_rest_model::operation::{PostgresOperation, PostgresOperationKind};
 use postgres_rest_model::subsystem::PostgresRestSubsystem;
 
 pub struct PostgresRestSubsystemBuilder {}
 
-#[async_trait]
-impl RestSubsystemBuilder for PostgresRestSubsystemBuilder {
-    fn id(&self) -> &'static str {
-        "postgres"
-    }
-
-    async fn build(
+impl PostgresRestSubsystemBuilder {
+    pub async fn build<'a>(
         &self,
-        typechecked_system: &TypecheckedSystem,
+        resolved_env: &ResolvedTypeEnv<'a>,
         _base_system: &BaseModelSystem,
+        database: Arc<Database>,
     ) -> Result<Option<RestSubsystemBuild>, ModelBuildingError> {
-        let resolved_types = resolved_builder::build(typechecked_system)?;
-
         let mut operations = vec![];
 
-        for typ in resolved_types.iter() {
+        for typ in resolved_env.resolved_types.iter() {
             if let ResolvedType::Composite(composite) = typ.1 {
+                let table_id = database.get_table_id(&composite.table_name).ok_or(
+                    ModelBuildingError::Generic(format!(
+                        "Table not found: {}",
+                        composite.table_name.fully_qualified_name()
+                    )),
+                )?;
+
                 operations.push((
                     Method::Get,
                     composite.plural_name.to_lowercase(),
                     PostgresOperation {
-                        // table_id: composite.table_id,
+                        kind: PostgresOperationKind::Query,
+                        table_id,
                     },
                 ));
             }
@@ -59,14 +60,16 @@ impl RestSubsystemBuilder for PostgresRestSubsystemBuilder {
             return Ok(None);
         }
 
-        let subsystem = PostgresRestSubsystem { operations };
+        let subsystem = PostgresRestSubsystem {
+            operations,
+            database,
+        };
 
         let serialized_subsystem = subsystem
             .serialize()
             .map_err(ModelBuildingError::Serialize)?;
 
         Ok(Some(RestSubsystemBuild {
-            id: self.id().to_string(),
             serialized_subsystem: SerializableRestBytes(serialized_subsystem),
         }))
     }

@@ -27,6 +27,5 @@ pub struct Interception {
 }
 
 pub struct RestSubsystemBuild {
-    pub id: String,
     pub serialized_subsystem: SerializableRestBytes,
 }

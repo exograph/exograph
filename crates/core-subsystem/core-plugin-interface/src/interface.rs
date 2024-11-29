@@ -107,17 +107,6 @@ pub trait GraphQLSubsystemBuilder {
     ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError>;
 }
 
-#[async_trait]
-pub trait RestSubsystemBuilder {
-    fn id(&self) -> &'static str;
-
-    async fn build(
-        &self,
-        typechecked_system: &TypecheckedSystem,
-        base_system: &BaseModelSystem,
-    ) -> Result<Option<RestSubsystemBuild>, ModelBuildingError>;
-}
-
 pub struct SubsystemResolver {
     pub graphql: Option<Box<dyn SubsystemGraphQLResolver + Send + Sync>>,
     pub rest: Option<Box<dyn SubsystemRestResolver + Send + Sync>>,

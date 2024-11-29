@@ -31,7 +31,7 @@ use crate::{
     util::{get_argument_field, return_type_info},
 };
 
-use super::{cast, postgres_execution_error::PostgresExecutionError};
+use postgres_core_resolver::{cast, postgres_execution_error::PostgresExecutionError};
 
 pub struct UpdateOperation<'a> {
     pub data_param: &'a DataParameter,

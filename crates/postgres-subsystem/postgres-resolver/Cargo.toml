@@ -12,7 +12,7 @@ network = [
     "exo-sql/pool",
     "postgres-core-resolver/network",
 ]
-bigdecimal = ["postgres-graphql-resolver/bigdecimal"]
+bigdecimal = ["postgres-core-resolver/bigdecimal"]
 
 [dependencies]
 async-trait.workspace = true

@@ -9,10 +9,12 @@
 
 use super::{
     auth_util::check_access,
-    postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLOperationKind,
     util::{find_arg, return_type_info},
 };
+
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
+
 use crate::{
     create_data_param_mapper::InsertOperation, operation_resolver::OperationResolver,
     postgres_query::compute_select, predicate_mapper::compute_predicate, sql_mapper::SQLMapper,
