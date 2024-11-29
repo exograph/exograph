@@ -19,7 +19,7 @@ use crate::core_model_builder::{
 use crate::core_resolver::plugin::SubsystemGraphQLResolver;
 use crate::error::ModelSerializationError;
 use async_trait::async_trait;
-use core_model_builder::plugin::RestSubsystemBuild;
+use core_model_builder::plugin::{CoreSubsystemBuild, RestSubsystemBuild};
 use core_model_builder::typechecker::typ::TypecheckedSystem;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
 use core_resolver::plugin::SubsystemRestResolver;
@@ -32,6 +32,9 @@ pub struct SubsystemBuild {
     pub id: &'static str,
     pub graphql: Option<GraphQLSubsystemBuild>,
     pub rest: Option<RestSubsystemBuild>,
+    // Common subsystem that is shared by all API-specific subsystems. For example,
+    // the Postgres subsystem may use this to keep database (tables, etc.) definitions.
+    pub core: CoreSubsystemBuild,
 }
 
 #[async_trait]

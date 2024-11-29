@@ -9,11 +9,10 @@
 
 use std::fmt::Display;
 
-use super::subsystem::PostgresSubsystem;
 use exo_sql::{
     database_error::DatabaseError,
     schema::{database_spec::DatabaseSpec, issue::WithIssues, op::SchemaOp, spec::diff},
-    DatabaseClientManager,
+    Database, DatabaseClientManager,
 };
 use serde::Serialize;
 
@@ -111,16 +110,16 @@ impl Migration {
     }
 
     pub async fn from_db_and_model(
-        database: &DatabaseClientManager,
-        postgres_subsystem: &PostgresSubsystem,
+        client: &DatabaseClientManager,
+        database: &Database,
     ) -> Result<Self, DatabaseError> {
-        let old_schema = extract_db_schema(database).await?;
+        let old_schema = extract_db_schema(client).await?;
 
         for issue in &old_schema.issues {
             eprintln!("{issue}");
         }
 
-        let database_spec = DatabaseSpec::from_database(&postgres_subsystem.database);
+        let database_spec = DatabaseSpec::from_database(database);
 
         Ok(Migration::from_schemas(&old_schema.value, &database_spec))
     }
@@ -132,16 +131,16 @@ impl Migration {
     }
 
     pub async fn verify(
-        database: &DatabaseClientManager,
-        postgres_subsystem: &PostgresSubsystem,
+        client: &DatabaseClientManager,
+        database: &Database,
     ) -> Result<(), VerificationErrors> {
-        let old_schema = extract_db_schema(database).await?;
+        let old_schema = extract_db_schema(client).await?;
 
         for issue in &old_schema.issues {
             eprintln!("{issue}");
         }
 
-        let new_schema = DatabaseSpec::from_database(&postgres_subsystem.database);
+        let new_schema = DatabaseSpec::from_database(database);
 
         let diff = diff(&old_schema.value, &new_schema);
 
@@ -235,10 +234,13 @@ pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), Datab
 
 #[cfg(test)]
 mod tests {
+    use crate::subsystem::PostgresCoreSubsystem;
+
     use super::*;
     use core_plugin_interface::{
         error::ModelSerializationError, serializable_system::SerializableSystem,
     };
+    use postgres_graphql_model::subsystem::PostgresSubsystem;
     use stripmargin::StripMargin;
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
@@ -1724,20 +1726,24 @@ mod tests {
     fn deserialize_postgres_subsystem(
         system: SerializableSystem,
     ) -> Result<PostgresSubsystem, ModelSerializationError> {
-        use core_plugin_interface::system_serializer::SystemSerializer;
+        use std::sync::Arc;
 
-        system
+        let postgres_subsystem = system
             .subsystems
             .into_iter()
-            .find_map(|subsystem| {
-                if subsystem.id == "postgres" {
-                    Some(PostgresSubsystem::deserialize(subsystem.graphql.unwrap().0))
-                } else {
-                    None
-                }
-            })
-            // If there is no database subsystem in the serialized system, create an empty one
-            .unwrap_or_else(|| Ok(PostgresSubsystem::default()))
+            .find(|subsystem| subsystem.id == "postgres");
+
+        use core_plugin_interface::system_serializer::SystemSerializer;
+        match postgres_subsystem {
+            Some(subsystem) => {
+                let mut postgres_subsystem =
+                    PostgresSubsystem::deserialize(subsystem.graphql.unwrap().0)?;
+                let postgres_core_subsystem = PostgresCoreSubsystem::deserialize(subsystem.core.0)?;
+                postgres_subsystem.database = Arc::new(postgres_core_subsystem.database);
+                Ok(postgres_subsystem)
+            }
+            None => Ok(PostgresSubsystem::default()),
+        }
     }
 
     async fn compute_spec(model: &str) -> DatabaseSpec {

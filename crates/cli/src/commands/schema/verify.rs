@@ -10,7 +10,7 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::Command;
-use postgres_graphql_model::migration::{Migration, VerificationErrors};
+use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use crate::commands::command::{database_arg, default_model_file, get, CommandDefinition};
@@ -37,8 +37,8 @@ impl CommandDefinition for VerifyCommandDefinition {
         let use_ir: bool = matches.get_flag("use-ir");
 
         let db_client = open_database(database.as_deref()).await?;
-        let postgres_subsystem = util::create_postgres_system(&model, None, use_ir).await?;
-        let verification_result = Migration::verify(&db_client, &postgres_subsystem).await;
+        let database = util::extract_postgres_database(&model, None, use_ir).await?;
+        let verification_result = Migration::verify(&db_client, &database).await;
 
         match &verification_result {
             Ok(()) => eprintln!("This model is compatible with the database schema!"),

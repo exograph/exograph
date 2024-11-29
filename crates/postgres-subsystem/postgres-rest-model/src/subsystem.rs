@@ -25,6 +25,7 @@ use crate::operation::PostgresOperation;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresRestSubsystem {
     pub operations: Vec<(Method, String, PostgresOperation)>,
+    #[serde(skip)]
     pub database: Arc<Database>,
 }
 

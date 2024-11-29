@@ -11,7 +11,7 @@ use std::{io, path::PathBuf};
 
 use anyhow::anyhow;
 use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
-use postgres_graphql_model::migration::Migration;
+use postgres_core_model::migration::Migration;
 
 use crate::{
     commands::command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
@@ -55,7 +55,7 @@ impl CommandDefinition for MigrateCommandDefinition {
     /// Perform a database migration for a exograph model
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         let model: PathBuf = default_model_file();
-        let database: Option<String> = get(matches, "database");
+        let database_url: Option<String> = get(matches, "database");
         let output: Option<PathBuf> = get(matches, "output");
         let apply_to_database: bool = matches.get_flag("apply-to-database");
         let allow_destructive_changes: bool = matches.get_flag("allow-destructive-changes");
@@ -67,10 +67,10 @@ impl CommandDefinition for MigrateCommandDefinition {
             ));
         }
 
-        let postgres_subsystem = util::create_postgres_system(&model, None, use_ir).await?;
+        let database = util::extract_postgres_database(&model, None, use_ir).await?;
 
-        let db_client = open_database(database.as_deref()).await?;
-        let migrations = Migration::from_db_and_model(&db_client, &postgres_subsystem).await?;
+        let db_client = open_database(database_url.as_deref()).await?;
+        let migrations = Migration::from_db_and_model(&db_client, &database).await?;
 
         if apply_to_database {
             if migrations.has_destructive_changes() {

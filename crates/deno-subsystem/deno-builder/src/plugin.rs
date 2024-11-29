@@ -13,7 +13,7 @@ use core_plugin_interface::{
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,
-        plugin::{GraphQLSubsystemBuild, Interception},
+        plugin::{CoreSubsystemBuild, GraphQLSubsystemBuild, Interception},
         typechecker::{
             annotation::{AnnotationSpec, AnnotationTarget},
             typ::TypecheckedSystem,
@@ -21,7 +21,7 @@ use core_plugin_interface::{
     },
     interception::InterceptorIndex,
     interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
-    serializable_system::SerializableGraphQLBytes,
+    serializable_system::{SerializableCoreBytes, SerializableGraphQLBytes},
     system_serializer::SystemSerializer,
 };
 
@@ -71,6 +71,9 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
             id: self.id(),
             graphql: Some(graphql_subsystem),
             rest: None,
+            core: CoreSubsystemBuild {
+                serialized_subsystem: SerializableCoreBytes(vec![]),
+            },
         }))
     }
 }

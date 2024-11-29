@@ -60,6 +60,7 @@ pub struct PostgresSubsystem {
     pub database_access_expressions:
         SerializableSlab<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
 
+    #[serde(skip)]
     pub database: Arc<Database>,
 }
 

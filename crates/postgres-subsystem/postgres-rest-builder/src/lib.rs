@@ -8,6 +8,5 @@
 // by the Apache License, Version 2.0.
 
 mod plugin;
-mod system_builder;
 
 pub use plugin::PostgresRestSubsystemBuilder;

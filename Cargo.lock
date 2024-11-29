@@ -1284,7 +1284,7 @@ dependencies = [
  "lazy_static",
  "notify-debouncer-mini",
  "postgres-builder",
- "postgres-graphql-model",
+ "postgres-core-model",
  "rand",
  "reqwest",
  "rexpect",
@@ -6773,6 +6773,7 @@ dependencies = [
  "core-plugin-interface",
  "exo-sql",
  "postgres-core-builder",
+ "postgres-core-model",
  "postgres-graphql-builder",
  "postgres-graphql-model",
  "postgres-rest-builder",
@@ -6807,6 +6808,27 @@ dependencies = [
  "serde",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
+]
+
+[[package]]
+name = "postgres-core-model"
+version = "0.10.2"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "builder",
+ "common",
+ "core-plugin-interface",
+ "exo-sql",
+ "http 1.1.0",
+ "matchit 0.8.5",
+ "postgres-builder",
+ "postgres-core-model",
+ "postgres-graphql-model",
+ "serde",
+ "stripmargin",
+ "tokio",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -6853,7 +6875,6 @@ dependencies = [
  "exo-sql",
  "postgres-builder",
  "serde",
- "stripmargin",
  "tokio",
  "wasm-bindgen-test",
 ]
@@ -6874,6 +6895,7 @@ dependencies = [
  "http 1.1.0",
  "indexmap 2.2.5",
  "postgres-builder",
+ "postgres-core-model",
  "postgres-core-resolver",
  "postgres-graphql-model",
  "serde_json",
@@ -6909,6 +6931,7 @@ dependencies = [
  "core-plugin-interface",
  "exo-env",
  "exo-sql",
+ "postgres-core-model",
  "postgres-core-resolver",
  "postgres-graphql-model",
  "postgres-graphql-resolver",

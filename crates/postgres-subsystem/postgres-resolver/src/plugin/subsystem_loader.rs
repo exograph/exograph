@@ -12,6 +12,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use common::env_const::get_rest_http_path;
+use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use postgres_graphql_resolver::PostgresSubsystemResolver;
 
 use core_plugin_interface::{
@@ -48,12 +49,20 @@ impl SubsystemLoader for PostgresSubsystemLoader {
                 .map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?,
         );
 
-        let SerializableSubsystem { graphql, rest, .. } = subsystem;
+        let SerializableSubsystem {
+            graphql,
+            rest,
+            core,
+            ..
+        } = subsystem;
+
+        let core_subsystem = PostgresCoreSubsystem::deserialize_reader(core.0.as_slice())?;
+        let database = Arc::new(core_subsystem.database);
 
         let graphql_system = graphql
             .map(|graphql| {
-                let subsystem = PostgresSubsystem::deserialize(graphql.0)?;
-
+                let mut subsystem = PostgresSubsystem::deserialize(graphql.0)?;
+                subsystem.database = database.clone();
                 Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemResolver {
                     id: self.id(),
                     subsystem,
@@ -66,7 +75,8 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         let rest_system = rest
             .map(|rest| {
                 let subsystem = PostgresRestSubsystem::deserialize(rest.0)?;
-                let subsystem = PostgresRestSubsystemWithRouter::new(subsystem)?;
+                let mut subsystem = PostgresRestSubsystemWithRouter::new(subsystem)?;
+                subsystem.database = database.clone();
 
                 let api_path_prefix = format!("{}/", get_rest_http_path(env));
 

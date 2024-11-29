@@ -29,6 +29,7 @@ common = { path = "../../common", features = ["test-context"] }
 postgres-builder = { path = "../postgres-builder" }
 http.workspace = true
 wasm-bindgen-test.workspace = true
+postgres-core-model = { path = "../postgres-core-model" }
 
 [lib]
 crate-type = ["lib"]

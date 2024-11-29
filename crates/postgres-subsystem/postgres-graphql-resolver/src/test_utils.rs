@@ -11,7 +11,6 @@
 #[cfg(test)]
 use core_plugin_interface::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
-    system_serializer::SystemSerializer,
 };
 #[cfg(test)]
 use postgres_graphql_model::subsystem::PostgresSubsystem;
@@ -38,18 +37,23 @@ pub(crate) async fn create_postgres_system_from_str(
 fn deserialize_postgres_subsystem(
     system: SerializableSystem,
 ) -> Result<PostgresSubsystem, ModelSerializationError> {
-    system
+    use std::sync::Arc;
+
+    let postgres_subsystem = system
         .subsystems
         .into_iter()
-        .find_map(|subsystem| {
-            if subsystem.id == "postgres" {
-                subsystem
-                    .graphql
-                    .map(|graphql| PostgresSubsystem::deserialize(graphql.0))
-            } else {
-                None
-            }
-        })
-        // If there is no database subsystem in the serialized system, create an empty one
-        .unwrap_or_else(|| Ok(PostgresSubsystem::default()))
+        .find(|subsystem| subsystem.id == "postgres");
+
+    use core_plugin_interface::system_serializer::SystemSerializer;
+    use postgres_core_model::subsystem::PostgresCoreSubsystem;
+    match postgres_subsystem {
+        Some(subsystem) => {
+            let mut postgres_subsystem =
+                PostgresSubsystem::deserialize(subsystem.graphql.unwrap().0)?;
+            let postgres_core_subsystem = PostgresCoreSubsystem::deserialize(subsystem.core.0)?;
+            postgres_subsystem.database = Arc::new(postgres_core_subsystem.database);
+            Ok(postgres_subsystem)
+        }
+        None => Ok(PostgresSubsystem::default()),
+    }
 }

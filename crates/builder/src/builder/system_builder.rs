@@ -12,6 +12,7 @@ use core_model_builder::error::ModelBuildingError;
 use core_model_builder::typechecker::typ::TypecheckedSystem;
 use core_plugin_interface::interface::SubsystemBuild;
 use core_plugin_interface::interface::SubsystemBuilder;
+use core_plugin_shared::serializable_system::SerializableCoreBytes;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::trusted_documents::TrustedDocuments;
@@ -60,7 +61,12 @@ pub async fn build(
     .flatten()
     .enumerate()
     .map(|(subsystem_index, build_info)| {
-        let SubsystemBuild { id, graphql, rest } = build_info;
+        let SubsystemBuild {
+            id,
+            graphql,
+            rest,
+            core,
+        } = build_info;
 
         // The builder's contract is that it must return a subsystem only if it found a relevant
         // module in the exo file, in which case it must serve GraphQL and/or REST.
@@ -85,6 +91,7 @@ pub async fn build(
             subsystem_index,
             graphql: serialized_graphql_subsystem,
             rest: serialized_rest_subsystem,
+            core: SerializableCoreBytes(core.serialized_subsystem.0),
         }
     })
     .collect();

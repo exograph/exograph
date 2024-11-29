@@ -36,7 +36,7 @@ builder = { path = "../builder" }
 testing = { path = "../testing" }
 common = { path = "../common" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
-postgres-graphql-model = { path = "../postgres-subsystem/postgres-graphql-model" }
+postgres-core-model = { path = "../postgres-subsystem/postgres-core-model" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 postgres-builder = { path = "../postgres-subsystem/postgres-builder" }
 deno-builder = { path = "../deno-subsystem/deno-builder" }

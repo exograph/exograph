@@ -16,7 +16,7 @@ use common::env_const::{
 };
 use exo_sql::DatabaseClientManager;
 use futures::FutureExt;
-use postgres_graphql_model::migration::{Migration, VerificationErrors};
+use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use super::command::{enforce_trusted_documents_arg, get, port_arg, CommandDefinition};
@@ -73,12 +73,12 @@ impl CommandDefinition for DevCommandDefinition {
             let db_client = open_database(None).await?;
 
             loop {
-                let postgres_subsystem = util::create_postgres_system(&model, None, false).await?;
-                let verification_result = Migration::verify(&db_client, &postgres_subsystem).await;
+                let database = util::extract_postgres_database(&model, None, false).await?;
+                let verification_result = Migration::verify(&db_client, &database).await;
 
                 match verification_result {
                     Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
-                        let migrations = Migration::from_db_and_model(&db_client, &postgres_subsystem).await?;
+                        let migrations = Migration::from_db_and_model(&db_client, &database).await?;
 
                         // If migrations are safe to apply, let's go ahead with those
                         if !migrations.has_destructive_changes() {
