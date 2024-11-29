@@ -48,7 +48,9 @@ impl RestSubsystemBuilder for PostgresRestSubsystemBuilder {
                 operations.push((
                     Method::Get,
                     composite.plural_name.to_lowercase(),
-                    PostgresOperation {},
+                    PostgresOperation {
+                        // table_id: composite.table_id,
+                    },
                 ));
             }
         }

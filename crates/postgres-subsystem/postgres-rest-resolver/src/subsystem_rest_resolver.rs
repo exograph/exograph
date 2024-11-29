@@ -63,5 +63,17 @@ impl OperationResolver for PostgresOperation {
             request.get_head().get_method(),
             request.get_head().get_path()
         )
+
+        /*
+            Ok(AbstractSelect {
+            table_id: return_entity_type.table_id,
+            selection: exo_sql::Selection::Json(content_object, selection_cardinality),
+            predicate,
+            order_by,
+            offset,
+            limit,
+        })
+
+             */
     }
 }

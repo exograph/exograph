@@ -6941,6 +6941,7 @@ dependencies = [
  "common",
  "core-plugin-interface",
  "core-rest-model",
+ "exo-sql",
  "http 1.1.0",
  "matchit 0.8.5",
  "serde",
