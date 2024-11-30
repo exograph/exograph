@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::vec;
+use std::{sync::Arc, vec};
 
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 
@@ -60,7 +60,8 @@ pub struct PostgresSubsystem {
     pub database_access_expressions:
         SerializableSlab<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
 
-    pub database: Database,
+    #[serde(skip)]
+    pub database: Arc<Database>,
 }
 
 impl PostgresSubsystem {
@@ -149,7 +150,7 @@ impl Default for PostgresSubsystem {
             input_access_expressions: SerializableSlab::new(),
             database_access_expressions: SerializableSlab::new(),
 
-            database: Database::default(),
+            database: Arc::new(Database::default()),
         }
     }
 }

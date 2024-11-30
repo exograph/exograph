@@ -11,7 +11,6 @@ use std::sync::Arc;
 
 use crate::{
     abstract_operation_resolver::resolve_operation, operation_resolver::OperationResolver,
-    postgres_execution_error::PostgresExecutionError,
 };
 use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use async_trait::async_trait;
@@ -26,6 +25,7 @@ use core_plugin_interface::{
     interception::InterceptorIndex,
 };
 use exo_sql::DatabaseExecutor;
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_graphql_model::subsystem::PostgresSubsystem;
 
 pub struct PostgresSubsystemResolver {
@@ -115,14 +115,5 @@ impl SubsystemGraphQLResolver for PostgresSubsystemResolver {
 
     fn schema_types(&self) -> Vec<TypeDefinition> {
         self.subsystem.schema_types()
-    }
-}
-
-impl From<PostgresExecutionError> for SubsystemResolutionError {
-    fn from(e: PostgresExecutionError) -> Self {
-        match e {
-            PostgresExecutionError::Authorization => SubsystemResolutionError::Authorization,
-            _ => SubsystemResolutionError::UserDisplayError(e.user_error_message()),
-        }
     }
 }

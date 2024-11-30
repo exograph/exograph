@@ -14,12 +14,14 @@ use core_plugin_interface::{
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,
+        plugin::CoreSubsystemBuild,
         typechecker::{
             annotation::{AnnotationSpec, AnnotationTarget},
             typ::TypecheckedSystem,
         },
     },
     interface::{GraphQLSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
+    serializable_system::SerializableCoreBytes,
 };
 use wasm_graphql_builder::GraphQLWasmSubsystemBuilder;
 
@@ -67,6 +69,9 @@ impl SubsystemBuilder for WasmSubsystemBuilder {
             id: self.id(),
             graphql: Some(graphql_subsystem),
             rest: None,
+            core: CoreSubsystemBuild {
+                serialized_subsystem: SerializableCoreBytes(vec![]),
+            },
         }))
     }
 }

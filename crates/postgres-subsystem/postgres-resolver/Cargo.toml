@@ -12,7 +12,7 @@ network = [
     "exo-sql/pool",
     "postgres-core-resolver/network",
 ]
-bigdecimal = ["postgres-graphql-resolver/bigdecimal"]
+bigdecimal = ["postgres-core-resolver/bigdecimal"]
 
 [dependencies]
 async-trait.workspace = true
@@ -22,7 +22,9 @@ postgres-rest-resolver = { path = "../postgres-rest-resolver" }
 
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }
+common = { path = "../../common" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+postgres-core-model = { path = "../postgres-core-model" }
 postgres-core-resolver = { path = "../postgres-core-resolver" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
 postgres-rest-model = { path = "../postgres-rest-model" }

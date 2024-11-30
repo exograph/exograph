@@ -15,7 +15,7 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
-use postgres_graphql_model::migration::{self, Migration};
+use postgres_core_model::migration::{self, Migration};
 use std::{
     path::{Path, PathBuf},
     sync::atomic::Ordering,
@@ -146,8 +146,8 @@ async fn run_server(
     let db_client = open_database(None).await?;
 
     // generate migrations for current database
-    let postgres_subsystem = util::create_postgres_system(model, None, false).await?;
-    let migrations = Migration::from_db_and_model(&db_client, &postgres_subsystem).await?;
+    let database = util::extract_postgres_database(model, None, false).await?;
+    let migrations = Migration::from_db_and_model(&db_client, &database).await?;
 
     // execute migration
     println!("Applying migrations...");

@@ -1,5 +1,5 @@
 [package]
-name = "postgres-graphql-model"
+name = "postgres-core-model"
 version.workspace = true
 edition.workspace = true
 publish = false
@@ -7,19 +7,25 @@ publish = false
 [dependencies]
 serde.workspace = true
 bincode.workspace = true
-async-graphql-parser.workspace = true
-async-graphql-value.workspace = true
+http.workspace = true
+matchit = "0.8.5"
 anyhow.workspace = true
 
+common = { path = "../../common" }
 exo-sql = { path = "../../../libs/exo-sql" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 
 [dev-dependencies]
+stripmargin = "0.1.1"
 tokio.workspace = true
 wasm-bindgen-test.workspace = true
+bincode.workspace = true
+exo-sql = { path = "../../../libs/exo-sql", features = ["bigdecimal"] }
 
 builder = { path = "../../builder" }
 postgres-builder = { path = "../postgres-builder" }
+postgres-graphql-model = { path = "../postgres-graphql-model" }
+postgres-core-model = { path = "../postgres-core-model" }
 
 [lib]
 doctest = false

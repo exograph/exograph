@@ -1,15 +1,22 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use core_plugin_interface::{
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,
+        plugin::CoreSubsystemBuild,
         typechecker::{
             annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
             typ::TypecheckedSystem,
         },
     },
-    interface::{GraphQLSubsystemBuilder, RestSubsystemBuilder, SubsystemBuild, SubsystemBuilder},
+    interface::{SubsystemBuild, SubsystemBuilder},
+    serializable_system::SerializableCoreBytes,
+    system_serializer::SystemSerializer,
 };
+use postgres_core_builder::resolved_type::ResolvedTypeEnv;
+use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use postgres_graphql_builder::PostgresGraphQLSubsystemBuilder;
 use postgres_rest_builder::PostgresRestSubsystemBuilder;
 
@@ -250,13 +257,38 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
         typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
+        let resolved_types = postgres_core_builder::resolved_builder::build(typechecked_system)?;
+
+        let resolved_env = ResolvedTypeEnv {
+            contexts: &base_system.contexts,
+            resolved_types,
+            function_definitions: &base_system.function_definitions,
+        };
+
+        let database = postgres_core_builder::database_builder::build(&resolved_env)?;
+
+        let core_subsystem = PostgresCoreSubsystem { database };
+        let serialized_core_subsystem = core_subsystem
+            .serialize()
+            .map_err(ModelBuildingError::Serialize)?;
+
+        let database = Arc::new(core_subsystem.database);
+
         let graphql_subsystem = match self.graphql_builder.as_ref() {
-            Some(builder) => builder.build(typechecked_system, base_system).await,
+            Some(builder) => {
+                builder
+                    .build(&resolved_env, base_system, database.clone())
+                    .await
+            }
             None => Ok(None),
         }?;
 
         let rest_subsystem = match self.rest_builder.as_ref() {
-            Some(builder) => builder.build(typechecked_system, base_system).await,
+            Some(builder) => {
+                builder
+                    .build(&resolved_env, base_system, database.clone())
+                    .await
+            }
             None => Ok(None),
         }?;
 
@@ -267,6 +299,9 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 id: "postgres",
                 graphql: graphql_subsystem,
                 rest: rest_subsystem,
+                core: CoreSubsystemBuild {
+                    serialized_subsystem: SerializableCoreBytes(serialized_core_subsystem),
+                },
             }))
         }
     }
@@ -355,6 +390,7 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
+        println!("Database tables {:?}", system.database.tables().len());
         let get_table = |n| get_table_from_arena(n, &system.database);
 
         let users = get_table("users");

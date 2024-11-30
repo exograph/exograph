@@ -5,13 +5,6 @@ edition.workspace = true
 publish = false
 
 [features]
-network = [
-    "exo-sql/tls",
-    "exo-sql/postgres-url",
-    "exo-sql/testing",
-    "exo-sql/pool",
-]
-bigdecimal = ["exo-sql/bigdecimal"]
 
 [dependencies]
 async-graphql-parser.workspace = true
@@ -20,18 +13,13 @@ async-trait.workspace = true
 futures.workspace = true
 indexmap.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
-thiserror.workspace = true
 tokio.workspace = true
-tokio-postgres = { workspace = true, default-features = false }
-tracing.workspace = true
-base64 = "0.22.1"
-chrono.workspace = true
-uuid.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 exo-env = { path = "../../../libs/exo-env" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
+postgres-core-resolver = { path = "../postgres-core-resolver" }
 common = { path = "../../common" }
 
 [dev-dependencies]
@@ -41,6 +29,7 @@ common = { path = "../../common", features = ["test-context"] }
 postgres-builder = { path = "../postgres-builder" }
 http.workspace = true
 wasm-bindgen-test.workspace = true
+postgres-core-model = { path = "../postgres-core-model" }
 
 [lib]
 crate-type = ["lib"]

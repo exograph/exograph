@@ -16,7 +16,9 @@ use postgres_graphql_model::{
     subsystem::PostgresSubsystem,
 };
 
-use super::{postgres_execution_error::PostgresExecutionError, sql_mapper::SQLMapper};
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
+
+use super::sql_mapper::SQLMapper;
 
 fn cast_to_i64(argument: &Val) -> Result<i64, PostgresExecutionError> {
     match argument {

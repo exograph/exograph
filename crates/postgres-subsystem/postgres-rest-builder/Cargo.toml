@@ -5,13 +5,11 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-async-trait.workspace = true
+exo-sql = { path = "../../../libs/exo-sql" }
 
 postgres-rest-model = { path = "../postgres-rest-model" }
 postgres-core-builder = { path = "../postgres-core-builder" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-core-rest-model = { path = "../../core-subsystem/core-rest-model" }
-
 
 
 [dev-dependencies]

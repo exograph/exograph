@@ -7,14 +7,71 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::{error::ModelSerializationError, system_serializer::SystemSerializer};
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use common::http::RequestHead;
+use core_plugin_interface::{
+    error::ModelSerializationError, interface::SubsystemLoadingError,
+    system_serializer::SystemSerializer,
+};
+use exo_sql::Database;
+use matchit::Router;
 use serde::{Deserialize, Serialize};
 
+use crate::method::Method;
 use crate::operation::PostgresOperation;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresRestSubsystem {
-    pub operations: Vec<PostgresOperation>,
+    pub operations: Vec<(Method, String, PostgresOperation)>,
+    #[serde(skip)]
+    pub database: Arc<Database>,
+}
+
+#[derive(Debug)]
+pub struct PostgresRestSubsystemWithRouter {
+    pub routers: HashMap<http::Method, Router<PostgresOperation>>,
+    pub database: Arc<Database>,
+}
+
+impl PostgresRestSubsystemWithRouter {
+    pub fn new(subsystem: PostgresRestSubsystem) -> Result<Self, SubsystemLoadingError> {
+        let mut routers = HashMap::new();
+        for (method, path_template, operation) in subsystem.operations {
+            routers
+                .entry(method.into())
+                .or_insert_with(Router::new)
+                .insert(path_template, operation)
+                .map_err(|e| SubsystemLoadingError::Config(e.to_string()))?;
+        }
+        Ok(Self {
+            routers,
+            database: subsystem.database,
+        })
+    }
+}
+
+impl PostgresRestSubsystemWithRouter {
+    pub fn find_matching(
+        &self,
+        head: &(dyn RequestHead + Send + Sync),
+        api_path_prefix: &str,
+    ) -> Option<&PostgresOperation> {
+        let request_path = head.get_path();
+
+        assert!(request_path.starts_with(api_path_prefix));
+
+        let relative_path = request_path.strip_prefix(api_path_prefix).unwrap();
+
+        let method_router = self.routers.get(&head.get_method());
+
+        if let Some(router) = method_router {
+            return router.at(relative_path).map(|m| m.value).ok();
+        }
+
+        None
+    }
 }
 
 impl SystemSerializer for PostgresRestSubsystem {

@@ -14,7 +14,8 @@ use postgres_graphql_model::subsystem::PostgresSubsystem;
 
 use crate::util::{find_arg, Arguments};
 
-use super::postgres_execution_error::PostgresExecutionError;
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
+
 pub(crate) enum SQLOperationKind {
     Create,
     Retrieve,

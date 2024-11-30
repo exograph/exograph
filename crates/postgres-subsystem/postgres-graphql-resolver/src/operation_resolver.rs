@@ -13,7 +13,7 @@ use core_plugin_interface::core_resolver::validation::field::ValidatedField;
 use exo_sql::{AbstractOperation, AbstractSelect};
 use postgres_graphql_model::subsystem::PostgresSubsystem;
 
-use crate::postgres_execution_error::PostgresExecutionError;
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
 #[async_trait]
 pub trait OperationSelectionResolver {

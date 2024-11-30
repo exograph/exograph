@@ -7,10 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::{
-    auth_util::check_access, postgres_execution_error::PostgresExecutionError,
-    sql_mapper::SQLOperationKind,
-};
+use super::{auth_util::check_access, sql_mapper::SQLOperationKind};
+
+use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
+
 use crate::operation_resolver::OperationSelectionResolver;
 use async_recursion::async_recursion;
 use async_trait::async_trait;

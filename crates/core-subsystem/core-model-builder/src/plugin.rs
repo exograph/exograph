@@ -9,7 +9,9 @@
 
 use crate::{ast::ast_types::AstExpr, typechecker::Typed};
 use core_plugin_shared::interception::{InterceptorIndex, InterceptorKind};
-use core_plugin_shared::serializable_system::{SerializableGraphQLBytes, SerializableRestBytes};
+use core_plugin_shared::serializable_system::{
+    SerializableCoreBytes, SerializableGraphQLBytes, SerializableRestBytes,
+};
 
 pub struct GraphQLSubsystemBuild {
     pub id: String,
@@ -27,6 +29,9 @@ pub struct Interception {
 }
 
 pub struct RestSubsystemBuild {
-    pub id: String,
     pub serialized_subsystem: SerializableRestBytes,
+}
+
+pub struct CoreSubsystemBuild {
+    pub serialized_subsystem: SerializableCoreBytes,
 }

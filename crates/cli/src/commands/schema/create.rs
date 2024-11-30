@@ -10,7 +10,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Command;
-use postgres_graphql_model::migration::Migration;
+use postgres_core_model::migration::Migration;
 use std::{io::Write, path::PathBuf};
 
 use exo_sql::schema::database_spec::DatabaseSpec;
@@ -41,14 +41,14 @@ impl CommandDefinition for CreateCommandDefinition {
         let model: PathBuf = default_model_file();
         let output: Option<PathBuf> = get(matches, "output");
 
-        let postgres_subsystem = util::create_postgres_system(&model, None, use_ir).await?;
+        let database = util::extract_postgres_database(&model, None, use_ir).await?;
 
         let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
 
         // Creating the schema from the model is the same as migrating from an empty database.
         let migrations = Migration::from_schemas(
             &DatabaseSpec::new(vec![], vec![]),
-            &DatabaseSpec::from_database(&postgres_subsystem.database),
+            &DatabaseSpec::from_database(&database),
         );
         migrations.write(&mut buffer, true)?;
 

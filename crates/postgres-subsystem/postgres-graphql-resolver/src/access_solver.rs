@@ -32,7 +32,7 @@ use postgres_graphql_model::{
     subsystem::PostgresSubsystem,
 };
 
-use crate::cast;
+use postgres_core_resolver::cast;
 
 // Only to get around the orphan rule while implementing AccessSolver
 #[derive(Debug)]

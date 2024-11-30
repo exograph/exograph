@@ -6,11 +6,13 @@ publish = false
 
 [dependencies]
 async-trait.workspace = true
+http.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-rest-model = { path = "../postgres-rest-model" }
+postgres-core-resolver = { path = "../postgres-core-resolver" }
 common = { path = "../../common" }
 
 [dev-dependencies]

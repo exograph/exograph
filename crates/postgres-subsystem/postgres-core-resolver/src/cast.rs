@@ -50,7 +50,7 @@ pub enum CastError {
     Postgres(#[from] exo_sql::database_error::DatabaseError),
 }
 
-pub(crate) fn literal_column(
+pub fn literal_column(
     value: &Val,
     associated_column: &PhysicalColumn,
 ) -> Result<Column, PostgresExecutionError> {
@@ -59,7 +59,7 @@ pub(crate) fn literal_column(
         .map_err(PostgresExecutionError::CastError)
 }
 
-pub(crate) fn literal_column_path(
+pub fn literal_column_path(
     value: &Val,
     destination_type: &PhysicalColumnType,
 ) -> Result<ColumnPath, PostgresExecutionError> {
@@ -68,7 +68,7 @@ pub(crate) fn literal_column_path(
         .map_err(PostgresExecutionError::CastError)
 }
 
-pub(crate) fn cast_value(
+pub fn cast_value(
     value: &Val,
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<SQLParamContainer>, CastError> {

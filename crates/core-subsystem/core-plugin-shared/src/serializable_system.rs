@@ -33,6 +33,7 @@ pub struct SerializableSubsystem {
     pub subsystem_index: usize,
     pub graphql: Option<SerializableGraphQLBytes>,
     pub rest: Option<SerializableRestBytes>,
+    pub core: SerializableCoreBytes,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -40,6 +41,9 @@ pub struct SerializableGraphQLBytes(pub Vec<u8>);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableRestBytes(pub Vec<u8>);
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SerializableCoreBytes(pub Vec<u8>);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableGraphQLSystem {
@@ -196,6 +200,7 @@ mod test {
                 subsystem_index: 0,
                 graphql: Some(super::SerializableGraphQLBytes(vec![])),
                 rest: Some(super::SerializableRestBytes(vec![])),
+                core: super::SerializableCoreBytes(vec![]),
             }],
         }
     }
