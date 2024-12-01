@@ -314,7 +314,7 @@ mod tests {
     use exo_sql::{
         Database, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable,
     };
-    use postgres_graphql_model::subsystem::PostgresSubsystem;
+    use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
@@ -508,7 +508,7 @@ mod tests {
         assert!(!mutation_type_names.contains("TodoUpdateInput"));
     }
 
-    fn get_mutation_type_names(system: &PostgresSubsystem) -> HashSet<String> {
+    fn get_mutation_type_names(system: &PostgresGraphQLSubsystem) -> HashSet<String> {
         system
             .mutation_types
             .iter()
@@ -649,7 +649,7 @@ mod tests {
         panic!("No such column {name}")
     }
 
-    async fn create_system(src: &str) -> PostgresSubsystem {
+    async fn create_system(src: &str) -> PostgresGraphQLSubsystem {
         crate::test_utils::create_postgres_system_from_str(src, "test.exo".to_string())
             .await
             .unwrap()

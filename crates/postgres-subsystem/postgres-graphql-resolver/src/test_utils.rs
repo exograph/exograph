@@ -13,13 +13,13 @@ use core_plugin_interface::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
 };
 #[cfg(test)]
-use postgres_graphql_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 #[cfg(test)]
 pub(crate) async fn create_postgres_system_from_str(
     model_str: &str,
     file_name: String,
-) -> Result<PostgresSubsystem, ModelSerializationError> {
+) -> Result<PostgresGraphQLSubsystem, ModelSerializationError> {
     let system = builder::build_system_from_str(
         model_str,
         file_name,
@@ -36,7 +36,7 @@ pub(crate) async fn create_postgres_system_from_str(
 #[cfg(test)]
 fn deserialize_postgres_subsystem(
     system: SerializableSystem,
-) -> Result<PostgresSubsystem, ModelSerializationError> {
+) -> Result<PostgresGraphQLSubsystem, ModelSerializationError> {
     use std::sync::Arc;
 
     let postgres_subsystem = system
@@ -49,11 +49,11 @@ fn deserialize_postgres_subsystem(
     match postgres_subsystem {
         Some(subsystem) => {
             let mut postgres_subsystem =
-                PostgresSubsystem::deserialize(subsystem.graphql.unwrap().0)?;
+                PostgresGraphQLSubsystem::deserialize(subsystem.graphql.unwrap().0)?;
             let postgres_core_subsystem = PostgresCoreSubsystem::deserialize(subsystem.core.0)?;
             postgres_subsystem.database = Arc::new(postgres_core_subsystem.database);
             Ok(postgres_subsystem)
         }
-        None => Ok(PostgresSubsystem::default()),
+        None => Ok(PostgresGraphQLSubsystem::default()),
     }
 }

@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{access::Access, subsystem::PostgresSubsystem};
+use crate::{access::Access, subsystem::PostgresGraphQLSubsystem};
 
 use async_graphql_parser::{
     types::{
@@ -89,8 +89,8 @@ impl Parameter for OrderByParameter {
     }
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
-    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for OrderByParameterType {
+    fn type_definition(&self, _system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         match &self.kind {
             OrderByParameterTypeKind::Composite { parameters } => {
                 let fields = parameters
@@ -163,8 +163,8 @@ impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterType {
     }
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for OrderByParameterTypeWrapper {
-    fn type_definition(&self, system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for OrderByParameterTypeWrapper {
+    fn type_definition(&self, system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         let typ = &system.order_by_types[self.type_id];
         typ.type_definition(system)
     }

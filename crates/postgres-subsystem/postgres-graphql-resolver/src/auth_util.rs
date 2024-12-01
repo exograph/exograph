@@ -25,13 +25,13 @@ use core_plugin_interface::core_resolver::{
     access_solver::AccessSolver, validation::field::ValidatedField,
 };
 use exo_sql::{AbstractPredicate, Predicate};
-use postgres_graphql_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 pub(crate) async fn check_access<'a>(
     return_type: &'a EntityType,
     selection: &'a [ValidatedField],
     kind: &SQLOperationKind,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
     input_context: Option<&'a Val>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
@@ -145,7 +145,7 @@ pub(crate) async fn check_access<'a>(
 
 async fn check_create_access<'a>(
     expr: &AccessPredicateExpression<InputAccessPrimitiveExpression>,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
     input_context: Option<&'a Val>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
@@ -158,7 +158,7 @@ async fn check_create_access<'a>(
 
 pub(super) async fn check_retrieve_access<'a>(
     expr: &AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     Ok(subsystem
@@ -170,7 +170,7 @@ pub(super) async fn check_retrieve_access<'a>(
 
 async fn check_update_access<'a>(
     expr: &UpdateAccessExpression,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
     input_context: Option<&'a Val>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
@@ -205,7 +205,7 @@ async fn check_update_access<'a>(
 
 async fn check_delete_access<'a>(
     expr: &AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     Ok(subsystem
@@ -218,7 +218,7 @@ async fn check_delete_access<'a>(
 async fn check_selection_access<'a>(
     selection: &'a [ValidatedField],
     return_type: &'a EntityType,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     futures::stream::iter(selection.iter().map(Ok))
@@ -268,7 +268,7 @@ async fn check_selection_access<'a>(
 async fn check_input_access<'a>(
     input_context: Option<&'a Val>,
     return_type: &'a EntityType,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
     field_access: fn(
         &PostgresField<EntityType>,

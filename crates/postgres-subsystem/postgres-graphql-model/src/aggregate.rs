@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::query::AggregateQueryParameters;
 use crate::relation::{OneToManyRelation, PostgresRelation};
-use crate::subsystem::PostgresSubsystem;
+use crate::subsystem::PostgresGraphQLSubsystem;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::type_normalization::{
     default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
@@ -68,8 +68,8 @@ impl ScalarAggregateFieldKind {
     }
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for AggregateType {
-    fn type_definition(&self, system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for AggregateType {
+    fn type_definition(&self, system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         let kind = {
             let fields: Vec<_> = self
                 .fields
@@ -92,8 +92,8 @@ impl TypeDefinitionProvider<PostgresSubsystem> for AggregateType {
     }
 }
 
-impl FieldDefinitionProvider<PostgresSubsystem> for AggregateField {
-    fn field_definition(&self, system: &PostgresSubsystem) -> FieldDefinition {
+impl FieldDefinitionProvider<PostgresGraphQLSubsystem> for AggregateField {
+    fn field_definition(&self, system: &PostgresGraphQLSubsystem) -> FieldDefinition {
         let arguments = match &self.relation {
             Some(relation) => match relation {
                 PostgresRelation::Pk { .. }

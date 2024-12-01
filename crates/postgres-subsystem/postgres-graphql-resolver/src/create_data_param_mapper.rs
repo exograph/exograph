@@ -20,7 +20,7 @@ use futures::future::{join_all, try_join_all};
 use postgres_graphql_model::{
     mutation::DataParameter,
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
     types::{base_type, MutationType, PostgresField, PostgresType},
 };
 
@@ -44,7 +44,7 @@ impl<'a> SQLMapper<'a, AbstractInsert> for InsertOperation<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractInsert, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
@@ -69,7 +69,7 @@ impl<'a> SQLMapper<'a, AbstractInsert> for InsertOperation<'a> {
 pub(crate) async fn map_argument<'a>(
     data_type: &'a MutationType,
     argument: &'a Val,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<InsertionRow>, PostgresExecutionError> {
     match argument {
@@ -90,7 +90,7 @@ pub(crate) async fn map_argument<'a>(
 async fn map_single<'a>(
     data_type: &'a MutationType,
     argument: &'a Val,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionRow, PostgresExecutionError> {
     check_access(
@@ -157,7 +157,7 @@ async fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a PostgresField<MutationType>,
     argument: &'a Val,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
 ) -> Result<InsertionElement, PostgresExecutionError> {
     let key_column = key_column_id.get_column(&subsystem.database);
     let argument_value = match &field.relation {
@@ -198,7 +198,7 @@ async fn map_foreign<'a>(
     field: &'a PostgresField<MutationType>, // "concerts"
     argument: &'a Val,                      // [{<concert-info1>}, {<concert-info2>}]
     one_to_many_relation: &OneToManyRelation,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionElement, PostgresExecutionError> {
     let field_type = base_type(

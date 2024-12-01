@@ -22,7 +22,7 @@ use exo_sql::{NumericComparator, SQLParamContainer};
 use futures::future::try_join_all;
 use postgres_graphql_model::{
     predicate::{PredicateParameter, PredicateParameterTypeKind},
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
 };
 
 use crate::{
@@ -49,7 +49,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractPredicate, PostgresExecutionError> {
         let parameter_type = &subsystem.predicate_types[self.param.typ.innermost().type_id];
@@ -398,7 +398,7 @@ fn operands<'a>(
     op_value: &'a Val,
     op_value_type: Option<&PhysicalColumnType>,
     parent_column_path: &Option<PhysicalColumnPath>,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
 ) -> Result<(ColumnPath, ColumnPath), PostgresExecutionError> {
     let op_physical_column_id = param
         .column_path_link
@@ -418,7 +418,7 @@ fn operands<'a>(
 pub async fn compute_predicate<'a>(
     param: &'a PredicateParameter,
     arguments: &'a Arguments,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     extract_and_map(

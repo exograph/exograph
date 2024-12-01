@@ -10,7 +10,7 @@
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use postgres_graphql_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 use crate::util::{find_arg, Arguments};
 
@@ -28,7 +28,7 @@ pub(crate) trait SQLMapper<'a, R> {
     async fn to_sql(
         self,
         argument: &'a Val,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<R, PostgresExecutionError>;
 
@@ -38,7 +38,7 @@ pub(crate) trait SQLMapper<'a, R> {
 pub(crate) async fn extract_and_map<'a, P, R>(
     param: P,
     arguments: &'a Arguments,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Option<R>, PostgresExecutionError>
 where

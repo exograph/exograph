@@ -10,7 +10,7 @@ use core_plugin_interface::core_model::type_normalization::{
 use exo_sql::{ColumnId, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};
 
-use crate::{access::Access, subsystem::PostgresSubsystem};
+use crate::{access::Access, subsystem::PostgresGraphQLSubsystem};
 
 /// Field for a vector distance function
 /// Represents:
@@ -48,8 +48,8 @@ impl VectorDistanceType {
 pub struct VectorDistanceTypeField {}
 
 /// The definition of a vector distance field. Takes and argument
-impl FieldDefinitionProvider<PostgresSubsystem> for VectorDistanceField {
-    fn field_definition(&self, _system: &PostgresSubsystem) -> FieldDefinition {
+impl FieldDefinitionProvider<PostgresGraphQLSubsystem> for VectorDistanceField {
+    fn field_definition(&self, _system: &PostgresGraphQLSubsystem) -> FieldDefinition {
         // {to: [Float!]!}
         let argument = InputValueDefinition {
             description: None,
@@ -78,8 +78,8 @@ impl FieldDefinitionProvider<PostgresSubsystem> for VectorDistanceField {
     }
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for VectorDistanceType {
-    fn type_definition(&self, system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for VectorDistanceType {
+    fn type_definition(&self, system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         let kind = {
             let fields: Vec<_> = self
                 .fields
@@ -102,8 +102,8 @@ impl TypeDefinitionProvider<PostgresSubsystem> for VectorDistanceType {
     }
 }
 
-impl FieldDefinitionProvider<PostgresSubsystem> for VectorDistanceTypeField {
-    fn field_definition(&self, _system: &PostgresSubsystem) -> FieldDefinition {
+impl FieldDefinitionProvider<PostgresGraphQLSubsystem> for VectorDistanceTypeField {
+    fn field_definition(&self, _system: &PostgresGraphQLSubsystem) -> FieldDefinition {
         FieldDefinition {
             description: None,
             name: default_positioned_name("distance"),

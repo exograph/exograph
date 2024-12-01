@@ -24,7 +24,7 @@ use postgres_graphql_model::{
     order::OrderByParameterType,
     predicate::PredicateParameterType,
     query::{AggregateQuery, CollectionQuery, PkQuery, UniqueQuery},
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
     types::{EntityType, MutationType, PostgresPrimitiveType},
     vector_distance::VectorDistanceType,
 };
@@ -42,7 +42,7 @@ pub fn build(
     resolved_env: &ResolvedTypeEnv,
     base_system: &BaseModelSystem,
     database: Arc<Database>,
-) -> Result<Option<PostgresSubsystem>, ModelBuildingError> {
+) -> Result<Option<PostgresGraphQLSubsystem>, ModelBuildingError> {
     let mut building = SystemContextBuilding {
         database,
         ..SystemContextBuilding::default()
@@ -52,7 +52,7 @@ pub fn build(
         build_shallow(resolved_env, &mut building);
         build_expanded(resolved_env, &mut building)?;
 
-        PostgresSubsystem {
+        PostgresGraphQLSubsystem {
             contexts: base_system.contexts.clone(),
             primitive_types: building.primitive_types.values(),
             entity_types: building.entity_types.values(),

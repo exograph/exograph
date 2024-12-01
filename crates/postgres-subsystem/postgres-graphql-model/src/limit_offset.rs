@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{subsystem::PostgresSubsystem, types::PostgresPrimitiveType};
+use crate::{subsystem::PostgresGraphQLSubsystem, types::PostgresPrimitiveType};
 use async_graphql_parser::types::{Type, TypeDefinition, TypeKind};
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
@@ -48,8 +48,8 @@ impl Parameter for LimitParameter {
     }
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for LimitParameter {
-    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for LimitParameter {
+    fn type_definition(&self, _system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         TypeDefinition {
             extend: false,
             description: None,
@@ -92,8 +92,8 @@ impl Parameter for OffsetParameter {
     }
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for OffsetParameter {
-    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for OffsetParameter {
+    fn type_definition(&self, _system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         TypeDefinition {
             extend: false,
             description: None,

@@ -35,7 +35,7 @@ use exo_sql::Database;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PostgresSubsystem {
+pub struct PostgresGraphQLSubsystem {
     pub contexts: MappedArena<ContextType>,
     pub primitive_types: SerializableSlab<PostgresPrimitiveType>,
     pub entity_types: SerializableSlab<EntityType>,
@@ -64,7 +64,7 @@ pub struct PostgresSubsystem {
     pub database: Arc<Database>,
 }
 
-impl PostgresSubsystem {
+impl PostgresGraphQLSubsystem {
     pub fn schema_queries(&self) -> Vec<FieldDefinition> {
         let pk_queries_defn = self
             .pk_queries
@@ -131,7 +131,7 @@ impl PostgresSubsystem {
     }
 }
 
-impl Default for PostgresSubsystem {
+impl Default for PostgresGraphQLSubsystem {
     fn default() -> Self {
         Self {
             contexts: MappedArena::default(),
@@ -155,7 +155,7 @@ impl Default for PostgresSubsystem {
     }
 }
 
-impl SystemSerializer for PostgresSubsystem {
+impl SystemSerializer for PostgresGraphQLSubsystem {
     type Underlying = Self;
 
     fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
@@ -169,7 +169,7 @@ impl SystemSerializer for PostgresSubsystem {
     }
 }
 
-impl ContextContainer for PostgresSubsystem {
+impl ContextContainer for PostgresGraphQLSubsystem {
     fn contexts(&self) -> &MappedArena<ContextType> {
         &self.contexts
     }

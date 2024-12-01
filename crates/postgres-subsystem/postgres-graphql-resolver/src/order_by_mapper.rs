@@ -25,7 +25,7 @@ use exo_sql::{ColumnPath, SQLParamContainer, VectorDistanceFunction};
 
 use postgres_graphql_model::{
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
 };
 
 pub(crate) struct OrderByParameterInput<'a> {
@@ -38,7 +38,7 @@ impl<'a> SQLMapper<'a, AbstractOrderBy> for OrderByParameterInput<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractOrderBy, PostgresExecutionError> {
         let parameter_type = &subsystem.order_by_types[self.param.typ.innermost().type_id];
@@ -91,7 +91,7 @@ async fn order_by_pair<'a>(
     parameter_name: &str,
     parameter_value: &'a Val,
     parent_column_path: Option<PhysicalColumnPath>,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractOrderBy, PostgresExecutionError> {
     match &typ.kind {

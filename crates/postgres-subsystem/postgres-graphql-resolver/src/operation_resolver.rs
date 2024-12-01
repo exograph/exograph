@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use core_plugin_interface::core_resolver::validation::field::ValidatedField;
 use exo_sql::{AbstractOperation, AbstractSelect};
-use postgres_graphql_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
@@ -21,7 +21,7 @@ pub trait OperationSelectionResolver {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError>;
 }
 
@@ -31,7 +31,7 @@ pub trait OperationResolver {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractOperation, PostgresExecutionError>;
 }
 
@@ -41,7 +41,7 @@ impl<T: OperationSelectionResolver + Send + Sync> OperationResolver for T {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractOperation, PostgresExecutionError> {
         self.resolve_select(field, request_context, subsystem)
             .await

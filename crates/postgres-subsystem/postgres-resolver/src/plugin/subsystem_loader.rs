@@ -24,7 +24,7 @@ use core_plugin_interface::{
 use exo_env::Environment;
 use exo_sql::DatabaseClientManager;
 use postgres_core_resolver::database_helper::create_database_executor;
-use postgres_graphql_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 use postgres_rest_model::subsystem::{PostgresRestSubsystem, PostgresRestSubsystemWithRouter};
 use postgres_rest_resolver::PostgresSubsystemRestResolver;
 
@@ -61,7 +61,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
 
         let graphql_system = graphql
             .map(|graphql| {
-                let mut subsystem = PostgresSubsystem::deserialize(graphql.0)?;
+                let mut subsystem = PostgresGraphQLSubsystem::deserialize(graphql.0)?;
                 subsystem.database = database.clone();
                 Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemResolver {
                     id: self.id(),
