@@ -23,7 +23,7 @@ use exo_sql::{
 };
 use futures::StreamExt;
 use postgres_graphql_model::{
-    query::AggregateQuery, relation::PostgresRelation, subsystem::PostgresSubsystem,
+    query::AggregateQuery, relation::PostgresRelation, subsystem::PostgresGraphQLSubsystem,
     types::EntityType,
 };
 
@@ -33,7 +33,7 @@ impl OperationSelectionResolver for AggregateQuery {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
         let access_predicate = check_access(
             self.return_type.typ(&subsystem.entity_types),
@@ -80,7 +80,7 @@ impl OperationSelectionResolver for AggregateQuery {
 async fn content_select<'content>(
     return_type: &OperationReturnType<EntityType>,
     fields: &'content [ValidatedField],
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<Vec<AliasedSelectionElement>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
@@ -94,7 +94,7 @@ async fn content_select<'content>(
 async fn map_field<'content>(
     return_type: &OperationReturnType<EntityType>,
     field: &'content ValidatedField,
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     _request_context: &'content RequestContext<'content>,
 ) -> Result<AliasedSelectionElement, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {

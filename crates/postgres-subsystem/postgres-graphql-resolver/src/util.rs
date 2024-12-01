@@ -16,7 +16,7 @@ use core_plugin_interface::core_model::types::OperationReturnType;
 use exo_sql::TableId;
 use postgres_graphql_model::{
     query::{CollectionQuery, PkQuery},
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
 };
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
@@ -70,7 +70,7 @@ pub(super) fn to_pg_vector(
 /// - A (table associated with the return type, pk query, collection query) tuple.
 pub(crate) fn return_type_info<'a>(
     return_type: &'a OperationReturnType<EntityType>,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
 ) -> (TableId, &'a PkQuery, &'a CollectionQuery) {
     let typ = return_type.typ(&subsystem.entity_types);
 

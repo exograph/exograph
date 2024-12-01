@@ -13,7 +13,7 @@ use crate::access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpre
 use crate::aggregate::AggregateField;
 use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, PkQuery};
 use crate::relation::OneToManyRelation;
-use crate::subsystem::PostgresSubsystem;
+use crate::subsystem::PostgresGraphQLSubsystem;
 use crate::vector_distance::VectorDistanceField;
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
@@ -203,8 +203,8 @@ pub fn base_type<'a, CT>(
         .to_type(primitive_types, entity_types)
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for PostgresPrimitiveType {
-    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for PostgresPrimitiveType {
+    fn type_definition(&self, _system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         TypeDefinition {
             extend: false,
             description: None,
@@ -215,8 +215,8 @@ impl TypeDefinitionProvider<PostgresSubsystem> for PostgresPrimitiveType {
     }
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for EntityType {
-    fn type_definition(&self, system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for EntityType {
+    fn type_definition(&self, system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         let EntityType {
             fields,
             agg_fields,
@@ -257,8 +257,8 @@ impl TypeDefinitionProvider<PostgresSubsystem> for EntityType {
     }
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for MutationType {
-    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for MutationType {
+    fn type_definition(&self, _system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         let kind = {
             let fields = self
                 .fields
@@ -279,8 +279,8 @@ impl TypeDefinitionProvider<PostgresSubsystem> for MutationType {
     }
 }
 
-impl<CT> FieldDefinitionProvider<PostgresSubsystem> for PostgresField<CT> {
-    fn field_definition(&self, system: &PostgresSubsystem) -> FieldDefinition {
+impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT> {
+    fn field_definition(&self, system: &PostgresGraphQLSubsystem) -> FieldDefinition {
         let field_type = default_positioned((&self.typ).into());
         let mut directives = vec![];
 

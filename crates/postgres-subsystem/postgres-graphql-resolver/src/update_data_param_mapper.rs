@@ -21,7 +21,7 @@ use futures::StreamExt;
 use postgres_graphql_model::{
     mutation::DataParameter,
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
     types::{base_type, EntityType, MutationType, PostgresType, TypeIndex},
 };
 
@@ -45,7 +45,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate> for UpdateOperation<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractUpdate, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
@@ -77,7 +77,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate> for UpdateOperation<'a> {
 fn compute_update_columns<'a>(
     data_type: &'a MutationType,
     argument: &'a Val,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
 ) -> Vec<(ColumnId, Column)> {
     data_type
         .fields
@@ -130,7 +130,7 @@ fn compute_update_columns<'a>(
 async fn compute_nested_ops<'a>(
     arg_type: &'a MutationType,
     arg: &'a Val,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<
     (
@@ -202,7 +202,7 @@ async fn compute_nested_update<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<NestedAbstractUpdate>, PostgresExecutionError> {
     let (update_arg, field_entity_type) =
@@ -246,7 +246,7 @@ async fn compute_nested_update_object_arg<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<NestedAbstractUpdate, PostgresExecutionError> {
     assert!(matches!(argument, Val::Object(..)));
@@ -317,14 +317,14 @@ async fn compute_nested_inserts<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<NestedAbstractInsertSet, PostgresExecutionError> {
     async fn create_nested<'a>(
         field_entity_type: &'a MutationType,
         argument: &'a Val,
         nesting_relation: &OneToMany,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
         let table_id = subsystem.entity_types[field_entity_type.entity_id].table_id;
@@ -409,7 +409,7 @@ async fn compute_nested_delete<'a>(
     field_entity_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<NestedAbstractDelete>, PostgresExecutionError> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
@@ -456,7 +456,7 @@ async fn compute_nested_delete_object_arg<'a>(
     field_mutation_type: &'a MutationType,
     argument: &'a Val,
     nesting_relation: &OneToMany,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<NestedAbstractDelete, PostgresExecutionError> {
     assert!(matches!(argument, Val::Object(..)));
@@ -522,7 +522,7 @@ fn extract_argument<'a>(
     argument: &'a Val,
     arg_type: &'a MutationType,
     arg_name: &str,
-    subsystem: &'a PostgresSubsystem,
+    subsystem: &'a PostgresGraphQLSubsystem,
 ) -> (Option<&'a Val>, &'a MutationType) {
     let arg = get_argument_field(argument, arg_name);
 

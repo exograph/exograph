@@ -26,11 +26,11 @@ use core_plugin_interface::{
 };
 use exo_sql::DatabaseExecutor;
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
-use postgres_graphql_model::subsystem::PostgresSubsystem;
+use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
 pub struct PostgresSubsystemResolver {
     pub id: &'static str,
-    pub subsystem: PostgresSubsystem,
+    pub subsystem: PostgresGraphQLSubsystem,
     pub executor: Arc<DatabaseExecutor>,
 }
 

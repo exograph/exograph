@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{access::Access, subsystem::PostgresSubsystem};
+use crate::{access::Access, subsystem::PostgresGraphQLSubsystem};
 use async_graphql_parser::types::{
     InputObjectType, InputValueDefinition, Type, TypeDefinition, TypeKind,
 };
@@ -95,8 +95,8 @@ impl Parameter for PredicateParameter {
     }
 }
 
-impl TypeDefinitionProvider<PostgresSubsystem> for PredicateParameterType {
-    fn type_definition(&self, _system: &PostgresSubsystem) -> TypeDefinition {
+impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for PredicateParameterType {
+    fn type_definition(&self, _system: &PostgresGraphQLSubsystem) -> TypeDefinition {
         match &self.kind {
             PredicateParameterTypeKind::Operator(parameters)
             | PredicateParameterTypeKind::Reference(parameters) => {

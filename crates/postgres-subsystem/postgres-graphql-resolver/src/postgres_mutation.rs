@@ -31,7 +31,7 @@ use exo_sql::{
 use postgres_graphql_model::{
     mutation::{DataParameter, PostgresMutation, PostgresMutationParameters},
     predicate::PredicateParameter,
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
     types::EntityType,
 };
 
@@ -41,7 +41,7 @@ impl OperationResolver for PostgresMutation {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractOperation, PostgresExecutionError> {
         let return_type = &self.return_type;
 
@@ -106,7 +106,7 @@ async fn create_operation<'content>(
     data_param: &'content DataParameter,
     field: &'content ValidatedField,
     select: AbstractSelect,
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractInsert, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
@@ -128,7 +128,7 @@ async fn delete_operation<'content>(
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
     select: AbstractSelect,
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractDelete, PostgresExecutionError> {
     let (table_id, _, _) = return_type_info(return_type, subsystem);
@@ -165,7 +165,7 @@ async fn update_operation<'content>(
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
     select: AbstractSelect,
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractUpdate, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);

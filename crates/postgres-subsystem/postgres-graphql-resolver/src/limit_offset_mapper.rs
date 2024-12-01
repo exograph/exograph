@@ -13,7 +13,7 @@ use common::value::Val;
 use exo_sql::{Limit, Offset};
 use postgres_graphql_model::{
     limit_offset::{LimitParameter, OffsetParameter},
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
 };
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
@@ -34,7 +34,7 @@ impl<'a> SQLMapper<'a, Limit> for &LimitParameter {
     async fn to_sql(
         self,
         argument: &'a Val,
-        _subsystem: &'a PostgresSubsystem,
+        _subsystem: &'a PostgresGraphQLSubsystem,
         _request_context: &'a RequestContext<'a>,
     ) -> Result<Limit, PostgresExecutionError> {
         cast_to_i64(argument).map(Limit)
@@ -50,7 +50,7 @@ impl<'a> SQLMapper<'a, Offset> for &OffsetParameter {
     async fn to_sql(
         self,
         argument: &'a Val,
-        _subsystem: &'a PostgresSubsystem,
+        _subsystem: &'a PostgresGraphQLSubsystem,
         _request_context: &'a RequestContext<'a>,
     ) -> Result<Offset, PostgresExecutionError> {
         cast_to_i64(argument).map(Offset)

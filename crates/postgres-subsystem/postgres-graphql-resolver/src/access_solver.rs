@@ -29,7 +29,7 @@ use core_plugin_interface::{
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
 use postgres_graphql_model::{
     access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
 };
 
 use postgres_core_resolver::cast;
@@ -76,7 +76,7 @@ pub enum SolvedJsonPrimitiveExpression {
 
 #[async_trait]
 impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWrapper>
-    for PostgresSubsystem
+    for PostgresGraphQLSubsystem
 {
     async fn solve_relational_op(
         &self,
@@ -85,7 +85,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         op: &AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
     ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(
-            solver: &PostgresSubsystem,
+            solver: &PostgresGraphQLSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a DatabaseAccessPrimitiveExpression,
         ) -> Result<Option<SolvedPrimitiveExpression>, AccessSolverError> {
@@ -216,7 +216,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
 
 #[async_trait]
 impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapper>
-    for PostgresSubsystem
+    for PostgresGraphQLSubsystem
 {
     async fn solve_relational_op(
         &self,
@@ -225,7 +225,7 @@ impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapp
         op: &AccessRelationalOp<InputAccessPrimitiveExpression>,
     ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(
-            solver: &PostgresSubsystem,
+            solver: &PostgresGraphQLSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a InputAccessPrimitiveExpression,
         ) -> Result<Option<SolvedJsonPrimitiveExpression>, AccessSolverError> {
@@ -382,7 +382,7 @@ mod tests {
     use super::*;
 
     struct TestSystem {
-        system: PostgresSubsystem,
+        system: PostgresGraphQLSubsystem,
         published_column_path: PhysicalColumnPath,
         owner_id_column_path: PhysicalColumnPath,
         dept1_id_column_path: PhysicalColumnPath,
@@ -566,7 +566,7 @@ mod tests {
     async fn solve_access<'a>(
         expr: &'a AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
     ) -> AbstractPredicate {
         subsystem
             .solve(request_context, None, expr)
@@ -1306,7 +1306,7 @@ mod tests {
         let test_system_router = test_system_router.as_ref();
         let env = &MapEnvironment::from(HashMap::new());
         // Scenario: true or false
-        let system = PostgresSubsystem::default();
+        let system = PostgresGraphQLSubsystem::default();
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(true);
         let context = test_request_context(Value::Null, test_system_router, env); // irrelevant context content

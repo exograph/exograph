@@ -34,7 +34,7 @@ use postgres_graphql_model::{
     order::OrderByParameter,
     query::{CollectionQuery, CollectionQueryParameters, PkQuery},
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
-    subsystem::PostgresSubsystem,
+    subsystem::PostgresGraphQLSubsystem,
     types::{EntityType, PostgresField},
 };
 
@@ -44,7 +44,7 @@ impl OperationSelectionResolver for PkQuery {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
         let predicate = compute_predicate(
             &self.parameters.predicate_param,
@@ -74,7 +74,7 @@ impl OperationSelectionResolver for UniqueQuery {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
         let predicate = futures::stream::iter(
             self.parameters
@@ -109,7 +109,7 @@ impl OperationSelectionResolver for CollectionQuery {
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresSubsystem,
+        subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
         let CollectionQueryParameters {
             predicate_param,
@@ -142,7 +142,7 @@ pub(super) async fn compute_select<'content>(
     offset: Option<Offset>,
     return_type: &'content OperationReturnType<EntityType>,
     selection: &'content [ValidatedField],
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect, PostgresExecutionError> {
     let return_entity_type = return_type.typ(&subsystem.entity_types);
@@ -179,7 +179,7 @@ pub(super) async fn compute_select<'content>(
 async fn compute_order_by<'content>(
     param: &'content OrderByParameter,
     arguments: &'content Arguments,
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<Option<AbstractOrderBy>, PostgresExecutionError> {
     extract_and_map(
@@ -198,7 +198,7 @@ async fn compute_order_by<'content>(
 async fn content_select<'content>(
     return_type: &EntityType,
     fields: &'content [ValidatedField],
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<Vec<AliasedSelectionElement>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
@@ -212,7 +212,7 @@ async fn content_select<'content>(
 async fn map_field<'content>(
     return_type: &EntityType,
     field: &'content ValidatedField,
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AliasedSelectionElement, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
@@ -251,7 +251,7 @@ async fn map_field<'content>(
 async fn map_persistent_field<'content>(
     entity_field: &PostgresField<EntityType>,
     field: &'content ValidatedField,
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement, PostgresExecutionError> {
     match &entity_field.relation {
@@ -315,7 +315,7 @@ async fn map_persistent_field<'content>(
 async fn map_aggregate_field<'content>(
     agg_field: &AggregateField,
     field: &'content ValidatedField,
-    subsystem: &'content PostgresSubsystem,
+    subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement, PostgresExecutionError> {
     if let Some(PostgresRelation::OneToMany(relation)) = &agg_field.relation {
