@@ -6817,14 +6817,9 @@ dependencies = [
  "anyhow",
  "bincode",
  "builder",
- "common",
  "core-plugin-interface",
  "exo-sql",
- "http 1.1.0",
- "matchit 0.8.5",
  "postgres-builder",
- "postgres-core-model",
- "postgres-graphql-model",
  "serde",
  "stripmargin",
  "tokio",
@@ -6866,16 +6861,12 @@ dependencies = [
 name = "postgres-graphql-model"
 version = "0.10.2"
 dependencies = [
- "anyhow",
  "async-graphql-parser",
  "async-graphql-value",
  "bincode",
- "builder",
  "core-plugin-interface",
  "exo-sql",
- "postgres-builder",
  "serde",
- "tokio",
  "wasm-bindgen-test",
 ]
 

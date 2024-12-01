@@ -240,7 +240,6 @@ mod tests {
     use core_plugin_interface::{
         error::ModelSerializationError, serializable_system::SerializableSystem,
     };
-    use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
     use stripmargin::StripMargin;
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
@@ -1709,7 +1708,7 @@ mod tests {
     async fn create_postgres_system_from_str(
         model_str: &str,
         file_name: String,
-    ) -> Result<PostgresGraphQLSubsystem, ModelSerializationError> {
+    ) -> Result<PostgresCoreSubsystem, ModelSerializationError> {
         let system = builder::build_system_from_str(
             model_str,
             file_name,
@@ -1725,9 +1724,7 @@ mod tests {
 
     fn deserialize_postgres_subsystem(
         system: SerializableSystem,
-    ) -> Result<PostgresGraphQLSubsystem, ModelSerializationError> {
-        use std::sync::Arc;
-
+    ) -> Result<PostgresCoreSubsystem, ModelSerializationError> {
         let postgres_subsystem = system
             .subsystems
             .into_iter()
@@ -1736,22 +1733,20 @@ mod tests {
         use core_plugin_interface::system_serializer::SystemSerializer;
         match postgres_subsystem {
             Some(subsystem) => {
-                let mut postgres_subsystem =
-                    PostgresGraphQLSubsystem::deserialize(subsystem.graphql.unwrap().0)?;
                 let postgres_core_subsystem = PostgresCoreSubsystem::deserialize(subsystem.core.0)?;
-                postgres_subsystem.database = Arc::new(postgres_core_subsystem.database);
-                Ok(postgres_subsystem)
+                Ok(postgres_core_subsystem)
             }
-            None => Ok(PostgresGraphQLSubsystem::default()),
+            None => Ok(PostgresCoreSubsystem::default()),
         }
     }
 
     async fn compute_spec(model: &str) -> DatabaseSpec {
-        let postgres_subsystem = create_postgres_system_from_str(model, "test.exo".to_string())
-            .await
-            .unwrap();
+        let postgres_core_subsystem =
+            create_postgres_system_from_str(model, "test.exo".to_string())
+                .await
+                .unwrap();
 
-        DatabaseSpec::from_database(&postgres_subsystem.database)
+        DatabaseSpec::from_database(&postgres_core_subsystem.database)
     }
 
     async fn assert_changes(
