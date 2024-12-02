@@ -36,15 +36,13 @@
 //! ```
 //!
 
+use http::Uri;
 use thiserror::Error;
 
 use opentelemetry_otlp::{SpanExporter, WithTonicConfig};
-use opentelemetry_sdk::{
-    runtime,
-    trace::{Config, TracerProvider},
-};
+use opentelemetry_sdk::{runtime, trace::TracerProvider, Resource};
 use std::str::FromStr;
-use tonic::transport::ClientTlsConfig;
+use tonic::transport::{ClientTlsConfig, Endpoint};
 use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
 
 const EXO_LOG: &str = "EXO_LOG";
@@ -53,9 +51,9 @@ const EXO_LOG: &str = "EXO_LOG";
 ///
 /// Creates a `tracing_subscriber::fmt` layer by default and adds a OpenTelemetry layer
 /// if any OpenTelemetry environment variables are set, exporting traces with `opentelemetry_otlp`.
-pub fn init() -> Result<(), OtelError> {
+pub async fn init() -> Result<(), OtelError> {
     let telemetry_layer = {
-        let oltp_trace_provider = create_oltp_trace_provider()?;
+        let oltp_trace_provider = create_oltp_trace_provider().await?;
 
         use opentelemetry::trace::TracerProvider as _;
         let oltp_tracer = oltp_trace_provider.map(|provider| provider.tracer("Exograph"));
@@ -78,7 +76,7 @@ pub fn init() -> Result<(), OtelError> {
     Ok(())
 }
 
-fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelError> {
+async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelError> {
     if !std::env::vars().any(|(name, _)| name.starts_with("OTEL_")) {
         return Ok(None);
     }
@@ -95,11 +93,29 @@ fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelError> {
 
             if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
                 // Check if we need TLS
-                if endpoint.as_str().starts_with("https") {
+                if endpoint.as_str().starts_with("https://") {
                     exporter =
                         exporter.with_tls_config(ClientTlsConfig::default().with_native_roots());
+                } else if endpoint.as_str().starts_with("unix://") {
+                    let path = endpoint.as_str()[7..].to_string(); // skip the unix:// prefix
+
+                    // See: https://github.com/hyperium/tonic/blob/master/examples/src/uds/client.rs
+                    let channel = Endpoint::try_from("any.url")? // The url is not used (the connector is used instead)
+                        .connect_with_connector(tower::service_fn(move |_: Uri| {
+                            let path = path.clone();
+                            async move {
+                                // Connect to the unix domain socket
+                                Ok::<_, std::io::Error>(hyper_util::rt::TokioIo::new(
+                                    tokio::net::UnixStream::connect(path).await?,
+                                ))
+                            }
+                        }))
+                        .await?;
+
+                    exporter = exporter.with_channel(channel);
+                } else {
+                    exporter = exporter.with_endpoint(endpoint);
                 }
-                exporter = exporter.with_endpoint(endpoint);
             }
             Ok(exporter.build()?)
         }
@@ -119,7 +135,7 @@ fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelError> {
 
     Ok(Some(
         TracerProvider::builder()
-            .with_config(Config::default())
+            .with_resource(Resource::default())
             .with_batch_exporter(exporter, runtime::Tokio)
             .build(),
     ))
@@ -161,4 +177,10 @@ pub enum OtelError {
 
     #[error("Unsupported protocol {0}")]
     UnsupportedProtocol(String),
+
+    #[error(transparent)]
+    TonicError(#[from] tonic::transport::Error),
+
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
 }

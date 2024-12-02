@@ -33,13 +33,13 @@ exo-sql = { path = "../../libs/exo-sql" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-opentelemetry = "0.28"
-opentelemetry = { version = "0.27", default-features = false, features = [
+opentelemetry = { version = "0.27.1", default-features = false, features = [
   "trace",
 ] }
-opentelemetry_sdk = { version = "0.27", features = [
+opentelemetry_sdk = { version = "0.27.1", features = [
   "rt-tokio",
 ], optional = true }
-opentelemetry-otlp = { version = "0.27", features = [
+opentelemetry-otlp = { version = "0.27.0", features = [
   "reqwest-client",
   "reqwest-rustls",
   "http-proto",
@@ -47,6 +47,10 @@ opentelemetry-otlp = { version = "0.27", features = [
 ], optional = true }
 # Tonic isn't used directly but we need these flags to establish a TLS connection
 tonic = { version = "0.12.3", features = ["tls", "tls-roots"], optional = true }
+
+hyper-util = { version = "0.1.7" }
+tower = { version = "0.5", features = ["util"] }
+
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
