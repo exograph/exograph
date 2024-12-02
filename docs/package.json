@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@docusaurus/core": "3.6.1",
-    "@docusaurus/preset-classic": "3.6.1",
+    "@docusaurus/preset-classic": "3.6.3",
     "@mdx-js/react": "^3.0.1",
     "@svgr/webpack": "^8.1.0",
     "clsx": "^2.1.1",
