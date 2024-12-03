@@ -114,17 +114,18 @@ async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelErro
 
                         let path = endpoint.as_str()["unix://".len()..].to_string(); // skip the unix:// prefix
 
-                        let channel = Endpoint::try_from("any.url")? // The url is not used (the connector is used instead)
-                        .connect_with_connector(tower::service_fn(move |_: Uri| {
-                            let path = path.clone();
-                            async move {
-                                // Connect to the unix domain socket
-                                Ok::<_, std::io::Error>(hyper_util::rt::TokioIo::new(
-                                    tokio::net::UnixStream::connect(path).await?,
-                                ))
-                            }
-                        }))
-                        .await?;
+                        // The url ("any.url") is not used (the connector is used instead)
+                        let channel = Endpoint::try_from("any.url")?.connect_with_connector_lazy(
+                            tower::service_fn(move |_: Uri| {
+                                let path = path.clone();
+                                async move {
+                                    // Connect to the unix domain socket
+                                    Ok::<_, std::io::Error>(hyper_util::rt::TokioIo::new(
+                                        tokio::net::UnixStream::connect(path).await?,
+                                    ))
+                                }
+                            }),
+                        );
 
                         exporter = exporter.with_channel(channel);
                     }
