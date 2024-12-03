@@ -81,6 +81,9 @@ async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelErro
         return Ok(None);
     }
     let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
+    // If a traces-specific endpoint is set, use that instead of the exporter's endpoint
+    let endpoint = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+        .or_else(|_| std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT"));
 
     let headers = parse_otlp_headers_from_env();
     use opentelemetry_otlp::WithExportConfig;
@@ -91,15 +94,20 @@ async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelErro
                 .with_tonic()
                 .with_metadata(metadata_from_headers(headers));
 
-            if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
+            if let Ok(endpoint) = endpoint {
                 // Check if we need TLS
                 if endpoint.as_str().starts_with("https://") {
                     exporter =
                         exporter.with_tls_config(ClientTlsConfig::default().with_native_roots());
                 } else if endpoint.as_str().starts_with("unix://") {
-                    let path = endpoint.as_str()[7..].to_string(); // skip the unix:// prefix
-
+                    // In environments such as Fly.io, the endpoint is a unix domain socket during build time.
+                    // However, the normal connection logic doesn't work with unix domain sockets (it expects
+                    // the "authority" part of the URL to be set, which is not the case here). So we need to
+                    // manually connect to the socket.
                     // See: https://github.com/hyperium/tonic/blob/master/examples/src/uds/client.rs
+
+                    let path = endpoint.as_str()["unix://".len()..].to_string(); // skip the unix:// prefix
+
                     let channel = Endpoint::try_from("any.url")? // The url is not used (the connector is used instead)
                         .connect_with_connector(tower::service_fn(move |_: Uri| {
                             let path = path.clone();
@@ -117,6 +125,7 @@ async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelErro
                     exporter = exporter.with_endpoint(endpoint);
                 }
             }
+
             Ok(exporter.build()?)
         }
         "http/protobuf" => {
@@ -125,9 +134,10 @@ async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelErro
                 .with_http()
                 .with_headers(headers.into_iter().collect());
 
-            if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
+            if let Ok(endpoint) = endpoint {
                 exporter = exporter.with_endpoint(endpoint);
             }
+
             Ok(exporter.build()?)
         }
         p => Err(OtelError::UnsupportedProtocol(p.to_string())),
