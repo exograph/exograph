@@ -100,15 +100,21 @@ async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelErro
                     exporter =
                         exporter.with_tls_config(ClientTlsConfig::default().with_native_roots());
                 } else if endpoint.as_str().starts_with("unix://") {
-                    // In environments such as Fly.io, the endpoint is a unix domain socket during build time.
-                    // However, the normal connection logic doesn't work with unix domain sockets (it expects
-                    // the "authority" part of the URL to be set, which is not the case here). So we need to
-                    // manually connect to the socket.
-                    // See: https://github.com/hyperium/tonic/blob/master/examples/src/uds/client.rs
+                    #[cfg(not(unix))]
+                    return Err(OtelError::UnsupportedProtocol(
+                        "Unix domain sockets are only supported on Linux and MacOS".to_string(),
+                    ));
+                    #[cfg(unix)]
+                    {
+                        // In environments such as Fly.io, the endpoint is a unix domain socket during build time.
+                        // However, the normal connection logic doesn't work with unix domain sockets (it expects
+                        // the "authority" part of the URL to be set, which is not the case here). So we need to
+                        // manually connect to the socket.
+                        // See: https://github.com/hyperium/tonic/blob/master/examples/src/uds/client.rs
 
-                    let path = endpoint.as_str()["unix://".len()..].to_string(); // skip the unix:// prefix
+                        let path = endpoint.as_str()["unix://".len()..].to_string(); // skip the unix:// prefix
 
-                    let channel = Endpoint::try_from("any.url")? // The url is not used (the connector is used instead)
+                        let channel = Endpoint::try_from("any.url")? // The url is not used (the connector is used instead)
                         .connect_with_connector(tower::service_fn(move |_: Uri| {
                             let path = path.clone();
                             async move {
@@ -120,7 +126,8 @@ async fn create_oltp_trace_provider() -> Result<Option<TracerProvider>, OtelErro
                         }))
                         .await?;
 
-                    exporter = exporter.with_channel(channel);
+                        exporter = exporter.with_channel(channel);
+                    }
                 } else {
                     exporter = exporter.with_endpoint(endpoint);
                 }
