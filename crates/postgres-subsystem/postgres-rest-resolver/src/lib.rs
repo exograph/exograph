@@ -1,3 +1,3 @@
-mod subsystem_rest_resolver;
+mod resolver;
 
-pub use subsystem_rest_resolver::PostgresSubsystemRestResolver;
+pub use resolver::PostgresSubsystemRestResolver;
