@@ -147,6 +147,17 @@ impl<T> Named for BaseOperationReturnType<T> {
 pub type OperationReturnType<T> = FieldType<BaseOperationReturnType<T>>;
 
 impl<T> OperationReturnType<T> {
+    pub fn typ_id(&self) -> SerializableSlabIndex<T> {
+        match self {
+            OperationReturnType::Plain(BaseOperationReturnType {
+                associated_type_id, ..
+            }) => *associated_type_id,
+            OperationReturnType::List(underlying) | OperationReturnType::Optional(underlying) => {
+                underlying.typ_id()
+            }
+        }
+    }
+
     pub fn typ<'a>(&'a self, types: &'a SerializableSlab<T>) -> &T {
         match self {
             OperationReturnType::Plain(BaseOperationReturnType {

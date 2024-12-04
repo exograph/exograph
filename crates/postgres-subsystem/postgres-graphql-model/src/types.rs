@@ -9,7 +9,7 @@
 
 use super::relation::PostgresRelation;
 use crate::aggregate::AggregateField;
-use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, PkQuery};
+use crate::query::CollectionQueryParameters;
 use crate::relation::OneToManyRelation;
 use crate::subsystem::PostgresGraphQLSubsystem;
 use crate::vector_distance::VectorDistanceField;
@@ -83,10 +83,8 @@ pub struct EntityType {
     pub fields: Vec<PostgresField<EntityType>>,
     pub agg_fields: Vec<AggregateField>,
     pub vector_distance_fields: Vec<VectorDistanceField>,
+
     pub table_id: SerializableSlabIndex<PhysicalTable>,
-    pub pk_query: SerializableSlabIndex<PkQuery>,
-    pub collection_query: SerializableSlabIndex<CollectionQuery>,
-    pub aggregate_query: SerializableSlabIndex<AggregateQuery>,
     pub access: Access,
 }
 
@@ -322,8 +320,8 @@ impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT>
             PostgresRelation::OneToMany(OneToManyRelation {
                 foreign_field_id, ..
             }) => {
-                let foreign_type = &system.entity_types[foreign_field_id.entity_type_id()];
-                let collection_query = &system.collection_queries[foreign_type.collection_query];
+                let foreign_type_id = foreign_field_id.entity_type_id();
+                let collection_query = system.get_collection_query(foreign_type_id);
 
                 let CollectionQueryParameters {
                     predicate_param,

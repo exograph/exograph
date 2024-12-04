@@ -264,9 +264,9 @@ async fn map_persistent_field<'content>(
                 ..
             } = relation;
 
-            let foreign_type = &subsystem.entity_types[foreign_pk_field_id.entity_type_id()];
+            let foreign_type_id = foreign_pk_field_id.entity_type_id();
 
-            let foreign_table_pk_query = &subsystem.pk_queries[foreign_type.pk_query];
+            let foreign_table_pk_query = subsystem.get_pk_query(foreign_type_id);
 
             let nested_abstract_select = foreign_table_pk_query
                 .resolve_select(field, request_context, subsystem)
@@ -284,19 +284,18 @@ async fn map_persistent_field<'content>(
                 ..
             } = relation;
 
-            let foreign_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
+            let foreign_type_id = foreign_field_id.entity_type_id();
 
             let nested_abstract_select = {
                 // Get an appropriate query based on the cardinality of the relation
                 if cardinality == &RelationCardinality::Unbounded {
-                    let collection_query =
-                        &subsystem.collection_queries[foreign_type.collection_query];
+                    let collection_query = subsystem.get_collection_query(foreign_type_id);
 
                     collection_query
                         .resolve_select(field, request_context, subsystem)
                         .await?
                 } else {
-                    let pk_query = &subsystem.pk_queries[foreign_type.pk_query];
+                    let pk_query = subsystem.get_pk_query(foreign_type_id);
 
                     pk_query
                         .resolve_select(field, request_context, subsystem)
@@ -325,12 +324,12 @@ async fn map_aggregate_field<'content>(
             relation_id,
         } = relation;
         // TODO: Avoid code duplication with map_persistent_field
-        let foreign_type = &subsystem.entity_types[foreign_field_id.entity_type_id()];
+        let foreign_type_id = foreign_field_id.entity_type_id();
 
         let nested_abstract_select = {
             // Aggregate is supported only for unbounded relations (i.e. not supported for one-to-one)
             if cardinality == &RelationCardinality::Unbounded {
-                let aggregate_query = &subsystem.aggregate_queries[foreign_type.aggregate_query];
+                let aggregate_query = subsystem.get_aggregate_query(foreign_type_id);
 
                 aggregate_query
                     .resolve_select(field, request_context, subsystem)
