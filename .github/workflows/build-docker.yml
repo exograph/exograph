@@ -31,6 +31,7 @@ jobs:
         include:
           - image: cli
           - image: server
+          - image: cli-server
           - image: dev
 
     steps:
