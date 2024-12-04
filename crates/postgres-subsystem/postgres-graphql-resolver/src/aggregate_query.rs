@@ -22,10 +22,8 @@ use exo_sql::{
     SelectionElement,
 };
 use futures::StreamExt;
-use postgres_graphql_model::{
-    query::AggregateQuery, relation::PostgresRelation, subsystem::PostgresGraphQLSubsystem,
-    types::EntityType,
-};
+use postgres_core_model::{relation::PostgresRelation, types::EntityType};
+use postgres_graphql_model::{query::AggregateQuery, subsystem::PostgresGraphQLSubsystem};
 
 #[async_trait]
 impl OperationSelectionResolver for AggregateQuery {

@@ -14,7 +14,6 @@ pub mod operation;
 pub mod order;
 pub mod predicate;
 pub mod query;
-pub mod relation;
 pub mod subsystem;
 pub mod types;
 pub mod vector_distance;

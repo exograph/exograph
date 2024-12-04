@@ -18,13 +18,17 @@ use core_plugin_interface::{
 };
 
 use postgres_graphql_model::{
-    aggregate::AggregateType,
     mutation::PostgresMutation,
     order::OrderByParameterType,
     predicate::PredicateParameterType,
     query::{AggregateQuery, CollectionQuery, PkQuery, UniqueQuery},
     subsystem::PostgresGraphQLSubsystem,
-    types::{EntityType, MutationType, PostgresPrimitiveType},
+    types::MutationType,
+};
+
+use postgres_core_model::{
+    aggregate::AggregateType,
+    types::{EntityType, PostgresPrimitiveType},
     vector_distance::VectorDistanceType,
 };
 

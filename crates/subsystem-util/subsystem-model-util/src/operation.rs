@@ -9,9 +9,13 @@
 
 use std::fmt::Debug;
 
-use async_graphql_parser::types::Type;
-use core_model::mapped_arena::SerializableSlabIndex;
-use core_model::type_normalization::{Operation, Parameter};
+use async_graphql_parser::types::{FieldDefinition, Type};
+use core_model::type_normalization::{
+    default_positioned, default_positioned_name, InputValueProvider, Parameter,
+};
+use core_model::{
+    mapped_arena::SerializableSlabIndex, type_normalization::FieldDefinitionProvider,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::types::ModuleOperationReturnType;
@@ -78,5 +82,47 @@ fn return_type(module_return_type: &ModuleOperationReturnType) -> Type {
     match module_return_type {
         ModuleOperationReturnType::Own(return_type) => return_type.into(),
         ModuleOperationReturnType::Foreign(return_type) => return_type.into(),
+    }
+}
+
+pub trait Operation {
+    fn name(&self) -> &String;
+    fn parameters(&self) -> Vec<&dyn Parameter>;
+    fn return_type(&self) -> Type;
+}
+
+impl<S> FieldDefinitionProvider<S> for ModuleQuery {
+    fn field_definition(&self, _system: &S) -> FieldDefinition {
+        let fields = self
+            .parameters()
+            .iter()
+            .map(|parameter| default_positioned(parameter.input_value()))
+            .collect();
+
+        FieldDefinition {
+            description: None,
+            name: default_positioned_name(self.name()),
+            arguments: fields,
+            directives: vec![],
+            ty: default_positioned(self.return_type()),
+        }
+    }
+}
+
+impl<S> FieldDefinitionProvider<S> for ModuleMutation {
+    fn field_definition(&self, _system: &S) -> FieldDefinition {
+        let fields = self
+            .parameters()
+            .iter()
+            .map(|parameter| default_positioned(parameter.input_value()))
+            .collect();
+
+        FieldDefinition {
+            description: None,
+            name: default_positioned_name(self.name()),
+            arguments: fields,
+            directives: vec![],
+            ty: default_positioned(self.return_type()),
+        }
     }
 }

@@ -9,7 +9,7 @@
 
 use indexmap::IndexMap;
 
-use postgres_graphql_model::types::EntityType;
+use postgres_core_model::types::EntityType;
 
 use common::value::Val;
 use core_plugin_interface::core_model::types::OperationReturnType;

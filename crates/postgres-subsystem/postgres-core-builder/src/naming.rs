@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use heck::ToSnakeCase;
-use postgres_graphql_model::types::EntityType;
+use postgres_core_model::types::EntityType;
 
 /// A type with both singular and plural versions of itself.
 pub trait ToPlural {

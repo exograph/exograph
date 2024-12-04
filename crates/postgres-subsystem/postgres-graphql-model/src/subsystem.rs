@@ -16,9 +16,8 @@ use super::{
     query::PkQuery,
 };
 use crate::{
-    aggregate::AggregateType,
     query::{AggregateQuery, CollectionQuery, UniqueQuery},
-    types::{EntityType, MutationType, PostgresPrimitiveType},
+    types::MutationType,
 };
 use core_plugin_interface::{
     core_model::{
@@ -33,6 +32,10 @@ use core_plugin_interface::{
 
 use postgres_core_model::access::{
     DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
+};
+use postgres_core_model::{
+    aggregate::AggregateType,
+    types::{EntityType, PostgresPrimitiveType},
 };
 
 use exo_sql::Database;

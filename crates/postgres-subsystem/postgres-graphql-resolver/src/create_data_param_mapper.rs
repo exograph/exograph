@@ -17,11 +17,10 @@ use exo_sql::{
     ManyToOne, NestedInsertion,
 };
 use futures::future::{join_all, try_join_all};
+use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation};
+use postgres_core_model::types::{base_type, PostgresField, PostgresType};
 use postgres_graphql_model::{
-    mutation::DataParameter,
-    relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
-    subsystem::PostgresGraphQLSubsystem,
-    types::{base_type, MutationType, PostgresField, PostgresType},
+    mutation::DataParameter, subsystem::PostgresGraphQLSubsystem, types::MutationType,
 };
 
 use crate::{

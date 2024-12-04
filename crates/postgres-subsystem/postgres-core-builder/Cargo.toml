@@ -11,7 +11,7 @@ codemap-diagnostic.workspace = true
 codemap.workspace = true
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-postgres-graphql-model = { path = "../postgres-graphql-model" }
+postgres-core-model = { path = "../postgres-core-model" }
 exo-sql = { path = "../../../libs/exo-sql" }
 
 [dev-dependencies]

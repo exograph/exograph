@@ -186,29 +186,3 @@ impl TypeDefinitionIntrospection for TypeDefinition {
         }
     }
 }
-
-pub trait Operation {
-    fn name(&self) -> &String;
-    fn parameters(&self) -> Vec<&dyn Parameter>;
-    fn return_type(&self) -> Type;
-}
-
-// Field definition for the query such as `venue(id: Int!): Venue`, combining such fields will form
-// the Query, Mutation, and Subscription object definition
-impl<T: Operation, S> FieldDefinitionProvider<S> for T {
-    fn field_definition(&self, _system: &S) -> FieldDefinition {
-        let fields = self
-            .parameters()
-            .iter()
-            .map(|parameter| default_positioned(parameter.input_value()))
-            .collect();
-
-        FieldDefinition {
-            description: None,
-            name: default_positioned_name(self.name()),
-            arguments: fields,
-            directives: vec![],
-            ty: default_positioned(self.return_type()),
-        }
-    }
-}

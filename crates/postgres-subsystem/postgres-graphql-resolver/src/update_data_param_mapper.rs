@@ -18,11 +18,12 @@ use exo_sql::{
     NestedAbstractInsertSet, NestedAbstractUpdate, OneToMany, PhysicalColumnPath, Selection,
 };
 use futures::StreamExt;
-use postgres_graphql_model::{
-    mutation::DataParameter,
+use postgres_core_model::{
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation},
-    subsystem::PostgresGraphQLSubsystem,
-    types::{base_type, EntityType, MutationType, PostgresType, TypeIndex},
+    types::{base_type, EntityType, PostgresType, TypeIndex},
+};
+use postgres_graphql_model::{
+    mutation::DataParameter, subsystem::PostgresGraphQLSubsystem, types::MutationType,
 };
 
 use crate::{

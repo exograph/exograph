@@ -29,12 +29,14 @@
 use std::fmt::Debug;
 
 use async_graphql_parser::types::Type;
-use core_plugin_interface::core_model::type_normalization::{Operation, Parameter};
+use core_plugin_interface::core_model::type_normalization::Parameter;
 use core_plugin_interface::core_model::types::OperationReturnType;
 
 use serde::{Deserialize, Serialize};
 
-use crate::types::EntityType;
+use postgres_core_model::types::EntityType;
+
+use crate::types::Operation;
 
 /// An operation such as a query or mutation.
 ///

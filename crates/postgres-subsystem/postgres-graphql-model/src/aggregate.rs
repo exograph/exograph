@@ -11,62 +11,15 @@ use async_graphql_parser::types::{
     BaseType, FieldDefinition, ObjectType, Type, TypeDefinition, TypeKind,
 };
 use async_graphql_value::Name;
-use serde::{Deserialize, Serialize};
+use postgres_core_model::aggregate::{AggregateField, AggregateFieldType, AggregateType};
 
 use crate::query::AggregateQueryParameters;
-use crate::relation::{OneToManyRelation, PostgresRelation};
 use crate::subsystem::PostgresGraphQLSubsystem;
-use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::type_normalization::{
     default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
     TypeDefinitionProvider,
 };
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AggregateType {
-    pub name: String, // Such as IntAgg, ConcertAgg.
-    pub fields: Vec<AggregateField>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AggregateField {
-    pub name: String, // Such as max, sum, etc for scalar types; field names (id, name, etc.) for composite types
-    pub typ: AggregateFieldType,
-    pub relation: Option<PostgresRelation>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum AggregateFieldType {
-    Scalar {
-        type_name: String,              // "Int", "String", etc.
-        kind: ScalarAggregateFieldKind, // Min, Max, Sum, etc.
-    },
-    Composite {
-        type_name: String,
-        type_id: SerializableSlabIndex<AggregateType>,
-    },
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-pub enum ScalarAggregateFieldKind {
-    Avg,
-    Count,
-    Max,
-    Min,
-    Sum,
-}
-
-impl ScalarAggregateFieldKind {
-    pub fn name(&self) -> &str {
-        match self {
-            ScalarAggregateFieldKind::Avg => "avg",
-            ScalarAggregateFieldKind::Count => "count",
-            ScalarAggregateFieldKind::Max => "max",
-            ScalarAggregateFieldKind::Min => "min",
-            ScalarAggregateFieldKind::Sum => "sum",
-        }
-    }
-}
+use postgres_core_model::relation::{OneToManyRelation, PostgresRelation};
 
 impl TypeDefinitionProvider<PostgresGraphQLSubsystem> for AggregateType {
     fn type_definition(&self, system: &PostgresGraphQLSubsystem) -> TypeDefinition {

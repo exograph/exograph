@@ -19,9 +19,9 @@ use core_plugin_interface::{
     core_model_builder::error::ModelBuildingError,
 };
 
-use postgres_graphql_model::{
-    mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
-    types::EntityType,
+use postgres_core_model::types::EntityType;
+use postgres_graphql_model::mutation::{
+    DataParameter, DataParameterType, PostgresMutationParameters,
 };
 
 use crate::mutation_builder::DataParamRole;

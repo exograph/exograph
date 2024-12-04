@@ -12,7 +12,7 @@ use futures::stream::TryStreamExt;
 use postgres_core_model::access::{
     DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression, UpdateAccessExpression,
 };
-use postgres_graphql_model::types::{EntityType, PostgresField};
+use postgres_core_model::types::{EntityType, PostgresField};
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 

@@ -19,8 +19,12 @@ use core_plugin_interface::{
 };
 use postgres_graphql_model::{
     mutation::{DataParameter, DataParameterType, PostgresMutationParameters},
+    types::MutationType,
+};
+
+use postgres_core_model::{
     relation::PostgresRelation,
-    types::{EntityType, MutationType, PostgresField, PostgresFieldType, TypeIndex},
+    types::{EntityType, PostgresField, PostgresFieldType, TypeIndex},
 };
 
 use crate::{mutation_builder::DataParamRole, shallow::Shallow, utils::to_mutation_type};

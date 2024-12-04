@@ -26,16 +26,18 @@ use exo_sql::{
 use exo_sql::{Function, SQLParamContainer};
 use futures::stream::TryStreamExt;
 use futures::StreamExt;
+use postgres_core_model::vector_distance::VectorDistanceField;
+use postgres_core_model::{
+    aggregate::AggregateField,
+    relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
+    types::{EntityType, PostgresField},
+};
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_graphql_model::query::UniqueQuery;
-use postgres_graphql_model::vector_distance::VectorDistanceField;
 use postgres_graphql_model::{
-    aggregate::AggregateField,
     order::OrderByParameter,
     query::{CollectionQuery, CollectionQueryParameters, PkQuery},
-    relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     subsystem::PostgresGraphQLSubsystem,
-    types::{EntityType, PostgresField},
 };
 
 #[async_trait]
