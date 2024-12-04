@@ -7,7 +7,6 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-pub mod access;
 pub mod aggregate;
 pub mod limit_offset;
 pub mod mutation;

@@ -33,12 +33,11 @@ use core_plugin_interface::{
 };
 
 use exo_sql::{ColumnPathLink, Database, PhysicalColumnPath};
-use postgres_graphql_model::{
-    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
-    types::{
-        base_type, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
-        PostgresType,
-    },
+use postgres_core_model::access::{
+    DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
+};
+use postgres_graphql_model::types::{
+    base_type, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, PostgresType,
 };
 
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;

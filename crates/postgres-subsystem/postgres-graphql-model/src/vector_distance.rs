@@ -10,7 +10,9 @@ use core_plugin_interface::core_model::type_normalization::{
 use exo_sql::{ColumnId, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};
 
-use crate::{access::Access, subsystem::PostgresGraphQLSubsystem};
+use crate::subsystem::PostgresGraphQLSubsystem;
+
+use postgres_core_model::access::Access;
 
 /// Field for a vector distance function
 /// Represents:

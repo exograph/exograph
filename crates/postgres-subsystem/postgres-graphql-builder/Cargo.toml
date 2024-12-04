@@ -11,6 +11,7 @@ lazy_static.workspace = true
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-graphql-model = { path = "../postgres-graphql-model" }
+postgres-core-model = { path = "../postgres-core-model" }
 exo-sql = { path = "../../../libs/exo-sql" }
 postgres-core-builder = { path = "../postgres-core-builder" }
 

@@ -20,7 +20,6 @@ use core_plugin_interface::{
 };
 
 use postgres_graphql_model::{
-    access::DatabaseAccessPrimitiveExpression,
     mutation::{PostgresMutation, PostgresMutationParameters},
     relation::PostgresRelation,
     types::{
@@ -28,6 +27,8 @@ use postgres_graphql_model::{
         TypeIndex,
     },
 };
+
+use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
 
 use crate::{access_utils::parent_predicate, shallow::Shallow, utils::to_mutation_type};
 

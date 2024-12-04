@@ -9,7 +9,7 @@
 
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use futures::stream::TryStreamExt;
-use postgres_graphql_model::access::{
+use postgres_core_model::access::{
     DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression, UpdateAccessExpression,
 };
 use postgres_graphql_model::types::{EntityType, PostgresField};

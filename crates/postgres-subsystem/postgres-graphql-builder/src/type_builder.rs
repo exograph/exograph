@@ -32,10 +32,6 @@ use core_plugin_interface::{
 use exo_sql::{ColumnId, VectorDistanceFunction, DEFAULT_VECTOR_SIZE};
 
 use postgres_graphql_model::{
-    access::{
-        Access, DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
-        UpdateAccessExpression,
-    },
     aggregate::{AggregateField, AggregateFieldType},
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{
@@ -43,6 +39,11 @@ use postgres_graphql_model::{
         TypeIndex,
     },
     vector_distance::{VectorDistanceField, VectorDistanceType},
+};
+
+use postgres_core_model::access::{
+    Access, DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
+    UpdateAccessExpression,
 };
 
 use super::naming::ToPostgresQueryName;

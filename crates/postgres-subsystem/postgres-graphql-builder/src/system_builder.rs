@@ -18,7 +18,6 @@ use core_plugin_interface::{
 };
 
 use postgres_graphql_model::{
-    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     aggregate::AggregateType,
     mutation::PostgresMutation,
     order::OrderByParameterType,
@@ -27,6 +26,10 @@ use postgres_graphql_model::{
     subsystem::PostgresGraphQLSubsystem,
     types::{EntityType, MutationType, PostgresPrimitiveType},
     vector_distance::VectorDistanceType,
+};
+
+use postgres_core_model::access::{
+    DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
 };
 
 use exo_sql::Database;

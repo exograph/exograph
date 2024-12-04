@@ -16,7 +16,6 @@ use super::{
     query::PkQuery,
 };
 use crate::{
-    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
     aggregate::AggregateType,
     query::{AggregateQuery, CollectionQuery, UniqueQuery},
     types::{EntityType, MutationType, PostgresPrimitiveType},
@@ -31,6 +30,11 @@ use core_plugin_interface::{
     error::ModelSerializationError,
     system_serializer::SystemSerializer,
 };
+
+use postgres_core_model::access::{
+    DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
+};
+
 use exo_sql::Database;
 use serde::{Deserialize, Serialize};
 

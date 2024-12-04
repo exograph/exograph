@@ -7,9 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::access::Access;
 use super::relation::PostgresRelation;
-use crate::access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression};
 use crate::aggregate::AggregateField;
 use crate::query::{AggregateQuery, CollectionQuery, CollectionQueryParameters, PkQuery};
 use crate::relation::OneToManyRelation;
@@ -30,6 +28,11 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named},
 };
+
+use postgres_core_model::access::{
+    Access, DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
+};
+
 use exo_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
