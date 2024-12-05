@@ -18,8 +18,6 @@ use postgres_core_model::types::{EntityType, PostgresPrimitiveType};
 
 use std::collections::HashMap;
 
-use crate::shallow::Shallow;
-
 use super::system_builder::SystemContextBuilding;
 use postgres_graphql_model::predicate::{
     PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
@@ -28,10 +26,11 @@ use postgres_graphql_model::predicate::{
 use postgres_core_builder::resolved_type::{
     ResolvedCompositeType, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
+use postgres_core_builder::shallow::Shallow;
 
 use lazy_static::lazy_static;
 
-impl Shallow for PredicateParameter {
+impl crate::shallow::Shallow for PredicateParameter {
     fn shallow() -> Self {
         Self {
             name: String::new(),
@@ -43,7 +42,7 @@ impl Shallow for PredicateParameter {
     }
 }
 
-impl Shallow for PredicateParameterTypeWrapper {
+impl crate::shallow::Shallow for PredicateParameterTypeWrapper {
     fn shallow() -> Self {
         Self {
             name: String::new(),
@@ -110,7 +109,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (_, primitive_type) in building.primitive_types.iter() {
+    for (_, primitive_type) in building.core_subsystem.primitive_types.iter() {
         let param_type_name = get_filter_type_name(&primitive_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
@@ -118,7 +117,7 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
         building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 
-    for (_, entity_type) in building.entity_types.iter() {
+    for (_, entity_type) in building.core_subsystem.entity_types.iter() {
         {
             let param_type_name = get_filter_type_name(&entity_type.name);
             let existing_param_id = building.predicate_types.get_id(&param_type_name);
@@ -169,7 +168,11 @@ fn expand_entity_type(
         .map(|field| {
             let param_type_name = get_filter_type_name(field.typ.name());
 
-            let column_path_link = Some(field.relation.column_path_link(&building.database));
+            let column_path_link = Some(
+                field
+                    .relation
+                    .column_path_link(&building.core_subsystem.database),
+            );
 
             let resolved_field = resolved_type
                 .as_composite()

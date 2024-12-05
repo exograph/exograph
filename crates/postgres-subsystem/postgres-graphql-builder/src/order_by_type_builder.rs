@@ -22,7 +22,7 @@ use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveTyp
 
 use postgres_core_model::access::Access;
 
-use crate::shallow::Shallow;
+use postgres_core_builder::shallow::Shallow;
 
 use super::system_builder::SystemContextBuilding;
 
@@ -30,7 +30,7 @@ use postgres_core_builder::resolved_type::{
     ResolvedCompositeType, ResolvedField, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 
-impl Shallow for OrderByParameter {
+impl crate::shallow::Shallow for OrderByParameter {
     fn shallow() -> Self {
         Self {
             name: String::default(),
@@ -42,7 +42,7 @@ impl Shallow for OrderByParameter {
     }
 }
 
-impl Shallow for OrderByParameterTypeWrapper {
+impl crate::shallow::Shallow for OrderByParameterTypeWrapper {
     fn shallow() -> Self {
         Self {
             name: String::default(),
@@ -80,7 +80,7 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
 }
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (_, entity_type) in building.entity_types.iter() {
+    for (_, entity_type) in building.core_subsystem.entity_types.iter() {
         let param_type_name = get_parameter_type_name(&entity_type.name, false);
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
@@ -134,10 +134,10 @@ fn expand_type(
             new_field_param(
                 resolved_field,
                 field,
-                &building.primitive_types,
-                &building.entity_types,
+                &building.core_subsystem.primitive_types,
+                &building.core_subsystem.entity_types,
                 &building.order_by_types,
-                &building.database,
+                &building.core_subsystem.database,
             )
         })
         .collect();

@@ -87,7 +87,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                 );
 
                                 let param_physical_column =
-                                    param_column_id.get_column(&subsystem.database);
+                                    param_column_id.get_column(&subsystem.core_subsystem.database);
 
                                 let op_value =
                                     literal_column_path(arg, &param_physical_column.typ)?;
@@ -329,7 +329,8 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                 let field_access = match parameter.access {
                                     Some(ref access) => {
                                         check_retrieve_access(
-                                            &subsystem.database_access_expressions[access.read],
+                                            &subsystem.core_subsystem.database_access_expressions
+                                                [access.read],
                                             subsystem,
                                             request_context,
                                         )
@@ -405,7 +406,7 @@ fn operands<'a>(
         .as_ref()
         .expect("Could not find column path link while forming operands")
         .self_column_id();
-    let op_physical_column = op_physical_column_id.get_column(&subsystem.database);
+    let op_physical_column = op_physical_column_id.get_column(&subsystem.core_subsystem.database);
 
     let op_value = literal_column_path(op_value, op_value_type.unwrap_or(&op_physical_column.typ))?;
 

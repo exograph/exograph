@@ -16,7 +16,6 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
-use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use postgres_graphql_builder::PostgresGraphQLSubsystemBuilder;
 use postgres_rest_builder::PostgresRestSubsystemBuilder;
 
@@ -265,19 +264,13 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
             function_definitions: &base_system.function_definitions,
         };
 
-        let database = postgres_core_builder::database_builder::build(&resolved_env)?;
-
-        let core_subsystem = PostgresCoreSubsystem { database };
-        let serialized_core_subsystem = core_subsystem
-            .serialize()
-            .map_err(ModelBuildingError::Serialize)?;
-
-        let database = Arc::new(core_subsystem.database);
+        let core_subsystem_building =
+            Arc::new(postgres_core_builder::system_builder::build(&resolved_env)?);
 
         let graphql_subsystem = match self.graphql_builder.as_ref() {
             Some(builder) => {
                 builder
-                    .build(&resolved_env, base_system, database.clone())
+                    .build(&resolved_env, core_subsystem_building.clone())
                     .await
             }
             None => Ok(None),
@@ -286,11 +279,20 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
         let rest_subsystem = match self.rest_builder.as_ref() {
             Some(builder) => {
                 builder
-                    .build(&resolved_env, base_system, database.clone())
+                    .build(&resolved_env, core_subsystem_building.clone())
                     .await
             }
             None => Ok(None),
         }?;
+
+        let serialized_core_subsystem = {
+            let core_subsystem = Arc::into_inner(core_subsystem_building)
+                .unwrap()
+                .into_core_subsystem(base_system);
+            core_subsystem
+                .serialize()
+                .map_err(ModelBuildingError::Serialize)?
+        };
 
         if graphql_subsystem.is_none() && rest_subsystem.is_none() {
             Ok(None)
@@ -341,7 +343,7 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
-        let get_table = |n| get_table_from_arena(n, &system.database);
+        let get_table = |n| get_table_from_arena(n, &system.core_subsystem.database);
 
         let concerts = get_table("concerts");
         let venues = get_table("venues");
@@ -390,8 +392,11 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
-        println!("Database tables {:?}", system.database.tables().len());
-        let get_table = |n| get_table_from_arena(n, &system.database);
+        println!(
+            "Database tables {:?}",
+            system.core_subsystem.database.tables().len()
+        );
+        let get_table = |n| get_table_from_arena(n, &system.core_subsystem.database);
 
         let users = get_table("users");
         let memberships = get_table("memberships");
@@ -540,7 +545,7 @@ mod tests {
         "#;
 
         let system = create_system(src).await;
-        let get_table = |n| get_table_from_arena(n, &system.database);
+        let get_table = |n| get_table_from_arena(n, &system.core_subsystem.database);
 
         let logs = get_table("logs");
         let logs_id = get_column_from_table("id", logs);

@@ -30,7 +30,9 @@ use postgres_core_model::{
     types::{base_type, EntityType, PostgresField, PostgresFieldType, PostgresType, TypeIndex},
 };
 
-use crate::{access_utils::parent_predicate, shallow::Shallow, utils::to_mutation_type};
+use crate::utils::to_mutation_type;
+use postgres_core_builder::access_utils::parent_predicate;
+use postgres_core_builder::shallow::Shallow;
 
 use postgres_core_builder::resolved_type::{
     ResolvedCompositeType, ResolvedField, ResolvedFieldTypeHelper, ResolvedType,
@@ -260,7 +262,7 @@ pub trait DataParamBuilder<D> {
                     //
                     // We should revisit this after we support "readonly" fields (see
                     // https://github.com/exograph/exograph/issues/926)
-                    let column = column_id.get_column(&building.database);
+                    let column = column_id.get_column(&building.core_subsystem.database);
 
                     if column.is_auto_increment {
                         None
@@ -395,8 +397,8 @@ pub trait DataParamBuilder<D> {
         for field in entity_type.fields.iter() {
             let field_type = base_type(
                 &field.typ,
-                building.primitive_types.values_ref(),
-                building.entity_types.values_ref(),
+                building.core_subsystem.primitive_types.values_ref(),
+                building.core_subsystem.entity_types.values_ref(),
             );
             if let (PostgresType::Composite(field_type), PostgresRelation::OneToMany { .. }) =
                 (&field_type, &field.relation)
@@ -429,8 +431,11 @@ pub trait DataParamBuilder<D> {
             building,
         );
 
-        let field_entity_access = building.database_access_expressions.borrow()
-            [entity_type.access.update.database]
+        let field_entity_access = building
+            .core_subsystem
+            .database_access_expressions
+            .lock()
+            .unwrap()[entity_type.access.update.database]
             .clone();
         let nested_predicate: Option<
             SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
@@ -439,8 +444,10 @@ pub trait DataParamBuilder<D> {
                 let predicate = parent_predicate(field_entity_access, container_type)?;
                 Ok::<_, ModelBuildingError>(
                     building
+                        .core_subsystem
                         .database_access_expressions
-                        .borrow_mut()
+                        .lock()
+                        .unwrap()
                         .insert(predicate),
                 )
             })
@@ -451,7 +458,11 @@ pub trait DataParamBuilder<D> {
             MutationType {
                 name: existing_type_name,
                 fields: input_type_fields,
-                entity_id: building.entity_types.get_id(&entity_type.name).unwrap(),
+                entity_id: building
+                    .core_subsystem
+                    .entity_types
+                    .get_id(&entity_type.name)
+                    .unwrap(),
                 input_access: None,
                 database_access: nested_predicate,
             },

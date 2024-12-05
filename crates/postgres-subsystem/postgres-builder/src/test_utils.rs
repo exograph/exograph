@@ -49,7 +49,7 @@ fn deserialize_postgres_subsystem(
             let mut postgres_subsystem =
                 PostgresGraphQLSubsystem::deserialize(subsystem.graphql.unwrap().0)?;
             let postgres_core_subsystem = PostgresCoreSubsystem::deserialize(subsystem.core.0)?;
-            postgres_subsystem.database = Arc::new(postgres_core_subsystem.database);
+            postgres_subsystem.core_subsystem = Arc::new(postgres_core_subsystem);
             Ok(postgres_subsystem)
         }
         None => Ok(PostgresGraphQLSubsystem::default()),

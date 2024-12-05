@@ -34,7 +34,7 @@ impl OperationSelectionResolver for AggregateQuery {
         subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
         let access_predicate = check_access(
-            self.return_type.typ(&subsystem.entity_types),
+            self.return_type.typ(&subsystem.core_subsystem.entity_types),
             &field.subfields,
             &SQLOperationKind::Retrieve,
             subsystem,
@@ -51,7 +51,7 @@ impl OperationSelectionResolver for AggregateQuery {
         )
         .await?;
         let predicate = AbstractPredicate::and(query_predicate, access_predicate);
-        let return_postgres_type = &self.return_type.typ(&subsystem.entity_types);
+        let return_postgres_type = &self.return_type.typ(&subsystem.core_subsystem.entity_types);
 
         let root_physical_table_id = return_postgres_type.table_id;
 
@@ -98,7 +98,7 @@ async fn map_field<'content>(
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.type_name().to_string())
     } else {
-        let entity_type = &return_type.typ(&subsystem.entity_types);
+        let entity_type = &return_type.typ(&subsystem.core_subsystem.entity_types);
 
         let model_field = entity_type.field_by_name(&field.name).unwrap();
         let model_field_type = &model_field.typ.innermost().type_name;

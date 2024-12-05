@@ -73,7 +73,7 @@ pub(crate) fn return_type_info<'a>(
     subsystem: &'a PostgresGraphQLSubsystem,
 ) -> (TableId, &'a PkQuery, &'a CollectionQuery) {
     let typ_id = return_type.typ_id();
-    let typ = &subsystem.entity_types[typ_id];
+    let typ = &subsystem.core_subsystem.entity_types[typ_id];
 
     (
         typ.table_id,

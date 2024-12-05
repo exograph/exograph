@@ -27,7 +27,9 @@ use postgres_core_model::{
     types::{EntityType, PostgresField, PostgresFieldType, TypeIndex},
 };
 
-use crate::{mutation_builder::DataParamRole, shallow::Shallow, utils::to_mutation_type};
+use crate::{mutation_builder::DataParamRole, utils::to_mutation_type};
+
+use postgres_core_builder::shallow::Shallow;
 
 use super::{
     builder::Builder,
@@ -64,14 +66,22 @@ impl Builder for UpdateMutationBuilder {
     ) -> Result<(), ModelBuildingError> {
         let update_access_is_false = |entity_type: &EntityType| -> bool {
             matches!(
-                building.input_access_expressions.borrow()[entity_type.access.update.input],
+                building
+                    .core_subsystem
+                    .input_access_expressions
+                    .lock()
+                    .unwrap()[entity_type.access.update.input],
                 AccessPredicateExpression::BooleanLiteral(false)
             ) || matches!(
-                building.database_access_expressions.borrow()[entity_type.access.update.database],
+                building
+                    .core_subsystem
+                    .database_access_expressions
+                    .lock()
+                    .unwrap()[entity_type.access.update.database],
                 AccessPredicateExpression::BooleanLiteral(false)
             )
         };
-        for (_, entity_type) in building.entity_types.iter() {
+        for (_, entity_type) in building.core_subsystem.entity_types.iter() {
             if !update_access_is_false(entity_type) {
                 for (existing_id, expanded_type) in
                     self.expanded_data_type(entity_type, building, Some(entity_type), None, false)?
@@ -81,7 +91,7 @@ impl Builder for UpdateMutationBuilder {
             }
         }
 
-        for (entity_type_id, entity_type) in building.entity_types.iter() {
+        for (entity_type_id, entity_type) in building.core_subsystem.entity_types.iter() {
             if !update_access_is_false(entity_type) {
                 for mutation in self.build_mutations(entity_type_id, entity_type, building) {
                     building.mutations.add(&mutation.name.to_owned(), mutation);
@@ -107,7 +117,7 @@ impl MutationBuilder for UpdateMutationBuilder {
             predicate_param: query_builder::pk_predicate_param(
                 entity_type,
                 &building.predicate_types,
-                &building.database,
+                &building.core_subsystem.database,
             ),
         }
     }
@@ -259,7 +269,11 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                 MutationType {
                     name: existing_type_name.clone(),
                     fields,
-                    entity_id: building.entity_types.get_id(&field_type.name).unwrap(),
+                    entity_id: building
+                        .core_subsystem
+                        .entity_types
+                        .get_id(&field_type.name)
+                        .unwrap(),
                     input_access: None,
                     database_access: None,
                 },

@@ -10,14 +10,10 @@
 use std::sync::Arc;
 
 use core_plugin_interface::{
-    core_model_builder::{
-        builder::system_builder::BaseModelSystem, error::ModelBuildingError,
-        plugin::GraphQLSubsystemBuild,
-    },
+    core_model_builder::{error::ModelBuildingError, plugin::GraphQLSubsystemBuild},
     serializable_system::SerializableGraphQLBytes,
     system_serializer::SystemSerializer,
 };
-use exo_sql::Database;
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
 
 pub struct PostgresGraphQLSubsystemBuilder {}
@@ -26,10 +22,9 @@ impl PostgresGraphQLSubsystemBuilder {
     pub async fn build<'a>(
         &self,
         resolved_env: &ResolvedTypeEnv<'a>,
-        base_system: &BaseModelSystem,
-        database: Arc<Database>,
+        core_subsystem_building: Arc<postgres_core_builder::SystemContextBuilding>,
     ) -> Result<Option<GraphQLSubsystemBuild>, ModelBuildingError> {
-        let subsystem = crate::system_builder::build(resolved_env, base_system, database)?;
+        let subsystem = crate::system_builder::build(resolved_env, core_subsystem_building)?;
         let Some(subsystem) = subsystem else {
             return Ok(None);
         };

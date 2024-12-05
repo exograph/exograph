@@ -28,10 +28,10 @@ use postgres_core_model::{
     types::{EntityType, PostgresField, PostgresPrimitiveType},
 };
 
-use crate::{
-    aggregate_type_builder::aggregate_type_name, predicate_builder::get_unique_filter_type_name,
-    shallow::Shallow,
-};
+use crate::predicate_builder::get_unique_filter_type_name;
+
+use crate::shallow::Shallow;
+use postgres_core_builder::aggregate_type_builder::aggregate_type_name;
 
 use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
 
@@ -66,16 +66,16 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (_, entity_type) in building.entity_types.iter() {
+    for (_, entity_type) in building.core_subsystem.entity_types.iter() {
         expand_pk_query(
             entity_type,
             &building.predicate_types,
             &mut building.pk_queries,
-            &building.database,
+            &building.core_subsystem.database,
         );
         expand_collection_query(
             entity_type,
-            &building.primitive_types,
+            &building.core_subsystem.primitive_types,
             &building.predicate_types,
             &building.order_by_types,
             &mut building.collection_queries,
@@ -90,7 +90,7 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
             &building.predicate_types,
             &mut building.unique_queries,
             resolved_env,
-            &building.database,
+            &building.core_subsystem.database,
         );
     }
 }
@@ -349,7 +349,7 @@ pub fn collection_predicate_param(
     }
 }
 
-impl Shallow for LimitParameter {
+impl crate::shallow::Shallow for LimitParameter {
     fn shallow() -> Self {
         LimitParameter {
             name: String::default(),
@@ -358,8 +358,10 @@ impl Shallow for LimitParameter {
     }
 }
 
-impl Shallow for LimitParameterType {
+impl crate::shallow::Shallow for LimitParameterType {
     fn shallow() -> Self {
+        use postgres_core_builder::shallow::Shallow;
+
         LimitParameterType {
             type_name: String::default(),
             type_id: SerializableSlabIndex::shallow(),
@@ -367,7 +369,7 @@ impl Shallow for LimitParameterType {
     }
 }
 
-impl Shallow for OffsetParameter {
+impl crate::shallow::Shallow for OffsetParameter {
     fn shallow() -> Self {
         OffsetParameter {
             name: String::default(),
@@ -376,8 +378,10 @@ impl Shallow for OffsetParameter {
     }
 }
 
-impl Shallow for OffsetParameterType {
+impl crate::shallow::Shallow for OffsetParameterType {
     fn shallow() -> Self {
+        use postgres_core_builder::shallow::Shallow;
+
         OffsetParameterType {
             type_name: String::default(),
             type_id: SerializableSlabIndex::shallow(),

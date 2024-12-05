@@ -9,6 +9,7 @@ heck.workspace = true
 serde.workspace = true
 codemap-diagnostic.workspace = true
 codemap.workspace = true
+lazy_static.workspace = true
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 postgres-core-model = { path = "../postgres-core-model" }

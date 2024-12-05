@@ -15,7 +15,7 @@ use core_plugin_interface::{
 };
 use postgres_graphql_model::types::MutationType;
 
-use crate::shallow::Shallow;
+use postgres_core_builder::shallow::Shallow;
 
 use super::system_builder::SystemContextBuilding;
 

@@ -15,8 +15,8 @@ use core_plugin_interface::{
     error::ModelSerializationError, interface::SubsystemLoadingError,
     system_serializer::SystemSerializer,
 };
-use exo_sql::Database;
 use matchit::Router;
+use postgres_core_model::subsystem::PostgresCoreSubsystem;
 use serde::{Deserialize, Serialize};
 
 use crate::method::Method;
@@ -26,13 +26,13 @@ use crate::operation::PostgresOperation;
 pub struct PostgresRestSubsystem {
     pub operations: Vec<(Method, String, PostgresOperation)>,
     #[serde(skip)]
-    pub database: Arc<Database>,
+    pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
 
 #[derive(Debug)]
 pub struct PostgresRestSubsystemWithRouter {
     pub routers: HashMap<http::Method, Router<PostgresOperation>>,
-    pub database: Arc<Database>,
+    pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
 
 impl PostgresRestSubsystemWithRouter {
@@ -47,7 +47,7 @@ impl PostgresRestSubsystemWithRouter {
         }
         Ok(Self {
             routers,
-            database: subsystem.database,
+            core_subsystem: subsystem.core_subsystem.clone(),
         })
     }
 }

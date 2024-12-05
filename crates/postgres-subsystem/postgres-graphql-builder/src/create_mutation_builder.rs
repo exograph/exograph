@@ -59,12 +59,16 @@ impl Builder for CreateMutationBuilder {
     ) -> Result<(), ModelBuildingError> {
         let creation_access_is_false = |entity_type: &EntityType| -> bool {
             matches!(
-                building.input_access_expressions.borrow()[entity_type.access.creation],
+                building
+                    .core_subsystem
+                    .input_access_expressions
+                    .lock()
+                    .unwrap()[entity_type.access.creation],
                 AccessPredicateExpression::BooleanLiteral(false)
             )
         };
 
-        for (_, entity_type) in building.entity_types.iter() {
+        for (_, entity_type) in building.core_subsystem.entity_types.iter() {
             if !creation_access_is_false(entity_type) {
                 for (existing_id, expanded_type) in
                     self.expanded_data_type(entity_type, building, Some(entity_type), None, false)?
@@ -74,9 +78,10 @@ impl Builder for CreateMutationBuilder {
             }
         }
 
-        for (_, entity_type) in building.entity_types.iter() {
+        for (_, entity_type) in building.core_subsystem.entity_types.iter() {
             if !creation_access_is_false(entity_type) {
                 let entity_type_id = building
+                    .core_subsystem
                     .entity_types
                     .get_id(entity_type.name.as_str())
                     .unwrap();

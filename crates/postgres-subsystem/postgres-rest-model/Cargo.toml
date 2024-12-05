@@ -12,6 +12,7 @@ matchit = "0.8.5"
 
 common = { path = "../../common" }
 exo-sql = { path = "../../../libs/exo-sql" }
+postgres-core-model = { path = "../postgres-core-model" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 
 [dev-dependencies]

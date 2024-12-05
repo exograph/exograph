@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 heck.workspace = true
-codemap-diagnostic.workspace = true
 lazy_static.workspace = true
 
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
