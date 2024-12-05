@@ -5,8 +5,6 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-exo-sql = { path = "../../../libs/exo-sql" }
-
 postgres-rest-model = { path = "../postgres-rest-model" }
 postgres-core-builder = { path = "../postgres-core-builder" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }

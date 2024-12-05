@@ -9,14 +9,11 @@
 
 use std::sync::Arc;
 
-use exo_sql::Database;
-
 use core_plugin_interface::core_model_builder::plugin::RestSubsystemBuild;
 
 use core_plugin_interface::serializable_system::SerializableRestBytes;
 use core_plugin_interface::{
-    core_model_builder::{builder::system_builder::BaseModelSystem, error::ModelBuildingError},
-    system_serializer::SystemSerializer,
+    core_model_builder::error::ModelBuildingError, system_serializer::SystemSerializer,
 };
 
 use postgres_core_builder::resolved_type::ResolvedType;
@@ -31,19 +28,19 @@ impl PostgresRestSubsystemBuilder {
     pub async fn build<'a>(
         &self,
         resolved_env: &ResolvedTypeEnv<'a>,
-        _base_system: &BaseModelSystem,
-        database: Arc<Database>,
+        core_subsystem_building: Arc<postgres_core_builder::SystemContextBuilding>,
     ) -> Result<Option<RestSubsystemBuild>, ModelBuildingError> {
         let mut operations = vec![];
 
         for typ in resolved_env.resolved_types.iter() {
             if let ResolvedType::Composite(composite) = typ.1 {
-                let table_id = database.get_table_id(&composite.table_name).ok_or(
-                    ModelBuildingError::Generic(format!(
+                let table_id = core_subsystem_building
+                    .database
+                    .get_table_id(&composite.table_name)
+                    .ok_or(ModelBuildingError::Generic(format!(
                         "Table not found: {}",
                         composite.table_name.fully_qualified_name()
-                    )),
-                )?;
+                    )))?;
 
                 operations.push((
                     Method::Get,
@@ -62,7 +59,7 @@ impl PostgresRestSubsystemBuilder {
 
         let subsystem = PostgresRestSubsystem {
             operations,
-            database,
+            core_subsystem: Default::default(),
         };
 
         let serialized_subsystem = subsystem

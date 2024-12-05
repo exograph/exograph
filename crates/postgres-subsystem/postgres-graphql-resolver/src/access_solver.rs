@@ -145,7 +145,9 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     SolvedPrimitiveExpression::Common(Some(value)),
                     SolvedPrimitiveExpression::Column(column),
                 ) => {
-                    let physical_column = column.leaf_column().get_column(&self.database);
+                    let physical_column = column
+                        .leaf_column()
+                        .get_column(&self.core_subsystem.database);
                     Ok(Some(column_predicate(
                         cast::literal_column_path(&value, &physical_column.typ)
                             .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
@@ -157,7 +159,9 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     SolvedPrimitiveExpression::Column(column),
                     SolvedPrimitiveExpression::Common(Some(value)),
                 ) => {
-                    let physical_column = column.leaf_column().get_column(&self.database);
+                    let physical_column = column
+                        .leaf_column()
+                        .get_column(&self.core_subsystem.database);
 
                     Ok(Some(column_predicate(
                         to_column_path(&column),
@@ -490,12 +494,14 @@ mod tests {
         .unwrap();
 
         let table_id = postgres_subsystem
+            .core_subsystem
             .database
             .get_table_id(&PhysicalTableName::new("articles", None))
             .unwrap();
 
         let get_column_id = |column_name: &str| {
             postgres_subsystem
+                .core_subsystem
                 .database
                 .get_column_id(table_id, column_name)
                 .unwrap()

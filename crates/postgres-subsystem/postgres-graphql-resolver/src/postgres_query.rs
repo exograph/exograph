@@ -147,7 +147,7 @@ pub(super) async fn compute_select<'content>(
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect, PostgresExecutionError> {
-    let return_entity_type = return_type.typ(&subsystem.entity_types);
+    let return_entity_type = return_type.typ(&subsystem.core_subsystem.entity_types);
 
     let access_predicate = check_access(
         return_entity_type,

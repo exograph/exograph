@@ -6803,6 +6803,7 @@ dependencies = [
  "exo-sql",
  "heck 0.5.0",
  "insta",
+ "lazy_static",
  "multiplatform_test",
  "postgres-builder",
  "postgres-core-model",
@@ -6849,7 +6850,6 @@ dependencies = [
 name = "postgres-graphql-builder"
 version = "0.10.4"
 dependencies = [
- "codemap-diagnostic",
  "core-plugin-interface",
  "exo-sql",
  "heck 0.5.0",
@@ -6947,7 +6947,6 @@ name = "postgres-rest-builder"
 version = "0.10.4"
 dependencies = [
  "core-plugin-interface",
- "exo-sql",
  "postgres-core-builder",
  "postgres-rest-model",
 ]
@@ -6962,6 +6961,7 @@ dependencies = [
  "exo-sql",
  "http 1.1.0",
  "matchit 0.8.5",
+ "postgres-core-model",
  "serde",
 ]
 

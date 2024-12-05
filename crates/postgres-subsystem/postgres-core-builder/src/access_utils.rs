@@ -41,7 +41,7 @@ use postgres_core_model::{
     types::PostgresField,
 };
 
-use postgres_core_builder::resolved_type::ResolvedTypeEnv;
+use crate::resolved_type::ResolvedTypeEnv;
 
 enum DatabasePathSelection<'a> {
     Column(

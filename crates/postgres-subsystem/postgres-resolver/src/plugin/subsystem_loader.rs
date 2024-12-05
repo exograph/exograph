@@ -57,12 +57,12 @@ impl SubsystemLoader for PostgresSubsystemLoader {
         } = subsystem;
 
         let core_subsystem = PostgresCoreSubsystem::deserialize_reader(core.0.as_slice())?;
-        let database = Arc::new(core_subsystem.database);
+        let core_subsystem = Arc::new(core_subsystem);
 
         let graphql_system = graphql
             .map(|graphql| {
                 let mut subsystem = PostgresGraphQLSubsystem::deserialize(graphql.0)?;
-                subsystem.database = database.clone();
+                subsystem.core_subsystem = core_subsystem.clone();
                 Ok::<_, SubsystemLoadingError>(Box::new(PostgresSubsystemResolver {
                     id: self.id(),
                     subsystem,
@@ -76,7 +76,7 @@ impl SubsystemLoader for PostgresSubsystemLoader {
             .map(|rest| {
                 let subsystem = PostgresRestSubsystem::deserialize(rest.0)?;
                 let mut subsystem = PostgresRestSubsystemWithRouter::new(subsystem)?;
-                subsystem.database = database.clone();
+                subsystem.core_subsystem = core_subsystem.clone();
 
                 let api_path_prefix = format!("{}/", get_rest_http_path(env));
 

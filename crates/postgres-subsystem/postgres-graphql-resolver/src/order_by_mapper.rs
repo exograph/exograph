@@ -101,7 +101,7 @@ async fn order_by_pair<'a>(
                     let field_access = match parameter.access {
                         Some(ref access) => {
                             check_retrieve_access(
-                                &subsystem.database_access_expressions[access.read],
+                                &subsystem.core_subsystem.database_access_expressions[access.read],
                                 subsystem,
                                 request_context,
                             )

@@ -39,7 +39,7 @@ pub(crate) async fn check_access<'a>(
         match kind {
             SQLOperationKind::Create => {
                 let access_predicate = check_create_access(
-                    &subsystem.input_access_expressions[return_type.access.creation],
+                    &subsystem.core_subsystem.input_access_expressions[return_type.access.creation],
                     subsystem,
                     request_context,
                     input_context,
@@ -70,7 +70,7 @@ pub(crate) async fn check_access<'a>(
             }
             SQLOperationKind::Retrieve => {
                 let entity_access = check_retrieve_access(
-                    &subsystem.database_access_expressions[return_type.access.read],
+                    &subsystem.core_subsystem.database_access_expressions[return_type.access.read],
                     subsystem,
                     request_context,
                 )
@@ -126,7 +126,8 @@ pub(crate) async fn check_access<'a>(
             }
             SQLOperationKind::Delete => {
                 check_delete_access(
-                    &subsystem.database_access_expressions[return_type.access.delete],
+                    &subsystem.core_subsystem.database_access_expressions
+                        [return_type.access.delete],
                     subsystem,
                     request_context,
                 )
@@ -179,7 +180,7 @@ async fn check_update_access<'a>(
         .solve(
             request_context,
             input_context,
-            &subsystem.input_access_expressions[expr.input],
+            &subsystem.core_subsystem.input_access_expressions[expr.input],
         )
         .await?
         .map(|p| p.0)
@@ -196,7 +197,7 @@ async fn check_update_access<'a>(
         .solve(
             request_context,
             None,
-            &subsystem.database_access_expressions[expr.database],
+            &subsystem.core_subsystem.database_access_expressions[expr.database],
         )
         .await?
         .map(|p| p.0)
@@ -230,7 +231,8 @@ async fn check_selection_access<'a>(
                 let field_access_predicate = match postgres_field {
                     Some(postgres_field) => {
                         check_retrieve_access(
-                            &subsystem.database_access_expressions[postgres_field.access.read],
+                            &subsystem.core_subsystem.database_access_expressions
+                                [postgres_field.access.read],
                             subsystem,
                             request_context,
                         )
@@ -240,7 +242,7 @@ async fn check_selection_access<'a>(
                         match return_type.vector_distance_field_by_name(&selection_field.name) {
                             Some(vector_distance_field) => {
                                 check_retrieve_access(
-                                    &subsystem.database_access_expressions
+                                    &subsystem.core_subsystem.database_access_expressions
                                         [vector_distance_field.access.read],
                                     subsystem,
                                     request_context,
@@ -288,7 +290,7 @@ async fn check_input_access<'a>(
                         let field_access_predicate = match postgres_field {
                             Some(postgres_field) => {
                                 check_create_access(
-                                    &subsystem.input_access_expressions
+                                    &subsystem.core_subsystem.input_access_expressions
                                         [field_access(postgres_field)],
                                     subsystem,
                                     request_context,

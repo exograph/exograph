@@ -47,7 +47,7 @@ impl<'a> SQLMapper<'a, AbstractInsert> for InsertOperation<'a> {
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractInsert, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
-        let table_id = subsystem.entity_types[data_type.entity_id].table_id;
+        let table_id = subsystem.core_subsystem.entity_types[data_type.entity_id].table_id;
 
         let rows = map_argument(data_type, argument, subsystem, request_context).await?;
 
@@ -93,7 +93,7 @@ async fn map_single<'a>(
     request_context: &'a RequestContext<'a>,
 ) -> Result<InsertionRow, PostgresExecutionError> {
     check_access(
-        &subsystem.entity_types[data_type.entity_id],
+        &subsystem.core_subsystem.entity_types[data_type.entity_id],
         &[],
         &SQLOperationKind::Create,
         subsystem,
@@ -127,7 +127,8 @@ async fn map_single<'a>(
                 }
 
                 PostgresRelation::ManyToOne(ManyToOneRelation { relation_id, .. }) => {
-                    let ManyToOne { self_column_id, .. } = relation_id.deref(&subsystem.database);
+                    let ManyToOne { self_column_id, .. } =
+                        relation_id.deref(&subsystem.core_subsystem.database);
                     map_self_column(self_column_id, field, field_arg, subsystem).await
                 }
 
@@ -158,14 +159,15 @@ async fn map_self_column<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresGraphQLSubsystem,
 ) -> Result<InsertionElement, PostgresExecutionError> {
-    let key_column = key_column_id.get_column(&subsystem.database);
+    let key_column = key_column_id.get_column(&subsystem.core_subsystem.database);
     let argument_value = match &field.relation {
         PostgresRelation::ManyToOne(ManyToOneRelation {
             foreign_pk_field_id,
             ..
         }) => {
-            let foreign_type_pk_field_name =
-                &foreign_pk_field_id.resolve(&subsystem.entity_types).name;
+            let foreign_type_pk_field_name = &foreign_pk_field_id
+                .resolve(&subsystem.core_subsystem.entity_types)
+                .name;
             match super::util::get_argument_field(argument, foreign_type_pk_field_name) {
                 Some(foreign_type_pk_arg) => foreign_type_pk_arg,
                 None => {
@@ -202,7 +204,7 @@ async fn map_foreign<'a>(
 ) -> Result<InsertionElement, PostgresExecutionError> {
     let field_type = base_type(
         &field.typ,
-        &subsystem.primitive_types,
+        &subsystem.core_subsystem.primitive_types,
         &subsystem.mutation_types,
     );
 

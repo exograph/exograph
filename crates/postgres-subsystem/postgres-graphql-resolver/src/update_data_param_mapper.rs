@@ -86,7 +86,7 @@ fn compute_update_columns<'a>(
         .flat_map(|field| match &field.relation {
             PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
                 get_argument_field(argument, &field.name).map(|argument_value| {
-                    let column = column_id.get_column(&subsystem.database);
+                    let column = column_id.get_column(&subsystem.core_subsystem.database);
                     let value_column = cast::literal_column(argument_value, column);
                     (*column_id, value_column.unwrap())
                 })
@@ -96,11 +96,13 @@ fn compute_update_columns<'a>(
                 relation_id,
                 ..
             }) => {
-                let ManyToOne { self_column_id, .. } = relation_id.deref(&subsystem.database);
+                let ManyToOne { self_column_id, .. } =
+                    relation_id.deref(&subsystem.core_subsystem.database);
 
-                let self_column = self_column_id.get_column(&subsystem.database);
-                let foreign_type_pk_field_name =
-                    &foreign_pk_field_id.resolve(&subsystem.entity_types).name;
+                let self_column = self_column_id.get_column(&subsystem.core_subsystem.database);
+                let foreign_type_pk_field_name = &foreign_pk_field_id
+                    .resolve(&subsystem.core_subsystem.entity_types)
+                    .name;
 
                 match get_argument_field(argument, &field.name) {
                     Some(Val::Null) => Some((self_column_id, Column::Null)), // `{..., foreign_field: null}` means set the column to null
@@ -148,7 +150,7 @@ async fn compute_nested_ops<'a>(
     for field in arg_type.fields.iter() {
         if let PostgresRelation::OneToMany(OneToManyRelation { relation_id, .. }) = &field.relation
         {
-            let nested_relation = &relation_id.deref(&subsystem.database);
+            let nested_relation = &relation_id.deref(&subsystem.core_subsystem.database);
 
             let arg_type = match field.typ.innermost().type_id {
                 TypeIndex::Primitive(_) => {
@@ -253,7 +255,7 @@ async fn compute_nested_update_object_arg<'a>(
     assert!(matches!(argument, Val::Object(..)));
 
     let access_predicate = check_access(
-        &subsystem.entity_types[field_entity_type.entity_id],
+        &subsystem.core_subsystem.entity_types[field_entity_type.entity_id],
         &[],
         &SQLOperationKind::Update,
         subsystem,
@@ -262,11 +264,11 @@ async fn compute_nested_update_object_arg<'a>(
     )
     .await?;
 
-    let table_id = subsystem.entity_types[field_entity_type.entity_id].table_id;
+    let table_id = subsystem.core_subsystem.entity_types[field_entity_type.entity_id].table_id;
 
     let nested = compute_update_columns(field_entity_type, argument, subsystem);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| {
-        let column = elem.0.get_column(&subsystem.database);
+        let column = elem.0.get_column(&subsystem.core_subsystem.database);
         column.is_pk
     });
 
@@ -328,7 +330,7 @@ async fn compute_nested_inserts<'a>(
         subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
     ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
-        let table_id = subsystem.entity_types[field_entity_type.entity_id].table_id;
+        let table_id = subsystem.core_subsystem.entity_types[field_entity_type.entity_id].table_id;
 
         let rows = super::create_data_param_mapper::map_argument(
             field_entity_type,
@@ -395,7 +397,7 @@ async fn compute_nested_inserts<'a>(
             .solve(
                 request_context,
                 None,
-                &subsystem.database_access_expressions[access_expr_index],
+                &subsystem.core_subsystem.database_access_expressions[access_expr_index],
             )
             .await?
             .map(|expr| expr.0)
@@ -464,12 +466,12 @@ async fn compute_nested_delete_object_arg<'a>(
 
     let nested = compute_update_columns(field_mutation_type, argument, subsystem);
     let (pk_columns, _nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| {
-        let column = elem.0.get_column(&subsystem.database);
+        let column = elem.0.get_column(&subsystem.core_subsystem.database);
         column.is_pk
     });
 
     let access_predicate = check_access(
-        &subsystem.entity_types[field_mutation_type.entity_id],
+        &subsystem.core_subsystem.entity_types[field_mutation_type.entity_id],
         &[],
         &SQLOperationKind::Delete,
         subsystem,
@@ -500,7 +502,7 @@ async fn compute_nested_delete_object_arg<'a>(
 
     let predicate = AbstractPredicate::and(arg_predicate, access_predicate);
 
-    let table_id = subsystem.entity_types[field_mutation_type.entity_id].table_id;
+    let table_id = subsystem.core_subsystem.entity_types[field_mutation_type.entity_id].table_id;
 
     Ok(NestedAbstractDelete {
         nesting_relation: *nesting_relation,
@@ -534,7 +536,7 @@ fn extract_argument<'a>(
             .find(|f| f.name == arg_name)
             .unwrap()
             .typ,
-        &subsystem.primitive_types,
+        &subsystem.core_subsystem.primitive_types,
         &subsystem.mutation_types,
     ) {
         PostgresType::Primitive(_) => panic!("{arg_name} argument type must be a composite type"),

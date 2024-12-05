@@ -47,9 +47,12 @@ impl Builder for DeleteMutationBuilder {
         building: &mut SystemContextBuilding,
     ) -> Result<(), ModelBuildingError> {
         // Since there are no special input types for deletion, no expansion is needed
-        for (entity_type_id, entity_type) in building.entity_types.iter() {
-            if let AccessPredicateExpression::BooleanLiteral(false) =
-                building.database_access_expressions.borrow()[entity_type.access.delete]
+        for (entity_type_id, entity_type) in building.core_subsystem.entity_types.iter() {
+            if let AccessPredicateExpression::BooleanLiteral(false) = building
+                .core_subsystem
+                .database_access_expressions
+                .lock()
+                .unwrap()[entity_type.access.delete]
             {
                 continue;
             }
@@ -74,7 +77,7 @@ impl MutationBuilder for DeleteMutationBuilder {
         PostgresMutationParameters::Delete(query_builder::pk_predicate_param(
             entity_type,
             &building.predicate_types,
-            &building.database,
+            &building.core_subsystem.database,
         ))
     }
 

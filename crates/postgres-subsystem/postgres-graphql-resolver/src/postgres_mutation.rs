@@ -134,7 +134,7 @@ async fn delete_operation<'content>(
     let (table_id, _, _) = return_type_info(return_type, subsystem);
 
     let access_predicate = check_access(
-        return_type.typ(&subsystem.entity_types),
+        return_type.typ(&subsystem.core_subsystem.entity_types),
         &field.subfields,
         &SQLOperationKind::Delete,
         subsystem,
@@ -170,7 +170,7 @@ async fn update_operation<'content>(
 ) -> Result<AbstractUpdate, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
     let access_predicate = check_access(
-        return_type.typ(&subsystem.entity_types),
+        return_type.typ(&subsystem.core_subsystem.entity_types),
         &field.subfields,
         &SQLOperationKind::Update,
         subsystem,

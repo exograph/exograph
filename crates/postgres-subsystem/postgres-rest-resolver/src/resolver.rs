@@ -51,7 +51,11 @@ impl SubsystemRestResolver for PostgresSubsystemRestResolver {
 
             let mut result = self
                 .executor
-                .execute(&operation, &mut tx, self.subsystem.database.as_ref())
+                .execute(
+                    &operation,
+                    &mut tx,
+                    &self.subsystem.core_subsystem.as_ref().database,
+                )
                 .await
                 .map_err(PostgresExecutionError::Postgres)?;
 

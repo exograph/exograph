@@ -41,7 +41,7 @@ impl Builder for ReferenceInputTypeBuilder {
         &self,
         building: &mut SystemContextBuilding,
     ) -> Result<(), ModelBuildingError> {
-        for (_, entity_type) in building.entity_types.iter() {
+        for (_, entity_type) in building.core_subsystem.entity_types.iter() {
             for (existing_id, expanded_type) in expanded_reference_types(entity_type, building) {
                 building.mutation_types[existing_id] = expanded_type;
             }
@@ -81,7 +81,11 @@ fn expanded_reference_types(
         MutationType {
             name: existing_type_name,
             fields: reference_type_fields,
-            entity_id: building.entity_types.get_id(&entity_type.name).unwrap(),
+            entity_id: building
+                .core_subsystem
+                .entity_types
+                .get_id(&entity_type.name)
+                .unwrap(),
             input_access: None,
             database_access: None,
         },

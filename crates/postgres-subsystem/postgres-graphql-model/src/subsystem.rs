@@ -21,7 +21,6 @@ use crate::{
 };
 use core_plugin_interface::{
     core_model::{
-        access::AccessPredicateExpression,
         context_type::{ContextContainer, ContextType},
         mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
         type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
@@ -30,25 +29,13 @@ use core_plugin_interface::{
     system_serializer::SystemSerializer,
 };
 
-use postgres_core_model::access::{
-    DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
-};
-use postgres_core_model::{
-    aggregate::AggregateType,
-    types::{EntityType, PostgresPrimitiveType},
-};
+use postgres_core_model::subsystem::PostgresCoreSubsystem;
+use postgres_core_model::types::EntityType;
 
-use exo_sql::Database;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresGraphQLSubsystem {
-    pub contexts: MappedArena<ContextType>,
-    pub primitive_types: SerializableSlab<PostgresPrimitiveType>,
-    pub entity_types: SerializableSlab<EntityType>,
-
-    pub aggregate_types: SerializableSlab<AggregateType>,
-
     // query related
     pub order_by_types: SerializableSlab<OrderByParameterType>,
     pub predicate_types: SerializableSlab<PredicateParameterType>,
@@ -68,13 +55,8 @@ pub struct PostgresGraphQLSubsystem {
     pub mutation_types: SerializableSlab<MutationType>, // create, update, delete input types such as `PersonUpdateInput`
     pub mutations: MappedArena<PostgresMutation>,
 
-    pub input_access_expressions:
-        SerializableSlab<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
-    pub database_access_expressions:
-        SerializableSlab<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
-
     #[serde(skip)]
-    pub database: Arc<Database>,
+    pub core_subsystem: Arc<PostgresCoreSubsystem>,
 }
 
 impl PostgresGraphQLSubsystem {
@@ -116,15 +98,18 @@ impl PostgresGraphQLSubsystem {
     pub fn schema_types(&self) -> Vec<TypeDefinition> {
         let mut all_type_definitions = vec![];
 
-        self.primitive_types
+        self.core_subsystem
+            .primitive_types
             .iter()
             .for_each(|typ| all_type_definitions.push(typ.1.type_definition(self)));
 
-        self.entity_types
+        self.core_subsystem
+            .entity_types
             .iter()
             .for_each(|typ| all_type_definitions.push(typ.1.type_definition(self)));
 
-        self.aggregate_types
+        self.core_subsystem
+            .aggregate_types
             .iter()
             .for_each(|typ| all_type_definitions.push(typ.1.type_definition(self)));
 
@@ -168,10 +153,6 @@ impl PostgresGraphQLSubsystem {
 impl Default for PostgresGraphQLSubsystem {
     fn default() -> Self {
         Self {
-            contexts: MappedArena::default(),
-            primitive_types: SerializableSlab::new(),
-            entity_types: SerializableSlab::new(),
-            aggregate_types: SerializableSlab::new(),
             order_by_types: SerializableSlab::new(),
             predicate_types: SerializableSlab::new(),
             pk_queries: MappedArena::default(),
@@ -185,10 +166,7 @@ impl Default for PostgresGraphQLSubsystem {
             collection_queries_map: HashMap::new(),
             aggregate_queries_map: HashMap::new(),
 
-            input_access_expressions: SerializableSlab::new(),
-            database_access_expressions: SerializableSlab::new(),
-
-            database: Arc::new(Database::default()),
+            core_subsystem: Arc::new(PostgresCoreSubsystem::default()),
         }
     }
 }
@@ -209,6 +187,6 @@ impl SystemSerializer for PostgresGraphQLSubsystem {
 
 impl ContextContainer for PostgresGraphQLSubsystem {
     fn contexts(&self) -> &MappedArena<ContextType> {
-        &self.contexts
+        &self.core_subsystem.contexts
     }
 }

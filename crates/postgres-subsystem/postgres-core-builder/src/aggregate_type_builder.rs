@@ -16,12 +16,12 @@ use postgres_core_model::aggregate::{
     AggregateField, AggregateFieldType, AggregateType, ScalarAggregateFieldKind,
 };
 
-use postgres_core_builder::resolved_type::ResolvedType;
-use postgres_core_builder::resolved_type::ResolvedTypeEnv;
+use crate::resolved_type::ResolvedType;
+use crate::resolved_type::ResolvedTypeEnv;
 
-use super::system_builder::SystemContextBuilding;
+use crate::system_builder::SystemContextBuilding;
 
-pub(super) fn aggregate_type_name(type_name: &str) -> String {
+pub fn aggregate_type_name(type_name: &str) -> String {
     format!("{type_name}Agg")
 }
 
