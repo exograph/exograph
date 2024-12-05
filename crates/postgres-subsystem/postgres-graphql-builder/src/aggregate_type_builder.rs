@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use core_plugin_interface::core_model::types::Named;
 use core_plugin_interface::core_model_builder::error::ModelBuildingError;
 use lazy_static::lazy_static;
-use postgres_graphql_model::aggregate::{
+use postgres_core_model::aggregate::{
     AggregateField, AggregateFieldType, AggregateType, ScalarAggregateFieldKind,
 };
 

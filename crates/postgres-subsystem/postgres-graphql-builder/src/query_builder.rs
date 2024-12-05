@@ -21,6 +21,9 @@ use postgres_graphql_model::{
         AggregateQuery, AggregateQueryParameters, CollectionQuery, CollectionQueryParameters,
         PkQuery, PkQueryParameters, UniqueQuery, UniqueQueryParameters,
     },
+};
+
+use postgres_core_model::{
     relation::PostgresRelation,
     types::{EntityType, PostgresField, PostgresPrimitiveType},
 };

@@ -13,9 +13,11 @@ use core_plugin_interface::{
     core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
     core_model_builder::error::ModelBuildingError,
 };
-use postgres_graphql_model::{
+use postgres_graphql_model::types::MutationType;
+
+use postgres_core_model::{
     relation::PostgresRelation,
-    types::{EntityType, MutationType, PostgresField},
+    types::{EntityType, PostgresField},
 };
 
 use crate::utils::to_mutation_type;

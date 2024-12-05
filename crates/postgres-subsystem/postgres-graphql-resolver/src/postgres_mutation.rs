@@ -28,11 +28,11 @@ use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
     AbstractUpdate, Predicate,
 };
+use postgres_core_model::types::EntityType;
 use postgres_graphql_model::{
     mutation::{DataParameter, PostgresMutation, PostgresMutationParameters},
     predicate::PredicateParameter,
     subsystem::PostgresGraphQLSubsystem,
-    types::EntityType,
 };
 
 #[async_trait]

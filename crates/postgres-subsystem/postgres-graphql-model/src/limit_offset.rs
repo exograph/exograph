@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{subsystem::PostgresGraphQLSubsystem, types::PostgresPrimitiveType};
+use crate::subsystem::PostgresGraphQLSubsystem;
 use async_graphql_parser::types::{Type, TypeDefinition, TypeKind};
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
@@ -15,6 +15,8 @@ use core_plugin_interface::core_model::{
     types::{FieldType, Named, TypeValidation},
 };
 use serde::{Deserialize, Serialize};
+
+use postgres_core_model::types::PostgresPrimitiveType;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LimitParameter {

@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::{access::Access, subsystem::PostgresGraphQLSubsystem};
+use crate::subsystem::PostgresGraphQLSubsystem;
 
 use async_graphql_parser::{
     types::{
@@ -26,6 +26,8 @@ use core_plugin_interface::core_model::{
     },
     types::{FieldType, Named, TypeValidation},
 };
+
+use postgres_core_model::access::Access;
 
 use exo_sql::{ColumnPathLink, VectorDistanceFunction};
 use serde::{Deserialize, Serialize};

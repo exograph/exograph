@@ -31,7 +31,7 @@ use core_plugin_interface::{
 
 use exo_sql::{ColumnId, VectorDistanceFunction, DEFAULT_VECTOR_SIZE};
 
-use postgres_graphql_model::{
+use postgres_core_model::{
     access::{
         Access, DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
         UpdateAccessExpression,
@@ -119,9 +119,6 @@ fn create_shallow_type(
                 agg_fields: vec![],
                 vector_distance_fields: vec![],
                 table_id: SerializableSlabIndex::shallow(),
-                pk_query: SerializableSlabIndex::shallow(),
-                collection_query: SerializableSlabIndex::shallow(),
-                aggregate_query: SerializableSlabIndex::shallow(),
                 access: restrictive_access(),
             };
 
@@ -165,9 +162,14 @@ fn expand_type_no_fields(
         .database
         .get_table_id(&resolved_type.table_name)
         .unwrap();
-    existing_type.pk_query = pk_query;
-    existing_type.collection_query = collection_query;
-    existing_type.aggregate_query = aggregate_query;
+
+    building.pk_queries_map.insert(existing_type_id, pk_query);
+    building
+        .collection_queries_map
+        .insert(existing_type_id, collection_query);
+    building
+        .aggregate_queries_map
+        .insert(existing_type_id, aggregate_query);
 }
 
 /// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can

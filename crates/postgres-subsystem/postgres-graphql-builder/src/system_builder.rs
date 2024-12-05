@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 use core_plugin_interface::{
     core_model::{
@@ -18,15 +18,22 @@ use core_plugin_interface::{
 };
 
 use postgres_graphql_model::{
-    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
-    aggregate::AggregateType,
     mutation::PostgresMutation,
     order::OrderByParameterType,
     predicate::PredicateParameterType,
     query::{AggregateQuery, CollectionQuery, PkQuery, UniqueQuery},
     subsystem::PostgresGraphQLSubsystem,
-    types::{EntityType, MutationType, PostgresPrimitiveType},
+    types::MutationType,
+};
+
+use postgres_core_model::{
+    aggregate::AggregateType,
+    types::{EntityType, PostgresPrimitiveType},
     vector_distance::VectorDistanceType,
+};
+
+use postgres_core_model::access::{
+    DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
 };
 
 use exo_sql::Database;
@@ -67,6 +74,10 @@ pub fn build(
             database: building.database,
             mutation_types: building.mutation_types.values(),
             mutations: building.mutations,
+
+            pk_queries_map: building.pk_queries_map,
+            collection_queries_map: building.collection_queries_map,
+            aggregate_queries_map: building.aggregate_queries_map,
 
             input_access_expressions: building.input_access_expressions.into_inner().elems,
             database_access_expressions: building.database_access_expressions.into_inner().elems,
@@ -138,6 +149,12 @@ pub struct SystemContextBuilding {
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
     pub unique_queries: MappedArena<UniqueQuery>,
+
+    pub pk_queries_map: HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<PkQuery>>,
+    pub collection_queries_map:
+        HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<CollectionQuery>>,
+    pub aggregate_queries_map:
+        HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<AggregateQuery>>,
 
     pub mutation_types: MappedArena<MutationType>,
     pub mutations: MappedArena<PostgresMutation>,

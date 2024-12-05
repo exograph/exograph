@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{sync::Arc, vec};
+use std::{collections::HashMap, sync::Arc, vec};
 
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 
@@ -16,21 +16,28 @@ use super::{
     query::PkQuery,
 };
 use crate::{
-    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
-    aggregate::AggregateType,
     query::{AggregateQuery, CollectionQuery, UniqueQuery},
-    types::{EntityType, MutationType, PostgresPrimitiveType},
+    types::MutationType,
 };
 use core_plugin_interface::{
     core_model::{
         access::AccessPredicateExpression,
         context_type::{ContextContainer, ContextType},
-        mapped_arena::{MappedArena, SerializableSlab},
+        mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
         type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
     },
     error::ModelSerializationError,
     system_serializer::SystemSerializer,
 };
+
+use postgres_core_model::access::{
+    DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
+};
+use postgres_core_model::{
+    aggregate::AggregateType,
+    types::{EntityType, PostgresPrimitiveType},
+};
+
 use exo_sql::Database;
 use serde::{Deserialize, Serialize};
 
@@ -50,6 +57,12 @@ pub struct PostgresGraphQLSubsystem {
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
     pub unique_queries: MappedArena<UniqueQuery>,
+
+    pub pk_queries_map: HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<PkQuery>>,
+    pub collection_queries_map:
+        HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<CollectionQuery>>,
+    pub aggregate_queries_map:
+        HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<AggregateQuery>>,
 
     // mutation related
     pub mutation_types: SerializableSlab<MutationType>, // create, update, delete input types such as `PersonUpdateInput`
@@ -129,6 +142,27 @@ impl PostgresGraphQLSubsystem {
 
         all_type_definitions
     }
+
+    pub fn get_pk_query(&self, entity_type_id: SerializableSlabIndex<EntityType>) -> &PkQuery {
+        let pk_query_index = self.pk_queries_map[&entity_type_id];
+        &self.pk_queries[pk_query_index]
+    }
+
+    pub fn get_collection_query(
+        &self,
+        entity_type_id: SerializableSlabIndex<EntityType>,
+    ) -> &CollectionQuery {
+        let collection_query_index = self.collection_queries_map[&entity_type_id];
+        &self.collection_queries[collection_query_index]
+    }
+
+    pub fn get_aggregate_query(
+        &self,
+        entity_type_id: SerializableSlabIndex<EntityType>,
+    ) -> &AggregateQuery {
+        let aggregate_query_index = self.aggregate_queries_map[&entity_type_id];
+        &self.aggregate_queries[aggregate_query_index]
+    }
 }
 
 impl Default for PostgresGraphQLSubsystem {
@@ -146,6 +180,10 @@ impl Default for PostgresGraphQLSubsystem {
             unique_queries: MappedArena::default(),
             mutation_types: SerializableSlab::new(),
             mutations: MappedArena::default(),
+
+            pk_queries_map: HashMap::new(),
+            collection_queries_map: HashMap::new(),
+            aggregate_queries_map: HashMap::new(),
 
             input_access_expressions: SerializableSlab::new(),
             database_access_expressions: SerializableSlab::new(),

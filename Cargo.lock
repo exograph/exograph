@@ -6805,7 +6805,7 @@ dependencies = [
  "insta",
  "multiplatform_test",
  "postgres-builder",
- "postgres-graphql-model",
+ "postgres-core-model",
  "serde",
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
@@ -6855,6 +6855,7 @@ dependencies = [
  "heck 0.5.0",
  "lazy_static",
  "postgres-core-builder",
+ "postgres-core-model",
  "postgres-graphql-model",
 ]
 
@@ -6867,6 +6868,7 @@ dependencies = [
  "bincode",
  "core-plugin-interface",
  "exo-sql",
+ "postgres-core-model",
  "serde",
  "wasm-bindgen-test",
 ]

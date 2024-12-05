@@ -20,13 +20,14 @@ use core_plugin_interface::{
 };
 
 use postgres_graphql_model::{
-    access::DatabaseAccessPrimitiveExpression,
     mutation::{PostgresMutation, PostgresMutationParameters},
+    types::MutationType,
+};
+
+use postgres_core_model::{
+    access::DatabaseAccessPrimitiveExpression,
     relation::PostgresRelation,
-    types::{
-        base_type, EntityType, MutationType, PostgresField, PostgresFieldType, PostgresType,
-        TypeIndex,
-    },
+    types::{base_type, EntityType, PostgresField, PostgresFieldType, PostgresType, TypeIndex},
 };
 
 use crate::{access_utils::parent_predicate, shallow::Shallow, utils::to_mutation_type};

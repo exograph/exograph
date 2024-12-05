@@ -14,11 +14,13 @@ use core_plugin_interface::core_model::{
 
 use exo_sql::{ColumnPathLink, Database};
 use postgres_graphql_model::{
-    access::Access,
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},
-    types::{EntityType, PostgresField, PostgresPrimitiveType, PostgresType},
 };
+
+use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveType, PostgresType};
+
+use postgres_core_model::access::Access;
 
 use crate::shallow::Shallow;
 

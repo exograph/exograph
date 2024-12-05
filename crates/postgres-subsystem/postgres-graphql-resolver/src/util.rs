@@ -9,7 +9,7 @@
 
 use indexmap::IndexMap;
 
-use postgres_graphql_model::types::EntityType;
+use postgres_core_model::types::EntityType;
 
 use common::value::Val;
 use core_plugin_interface::core_model::types::OperationReturnType;
@@ -72,11 +72,12 @@ pub(crate) fn return_type_info<'a>(
     return_type: &'a OperationReturnType<EntityType>,
     subsystem: &'a PostgresGraphQLSubsystem,
 ) -> (TableId, &'a PkQuery, &'a CollectionQuery) {
-    let typ = return_type.typ(&subsystem.entity_types);
+    let typ_id = return_type.typ_id();
+    let typ = &subsystem.entity_types[typ_id];
 
     (
         typ.table_id,
-        &subsystem.pk_queries[typ.pk_query],
-        &subsystem.collection_queries[typ.collection_query],
+        subsystem.get_pk_query(typ_id),
+        subsystem.get_collection_query(typ_id),
     )
 }
