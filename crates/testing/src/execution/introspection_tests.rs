@@ -143,6 +143,7 @@ async fn create_introspection_request() -> Result<MemoryRequestPayload> {
 
     let request_head = MemoryRequestHead::new(
         HashMap::new(),
+        HashMap::new(),
         http::Method::POST,
         "/graphql".to_string(),
         Value::default(),

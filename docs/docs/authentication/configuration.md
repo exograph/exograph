@@ -4,9 +4,9 @@ sidebar_position: 20
 
 # Configuration
 
-With JWT-based authentication, the token issuer signs JWT claims, and receivers (an Exograph server, for example) check its validity. Exograph supports two authentication methods out of the box: symmetric key and OpenID Connect.
+With JWT-based authentication, the token issuer signs JWT claims, and receivers (an Exograph server, for example) check its validity. Exograph supports two authentication methods out of the box: symmetric key and OpenID Connect. On the Exograph model side, both methods work identically with the `@jwt` annotation, so nothing changes in the application code.
 
-With either form, the clients pass the `Authorization` header with the JWT token to the GraphQL endpoint with each request. On the Exograph model side, both methods work identically with the `@jwt` annotation, so nothing changes in the application code.
+With the default configuration, the clients pass the `Authorization` header with the JWT token to the GraphQL endpoint with each request. However, you can change the header name using the `EXO_JWT_SOURCE_HEADER` environment variable. If you prefer to pass the token in a cookie, you can set the `EXO_JWT_SOURCE_COOKIE` environment variable. It is an error to set both `EXO_JWT_SOURCE_HEADER` and `EXO_JWT_SOURCE_COOKIE` environment variables.
 
 :::note
 While Exograph has dedicated support for JWT authentication, it is possible to implement other forms of authentication using the `@query` annotation. For example, you could extract any header value, such as `X-API-Token`, decode it, and use it in access control rules. See [this blog](https://exograph.dev/blog/retrograde-mercury) for an esoteric, yet interesting, example.

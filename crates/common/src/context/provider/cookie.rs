@@ -31,6 +31,26 @@ impl CookieExtractor {
         }
     }
 
+    pub fn extract_cookies_strings(
+        request_head: &dyn RequestHead,
+    ) -> Result<HashMap<String, String>, ContextExtractionError> {
+        let cookie_headers = request_head.get_headers("cookie");
+
+        let cookie_strings = cookie_headers
+            .into_iter()
+            .map(|header| header.split(';').collect());
+
+        let cookies = cookie_strings
+            .map(|cookie_string: String| {
+                Cookie::parse(cookie_string)
+                    .map(|cookie| (cookie.name().to_owned(), cookie.value().to_owned()))
+                    .map_err(|_| ContextExtractionError::Malformed)
+            })
+            .collect::<Result<Vec<(String, String)>, ContextExtractionError>>()?;
+
+        Ok(cookies.into_iter().collect())
+    }
+
     pub fn extract_cookies(
         request_head: &dyn RequestHead,
     ) -> Result<HashMap<String, Value>, ContextExtractionError> {

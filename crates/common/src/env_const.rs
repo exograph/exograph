@@ -9,6 +9,8 @@ pub const EXO_CORS_DOMAINS: &str = "EXO_CORS_DOMAINS";
 
 pub const EXO_JWT_SECRET: &str = "EXO_JWT_SECRET";
 pub const EXO_OIDC_URL: &str = "EXO_OIDC_URL";
+pub const EXO_JWT_SOURCE_HEADER: &str = "EXO_JWT_SOURCE_HEADER";
+pub const EXO_JWT_SOURCE_COOKIE: &str = "EXO_JWT_SOURCE_COOKIE";
 
 pub const EXO_POSTGRES_URL: &str = "EXO_POSTGRES_URL";
 pub const DATABASE_URL: &str = "DATABASE_URL";

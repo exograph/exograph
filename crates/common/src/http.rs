@@ -158,6 +158,7 @@ pub struct MemoryRequestHead {
 
 impl MemoryRequestHead {
     pub fn new(
+        headers: HashMap<String, Vec<String>>,
         cookies: HashMap<String, String>,
         method: http::Method,
         path: String,
@@ -165,7 +166,10 @@ impl MemoryRequestHead {
         ip: Option<String>,
     ) -> Self {
         Self {
-            headers: HashMap::new(),
+            headers: headers
+                .into_iter()
+                .map(|(k, v)| (k.to_ascii_lowercase(), v))
+                .collect(),
             cookies,
             method,
             path,
@@ -184,17 +188,16 @@ impl MemoryRequestHead {
 
 impl RequestHead for MemoryRequestHead {
     fn get_headers(&self, key: &str) -> Vec<String> {
-        if key.to_ascii_lowercase() == "cookie" {
+        let key = key.to_ascii_lowercase();
+
+        if key == "cookie" {
             return self
                 .cookies
                 .iter()
                 .map(|(k, v)| format!("{k}={v}"))
                 .collect();
         } else {
-            self.headers
-                .get(&key.to_ascii_lowercase())
-                .unwrap_or(&vec![])
-                .clone()
+            self.headers.get(&key).unwrap_or(&vec![]).clone()
         }
     }
 
