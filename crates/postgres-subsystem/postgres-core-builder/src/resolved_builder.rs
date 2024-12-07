@@ -731,6 +731,14 @@ fn compute_column_info(
         AstFieldType::Plain(_, _, _, _, _) => {
             match field_base_type.to_typ(types).deref(types) {
                 Type::Composite(field_type) => {
+                    if field_type.annotations.contains("json") {
+                        return Ok(ColumnInfo {
+                            name: compute_column_name(&field.name),
+                            self_column: true,
+                            unique_constraints,
+                            indices,
+                        });
+                    }
                     let matching_field =
                         get_matching_field(field, enclosing_type, &field_type, types);
                     let matching_field = match matching_field {

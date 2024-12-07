@@ -30,6 +30,7 @@ use exo_sql::{
 };
 
 use heck::ToSnakeCase;
+use postgres_core_model::types::EntityRepresentation;
 
 struct DatabaseBuilding {
     database: Database,
@@ -43,7 +44,7 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
     // Ensure that all types have a primary key
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            if c.pk_field().is_none() {
+            if c.representation == EntityRepresentation::Normal && c.pk_field().is_none() {
                 let diagnostic = Diagnostic {
                     level: Level::Error,
                     message: format!(
@@ -152,10 +153,23 @@ fn expand_type_relations(
     resolved_env: &ResolvedTypeEnv,
     building: &mut DatabaseBuilding,
 ) {
+    if resolved_type.representation == EntityRepresentation::Json {
+        return;
+    }
+
     let table_name = &resolved_type.table_name;
     let table_id = building.database.get_table_id(table_name).unwrap();
 
     resolved_type.fields.iter().for_each(|field| {
+        let field_type = resolved_env
+            .get_by_key(&field.typ.innermost().type_name)
+            .unwrap();
+        if let ResolvedType::Composite(ct) = field_type {
+            if ct.representation == EntityRepresentation::Json {
+                return;
+            }
+        }
+
         if field.self_column {
             let self_column_id = building
                 .database

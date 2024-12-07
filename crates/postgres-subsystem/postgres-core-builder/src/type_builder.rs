@@ -15,6 +15,7 @@ use crate::resolved_type::{
     ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
+use postgres_core_model::types::EntityRepresentation;
 
 use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
 
@@ -644,60 +645,69 @@ fn create_relation(
                         PostgresRelation::Scalar { column_id }
                     }
                     ResolvedType::Composite(foreign_field_type) => {
-                        // A field's type is "Plain" or "Optional" and the field type is composite,
-                        // but we can't be sure if this is a ManyToOne or OneToMany unless we examine the other side's type.
-                        let foreign_type_field_typ = &foreign_resolved_type
-                            .as_composite()
-                            .field_by_column_name(&field.column_name)
-                            .unwrap()
-                            .typ;
+                        if foreign_field_type.representation == EntityRepresentation::Json {
+                            PostgresRelation::Scalar {
+                                column_id: building
+                                    .database
+                                    .get_column_id(*self_table_id, &field.column_name)
+                                    .unwrap(),
+                            }
+                        } else {
+                            // A field's type is "Plain" or "Optional" and the field type is composite,
+                            // but we can't be sure if this is a ManyToOne or OneToMany unless we examine the other side's type.
+                            let foreign_type_field_typ = &foreign_resolved_type
+                                .as_composite()
+                                .field_by_column_name(&field.column_name)
+                                .unwrap()
+                                .typ;
 
-                        match (&field.typ, foreign_type_field_typ) {
-                            (FieldType::Optional(_), FieldType::Plain(_)) => {
-                                if expand_foreign_relations {
-                                    compute_many_to_one(
-                                        field,
-                                        foreign_field_type,
-                                        RelationCardinality::Optional,
-                                        building,
-                                    )
-                                } else {
-                                    placeholder_relation()
-                                }
-                            }
-                            (FieldType::Plain(_), FieldType::Optional(_)) => {
-                                if expand_foreign_relations {
-                                    compute_one_to_many_relation(
-                                        field,
-                                        self_type,
-                                        foreign_field_type,
-                                        RelationCardinality::Optional,
-                                        building,
-                                    )
-                                } else {
-                                    placeholder_relation()
-                                }
-                            }
-                            (field_typ, foreign_type_field_typ) => {
-                                match (field_base_typ, foreign_type_field_typ.base_type()) {
-                                    (FieldType::Plain(_), FieldType::List(_)) => {
-                                        if expand_foreign_relations {
-                                            compute_one_to_many_relation(
-                                                field,
-                                                self_type,
-                                                foreign_field_type,
-                                                RelationCardinality::Unbounded,
-                                                building,
-                                            )
-                                        } else {
-                                            placeholder_relation()
-                                        }
+                            match (&field.typ, foreign_type_field_typ) {
+                                (FieldType::Optional(_), FieldType::Plain(_)) => {
+                                    if expand_foreign_relations {
+                                        compute_many_to_one(
+                                            field,
+                                            foreign_field_type,
+                                            RelationCardinality::Optional,
+                                            building,
+                                        )
+                                    } else {
+                                        placeholder_relation()
                                     }
-                                    _ => {
-                                        panic!(
+                                }
+                                (FieldType::Plain(_), FieldType::Optional(_)) => {
+                                    if expand_foreign_relations {
+                                        compute_one_to_many_relation(
+                                            field,
+                                            self_type,
+                                            foreign_field_type,
+                                            RelationCardinality::Optional,
+                                            building,
+                                        )
+                                    } else {
+                                        placeholder_relation()
+                                    }
+                                }
+                                (field_typ, foreign_type_field_typ) => {
+                                    match (field_base_typ, foreign_type_field_typ.base_type()) {
+                                        (FieldType::Plain(_), FieldType::List(_)) => {
+                                            if expand_foreign_relations {
+                                                compute_one_to_many_relation(
+                                                    field,
+                                                    self_type,
+                                                    foreign_field_type,
+                                                    RelationCardinality::Unbounded,
+                                                    building,
+                                                )
+                                            } else {
+                                                placeholder_relation()
+                                            }
+                                        }
+                                        _ => {
+                                            panic!(
                                             "Unexpected relation type for field `{}` of {:?} type. The matching field is {:?}",
                                             field.name, field_typ, foreign_field_type
                                         )
+                                        }
                                     }
                                 }
                             }

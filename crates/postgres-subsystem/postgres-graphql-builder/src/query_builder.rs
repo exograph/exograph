@@ -25,7 +25,7 @@ use postgres_graphql_model::{
 
 use postgres_core_model::{
     relation::PostgresRelation,
-    types::{EntityType, PostgresField, PostgresPrimitiveType},
+    types::{EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType},
 };
 
 use crate::predicate_builder::get_unique_filter_type_name;
@@ -66,7 +66,12 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (_, entity_type) in building.core_subsystem.entity_types.iter() {
+    for (_, entity_type) in building
+        .core_subsystem
+        .entity_types
+        .iter()
+        .filter(|(_, et)| et.representation != EntityRepresentation::Json)
+    {
         expand_pk_query(
             entity_type,
             &building.predicate_types,
