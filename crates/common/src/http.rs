@@ -149,7 +149,6 @@ pub enum ResponseBodyError {
 
 pub struct MemoryRequestHead {
     headers: HashMap<String, Vec<String>>,
-    cookies: HashMap<String, String>,
     method: http::Method,
     path: String,
     query: Value,
@@ -158,15 +157,31 @@ pub struct MemoryRequestHead {
 
 impl MemoryRequestHead {
     pub fn new(
+        headers: HashMap<String, Vec<String>>,
         cookies: HashMap<String, String>,
         method: http::Method,
         path: String,
         query: Value,
         ip: Option<String>,
     ) -> Self {
+        let mut headers: HashMap<String, Vec<String>> = headers
+            .into_iter()
+            .map(|(k, v)| (k.to_ascii_lowercase(), v))
+            .collect();
+
+        let cookie_header_string = cookies
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect::<Vec<String>>()
+            .join("; ");
+
+        headers.insert("cookie".to_string(), vec![cookie_header_string]);
+
         Self {
-            headers: HashMap::new(),
-            cookies,
+            headers: headers
+                .into_iter()
+                .map(|(k, v)| (k.to_ascii_lowercase(), v))
+                .collect(),
             method,
             path,
             query,
@@ -184,18 +199,10 @@ impl MemoryRequestHead {
 
 impl RequestHead for MemoryRequestHead {
     fn get_headers(&self, key: &str) -> Vec<String> {
-        if key.to_ascii_lowercase() == "cookie" {
-            return self
-                .cookies
-                .iter()
-                .map(|(k, v)| format!("{k}={v}"))
-                .collect();
-        } else {
-            self.headers
-                .get(&key.to_ascii_lowercase())
-                .unwrap_or(&vec![])
-                .clone()
-        }
+        self.headers
+            .get(&key.to_ascii_lowercase())
+            .unwrap_or(&vec![])
+            .clone()
     }
 
     fn get_ip(&self) -> Option<std::net::IpAddr> {

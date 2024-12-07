@@ -291,6 +291,7 @@ async fn run_operation(
     let query = query.replace("@unordered", "");
 
     let mut request_head = MemoryRequestHead::new(
+        HashMap::new(),
         ctx.cookies.clone(),
         http::Method::POST,
         "/graphql".to_string(),

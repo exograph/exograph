@@ -31,24 +31,23 @@ impl CookieExtractor {
         }
     }
 
-    pub fn extract_cookies(
+    pub fn extract_cookies<T: for<'a> From<&'a str>>(
         request_head: &dyn RequestHead,
-    ) -> Result<HashMap<String, Value>, ContextExtractionError> {
-        let cookie_headers = request_head.get_headers("cookie");
+    ) -> Result<HashMap<String, T>, ContextExtractionError> {
+        let mut result = vec![];
+        for header in request_head.get_headers("cookie") {
+            for cookie_string in header.split(';') {
+                if !cookie_string.is_empty() {
+                    let cookie = Cookie::parse(cookie_string)
+                        .map_err(|_| ContextExtractionError::Malformed)?;
 
-        let cookie_strings = cookie_headers
-            .into_iter()
-            .map(|header| header.split(';').collect());
+                    let (name, value) = (cookie.name().to_owned(), T::from(cookie.value()));
+                    result.push((name, value));
+                }
+            }
+        }
 
-        let cookies = cookie_strings
-            .map(|cookie_string: String| {
-                Cookie::parse(cookie_string)
-                    .map(|cookie| (cookie.name().to_owned(), cookie.value().to_owned().into()))
-                    .map_err(|_| ContextExtractionError::Malformed)
-            })
-            .collect::<Result<Vec<(String, Value)>, ContextExtractionError>>()?;
-
-        Ok(cookies.into_iter().collect())
+        Ok(result.into_iter().collect())
     }
 }
 
@@ -71,5 +70,59 @@ impl ContextExtractor for CookieExtractor {
             .await?
             .get(key)
             .cloned())
+    }
+}
+#[cfg(test)]
+mod tests {
+    use crate::http::MemoryRequestHead;
+
+    use super::*;
+
+    #[test]
+    fn test_extract_cookies_empty() {
+        let request_head = form_cookie_header_request_head(vec![]);
+        let cookies = CookieExtractor::extract_cookies::<String>(&request_head).unwrap();
+        assert_eq!(cookies.len(), 0);
+    }
+
+    #[test]
+    fn test_extract_cookies_single() {
+        let request_head = form_cookie_header_request_head(vec![("name1", "value1")]);
+        let cookies = CookieExtractor::extract_cookies(&request_head).unwrap();
+        assert_eq!(cookies.len(), 1);
+        assert_eq!(cookies.get("name1"), Some(&"value1".to_string()));
+    }
+
+    #[test]
+    fn test_extract_cookies_multiple() {
+        let request_head =
+            form_cookie_header_request_head(vec![("name1", "value1"), ("name2", "value2")]);
+
+        let cookies = CookieExtractor::extract_cookies(&request_head).unwrap();
+
+        assert_eq!(cookies.len(), 2);
+        assert_eq!(
+            cookies.get("name1"),
+            Some(&Value::String("value1".to_string()))
+        );
+        assert_eq!(
+            cookies.get("name2"),
+            Some(&Value::String("value2".to_string()))
+        );
+    }
+
+    fn form_cookie_header_request_head(cookies: Vec<(&str, &str)>) -> MemoryRequestHead {
+        MemoryRequestHead::new(
+            HashMap::new(),
+            HashMap::from_iter(
+                cookies
+                    .into_iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string())),
+            ),
+            http::Method::GET,
+            "/".to_string(),
+            serde_json::Value::Null,
+            None,
+        )
     }
 }

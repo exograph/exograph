@@ -26,7 +26,7 @@ Exograph supports several annotations to specify the source of the value of a fi
 
 ## JWT Token
 
-You may use the `@jwt` annotation to extract value from the JWT token specified in the `Authentication` header (of the form `Authentication: Bearer <token>`). Exograph will decode and verify the JWT token and extract the value specified in the annotation parameter from the decoded token. The incoming request will fail if the JWT token is invalid or expired.
+You may use the `@jwt` annotation to extract value from the JWT token specified in the `Authentication` header (of the form `Authentication: Bearer <token>` if passed as a header or `<token>` if passed as a cookie. See [authentication](/authentication/configuration.md) for more details). Exograph will decode and verify the JWT token and extract the value specified in the annotation parameter from the decoded token. The incoming request will fail if the JWT token is invalid or expired.
 
 The `@jwt` annotation takes a single optional argument, which denotes the key in the decoded token. In the above example, for the `id` field, we specify the `"sub"` argument to extract the `"sub"` key from the JWT payload. Exograph uses the field name as the key if the annotation parameter is absent. Therefore, we didn't provide the argument for the `role` field since the field's name matches the key in the JWT payload. In other words, the following two context fields are equivalent:
 
