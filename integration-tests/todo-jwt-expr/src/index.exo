@@ -1,0 +1,20 @@
+// Test for JWT expression such as `@jwt("user.role")` and `@jwt("user.sub")`
+// The test focuses only on (otherwise the same setup as ../todo-extractor):
+// - Creating todos (to ensure that the default value is set correctly)
+// - Querying todos (for access control)
+
+context AuthContext {
+  @jwt("user.sub") id: String
+  @jwt("user.role") role: String = "user"
+}
+
+@postgres
+module TodoDatabase {
+  @access(self.userId == AuthContext.id || AuthContext.role == "admin")
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+    userId: String = AuthContext.id
+  }
+}

@@ -40,6 +40,26 @@ context AuthContext {
 }
 ```
 
+If the JWT token contains nested claims, you can access them using the dot notation. For example, if the JWT token contains the `sub` as a direct claim and the `role` as a nested claim under a `user` field such as:
+
+```json
+{ 
+  "sub": "1234567890", 
+  "user": { 
+    "role": "admin" 
+  } 
+}
+```
+
+You can access them in the context as follows (note the use of `user.role`):
+
+```exo
+context AuthContext {
+  @jwt("sub") id: string
+  @jwt("user.role") role: string
+}
+```
+
 Once we have the context, we can use it in access control rules, as default values for fields, and as injected arguments to queries, mutations, and interceptors defined in Deno modules.
 
 ## Using in access control rules

@@ -1,0 +1,20 @@
+# Create a completed and an incomplete todo for two users
+operation: |
+    mutation {
+        createTodos(data: [
+            {title: "U1-T1", completed: false, userId: "u1"},
+            {title: "U1-T2", completed: true, userId: "u1"},
+            {title: "U2-T1", completed: false, userId: "u2"},
+            {title: "U2-T2", completed: true, userId: "u2"}
+        ]) {
+            id
+        }
+       
+    }
+auth: |
+  {
+      "user": {
+        "role": "admin",
+        "sub": "null"
+      },
+  }     

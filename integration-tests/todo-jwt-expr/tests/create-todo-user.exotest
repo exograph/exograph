@@ -1,0 +1,108 @@
+
+stages:
+  - operation: |
+        mutation createTodo($title: String!, $completed: Boolean) {
+          createTodo(data: { title: $title, completed: $completed }) {
+            id
+            title
+            completed
+            userId
+          }
+        }
+    variable: |
+      {
+        "title": "U1-T3",
+        "completed": true
+      }
+    auth: |
+      {
+          "user": {
+            "role": null,
+            "sub": "u1"
+          }
+      } 
+    response: |
+      {
+        "data": {
+          "createTodo": {
+            "id": 5,
+            "title": "U1-T3",
+            "completed": true,
+            "userId": "u1"
+          }
+        }
+      }
+      
+  - operation: |
+      query {
+        todos(orderBy: {id: ASC}) {
+          id
+          title
+          completed
+          userId
+        }
+      }
+    auth: |
+      {
+          "user": {
+            "sub": "u1",
+            "role": null
+          }
+      } 
+    response: |
+      {
+        "data": {
+          "todos": [
+            {
+              "id": 1,
+              "title": "U1-T1",
+              "completed": false,
+              "userId": "u1"
+            },
+            {
+              "id": 2,
+              "title": "U1-T2",
+              "completed": true,
+              "userId": "u1"
+            },
+            {
+              "id": 5,
+              "title": "U1-T3",
+              "completed": true,
+              "userId": "u1"
+            }
+          ]
+        }
+      }
+
+  # User 2 trying to create a todo for user 1; should fail
+  - operation: |
+        mutation createTodo($title: String!, $completed: Boolean, $userId: String!) {
+          createTodo(data: { title: $title, completed: $completed, userId: $userId }) {
+            id
+            title
+            completed
+            userId
+          }
+        }
+    variable: |
+      {
+        "title": "U1-T3",
+        "completed": true,
+        "userId": "u2"
+      }
+    auth: |
+      {
+          "user": {
+            "sub": "u1",
+            "role": null
+          }
+      } 
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
