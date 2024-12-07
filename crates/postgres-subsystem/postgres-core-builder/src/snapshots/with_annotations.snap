@@ -1,5 +1,5 @@
 ---
-source: crates/postgres-subsystem/postgres-model-builder/src/resolved_builder.rs
+source: crates/postgres-subsystem/postgres-core-builder/src/resolved_builder.rs
 expression: resolved
 ---
 values:
@@ -40,6 +40,7 @@ values:
     - Composite:
         name: Concert
         plural_name: Concerts
+        representation: Normal
         fields:
           - name: id
             typ:
@@ -207,6 +208,7 @@ values:
     - Composite:
         name: Venue
         plural_name: Venuess
+        representation: Normal
         fields:
           - name: id
             typ:

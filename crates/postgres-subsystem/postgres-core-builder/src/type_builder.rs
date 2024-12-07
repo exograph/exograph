@@ -110,10 +110,11 @@ fn create_shallow_type(
                     .add("VectorDistance", vector_distance_type);
             }
         }
-        ResolvedType::Composite(_) => {
+        ResolvedType::Composite(composite) => {
             let typ = EntityType {
                 name: resolved_type.name(),
                 plural_name: resolved_type.plural_name(),
+                representation: composite.representation,
                 fields: vec![],
                 agg_fields: vec![],
                 vector_distance_fields: vec![],

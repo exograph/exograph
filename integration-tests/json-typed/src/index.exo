@@ -1,0 +1,16 @@
+@postgres
+module TodoModule {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    metadata: Metadata
+  }
+
+  @access(true)
+  @json
+  type Metadata {
+    expectedEffortHrs: Int
+    notes: String
+    completionDate: LocalDate
+  }
+}
