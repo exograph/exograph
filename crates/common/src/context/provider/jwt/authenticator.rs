@@ -20,6 +20,7 @@ pub struct JwtAuthenticator {
     authenticator_source: AuthenticatorSource,
 }
 
+#[derive(Debug)]
 enum AuthenticatorSource {
     Header(String),
     Cookie(String),
@@ -139,7 +140,7 @@ impl JwtAuthenticator {
         let jwt_token = match &self.authenticator_source {
             AuthenticatorSource::Header(header) => request_head.get_header(header),
             AuthenticatorSource::Cookie(cookie) => {
-                let mut cookies = CookieExtractor::extract_cookies_strings(request_head)?;
+                let mut cookies = CookieExtractor::extract_cookies(request_head)?;
                 cookies.remove(cookie)
             }
         };
