@@ -15,6 +15,8 @@ use crate::http::RequestHead;
 
 use super::oidc::Oidc;
 
+const TOKEN_PREFIX: &str = "Bearer ";
+
 pub struct JwtAuthenticator {
     style: JwtAuthenticatorStyle,
     authenticator_source: AuthenticatorSource,
@@ -138,12 +140,22 @@ impl JwtAuthenticator {
         request_head: &(dyn RequestHead + Send + Sync),
     ) -> Result<Value, ContextExtractionError> {
         let jwt_token = match &self.authenticator_source {
-            AuthenticatorSource::Header(header) => request_head.get_header(header),
+            AuthenticatorSource::Header(header) => {
+                if let Some(header) = request_head.get_header(header) {
+                    if header.starts_with(TOKEN_PREFIX) {
+                        Ok(Some(header[TOKEN_PREFIX.len()..].to_string()))
+                    } else {
+                        Err(ContextExtractionError::Malformed)
+                    }
+                } else {
+                    Ok(None)
+                }
+            }
             AuthenticatorSource::Cookie(cookie) => {
                 let mut cookies = CookieExtractor::extract_cookies(request_head)?;
-                cookies.remove(cookie)
+                Ok(cookies.remove(cookie))
             }
-        };
+        }?;
 
         match jwt_token {
             Some(jwt_token) => self
@@ -227,7 +239,7 @@ mod tests {
             "company": "ACME",
         });
 
-        let (token, _) = create_token(&claims, "secret", 100);
+        let (token, _) = create_token(&claims, "secret", 100, TokenSource::Header);
 
         let malformed_token = token + "invalid";
 
@@ -250,7 +262,7 @@ mod tests {
             "company": "ACME",
         });
 
-        let (token, _) = create_token(&claims, "secret", -100);
+        let (token, _) = create_token(&claims, "secret", -100, TokenSource::Header);
 
         let request_head =
             request_head_with_headers(HashMap::from([("Authorization".to_string(), vec![token])]));
@@ -269,7 +281,7 @@ mod tests {
             "company": "ACME",
         });
 
-        let (token, claims) = create_token(&claims, "secret", 100);
+        let (token, claims) = create_token(&claims, "secret", 100, TokenSource::Header);
 
         let request_head =
             request_head_with_headers(HashMap::from([("Authorization".to_string(), vec![token])]));
@@ -291,7 +303,7 @@ mod tests {
             "company": "ACME",
         });
 
-        let (token, claims) = create_token(&claims, "secret", 100);
+        let (token, claims) = create_token(&claims, "secret", 100, TokenSource::Header);
 
         let request_head =
             request_head_with_headers(HashMap::from([("jwt-header".to_string(), vec![token])]));
@@ -310,7 +322,7 @@ mod tests {
             "company": "ACME",
         });
 
-        let (token, _) = create_token(&claims, "secret", 100);
+        let (token, _) = create_token(&claims, "secret", 100, TokenSource::Header);
 
         for header_name in ["secret", "other-header"] {
             let request_head = request_head_with_headers(HashMap::from([(
@@ -336,7 +348,7 @@ mod tests {
             "company": "ACME",
         });
 
-        let (token, _) = create_token(&claims, "secret", 100);
+        let (token, _) = create_token(&claims, "secret", 100, TokenSource::Header);
 
         // The client passes the token in two different headers ("Authorization" is not the right header due to the custom header configuration)
         for header_name in ["Authorization", "other-header"] {
@@ -363,7 +375,7 @@ mod tests {
             "company": "ACME",
         });
 
-        let (token, claims) = create_token(&claims, "secret", 100);
+        let (token, claims) = create_token(&claims, "secret", 100, TokenSource::Cookie);
 
         let request_head =
             request_head_with_cookies(HashMap::from([("jwt-cookie".to_string(), token)]));
@@ -385,7 +397,7 @@ mod tests {
             "company": "ACME",
         });
 
-        let (token, _) = create_token(&claims, "secret", 100);
+        let (token, _) = create_token(&claims, "secret", 100, TokenSource::Cookie);
 
         // The client passes the token in two different cookies
         for cookie_name in ["Authorization", "other-cookie"] {
@@ -421,7 +433,17 @@ mod tests {
         )
     }
 
-    fn create_token(claims: &Value, secret: &str, expiration_seconds: i64) -> (String, Value) {
+    enum TokenSource {
+        Header,
+        Cookie,
+    }
+
+    fn create_token(
+        claims: &Value,
+        secret: &str,
+        expiration_seconds: i64,
+        source: TokenSource,
+    ) -> (String, Value) {
         let mut with_expiration = claims.clone().as_object().unwrap().clone();
         let current_epoch_time = {
             let start = SystemTime::now();
@@ -435,13 +457,18 @@ mod tests {
             json!(current_epoch_time as i64 + expiration_seconds),
         );
 
+        let token = encode(
+            &Header::default(),
+            &with_expiration,
+            &EncodingKey::from_secret(secret.as_bytes()),
+        )
+        .unwrap();
+
         (
-            encode(
-                &Header::default(),
-                &with_expiration,
-                &EncodingKey::from_secret(secret.as_bytes()),
-            )
-            .unwrap(),
+            match source {
+                TokenSource::Header => TOKEN_PREFIX.to_string() + &token,
+                TokenSource::Cookie => token,
+            },
             Value::Object(with_expiration),
         )
     }
