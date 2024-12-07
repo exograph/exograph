@@ -57,7 +57,7 @@ impl ContextExtractor for JwtExtractor {
     ) -> Result<Option<Value>, ContextExtractionError> {
         use crate::http::RequestPayload;
 
-        Ok(self
+        let claims = self
             .extracted_claims
             .get_or_try_init(|| async {
                 self.extract_authentication(
@@ -66,8 +66,16 @@ impl ContextExtractor for JwtExtractor {
                 )
                 .await
             })
-            .await?
-            .get(key)
-            .cloned())
+            .await?;
+
+        let current_value = key.split('.').fold(Some(claims), |value, part| {
+            if let Some(value) = value {
+                value.get(part)
+            } else {
+                None
+            }
+        });
+
+        Ok(current_value.cloned())
     }
 }
