@@ -18,7 +18,9 @@ use postgres_graphql_model::{
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWrapper},
 };
 
-use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveType, PostgresType};
+use postgres_core_model::types::{
+    EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType, PostgresType,
+};
 
 use postgres_core_model::access::Access;
 
@@ -71,7 +73,10 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
         .add(&vector_ordering_type_name, vector_ordering_type);
 
     for (_, typ) in resolved_env.resolved_types.iter() {
-        if let ResolvedType::Composite(ResolvedCompositeType { .. }) = typ {
+        if let ResolvedType::Composite(ResolvedCompositeType { representation, .. }) = typ {
+            if *representation == EntityRepresentation::Json {
+                continue;
+            }
             let shallow_type = create_shallow_type(typ);
             let param_type_name = shallow_type.name.clone();
             building.order_by_types.add(&param_type_name, shallow_type);
@@ -80,7 +85,12 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
 }
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (_, entity_type) in building.core_subsystem.entity_types.iter() {
+    for (_, entity_type) in building
+        .core_subsystem
+        .entity_types
+        .iter()
+        .filter(|(_, et)| et.representation != EntityRepresentation::Json)
+    {
         let param_type_name = get_parameter_type_name(&entity_type.name, false);
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
@@ -215,6 +225,12 @@ pub fn new_field_param(
     let field_type_id = &entity_field.typ.innermost().type_id;
     let field_entity_type =
         field_type_id.to_type(primitive_types.values_ref(), entity_types.values_ref());
+
+    if let PostgresType::Composite(ct) = &field_entity_type {
+        if ct.representation == EntityRepresentation::Json {
+            return None;
+        }
+    }
 
     let column_path_link = Some(entity_field.relation.column_path_link(database));
 

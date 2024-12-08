@@ -301,7 +301,7 @@ pub trait DataParamBuilder<D> {
                     }
                 }
             }
-            PostgresRelation::Scalar { .. } => Some(PostgresField {
+            PostgresRelation::Scalar { .. } | PostgresRelation::Embedded => Some(PostgresField {
                 name: field.name.clone(),
                 typ: if optional {
                     to_mutation_type(&field.typ, mutation_type_kind, building).optional()

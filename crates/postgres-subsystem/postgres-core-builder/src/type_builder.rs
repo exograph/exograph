@@ -160,10 +160,6 @@ fn expand_type_fields(
     resolved_env: &ResolvedTypeEnv,
     expand_relations: bool,
 ) -> Result<(), ModelBuildingError> {
-    if resolved_type.representation == EntityRepresentation::Json {
-        return Ok(());
-    }
-
     let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
 
     let entity_fields: Result<Vec<_>, _> = resolved_type
@@ -217,10 +213,6 @@ fn expand_dynamic_default_values(
     building: &mut SystemContextBuilding,
     resolved_env: &ResolvedTypeEnv,
 ) -> Result<(), ModelBuildingError> {
-    if resolved_type.representation == EntityRepresentation::Json {
-        return Ok(());
-    }
-
     fn matches(
         field_type: &FieldType<PostgresFieldType<EntityType>>,
         context_type: &FieldType<PrimitiveType>,
@@ -655,11 +647,15 @@ fn create_relation(
 
                 match foreign_resolved_type {
                     ResolvedType::Primitive(_) => {
-                        let column_id = building
-                            .database
-                            .get_column_id(*self_table_id, &field.column_name)
-                            .unwrap();
-                        PostgresRelation::Scalar { column_id }
+                        if self_type.representation == EntityRepresentation::Json {
+                            PostgresRelation::Embedded
+                        } else {
+                            let column_id = building
+                                .database
+                                .get_column_id(*self_table_id, &field.column_name)
+                                .unwrap();
+                            PostgresRelation::Scalar { column_id }
+                        }
                     }
                     ResolvedType::Composite(foreign_field_type) => {
                         if foreign_field_type.representation == EntityRepresentation::Json {

@@ -1,0 +1,59 @@
+operation: |
+  fragment allTodoFields on Todo {
+    id @bind(name: "id")
+    title
+    metadata {
+      expectedEffortHrs
+      notes
+      completionDate
+    }
+  }
+  mutation($groceriesTitle: String!, $groceriesMetadata: Metadata!, 
+           $cleanTitle: String!, $cleanMetadata: Metadata!, 
+           $medicationTitle: String!, $medicationMetadata: Metadata!) {
+    groceries: createTodo(data: {
+      title: $groceriesTitle
+      metadata: $groceriesMetadata
+    }) {
+      id @bind(name: "groceriesId")
+      ...allTodoFields
+    }
+
+    clean: createTodo(data: {
+      title: $cleanTitle
+      metadata: $cleanMetadata
+    }) {
+      id @bind(name: "cleanId")
+      ...allTodoFields
+    }
+
+    medication: createTodo(data: {
+      title: $medicationTitle
+      metadata: $medicationMetadata
+    }) {
+      id @bind(name: "medicationId")
+      ...allTodoFields
+    }
+  }
+variable: |
+  {
+    "groceriesTitle": "Buy groceries",
+    "groceriesMetadata": {
+        "expectedEffortHrs": 1,
+        "notes": "Buy apples, oranges, and milk",
+        "completionDate": "2024-10-01"
+    },
+
+    "cleanTitle": "Clean room",
+    "cleanMetadata": {
+      "expectedEffortHrs": 2,
+      "notes": "Clean the room",
+      "completionDate": "2024-10-02"
+    },
+
+    "medicationTitle": "Refill medication",
+    "medicationMetadata": {
+      "notes": "Refill the medication",
+      "completionDate": "2024-10-06"
+    }
+  }

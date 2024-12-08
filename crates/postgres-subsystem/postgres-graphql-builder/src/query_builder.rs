@@ -41,6 +41,10 @@ use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType, 
 pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, typ) in types.iter() {
         if let ResolvedType::Composite(c) = &typ {
+            if c.representation == EntityRepresentation::Json {
+                continue;
+            }
+
             let entity_type_id = building.get_entity_type_id(c.name.as_str()).unwrap();
             let shallow_query = shallow_pk_query(entity_type_id, c);
             let collection_query = shallow_collection_query(entity_type_id, c);
@@ -298,6 +302,9 @@ pub fn expand_unique_queries(
                         }
                         PostgresRelation::OneToMany { .. } => {
                             panic!("OneToMany relations cannot be used in unique queries")
+                        }
+                        PostgresRelation::Embedded => {
+                            panic!("Embedded relations cannot be used in unique queries")
                         }
                     }
                 })

@@ -142,6 +142,9 @@ async fn map_single<'a>(
                     )
                     .await
                 }
+                PostgresRelation::Embedded => {
+                    panic!("Embedded relations cannot be used in create operations")
+                }
             }
         })
     });
