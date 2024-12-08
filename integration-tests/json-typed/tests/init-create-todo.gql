@@ -8,13 +8,17 @@ operation: |
       completionDate
       tags
     }
+    info {
+      description
+    }
   }
-  mutation($groceriesTitle: String!, $groceriesMetadata: Metadata!, 
-           $cleanTitle: String!, $cleanMetadata: Metadata!, 
-           $medicationTitle: String!, $medicationMetadata: Metadata!) {
+  mutation($groceriesTitle: String!, $groceriesMetadata: Metadata!, $groceriesInfo: Info,
+           $cleanTitle: String!, $cleanMetadata: Metadata!, $cleanInfo: Info,
+           $medicationTitle: String!, $medicationMetadata: Metadata!, $medicationInfo: Info) {
     groceries: createTodo(data: {
       title: $groceriesTitle
       metadata: $groceriesMetadata
+      info: $groceriesInfo
     }) {
       id @bind(name: "groceriesId")
       ...allTodoFields
@@ -23,6 +27,7 @@ operation: |
     clean: createTodo(data: {
       title: $cleanTitle
       metadata: $cleanMetadata
+      info: $cleanInfo
     }) {
       id @bind(name: "cleanId")
       ...allTodoFields
@@ -31,6 +36,7 @@ operation: |
     medication: createTodo(data: {
       title: $medicationTitle
       metadata: $medicationMetadata
+      info: $medicationInfo
     }) {
       id @bind(name: "medicationId")
       ...allTodoFields
@@ -45,6 +51,9 @@ variable: |
         "completionDate": "2024-10-01",
         "tags": ["groceries", "shopping"]
     },
+    "groceriesInfo": {
+      "description": "Need to prepare for the party"
+    },
 
     "cleanTitle": "Clean room",
     "cleanMetadata": {
@@ -53,11 +62,15 @@ variable: |
       "completionDate": "2024-10-02",
       "tags": []
     },
+    "cleanInfo": {
+      "description": "Guests are coming over"
+    },
 
     "medicationTitle": "Refill medication",
     "medicationMetadata": {
       "notes": "Refill the medication",
       "completionDate": "2024-10-06",
       "tags": ["medication", "health"]
-    }
+    },
+    "medicationInfo": null
   }

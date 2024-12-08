@@ -4,7 +4,8 @@ module TodoModule {
   type Todo {
     @pk id: Int = autoIncrement()
     title: String
-    metadata: Metadata
+    metadata: Metadata // Mandatory json field
+    info: Info? // Optional json field
   }
 
   @access(true)
@@ -14,5 +15,11 @@ module TodoModule {
     notes: String
     completionDate: LocalDate
     tags: Array<String>
+  }
+
+  @access(true)
+  @json
+  type Info {
+    description: String
   }
 }

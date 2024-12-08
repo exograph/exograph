@@ -7,7 +7,11 @@ operation: |
         expectedEffortHrs
         notes
         completionDate
+        tags
       } 
+      info {
+        description
+      }
     }
   }
 response: |
@@ -22,6 +26,9 @@ response: |
             "completionDate": $.groceriesMetadata.completionDate,
             "expectedEffortHrs": $.groceriesMetadata.expectedEffortHrs,
             "tags": $.groceriesMetadata.tags
+          },
+          "info": {
+            "description": $.groceriesInfo.description
           }
         },
         {
@@ -32,6 +39,9 @@ response: |
             "completionDate": $.cleanMetadata.completionDate,
             "expectedEffortHrs": $.cleanMetadata.expectedEffortHrs,
             "tags": $.cleanMetadata.tags
+          },
+          "info": {
+            "description": $.cleanInfo.description
           }
         },
         {
@@ -42,7 +52,8 @@ response: |
             "completionDate": $.medicationMetadata.completionDate,
             "expectedEffortHrs": $.medicationMetadata.expectedEffortHrs,
             "tags": $.medicationMetadata.tags
-          }
+          },
+          "info": $.medicationInfo
         }
       ]
     }
