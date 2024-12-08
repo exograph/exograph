@@ -8,7 +8,6 @@ module TodoModule {
     info: Info? // Optional json field
   }
 
-  @access(true)
   @json
   type Metadata {
     expectedEffortHrs: Int?
@@ -17,7 +16,6 @@ module TodoModule {
     tags: Array<String>
   }
 
-  @access(true)
   @json
   type Info {
     description: String

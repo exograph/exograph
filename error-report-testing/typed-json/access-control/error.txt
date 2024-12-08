@@ -1,0 +1,14 @@
+error[C000]: Cannot use @access for type Metadata. Json types behave like a primitive (and thus have always-allowed access)
+  --> src/index.exo:12:8
+   |
+12 |   type Metadata {
+   |        ^^^^^^^^
+error[C000]: Cannot use @access for field 'notes' in a type with a '@json' annotation
+  --> src/index.exo:13:5
+   |
+13 | /     @access(true)
+14 | |     notes: String
+   | |_________________^
+
+Error: Parser error: Could not process input exo files
+

@@ -1,0 +1,68 @@
+stages:
+  # Don't query metadata or adminMetadata; otherwise, query-based access control will be in effect and the effect of update will be masked
+
+  - operation: |
+      mutation($id: String!) {
+        updateTodo(id: $id, data: { metadata: { notes: "Updated notes" }, adminMetadata: { notes: "Updated admin notes" } }) {
+          id
+          title
+        }
+      }
+    variable: |
+      {
+        "id": $.groceriesId
+      }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "data": {
+          "updateTodo": {
+            "id": 1,
+            "title": "Buy groceries",
+          }
+        }
+      }
+
+  - operation: |
+      mutation($id: String!) {
+        updateTodo(id: $id, data: { metadata: { notes: "Updated notes" }, adminMetadata: { notes: "Updated admin notes" } }) {
+          id
+          title
+        }
+      }
+    variable: |
+      {
+        "id": $.groceriesId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+      mutation($id: String!) {
+        updateTodo(id: $id, data: { metadata: { notes: "Buy apples, oranges, and milk" } }) {
+          id
+          title
+        }
+      }
+    variable: |
+      {
+        "id": $.groceriesId
+      }
+    response: |
+      {
+        "data": {
+          "updateTodo": {
+            "id": 1,
+            "title": "Buy groceries",
+          }
+        }
+      }

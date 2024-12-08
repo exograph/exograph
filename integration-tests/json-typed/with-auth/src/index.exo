@@ -1,0 +1,19 @@
+context AuthContext {
+  @jwt role: String
+}
+
+@postgres
+module TodoModule {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    metadata: Metadata
+    @access(AuthContext.role == "admin") adminMetadata: Metadata
+  }
+
+  @json
+  type Metadata {
+    notes: String
+  }
+}

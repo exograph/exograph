@@ -113,17 +113,44 @@ fn resolve(
                             &ct.name,
                             plural_annotation_value.clone(),
                         );
-
-                        let access = build_access(ct.annotations.get("access"));
-                        let name = ct.name.clone();
-                        let plural_name =
-                            plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
-
                         let representation = if ct.annotations.contains("json") {
                             EntityRepresentation::Json
                         } else {
                             EntityRepresentation::Normal
                         };
+
+                        let access_annotation = ct.annotations.get("access");
+
+                        let is_json = representation == EntityRepresentation::Json;
+
+                        if is_json && access_annotation.is_some() {
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: format!(
+                                    "Cannot use @access for type {}. Json types behave like a primitive (and thus have always-allowed access)",
+                                    ct.name
+                                ),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: ct.span,
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            });
+                        }
+
+                        let access = if is_json {
+                            // As if the user has annotated with `access(true)`
+                            ResolvedAccess {
+                                default: Some(AstExpr::BooleanLiteral(true, default_span())),
+                                ..Default::default()
+                            }
+                        } else {
+                            build_access(access_annotation)
+                        };
+                        let name = ct.name.clone();
+                        let plural_name =
+                            plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
 
                         let resolved_fields = ct
                             .fields
@@ -133,6 +160,22 @@ fn resolve(
                                 let readonly = field.annotations.contains("readonly");
 
                                 let access_annotation = field.annotations.get("access");
+
+                                if is_json && access_annotation.is_some() {
+                                    errors.push(Diagnostic {
+                                        level: Level::Error,
+                                        message: format!(
+                                            "Cannot use @access for field '{}' in a type with a '@json' annotation",
+                                            field.name
+                                        ),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: field.span,
+                                            style: SpanStyle::Primary,
+                                            label: None,
+                                        }],
+                                    });
+                                }
 
                                 // For fields, by default, we assume the `access(true)` annotation
                                 let access = match access_annotation {

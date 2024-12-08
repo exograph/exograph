@@ -1,0 +1,16 @@
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    metadata: Metadata
+  }
+
+  @json
+  @access(true)
+  type Metadata {
+    @access(true)
+    notes: String
+  }
+}

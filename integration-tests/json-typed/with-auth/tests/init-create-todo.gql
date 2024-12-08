@@ -1,0 +1,71 @@
+operation: |
+  fragment allTodoFields on Todo {
+    id @bind(name: "id")
+    title
+    metadata {
+      notes
+    }
+    adminMetadata {
+      notes
+    }
+  }
+  mutation($groceriesTitle: String!, $groceriesMetadata: Metadata!, $groceriesAdminMetadata: Metadata!,
+           $cleanTitle: String!, $cleanMetadata: Metadata!, $cleanAdminMetadata: Metadata!,
+           $medicationTitle: String!, $medicationMetadata: Metadata!, $medicationAdminMetadata: Metadata!) {
+    groceries: createTodo(data: {
+      title: $groceriesTitle
+      metadata: $groceriesMetadata
+      adminMetadata: $groceriesAdminMetadata
+    }) {
+      id @bind(name: "groceriesId")
+      ...allTodoFields
+    }
+
+    clean: createTodo(data: {
+      title: $cleanTitle
+      metadata: $cleanMetadata
+      adminMetadata: $cleanAdminMetadata
+    }) {
+      id @bind(name: "cleanId")
+      ...allTodoFields
+    }
+
+    medication: createTodo(data: {
+      title: $medicationTitle
+      metadata: $medicationMetadata
+      adminMetadata: $medicationAdminMetadata
+    }) {
+      id @bind(name: "medicationId")
+      ...allTodoFields
+    }
+  }
+variable: |
+  {
+    "groceriesTitle": "Buy groceries",
+    "groceriesMetadata": {
+      "notes": "Buy apples, oranges, and milk"
+    },
+    "groceriesAdminMetadata": {
+      "notes": "Need to prepare for the party"
+    },
+
+    "cleanTitle": "Clean room",
+    "cleanMetadata": {
+      "notes": "Clean the room"
+    },
+    "cleanAdminMetadata": {
+      "notes": "Guests are coming over"
+    },
+
+    "medicationTitle": "Refill medication",
+    "medicationMetadata": {
+      "notes": "Refill the medication"
+    },
+    "medicationAdminMetadata": {
+      "notes": "Use insurance"
+    }
+  }
+auth: |
+  {
+    "role": "admin"
+  }

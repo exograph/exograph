@@ -1,0 +1,120 @@
+stages:
+  - operation: |
+      query {
+        todos @unordered { 
+          id
+          title
+          metadata {
+            notes
+          } 
+          adminMetadata {
+            notes
+          }
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+      query {
+        todos @unordered { 
+          id
+          title
+          metadata {
+            notes
+          } 
+          adminMetadata {
+            notes
+          }
+        }
+      }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "data": {
+          "todos": [
+            {
+              "id": $.groceriesId,
+              "title": $.groceriesTitle,
+              "metadata": {
+                "notes": $.groceriesMetadata.notes,
+              },
+              "adminMetadata": {
+                "notes": $.groceriesAdminMetadata.notes
+              }
+            },
+            {
+              "id": $.cleanId,
+              "title": $.cleanTitle,
+              "metadata": {
+                "notes": $.cleanMetadata.notes,
+              },
+              "adminMetadata": {
+                "notes": $.cleanAdminMetadata.notes
+              }
+            },
+            {
+              "id": $.medicationId,
+              "title": $.medicationTitle,
+              "metadata": {
+                "notes": $.medicationMetadata.notes,
+              },
+              "adminMetadata": {
+                "notes": $.medicationAdminMetadata.notes
+              }
+            }
+          ]
+        }
+      }
+
+  - operation: |
+      query {
+        todos @unordered { 
+          id
+          title
+          metadata {
+            notes
+          } 
+        }
+      }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "data": {
+         "todos": [
+            {
+              "id": $.groceriesId,
+              "title": $.groceriesTitle,
+              "metadata": {
+                "notes": $.groceriesMetadata.notes,
+              }
+            },
+            {
+              "id": $.cleanId,
+              "title": $.cleanTitle,
+              "metadata": {
+                "notes": $.cleanMetadata.notes,
+              }
+            },
+            {
+              "id": $.medicationId,
+              "title": $.medicationTitle,
+              "metadata": {
+                "notes": $.medicationMetadata.notes,
+              }
+            }
+          ]
+        }
+      }
