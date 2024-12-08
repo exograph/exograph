@@ -6948,6 +6948,7 @@ version = "0.10.4"
 dependencies = [
  "core-plugin-interface",
  "postgres-core-builder",
+ "postgres-core-model",
  "postgres-rest-model",
 ]
 

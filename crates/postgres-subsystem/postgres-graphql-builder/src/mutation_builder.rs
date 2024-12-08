@@ -27,10 +27,13 @@ use postgres_graphql_model::{
 use postgres_core_model::{
     access::DatabaseAccessPrimitiveExpression,
     relation::PostgresRelation,
-    types::{base_type, EntityType, PostgresField, PostgresFieldType, PostgresType, TypeIndex},
+    types::{
+        base_type, EntityRepresentation, EntityType, PostgresField, PostgresFieldType,
+        PostgresType, TypeIndex,
+    },
 };
 
-use crate::utils::to_mutation_type;
+use crate::utils::{to_mutation_type, MutationTypeKind};
 use postgres_core_builder::access_utils::parent_predicate;
 use postgres_core_builder::shallow::Shallow;
 
@@ -101,6 +104,10 @@ pub trait MutationBuilder {
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> Vec<PostgresMutation> {
+        if entity_type.representation == EntityRepresentation::Json {
+            return vec![];
+        }
+
         let single_mutation = PostgresMutation {
             name: Self::single_mutation_name(entity_type),
             parameters: Self::single_mutation_parameters(entity_type, building),
@@ -238,6 +245,12 @@ pub trait DataParamBuilder<D> {
     ) -> Option<PostgresField<MutationType>> {
         let optional = Self::mark_fields_optional() || field.has_default_value;
 
+        let mutation_type_kind = if Self::data_param_role() == DataParamRole::Create {
+            MutationTypeKind::Create
+        } else {
+            MutationTypeKind::Update
+        };
+
         match &field.relation {
             PostgresRelation::Pk { column_id } => {
                 if Self::data_param_role() == DataParamRole::Update {
@@ -247,7 +260,7 @@ pub trait DataParamBuilder<D> {
                     // See also https://github.com/exograph/exograph/issues/601
                     Some(PostgresField {
                         name: field.name.clone(),
-                        typ: to_mutation_type(&field.typ).optional(),
+                        typ: to_mutation_type(&field.typ, mutation_type_kind, building).optional(),
                         relation: field.relation.clone(),
                         has_default_value: field.has_default_value,
                         access: field.access.clone(),
@@ -267,7 +280,8 @@ pub trait DataParamBuilder<D> {
                     if column.is_auto_increment {
                         None
                     } else {
-                        let base_mutation_type = to_mutation_type(&field.typ);
+                        let base_mutation_type =
+                            to_mutation_type(&field.typ, mutation_type_kind, building);
 
                         let mutation_type = if optional {
                             base_mutation_type.optional()
@@ -290,9 +304,9 @@ pub trait DataParamBuilder<D> {
             PostgresRelation::Scalar { .. } => Some(PostgresField {
                 name: field.name.clone(),
                 typ: if optional {
-                    to_mutation_type(&field.typ).optional()
+                    to_mutation_type(&field.typ, mutation_type_kind, building).optional()
                 } else {
-                    to_mutation_type(&field.typ)
+                    to_mutation_type(&field.typ, mutation_type_kind, building)
                 },
                 access: field.access.clone(),
                 relation: field.relation.clone(),

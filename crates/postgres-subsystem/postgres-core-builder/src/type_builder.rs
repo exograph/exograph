@@ -60,7 +60,7 @@ pub(super) fn build_expanded(
 ) -> Result<(), ModelBuildingError> {
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_type_no_fields(c, building);
+            associate_datbase_table(c, building);
         }
     }
 
@@ -130,18 +130,20 @@ fn create_shallow_type(
 
 /// Expand a composite type except for creating its fields.
 ///
-/// Specifically:
-/// 1. Create and set the table along with its columns. However, columns will not have its references set
-/// 2. Create and set *_query members (if applicable)
-/// 3. Leave fields as an empty vector
+/// Specifically: Create and set the table along with its columns. However, columns will not have its references set
+
 ///
 /// This allows the type to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
 /// We can't expand fields yet since creating a field requires access to columns (self as well as those in a referred field in case a relation)
 /// and we may not have expanded a referred type yet.
-fn expand_type_no_fields(
+fn associate_datbase_table(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
 ) {
+    if resolved_type.representation == EntityRepresentation::Json {
+        return;
+    }
+
     let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
     let existing_type = &mut building.entity_types[existing_type_id];
     existing_type.table_id = building
@@ -150,7 +152,7 @@ fn expand_type_no_fields(
         .unwrap();
 }
 
-/// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can
+/// Now that all types have table with them (set in the earlier associate_datbase_table phase), we can
 /// expand fields
 fn expand_type_fields(
     resolved_type: &ResolvedCompositeType,
@@ -158,6 +160,10 @@ fn expand_type_fields(
     resolved_env: &ResolvedTypeEnv,
     expand_relations: bool,
 ) -> Result<(), ModelBuildingError> {
+    if resolved_type.representation == EntityRepresentation::Json {
+        return Ok(());
+    }
+
     let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
 
     let entity_fields: Result<Vec<_>, _> = resolved_type
@@ -211,6 +217,10 @@ fn expand_dynamic_default_values(
     building: &mut SystemContextBuilding,
     resolved_env: &ResolvedTypeEnv,
 ) -> Result<(), ModelBuildingError> {
+    if resolved_type.representation == EntityRepresentation::Json {
+        return Ok(());
+    }
+
     fn matches(
         field_type: &FieldType<PostgresFieldType<EntityType>>,
         context_type: &FieldType<PrimitiveType>,
@@ -619,7 +629,14 @@ fn create_relation(
                             .unwrap(),
                     },
                     ResolvedType::Composite(foreign_field_type) => {
-                        if expand_foreign_relations {
+                        if foreign_field_type.representation == EntityRepresentation::Json {
+                            PostgresRelation::Scalar {
+                                column_id: building
+                                    .database
+                                    .get_column_id(*self_table_id, &field.column_name)
+                                    .unwrap(),
+                            }
+                        } else if expand_foreign_relations {
                             compute_many_to_one(
                                 field,
                                 foreign_field_type,

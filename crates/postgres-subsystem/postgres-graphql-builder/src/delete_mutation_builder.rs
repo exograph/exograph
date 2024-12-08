@@ -18,7 +18,7 @@ use core_plugin_interface::{
     },
     core_model_builder::error::ModelBuildingError,
 };
-use postgres_core_model::types::EntityType;
+use postgres_core_model::types::{EntityRepresentation, EntityType};
 use postgres_graphql_model::mutation::PostgresMutationParameters;
 
 use super::{
@@ -62,6 +62,10 @@ impl Builder for DeleteMutationBuilder {
         }
 
         Ok(())
+    }
+
+    fn needs_mutation_type(&self, composite_type: &ResolvedCompositeType) -> bool {
+        composite_type.representation == EntityRepresentation::Normal
     }
 }
 

@@ -94,6 +94,10 @@ impl Builder for CreateMutationBuilder {
 
         Ok(())
     }
+
+    fn needs_mutation_type(&self, _composite_type: &ResolvedCompositeType) -> bool {
+        true
+    }
 }
 
 impl MutationBuilder for CreateMutationBuilder {
