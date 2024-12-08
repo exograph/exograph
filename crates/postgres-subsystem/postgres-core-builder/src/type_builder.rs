@@ -610,33 +610,37 @@ fn create_relation(
 
         match field_base_typ {
             FieldType::List(underlying) => {
-                // Since the field type is a list, the relation depends on the underlying type.
-                // 1. If it is a primitive, we treat it as a scalar ("List" of a primitive type is still a scalar from the database perspective)
-                // 2. Otherwise (if it is a composite), it is a one-to-many relation.
-                match underlying.deref(resolved_env) {
-                    ResolvedType::Primitive(_) => PostgresRelation::Scalar {
-                        column_id: building
-                            .database
-                            .get_column_id(*self_table_id, &field.column_name)
-                            .unwrap(),
-                    },
-                    ResolvedType::Composite(foreign_field_type) => {
-                        if foreign_field_type.representation == EntityRepresentation::Json {
-                            PostgresRelation::Scalar {
-                                column_id: building
-                                    .database
-                                    .get_column_id(*self_table_id, &field.column_name)
-                                    .unwrap(),
+                if self_type.representation == EntityRepresentation::Json {
+                    PostgresRelation::Embedded
+                } else {
+                    // Since the field type is a list, the relation depends on the underlying type.
+                    // 1. If it is a primitive, we treat it as a scalar ("List" of a primitive type is still a scalar from the database perspective)
+                    // 2. Otherwise (if it is a composite), it is a one-to-many relation.
+                    match underlying.deref(resolved_env) {
+                        ResolvedType::Primitive(_) => PostgresRelation::Scalar {
+                            column_id: building
+                                .database
+                                .get_column_id(*self_table_id, &field.column_name)
+                                .unwrap(),
+                        },
+                        ResolvedType::Composite(foreign_field_type) => {
+                            if foreign_field_type.representation == EntityRepresentation::Json {
+                                PostgresRelation::Scalar {
+                                    column_id: building
+                                        .database
+                                        .get_column_id(*self_table_id, &field.column_name)
+                                        .unwrap(),
+                                }
+                            } else if expand_foreign_relations {
+                                compute_many_to_one(
+                                    field,
+                                    foreign_field_type,
+                                    RelationCardinality::Unbounded,
+                                    building,
+                                )
+                            } else {
+                                placeholder_relation()
                             }
-                        } else if expand_foreign_relations {
-                            compute_many_to_one(
-                                field,
-                                foreign_field_type,
-                                RelationCardinality::Unbounded,
-                                building,
-                            )
-                        } else {
-                            placeholder_relation()
                         }
                     }
                 }

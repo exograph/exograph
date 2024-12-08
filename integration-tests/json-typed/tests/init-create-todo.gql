@@ -6,6 +6,7 @@ operation: |
       expectedEffortHrs
       notes
       completionDate
+      tags
     }
   }
   mutation($groceriesTitle: String!, $groceriesMetadata: Metadata!, 
@@ -41,19 +42,22 @@ variable: |
     "groceriesMetadata": {
         "expectedEffortHrs": 1,
         "notes": "Buy apples, oranges, and milk",
-        "completionDate": "2024-10-01"
+        "completionDate": "2024-10-01",
+        "tags": ["groceries", "shopping"]
     },
 
     "cleanTitle": "Clean room",
     "cleanMetadata": {
       "expectedEffortHrs": 2,
       "notes": "Clean the room",
-      "completionDate": "2024-10-02"
+      "completionDate": "2024-10-02",
+      "tags": []
     },
 
     "medicationTitle": "Refill medication",
     "medicationMetadata": {
       "notes": "Refill the medication",
-      "completionDate": "2024-10-06"
+      "completionDate": "2024-10-06",
+      "tags": ["medication", "health"]
     }
   }

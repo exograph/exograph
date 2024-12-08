@@ -13,6 +13,6 @@ module TodoModule {
     expectedEffortHrs: Int?
     notes: String
     completionDate: LocalDate
-    // tags: Array<String>
+    tags: Array<String>
   }
 }

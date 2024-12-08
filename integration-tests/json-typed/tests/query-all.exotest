@@ -20,7 +20,8 @@ response: |
           "metadata": {
             "notes": $.groceriesMetadata.notes,
             "completionDate": $.groceriesMetadata.completionDate,
-            "expectedEffortHrs": $.groceriesMetadata.expectedEffortHrs
+            "expectedEffortHrs": $.groceriesMetadata.expectedEffortHrs,
+            "tags": $.groceriesMetadata.tags
           }
         },
         {
@@ -29,7 +30,8 @@ response: |
           "metadata": {
             "notes": $.cleanMetadata.notes,
             "completionDate": $.cleanMetadata.completionDate,
-            "expectedEffortHrs": $.cleanMetadata.expectedEffortHrs
+            "expectedEffortHrs": $.cleanMetadata.expectedEffortHrs,
+            "tags": $.cleanMetadata.tags
           }
         },
         {
@@ -38,7 +40,8 @@ response: |
           "metadata": {
             "notes": $.medicationMetadata.notes,
             "completionDate": $.medicationMetadata.completionDate,
-            "expectedEffortHrs": null
+            "expectedEffortHrs": $.medicationMetadata.expectedEffortHrs,
+            "tags": $.medicationMetadata.tags
           }
         }
       ]
