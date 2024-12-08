@@ -243,7 +243,13 @@ pub trait DataParamBuilder<D> {
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<PostgresField<MutationType>> {
-        let optional = Self::mark_fields_optional() || field.has_default_value;
+        // For typed-json fields, we don't need to make them optional (i.e. force to supply all non-optional fields)
+        let is_json_typed = match top_level_type {
+            Some(top_level_type) => top_level_type.representation == EntityRepresentation::Json,
+            None => false,
+        };
+
+        let optional = !is_json_typed && (Self::mark_fields_optional() || field.has_default_value);
 
         let mutation_type_kind = if Self::data_param_role() == DataParamRole::Create {
             MutationTypeKind::Create
