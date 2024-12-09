@@ -295,7 +295,7 @@ impl DatabaseSpec {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_family = "wasm")))]
 mod tests {
     use std::future::Future;
     use std::sync::LazyLock;
