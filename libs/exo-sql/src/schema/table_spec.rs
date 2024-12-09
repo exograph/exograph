@@ -133,7 +133,11 @@ impl TableSpec {
                 client,
                 &table_name,
                 &name,
-                constraints.primary_key.columns.contains(&name),
+                constraints
+                    .primary_key
+                    .as_ref()
+                    .map(|pk| pk.columns.contains(&name))
+                    .unwrap_or(false),
                 column_type_mapping.get(&name).cloned(),
                 unique_constraint_names,
             )
