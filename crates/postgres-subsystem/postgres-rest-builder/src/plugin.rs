@@ -18,6 +18,7 @@ use core_plugin_interface::{
 
 use postgres_core_builder::resolved_type::ResolvedType;
 use postgres_core_builder::resolved_type::ResolvedTypeEnv;
+use postgres_core_model::types::EntityRepresentation;
 use postgres_rest_model::method::Method;
 use postgres_rest_model::operation::{PostgresOperation, PostgresOperationKind};
 use postgres_rest_model::subsystem::PostgresRestSubsystem;
@@ -34,6 +35,10 @@ impl PostgresRestSubsystemBuilder {
 
         for typ in resolved_env.resolved_types.iter() {
             if let ResolvedType::Composite(composite) = typ.1 {
+                if composite.representation == EntityRepresentation::Json {
+                    continue;
+                }
+
                 let table_id = core_subsystem_building
                     .database
                     .get_table_id(&composite.table_name)

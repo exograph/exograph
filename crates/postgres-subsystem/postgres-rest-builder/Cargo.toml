@@ -5,6 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+postgres-core-model = { path = "../postgres-core-model" }
 postgres-rest-model = { path = "../postgres-rest-model" }
 postgres-core-builder = { path = "../postgres-core-builder" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }

@@ -121,6 +121,9 @@ fn compute_update_columns<'a>(
                 }
             }
             PostgresRelation::OneToMany { .. } => None,
+            PostgresRelation::Embedded => {
+                panic!("Embedded relations cannot be used in update operations")
+            }
         })
         .collect()
 }

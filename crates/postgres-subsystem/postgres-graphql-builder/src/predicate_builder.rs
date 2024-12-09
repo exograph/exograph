@@ -13,8 +13,8 @@ use core_plugin_interface::core_model::{
 };
 use postgres_graphql_model::predicate::PredicateParameterTypeWrapper;
 
-use postgres_core_model::relation::PostgresRelation;
-use postgres_core_model::types::{EntityType, PostgresPrimitiveType};
+use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveType, TypeIndex};
+use postgres_core_model::{relation::PostgresRelation, types::EntityRepresentation};
 
 use std::collections::HashMap;
 
@@ -76,6 +76,10 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                 );
             }
             ResolvedType::Composite(c @ ResolvedCompositeType { .. }) => {
+                if c.representation == EntityRepresentation::Json {
+                    continue;
+                }
+
                 // Generic filter type
                 {
                     let shallow_type = PredicateParameterType {
@@ -118,6 +122,10 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
     }
 
     for (_, entity_type) in building.core_subsystem.entity_types.iter() {
+        if entity_type.representation == EntityRepresentation::Json {
+            continue;
+        }
+
         {
             let param_type_name = get_filter_type_name(&entity_type.name);
             let existing_param_id = building.predicate_types.get_id(&param_type_name);
@@ -160,11 +168,29 @@ fn expand_entity_type(
     entity_type: &EntityType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
+    if entity_type.representation == EntityRepresentation::Json {
+        return PredicateParameterTypeKind::ImplicitEqual;
+    }
+
+    fn is_normal_field(
+        field: &PostgresField<EntityType>,
+        building: &SystemContextBuilding,
+    ) -> bool {
+        let field_type_id = &field.typ.innermost().type_id;
+        if let TypeIndex::Composite(index) = field_type_id {
+            let field_type = &building.core_subsystem.entity_types[*index];
+            field_type.representation != EntityRepresentation::Json
+        } else {
+            true
+        }
+    }
+
     let entity_type_name = &entity_type.name;
     // populate params for each field
     let field_params: Vec<PredicateParameter> = entity_type
         .fields
         .iter()
+        .filter(|field| is_normal_field(field, building))
         .map(|field| {
             let param_type_name = get_filter_type_name(field.typ.name());
 

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use codemap::Span;
 use exo_sql::{PhysicalTableName, VectorDistanceFunction};
+use postgres_core_model::types::EntityRepresentation;
 use serde::{Deserialize, Serialize};
 
 use core_plugin_interface::{
@@ -44,6 +45,8 @@ pub enum ResolvedType {
 pub struct ResolvedCompositeType {
     pub name: String,
     pub plural_name: String,
+    pub representation: EntityRepresentation,
+
     pub fields: Vec<ResolvedField>,
     pub table_name: PhysicalTableName,
     pub access: ResolvedAccess,

@@ -1,0 +1,60 @@
+operation: |
+  query {
+    todos @unordered { 
+      id
+      title
+      metadata {
+        expectedEffortHrs
+        notes
+        completionDate
+        tags
+      } 
+      info {
+        description
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "todos": [
+        {
+          "id": $.groceriesId,
+          "title": $.groceriesTitle,
+          "metadata": {
+            "notes": $.groceriesMetadata.notes,
+            "completionDate": $.groceriesMetadata.completionDate,
+            "expectedEffortHrs": $.groceriesMetadata.expectedEffortHrs,
+            "tags": $.groceriesMetadata.tags
+          },
+          "info": {
+            "description": $.groceriesInfo.description
+          }
+        },
+        {
+          "id": $.cleanId,
+          "title": $.cleanTitle,
+          "metadata": {
+            "notes": $.cleanMetadata.notes,
+            "completionDate": $.cleanMetadata.completionDate,
+            "expectedEffortHrs": $.cleanMetadata.expectedEffortHrs,
+            "tags": $.cleanMetadata.tags
+          },
+          "info": {
+            "description": $.cleanInfo.description
+          }
+        },
+        {
+          "id": $.medicationId,
+          "title": $.medicationTitle,
+          "metadata": {
+            "notes": $.medicationMetadata.notes,
+            "completionDate": $.medicationMetadata.completionDate,
+            "expectedEffortHrs": $.medicationMetadata.expectedEffortHrs,
+            "tags": $.medicationMetadata.tags
+          },
+          "info": $.medicationInfo
+        }
+      ]
+    }
+  }

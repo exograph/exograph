@@ -27,6 +27,7 @@ pub enum PostgresRelation {
     Scalar { column_id: ColumnId },
     ManyToOne(ManyToOneRelation),
     OneToMany(OneToManyRelation),
+    Embedded, // Such as a field in typed json
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -76,6 +77,9 @@ impl PostgresRelation {
             }
             PostgresRelation::ManyToOne(relation) => relation.column_path_link(database),
             PostgresRelation::OneToMany(relation) => relation.column_path_link(database),
+            PostgresRelation::Embedded => {
+                panic!("Embedded relations cannot be used in queries")
+            }
         }
     }
 }

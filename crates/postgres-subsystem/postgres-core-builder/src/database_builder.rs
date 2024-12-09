@@ -30,6 +30,7 @@ use exo_sql::{
 };
 
 use heck::ToSnakeCase;
+use postgres_core_model::types::EntityRepresentation;
 
 struct DatabaseBuilding {
     database: Database,
@@ -43,7 +44,7 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
     // Ensure that all types have a primary key
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            if c.pk_field().is_none() {
+            if c.representation == EntityRepresentation::Normal && c.pk_field().is_none() {
                 let diagnostic = Diagnostic {
                     level: Level::Error,
                     message: format!(
@@ -65,7 +66,7 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_type_no_fields(c, resolved_env, &mut building);
+            expand_database_info(c, resolved_env, &mut building);
         }
     }
 
@@ -88,11 +89,15 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
 /// This allows the type to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
 /// We can't expand fields yet since creating a field requires access to columns (self as well as those in a referred field in case a relation)
 /// and we may not have expanded a referred type yet.
-fn expand_type_no_fields(
+fn expand_database_info(
     resolved_type: &ResolvedCompositeType,
     resolved_env: &ResolvedTypeEnv,
     building: &mut DatabaseBuilding,
 ) {
+    if resolved_type.representation == EntityRepresentation::Json {
+        return;
+    }
+
     let table = PhysicalTable {
         name: resolved_type.table_name.clone(),
         columns: vec![],
@@ -152,10 +157,23 @@ fn expand_type_relations(
     resolved_env: &ResolvedTypeEnv,
     building: &mut DatabaseBuilding,
 ) {
+    if resolved_type.representation == EntityRepresentation::Json {
+        return;
+    }
+
     let table_name = &resolved_type.table_name;
     let table_id = building.database.get_table_id(table_name).unwrap();
 
     resolved_type.fields.iter().for_each(|field| {
+        let field_type = resolved_env
+            .get_by_key(&field.typ.innermost().type_name)
+            .unwrap();
+        if let ResolvedType::Composite(ct) = field_type {
+            if ct.representation == EntityRepresentation::Json {
+                return;
+            }
+        }
+
         if field.self_column {
             let self_column_id = building
                 .database
@@ -248,14 +266,19 @@ fn create_column(
                     default_value,
                     update_sync,
                 }),
-                ResolvedType::Composite(_) => {
+                ResolvedType::Composite(composite) => {
                     // Many-to-one:
                     // Column from the current table (but of the type of the pk column of the other table)
                     // and it refers to the pk column in the other table.
                     Some(PhysicalColumn {
                         table_id,
                         name: field.column_name.to_string(),
-                        typ: PhysicalColumnType::Boolean, // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
+                        typ: if composite.representation == EntityRepresentation::Json {
+                            PhysicalColumnType::Json
+                        } else {
+                            // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
+                            PhysicalColumnType::Boolean
+                        },
                         is_pk: false,
                         is_auto_increment: false,
                         is_nullable: optional,

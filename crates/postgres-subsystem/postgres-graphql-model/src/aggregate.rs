@@ -64,6 +64,9 @@ impl FieldDefinitionProvider<PostgresGraphQLSubsystem> for AggregateField {
 
                     vec![default_positioned(predicate_param.input_value())]
                 }
+                PostgresRelation::Embedded => {
+                    vec![]
+                }
             },
             None => vec![],
         };

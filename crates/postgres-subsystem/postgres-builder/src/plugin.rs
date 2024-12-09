@@ -248,6 +248,15 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     mapped_params: None,
                 },
             ),
+            (
+                "json",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Type],
+                    no_params: true,
+                    single_params: false,
+                    mapped_params: None,
+                },
+            ),
         ]
     }
 

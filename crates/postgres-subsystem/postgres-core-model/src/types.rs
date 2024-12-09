@@ -62,10 +62,17 @@ pub struct PostgresPrimitiveType {
     pub name: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+pub enum EntityRepresentation {
+    Json,
+    Normal,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EntityType {
     pub name: String,
     pub plural_name: String,
+    pub representation: EntityRepresentation,
 
     pub fields: Vec<PostgresField<EntityType>>,
     pub agg_fields: Vec<AggregateField>,

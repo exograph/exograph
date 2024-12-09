@@ -17,10 +17,10 @@ use postgres_graphql_model::types::MutationType;
 
 use postgres_core_model::{
     relation::PostgresRelation,
-    types::{EntityType, PostgresField},
+    types::{EntityRepresentation, EntityType, PostgresField},
 };
 
-use crate::utils::to_mutation_type;
+use crate::utils::{to_mutation_type, MutationTypeKind};
 
 use super::{builder::Builder, naming::ToPostgresTypeNames, system_builder::SystemContextBuilding};
 use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType};
@@ -41,13 +41,22 @@ impl Builder for ReferenceInputTypeBuilder {
         &self,
         building: &mut SystemContextBuilding,
     ) -> Result<(), ModelBuildingError> {
-        for (_, entity_type) in building.core_subsystem.entity_types.iter() {
+        for (_, entity_type) in building
+            .core_subsystem
+            .entity_types
+            .iter()
+            .filter(|(_, et)| et.representation == EntityRepresentation::Normal)
+        {
             for (existing_id, expanded_type) in expanded_reference_types(entity_type, building) {
                 building.mutation_types[existing_id] = expanded_type;
             }
         }
 
         Ok(())
+    }
+
+    fn needs_mutation_type(&self, composite_type: &ResolvedCompositeType) -> bool {
+        composite_type.representation == EntityRepresentation::Normal
     }
 }
 
@@ -61,7 +70,7 @@ fn expanded_reference_types(
         .flat_map(|field| match &field.relation {
             PostgresRelation::Pk { .. } => Some(PostgresField {
                 name: field.name.clone(),
-                typ: to_mutation_type(&field.typ),
+                typ: to_mutation_type(&field.typ, MutationTypeKind::Reference, building),
                 access: field.access.clone(),
                 relation: field.relation.clone(),
                 has_default_value: field.has_default_value,

@@ -310,6 +310,9 @@ async fn map_persistent_field<'content>(
                 nested_abstract_select,
             ))
         }
+        PostgresRelation::Embedded => {
+            panic!("Embedded relations cannot be used in queries")
+        }
     }
 }
 

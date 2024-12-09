@@ -25,7 +25,7 @@ use postgres_graphql_model::{
 
 use postgres_core_model::{
     relation::PostgresRelation,
-    types::{EntityType, PostgresField, PostgresPrimitiveType},
+    types::{EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType},
 };
 
 use crate::predicate_builder::get_unique_filter_type_name;
@@ -41,6 +41,10 @@ use postgres_core_builder::resolved_type::{ResolvedCompositeType, ResolvedType, 
 pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, typ) in types.iter() {
         if let ResolvedType::Composite(c) = &typ {
+            if c.representation == EntityRepresentation::Json {
+                continue;
+            }
+
             let entity_type_id = building.get_entity_type_id(c.name.as_str()).unwrap();
             let shallow_query = shallow_pk_query(entity_type_id, c);
             let collection_query = shallow_collection_query(entity_type_id, c);
@@ -66,7 +70,12 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (_, entity_type) in building.core_subsystem.entity_types.iter() {
+    for (_, entity_type) in building
+        .core_subsystem
+        .entity_types
+        .iter()
+        .filter(|(_, et)| et.representation == EntityRepresentation::Normal)
+    {
         expand_pk_query(
             entity_type,
             &building.predicate_types,
@@ -293,6 +302,9 @@ pub fn expand_unique_queries(
                         }
                         PostgresRelation::OneToMany { .. } => {
                             panic!("OneToMany relations cannot be used in unique queries")
+                        }
+                        PostgresRelation::Embedded => {
+                            panic!("Embedded relations cannot be used in unique queries")
                         }
                     }
                 })

@@ -27,7 +27,10 @@ use postgres_core_model::{
     types::{EntityType, PostgresField, PostgresFieldType, TypeIndex},
 };
 
-use crate::{mutation_builder::DataParamRole, utils::to_mutation_type};
+use crate::{
+    mutation_builder::DataParamRole,
+    utils::{to_mutation_type, MutationTypeKind},
+};
 
 use postgres_core_builder::shallow::Shallow;
 
@@ -100,6 +103,10 @@ impl Builder for UpdateMutationBuilder {
         }
 
         Ok(())
+    }
+
+    fn needs_mutation_type(&self, _composite_type: &ResolvedCompositeType) -> bool {
+        true
     }
 }
 
@@ -307,7 +314,11 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                         // we make it required (by not wrapping the entity_pk_field it as optional)
                         if let Some(base_type_pk_field) = base_type_pk_field {
                             let entity_pk_field = entity_type.pk_field().unwrap();
-                            base_type_pk_field.typ = to_mutation_type(&entity_pk_field.typ);
+                            base_type_pk_field.typ = to_mutation_type(
+                                &entity_pk_field.typ,
+                                MutationTypeKind::Update,
+                                building,
+                            );
                         } else {
                             panic!("Expected a PK field in the base type")
                         };

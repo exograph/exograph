@@ -1,0 +1,105 @@
+stages:
+  - operation: |
+      mutation($id: String!) {
+        # The mutation allows skipping the `expectedEffortHrs field, since it is declared optional in .exo
+        updateTodo(id: $id, data: { metadata: { notes: "Buy apples, oranges, and milk", completionDate: "2024-01-01", tags: ["party", "groceries"] } }) {
+          id
+          title
+          metadata {
+            notes
+            completionDate
+            tags
+            expectedEffortHrs
+          }
+        }
+      }
+    variable: |
+      {
+        "id": $.groceriesId
+      }
+    response: |
+      {
+        "data": {
+          "updateTodo": {
+            "id": 1,
+            "title": "Buy groceries",
+            "metadata": {
+              "tags": [
+                "party",
+                "groceries"
+              ],
+              "notes": "Buy apples, oranges, and milk",
+              "completionDate": "2024-01-01",
+              "expectedEffortHrs": null
+            }
+          }
+        }
+      }
+
+  - operation: |
+      mutation($id: String!) {
+        updateTodo(id: $id, data: { metadata: { notes: "Buy apples, oranges, and milk", completionDate: "2024-01-01", tags: ["party", "groceries"], expectedEffortHrs: 20 } }) {
+          id
+          title
+          metadata {
+            notes
+            completionDate
+            tags
+            expectedEffortHrs
+          }
+        }
+      }
+    variable: |
+      {
+        "id": $.groceriesId
+      }
+    response: |
+      {
+        "data": {
+          "updateTodo": {
+            "id": 1,
+            "title": "Buy groceries",
+            "metadata": {
+              "tags": [
+                "party",
+                "groceries"
+              ],
+              "notes": "Buy apples, oranges, and milk",
+              "completionDate": "2024-01-01",
+              "expectedEffortHrs": 20
+            }
+          }
+        }
+      }
+
+  - operation: |
+      mutation($id: String!) {
+        updateTodo(id: $id, data: { metadata: { notes: "Buy apples, oranges, and milk" } }) {
+          id
+          title
+          metadata {
+            notes
+            completionDate
+            tags
+            expectedEffortHrs
+          }
+        }
+      }
+    variable: |
+      {
+        "id": $.groceriesId
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Required argument 'completionDate' not found",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ]
+          }
+        ]
+      }

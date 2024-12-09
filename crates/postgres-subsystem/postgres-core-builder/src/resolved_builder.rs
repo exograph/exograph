@@ -14,6 +14,7 @@
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use postgres_core_model::types::EntityRepresentation;
 
 use super::{
     access_builder::{build_access, ResolvedAccess},
@@ -112,8 +113,41 @@ fn resolve(
                             &ct.name,
                             plural_annotation_value.clone(),
                         );
+                        let representation = if ct.annotations.contains("json") {
+                            EntityRepresentation::Json
+                        } else {
+                            EntityRepresentation::Normal
+                        };
 
-                        let access = build_access(ct.annotations.get("access"));
+                        let access_annotation = ct.annotations.get("access");
+
+                        let is_json = representation == EntityRepresentation::Json;
+
+                        if is_json && access_annotation.is_some() {
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: format!(
+                                    "Cannot use @access for type {}. Json types behave like a primitive (and thus have always-allowed access)",
+                                    ct.name
+                                ),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: ct.span,
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            });
+                        }
+
+                        let access = if is_json {
+                            // As if the user has annotated with `access(true)`
+                            ResolvedAccess {
+                                default: Some(AstExpr::BooleanLiteral(true, default_span())),
+                                ..Default::default()
+                            }
+                        } else {
+                            build_access(access_annotation)
+                        };
                         let name = ct.name.clone();
                         let plural_name =
                             plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
@@ -125,6 +159,34 @@ fn resolve(
                                 let update_sync = field.annotations.contains("update");
                                 let readonly = field.annotations.contains("readonly");
 
+                                let access_annotation = field.annotations.get("access");
+
+                                if is_json && access_annotation.is_some() {
+                                    errors.push(Diagnostic {
+                                        level: Level::Error,
+                                        message: format!(
+                                            "Cannot use @access for field '{}' in a type with a '@json' annotation",
+                                            field.name
+                                        ),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: field.span,
+                                            style: SpanStyle::Primary,
+                                            label: None,
+                                        }],
+                                    });
+                                }
+
+                                // For fields, by default, we assume the `access(true)` annotation
+                                let access = match access_annotation {
+                                    Some(_) => build_access(access_annotation),
+                                    None => ResolvedAccess {
+                                        default: AstExpr::BooleanLiteral(true, default_span())
+                                            .into(),
+                                        ..Default::default()
+                                    },
+                                };
+
                                 let column_info =
                                     compute_column_info(ct, field, &typechecked_system.types);
 
@@ -132,7 +194,6 @@ fn resolve(
                                     Ok(ColumnInfo {
                                         name: column_name,
                                         self_column,
-                                        access,
                                         unique_constraints,
                                         indices,
                                     }) => {
@@ -179,6 +240,7 @@ fn resolve(
                             ResolvedType::Composite(ResolvedCompositeType {
                                 name,
                                 plural_name: plural_name.clone(),
+                                representation,
                                 fields: resolved_fields,
                                 table_name: PhysicalTableName {
                                     name: table_name,
@@ -626,7 +688,6 @@ struct ColumnInfo {
     self_column: bool,
     unique_constraints: Vec<String>,
     indices: Vec<String>,
-    access: ResolvedAccess,
     // // Will this field be auto-updated by the system (through triggers, etc.) to its default value?
     // update_sync: bool,
 }
@@ -636,50 +697,33 @@ fn compute_column_info(
     field: &AstField<Typed>,
     types: &MappedArena<Type>,
 ) -> Result<ColumnInfo, Diagnostic> {
-    fn column_name(
-        enclosing_type: &AstModel<Typed>,
-        field: &AstField<Typed>,
-        types: &MappedArena<Type>,
-    ) -> Result<ColumnInfo, Diagnostic> {
-        let user_supplied_column_name = field
-            .annotations
-            .get("column")
-            .map(|p| p.as_single().as_string());
+    let user_supplied_column_name = field
+        .annotations
+        .get("column")
+        .map(|p| p.as_single().as_string());
 
-        let compute_column_name = |field_name: &str| {
-            user_supplied_column_name
-                .clone()
-                .unwrap_or_else(|| field_name.to_snake_case())
-        };
+    let compute_column_name = |field_name: &str| {
+        user_supplied_column_name
+            .clone()
+            .unwrap_or_else(|| field_name.to_snake_case())
+    };
 
-        let access_annotation = field.annotations.get("access");
-
-        // For fields, by default, we assume the `access(true)` annotation
-        let access = match access_annotation {
-            Some(_) => build_access(access_annotation),
-            None => ResolvedAccess {
-                default: AstExpr::BooleanLiteral(true, default_span()).into(),
-                ..Default::default()
+    let unique_constraints = field
+        .annotations
+        .get("unique")
+        .map(|p| match p {
+            AstAnnotationParams::Single(expr, _) => match expr {
+                AstExpr::StringLiteral(string, _) => vec![string.clone()],
+                AstExpr::StringList(string_list, _) => string_list.clone(),
+                _ => panic!("Not a string nor a string list when specifying unique"),
             },
-        };
+            AstAnnotationParams::None => vec![field.name.clone()],
+            AstAnnotationParams::Map(_, _) => panic!(),
+        })
+        .unwrap_or_default();
 
-        let unique_constraints = field
-            .annotations
-            .get("unique")
-            .map(|p| match p {
-                AstAnnotationParams::Single(expr, _) => match expr {
-                    AstExpr::StringLiteral(string, _) => vec![string.clone()],
-                    AstExpr::StringList(string_list, _) => string_list.clone(),
-                    _ => panic!("Not a string nor a string list when specifying unique"),
-                },
-                AstAnnotationParams::None => vec![field.name.clone()],
-                AstAnnotationParams::Map(_, _) => panic!(),
-            })
-            .unwrap_or_default();
-
-        let index_computed_name =
-            format!("{}_{}_idx", enclosing_type.name, field.name).to_ascii_lowercase();
-        let indices = field
+    let indices = {
+        field
             .annotations
             .get("index")
             .map(|p| match p {
@@ -688,152 +732,162 @@ fn compute_column_info(
                     AstExpr::StringList(string_list, _) => string_list.clone(),
                     _ => panic!("Not a string nor a string list when specifying index"),
                 },
-                AstAnnotationParams::None => vec![index_computed_name.clone()],
+                AstAnnotationParams::None => {
+                    let index_computed_name =
+                        format!("{}_{}_idx", enclosing_type.name, field.name).to_ascii_lowercase();
+                    vec![index_computed_name.clone()]
+                }
                 AstAnnotationParams::Map(_, _) => panic!(),
             })
-            .unwrap_or_default();
+            .unwrap_or_default()
+    };
 
-        let update_sync = field.annotations.contains("update");
-        let readonly = field.annotations.contains("readonly");
+    let update_sync = field.annotations.contains("update");
+    let readonly = field.annotations.contains("readonly");
 
-        if (update_sync || readonly) && field.default_value.is_none() {
-            return Err(Diagnostic {
-                level: Level::Error,
-                message: "Fields with @readonly or @update must have a default value".to_string(),
-                code: Some("C000".to_string()),
-                spans: vec![SpanLabel {
-                    span: field.span,
-                    style: SpanStyle::Primary,
-                    label: None,
-                }],
-            });
-        }
+    if (update_sync || readonly) && field.default_value.is_none() {
+        return Err(Diagnostic {
+            level: Level::Error,
+            message: "Fields with @readonly or @update must have a default value".to_string(),
+            code: Some("C000".to_string()),
+            spans: vec![SpanLabel {
+                span: field.span,
+                style: SpanStyle::Primary,
+                label: None,
+            }],
+        });
+    }
 
-        let id_column_name = |field_name: &str| {
-            user_supplied_column_name
-                .clone()
-                .unwrap_or(format!("{}_id", field_name.to_snake_case()))
-        };
-        // we can treat Optional fields as their inner type for the purposes
-        // of computing their default column name
-        let field_base_type = match &field.typ {
-            AstFieldType::Optional(inner_typ) => inner_typ.as_ref(),
-            _ => &field.typ,
-        };
+    let id_column_name = |field_name: &str| {
+        user_supplied_column_name
+            .clone()
+            .unwrap_or(format!("{}_id", field_name.to_snake_case()))
+    };
+    // we can treat Optional fields as their inner type for the purposes
+    // of computing their default column name
+    let field_base_type = match &field.typ {
+        AstFieldType::Optional(inner_typ) => inner_typ.as_ref(),
+        _ => &field.typ,
+    };
 
-        match field_base_type {
-            AstFieldType::Plain(_, _, _, _, _) => {
-                match field_base_type.to_typ(types).deref(types) {
-                    Type::Composite(field_type) => {
+    match field_base_type {
+        AstFieldType::Plain(_, _, _, _, _) => {
+            match field_base_type.to_typ(types).deref(types) {
+                Type::Composite(field_type) => {
+                    if field_type.annotations.contains("json") {
+                        return Ok(ColumnInfo {
+                            name: compute_column_name(&field.name),
+                            self_column: true,
+                            unique_constraints,
+                            indices,
+                        });
+                    }
+                    let matching_field =
+                        get_matching_field(field, enclosing_type, &field_type, types);
+                    let matching_field = match matching_field {
+                        Ok(matching_field) => matching_field,
+                        Err(err) => return Err(err),
+                    };
+
+                    let cardinality = field_cardinality(&matching_field.typ);
+
+                    match &field.typ {
+                        AstFieldType::Optional(_) => {
+                            // If the field is optional, we need to look at the cardinality of the matching field in the type of
+                            // the field.
+                            //
+                            // If the cardinality is One (thus forming a one-to-one relationship), then we need to use the matching field's name.
+                            // For example, if we have the following model, we will have a `user_id` column in `memberships` table, but no column in the `users` table:
+                            // type User {
+                            //     ...
+                            //     membership: Membership?
+                            // }
+                            // type Membership {
+                            //     ...
+                            //     user: User
+                            // }
+                            //
+                            // If the cardinality is Unbounded, then we need to use the field's name. For example, if we have
+                            // the following model, we will have a `venue_id` column in the `concerts` table.
+                            // type Concert {
+                            //    ...
+                            //    venue: Venue?
+                            // }
+                            // type Venue {
+                            //    ...
+                            //    concerts: Set<Concert>
+                            // }
+
+                            match cardinality {
+                                Cardinality::ZeroOrOne => Err(Diagnostic {
+                                    level: Level::Error,
+                                    message:
+                                        "Both side of one-to-one relationship cannot be optional"
+                                            .to_string(),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: field.span,
+                                        style: SpanStyle::Primary,
+                                        label: None,
+                                    }],
+                                }),
+                                Cardinality::One => Ok(ColumnInfo {
+                                    name: id_column_name(&matching_field.name),
+                                    self_column: false,
+                                    unique_constraints,
+                                    indices,
+                                }),
+                                Cardinality::Unbounded => Ok(ColumnInfo {
+                                    name: id_column_name(&field.name),
+                                    self_column: true,
+                                    unique_constraints,
+                                    indices,
+                                }),
+                            }
+                        }
+                        _ => {
+                            let unique_constraints =
+                                if matches!(cardinality, Cardinality::ZeroOrOne) {
+                                    // Add an explicit unique constraint to enforce one-to-one constraint
+                                    vec![field.name.clone()]
+                                } else {
+                                    unique_constraints
+                                };
+
+                            Ok(ColumnInfo {
+                                name: id_column_name(&field.name),
+                                self_column: true,
+                                unique_constraints,
+                                indices,
+                            })
+                        }
+                    }
+                }
+                Type::Set(typ) => {
+                    if let Type::Composite(field_type) = typ.deref(types) {
+                        // OneToMany
                         let matching_field =
                             get_matching_field(field, enclosing_type, &field_type, types);
+
                         let matching_field = match matching_field {
                             Ok(matching_field) => matching_field,
                             Err(err) => return Err(err),
                         };
 
-                        let cardinality = field_cardinality(&matching_field.typ);
+                        let matching_field_cardinality = field_cardinality(&matching_field.typ);
 
-                        match &field.typ {
-                            AstFieldType::Optional(_) => {
-                                // If the field is optional, we need to look at the cardinality of the matching field in the type of
-                                // the field.
-                                //
-                                // If the cardinality is One (thus forming a one-to-one relationship), then we need to use the matching field's name.
-                                // For example, if we have the following model, we will have a `user_id` column in `memberships` table, but no column in the `users` table:
-                                // type User {
-                                //     ...
-                                //     membership: Membership?
-                                // }
-                                // type Membership {
-                                //     ...
-                                //     user: User
-                                // }
-                                //
-                                // If the cardinality is Unbounded, then we need to use the field's name. For example, if we have
-                                // the following model, we will have a `venue_id` column in the `concerts` table.
-                                // type Concert {
-                                //    ...
-                                //    venue: Venue?
-                                // }
-                                // type Venue {
-                                //    ...
-                                //    concerts: Set<Concert>
-                                // }
+                        if matching_field_cardinality == Cardinality::Unbounded {
+                            let referring_type_name = &enclosing_type.name;
+                            let referred_type_name = &field_type.name;
+                            let suggested_linking_type_name =
+                                if referring_type_name < referred_type_name {
+                                    format!("{}{}", referring_type_name, referred_type_name)
+                                } else {
+                                    format!("{}{}", referred_type_name, referring_type_name)
+                                };
 
-                                match cardinality {
-                                    Cardinality::ZeroOrOne => {
-                                        Err(Diagnostic {
-                                        level: Level::Error,
-                                        message: "Both side of one-to-one relationship cannot be optional".to_string(),
-                                        code: Some("C000".to_string()),
-                                        spans: vec![SpanLabel {
-                                            span: field.span,
-                                            style: SpanStyle::Primary,
-                                            label: None,
-                                        }],
-                                    })
-                                    }
-                                    Cardinality::One => Ok(ColumnInfo {
-                                        name: id_column_name(&matching_field.name),
-                                        self_column: false,
-                                        access,
-                                        unique_constraints,
-                                        indices,
-                                    }),
-                                    Cardinality::Unbounded => Ok(ColumnInfo {
-                                        name: id_column_name(&field.name),
-                                        self_column: true,
-                                        access,
-                                        unique_constraints,
-                                        indices,
-                                    }),
-                                }
-                            }
-                            _ => {
-                                let unique_constraints =
-                                    if matches!(cardinality, Cardinality::ZeroOrOne) {
-                                        // Add an explicit unique constraint to enforce one-to-one constraint
-                                        vec![field.name.clone()]
-                                    } else {
-                                        unique_constraints
-                                    };
-
-                                Ok(ColumnInfo {
-                                    name: id_column_name(&field.name),
-                                    self_column: true,
-                                    access,
-                                    unique_constraints,
-                                    indices,
-                                })
-                            }
-                        }
-                    }
-                    Type::Set(typ) => {
-                        if let Type::Composite(field_type) = typ.deref(types) {
-                            // OneToMany
-                            let matching_field =
-                                get_matching_field(field, enclosing_type, &field_type, types);
-
-                            let matching_field = match matching_field {
-                                Ok(matching_field) => matching_field,
-                                Err(err) => return Err(err),
-                            };
-
-                            let matching_field_cardinality = field_cardinality(&matching_field.typ);
-
-                            if matching_field_cardinality == Cardinality::Unbounded {
-                                let referring_type_name = &enclosing_type.name;
-                                let referred_type_name = &field_type.name;
-                                let suggested_linking_type_name =
-                                    if referring_type_name < referred_type_name {
-                                        format!("{}{}", referring_type_name, referred_type_name)
-                                    } else {
-                                        format!("{}{}", referred_type_name, referring_type_name)
-                                    };
-
-                                // We don't support direct many-to-many relationships
-                                Err(Diagnostic {
+                            // We don't support direct many-to-many relationships
+                            Err(Diagnostic {
                                     level: Level::Error,
                                     message: format!(
                                         "Many-to-many relationships without a linking type are not supported. Consider adding a type such as '{suggested_linking_type_name}' to connect '{referring_type_name}' and '{referred_type_name}",
@@ -845,84 +899,78 @@ fn compute_column_info(
                                         label: None,
                                     }],
                                 })
-                            } else {
-                                Ok(ColumnInfo {
-                                    name: id_column_name(&matching_field.name),
-                                    self_column: false,
-                                    access,
-                                    unique_constraints,
-                                    indices,
-                                })
-                            }
                         } else {
-                            Err(Diagnostic {
-                                level: Level::Error,
-                                message: "Sets of non-composites are not supported".to_string(),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: field.span,
-                                    style: SpanStyle::Primary,
-                                    label: None,
-                                }],
-                            })
-                        }
-                    }
-                    Type::Array(typ) => {
-                        // unwrap type
-                        let mut underlying_typ = &typ;
-                        while let Type::Array(t) = &**underlying_typ {
-                            underlying_typ = t;
-                        }
-
-                        if let Type::Primitive(_) = underlying_typ.deref(types) {
-                            // base type is a primitive, which means this is an Array
                             Ok(ColumnInfo {
-                                name: compute_column_name(&field.name),
-                                self_column: true,
-                                access,
+                                name: id_column_name(&matching_field.name),
+                                self_column: false,
                                 unique_constraints,
                                 indices,
                             })
-                        } else {
-                            Err(Diagnostic {
-                                level: Level::Error,
-                                message: "Arrays of non-primitives are not supported".to_string(),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: field.span,
-                                    style: SpanStyle::Primary,
-                                    label: None,
-                                }],
-                            })
                         }
+                    } else {
+                        Err(Diagnostic {
+                            level: Level::Error,
+                            message: "Sets of non-composites are not supported".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: field.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        })
                     }
-                    _ => Ok(ColumnInfo {
-                        name: compute_column_name(&field.name),
-                        self_column: true,
-                        access,
-                        unique_constraints,
-                        indices,
-                    }),
                 }
-            }
-            AstFieldType::Optional(_) => {
-                // we already unwrapped any Optional there may be
-                // a nested Optional doesn't make sense
-                Err(Diagnostic {
-                    level: Level::Error,
-                    message: "Cannot have Optional of an Optional".to_string(),
-                    code: Some("C000".to_string()),
-                    spans: vec![SpanLabel {
-                        span: field.span,
-                        style: SpanStyle::Primary,
-                        label: None,
-                    }],
-                })
+                Type::Array(typ) => {
+                    // unwrap type
+                    let mut underlying_typ = &typ;
+                    while let Type::Array(t) = &**underlying_typ {
+                        underlying_typ = t;
+                    }
+
+                    if let Type::Primitive(_) = underlying_typ.deref(types) {
+                        // base type is a primitive, which means this is an Array
+                        Ok(ColumnInfo {
+                            name: compute_column_name(&field.name),
+                            self_column: true,
+                            unique_constraints,
+                            indices,
+                        })
+                    } else {
+                        Err(Diagnostic {
+                            level: Level::Error,
+                            message: "Arrays of non-primitives are not supported".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: field.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        })
+                    }
+                }
+                _ => Ok(ColumnInfo {
+                    name: compute_column_name(&field.name),
+                    self_column: true,
+                    unique_constraints,
+                    indices,
+                }),
             }
         }
+        AstFieldType::Optional(_) => {
+            // we already unwrapped any Optional there may be
+            // a nested Optional doesn't make sense
+            Err(Diagnostic {
+                level: Level::Error,
+                message: "Cannot have Optional of an Optional".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            })
+        }
     }
-
-    column_name(enclosing_type, field, types)
 }
 
 fn get_matching_field<'a>(
