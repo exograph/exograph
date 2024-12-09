@@ -79,7 +79,7 @@ async fn run(root_path: &Path, port: Option<u32>, seed: Option<PathBuf>) -> Resu
 
     let model: PathBuf = default_model_file();
 
-    let db_server = EphemeralDatabaseLauncher::create_server()?;
+    let db_server = EphemeralDatabaseLauncher::from_env().create_server()?;
     let db = db_server.create_database("yolo")?;
 
     let jwt_secret = std::env::var(EXO_JWT_SECRET).ok();

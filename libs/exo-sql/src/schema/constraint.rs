@@ -35,7 +35,7 @@ pub(super) struct UniqueConstraint {
 }
 
 pub(super) struct Constraints {
-    pub(super) primary_key: PrimaryKeyConstraint,
+    pub(super) primary_key: Option<PrimaryKeyConstraint>,
     pub(super) foreign_constraints: Vec<ForeignKeyConstraint>,
     pub(super) uniques: Vec<UniqueConstraint>,
 }
@@ -88,8 +88,7 @@ impl Constraints {
                     columns,
                 }
             })
-            .next()
-            .unwrap();
+            .next();
 
         // Filter out foreign key constraints to find which columns require foreign key constraints
         let foreign_constraints = constraints

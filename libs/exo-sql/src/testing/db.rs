@@ -14,37 +14,78 @@ use super::{
     local::LocalPostgresDatabaseServer,
 };
 
+enum EphemeralDatabaseLaunchPreference {
+    PreferLocal,
+    PreferDocker,
+    LocalOnly,
+    DockerOnly,
+}
+
 /// Launcher for an ephemeral database server using either a local Postgres installation or Docker
-pub struct EphemeralDatabaseLauncher {}
+pub struct EphemeralDatabaseLauncher {
+    preference: EphemeralDatabaseLaunchPreference,
+}
 
 impl EphemeralDatabaseLauncher {
-    /// Create a new database server.
-    /// Currently, it prefers a local installation, but falls back to Docker if it's not available
-    pub fn create_server(
+    pub fn from_env() -> Self {
+        let preference_env = std::env::var("EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE");
+
+        let preference = match preference_env.as_deref().unwrap_or("prefer-local") {
+            "prefer-local" => EphemeralDatabaseLaunchPreference::PreferLocal,
+            "prefer-docker" => EphemeralDatabaseLaunchPreference::PreferDocker,
+            "local-only" => EphemeralDatabaseLaunchPreference::LocalOnly,
+            "docker-only" => EphemeralDatabaseLaunchPreference::DockerOnly,
+            _ => {
+                eprintln!("Invalid value for EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE: {preference_env:?}");
+                EphemeralDatabaseLaunchPreference::PreferLocal
+            }
+        };
+
+        Self { preference }
+    }
+
+    fn create_local_server(
     ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
-        let local_res = LocalPostgresDatabaseServer::check_availability();
-        if local_res.is_ok() {
+        let local_available = LocalPostgresDatabaseServer::check_availability();
+        if let Ok(true) = local_available {
             println!("Launching PostgreSQL locally...");
             LocalPostgresDatabaseServer::start()
         } else {
-            eprintln!(
-                "Local PostgreSQL is not available: {}",
-                local_res.unwrap_err()
-            );
+            eprintln!("Local PostgreSQL is not available");
+            Err(EphemeralDatabaseSetupError::Generic(
+                "Local PostgreSQL is not available".to_string(),
+            ))
+        }
+    }
 
-            let docker_res = DockerPostgresDatabaseServer::check_availability();
-            if docker_res.is_ok() {
-                println!("Launching PostgreSQL in Docker...");
-                DockerPostgresDatabaseServer::start()
-            } else {
-                eprintln!(
-                    "Docker PostgreSQL is not available: {}",
-                    docker_res.unwrap_err()
-                );
-                Err(EphemeralDatabaseSetupError::Generic(
-                    "Neither local PostgreSQL nor Docker is available".to_string(),
-                ))
+    fn create_docker_server(
+    ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
+        let docker_available = DockerPostgresDatabaseServer::check_availability();
+        if let Ok(true) = docker_available {
+            println!("Launching PostgreSQL in Docker...");
+            DockerPostgresDatabaseServer::start()
+        } else {
+            eprintln!("Docker PostgreSQL is not available");
+            Err(EphemeralDatabaseSetupError::Generic(
+                "Docker PostgreSQL is not available".to_string(),
+            ))
+        }
+    }
+
+    /// Create a new database server.
+    /// Currently, it prefers a local installation, but falls back to Docker if it's not available
+    pub fn create_server(
+        &self,
+    ) -> Result<Box<dyn EphemeralDatabaseServer + Send + Sync>, EphemeralDatabaseSetupError> {
+        match self.preference {
+            EphemeralDatabaseLaunchPreference::PreferLocal => {
+                Self::create_local_server().or_else(|_| Self::create_docker_server())
             }
+            EphemeralDatabaseLaunchPreference::PreferDocker => {
+                Self::create_docker_server().or_else(|_| Self::create_local_server())
+            }
+            EphemeralDatabaseLaunchPreference::LocalOnly => Self::create_local_server(),
+            EphemeralDatabaseLaunchPreference::DockerOnly => Self::create_docker_server(),
         }
     }
 }
@@ -100,4 +141,15 @@ pub(super) fn launch_process(
         )));
     }
     Ok(())
+}
+
+pub(crate) fn generate_random_string() -> String {
+    use rand::Rng;
+
+    rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(15)
+        .map(char::from)
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
 }

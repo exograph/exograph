@@ -37,16 +37,24 @@ pub struct LocalPostgresDatabase {
 }
 
 impl LocalPostgresDatabaseServer {
-    pub fn check_availability() -> Result<(), EphemeralDatabaseSetupError> {
-        which::which("initdb")
-            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("initdb", e))?;
-        which::which("pg_ctl")
-            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("postgres", e))?;
-        which::which("pg_isready")
-            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("pg_isready", e))?;
-        which::which("createdb")
-            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("createdb", e))?;
-        Ok(())
+    pub fn check_availability() -> Result<bool, EphemeralDatabaseSetupError> {
+        if let Err(e) = which::which("initdb") {
+            tracing::error!("initdb not found: {}", e);
+            return Ok(false);
+        }
+        if let Err(e) = which::which("pg_ctl") {
+            tracing::error!("pg_ctl not found: {}", e);
+            return Ok(false);
+        }
+        if let Err(e) = which::which("pg_isready") {
+            tracing::error!("pg_isready not found: {}", e);
+            return Ok(false);
+        }
+        if let Err(e) = which::which("createdb") {
+            tracing::error!("createdb not found: {}", e);
+            return Ok(false);
+        }
+        Ok(true)
     }
 
     pub fn start(

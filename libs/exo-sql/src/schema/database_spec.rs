@@ -294,3 +294,283 @@ impl DatabaseSpec {
         }
     }
 }
+
+#[cfg(all(test, not(target_family = "wasm")))]
+mod tests {
+    use std::future::Future;
+    use std::sync::LazyLock;
+    use tokio::sync::Mutex;
+
+    use crate::testing::db::{
+        generate_random_string, EphemeralDatabaseLauncher, EphemeralDatabaseServer,
+    };
+    use crate::{DatabaseClientManager, IntBits};
+
+    use super::*;
+
+    static DATABASE_SERVER: LazyLock<Mutex<Box<dyn EphemeralDatabaseServer + Send + Sync>>> =
+        LazyLock::new(|| {
+            Mutex::new(
+                EphemeralDatabaseLauncher::from_env()
+                    .create_server()
+                    .unwrap(),
+            )
+        });
+
+    #[tokio::test]
+    async fn empty_database() {
+        test_database_spec("", DatabaseSpec::new(vec![], vec![])).await;
+    }
+
+    #[tokio::test]
+    async fn table_with_pk() {
+        test_database_spec(
+            "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255), email VARCHAR)",
+            DatabaseSpec::new(
+                vec![TableSpec::new(
+                    PhysicalTableName {
+                        name: "users".into(),
+                        schema: None,
+                    },
+                    vec![
+                        ColumnSpec {
+                            name: "id".into(),
+                            typ: ColumnTypeSpec::Int { bits: IntBits::_32 },
+                            is_pk: true,
+                            is_auto_increment: true,
+                            is_nullable: false,
+                            unique_constraints: vec![],
+                            default_value: None,
+                        },
+                        ColumnSpec {
+                            name: "name".into(),
+                            typ: ColumnTypeSpec::String {
+                                max_length: Some(255),
+                            },
+                            is_pk: false,
+                            is_auto_increment: false,
+                            is_nullable: true,
+                            unique_constraints: vec![],
+                            default_value: None,
+                        },
+                        ColumnSpec {
+                            name: "email".into(),
+                            typ: ColumnTypeSpec::String { max_length: None },
+                            is_pk: false,
+                            is_auto_increment: false,
+                            is_nullable: true,
+                            unique_constraints: vec![],
+                            default_value: None,
+                        },
+                    ],
+                    vec![],
+                    vec![],
+                )],
+                vec![],
+            ),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn table_without_pk() {
+        test_database_spec(
+            "CREATE TABLE users (complete BOOLEAN)",
+            DatabaseSpec::new(
+                vec![TableSpec::new(
+                    PhysicalTableName {
+                        name: "users".into(),
+                        schema: None,
+                    },
+                    vec![ColumnSpec {
+                        name: "complete".into(),
+                        typ: ColumnTypeSpec::Boolean,
+                        is_pk: false,
+                        is_auto_increment: false,
+                        is_nullable: true,
+                        unique_constraints: vec![],
+                        default_value: None,
+                    }],
+                    vec![],
+                    vec![],
+                )],
+                vec![],
+            ),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn numeric_columns() {
+        test_database_spec(
+            // One with specified precision and scale, one without
+            "CREATE TABLE items (precision_and_scale NUMERIC(10, 2), just_precision NUMERIC(20), no_precision_and_scale NUMERIC)",
+            DatabaseSpec::new(
+                vec![TableSpec::new(
+                    PhysicalTableName {
+                        name: "items".into(),
+                        schema: None,
+                    },
+                    vec![
+                        ColumnSpec {
+                            name: "precision_and_scale".into(),
+                            typ: ColumnTypeSpec::Numeric {
+                                precision: Some(10),
+                                scale: Some(2),
+                            },
+                            is_pk: false,
+                            is_auto_increment: false,
+                            is_nullable: true,
+                            unique_constraints: vec![],
+                            default_value: None,
+                        },
+                        ColumnSpec {
+                            name: "just_precision".into(),
+                            typ: ColumnTypeSpec::Numeric {
+                                precision: Some(20),
+                                scale: Some(0), // Default scale for NUMERIC is 0 (https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-DECIMAL)
+                            },
+                            is_pk: false,
+                            is_auto_increment: false,
+                            is_nullable: true,
+                            unique_constraints: vec![],
+                            default_value: None,
+                        },
+                        ColumnSpec {
+                            name: "no_precision_and_scale".into(),
+                            typ: ColumnTypeSpec::Numeric {
+                                precision: None,
+                                scale: None,
+                            },
+                            is_pk: false,
+                            is_auto_increment: false,
+                            is_nullable: true,
+                            unique_constraints: vec![],
+                            default_value: None,
+                        },
+                    ],
+                    vec![],
+                    vec![],
+                )],
+                vec![],
+            ),
+        )
+        .await;
+    }
+
+    async fn test_database_spec(schema: &str, expected_database_spec: DatabaseSpec) {
+        let database_name = generate_random_string();
+
+        with_client(database_name, |client| async move {
+            client.batch_execute(schema).await.unwrap();
+
+            let WithIssues {
+                value: database_spec,
+                issues,
+            } = DatabaseSpec::from_live_database(&client).await.unwrap();
+
+            assert_eq!(issues.len(), 0);
+
+            assert_database_spec_eq(&database_spec, &expected_database_spec);
+        })
+        .await;
+    }
+
+    async fn with_client<Fut>(database_name: String, f: impl FnOnce(DatabaseClient) -> Fut)
+    where
+        Fut: Future<Output = ()>,
+    {
+        let database_server = DATABASE_SERVER.lock().await;
+        let database_server = database_server.as_ref();
+
+        let database = database_server.create_database(&database_name).unwrap();
+
+        let client = DatabaseClientManager::from_url(&database.url(), true, None)
+            .await
+            .unwrap()
+            .get_client()
+            .await
+            .unwrap();
+
+        f(client).await
+    }
+
+    fn assert_database_spec_eq(actual: &DatabaseSpec, expected: &DatabaseSpec) {
+        assert_eq!(actual.tables.len(), expected.tables.len());
+
+        for actual_table in &actual.tables {
+            let expected_table = expected.tables.iter().find(|t| t.name == actual_table.name);
+            assert!(expected_table.is_some());
+            assert_table_spec_eq(actual_table, expected_table.unwrap());
+        }
+
+        assert_eq!(actual.functions.len(), expected.functions.len());
+        for actual_function in &actual.functions {
+            let expected_function = expected
+                .functions
+                .iter()
+                .find(|f| f.name == actual_function.name);
+            assert!(expected_function.is_some());
+            assert_function_spec_eq(actual_function, expected_function.unwrap());
+        }
+    }
+
+    fn assert_table_spec_eq(actual: &TableSpec, expected: &TableSpec) {
+        assert_eq!(actual.name, expected.name);
+
+        assert_eq!(
+            actual.columns.len(),
+            expected.columns.len(),
+            "Table {:?}: column count mismatch expected {} got {}",
+            actual.name,
+            expected.columns.len(),
+            actual.columns.len()
+        );
+        for (actual_column, expected_column) in actual.columns.iter().zip(expected.columns.iter()) {
+            assert_column_spec_eq(actual_column, expected_column);
+        }
+
+        assert_eq!(actual.indices.len(), expected.indices.len());
+        for (actual_index, expected_index) in actual.indices.iter().zip(expected.indices.iter()) {
+            assert_index_spec_eq(actual_index, expected_index);
+        }
+
+        assert_eq!(actual.triggers.len(), expected.triggers.len());
+        for (actual_trigger, expected_trigger) in
+            actual.triggers.iter().zip(expected.triggers.iter())
+        {
+            assert_trigger_spec_eq(actual_trigger, expected_trigger);
+        }
+    }
+
+    fn assert_column_spec_eq(actual: &ColumnSpec, expected: &ColumnSpec) {
+        assert_eq!(actual.name, expected.name);
+        assert_eq!(actual.typ, expected.typ);
+        assert_eq!(actual.is_pk, expected.is_pk);
+        assert_eq!(actual.is_auto_increment, expected.is_auto_increment);
+        assert_eq!(actual.is_nullable, expected.is_nullable);
+        assert_eq!(actual.unique_constraints, expected.unique_constraints);
+        assert_eq!(actual.default_value, expected.default_value);
+    }
+
+    fn assert_index_spec_eq(actual: &IndexSpec, expected: &IndexSpec) {
+        assert_eq!(actual.name, expected.name);
+        assert_eq!(actual.columns, expected.columns);
+        assert_eq!(actual.index_kind, expected.index_kind);
+    }
+
+    fn assert_trigger_spec_eq(actual: &TriggerSpec, expected: &TriggerSpec) {
+        assert_eq!(actual.name, expected.name);
+        assert_eq!(actual.function, expected.function);
+        assert_eq!(actual.timing, expected.timing);
+        assert_eq!(actual.orientation, expected.orientation);
+        assert_eq!(actual.event, expected.event);
+        assert_eq!(actual.table, expected.table);
+    }
+
+    fn assert_function_spec_eq(actual: &FunctionSpec, expected: &FunctionSpec) {
+        assert_eq!(actual.name, expected.name);
+        assert_eq!(actual.body, expected.body);
+        assert_eq!(actual.language, expected.language);
+    }
+}
