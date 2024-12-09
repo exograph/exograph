@@ -474,12 +474,20 @@ impl ColumnTypeSpec {
                                 .map_err(|_| {
                                     DatabaseError::Validation("Invalid numeric column spec".into())
                                 })?;
-                        let captures = regex.captures(s).unwrap();
+                        let captures = regex.captures(s);
 
-                        let precision = captures
-                            .name("precision")
-                            .and_then(|s| s.as_str().parse().ok());
-                        let scale = captures.name("scale").and_then(|s| s.as_str().parse().ok());
+                        let (precision, scale) = match captures {
+                            Some(captures) => {
+                                let precision = captures
+                                    .name("precision")
+                                    .and_then(|s| s.as_str().parse().ok());
+                                let scale =
+                                    captures.name("scale").and_then(|s| s.as_str().parse().ok());
+
+                                (precision, scale)
+                            }
+                            None => (None, None),
+                        };
 
                         ColumnTypeSpec::Numeric { precision, scale }
                     } else {

@@ -75,7 +75,7 @@ pub fn run(
 
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let ephemeral_server = Arc::new(EphemeralDatabaseLauncher::create_server()?);
+    let ephemeral_server = Arc::new(EphemeralDatabaseLauncher::from_env().create_server()?);
 
     for project_test in project_tests {
         project_test.run(

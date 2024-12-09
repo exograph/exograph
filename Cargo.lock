@@ -3787,6 +3787,7 @@ dependencies = [
  "bytes",
  "chrono",
  "deadpool-postgres",
+ "exo-sql",
  "futures",
  "lazy_static",
  "maybe-owned",

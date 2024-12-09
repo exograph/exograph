@@ -9,14 +9,13 @@
 
 //! A docker implementation of an ephemeral database server
 
-use rand::Rng;
 use std::{
     io::{BufRead, BufReader},
     process::Stdio,
 };
 
 use super::{
-    db::{launch_process, EphemeralDatabase, EphemeralDatabaseServer},
+    db::{generate_random_string, launch_process, EphemeralDatabase, EphemeralDatabaseServer},
     error::EphemeralDatabaseSetupError,
 };
 
@@ -32,10 +31,12 @@ pub struct DockerPostgresDatabase {
 }
 
 impl DockerPostgresDatabaseServer {
-    pub fn check_availability() -> Result<(), EphemeralDatabaseSetupError> {
-        which::which("docker")
-            .map_err(|e| EphemeralDatabaseSetupError::ExecutableNotFound("docker", e))?;
-        Ok(())
+    pub fn check_availability() -> Result<bool, EphemeralDatabaseSetupError> {
+        if let Err(e) = which::which("docker") {
+            tracing::error!("docker not found: {}", e);
+            return Ok(false);
+        }
+        Ok(true)
     }
 
     pub fn start(
@@ -153,13 +154,4 @@ impl Drop for DockerPostgresDatabase {
             );
         }
     }
-}
-
-fn generate_random_string() -> String {
-    rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(15)
-        .map(char::from)
-        .map(|c| c.to_ascii_lowercase())
-        .collect()
 }
