@@ -1,0 +1,21 @@
+@postgres(schema="entertainment")
+module ConcertModule {
+  @access(true)
+  type Concert {
+    @pk
+    id: Int = autoIncrement();
+    title: String
+    @column("venueid") venue: Venue 
+    published: Boolean
+    @precision(20) @scale(2) price: Decimal 
+  }
+
+  @access(true)
+  type Venue {
+    @pk id: Int = autoIncrement() 
+    name: String
+    @column("venueid") concerts: Set<Concert>? 
+    published: Boolean
+    @singlePrecision latitude: Float
+  }
+}
