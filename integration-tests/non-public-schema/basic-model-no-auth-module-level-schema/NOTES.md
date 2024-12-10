@@ -1,0 +1,1 @@
+The "tests" directory is a soft-link to ../../basic-model-no-auth/tests, since the model is identical from the API perspective (table/schema names are different, but that's it)

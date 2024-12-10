@@ -96,161 +96,176 @@ fn resolve(
 
     for (_, Module(module)) in typechecked_system.modules.iter() {
         // Process each persistent type to create a PostgresType
-        if module.annotations.get("postgres").is_some() {
-            for typ in module.types.iter() {
-                if let Some(Type::Composite(ct)) = typechecked_system.types.get_by_key(&typ.name) {
-                    if ct.kind == AstModelKind::Type {
-                        let plural_annotation_value = ct
-                            .annotations
-                            .get("plural")
-                            .map(|p| p.as_single().as_string());
+        let module_annotation = module.annotations.get("postgres");
 
-                        let TableInfo {
-                            name: table_name,
-                            schema: schema_name,
-                        } = extract_table_annotation(
-                            ct.annotations.get("table"),
-                            &ct.name,
-                            plural_annotation_value.clone(),
-                        );
-                        let representation = if ct.annotations.contains("json") {
-                            EntityRepresentation::Json
-                        } else {
-                            EntityRepresentation::Normal
-                        };
+        let module_schema_name = match module_annotation {
+            Some(a) => {
+                if let AstAnnotationParams::Map(map, _) = a {
+                    map.get("schema").map(|s| s.as_string())
+                } else {
+                    None
+                }
+            }
+            None => continue,
+        };
 
-                        let access_annotation = ct.annotations.get("access");
+        for typ in module.types.iter() {
+            if let Some(Type::Composite(ct)) = typechecked_system.types.get_by_key(&typ.name) {
+                if ct.kind == AstModelKind::Type {
+                    let plural_annotation_value = ct
+                        .annotations
+                        .get("plural")
+                        .map(|p| p.as_single().as_string());
 
-                        let is_json = representation == EntityRepresentation::Json;
+                    let TableInfo {
+                        name: table_name,
+                        schema: schema_name,
+                    } = extract_table_annotation(
+                        ct.annotations.get("table"),
+                        &ct.name,
+                        plural_annotation_value.clone(),
+                    );
 
-                        if is_json && access_annotation.is_some() {
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: format!(
-                                    "Cannot use @access for type {}. Json types behave like a primitive (and thus have always-allowed access)",
-                                    ct.name
-                                ),
-                                code: Some("C000".to_string()),
-                                spans: vec![SpanLabel {
-                                    span: ct.span,
-                                    style: SpanStyle::Primary,
-                                    label: None,
-                                }],
-                            });
+                    // If the table didn't specify a schema, use the module schema
+                    let schema_name = module_schema_name.clone().or(schema_name);
+
+                    let representation = if ct.annotations.contains("json") {
+                        EntityRepresentation::Json
+                    } else {
+                        EntityRepresentation::Normal
+                    };
+
+                    let access_annotation = ct.annotations.get("access");
+
+                    let is_json = representation == EntityRepresentation::Json;
+
+                    if is_json && access_annotation.is_some() {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "Cannot use @access for type {}. Json types behave like a primitive (and thus have always-allowed access)",
+                                ct.name
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: ct.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+
+                    let access = if is_json {
+                        // As if the user has annotated with `access(true)`
+                        ResolvedAccess {
+                            default: Some(AstExpr::BooleanLiteral(true, default_span())),
+                            ..Default::default()
                         }
+                    } else {
+                        build_access(access_annotation)
+                    };
+                    let name = ct.name.clone();
+                    let plural_name =
+                        plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
 
-                        let access = if is_json {
-                            // As if the user has annotated with `access(true)`
-                            ResolvedAccess {
-                                default: Some(AstExpr::BooleanLiteral(true, default_span())),
-                                ..Default::default()
+                    let resolved_fields = ct
+                        .fields
+                        .iter()
+                        .flat_map(|field| {
+                            let update_sync = field.annotations.contains("update");
+                            let readonly = field.annotations.contains("readonly");
+
+                            let access_annotation = field.annotations.get("access");
+
+                            if is_json && access_annotation.is_some() {
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!(
+                                        "Cannot use @access for field '{}' in a type with a '@json' annotation",
+                                        field.name
+                                    ),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: field.span,
+                                        style: SpanStyle::Primary,
+                                        label: None,
+                                    }],
+                                });
                             }
-                        } else {
-                            build_access(access_annotation)
-                        };
-                        let name = ct.name.clone();
-                        let plural_name =
-                            plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
 
-                        let resolved_fields = ct
-                            .fields
-                            .iter()
-                            .flat_map(|field| {
-                                let update_sync = field.annotations.contains("update");
-                                let readonly = field.annotations.contains("readonly");
+                            // For fields, by default, we assume the `access(true)` annotation
+                            let access = match access_annotation {
+                                Some(_) => build_access(access_annotation),
+                                None => ResolvedAccess {
+                                    default: AstExpr::BooleanLiteral(true, default_span())
+                                        .into(),
+                                    ..Default::default()
+                                },
+                            };
 
-                                let access_annotation = field.annotations.get("access");
+                            let column_info =
+                                compute_column_info(ct, field, &typechecked_system.types);
 
-                                if is_json && access_annotation.is_some() {
-                                    errors.push(Diagnostic {
-                                        level: Level::Error,
-                                        message: format!(
-                                            "Cannot use @access for field '{}' in a type with a '@json' annotation",
-                                            field.name
-                                        ),
-                                        code: Some("C000".to_string()),
-                                        spans: vec![SpanLabel {
-                                            span: field.span,
-                                            style: SpanStyle::Primary,
-                                            label: None,
-                                        }],
-                                    });
-                                }
+                            match column_info {
+                                Ok(ColumnInfo {
+                                    name: column_name,
+                                    self_column,
+                                    unique_constraints,
+                                    indices,
+                                }) => {
+                                    let typ = resolve_field_type(
+                                        &field.typ.to_typ(&typechecked_system.types),
+                                        &typechecked_system.types,
+                                    );
 
-                                // For fields, by default, we assume the `access(true)` annotation
-                                let access = match access_annotation {
-                                    Some(_) => build_access(access_annotation),
-                                    None => ResolvedAccess {
-                                        default: AstExpr::BooleanLiteral(true, default_span())
-                                            .into(),
-                                        ..Default::default()
-                                    },
-                                };
+                                    let default_value = field
+                                        .default_value
+                                        .as_ref()
+                                        .map(|v| resolve_field_default_type(v, &typ, errors));
 
-                                let column_info =
-                                    compute_column_info(ct, field, &typechecked_system.types);
-
-                                match column_info {
-                                    Ok(ColumnInfo {
-                                        name: column_name,
+                                    Some(ResolvedField {
+                                        name: field.name.clone(),
+                                        typ,
+                                        column_name,
                                         self_column,
+                                        is_pk: field.annotations.contains("pk"),
+                                        access,
+                                        type_hint: build_type_hint(
+                                            field,
+                                            &typechecked_system.types,
+                                            errors,
+                                        ),
                                         unique_constraints,
                                         indices,
-                                    }) => {
-                                        let typ = resolve_field_type(
-                                            &field.typ.to_typ(&typechecked_system.types),
-                                            &typechecked_system.types,
-                                        );
-
-                                        let default_value = field
-                                            .default_value
-                                            .as_ref()
-                                            .map(|v| resolve_field_default_type(v, &typ, errors));
-
-                                        Some(ResolvedField {
-                                            name: field.name.clone(),
-                                            typ,
-                                            column_name,
-                                            self_column,
-                                            is_pk: field.annotations.contains("pk"),
-                                            access,
-                                            type_hint: build_type_hint(
-                                                field,
-                                                &typechecked_system.types,
-                                                errors,
-                                            ),
-                                            unique_constraints,
-                                            indices,
-                                            default_value,
-                                            update_sync,
-                                            readonly,
-                                            span: field.span,
-                                        })
-                                    }
-                                    Err(e) => {
-                                        errors.push(e);
-                                        None
-                                    }
+                                        default_value,
+                                        update_sync,
+                                        readonly,
+                                        span: field.span,
+                                    })
                                 }
-                            })
-                            .collect();
+                                Err(e) => {
+                                    errors.push(e);
+                                    None
+                                }
+                            }
+                        })
+                        .collect();
 
-                        resolved_postgres_types.add(
-                            &ct.name,
-                            ResolvedType::Composite(ResolvedCompositeType {
-                                name,
-                                plural_name: plural_name.clone(),
-                                representation,
-                                fields: resolved_fields,
-                                table_name: PhysicalTableName {
-                                    name: table_name,
-                                    schema: schema_name,
-                                },
-                                access: access.clone(),
-                                span: ct.span,
-                            }),
-                        );
-                    }
+                    resolved_postgres_types.add(
+                        &ct.name,
+                        ResolvedType::Composite(ResolvedCompositeType {
+                            name,
+                            plural_name: plural_name.clone(),
+                            representation,
+                            fields: resolved_fields,
+                            table_name: PhysicalTableName {
+                                name: table_name,
+                                schema: schema_name,
+                            },
+                            access: access.clone(),
+                            span: ct.span,
+                        }),
+                    );
                 }
             }
         }

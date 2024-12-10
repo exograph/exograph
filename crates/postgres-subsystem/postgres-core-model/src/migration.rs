@@ -1367,6 +1367,132 @@ mod tests {
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn non_public_module_level_schema() {
+        assert_changes(
+            r#"
+                @postgres
+                module LogModule {
+                    type Log {
+                        @pk id: Int
+                        level: String?
+                        message: String
+                        owner: User
+                    }
+
+                    type User {
+                        @pk id: Int
+                        name: String
+                        logs: Set<Log>?
+                    }
+                }
+            "#,
+            r#"
+                @postgres(schema="info")
+                module LogModule {
+                    type Log {
+                        @pk id: Int
+                        level: String?
+                        message: String
+                        owner: User
+                    }
+
+                    type User {
+                        @pk id: Int
+                        name: String
+                        logs: Set<Log>?
+                    }
+                }
+            "#,
+            vec![
+                (
+                    r#"CREATE TABLE "logs" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "level" TEXT,
+                    |    "message" TEXT NOT NULL,
+                    |    "owner_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (r#"ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "users";"#, false),
+            ],
+            vec![
+                (r#"CREATE SCHEMA "info";"#, false),
+                (
+                    r#"CREATE TABLE "info"."logs" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "level" TEXT,
+                    |    "message" TEXT NOT NULL,
+                    |    "owner_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "info"."users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (r#"ALTER TABLE "info"."logs" ADD CONSTRAINT "info_logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "info"."users";"#, false),
+            ],
+            vec![
+                (r#"CREATE SCHEMA "info";"#, false),
+                (r#"DROP TABLE "logs" CASCADE;"#, true),
+                (r#"DROP TABLE "users" CASCADE;"#, true),
+                (
+                    r#"CREATE TABLE "info"."logs" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "level" TEXT,
+                    |    "message" TEXT NOT NULL,
+                    |    "owner_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "info"."users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (r#"ALTER TABLE "info"."logs" ADD CONSTRAINT "info_logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "info"."users";"#, false),
+            ],
+            vec![
+                (r#"DROP TABLE "info"."logs" CASCADE;"#, true),
+                (r#"DROP TABLE "info"."users" CASCADE;"#, true),
+                (
+                    r#"CREATE TABLE "logs" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "level" TEXT,
+                    |    "message" TEXT NOT NULL,
+                    |    "owner_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+
+                ),
+                ("DROP SCHEMA \"info\" CASCADE;", true),
+                ("ALTER TABLE \"logs\" ADD CONSTRAINT \"logs_owner_id_fk\" FOREIGN KEY (\"owner_id\") REFERENCES \"users\";", false)
+            ],
+        )
+        .await
+    }
+
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn introduce_vector_field() {
         assert_changes(
             r#"

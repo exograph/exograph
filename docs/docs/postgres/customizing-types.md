@@ -62,6 +62,25 @@ type User {
 
 The `User` type will be mapped to the `auth` schema, and the table name will be `t_users`.
 
+A common use case is to set the schema of all tables to a specific schema. You can achieve this by setting the `schema` attribute of the `@postgres` annotation. For example, to set the schema of all tables to `entertainment`, you can use the `@postgres` annotation as follows:
+
+```exo
+@postgres(schema="entertainment")
+module ConcertModule {
+  type Concert {
+    ...
+    venue: Venue
+  }
+
+  type Venue {
+    ...
+    concerts: Set<Concert>?
+  }
+}
+```
+
+You may still override the schema of a specific table using the `@table` annotation and the `schema` attribute.
+
 ### Pluralization
 
 By default, Exograph will use a simple algorithm to pluralize the name of the type. However, it doesn't work well for names with irregular pluralization. For example, Exograph will pluralize `person` to `persons`, but you will likely want to name it `people`. You can control the plural form using the `@plural` annotation:
