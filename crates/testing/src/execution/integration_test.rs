@@ -34,7 +34,7 @@ use std::{collections::HashMap, time::SystemTime};
 
 use exo_env::MapEnvironment;
 
-use crate::model::{resolve_testvariable, IntegrationTest, IntegrationTestOperation};
+use crate::model::{resolve_testvariable, IntegrationTest, Operation};
 
 use super::assertion::{dynamic_assert_using_deno, evaluate_using_deno};
 use super::{TestResult, TestResultKind};
@@ -250,15 +250,12 @@ enum OperationResult {
     Fail(anyhow::Error),
 }
 
-async fn run_operation(
-    gql: &IntegrationTestOperation,
-    ctx: &mut TestfileContext,
-) -> Result<OperationResult> {
-    let IntegrationTestOperation {
+async fn run_operation(gql: &Operation, ctx: &mut TestfileContext) -> Result<OperationResult> {
+    let Operation {
         document,
-        operations_metadata,
+        metadata: operations_metadata,
         variables,
-        expected_payload,
+        expected_response: expected_payload,
         auth,
         headers,
         deno_prelude,

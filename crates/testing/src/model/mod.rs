@@ -11,9 +11,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 mod operations_metadata;
 
-pub use operations_metadata::{
-    build_operations_metadata, resolve_testvariable, OperationsMetadata,
-};
+pub use operations_metadata::{build_operations_metadata, resolve_testvariable, OperationMetadata};
 
 /// Tests for a particular model
 pub struct TestSuite {
@@ -26,18 +24,19 @@ pub struct TestSuite {
 pub struct IntegrationTest {
     pub testfile_path: PathBuf,
     pub retries: usize,
-    pub init_operations: Vec<IntegrationTestOperation>,
-    pub test_operations: Vec<IntegrationTestOperation>,
+    pub init_operations: Vec<Operation>,
+    pub test_operations: Vec<Operation>,
     pub extra_envs: HashMap<String, String>, // extra envvars to be set when starting the exo server
 }
 
 #[derive(Debug, Clone)]
-pub struct IntegrationTestOperation {
+pub struct Operation {
     pub document: String,
-    pub operations_metadata: OperationsMetadata,
-    pub variables: Option<String>,        // stringified
-    pub expected_payload: Option<String>, // stringified
+    pub metadata: OperationMetadata,
+    pub variables: Option<String>, // stringified
     pub deno_prelude: Option<String>,
     pub auth: Option<String>,    // stringified
     pub headers: Option<String>, // stringified
+
+    pub expected_response: Option<String>, // stringified
 }

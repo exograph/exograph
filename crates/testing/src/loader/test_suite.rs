@@ -13,7 +13,7 @@ use wildmatch::WildMatch;
 
 use anyhow::Result;
 
-use crate::model::{IntegrationTest, IntegrationTestOperation, TestSuite};
+use crate::model::{IntegrationTest, Operation, TestSuite};
 
 impl TestSuite {
     /// Load and parse testfiles from a given directory and pattern.
@@ -42,7 +42,7 @@ impl TestSuite {
 
 fn load_tests_dir(
     test_directory: &Path, // directory that contains "src/index.exo"
-    init_ops: &[IntegrationTestOperation],
+    init_ops: &[Operation],
     pattern: &Option<String>,
 ) -> Result<Vec<IntegrationTest>> {
     // Begin directory traversal
