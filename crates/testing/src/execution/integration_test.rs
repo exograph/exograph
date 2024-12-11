@@ -18,6 +18,7 @@ use common::http::{MemoryRequestHead, MemoryRequestPayload, RequestPayload, Resp
 use common::operation_payload::OperationsPayload;
 use common::router::{PlainRequestPayload, Router};
 use exo_sql::testing::db::EphemeralDatabaseServer;
+use exo_sql::DatabaseClientManager;
 use futures::future::OptionFuture;
 use futures::FutureExt;
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -34,7 +35,9 @@ use std::{collections::HashMap, time::SystemTime};
 
 use exo_env::MapEnvironment;
 
-use crate::model::{resolve_testvariable, IntegrationTest, IntegrationTestOperation};
+use crate::model::{
+    resolve_testvariable, ApiOperation, DatabaseOperation, InitOperation, IntegrationTest,
+};
 
 use super::assertion::{dynamic_assert_using_deno, evaluate_using_deno};
 use super::{TestResult, TestResultKind};
@@ -42,6 +45,7 @@ use super::{TestResult, TestResultKind};
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
 struct TestfileContext {
+    database_url: String,
     router: SystemRouter,
     jwtsecret: String,
     cookies: HashMap<String, String>,
@@ -187,6 +191,7 @@ impl IntegrationTest {
             };
 
             TestfileContext {
+                database_url: db_instance.url(),
                 router,
                 jwtsecret,
                 cookies: HashMap::new(),
@@ -197,13 +202,15 @@ impl IntegrationTest {
         // run the init section
         println!("{log_prefix} Initializing database...");
         for operation in self.init_operations.iter() {
-            let result = run_operation(operation, &mut ctx).await.with_context(|| {
-                format!("While initializing database for testfile {}", self.name())
-            })?;
+            let result = run_init_operation(operation, &mut ctx)
+                .await
+                .with_context(|| {
+                    format!("While initializing database for testfile {}", self.name())
+                })?;
 
             match result {
-                OperationResult::Finished | OperationResult::AssertPassed => {}
-                OperationResult::AssertFailed(error) => {
+                OperationResult::Pass => {}
+                OperationResult::Fail(error) => {
                     Err(anyhow!("Initialization failed: {error}"))?;
                 }
             }
@@ -214,14 +221,14 @@ impl IntegrationTest {
 
         let mut fail = None;
         for operation in self.test_operations.iter() {
-            let result = run_operation(operation, &mut ctx)
+            let result = run_api_operation(operation, &mut ctx)
                 .await
                 .with_context(|| anyhow!("While running tests for {}", self.name()));
 
             match result {
                 Ok(op_result) => match op_result {
-                    OperationResult::AssertPassed | OperationResult::Finished => {}
-                    OperationResult::AssertFailed(e) => {
+                    OperationResult::Pass => {}
+                    OperationResult::Fail(e) => {
                         fail = Some(TestResultKind::Fail(e));
                         break;
                     }
@@ -246,24 +253,49 @@ impl IntegrationTest {
 
 #[derive(Debug)]
 enum OperationResult {
-    Finished,
-    AssertPassed,
-    AssertFailed(anyhow::Error),
+    Pass,
+    Fail(anyhow::Error),
 }
 
-async fn run_operation(
-    gql: &IntegrationTestOperation,
+async fn run_init_operation(
+    operation: &InitOperation,
     ctx: &mut TestfileContext,
 ) -> Result<OperationResult> {
-    let IntegrationTestOperation {
+    match operation {
+        InitOperation::Database(operation) => run_database_operation(operation, ctx).await,
+        InitOperation::Api(operation) => run_api_operation(operation, ctx).await,
+    }
+}
+
+async fn run_database_operation(
+    operation: &DatabaseOperation,
+    ctx: &mut TestfileContext,
+) -> Result<OperationResult> {
+    let db_url = ctx.database_url.clone();
+
+    let client = DatabaseClientManager::from_url(&db_url, true, None)
+        .await?
+        .get_client()
+        .await?;
+
+    client.batch_execute(operation.sql.as_str()).await?;
+
+    Ok(OperationResult::Pass)
+}
+
+async fn run_api_operation(
+    operation: &ApiOperation,
+    ctx: &mut TestfileContext,
+) -> Result<OperationResult> {
+    let ApiOperation {
         document,
-        operations_metadata,
+        metadata: operations_metadata,
         variables,
-        expected_payload,
+        expected_response: expected_payload,
         auth,
         headers,
         deno_prelude,
-    } = gql;
+    } = operation;
 
     let deno_prelude = deno_prelude.clone().unwrap_or_default();
 
@@ -373,19 +405,19 @@ async fn run_operation(
             )
             .await
             {
-                Ok(()) => Ok(OperationResult::AssertPassed),
-                Err(e) => Ok(OperationResult::AssertFailed(e)),
+                Ok(()) => Ok(OperationResult::Pass),
+                Err(e) => Ok(OperationResult::Fail(e)),
             }
         }
 
         None => {
             // No expected response specified - just check for errors
             match body.get("errors") {
-                Some(_) => Ok(OperationResult::AssertFailed(anyhow!(
+                Some(_) => Ok(OperationResult::Fail(anyhow!(
                     "Unexpected error in response: {}",
                     serde_json::to_string_pretty(&body)?
                 ))),
-                None => Ok(OperationResult::Finished),
+                None => Ok(OperationResult::Pass),
             }
         }
     }

@@ -23,16 +23,16 @@ type SelectionElement = String;
 
 /// Meta-information about the operation defined in the test.
 #[derive(Clone, Debug, Default, Serialize)]
-pub struct OperationsMetadata {
+pub struct OperationMetadata {
     /// Bindings defined using the `@bind` directive.
     pub bindings: TestvariableBindings,
     /// Path whose order shouldn't be considered while asserting (based on the `@unordered` directive)
     pub unordered_paths: HashSet<SelectionPath>,
 }
 
-impl OperationsMetadata {
-    pub fn combine(elems: Vec<OperationsMetadata>) -> Self {
-        let mut res = OperationsMetadata::default();
+impl OperationMetadata {
+    pub fn combine(elems: Vec<OperationMetadata>) -> Self {
+        let mut res = OperationMetadata::default();
 
         for elem in elems {
             res.extend(elem);
@@ -76,7 +76,7 @@ impl OperationsMetadata {
 //
 // This function generates variable bindings from GraphQL fields marked with the @bind directive.
 // See unit tests for usage.
-pub fn build_operations_metadata(document: &ExecutableDocument) -> OperationsMetadata {
+pub fn build_operations_metadata(document: &ExecutableDocument) -> OperationMetadata {
     match &document.operations {
         DocumentOperations::Single(operation) => {
             let selection_set = &operation.node.selection_set.node;
@@ -87,7 +87,7 @@ pub fn build_operations_metadata(document: &ExecutableDocument) -> OperationsMet
                 HashSet::new(),
             )
         }
-        DocumentOperations::Multiple(operations) => OperationsMetadata::combine(
+        DocumentOperations::Multiple(operations) => OperationMetadata::combine(
             operations
                 .iter()
                 .map(|(_, operation)| {
@@ -109,7 +109,7 @@ fn process_selection_set(
     current_path: Vec<SelectionElement>,
     fragments: &HashMap<Name, Positioned<FragmentDefinition>>,
     fragment_trail: HashSet<String>,
-) -> OperationsMetadata {
+) -> OperationMetadata {
     let metadatas = selection_set
         .items
         .iter()
@@ -125,7 +125,7 @@ fn process_selection_set(
                     let mut new_path = current_path.clone();
                     new_path.push(field_name);
 
-                    let mut operations_metadata = OperationsMetadata::default();
+                    let mut operations_metadata = OperationMetadata::default();
 
                     if let Some(bind_directive) = field
                         .directives
@@ -213,7 +213,7 @@ fn process_selection_set(
         })
         .collect::<Vec<_>>();
 
-    OperationsMetadata::combine(metadatas)
+    OperationMetadata::combine(metadatas)
 }
 
 // Resolve the value of a test variable from `response` using its name and the set of variable bindings.

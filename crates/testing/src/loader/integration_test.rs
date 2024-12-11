@@ -19,7 +19,8 @@ use async_graphql_parser::parse_query;
 use serde::Deserialize;
 
 use crate::model::{
-    build_operations_metadata, IntegrationTest, IntegrationTestOperation, OperationsMetadata,
+    build_operations_metadata, ApiOperation, DatabaseOperation, InitOperation, IntegrationTest,
+    OperationMetadata,
 };
 
 // serde file formats
@@ -79,10 +80,38 @@ impl IntegrationTest {
         project_dir.join("target").join("index.exo_ir")
     }
 
-    pub fn load(
-        testfile_path: &PathBuf,
-        init_ops: Vec<IntegrationTestOperation>,
-    ) -> Result<IntegrationTest> {
+    pub fn load_init_operations(init_file_path: &PathBuf) -> Result<Vec<InitOperation>> {
+        let extension = init_file_path
+            .extension()
+            .ok_or(anyhow::anyhow!("Init file has no extension"))?
+            .to_str()
+            .ok_or(anyhow::anyhow!("Init file extension is not valid UTF-8"))?;
+
+        if extension == "gql" {
+            Self::load(init_file_path, vec![]).map(|test| {
+                let IntegrationTest {
+                    test_operations, ..
+                } = test;
+                test_operations
+                    .into_iter()
+                    .map(InitOperation::Api)
+                    .collect()
+            })
+        } else if extension == "sql" {
+            let mut file = File::open(init_file_path).context("Could not open init file")?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)
+                .context("Could not read init file to string")?;
+
+            Ok(vec![InitOperation::Database(DatabaseOperation {
+                sql: contents,
+            })])
+        } else {
+            bail!("Unsupported init file extension: {}", extension);
+        }
+    }
+
+    pub fn load(testfile_path: &PathBuf, init_ops: Vec<InitOperation>) -> Result<IntegrationTest> {
         let mut file = File::open(testfile_path).context("Could not open test file")?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)
@@ -124,15 +153,15 @@ impl IntegrationTest {
                         eprintln!(
                             "Invalid GraphQL document; defaulting test variables binding to empty"
                         );
-                        OperationsMetadata::default()
+                        OperationMetadata::default()
                     });
 
-                Ok(IntegrationTestOperation {
+                Ok(ApiOperation {
                     document: stage.operation,
-                    operations_metadata,
+                    metadata: operations_metadata,
                     auth: stage.auth,
                     variables: stage.variable,
-                    expected_payload: stage.response,
+                    expected_response: stage.response,
                     headers: stage.headers,
                     deno_prelude: stage.deno,
                 })

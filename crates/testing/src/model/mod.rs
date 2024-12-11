@@ -11,9 +11,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 mod operations_metadata;
 
-pub use operations_metadata::{
-    build_operations_metadata, resolve_testvariable, OperationsMetadata,
-};
+pub use operations_metadata::{build_operations_metadata, resolve_testvariable, OperationMetadata};
 
 /// Tests for a particular model
 pub struct TestSuite {
@@ -26,18 +24,31 @@ pub struct TestSuite {
 pub struct IntegrationTest {
     pub testfile_path: PathBuf,
     pub retries: usize,
-    pub init_operations: Vec<IntegrationTestOperation>,
-    pub test_operations: Vec<IntegrationTestOperation>,
+    pub init_operations: Vec<InitOperation>,
+    pub test_operations: Vec<ApiOperation>,
     pub extra_envs: HashMap<String, String>, // extra envvars to be set when starting the exo server
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
-pub struct IntegrationTestOperation {
+pub enum InitOperation {
+    Database(DatabaseOperation),
+    Api(ApiOperation),
+}
+
+#[derive(Debug, Clone)]
+pub struct DatabaseOperation {
+    pub sql: String, // SQL statements separated by semicolons
+}
+
+#[derive(Debug, Clone)]
+pub struct ApiOperation {
     pub document: String,
-    pub operations_metadata: OperationsMetadata,
-    pub variables: Option<String>,        // stringified
-    pub expected_payload: Option<String>, // stringified
+    pub metadata: OperationMetadata,
+    pub variables: Option<String>, // stringified
     pub deno_prelude: Option<String>,
     pub auth: Option<String>,    // stringified
     pub headers: Option<String>, // stringified
+
+    pub expected_response: Option<String>, // stringified
 }
