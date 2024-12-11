@@ -3815,6 +3815,7 @@ dependencies = [
  "wasm-bindgen-test",
  "wasm-bindgen-test-macro",
  "which 6.0.3",
+ "wildmatch",
 ]
 
 [[package]]

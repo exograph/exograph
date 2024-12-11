@@ -13,6 +13,7 @@ use clap::Command;
 use exo_sql::schema::column_spec::{ColumnSpec, ColumnTypeSpec};
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
+use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
 use exo_sql::schema::table_spec::TableSpec;
 use std::fmt::Write;
 use std::path::PathBuf;
@@ -22,6 +23,7 @@ use heck::ToUpperCamelCase;
 use exo_sql::schema::issue::Issue;
 
 use crate::commands::command::{database_arg, get, output_arg, CommandDefinition};
+use crate::commands::util::migration_scope_from_env;
 use crate::util::open_file_for_output;
 
 use super::util;
@@ -41,7 +43,8 @@ impl CommandDefinition for ImportCommandDefinition {
     async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
         let output: Option<PathBuf> = get(matches, "output");
         let mut issues = Vec::new();
-        let mut schema = import_schema().await?;
+
+        let mut schema = import_schema(&migration_scope_from_env()).await?;
         let mut model = schema.value.to_model();
 
         issues.append(&mut schema.issues);
@@ -62,10 +65,16 @@ impl CommandDefinition for ImportCommandDefinition {
     }
 }
 
-async fn import_schema() -> Result<WithIssues<DatabaseSpec>> {
+async fn import_schema(scope: &MigrationScope) -> Result<WithIssues<DatabaseSpec>> {
     let database_client = util::database_manager_from_env().await?;
     let client = database_client.get_client().await?;
-    let database = DatabaseSpec::from_live_database(&client).await?;
+
+    let scope_matches = match scope {
+        MigrationScope::Specified(scope) => scope,
+        MigrationScope::FromNewSpec => &MigrationScopeMatches::all_schemas(),
+    };
+
+    let database = DatabaseSpec::from_live_database(&client, scope_matches).await?;
     Ok(database)
 }
 

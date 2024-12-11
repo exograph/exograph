@@ -20,6 +20,7 @@ use super::{
     function_spec::FunctionSpec,
     index_spec::IndexSpec,
     issue::WithIssues,
+    spec::MigrationScopeMatches,
     table_spec::TableSpec,
     trigger_spec::{TriggerEvent, TriggerOrientation, TriggerSpec, TriggerTiming},
 };
@@ -36,19 +37,27 @@ impl DatabaseSpec {
     }
 
     /// Non-public schemas required by this database spec.
-    pub fn required_schemas(&self) -> HashSet<String> {
+    pub fn required_schemas(&self, scope: &MigrationScopeMatches) -> HashSet<String> {
         self.tables
             .iter()
+            .filter(|table| scope.matches(&table.name))
             .flat_map(|table| table.name.schema.clone())
             .collect()
     }
 
-    pub fn required_extensions(&self) -> HashSet<String> {
-        self.tables.iter().fold(HashSet::new(), |acc, table| {
-            acc.union(&table.get_required_extensions())
-                .cloned()
-                .collect()
-        })
+    pub fn needs_public_schema(&self) -> bool {
+        self.tables.iter().any(|table| table.name.schema.is_none())
+    }
+
+    pub fn required_extensions(&self, scope: &MigrationScopeMatches) -> HashSet<String> {
+        self.tables
+            .iter()
+            .filter(|table| scope.matches(&table.name))
+            .fold(HashSet::new(), |acc, table| {
+                acc.union(&table.get_required_extensions())
+                    .cloned()
+                    .collect()
+            })
     }
 
     pub fn to_database(self) -> Database {
@@ -196,6 +205,7 @@ impl DatabaseSpec {
     /// Creates a new schema specification from an SQL database.
     pub async fn from_live_database(
         client: &DatabaseClient,
+        scope: &MigrationScopeMatches,
     ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
         const SCHEMAS_QUERY: &str =
             "SELECT DISTINCT table_schema FROM information_schema.tables WHERE table_schema != 'information_schema' AND table_schema NOT LIKE 'pg_%' AND table_type <> 'SYSTEM VIEW'";
@@ -218,6 +228,10 @@ impl DatabaseSpec {
             } else {
                 Some(raw_schema_name.clone())
             };
+
+            if !scope.matches_schema(&raw_schema_name) {
+                continue;
+            }
 
             for table_row in client
                 .query(TABLE_NAMES_QUERY, &[&raw_schema_name])
@@ -467,7 +481,9 @@ mod tests {
             let WithIssues {
                 value: database_spec,
                 issues,
-            } = DatabaseSpec::from_live_database(&client).await.unwrap();
+            } = DatabaseSpec::from_live_database(&client, &MigrationScopeMatches::all_schemas())
+                .await
+                .unwrap();
 
             assert_eq!(issues.len(), 0);
 

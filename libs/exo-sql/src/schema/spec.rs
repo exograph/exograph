@@ -9,13 +9,90 @@
 
 use std::collections::{hash_map::RandomState, hash_set::Difference};
 
+use wildmatch::WildMatch;
+
+use crate::PhysicalTableName;
+
 use super::{database_spec::DatabaseSpec, op::SchemaOp};
 
-pub fn diff<'a>(old: &'a DatabaseSpec, new: &'a DatabaseSpec) -> Vec<SchemaOp<'a>> {
+#[derive(Debug, PartialEq)]
+pub enum MigrationScope {
+    Specified(MigrationScopeMatches),
+    FromNewSpec,
+}
+
+impl MigrationScope {
+    pub fn all_schemas() -> Self {
+        Self::Specified(MigrationScopeMatches::all_schemas())
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct MigrationScopeMatches(pub Vec<(NameMatching, NameMatching)>);
+
+impl MigrationScopeMatches {
+    pub fn all_schemas() -> Self {
+        Self(vec![(NameMatching::new("*"), NameMatching::new("*"))])
+    }
+
+    pub fn matches(&self, table_name: &PhysicalTableName) -> bool {
+        self.0.iter().any(|(schema_pattern, table_pattern)| {
+            schema_pattern.matches(table_name.schema.as_deref().unwrap_or("public"))
+                && table_pattern.matches(&table_name.name)
+        })
+    }
+
+    pub fn matches_schema(&self, schema_name: &str) -> bool {
+        self.0
+            .iter()
+            .any(|(schema_pattern, _)| schema_pattern.matches(schema_name))
+    }
+
+    pub fn from_specs_schemas(specs: &[&DatabaseSpec]) -> Self {
+        let mut schemas = specs
+            .iter()
+            .flat_map(|spec| spec.required_schemas(&MigrationScopeMatches::all_schemas()))
+            .collect::<Vec<_>>();
+        if specs.iter().any(|spec| spec.needs_public_schema()) {
+            schemas.push("public".to_string());
+        }
+
+        MigrationScopeMatches(
+            schemas
+                .into_iter()
+                .map(|schema| (NameMatching::new(&schema), NameMatching::new("*")))
+                .collect(),
+        )
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct NameMatching(WildMatch); // matches if the name contains the pattern
+
+impl NameMatching {
+    pub fn new(pattern: &str) -> Self {
+        Self(WildMatch::new(pattern))
+    }
+
+    pub fn matches(&self, name: &str) -> bool {
+        self.0.matches(name)
+    }
+}
+
+pub fn diff<'a>(
+    old: &'a DatabaseSpec,
+    new: &'a DatabaseSpec,
+    scope: &MigrationScope,
+) -> Vec<SchemaOp<'a>> {
     let mut changes = vec![];
 
-    let old_required_extensions = old.required_extensions();
-    let new_required_extensions = new.required_extensions();
+    let scope_matches = match scope {
+        MigrationScope::Specified(spec) => spec,
+        MigrationScope::FromNewSpec => &MigrationScopeMatches::from_specs_schemas(&[new]),
+    };
+
+    let old_required_extensions = old.required_extensions(scope_matches);
+    let new_required_extensions = new.required_extensions(scope_matches);
 
     // extension creation
     let extensions_to_create =
@@ -26,8 +103,8 @@ pub fn diff<'a>(old: &'a DatabaseSpec, new: &'a DatabaseSpec) -> Vec<SchemaOp<'a
         })
     }
 
-    let old_required_schemas = old.required_schemas();
-    let new_required_schemas = new.required_schemas();
+    let old_required_schemas = old.required_schemas(scope_matches);
+    let new_required_schemas = new.required_schemas(scope_matches);
 
     // schema creation
     let schemas_to_create = sorted_strings(new_required_schemas.difference(&old_required_schemas));
@@ -37,10 +114,20 @@ pub fn diff<'a>(old: &'a DatabaseSpec, new: &'a DatabaseSpec) -> Vec<SchemaOp<'a
         })
     }
 
-    for old_table in old.tables.iter() {
+    let old_tables = old
+        .tables
+        .iter()
+        .filter(|table| scope_matches.matches(&table.name))
+        .collect::<Vec<_>>();
+    let new_tables = new
+        .tables
+        .iter()
+        .filter(|table| scope_matches.matches(&table.name))
+        .collect::<Vec<_>>();
+
+    for old_table in &old_tables {
         // try to find a table with the same name in the new spec
-        match new
-            .tables
+        match new_tables
             .iter()
             .find(|new_table| old_table.sql_name() == new_table.sql_name())
         {
@@ -53,9 +140,8 @@ pub fn diff<'a>(old: &'a DatabaseSpec, new: &'a DatabaseSpec) -> Vec<SchemaOp<'a
     }
 
     // try to find a table that needs to be created
-    for new_table in new.tables.iter() {
-        if !old
-            .tables
+    for new_table in &new_tables {
+        if !old_tables
             .iter()
             .any(|old_table| new_table.sql_name() == old_table.sql_name())
         {

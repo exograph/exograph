@@ -75,6 +75,12 @@ The `exo schema migrate` command offers a couple of options:
 - The `--allow-destructive-changes` will not comment out destructive changes. If you are sure that you want to perform those changes, you can use this option.
 - The `--apply-to-database` will apply changes to the database. This option is useful when applying the changes without running a separate `psql` command.
 
+## Specifying the scope of the schema
+
+By default, the `schema` subcommand operates on all tables of schemas used in your project (specified using either `@postgres(schema="...")` or `@table(schema="...")` in your exo files). This works well for brownfield projects where you want to create a new Exograph project that works with an existing database but skip migrating other schemas (which would suggest deleting any tables not referenced in your exo files). 
+
+The default behavior works for most projects. However, you can specify a different migration scope using the `EXO_POSTGRES_MIGRATION_SCOPE` environment variable, which is a comma-separated list in the form: `<schema-wildcard>[.<table-wildcard>]?` with `table-wildcard` being set to `*` by default. For example, to migrate only the `public` and `concerts` schemas, you can set the `EXO_POSTGRES_MIGRATION_SCOPE` environment variable to `public.*,concerts.*`, or simply `public,concerts`. You may also specify a specific schema and table, for example, `public.concerts*` or even `*.concerts*`, etc.
+
 # Creating an Exograph model from an existing database
 
 :::warning
