@@ -14,8 +14,10 @@ use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
 use postgres_core_model::migration::Migration;
 
 use crate::{
-    commands::command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
-    commands::util::use_ir_arg,
+    commands::{
+        command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
+        util::{migration_scope_from_env, use_ir_arg},
+    },
     util::open_file_for_output,
 };
 
@@ -70,7 +72,9 @@ impl CommandDefinition for MigrateCommandDefinition {
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
 
         let db_client = open_database(database_url.as_deref()).await?;
-        let migrations = Migration::from_db_and_model(&db_client, &database).await?;
+        let migrations =
+            Migration::from_db_and_model(&db_client, &database, &migration_scope_from_env())
+                .await?;
 
         if apply_to_database {
             if migrations.has_destructive_changes() {

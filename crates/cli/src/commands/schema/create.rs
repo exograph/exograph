@@ -16,8 +16,10 @@ use std::{io::Write, path::PathBuf};
 use exo_sql::schema::database_spec::DatabaseSpec;
 
 use crate::{
-    commands::command::{default_model_file, get, output_arg, CommandDefinition},
-    commands::util::use_ir_arg,
+    commands::{
+        command::{default_model_file, get, output_arg, CommandDefinition},
+        util::{migration_scope_from_env, use_ir_arg},
+    },
     util::open_file_for_output,
 };
 
@@ -49,6 +51,7 @@ impl CommandDefinition for CreateCommandDefinition {
         let migrations = Migration::from_schemas(
             &DatabaseSpec::new(vec![], vec![]),
             &DatabaseSpec::from_database(&database),
+            &migration_scope_from_env(),
         );
         migrations.write(&mut buffer, true)?;
 

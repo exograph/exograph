@@ -30,6 +30,8 @@ use crate::{
 };
 use common::env_const::{EXO_JWT_SECRET, EXO_POSTGRES_URL};
 
+use crate::commands::util::migration_scope_from_env;
+
 use super::command::{
     default_model_file, enforce_trusted_documents_arg, ensure_exo_project_dir, get, port_arg,
     seed_arg, setup_trusted_documents_enforcement, CommandDefinition,
@@ -147,7 +149,8 @@ async fn run_server(
 
     // generate migrations for current database
     let database = util::extract_postgres_database(model, None, false).await?;
-    let migrations = Migration::from_db_and_model(&db_client, &database).await?;
+    let migrations =
+        Migration::from_db_and_model(&db_client, &database, &migration_scope_from_env()).await?;
 
     // execute migration
     println!("Applying migrations...");

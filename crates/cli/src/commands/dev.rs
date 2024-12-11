@@ -31,6 +31,8 @@ use crate::{
     util::watcher,
 };
 
+use crate::commands::util::migration_scope_from_env;
+
 pub struct DevCommandDefinition {}
 
 #[async_trait]
@@ -63,6 +65,8 @@ impl CommandDefinition for DevCommandDefinition {
 
         std::env::set_var(EXO_CORS_DOMAINS, "*");
 
+        let migration_scope = migration_scope_from_env();
+
         const MIGRATE: &str = "Attempt migration";
         const CONTINUE: &str = "Continue with old schema";
         const PAUSE: &str = "Pause for manual repair";
@@ -74,11 +78,11 @@ impl CommandDefinition for DevCommandDefinition {
 
             loop {
                 let database = util::extract_postgres_database(&model, None, false).await?;
-                let verification_result = Migration::verify(&db_client, &database).await;
+                let verification_result = Migration::verify(&db_client, &database, &migration_scope).await;
 
                 match verification_result {
                     Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
-                        let migrations = Migration::from_db_and_model(&db_client, &database).await?;
+                        let migrations = Migration::from_db_and_model(&db_client, &database, &migration_scope).await?;
 
                         // If migrations are safe to apply, let's go ahead with those
                         if !migrations.has_destructive_changes() {

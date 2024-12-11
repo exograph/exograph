@@ -11,7 +11,12 @@ use std::fmt::Display;
 
 use exo_sql::{
     database_error::DatabaseError,
-    schema::{database_spec::DatabaseSpec, issue::WithIssues, op::SchemaOp, spec::diff},
+    schema::{
+        database_spec::DatabaseSpec,
+        issue::WithIssues,
+        op::SchemaOp,
+        spec::{diff, MigrationScope, MigrationScopeMatches},
+    },
     Database, DatabaseClientManager,
 };
 use serde::Serialize;
@@ -54,12 +59,16 @@ impl Display for VerificationErrors {
 }
 
 impl Migration {
-    pub fn from_schemas(old_schema_spec: &DatabaseSpec, new_schema_spec: &DatabaseSpec) -> Self {
+    pub fn from_schemas(
+        old_schema_spec: &DatabaseSpec,
+        new_schema_spec: &DatabaseSpec,
+        scope: &MigrationScope,
+    ) -> Self {
         let mut pre_statements = vec![];
         let mut statements = vec![];
         let mut post_statements = vec![];
 
-        let diffs = diff(old_schema_spec, new_schema_spec);
+        let diffs = diff(old_schema_spec, new_schema_spec, scope);
 
         for diff in diffs.iter() {
             let is_destructive = match diff {
@@ -112,16 +121,28 @@ impl Migration {
     pub async fn from_db_and_model(
         client: &DatabaseClientManager,
         database: &Database,
+        scope: &MigrationScope,
     ) -> Result<Self, DatabaseError> {
-        let old_schema = extract_db_schema(client).await?;
+        let database_spec = DatabaseSpec::from_database(database);
+
+        let scope_matches = match scope {
+            MigrationScope::Specified(scope) => scope,
+            MigrationScope::FromNewSpec => {
+                &MigrationScopeMatches::from_specs_schemas(&[&database_spec])
+            }
+        };
+
+        let old_schema = extract_db_schema(client, scope_matches).await?;
 
         for issue in &old_schema.issues {
             eprintln!("{issue}");
         }
 
-        let database_spec = DatabaseSpec::from_database(database);
-
-        Ok(Migration::from_schemas(&old_schema.value, &database_spec))
+        Ok(Migration::from_schemas(
+            &old_schema.value,
+            &database_spec,
+            scope,
+        ))
     }
 
     pub fn has_destructive_changes(&self) -> bool {
@@ -133,16 +154,24 @@ impl Migration {
     pub async fn verify(
         client: &DatabaseClientManager,
         database: &Database,
+        scope: &MigrationScope,
     ) -> Result<(), VerificationErrors> {
-        let old_schema = extract_db_schema(client).await?;
+        let new_schema = DatabaseSpec::from_database(database);
+
+        let scope_matches = match scope {
+            MigrationScope::Specified(scope) => scope,
+            MigrationScope::FromNewSpec => {
+                &MigrationScopeMatches::from_specs_schemas(&[&new_schema])
+            }
+        };
+
+        let old_schema = extract_db_schema(client, scope_matches).await?;
 
         for issue in &old_schema.issues {
             eprintln!("{issue}");
         }
 
-        let new_schema = DatabaseSpec::from_database(database);
-
-        let diff = diff(&old_schema.value, &new_schema);
+        let diff = diff(&old_schema.value, &new_schema, scope);
 
         let errors: Vec<_> = diff.iter().flat_map(|op| op.error_string()).collect();
 
@@ -207,23 +236,28 @@ impl MigrationStatement {
 
 async fn extract_db_schema(
     database: &DatabaseClientManager,
+    scope: &MigrationScopeMatches,
 ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
     let client = database.get_client().await?;
 
-    DatabaseSpec::from_live_database(&client).await
+    DatabaseSpec::from_live_database(&client, scope).await
 }
 
 pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), DatabaseError> {
     let client = database.get_client().await?;
 
     // wiping is equivalent to migrating to an empty database and deals with non-public schemas correctly
-    let current_database_spec = &DatabaseSpec::from_live_database(&client)
-        .await
-        .map_err(|e| DatabaseError::BoxedError(Box::new(e)))?
-        .value;
+    let current_database_spec =
+        &DatabaseSpec::from_live_database(&client, &MigrationScopeMatches::all_schemas())
+            .await
+            .map_err(|e| DatabaseError::BoxedError(Box::new(e)))?
+            .value;
 
-    let migrations =
-        Migration::from_schemas(current_database_spec, &DatabaseSpec::new(vec![], vec![]));
+    let migrations = Migration::from_schemas(
+        current_database_spec,
+        &DatabaseSpec::new(vec![], vec![]),
+        &MigrationScope::all_schemas(),
+    );
     migrations
         .apply(database, true)
         .await
@@ -1831,6 +1865,136 @@ mod tests {
         ).await
     }
 
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn public_named_schema_change_with_new_spec_scope() {
+        assert_changes_with_scope(
+            r#"
+                @postgres
+                module LogModule {
+                    type User {
+                        @pk id: Int
+                        name: String
+                    }
+                }
+            "#,
+            r#"
+                @postgres
+                module LogModule {
+                    @table(schema="auth")
+                    type User {
+                        @pk id: Int
+                        name: String
+                    }
+                }
+            "#,
+            &MigrationScope::FromNewSpec,
+            vec![(
+                r#"CREATE TABLE "users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                false,
+            )],
+            vec![
+                (r#"CREATE SCHEMA "auth";"#, false),
+                (
+                    r#"CREATE TABLE "auth"."users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+            ],
+            vec![
+                (r#"CREATE SCHEMA "auth";"#, false),
+                (
+                    r#"CREATE TABLE "auth"."users" (
+                 |    "id" INT PRIMARY KEY,
+                 |    "name" TEXT NOT NULL
+                 |);"#,
+                    false,
+                ),
+            ],
+            vec![(
+                r#"CREATE TABLE "users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                false,
+            )],
+        )
+        .await
+    }
+
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn two_named_schema_change_with_new_spec_scope() {
+        assert_changes_with_scope(
+            r#"
+                @postgres(schema="log")
+                module LogModule {
+                    type User {
+                        @pk id: Int
+                        name: String
+                    }
+                }
+            "#,
+            r#"
+                @postgres
+                module LogModule {
+                    @table(schema="auth")
+                    type User {
+                        @pk id: Int
+                        name: String
+                    }
+                }
+            "#,
+            &MigrationScope::FromNewSpec,
+            vec![
+                (r#"CREATE SCHEMA "log";"#, false),
+                (
+                    r#"CREATE TABLE "log"."users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+            ],
+            vec![
+                (r#"CREATE SCHEMA "auth";"#, false),
+                (
+                    r#"CREATE TABLE "auth"."users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+            ],
+            vec![
+                (r#"CREATE SCHEMA "auth";"#, false),
+                (
+                    r#"CREATE TABLE "auth"."users" (
+                 |    "id" INT PRIMARY KEY,
+                 |    "name" TEXT NOT NULL
+                 |);"#,
+                    false,
+                ),
+            ],
+            vec![
+                (r#"CREATE SCHEMA "log";"#, false),
+                (
+                    r#"CREATE TABLE "log"."users" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+            ],
+        )
+        .await
+    }
+
     async fn create_postgres_system_from_str(
         model_str: &str,
         file_name: String,
@@ -1883,46 +2047,84 @@ mod tests {
         up_migration: Vec<(&str, bool)>,
         down_migration: Vec<(&str, bool)>,
     ) {
+        assert_changes_with_scope(
+            old_system,
+            new_system,
+            &MigrationScope::all_schemas(),
+            old_create,
+            new_create,
+            up_migration,
+            down_migration,
+        )
+        .await;
+    }
+
+    async fn assert_changes_with_scope(
+        old_system: &str,
+        new_system: &str,
+        scope: &MigrationScope,
+        old_create: Vec<(&str, bool)>,
+        new_create: Vec<(&str, bool)>,
+        up_migration: Vec<(&str, bool)>,
+        down_migration: Vec<(&str, bool)>,
+    ) {
         let old_system = compute_spec(old_system).await;
         let new_system = compute_spec(new_system).await;
 
-        assert_change(
+        assert_change_with_scope(
             &DatabaseSpec::new(vec![], vec![]),
             &old_system,
+            scope,
             old_create,
             "Create old system schema",
         );
-        assert_change(
+        assert_change_with_scope(
             &DatabaseSpec::new(vec![], vec![]),
             &new_system,
+            scope,
             new_create,
             "Create new system schema",
         );
 
         // Check that migration is idempotent by checking that re-migrating yield no changes
-        assert_change(
+        assert_change_with_scope(
             &old_system,
             &old_system,
+            scope,
             vec![],
             "Idempotent with old model",
         );
 
-        assert_change(
+        assert_change_with_scope(
             &new_system,
             &new_system,
+            scope,
             vec![],
             "Idempotent with new model",
         );
 
         // Up changes old -> new
-        assert_change(&old_system, &new_system, up_migration, "Up migration");
+        assert_change_with_scope(
+            &old_system,
+            &new_system,
+            scope,
+            up_migration,
+            "Up migration",
+        );
         // Down changes new -> old
-        assert_change(&new_system, &old_system, down_migration, "Down migration");
+        assert_change_with_scope(
+            &new_system,
+            &old_system,
+            scope,
+            down_migration,
+            "Down migration",
+        );
     }
 
-    fn assert_change(
+    fn assert_change_with_scope(
         old_system: &DatabaseSpec,
         new_system: &DatabaseSpec,
+        scope: &MigrationScope,
         expected: Vec<(&str, bool)>,
         message: &str,
     ) {
@@ -1945,7 +2147,7 @@ mod tests {
                 .collect()
         }
 
-        let actual = Migration::from_schemas(old_system, new_system);
+        let actual = Migration::from_schemas(old_system, new_system, scope);
 
         let actual_changes = clean_actual(actual);
         let expected_changes = clean_expected(expected);

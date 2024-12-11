@@ -14,7 +14,7 @@ use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use crate::commands::command::{database_arg, default_model_file, get, CommandDefinition};
-use crate::commands::util::use_ir_arg;
+use crate::commands::util::{migration_scope_from_env, use_ir_arg};
 
 use super::{migrate::open_database, util};
 
@@ -38,7 +38,8 @@ impl CommandDefinition for VerifyCommandDefinition {
 
         let db_client = open_database(database.as_deref()).await?;
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
-        let verification_result = Migration::verify(&db_client, &database).await;
+        let verification_result =
+            Migration::verify(&db_client, &database, &migration_scope_from_env()).await;
 
         match &verification_result {
             Ok(()) => eprintln!("This model is compatible with the database schema!"),
