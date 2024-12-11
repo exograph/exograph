@@ -18,7 +18,10 @@ use anyhow::{bail, Context, Result};
 use async_graphql_parser::parse_query;
 use serde::Deserialize;
 
-use crate::model::{build_operations_metadata, IntegrationTest, Operation, OperationMetadata};
+use crate::model::{
+    build_operations_metadata, ApiOperation, DatabaseOperation, InitOperation, IntegrationTest,
+    OperationMetadata,
+};
 
 // serde file formats
 #[derive(Deserialize, Debug, Clone)]
@@ -77,7 +80,38 @@ impl IntegrationTest {
         project_dir.join("target").join("index.exo_ir")
     }
 
-    pub fn load(testfile_path: &PathBuf, init_ops: Vec<Operation>) -> Result<IntegrationTest> {
+    pub fn load_init_operations(init_file_path: &PathBuf) -> Result<Vec<InitOperation>> {
+        let extension = init_file_path
+            .extension()
+            .ok_or(anyhow::anyhow!("Init file has no extension"))?
+            .to_str()
+            .ok_or(anyhow::anyhow!("Init file extension is not valid UTF-8"))?;
+
+        if extension == "gql" {
+            Self::load(init_file_path, vec![]).map(|test| {
+                let IntegrationTest {
+                    test_operations, ..
+                } = test;
+                test_operations
+                    .into_iter()
+                    .map(InitOperation::Api)
+                    .collect()
+            })
+        } else if extension == "sql" {
+            let mut file = File::open(init_file_path).context("Could not open init file")?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)
+                .context("Could not read init file to string")?;
+
+            Ok(vec![InitOperation::Database(DatabaseOperation {
+                sql: contents,
+            })])
+        } else {
+            bail!("Unsupported init file extension: {}", extension);
+        }
+    }
+
+    pub fn load(testfile_path: &PathBuf, init_ops: Vec<InitOperation>) -> Result<IntegrationTest> {
         let mut file = File::open(testfile_path).context("Could not open test file")?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)
@@ -122,7 +156,7 @@ impl IntegrationTest {
                         OperationMetadata::default()
                     });
 
-                Ok(Operation {
+                Ok(ApiOperation {
                     document: stage.operation,
                     metadata: operations_metadata,
                     auth: stage.auth,

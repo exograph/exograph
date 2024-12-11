@@ -24,13 +24,25 @@ pub struct TestSuite {
 pub struct IntegrationTest {
     pub testfile_path: PathBuf,
     pub retries: usize,
-    pub init_operations: Vec<Operation>,
-    pub test_operations: Vec<Operation>,
+    pub init_operations: Vec<InitOperation>,
+    pub test_operations: Vec<ApiOperation>,
     pub extra_envs: HashMap<String, String>, // extra envvars to be set when starting the exo server
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
-pub struct Operation {
+pub enum InitOperation {
+    Database(DatabaseOperation),
+    Api(ApiOperation),
+}
+
+#[derive(Debug, Clone)]
+pub struct DatabaseOperation {
+    pub sql: String, // SQL statements separated by semicolons
+}
+
+#[derive(Debug, Clone)]
+pub struct ApiOperation {
     pub document: String,
     pub metadata: OperationMetadata,
     pub variables: Option<String>, // stringified
