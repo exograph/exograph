@@ -202,8 +202,8 @@ impl IntegrationTest {
             })?;
 
             match result {
-                OperationResult::Finished | OperationResult::AssertPassed => {}
-                OperationResult::AssertFailed(error) => {
+                OperationResult::Pass => {}
+                OperationResult::Fail(error) => {
                     Err(anyhow!("Initialization failed: {error}"))?;
                 }
             }
@@ -220,8 +220,8 @@ impl IntegrationTest {
 
             match result {
                 Ok(op_result) => match op_result {
-                    OperationResult::AssertPassed | OperationResult::Finished => {}
-                    OperationResult::AssertFailed(e) => {
+                    OperationResult::Pass => {}
+                    OperationResult::Fail(e) => {
                         fail = Some(TestResultKind::Fail(e));
                         break;
                     }
@@ -246,9 +246,8 @@ impl IntegrationTest {
 
 #[derive(Debug)]
 enum OperationResult {
-    Finished,
-    AssertPassed,
-    AssertFailed(anyhow::Error),
+    Pass,
+    Fail(anyhow::Error),
 }
 
 async fn run_operation(
@@ -373,19 +372,19 @@ async fn run_operation(
             )
             .await
             {
-                Ok(()) => Ok(OperationResult::AssertPassed),
-                Err(e) => Ok(OperationResult::AssertFailed(e)),
+                Ok(()) => Ok(OperationResult::Pass),
+                Err(e) => Ok(OperationResult::Fail(e)),
             }
         }
 
         None => {
             // No expected response specified - just check for errors
             match body.get("errors") {
-                Some(_) => Ok(OperationResult::AssertFailed(anyhow!(
+                Some(_) => Ok(OperationResult::Fail(anyhow!(
                     "Unexpected error in response: {}",
                     serde_json::to_string_pretty(&body)?
                 ))),
-                None => Ok(OperationResult::Finished),
+                None => Ok(OperationResult::Pass),
             }
         }
     }
