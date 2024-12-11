@@ -71,13 +71,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_migration_scope_from_env_with_no_env() {
+    fn test_migration_scope_from_env() {
+        // Separating the non-env and env cases into separate tests makes the test
+        // flaky (since the test run parallelly and we one test may set the env
+        // variable and the other test may read it).
         std::env::remove_var("EXO_POSTGRES_MIGRATION_SCOPE");
         assert_eq!(migration_scope_from_env(), MigrationScope::FromNewSpec);
-    }
 
-    #[test]
-    fn test_migration_scope_from_env_with_env() {
         std::env::set_var(
             "EXO_POSTGRES_MIGRATION_SCOPE",
             "schema1.table1,*.table2,schema3.*, schema4",
