@@ -1,0 +1,20 @@
+
+stages:
+  - operation: |
+        query {
+          productProfitsAgg {
+            profit {
+              sum
+            }
+          }
+        }
+    response: |
+        {
+          "data": {
+            "productProfitsAgg": {
+              "profit": {
+                "sum": 40
+              }
+            }
+          }
+        }

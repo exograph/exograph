@@ -65,7 +65,8 @@ pub struct PostgresPrimitiveType {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum EntityRepresentation {
     Json,
-    Normal,
+    Tracked,
+    Untracked,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

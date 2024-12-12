@@ -74,7 +74,7 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
         .core_subsystem
         .entity_types
         .iter()
-        .filter(|(_, et)| et.representation == EntityRepresentation::Normal)
+        .filter(|(_, et)| et.representation != EntityRepresentation::Json)
     {
         expand_pk_query(
             entity_type,

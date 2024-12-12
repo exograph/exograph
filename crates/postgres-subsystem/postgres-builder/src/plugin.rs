@@ -212,6 +212,10 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                             name: "schema",
                             optional: true,
                         },
+                        MappedAnnotationParamSpec {
+                            name: "tracked",
+                            optional: true,
+                        },
                     ]),
                 },
             ),

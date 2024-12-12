@@ -347,6 +347,7 @@ mod tests {
                 vec![pk_column("id"), int_column("age")],
                 vec![],
                 vec![],
+                true,
             )],
             vec![],
         )
@@ -373,6 +374,7 @@ mod tests {
                 vec![pk_column("id"), string_column("name"), int_column("age")],
                 vec![],
                 vec![],
+                true,
             )],
             vec![],
         )
@@ -411,6 +413,7 @@ mod tests {
                 vec![pk_column("id"), string_column("title")],
                 vec![],
                 vec![],
+                true,
             )],
             vec![],
         )
@@ -480,6 +483,7 @@ mod tests {
                 vec![pk_column("id"), json_column("data")],
                 vec![],
                 vec![],
+                true,
             )],
             vec![],
         )

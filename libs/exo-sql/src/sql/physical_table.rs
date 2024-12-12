@@ -70,6 +70,8 @@ pub struct PhysicalTable {
     pub columns: Vec<PhysicalColumn>,
 
     pub indices: Vec<PhysicalIndex>,
+
+    pub tracked: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -80,7 +82,7 @@ pub struct PhysicalIndex {
 }
 
 /// The derived implementation of `Debug` is quite verbose, so we implement it manually
-/// to print the table name only.
+/// to print the table and columns names only.
 impl std::fmt::Debug for PhysicalTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Table: ")?;
@@ -88,7 +90,14 @@ impl std::fmt::Debug for PhysicalTable {
             f.write_str(schema)?;
             f.write_str(".")?;
         }
-        f.write_str(&self.name.name)
+        f.write_str(&self.name.name)?;
+        f.write_str(", Columns: [")?;
+        for column in &self.columns {
+            f.write_str(&column.name)?;
+            f.write_str(", ")?;
+        }
+        f.write_str("]")?;
+        Ok(())
     }
 }
 

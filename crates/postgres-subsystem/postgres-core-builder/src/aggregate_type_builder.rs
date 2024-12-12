@@ -15,6 +15,7 @@ use lazy_static::lazy_static;
 use postgres_core_model::aggregate::{
     AggregateField, AggregateFieldType, AggregateType, ScalarAggregateFieldKind,
 };
+use postgres_core_model::types::EntityRepresentation;
 
 use crate::resolved_type::ResolvedType;
 use crate::resolved_type::ResolvedTypeEnv;
@@ -25,8 +26,21 @@ pub fn aggregate_type_name(type_name: &str) -> String {
     format!("{type_name}Agg")
 }
 
+fn needs_aggregate(resolved_type: &ResolvedType) -> bool {
+    if let ResolvedType::Composite(c) = resolved_type {
+        if c.representation == EntityRepresentation::Json {
+            return false;
+        }
+    }
+    true
+}
+
 pub(super) fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+    for (_, resolved_type) in resolved_env
+        .resolved_types
+        .iter()
+        .filter(|(_, resolved_type)| needs_aggregate(resolved_type))
+    {
         create_shallow_type(resolved_type, building);
     }
 }
@@ -35,7 +49,11 @@ pub(super) fn build_expanded(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
-    for (_, resolved_type) in resolved_env.resolved_types.iter() {
+    for (_, resolved_type) in resolved_env
+        .resolved_types
+        .iter()
+        .filter(|(_, resolved_type)| needs_aggregate(resolved_type))
+    {
         expand_type(resolved_type, building);
     }
 

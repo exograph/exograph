@@ -1995,6 +1995,73 @@ mod tests {
         .await
     }
 
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn untracked_type_change() {
+        assert_changes_with_scope(
+            r#"
+                @postgres
+                module LogModule {
+                    @table(tracked=false)
+                    type User {
+                        @pk id: Int
+                        name: String
+                    }
+                }
+            "#,
+            r#"
+                @postgres
+                module LogModule {
+                    @table(tracked=false)
+                    type User {
+                        @pk id: Int
+                        name: String
+                        email: String
+                    }
+                }
+            "#,
+            &MigrationScope::FromNewSpec,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )
+        .await
+    }
+
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn tracked_to_untracked_type_change() {
+        assert_changes_with_scope(
+            r#"
+                @postgres
+                module LogModule {
+                    type User {
+                        @pk id: Int
+                        name: String
+                    }
+                }
+            "#,
+            r#"
+                @postgres
+                module LogModule {
+                    @table(tracked=false)
+                    type User {
+                        @pk id: Int
+                        name: String
+                        email: String
+                    }
+                }
+            "#,
+            &MigrationScope::FromNewSpec,
+            vec![("CREATE TABLE \"users\" (\n    \"id\" INT PRIMARY KEY,\n    \"name\" TEXT NOT NULL\n);", false)],
+            vec![],
+            vec![],
+            vec![("ALTER TABLE \"users\" DROP COLUMN \"email\";", true)],
+        )
+        .await
+    }
+
     async fn create_postgres_system_from_str(
         model_str: &str,
         file_name: String,

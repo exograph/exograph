@@ -1,0 +1,25 @@
+context AuthContext {
+   @jwt role: String
+}
+
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Product {
+    @pk id: Int = autoIncrement()
+    name: String
+    salePrice: Int
+    purchasePrice: Int
+  }
+
+  // Non-admin users can only see profitable products
+  @table(tracked=false)
+  @access(query=AuthContext.role == "admin" || self.profit > 0, mutation=false)
+  type ProductProfit {
+    @pk id: Int
+    name: String
+    salePrice: Int
+    purchasePrice: Int
+    profit: Int
+  }
+}

@@ -27,6 +27,7 @@ pub struct TableSpec {
     pub columns: Vec<ColumnSpec>,
     pub indices: Vec<IndexSpec>,
     pub triggers: Vec<TriggerSpec>,
+    pub tracked: bool,
 }
 
 impl TableSpec {
@@ -35,12 +36,14 @@ impl TableSpec {
         columns: Vec<ColumnSpec>,
         indices: Vec<IndexSpec>,
         triggers: Vec<TriggerSpec>,
+        tracked: bool,
     ) -> Self {
         Self {
             name,
             columns,
             indices,
             triggers,
+            tracked,
         }
     }
 
@@ -49,6 +52,7 @@ impl TableSpec {
             name: self.name.clone(),
             columns: vec![],
             indices: vec![],
+            tracked: self.tracked,
         }
     }
 
@@ -167,6 +171,7 @@ impl TableSpec {
                 columns,
                 indices,
                 triggers,
+                tracked: true,
             },
             issues,
         })
@@ -189,6 +194,11 @@ impl TableSpec {
     }
 
     pub fn diff<'a>(&'a self, new: &'a Self) -> Vec<SchemaOp<'a>> {
+        // If the exograph model is not tracked, we don't need to apply any changes
+        if !new.tracked {
+            return vec![];
+        }
+
         let existing_columns = &self.columns;
         let new_columns = &new.columns;
 

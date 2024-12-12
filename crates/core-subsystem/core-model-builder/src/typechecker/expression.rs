@@ -42,4 +42,11 @@ impl AstExpr<Typed> {
             _ => panic!(),
         }
     }
+
+    pub fn as_boolean(&self) -> bool {
+        match &self {
+            AstExpr::BooleanLiteral(b, _) => *b,
+            _ => panic!(),
+        }
+    }
 }

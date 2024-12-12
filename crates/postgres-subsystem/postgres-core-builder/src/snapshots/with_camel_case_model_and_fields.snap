@@ -40,7 +40,7 @@ values:
     - Composite:
         name: ConcertInfo
         plural_name: ConcertInfos
-        representation: Normal
+        representation: Tracked
         fields:
           - name: concertId
             typ:

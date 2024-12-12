@@ -67,6 +67,7 @@ impl DatabaseSpec {
         let tables: Vec<(TableId, Vec<ColumnSpec>, Vec<IndexSpec>)> = self
             .tables
             .into_iter()
+            .filter(|table_spec| table_spec.tracked)
             .map(|table| {
                 let table_id = database.insert_table(table.to_column_less_table());
                 (table_id, table.columns, table.indices)
@@ -195,6 +196,7 @@ impl DatabaseSpec {
                         })
                         .collect(),
                     trigger_specs,
+                    table.tracked,
                 )
             })
             .collect();
@@ -379,6 +381,7 @@ mod tests {
                     ],
                     vec![],
                     vec![],
+                    true,
                 )],
                 vec![],
             ),
@@ -407,6 +410,7 @@ mod tests {
                     }],
                     vec![],
                     vec![],
+                    true,
                 )],
                 vec![],
             ),
@@ -465,6 +469,7 @@ mod tests {
                     ],
                     vec![],
                     vec![],
+                    true,
                 )],
                 vec![],
             ),

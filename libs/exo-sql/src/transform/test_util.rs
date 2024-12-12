@@ -59,12 +59,14 @@ impl TestSetup {
                     ],
                     vec![],
                     vec![],
+                    true,
                 ),
                 TableSpec::new(
                     PhysicalTableName::new("venues", None),
                     vec![pk_column("id"), string_column("name")],
                     vec![],
                     vec![],
+                    true,
                 ),
                 TableSpec::new(
                     PhysicalTableName::new("concert_artists", None),
@@ -75,6 +77,7 @@ impl TestSetup {
                     ],
                     vec![],
                     vec![],
+                    true,
                 ),
                 TableSpec::new(
                     PhysicalTableName::new("artists", None),
@@ -85,12 +88,14 @@ impl TestSetup {
                     ],
                     vec![],
                     vec![],
+                    true,
                 ),
                 TableSpec::new(
                     PhysicalTableName::new("addresses", None),
                     vec![pk_column("id"), string_column("city")],
                     vec![],
                     vec![],
+                    true,
                 ),
             ],
             vec![],

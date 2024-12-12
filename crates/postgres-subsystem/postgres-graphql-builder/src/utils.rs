@@ -33,7 +33,7 @@ pub(super) fn to_mutation_type(
             TypeIndex::Composite(index) => {
                 let entity_type = &building.core_subsystem.entity_types[*index];
 
-                if entity_type.representation == EntityRepresentation::Normal {
+                if entity_type.representation == EntityRepresentation::Tracked {
                     panic!("Composite field in mutation: {:?}", type_name);
                 }
                 let entity_type_name = &entity_type.name;

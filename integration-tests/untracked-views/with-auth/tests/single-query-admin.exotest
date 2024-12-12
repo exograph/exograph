@@ -1,0 +1,47 @@
+
+stages:
+  - operation: |
+        query($p1Id: Int!, $p2Id: Int!) {
+          profitable: productProfit(id: $p1Id) {
+            id
+            name
+            salePrice
+            purchasePrice
+            profit
+          }
+          unprofitable: productProfit(id: $p2Id) {
+            id
+            name
+            salePrice
+            purchasePrice
+            profit
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    variable: |
+      {
+        "p1Id": $.p1Id,
+        "p2Id": $.p2Id
+      }
+    response: |
+      {
+        "data": {
+          "profitable": {
+            "id": 1,
+            "name": "P1",
+            "salePrice": 100,
+            "purchasePrice": 50,
+            "profit": 50
+          },
+          "unprofitable": {
+            "id": 2,
+            "name": "P2",
+            "salePrice": 20,
+            "purchasePrice": 30,
+            "profit": -10
+          }
+        }
+      }

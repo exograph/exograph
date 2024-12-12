@@ -1,0 +1,69 @@
+
+stages:
+  - operation: |
+        fragment productProfitFragment on ProductProfit {
+          id
+          name
+          salePrice
+          purchasePrice
+          profit
+        }
+        query {
+          all: productProfits @unordered {
+            ...productProfitFragment
+          }
+          allOrderedAsc: productProfits(orderBy: {profit: ASC}) {
+            ...productProfitFragment
+          }
+          allOrderedDesc: productProfits(orderBy: {profit: DESC}) {
+            ...productProfitFragment
+          }
+          allProfitable: productProfits(where: {profit: {gt: 0}}) {
+            ...productProfitFragment
+          }
+          allUnprofitable: productProfits(where: {profit: {lt: 0}}) {
+            ...productProfitFragment
+          }
+        }
+    response: |
+        {
+          "data": {
+            "all": [
+              {
+                "id": 1,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+                "profit": 50
+              }
+            ],
+            "allOrderedAsc": [
+              {
+                "id": 1,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+                "profit": 50
+              }
+            ],
+            "allOrderedDesc": [
+              {
+                "id": 1,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+                "profit": 50
+              }
+            ],
+            "allProfitable": [
+              {
+                "id": 1,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+                "profit": 50
+              }
+            ],
+            "allUnprofitable": []
+          }
+        }

@@ -65,7 +65,7 @@ impl Builder for DeleteMutationBuilder {
     }
 
     fn needs_mutation_type(&self, composite_type: &ResolvedCompositeType) -> bool {
-        composite_type.representation == EntityRepresentation::Normal
+        composite_type.representation == EntityRepresentation::Tracked
     }
 }
 
