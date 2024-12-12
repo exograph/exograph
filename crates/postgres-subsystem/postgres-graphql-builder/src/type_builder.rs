@@ -34,10 +34,11 @@ fn expand_query_mutation_map(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
 ) {
-    let pk_query = building
-        .pk_queries
-        .get_id(&resolved_type.pk_query())
-        .unwrap();
+    let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
+
+    if let Some(pk_query) = building.pk_queries.get_id(&resolved_type.pk_query()) {
+        building.pk_queries_map.insert(existing_type_id, pk_query);
+    }
 
     let collection_query = building
         .collection_queries
@@ -49,9 +50,6 @@ fn expand_query_mutation_map(
         .get_id(&resolved_type.aggregate_query())
         .unwrap();
 
-    let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
-
-    building.pk_queries_map.insert(existing_type_id, pk_query);
     building
         .collection_queries_map
         .insert(existing_type_id, collection_query);

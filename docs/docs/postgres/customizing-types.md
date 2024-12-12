@@ -149,8 +149,10 @@ Exograph will map the `ProductProfit` type to the `product_profits` view (it cou
 
 Exograph will apply access control and infer queries for the `ProductProfit` type as usual, including [aggregated queries](operations/queries.md#aggregated-query).
 
+An untracked type may skip marking a field as `@pk` if it doesn't have a primary key. For such a type, Exograph offers only collection and aggregate queries. For example, the `ProductProfit` type will have the `productProfits` and `productProfitsAgg` query but not the `productProfit` query (which would take the primary key as an argument).
+
 :::warning
-You must set `mutation=false` for any untracked type and mark a field as the primary key. We will lift this restriction in the future.
+You must set `mutation=false` for any untracked type. We will lift this restriction in the future.
 :::
 
 ## Field-level customization
