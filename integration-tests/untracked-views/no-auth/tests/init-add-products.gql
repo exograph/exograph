@@ -1,0 +1,9 @@
+operation: |
+    mutation {
+        profitable: createProduct(data: {name: "P1", salePrice: 100, purchasePrice: 50}) {
+            id @bind(name: "p1Id")
+        }
+        unprofitable: createProduct(data: {name: "P2", salePrice: 20, purchasePrice: 30}) {
+            id @bind(name: "p2Id")
+        }
+    }

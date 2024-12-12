@@ -1,0 +1,21 @@
+
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Product {
+    @pk id: Int = autoIncrement()
+    name: String
+    salePrice: Float
+    purchasePrice: Float
+  }
+
+  @table(tracked=false)
+  @access(query=true, mutation=false)
+  type ProductProfit {
+    @pk id: Int
+    name: String
+    salePrice: Float
+    purchasePrice: Float
+    profit: Float
+  }
+}
