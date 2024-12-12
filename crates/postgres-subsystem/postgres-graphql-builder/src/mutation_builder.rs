@@ -35,7 +35,6 @@ use postgres_core_model::{
 
 use crate::utils::{to_mutation_type, MutationTypeKind};
 use postgres_core_builder::access_utils::parent_predicate;
-use postgres_core_builder::shallow::Shallow;
 
 use postgres_core_builder::resolved_type::{
     ResolvedCompositeType, ResolvedField, ResolvedFieldTypeHelper, ResolvedType,
@@ -514,7 +513,7 @@ pub trait DataParamBuilder<D> {
             .get_by_key(&existing_type_name)
             .unwrap_or_else(|| panic!("Could not find type {existing_type_name} to expand"));
 
-        if existing.entity_id == SerializableSlabIndex::shallow() {
+        if existing.fields.is_empty() {
             // If not already expanded
             self.expanded_data_type(
                 field_type,
