@@ -169,7 +169,6 @@ impl DatabaseSpec {
         let tables = database
             .tables()
             .into_iter()
-            .filter(|(_, table)| table.tracked)
             .map(|(_, table)| {
                 let (trigger_specs, function_specs) = match Self::update_trigger(table) {
                     Some((trigger, function)) => (vec![trigger], vec![function]),
@@ -197,7 +196,7 @@ impl DatabaseSpec {
                         })
                         .collect(),
                     trigger_specs,
-                    true, // When reading from the database, we always want to track the table
+                    table.tracked,
                 )
             })
             .collect();

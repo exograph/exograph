@@ -194,6 +194,11 @@ impl TableSpec {
     }
 
     pub fn diff<'a>(&'a self, new: &'a Self) -> Vec<SchemaOp<'a>> {
+        // If the exograph model is not tracked, we don't need to apply any changes
+        if !new.tracked {
+            return vec![];
+        }
+
         let existing_columns = &self.columns;
         let new_columns = &new.columns;
 
