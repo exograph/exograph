@@ -40,7 +40,7 @@ values:
     - Composite:
         name: Concert
         plural_name: Concerts
-        representation: Normal
+        representation: Tracked
         fields:
           - name: id
             typ:
@@ -148,7 +148,7 @@ values:
     - Composite:
         name: Venue
         plural_name: Venues
-        representation: Normal
+        representation: Tracked
         fields:
           - name: id
             typ:
