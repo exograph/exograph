@@ -100,6 +100,59 @@ If both `@plural` and `@table` annotations are present, Exograph will use the ar
 Use the `@plural` annotation to deal with type names with irregular pluralization and the `@table` annotation to follow your organization's naming conventions.
 :::
 
+### Using untracked tables
+
+Sometimes, you may want to use a table or view that already exists in your database. For example, you may want to use a view or a foreign table that you have created in your database. Exograph supports this use case using the `tracked=false` attribute of the `@table` annotation.
+
+
+For example, to use the `product_profits` view, you can define the following Exograph module:
+
+```exo
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Product {
+    @pk id: Int = autoIncrement()
+    name: String
+    salePrice: Float
+    purchasePrice: Float
+  }
+
+  // highlight-start
+  @table(tracked=false)
+  @access(query=true, mutation=false)
+  type ProductProfit {
+    @pk id: Int
+    name: String
+    salePrice: Float
+    purchasePrice: Float
+    profit: Float
+  }
+  // highlight-end
+}
+```
+
+Here, we assume that you have the following `product_profits` view in your database:
+
+```sql
+CREATE VIEW product_profits AS
+SELECT
+    p.id,
+    p.name,
+    p.sale_price,
+    p.purchase_price,
+    p.sale_price - p.purchase_price AS profit
+FROM products p;
+```
+
+Exograph will map the `ProductProfit` type to the `product_profits` view (it could also be a table). However, Exograph will ignore the `ProductProfit` type for schema migration. 
+
+Exograph will apply access control and infer queries for the `ProductProfit` type as usual, including [aggregated queries](operations/queries.md#aggregated-query).
+
+:::warning
+You must set `mutation=false` for any untracked type and mark a field as the primary key. We will lift this restriction in the future.
+:::
+
 ## Field-level customization
 
 Exograph maps each field to a column in the database and infers a few other aspects of the column.

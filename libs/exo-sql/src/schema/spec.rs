@@ -140,7 +140,7 @@ pub fn diff<'a>(
     }
 
     // try to find a table that needs to be created
-    for new_table in &new_tables {
+    for new_table in new_tables.iter().filter(|table| table.tracked) {
         if !old_tables
             .iter()
             .any(|old_table| new_table.sql_name() == old_table.sql_name())

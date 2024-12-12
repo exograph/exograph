@@ -1,0 +1,24 @@
+
+stages:
+  - operation: |
+        query {
+          productProfitsAgg {
+            profit {
+              sum
+            }
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+        {
+          "data": {
+            "productProfitsAgg": {
+              "profit": {
+                "sum": 40
+              }
+            }
+          }
+        }
