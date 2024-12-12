@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use async_graphql_parser::{
     types::{
@@ -129,58 +129,31 @@ impl Schema {
         type_definitions.push(Self::create_directive_location_definition());
         type_definitions.push(Self::create_input_value_definition());
 
-        // We may have unused scalars (an artifact of how our typechecking starts with supplying all scalars)
-        // So here we remove unused ones
-        let (scalars, mut type_definitions): (Vec<_>, Vec<_>) = type_definitions
-            .into_iter()
-            .partition(|td| matches!(td.kind, TypeKind::Scalar));
+        {
+            // The way we build types (queries, mutations, their parameters, etc.) ends up
+            // creating a lot of types that are not used by the schema. We need to remove
+            // them to avoid unnecessary bloat in the introspection result.
+            //
+            // We start by visiting all the types that are used by the schema.
+            // Start with the root types and recursively visit all the types that are used by them.
+            // Then, retain only the types that are used by the schema.
+            let mut used_types = HashSet::new();
 
-        // Start with assuming no scalars are used
-        let mut unused_scalars_names: HashSet<String> = scalars
-            .iter()
-            .map(|td| td.name.node.as_str().to_string())
-            .collect();
-
-        fn remove_scalars(
-            field_definitions: &Vec<Positioned<FieldDefinition>>,
-            unused_scalars_names: &mut HashSet<String>,
-        ) {
-            for field in field_definitions {
-                unused_scalars_names.remove(underlying_type(&field.node.ty.node).as_str());
-                for arg in &field.node.arguments {
-                    unused_scalars_names.remove(underlying_type(&arg.node.ty.node).as_str());
-                }
+            for root_type in &[
+                QUERY_ROOT_TYPENAME,
+                MUTATION_ROOT_TYPENAME,
+                SUBSCRIPTION_ROOT_TYPENAME,
+                "__Schema",
+                "__Type",
+            ] {
+                Self::get_used_types(root_type, &type_definitions, &mut used_types);
             }
+
+            type_definitions.retain(|td| used_types.contains(td.name.node.as_str()));
+
+            // de-duplicate types (we have multiple types with the same name such as Boolean)
+            type_definitions.dedup_by_key(|td| td.name.node.as_str().to_string());
         }
-
-        // Next, remove scalars that are used
-        for td in &type_definitions {
-            match &td.kind {
-                TypeKind::Object(object_type) => {
-                    remove_scalars(&object_type.fields, &mut unused_scalars_names);
-                }
-                TypeKind::Interface(interface_type) => {
-                    remove_scalars(&interface_type.fields, &mut unused_scalars_names);
-                }
-                TypeKind::InputObject(input_object_type) => {
-                    for field in &input_object_type.fields {
-                        unused_scalars_names.remove(underlying_type(&field.node.ty.node).as_str());
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        let used_scalars = scalars
-            .into_iter()
-            .filter(|td| !unused_scalars_names.contains(td.name.node.as_str()));
-        // Create a unique list of scalars (each subsystem may expose the same scalar)
-        let unique_scalars: HashMap<_, _> = used_scalars
-            .into_iter()
-            .map(|td| (td.name.node.as_str().to_string(), td))
-            .collect();
-
-        type_definitions.extend(unique_scalars.into_values());
 
         Schema {
             type_definitions,
@@ -209,6 +182,68 @@ impl Schema {
                 })],
             )
             .node,
+        }
+    }
+
+    fn get_used_types(
+        root_type_name: &str,
+        type_definitions: &Vec<TypeDefinition>,
+        used_types: &mut HashSet<String>,
+    ) {
+        fn get_type_definition<'a>(
+            type_definitions: &'a [TypeDefinition],
+            type_name: &str,
+        ) -> Option<&'a TypeDefinition> {
+            type_definitions
+                .iter()
+                .find(|td| td.name.node.as_str() == type_name)
+        }
+
+        if used_types.contains(root_type_name) {
+            return;
+        }
+
+        used_types.insert(root_type_name.to_string());
+        let root_type = get_type_definition(type_definitions, root_type_name);
+
+        if let Some(root_type) = root_type {
+            match &root_type.kind {
+                TypeKind::Object(object_type) => {
+                    for field in &object_type.fields {
+                        Self::get_used_types(
+                            underlying_type(&field.node.ty.node).as_str(),
+                            type_definitions,
+                            used_types,
+                        );
+                        // used_types
+                        //     .insert(underlying_type(&field.node.ty.node).as_str().to_string());
+                        for arg in &field.node.arguments {
+                            let arg_type_name = underlying_type(&arg.node.ty.node).as_str();
+                            Self::get_used_types(arg_type_name, type_definitions, used_types);
+                        }
+                    }
+                }
+                TypeKind::Interface(interface_type) => {
+                    for field in &interface_type.fields {
+                        Self::get_used_types(
+                            underlying_type(&field.node.ty.node).as_str(),
+                            type_definitions,
+                            used_types,
+                        );
+                    }
+                }
+                TypeKind::Scalar => {}
+                TypeKind::Union(_) => {}
+                TypeKind::Enum(_) => {}
+                TypeKind::InputObject(object_type) => {
+                    for field in &object_type.fields {
+                        // used_types
+                        //     .insert(underlying_type(&field.node.ty.node).as_str().to_string());
+                        let arg_type_name = underlying_type(&field.node.ty.node).as_str();
+                        Self::get_used_types(arg_type_name, type_definitions, used_types);
+                    }
+                }
+            }
         }
     }
 

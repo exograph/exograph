@@ -73,6 +73,11 @@ impl<V> MappedArena<V> {
     }
 
     pub fn add(&mut self, key: &str, typ: V) -> SerializableSlabIndex<V> {
+        let existing = self.get_id(key);
+        if let Some(existing) = existing {
+            return existing;
+        }
+
         let id = self.values.insert(typ);
         self.map.insert(key.to_string(), id);
         id
