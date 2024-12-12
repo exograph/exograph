@@ -67,6 +67,7 @@ impl DatabaseSpec {
         let tables: Vec<(TableId, Vec<ColumnSpec>, Vec<IndexSpec>)> = self
             .tables
             .into_iter()
+            .filter(|table_spec| table_spec.tracked)
             .map(|table| {
                 let table_id = database.insert_table(table.to_column_less_table());
                 (table_id, table.columns, table.indices)
@@ -168,6 +169,7 @@ impl DatabaseSpec {
         let tables = database
             .tables()
             .into_iter()
+            .filter(|(_, table)| table.tracked)
             .map(|(_, table)| {
                 let (trigger_specs, function_specs) = match Self::update_trigger(table) {
                     Some((trigger, function)) => (vec![trigger], vec![function]),
@@ -195,6 +197,7 @@ impl DatabaseSpec {
                         })
                         .collect(),
                     trigger_specs,
+                    true, // When reading from the database, we always want to track the table
                 )
             })
             .collect();
@@ -379,6 +382,7 @@ mod tests {
                     ],
                     vec![],
                     vec![],
+                    true,
                 )],
                 vec![],
             ),
@@ -407,6 +411,7 @@ mod tests {
                     }],
                     vec![],
                     vec![],
+                    true,
                 )],
                 vec![],
             ),
@@ -465,6 +470,7 @@ mod tests {
                     ],
                     vec![],
                     vec![],
+                    true,
                 )],
                 vec![],
             ),

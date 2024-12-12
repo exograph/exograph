@@ -487,6 +487,7 @@ fn create_persistent_field(
     let relation = create_relation(field, *type_id, building, env, expand_foreign_relations);
 
     let access = compute_access(&field.access, *type_id, env, building)?;
+
     let type_validation = match &field.type_hint {
         Some(th) => th.get_type_validation(),
         None => None,

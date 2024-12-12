@@ -123,6 +123,7 @@ mod tests {
                 vec![pk_column("id"), string_column("name"), int_column("age")],
                 vec![],
                 vec![],
+                true,
             )],
             vec![],
         )

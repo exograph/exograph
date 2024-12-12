@@ -27,6 +27,7 @@ pub struct TableSpec {
     pub columns: Vec<ColumnSpec>,
     pub indices: Vec<IndexSpec>,
     pub triggers: Vec<TriggerSpec>,
+    pub tracked: bool,
 }
 
 impl TableSpec {
@@ -35,12 +36,14 @@ impl TableSpec {
         columns: Vec<ColumnSpec>,
         indices: Vec<IndexSpec>,
         triggers: Vec<TriggerSpec>,
+        tracked: bool,
     ) -> Self {
         Self {
             name,
             columns,
             indices,
             triggers,
+            tracked,
         }
     }
 
@@ -49,6 +52,7 @@ impl TableSpec {
             name: self.name.clone(),
             columns: vec![],
             indices: vec![],
+            tracked: self.tracked,
         }
     }
 
@@ -167,6 +171,7 @@ impl TableSpec {
                 columns,
                 indices,
                 triggers,
+                tracked: true,
             },
             issues,
         })

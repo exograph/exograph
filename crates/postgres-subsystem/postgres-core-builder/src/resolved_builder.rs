@@ -117,11 +117,14 @@ fn resolve(
                         .get("plural")
                         .map(|p| p.as_single().as_string());
 
+                    let table_annotation = ct.annotations.get("table");
+
                     let TableInfo {
                         name: table_name,
                         schema: schema_name,
+                        tracked: table_tracked,
                     } = extract_table_annotation(
-                        ct.annotations.get("table"),
+                        table_annotation,
                         &ct.name,
                         plural_annotation_value.clone(),
                     );
@@ -131,8 +134,10 @@ fn resolve(
 
                     let representation = if ct.annotations.contains("json") {
                         EntityRepresentation::Json
+                    } else if table_tracked {
+                        EntityRepresentation::Tracked
                     } else {
-                        EntityRepresentation::Normal
+                        EntityRepresentation::Untracked
                     };
 
                     let access_annotation = ct.annotations.get("access");
@@ -203,8 +208,12 @@ fn resolve(
                                 },
                             };
 
-                            let column_info =
-                                compute_column_info(ct, field, &typechecked_system.types);
+                            let column_info = compute_column_info(
+                                ct,
+                                field,
+                                &typechecked_system.types,
+                                table_tracked,
+                            );
 
                             match column_info {
                                 Ok(ColumnInfo {
@@ -711,6 +720,7 @@ fn compute_column_info(
     enclosing_type: &AstModel<Typed>,
     field: &AstField<Typed>,
     types: &MappedArena<Type>,
+    table_tracked: bool,
 ) -> Result<ColumnInfo, Diagnostic> {
     let user_supplied_column_name = field
         .annotations
@@ -760,7 +770,7 @@ fn compute_column_info(
     let update_sync = field.annotations.contains("update");
     let readonly = field.annotations.contains("readonly");
 
-    if (update_sync || readonly) && field.default_value.is_none() {
+    if (update_sync || readonly) && field.default_value.is_none() && table_tracked {
         return Err(Diagnostic {
             level: Level::Error,
             message: "Fields with @readonly or @update must have a default value".to_string(),
@@ -1091,6 +1101,7 @@ fn field_cardinality(field_type: &AstFieldType<Typed>) -> Cardinality {
 struct TableInfo {
     name: String,
     schema: Option<String>,
+    tracked: bool,
 }
 
 /// Given parameters for `@table(name=<table-name>, schema=<schema-name>)` extract table and schema name.
@@ -1114,6 +1125,7 @@ fn extract_table_annotation(
             AstAnnotationParams::Single(value, _) => TableInfo {
                 name: value.as_string(),
                 schema: None,
+                tracked: true,
             },
             AstAnnotationParams::Map(m, _) => {
                 let name = m
@@ -1121,8 +1133,17 @@ fn extract_table_annotation(
                     .map(|value| value.as_string())
                     .unwrap_or_else(default_table_name);
                 let schema = m.get("schema").cloned().map(|value| value.as_string());
+                let tracked = m
+                    .get("tracked")
+                    .cloned()
+                    .map(|value| value.as_boolean())
+                    .unwrap_or(true);
 
-                TableInfo { name, schema }
+                TableInfo {
+                    name,
+                    schema,
+                    tracked,
+                }
             }
             _ => panic!(),
         },
@@ -1131,6 +1152,7 @@ fn extract_table_annotation(
             TableInfo {
                 name: name.clone(),
                 schema: None,
+                tracked: true,
             }
         }
     }
