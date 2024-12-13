@@ -9,7 +9,10 @@
 
 #![cfg(not(target_family = "wasm"))]
 
-use common::env_const::{EXO_INTROSPECTION_LIVE_UPDATE, _EXO_UPSTREAM_ENDPOINT_URL};
+use common::env_const::{
+    EXO_INTROSPECTION_LIVE_UPDATE, EXO_JWT_SOURCE_COOKIE, EXO_JWT_SOURCE_HEADER,
+    _EXO_UPSTREAM_ENDPOINT_URL,
+};
 use exo_env::Environment;
 use include_dir::{include_dir, Dir};
 use serde::Serialize;
@@ -63,6 +66,12 @@ struct PlaygroundConfig {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     oidc_url: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    jwt_source_header: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    jwt_source_cookie: Option<String>,
 }
 
 fn exo_playground_config(env: &dyn Environment) -> PlaygroundConfig {
@@ -76,6 +85,9 @@ fn exo_playground_config(env: &dyn Environment) -> PlaygroundConfig {
     let graphql_http_path = get_graphql_http_path(env);
     let upstream_graphql_endpoint = env.get(_EXO_UPSTREAM_ENDPOINT_URL);
 
+    let jwt_source_header = env.get(EXO_JWT_SOURCE_HEADER);
+    let jwt_source_cookie = env.get(EXO_JWT_SOURCE_COOKIE);
+
     PlaygroundConfig {
         playground_http_path,
         graphql_http_path,
@@ -83,5 +95,8 @@ fn exo_playground_config(env: &dyn Environment) -> PlaygroundConfig {
         enable_schema_live_update,
         oidc_url,
         upstream_graphql_endpoint,
+
+        jwt_source_header,
+        jwt_source_cookie,
     }
 }

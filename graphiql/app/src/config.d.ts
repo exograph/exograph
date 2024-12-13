@@ -9,4 +9,7 @@ export type PlaygroundConfig = {
   upstreamGraphQLEndpoint?: string;
 
   oidcUrl?: string;
+
+  jwtSourceHeader?: string;
+  jwtSourceCookie?: string;
 };
