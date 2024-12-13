@@ -1,0 +1,88 @@
+
+stages:
+  - operation: |
+        mutation($id: Int!) {
+          updateProductProfit(id: $id, data: { name: "P2-updated", salePrice: 800, purchasePrice: 500 }) {
+            id
+            name
+            salePrice
+            purchasePrice
+            profit
+          }
+        }
+    variable: |
+      {
+        "id": $.p2Id
+      }
+    response: |
+        {
+          "data": {
+            "updateProductProfit": {
+              "id": $.p2Id,
+              "name": "P2-updated",
+              "salePrice": 800,
+              "purchasePrice": 500,
+              "profit": 300
+            }
+          }
+        }
+  - operation: |
+        query {
+          productProfits @unordered {
+            id
+            name
+            salePrice
+            purchasePrice
+            profit
+          }
+        }
+    response: |
+        {
+          "data": {
+            "productProfits": [
+              {
+                "id": $.p1Id,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+                "profit": 50
+              },
+              {
+                "id": $.p2Id,
+                "name": "P2-updated",
+                "salePrice": 800,
+                "purchasePrice": 500,
+                "profit": 300
+              }
+            ]
+          }
+        }
+  - operation: |
+        query {
+          products @unordered {
+            id
+            name
+            salePrice
+            purchasePrice
+          }
+        }
+    response: |
+        {
+          "data": {
+            "products": [
+              {
+                "id": $.p1Id,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+              },
+              {
+                "id": $.p2Id,
+                "name": "P2-updated",
+                "salePrice": 800,
+                "purchasePrice": 500,
+              }
+            ]
+          }
+        }
+      

@@ -29,7 +29,7 @@ use postgres_graphql_model::{
 use crate::{
     auth_util::check_access,
     sql_mapper::{SQLMapper, SQLOperationKind},
-    util::{get_argument_field, return_type_info},
+    util::get_argument_field,
 };
 
 use postgres_core_resolver::{cast, postgres_execution_error::PostgresExecutionError};
@@ -52,7 +52,9 @@ impl<'a> SQLMapper<'a, AbstractUpdate> for UpdateOperation<'a> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
 
         let self_update_columns = compute_update_columns(data_type, argument, subsystem);
-        let (table_id, _, _) = return_type_info(self.return_type, subsystem);
+
+        let return_type = &subsystem.core_subsystem.entity_types[self.return_type.typ_id()];
+        let table_id = return_type.table_id;
 
         let (nested_updates, nested_inserts, nested_deletes) =
             compute_nested_ops(data_type, argument, subsystem, request_context).await?;

@@ -1,0 +1,109 @@
+
+stages:
+  - operation: |
+        mutation {
+          createProductProfit(data: { name: "P3", salePrice: 80, purchasePrice: 50 }) {
+            id @bind(name: "p3Id")
+            name
+            salePrice
+            purchasePrice
+            profit
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+        {
+          "data": {
+            "createProductProfit": {
+              "id": $.p3Id,
+              "name": "P3",
+              "salePrice": 80,
+              "purchasePrice": 50,
+              "profit": 30
+            }
+          }
+        }
+  - operation: |
+        query {
+          productProfits @unordered {
+            id
+            name
+            salePrice
+            purchasePrice
+            profit
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }        
+    response: |
+        {
+          "data": {
+            "productProfits": [
+              {
+                "id": $.p1Id,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+                "profit": 50
+              },
+              {
+                "id": $.p2Id,
+                "name": "P2",
+                "salePrice": 20,
+                "purchasePrice": 30,
+                "profit": -10
+              },
+              {
+                "id": $.p3Id,
+                "name": "P3",
+                "salePrice": 80,
+                "purchasePrice": 50,
+                "profit": 30
+              }
+            ]
+          }
+        }
+  - operation: |
+        query {
+          products @unordered {
+            id
+            name
+            salePrice
+            purchasePrice
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }        
+    response: |
+        {
+          "data": {
+            "products": [
+              {
+                "id": $.p1Id,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+              },
+              {
+                "id": $.p2Id,
+                "name": "P2",
+                "salePrice": 20,
+                "purchasePrice": 30,
+              },
+              {
+                "id": $.p3Id,
+                "name": "P3",
+                "salePrice": 80,
+                "purchasePrice": 50,
+              }
+            ]
+          }
+        }
+      

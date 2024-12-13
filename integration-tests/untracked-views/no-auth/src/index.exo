@@ -10,12 +10,12 @@ module TodoDatabase {
   }
 
   @table(tracked=false)
-  @access(query=true, mutation=false)
+  @access(true)
   type ProductProfit {
-    @pk id: Int
+    @pk id: Int = autoIncrement()
     name: String
     salePrice: Float
     purchasePrice: Float
-    profit: Float
+    @readonly profit: Float
   }
 }
