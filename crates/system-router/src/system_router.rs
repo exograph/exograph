@@ -213,6 +213,7 @@ pub struct SystemRouter {
     underlying: CorsRouter<CompositeRouter<RequestContextRouter>>,
     env: Arc<dyn Environment>,
     authenticator: Arc<Option<JwtAuthenticator>>,
+    #[cfg(not(target_family = "wasm"))]
     playground_config: Option<Arc<PlaygroundRouterConfig>>,
 }
 
