@@ -15,9 +15,12 @@ import {
   Fetcher,
   createGraphiQLFetcher,
 } from "exograph-playground-lib";
+import { PlaygroundConfig } from "./config";
+
+let playgroundConfig = (window as any).exoConfig as PlaygroundConfig;
 
 const urlFetcher: Fetcher = createGraphiQLFetcher({
-  url: (window as any).exoGraphQLHttpPath,
+  url: playgroundConfig.graphqlHttpPath,
 });
 
 const container = document.getElementById("root");
@@ -25,12 +28,8 @@ const root = createRoot(container as HTMLElement);
 root.render(
   <GraphiQLPlayground
     fetcher={urlFetcher}
-    oidcUrl={(window as any).exoOidcUrl as string | undefined}
-    upstreamGraphQLEndpoint={
-      (window as any).exoUpstreamGraphQLEndpoint as string | undefined
-    }
-    enableSchemaLiveUpdate={
-      ((window as any).enableSchemaLiveUpdate as boolean) || false
-    }
+    oidcUrl={playgroundConfig.oidcUrl}
+    upstreamGraphQLEndpoint={playgroundConfig.upstreamGraphQLEndpoint}
+    enableSchemaLiveUpdate={playgroundConfig.enableSchemaLiveUpdate}
   />
 );

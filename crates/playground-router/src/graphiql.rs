@@ -12,6 +12,7 @@
 use common::env_const::{EXO_INTROSPECTION_LIVE_UPDATE, _EXO_UPSTREAM_ENDPOINT_URL};
 use exo_env::Environment;
 use include_dir::{include_dir, Dir};
+use serde::Serialize;
 use std::path::Path;
 
 use common::env_const::{get_graphql_http_path, get_playground_http_path};
@@ -19,39 +20,68 @@ use common::env_const::{get_graphql_http_path, get_playground_http_path};
 static GRAPHIQL_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/app/dist");
 
 pub fn get_asset_bytes<P: AsRef<Path>>(file_name: P, env: &dyn Environment) -> Option<Vec<u8>> {
-    let enable_introspection_live_update = env
-        .get(EXO_INTROSPECTION_LIVE_UPDATE)
-        .unwrap_or_else(|| "false".to_string());
-    // Normalize the OIDC URL to remove the trailing slash, if any
-    let oidc_url = env
-        .get("EXO_OIDC_URL")
-        .map(|s| s.trim_end_matches('/').to_owned())
-        .unwrap_or_else(|| "".to_owned());
-
     GRAPHIQL_DIR.get_file(file_name.as_ref()).map(|file| {
         if file_name.as_ref() == Path::new("index.html") {
             let str = file
                 .contents_utf8()
                 .expect("index.html for playground should be utf8");
-            let str = str.replace("%%PLAYGROUND_HTTP_PATH%%", &get_playground_http_path(env));
-            let str = str.replace("%%GRAPHQL_HTTP_PATH%%", &get_graphql_http_path(env));
+
+            let playground_config = exo_playground_config(env);
 
             let str = str.replace(
-                "%%UPSTREAM_ENDPOINT_URL%%",
-                &env.get(_EXO_UPSTREAM_ENDPOINT_URL)
-                    .unwrap_or("".to_string()),
+                "window.exoConfig = {}",
+                &format!(
+                    "window.exoConfig = {}",
+                    serde_json::to_string(&playground_config).unwrap()
+                ),
             );
-
             let str = str.replace(
-                "%%ENABLE_INTROSPECTION_LIVE_UPDATE%%",
-                &enable_introspection_live_update,
+                "%%PLAYGROUND_HTTP_PATH%%",
+                &playground_config.playground_http_path,
             );
-
-            let str = str.replace("%%OIDC_URL%%", &oidc_url);
 
             str.as_bytes().to_owned()
         } else {
             file.contents().to_owned()
         }
     })
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PlaygroundConfig {
+    playground_http_path: String,
+    graphql_http_path: String,
+
+    enable_schema_live_update: bool,
+
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "upstreamGraphQLEndpoint"
+    )]
+    upstream_graphql_endpoint: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    oidc_url: Option<String>,
+}
+
+fn exo_playground_config(env: &dyn Environment) -> PlaygroundConfig {
+    let enable_schema_live_update = env.enabled(EXO_INTROSPECTION_LIVE_UPDATE, false);
+    // Normalize the OIDC URL to remove the trailing slash, if any
+    let oidc_url = env
+        .get("EXO_OIDC_URL")
+        .map(|s| s.trim_end_matches('/').to_owned());
+
+    let playground_http_path = get_playground_http_path(env);
+    let graphql_http_path = get_graphql_http_path(env);
+    let upstream_graphql_endpoint = env.get(_EXO_UPSTREAM_ENDPOINT_URL);
+
+    PlaygroundConfig {
+        playground_http_path,
+        graphql_http_path,
+
+        enable_schema_live_update,
+        oidc_url,
+        upstream_graphql_endpoint,
+    }
 }
