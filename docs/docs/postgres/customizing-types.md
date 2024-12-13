@@ -102,10 +102,22 @@ Use the `@plural` annotation to deal with type names with irregular pluralizatio
 
 ### Using untracked tables
 
-Sometimes, you may want to use a table or view that already exists in your database. For example, you may want to use a view or a foreign table that you have created in your database. Exograph supports this use case using the `tracked=false` attribute of the `@table` annotation.
+Sometimes, you may want to expose a view or a foreign table in your database through Exograph APIs. For this purpose, you may use the `tracked=false` attribute of the `@table` annotation.
 
+Consider the following view:
 
-For example, to use the `product_profits` view, you can define the following Exograph module:
+```sql
+CREATE VIEW product_profits AS
+SELECT
+    p.id,
+    p.name,
+    p.sale_price,
+    p.purchase_price,
+    p.sale_price - p.purchase_price AS profit
+FROM products p;
+```
+
+You can define a type for this view as follows:
 
 ```exo
 @postgres
@@ -132,26 +144,26 @@ module TodoDatabase {
 }
 ```
 
-Here, we assume that you have the following `product_profits` view in your database:
+Exograph will map the `ProductProfit` type to the `product_profits` view (it could also be a table). However, Exograph will ignore the `ProductProfit` type for schema migration.
 
-```sql
-CREATE VIEW product_profits AS
-SELECT
-    p.id,
-    p.name,
-    p.sale_price,
-    p.purchase_price,
-    p.sale_price - p.purchase_price AS profit
-FROM products p;
+Exograph will apply access control and infer queries for the `ProductProfit` type as usual, including [aggregated queries](operations/queries.md#aggregated-query). If you have an untracked type representing a view, you will want to set `mutation=false`, thus removing the mutation APIs for untracked types. However, this is not a restriction imposed by Exograph. Therefore, you may put any other access control rules if you want to modify the underlying data through the tracked type.
+
+If you allow mutation through a tracked type for a view, you will want to make any derived fields read-only. For example, if you allow mutation through the `ProductProfit` type, you will want to make the `profit` field read-only.
+
+```exo
+  @table(tracked=false)
+  @access(query=true, mutation=true)
+  type ProductProfit {
+    @pk id: Int
+    name: String
+    salePrice: Float
+    purchasePrice: Float
+    // highlight-next-line
+    @readonly profit: Float
+  }
 ```
 
-Exograph will map the `ProductProfit` type to the `product_profits` view (it could also be a table). However, Exograph will ignore the `ProductProfit` type for schema migration. 
-
-Exograph will apply access control and infer queries for the `ProductProfit` type as usual, including [aggregated queries](operations/queries.md#aggregated-query).
-
-:::warning
-You must set `mutation=false` for any untracked type and mark a field as the primary key. We will lift this restriction in the future.
-:::
+An untracked type may skip marking a field as `@pk` if it doesn't have a primary key. For such a type, Exograph offers only collection and aggregate queries. For example, the `ProductProfit` type will have the `productProfits` and `productProfitsAgg` query but not the `productProfit` query (which would take the primary key as an argument).
 
 ## Field-level customization
 

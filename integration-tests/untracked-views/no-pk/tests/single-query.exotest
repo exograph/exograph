@@ -1,0 +1,30 @@
+
+stages:
+  - operation: |
+        query($p1Id: Int!) {
+          productProfit(id: $p1Id) {
+            id
+            name
+            salePrice
+            purchasePrice
+            profit
+          }
+        }
+    variable: |
+      {
+        "p1Id": $.p1Id,
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Field 'productProfit' is not valid for type 'Query'",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ]
+          }
+        ]
+      }

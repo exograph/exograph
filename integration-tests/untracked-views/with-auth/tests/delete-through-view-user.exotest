@@ -1,0 +1,97 @@
+
+stages:
+  - operation: |
+        mutation($id: Int!) {
+          deleteProductProfit(id: $id) {
+            id
+            name
+            salePrice
+            purchasePrice
+            profit
+          }
+        }
+    variable: |
+      {
+        "id": $.p2Id
+      }
+    auth: |
+      {
+        "role": "user"
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+        query {
+          productProfits @unordered {
+            id
+            name
+            salePrice
+            purchasePrice
+            profit
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+        {
+          "data": {
+            "productProfits": [
+              {
+                "id": $.p1Id,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+                "profit": 50
+              },
+              {
+                "id": $.p2Id,
+                "name": "P2",
+                "salePrice": 20,
+                "purchasePrice": 30,
+                "profit": -10
+              }
+            ]
+          }
+        }
+  - operation: |
+        query {
+          products @unordered {
+            id
+            name
+            salePrice
+            purchasePrice
+          }
+        }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+        {
+          "data": {
+            "products": [
+              {
+                "id": $.p1Id,
+                "name": "P1",
+                "salePrice": 100,
+                "purchasePrice": 50,
+              },
+              {
+                "id": $.p2Id,
+                "name": "P2",
+                "salePrice": 20,
+                "purchasePrice": 30
+              }
+            ]
+          }
+        }
+      

@@ -7,11 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use super::{
-    auth_util::check_access,
-    sql_mapper::SQLOperationKind,
-    util::{find_arg, return_type_info},
-};
+use super::{auth_util::check_access, sql_mapper::SQLOperationKind, util::find_arg};
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
@@ -131,7 +127,7 @@ async fn delete_operation<'content>(
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractDelete, PostgresExecutionError> {
-    let (table_id, _, _) = return_type_info(return_type, subsystem);
+    let table_id = subsystem.core_subsystem.entity_types[return_type.typ_id()].table_id;
 
     let access_predicate = check_access(
         return_type.typ(&subsystem.core_subsystem.entity_types),

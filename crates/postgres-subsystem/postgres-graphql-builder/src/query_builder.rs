@@ -46,14 +46,17 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
             }
 
             let entity_type_id = building.get_entity_type_id(c.name.as_str()).unwrap();
-            let shallow_query = shallow_pk_query(entity_type_id, c);
             let collection_query = shallow_collection_query(entity_type_id, c);
             let aggregate_query = shallow_aggregate_query(entity_type_id, c);
             let unique_queries = shallow_unique_queries(entity_type_id, c);
 
-            building
-                .pk_queries
-                .add(&shallow_query.name.to_owned(), shallow_query);
+            if c.pk_field().is_some() {
+                let shallow_query = shallow_pk_query(entity_type_id, c);
+
+                building
+                    .pk_queries
+                    .add(&shallow_query.name.to_owned(), shallow_query);
+            }
             building
                 .collection_queries
                 .add(&collection_query.name.to_owned(), collection_query);
@@ -130,9 +133,12 @@ fn expand_pk_query(
     database: &Database,
 ) {
     let operation_name = entity_type.pk_query();
-    let existing_query = &mut pk_queries.get_by_key_mut(&operation_name).unwrap();
-    existing_query.parameters.predicate_param =
-        pk_predicate_param(entity_type, predicate_types, database);
+    let existing_query = &mut pk_queries.get_by_key_mut(&operation_name);
+
+    if let Some(existing_query) = existing_query {
+        existing_query.parameters.predicate_param =
+            pk_predicate_param(entity_type, predicate_types, database);
+    }
 }
 
 pub fn pk_predicate_param(

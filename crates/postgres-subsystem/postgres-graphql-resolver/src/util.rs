@@ -9,15 +9,7 @@
 
 use indexmap::IndexMap;
 
-use postgres_core_model::types::EntityType;
-
 use common::value::Val;
-use core_plugin_interface::core_model::types::OperationReturnType;
-use exo_sql::TableId;
-use postgres_graphql_model::{
-    query::{CollectionQuery, PkQuery},
-    subsystem::PostgresGraphQLSubsystem,
-};
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
@@ -63,21 +55,4 @@ pub(super) fn to_pg_vector(
     }?;
 
     Ok(vec_value)
-}
-
-///
-/// # Returns
-/// - A (table associated with the return type, pk query, collection query) tuple.
-pub(crate) fn return_type_info<'a>(
-    return_type: &'a OperationReturnType<EntityType>,
-    subsystem: &'a PostgresGraphQLSubsystem,
-) -> (TableId, &'a PkQuery, &'a CollectionQuery) {
-    let typ_id = return_type.typ_id();
-    let typ = &subsystem.core_subsystem.entity_types[typ_id];
-
-    (
-        typ.table_id,
-        subsystem.get_pk_query(typ_id),
-        subsystem.get_collection_query(typ_id),
-    )
 }

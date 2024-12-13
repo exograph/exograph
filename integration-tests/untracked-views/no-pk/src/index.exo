@@ -10,9 +10,9 @@ module TodoDatabase {
   }
 
   @table(tracked=false)
-  @access(true)
+  @access(query=true, delete=true, update=true) // Not allowed to create (what PK would be?)
   type ProductProfit {
-    @pk id: Int = autoIncrement()
+    id: Int
     name: String
     salePrice: Float
     purchasePrice: Float
