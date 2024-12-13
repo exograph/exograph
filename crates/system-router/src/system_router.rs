@@ -10,6 +10,7 @@
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
 use common::router::PlainRequestPayload;
+use playground_router::PlaygroundRouterConfig;
 use tracing::debug;
 
 use common::context::{JwtAuthenticator, RequestContext};
@@ -189,10 +190,20 @@ async fn create_system_router(
         routers.push(Box::new(rest_router));
     }
 
-    #[cfg(not(target_family = "wasm"))]
-    routers.push(Box::new(PlaygroundRouter::new(env.clone())));
+    #[cfg(target_family = "wasm")]
+    let playground_config = None;
 
-    SystemRouter::new(routers, env.clone()).await
+    #[cfg(not(target_family = "wasm"))]
+    let playground_config = Some(Arc::new(PlaygroundRouterConfig::new(env.clone())));
+
+    #[cfg(not(target_family = "wasm"))]
+    {
+        if let Some(playground_config) = &playground_config {
+            routers.push(Box::new(PlaygroundRouter::new(playground_config.clone())));
+        }
+    }
+
+    SystemRouter::new(routers, playground_config, env.clone()).await
 }
 
 type RequestContextRouter = Box<dyn for<'b> Router<RequestContext<'b>> + Send + Sync>;
@@ -201,11 +212,13 @@ pub struct SystemRouter {
     underlying: CorsRouter<CompositeRouter<RequestContextRouter>>,
     env: Arc<dyn Environment>,
     authenticator: Arc<Option<JwtAuthenticator>>,
+    playground_config: Option<Arc<PlaygroundRouterConfig>>,
 }
 
 impl SystemRouter {
     pub async fn new(
         routers: Vec<RequestContextRouter>,
+        playground_config: Option<Arc<PlaygroundRouterConfig>>,
         env: Arc<dyn Environment>,
     ) -> Result<Self, SystemLoadingError> {
         let cors_domains = env.get(EXO_CORS_DOMAINS);
@@ -221,7 +234,20 @@ impl SystemRouter {
             ),
             env,
             authenticator: Arc::new(authenticator),
+            playground_config,
         })
+    }
+
+    pub fn is_playground_assets_request(
+        &self,
+        request_path: &str,
+        request_method: http::Method,
+    ) -> bool {
+        if let Some(playground_config) = &self.playground_config {
+            playground_config.suitable(request_path, request_method)
+        } else {
+            false
+        }
     }
 }
 

@@ -25,14 +25,12 @@ use http::StatusCode;
 
 use crate::graphiql;
 
-pub struct PlaygroundRouter {
-    /// The path to the playground, without the leading / (typically "playground")
+pub struct PlaygroundRouterConfig {
     playground_path: String,
     env: Arc<dyn Environment>,
 }
 
-#[cfg(not(target_family = "wasm"))]
-impl PlaygroundRouter {
+impl PlaygroundRouterConfig {
     pub fn new(env: Arc<dyn Environment>) -> Self {
         Self {
             playground_path: strip_leading_slash(&get_playground_http_path(env.as_ref()))
@@ -41,11 +39,27 @@ impl PlaygroundRouter {
         }
     }
 
-    fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
-        let request_path = strip_leading_slash(&request_head.get_path());
+    pub fn suitable(&self, request_path: &str, request_method: http::Method) -> bool {
+        let request_path = strip_leading_slash(request_path);
 
         (request_path.starts_with(&self.playground_path) || request_path.is_empty())
-            && request_head.get_method() == http::Method::GET
+            && request_method == http::Method::GET
+    }
+}
+
+pub struct PlaygroundRouter {
+    config: Arc<PlaygroundRouterConfig>,
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl PlaygroundRouter {
+    pub fn new(config: Arc<PlaygroundRouterConfig>) -> Self {
+        Self { config }
+    }
+
+    fn suitable(&self, request_head: &(dyn RequestHead + Sync)) -> bool {
+        self.config
+            .suitable(&request_head.get_path(), request_head.get_method())
     }
 }
 
@@ -56,7 +70,9 @@ impl<'a> Router<RequestContext<'a>> for PlaygroundRouter {
             return None;
         }
 
-        let introspection_enabled = allow_introspection(self.env.as_ref());
+        let env = self.config.env.as_ref();
+
+        let introspection_enabled = allow_introspection(env);
         if !introspection_enabled {
             return Some(ResponsePayload {
                 body: ResponseBody::Bytes("Introspection is disabled".as_bytes().to_vec()),
@@ -66,19 +82,20 @@ impl<'a> Router<RequestContext<'a>> for PlaygroundRouter {
         }
 
         let path = strip_leading_slash(&request_context.get_head().get_path());
+        let playground_path = &self.config.playground_path;
 
         // We redirect to the playground path if the path is empty. This provides a better user experience
         // as the user will be redirected to the playground path without having to add it manually.
         if path.is_empty() {
             return Some(ResponsePayload {
-                body: ResponseBody::Redirect(self.playground_path.clone()),
+                body: ResponseBody::Redirect(playground_path.clone()),
                 headers: Headers::new(),
                 status_code: StatusCode::PERMANENT_REDIRECT,
             });
         }
 
         // remove the leading self.playground_path from the path
-        let path = strip_leading(&path, &self.playground_path);
+        let path = strip_leading(&path, playground_path);
 
         let index_path = "index.html";
         let asset_path = if path.is_empty() {
@@ -102,7 +119,7 @@ impl<'a> Router<RequestContext<'a>> for PlaygroundRouter {
             )]
         };
 
-        match graphiql::get_asset_bytes(asset_path, self.env.as_ref()) {
+        match graphiql::get_asset_bytes(asset_path, env) {
             Some(asset) => {
                 let headers = cache_control.into_iter().chain(vec![(
                     http::header::CONTENT_TYPE.to_string(),
