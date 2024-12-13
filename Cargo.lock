@@ -9260,6 +9260,7 @@ dependencies = [
  "core-router",
  "exo-env",
  "graphql-router",
+ "http 1.1.0",
  "playground-router",
  "rest-router",
  "tracing",

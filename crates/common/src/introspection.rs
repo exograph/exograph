@@ -29,5 +29,6 @@ pub fn introspection_mode(env: &dyn Environment) -> Result<IntrospectionMode, En
 
 /// Should we allow introspection queries?
 pub fn allow_introspection(env: &dyn Environment) -> bool {
-    introspection_mode(env).unwrap_or(IntrospectionMode::Disabled) == IntrospectionMode::Enabled
+    let effective_mode = introspection_mode(env).unwrap_or(IntrospectionMode::Disabled);
+    effective_mode == IntrospectionMode::Enabled || effective_mode == IntrospectionMode::Only
 }

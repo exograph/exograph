@@ -36,6 +36,9 @@ use graphql_router::GraphQLRouter;
 
 #[cfg(not(target_family = "wasm"))]
 use playground_router::PlaygroundRouter;
+#[cfg(not(target_family = "wasm"))]
+use playground_router::PlaygroundRouterConfig;
+
 use rest_router::RestRouter;
 
 pub type StaticLoaders = Vec<Box<dyn SubsystemLoader>>;
@@ -189,10 +192,19 @@ async fn create_system_router(
         routers.push(Box::new(rest_router));
     }
 
-    #[cfg(not(target_family = "wasm"))]
-    routers.push(Box::new(PlaygroundRouter::new(env.clone())));
+    #[cfg(target_family = "wasm")]
+    {
+        SystemRouter::new(routers, env.clone()).await
+    }
 
-    SystemRouter::new(routers, env.clone()).await
+    #[cfg(not(target_family = "wasm"))]
+    {
+        let playground_config = Arc::new(PlaygroundRouterConfig::new(env.clone()));
+
+        routers.push(Box::new(PlaygroundRouter::new(playground_config.clone())));
+
+        SystemRouter::new(routers, env.clone(), Some(playground_config)).await
+    }
 }
 
 type RequestContextRouter = Box<dyn for<'b> Router<RequestContext<'b>> + Send + Sync>;
@@ -201,12 +213,15 @@ pub struct SystemRouter {
     underlying: CorsRouter<CompositeRouter<RequestContextRouter>>,
     env: Arc<dyn Environment>,
     authenticator: Arc<Option<JwtAuthenticator>>,
+    #[cfg(not(target_family = "wasm"))]
+    playground_config: Option<Arc<PlaygroundRouterConfig>>,
 }
 
 impl SystemRouter {
     pub async fn new(
         routers: Vec<RequestContextRouter>,
         env: Arc<dyn Environment>,
+        #[cfg(not(target_family = "wasm"))] playground_config: Option<Arc<PlaygroundRouterConfig>>,
     ) -> Result<Self, SystemLoadingError> {
         let cors_domains = env.get(EXO_CORS_DOMAINS);
 
@@ -221,7 +236,29 @@ impl SystemRouter {
             ),
             env,
             authenticator: Arc::new(authenticator),
+            #[cfg(not(target_family = "wasm"))]
+            playground_config,
         })
+    }
+
+    pub fn is_playground_assets_request(
+        &self,
+        request_path: &str,
+        request_method: http::Method,
+    ) -> bool {
+        #[cfg(target_family = "wasm")]
+        {
+            false
+        }
+
+        #[cfg(not(target_family = "wasm"))]
+        {
+            if let Some(playground_config) = &self.playground_config {
+                playground_config.suitable(request_path, request_method)
+            } else {
+                false
+            }
+        }
     }
 }
 

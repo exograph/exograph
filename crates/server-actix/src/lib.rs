@@ -66,15 +66,27 @@ async fn resolve(
     system_router: web::Data<SystemRouter>,
 ) -> impl Responder {
     match endpoint_url.as_ref() {
-        Some(endpoint_url) => match http_request.headers().get("_exo_operation_kind") {
-            Some(value) if value == "schema_query" => {
-                // This is a schema fetch request, so solve it locally
+        Some(endpoint_url) => {
+            // In the playground mode, locally serve the schema query or playground assets
+            let schema_query = http_request
+                .headers()
+                .get("_exo_operation_kind")
+                .map(|v| v.as_bytes())
+                == Some(b"schema_query");
+
+            if schema_query
+                || system_router.is_playground_assets_request(
+                    http_request.path(),
+                    to_reqwest_method(http_request.method()),
+                )
+            {
                 resolve_locally(http_request, body, query.into_inner(), system_router).await
+            } else {
+                forward_request(http_request, body, endpoint_url).await
             }
-            _ => forward_request(http_request, body, endpoint_url).await,
-        },
+        }
         None => {
-            // We aren't operating in the playground mode, so we can resolve it here
+            // We aren't operating in the playground mode, so we can resolve it locally
             resolve_locally(http_request, body, query.into_inner(), system_router).await
         }
     }
