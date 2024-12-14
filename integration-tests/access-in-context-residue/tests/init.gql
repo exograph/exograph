@@ -1,0 +1,19 @@
+operation: |
+    mutation {
+        pm1: createProfileMetric(data: {id: "1", cost: 100}) {
+            id
+        }
+        pm2: createProfileMetric(data: {id: "2", cost: 200}) {
+            id
+        }
+        pm3: createProfileMetric(data: {id: "3", cost: 300}) {
+            id
+        }
+        pm4: createProfileMetric(data: {id: "4", cost: 400}) {
+            id
+        }
+    }
+auth: |
+    {
+        "role": "admin"
+    }

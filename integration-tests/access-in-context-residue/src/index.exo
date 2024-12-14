@@ -1,0 +1,13 @@
+context AuthContext {
+  @jwt role: String
+  @jwt allowedProfiles: Set<String>
+}
+
+@postgres
+module Reporting {
+  @access(query = self.id in AuthContext.allowedProfiles || AuthContext.role == "admin", mutation=AuthContext.role == "admin")
+  type ProfileMetric {
+    @pk id: String
+    cost: Int
+  }
+}
