@@ -25,11 +25,14 @@ const urlFetcher: Fetcher = createGraphiQLFetcher({
 
 const container = document.getElementById("root");
 const root = createRoot(container as HTMLElement);
+
 root.render(
   <GraphiQLPlayground
     fetcher={urlFetcher}
     oidcUrl={playgroundConfig.oidcUrl}
     upstreamGraphQLEndpoint={playgroundConfig.upstreamGraphQLEndpoint}
     enableSchemaLiveUpdate={playgroundConfig.enableSchemaLiveUpdate}
+    jwtSourceHeader={playgroundConfig.jwtSourceHeader}
+    jwtSourceCookie={playgroundConfig.jwtSourceCookie}
   />
 );

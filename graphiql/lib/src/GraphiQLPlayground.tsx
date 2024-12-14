@@ -45,6 +45,8 @@ interface _GraphiQLPlaygroundProps extends GraphiQLPassThroughProps {
   upstreamGraphQLEndpoint?: string;
   enableSchemaLiveUpdate: boolean;
   schemaId?: number;
+  jwtSourceHeader?: string;
+  jwtSourceCookie?: string;
 }
 
 export function GraphiQLPlayground({
@@ -57,6 +59,8 @@ export function GraphiQLPlayground({
   initialQuery,
   theme,
   storageKey,
+  jwtSourceHeader,
+  jwtSourceCookie,
 }: GraphiQLPlaygroundProps) {
   return (
     <AuthContextProvider oidcUrl={oidcUrl} jwtSecret={jwtSecret}>
@@ -64,6 +68,8 @@ export function GraphiQLPlayground({
         fetcher={fetcher}
         upstreamGraphQLEndpoint={upstreamGraphQLEndpoint}
         enableSchemaLiveUpdate={enableSchemaLiveUpdate}
+        jwtSourceHeader={jwtSourceHeader}
+        jwtSourceCookie={jwtSourceCookie}
         schemaId={schemaId}
         initialQuery={initialQuery}
         theme={theme}
@@ -84,6 +90,8 @@ function _GraphiQLPlayground({
   fetcher,
   upstreamGraphQLEndpoint,
   enableSchemaLiveUpdate,
+  jwtSourceHeader,
+  jwtSourceCookie,
   schemaId,
   initialQuery,
   theme,
@@ -103,11 +111,18 @@ function _GraphiQLPlayground({
     if (getTokenFn) {
       let authToken = await getTokenFn();
 
-      additionalHeaders = {
-        ...additionalHeaders,
-        Authorization: `Bearer ${authToken}`,
-      };
+      if (jwtSourceCookie) {
+        document.cookie = `${jwtSourceCookie}=${authToken}`;
+      } else {
+        let authHeader = jwtSourceHeader || "Authorization";
+
+        additionalHeaders = {
+          ...additionalHeaders,
+          [authHeader]: `Bearer ${authToken}`,
+        };
+      }
     }
+
     return fetcher(graphQLParams, {
       ...opts,
       headers: { ...opts?.headers, ...additionalHeaders },
