@@ -46,8 +46,8 @@ impl ToSql for SQLParamContainer {
 }
 
 impl SQLParamContainer {
-    pub(crate) fn new<T: SQLParam + 'static>(param: T, param_type: Type) -> Self {
-        Self((Arc::new(param), param_type))
+    pub fn new<T: SQLParam + 'static>(param: T, param_type: Type) -> Self {
+        Self((Arc::new(param), param_type, false))
     }
 
     pub fn string(value: String) -> Self {
@@ -127,6 +127,10 @@ impl SQLParamContainer {
         Self::new(value, Type::JSONB)
     }
 
+    pub fn string_array(value: Vec<String>) -> Self {
+        Self::new(value, Type::TEXT_ARRAY)
+    }
+
     pub fn from_sql_values(params: Vec<SQLValue>, elem_type: Type) -> Self {
         let collection_type = to_pg_array_type(&elem_type);
 
@@ -136,6 +140,14 @@ impl SQLParamContainer {
     pub fn from_sql_value(value: SQLValue) -> Self {
         let type_ = value.type_.clone();
         Self::new(value, type_)
+    }
+
+    pub fn with_unnest(self) -> Self {
+        Self((self.0 .0, self.0 .1, true))
+    }
+
+    pub fn has_unnest(&self) -> bool {
+        self.0 .2
     }
 }
 
