@@ -1,0 +1,11 @@
+@postgres
+module NumbersDatabase {
+  @access(true)
+  type Number {
+    @pk id: Int = autoIncrement()
+    @bits16 int16: Int?
+    @bits32 int32: Int?
+    @singlePrecision singlePrecision: Float?
+  }
+}
+

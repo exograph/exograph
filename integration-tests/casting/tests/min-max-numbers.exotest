@@ -1,0 +1,39 @@
+stages:
+  - operation: |
+      mutation {
+          mins: createNumber(data: {int16: -32768, int32: -2147483648, singlePrecision: -3.40282346e+38}) {
+              int16
+              int32
+              singlePrecision
+          }
+      }
+    response: |
+      {
+        "data": {
+          "mins": {
+            "int16": -32768,
+            "int32": -2147483648,
+            "singlePrecision": -3.4028235e38,
+          }
+        }
+      }
+
+  - operation: |
+      mutation {
+          maxes: createNumber(data: {int16: 32767, int32: 2147483647,singlePrecision: 3.40282346e+38}) {
+              int16
+              int32
+              singlePrecision
+          }
+      }
+    response: |
+      {
+        "data": {
+          "maxes": {
+            "int16": 32767,
+            "int32": 2147483647,
+            "singlePrecision": 3.4028235e38,
+          }
+        }
+      }
+    

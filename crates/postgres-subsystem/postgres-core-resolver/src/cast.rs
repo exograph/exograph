@@ -76,13 +76,13 @@ pub fn cast_value(
     unnest: bool,
 ) -> Result<Option<SQLParamContainer>, CastError> {
     match value {
-        Val::Number(number) => cast_number(number, destination_type).map(Some),
+        Val::Number(number) => Ok(Some(cast_number(number, destination_type)?)),
         Val::String(v) => cast_string(v, destination_type).map(Some),
         Val::Bool(v) => Ok(Some(SQLParamContainer::bool(*v))),
         Val::Null => Ok(None),
         Val::Enum(v) => Ok(Some(SQLParamContainer::string(v.to_string()))), // We might need guidance from the database to do a correct translation
         Val::List(elems) => cast_list(elems, destination_type, unnest),
-        Val::Object(_) => Ok(Some(cast_object(value, destination_type))),
+        Val::Object(_) => Ok(Some(cast_object(value, destination_type)?)),
         Val::Binary(bytes) => Ok(Some(SQLParamContainer::bytes(bytes.clone()))),
     }
 }
@@ -102,17 +102,17 @@ pub fn cast_list(
                 )));
             }
 
-            let vec_value: Result<Vec<f32>, PostgresExecutionError> = elems
+            let vec_value: Result<Vec<f32>, CastError> = elems
                 .iter()
                 .map(|v| match v {
-                    Val::Number(n) => Ok(n.as_f64().unwrap() as f32),
-                    _ => Err(PostgresExecutionError::CastError(CastError::Generic(
+                    Val::Number(n) => cast_to_f32(n),
+                    _ => Err(CastError::Generic(
                         "Invalid vector parameter: element is not of float type".into(),
-                    ))),
+                    )),
                 })
                 .collect();
 
-            let vec_value = vec_value.map_err(|e| CastError::Generic(e.to_string()))?;
+            let vec_value = vec_value?;
             Ok(Some(SQLParamContainer::f32_array(vec_value)))
         }
         _ => {
@@ -158,13 +158,13 @@ fn cast_number(
 ) -> Result<SQLParamContainer, CastError> {
     let result: SQLParamContainer = match destination_type {
         PhysicalColumnType::Int { bits } => match bits {
-            IntBits::_16 => SQLParamContainer::i16(number.as_i64().unwrap() as i16),
-            IntBits::_32 => SQLParamContainer::i32(number.as_i64().unwrap() as i32),
-            IntBits::_64 => SQLParamContainer::i64(number.as_i64().unwrap()),
+            IntBits::_16 => SQLParamContainer::i16(cast_to_i16(number)?),
+            IntBits::_32 => SQLParamContainer::i32(cast_to_i32(number)?),
+            IntBits::_64 => SQLParamContainer::i64(cast_to_i64(number)?),
         },
         PhysicalColumnType::Float { bits } => match bits {
-            FloatBits::_24 => SQLParamContainer::f32(number.as_f64().unwrap() as f32),
-            FloatBits::_53 => SQLParamContainer::f64(number.as_f64().unwrap()),
+            FloatBits::_24 => SQLParamContainer::f32(cast_to_f32(number)?),
+            FloatBits::_53 => SQLParamContainer::f64(cast_to_f64(number)?),
         },
         PhysicalColumnType::Numeric { .. } => {
             return Err(CastError::Generic(
@@ -343,13 +343,21 @@ fn cast_string(
     Ok(value)
 }
 
-fn cast_object(val: &Val, destination_type: &PhysicalColumnType) -> SQLParamContainer {
+fn cast_object(
+    val: &Val,
+    destination_type: &PhysicalColumnType,
+) -> Result<SQLParamContainer, CastError> {
     match destination_type {
         PhysicalColumnType::Json => {
-            let json_object = val.clone().into_json().unwrap();
-            SQLParamContainer::json(json_object)
+            let json_object = val.clone().into_json().map_err(|_| {
+                CastError::Generic(format!("Failed to cast {val} to a JSON object"))
+            })?;
+            Ok(SQLParamContainer::json(json_object))
         }
-        _ => panic!(),
+        _ => Err(CastError::Generic(format!(
+            "Unexpected destination type {} for object value",
+            destination_type.type_string()
+        ))),
     }
 }
 
@@ -378,4 +386,50 @@ fn array_type(destination_type: &PhysicalColumnType) -> Result<Type, CastError> 
         Type::REGTYPE => Ok(Type::REGTYPE_ARRAY),
         _ => Err(CastError::Generic("Unsupported array type".into())),
     }
+}
+
+fn cast_to_i64(val: &serde_json::Number) -> Result<i64, CastError> {
+    let i64_value = val
+        .as_i64()
+        .ok_or_else(|| CastError::Generic(format!("Failed to cast {val} to an integer")))?;
+
+    Ok(i64_value)
+}
+
+fn cast_to_i32(val: &serde_json::Number) -> Result<i32, CastError> {
+    let i64_value = cast_to_i64(val)?;
+    if i64_value < i32::MIN as i64 || i64_value > i32::MAX as i64 {
+        return Err(CastError::Generic(format!(
+            "Integer overflow: {val} is out of range for a 32-bit integer"
+        )));
+    }
+    Ok(i64_value as i32)
+}
+
+fn cast_to_i16(val: &serde_json::Number) -> Result<i16, CastError> {
+    let i32_value = cast_to_i32(val)?;
+    if i32_value < i16::MIN as i32 || i32_value > i16::MAX as i32 {
+        return Err(CastError::Generic(format!(
+            "Integer overflow: {val} is out of range for a 16-bit integer"
+        )));
+    }
+    Ok(i32_value as i16)
+}
+
+fn cast_to_f64(val: &serde_json::Number) -> Result<f64, CastError> {
+    let f64_value = val
+        .as_f64()
+        .ok_or_else(|| CastError::Generic(format!("Failed to cast {val} to a float")))?;
+    Ok(f64_value)
+}
+
+fn cast_to_f32(val: &serde_json::Number) -> Result<f32, CastError> {
+    let f64_value = cast_to_f64(val)?;
+
+    if f64_value < f32::MIN.into() || f64_value > f32::MAX.into() {
+        return Err(CastError::Generic(format!(
+            "Float overflow: {val} is out of range for a 32-bit float"
+        )));
+    }
+    Ok(f64_value as f32)
 }
