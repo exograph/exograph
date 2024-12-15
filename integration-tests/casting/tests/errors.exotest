@@ -1,0 +1,91 @@
+stages:
+  - operation: |
+      mutation {
+          minInt16: createNumber(data: {int16: -32769}) {
+              int16
+          }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Unable to convert input to the expected type: trying to convert the 'int16' field to the '16-bit integer' type"
+          }
+        ]
+      }
+
+  - operation: |
+      mutation {
+          maxInt16: createNumber(data: {int16: 32768}) {
+              int16
+          }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Unable to convert input to the expected type: trying to convert the 'int16' field to the '16-bit integer' type"
+          }
+        ]
+      }
+
+  - operation: |
+      mutation {
+          minInt32: createNumber(data: {int32: -2147483649}) {
+              int32
+          }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Unable to convert input to the expected type: trying to convert the 'int32' field to the '32-bit integer' type"
+          }
+        ]
+      }
+
+  - operation: |
+      mutation {
+          maxInt32: createNumber(data: {int32: 2147483648}) {
+              int32
+          }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Unable to convert input to the expected type: trying to convert the 'int32' field to the '32-bit integer' type"
+          }
+        ]
+      }
+
+
+  - operation: |
+      mutation {
+          minSinglePrecision: createNumber(data: {singlePrecision: -3.40282347e+38}) {
+              singlePrecision
+          }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Unable to convert input to the expected type: trying to convert the 'singlePrecision' field to the 'Single precision floating point' type"
+          }
+        ]
+      }
+
+  - operation: |
+      mutation {
+          maxSinglePrecision: createNumber(data: {singlePrecision: 3.40282347e+38}) {
+              singlePrecision
+          }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Unable to convert input to the expected type: trying to convert the 'singlePrecision' field to the 'Single precision floating point' type"
+          }
+        ]
+      }      

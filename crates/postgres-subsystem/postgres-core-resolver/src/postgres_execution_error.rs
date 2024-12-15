@@ -59,7 +59,8 @@ impl PostgresExecutionError {
         match self {
             PostgresExecutionError::Authorization => "Not authorized".to_string(),
             PostgresExecutionError::Validation(_, _) => self.to_string(),
-            PostgresExecutionError::CastError(_) => {
+            PostgresExecutionError::CastError(e) => {
+                error!("Cast error: {}", e);
                 "Unable to convert input to the expected type".to_string()
             }
             PostgresExecutionError::WithContext(context, e) => {

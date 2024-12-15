@@ -113,6 +113,16 @@ pub enum IntBits {
     _64,
 }
 
+impl IntBits {
+    pub fn bits(&self) -> usize {
+        match self {
+            IntBits::_16 => 16,
+            IntBits::_32 => 32,
+            IntBits::_64 => 64,
+        }
+    }
+}
+
 /// Number of bits in the float's mantissa.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FloatBits {
@@ -123,7 +133,7 @@ pub enum FloatBits {
 impl PhysicalColumnType {
     pub fn type_string(&self) -> String {
         match self {
-            PhysicalColumnType::Int { bits } => format!("Int of size {bits:?} bits"),
+            PhysicalColumnType::Int { bits } => format!("{}-bit integer", bits.bits()),
             PhysicalColumnType::String { max_length } => {
                 format!("String of max length {max_length:?}")
             }
@@ -143,7 +153,10 @@ impl PhysicalColumnType {
             PhysicalColumnType::Uuid => "Uuid".to_string(),
             PhysicalColumnType::Vector { size } => format!("Vector of size {size:?}"),
             PhysicalColumnType::Array { typ } => format!("Array of {typ:?}"),
-            PhysicalColumnType::Float { bits } => format!("Float of size {bits:?} bits"),
+            PhysicalColumnType::Float { bits } => match bits {
+                FloatBits::_24 => "Single precision floating point".to_string(),
+                FloatBits::_53 => "Double precision floating point".to_string(),
+            },
             PhysicalColumnType::Numeric { precision, scale } => {
                 format!("Numeric with precision: {precision:?}, scale: {scale:?}")
             }
