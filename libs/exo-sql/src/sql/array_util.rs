@@ -201,9 +201,9 @@ mod tests {
         assert_eq!(
             to_debug_string(&array),
             [
-                "(Some((1, Int4)), Int4)",
-                "(Some((2, Int4)), Int4)",
-                "(Some((3, Int4)), Int4)"
+                "(Some((1, Int4, false)), Int4, false)",
+                "(Some((2, Int4, false)), Int4, false)",
+                "(Some((3, Int4, false)), Int4, false)"
             ]
         );
     }
@@ -250,12 +250,12 @@ mod tests {
         assert_eq!(
             to_debug_string(&array),
             vec![
-                "(Some((1, Int4)), Int4)",
-                "(Some((2, Int4)), Int4)",
-                "(Some((3, Int4)), Int4)",
-                "(Some((4, Int4)), Int4)",
-                "(Some((5, Int4)), Int4)",
-                "(Some((6, Int4)), Int4)"
+                "(Some((1, Int4, false)), Int4, false)",
+                "(Some((2, Int4, false)), Int4, false)",
+                "(Some((3, Int4, false)), Int4, false)",
+                "(Some((4, Int4, false)), Int4, false)",
+                "(Some((5, Int4, false)), Int4, false)",
+                "(Some((6, Int4, false)), Int4, false)"
             ]
         );
     }
@@ -306,12 +306,12 @@ mod tests {
         assert_eq!(
             to_debug_string(&array),
             vec![
-                "(Some((1, Int4)), Int4)",
-                "(Some((2, Int4)), Int4)",
-                "(Some((3, Int4)), Int4)",
-                "(Some((4, Int4)), Int4)",
-                "(Some((5, Int4)), Int4)",
-                "(Some((6, Int4)), Int4)"
+                "(Some((1, Int4, false)), Int4, false)",
+                "(Some((2, Int4, false)), Int4, false)",
+                "(Some((3, Int4, false)), Int4, false)",
+                "(Some((4, Int4, false)), Int4, false)",
+                "(Some((5, Int4, false)), Int4, false)",
+                "(Some((6, Int4, false)), Int4, false)"
             ]
         );
     }

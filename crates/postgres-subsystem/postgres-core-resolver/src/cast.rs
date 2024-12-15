@@ -22,6 +22,7 @@ use exo_sql::{
 };
 #[cfg(feature = "bigdecimal")]
 use std::str::FromStr;
+use tokio_postgres::types::Type;
 
 use super::postgres_execution_error::PostgresExecutionError;
 use thiserror::Error;
@@ -54,7 +55,7 @@ pub fn literal_column(
     value: &Val,
     associated_column: &PhysicalColumn,
 ) -> Result<Column, PostgresExecutionError> {
-    cast_value(value, &associated_column.typ)
+    cast_value(value, &associated_column.typ, false)
         .map(|value| value.map(Column::Param).unwrap_or(Column::Null))
         .map_err(PostgresExecutionError::CastError)
 }
@@ -62,8 +63,9 @@ pub fn literal_column(
 pub fn literal_column_path(
     value: &Val,
     destination_type: &PhysicalColumnType,
+    unnest: bool,
 ) -> Result<ColumnPath, PostgresExecutionError> {
-    cast_value(value, destination_type)
+    cast_value(value, destination_type, unnest)
         .map(|value| value.map(ColumnPath::Param).unwrap_or(ColumnPath::Null))
         .map_err(PostgresExecutionError::CastError)
 }
@@ -71,6 +73,7 @@ pub fn literal_column_path(
 pub fn cast_value(
     value: &Val,
     destination_type: &PhysicalColumnType,
+    unnest: bool,
 ) -> Result<Option<SQLParamContainer>, CastError> {
     match value {
         Val::Number(number) => cast_number(number, destination_type).map(Some),
@@ -78,22 +81,23 @@ pub fn cast_value(
         Val::Bool(v) => Ok(Some(SQLParamContainer::bool(*v))),
         Val::Null => Ok(None),
         Val::Enum(v) => Ok(Some(SQLParamContainer::string(v.to_string()))), // We might need guidance from the database to do a correct translation
-        Val::List(elems) => cast_list(elems, destination_type),
+        Val::List(elems) => cast_list(elems, destination_type, unnest),
         Val::Object(_) => Ok(Some(cast_object(value, destination_type))),
         Val::Binary(bytes) => Ok(Some(SQLParamContainer::bytes(bytes.clone()))),
     }
 }
 
-fn cast_list(
+pub fn cast_list(
     elems: &[Val],
     destination_type: &PhysicalColumnType,
+    unnest: bool,
 ) -> Result<Option<SQLParamContainer>, CastError> {
     match destination_type {
         #[allow(unused_variables)]
         PhysicalColumnType::Vector { size } => {
             if elems.len() != *size {
                 return Err(CastError::Generic(format!(
-                    "Expected vector of size {size}, got {}",
+                    "Expected vector size. Expected {size}, got {}",
                     elems.len()
                 )));
             }
@@ -112,21 +116,38 @@ fn cast_list(
             Ok(Some(SQLParamContainer::f32_array(vec_value)))
         }
         _ => {
-            fn array_entry(elem: &Val) -> ArrayEntry<Val> {
-                match elem {
-                    Val::List(elems) => ArrayEntry::List(elems),
-                    _ => ArrayEntry::Single(elem),
+            if unnest {
+                let casted_elems: Vec<_> = elems
+                    .iter()
+                    .map(|e| cast_value(e, destination_type, false))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(Some(
+                    SQLParamContainer::new(casted_elems, array_type(destination_type)?)
+                        .with_unnest(),
+                ))
+            } else {
+                fn array_entry(elem: &Val) -> ArrayEntry<Val> {
+                    match elem {
+                        Val::List(elems) => ArrayEntry::List(elems),
+                        _ => ArrayEntry::Single(elem),
+                    }
                 }
-            }
 
-            let cast_value_with_error =
-                |value: &Val| -> Result<Option<SQLParamContainer>, DatabaseError> {
-                    cast_value(value, destination_type)
-                        .map_err(|error| DatabaseError::BoxedError(error.into()))
-                };
+                let cast_value_with_error =
+                    |value: &Val| -> Result<Option<SQLParamContainer>, DatabaseError> {
+                        cast_value(value, destination_type, false)
+                            .map_err(|error| DatabaseError::BoxedError(error.into()))
+                    };
 
-            array_util::to_sql_param(elems, destination_type, array_entry, &cast_value_with_error)
+                array_util::to_sql_param(
+                    elems,
+                    destination_type,
+                    array_entry,
+                    &cast_value_with_error,
+                )
                 .map_err(CastError::Postgres)
+            }
         }
     }
 }
@@ -329,5 +350,32 @@ fn cast_object(val: &Val, destination_type: &PhysicalColumnType) -> SQLParamCont
             SQLParamContainer::json(json_object)
         }
         _ => panic!(),
+    }
+}
+
+fn array_type(destination_type: &PhysicalColumnType) -> Result<Type, CastError> {
+    match destination_type.get_pg_type() {
+        Type::TEXT => Ok(Type::TEXT_ARRAY),
+        Type::INT4 => Ok(Type::INT4_ARRAY),
+        Type::INT8 => Ok(Type::INT8_ARRAY),
+        Type::FLOAT4 => Ok(Type::FLOAT4_ARRAY),
+        Type::FLOAT8 => Ok(Type::FLOAT8_ARRAY),
+        Type::BOOL => Ok(Type::BOOL_ARRAY),
+        Type::TIMESTAMP => Ok(Type::TIMESTAMP_ARRAY),
+        Type::DATE => Ok(Type::DATE_ARRAY),
+        Type::TIME => Ok(Type::TIME_ARRAY),
+        Type::TIMETZ => Ok(Type::TIMETZ_ARRAY),
+        Type::BIT => Ok(Type::BIT_ARRAY),
+        Type::VARBIT => Ok(Type::VARBIT_ARRAY),
+        Type::NUMERIC => Ok(Type::NUMERIC_ARRAY),
+        Type::JSONB => Ok(Type::JSONB_ARRAY),
+        Type::UUID => Ok(Type::UUID_ARRAY),
+        Type::JSON => Ok(Type::JSON_ARRAY),
+        Type::REGPROCEDURE => Ok(Type::REGPROCEDURE_ARRAY),
+        Type::REGOPER => Ok(Type::REGOPER_ARRAY),
+        Type::REGOPERATOR => Ok(Type::REGOPERATOR_ARRAY),
+        Type::REGCLASS => Ok(Type::REGCLASS_ARRAY),
+        Type::REGTYPE => Ok(Type::REGTYPE_ARRAY),
+        _ => Err(CastError::Generic("Unsupported array type".into())),
     }
 }

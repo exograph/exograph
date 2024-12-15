@@ -92,7 +92,15 @@ impl ExpressionBuilder for Column {
             Column::Function(function) => {
                 function.build(database, builder);
             }
-            Column::Param(value) => builder.push_param(value.param()),
+            Column::Param(value) => {
+                if value.has_unnest() {
+                    builder.push_str("(SELECT unnest(");
+                    builder.push_param(value.param());
+                    builder.push_str("))");
+                } else {
+                    builder.push_param(value.param());
+                }
+            }
             Column::ArrayParam { param, wrapper } => {
                 let wrapper_string = match wrapper {
                     ArrayParamWrapper::Any => "ANY",

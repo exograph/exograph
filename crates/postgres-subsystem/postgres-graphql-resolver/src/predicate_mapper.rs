@@ -90,7 +90,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     param_column_id.get_column(&subsystem.core_subsystem.database);
 
                                 let op_value =
-                                    literal_column_path(arg, &param_physical_column.typ)?;
+                                    literal_column_path(arg, &param_physical_column.typ, false)?;
 
                                 let new_predicate =
                                     AbstractPredicate::eq(param_column_path, op_value);
@@ -146,6 +146,7 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                                 &exo_sql::PhysicalColumnType::Float {
                                                     bits: exo_sql::FloatBits::_53,
                                                 },
+                                                false,
                                             )?
                                             .unwrap();
                                             let target_vector =
@@ -408,7 +409,11 @@ fn operands<'a>(
         .self_column_id();
     let op_physical_column = op_physical_column_id.get_column(&subsystem.core_subsystem.database);
 
-    let op_value = literal_column_path(op_value, op_value_type.unwrap_or(&op_physical_column.typ))?;
+    let op_value = literal_column_path(
+        op_value,
+        op_value_type.unwrap_or(&op_physical_column.typ),
+        false,
+    )?;
 
     Ok((
         ColumnPath::Physical(to_column_path(parent_column_path, &param.column_path_link).unwrap()),

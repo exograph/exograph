@@ -148,8 +148,9 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                     let physical_column = column
                         .leaf_column()
                         .get_column(&self.core_subsystem.database);
+
                     Ok(Some(column_predicate(
-                        cast::literal_column_path(&value, &physical_column.typ)
+                        cast::literal_column_path(&value, &physical_column.typ, op.needs_unnest())
                             .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
                         to_column_path(&column),
                     )))
@@ -163,10 +164,17 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                         .leaf_column()
                         .get_column(&self.core_subsystem.database);
 
+                    let literal_column_path =
+                        cast::literal_column_path(&value, &physical_column.typ, op.needs_unnest())
+                            .map_err(|e| {
+                                AccessSolverError::Generic(
+                                    format!("Invalid literal: {:?}", e).into(),
+                                )
+                            })?;
+
                     Ok(Some(column_predicate(
                         to_column_path(&column),
-                        cast::literal_column_path(&value, &physical_column.typ)
-                            .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
+                        literal_column_path,
                     )))
                 }
             }

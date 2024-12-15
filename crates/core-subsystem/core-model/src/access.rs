@@ -121,6 +121,12 @@ where
             AccessRelationalOp::In(_, _) => AccessRelationalOp::In,
         }
     }
+
+    // Operator `IN` needs a sequence of values (and not a single array),
+    // but we need to pass the array, so the trick is use `unnest` to get the sequence of values from the passed parameter.
+    pub fn needs_unnest(&self) -> bool {
+        matches!(self, AccessRelationalOp::In(..))
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

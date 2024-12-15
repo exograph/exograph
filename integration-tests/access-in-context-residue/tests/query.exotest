@@ -1,0 +1,121 @@
+stages:
+  - operation: |
+      query {
+        profileMetrics @unordered {
+          id
+          cost
+        }
+      }
+    auth: |
+      {
+        "allowedProfiles": ["1", "2"]
+      }
+    response: |
+      {
+        "data": {
+          "profileMetrics": [
+            {
+              "id": "1",
+              "cost": 100
+            },
+            {
+              "id": "2",
+              "cost": 200
+            }
+          ]
+        }
+      }
+  - operation: |
+      query {
+        profileMetrics @unordered {
+          id
+          cost
+        }
+      }
+    auth: |
+      {
+        "allowedProfiles": ["3", "4"]
+      }
+    response: |
+      {
+        "data": {
+          "profileMetrics": [
+            {
+              "id": "3",
+              "cost": 300
+            },
+            {
+              "id": "4",
+              "cost": 400
+            }
+          ]
+        }
+      }
+  - operation: |
+      query {
+        profileMetrics @unordered {
+          id
+          cost
+        }
+      }
+    auth: |
+      {
+        "allowedProfiles": ["1", "2", "3", "4"]
+      }
+    response: |
+      {
+        "data": {
+          "profileMetrics": [
+            {
+              "id": "1",
+              "cost": 100
+            },
+            {
+              "id": "2",
+              "cost": 200
+            },
+            {
+              "id": "3",
+              "cost": 300
+            },
+            {
+              "id": "4",
+              "cost": 400
+            }
+          ]
+        }
+      }
+  - operation: |
+      query {
+        profileMetrics @unordered {
+          id
+          cost
+        }
+      }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "data": {
+          "profileMetrics": [
+            {
+              "id": "1",
+              "cost": 100
+            },
+            {
+              "id": "2",
+              "cost": 200
+            },
+            {
+              "id": "3",
+              "cost": 300
+            },
+            {
+              "id": "4",
+              "cost": 400
+            }
+          ]
+        }
+      }
