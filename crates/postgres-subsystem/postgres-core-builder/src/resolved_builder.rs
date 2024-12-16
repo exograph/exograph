@@ -109,6 +109,14 @@ fn resolve(
             None => continue,
         };
 
+        let module_managed: Option<bool> = module_annotation.and_then(|a| {
+            if let AstAnnotationParams::Map(map, _) = a {
+                map.get("managed").map(|s| s.as_boolean())
+            } else {
+                None
+            }
+        });
+
         for typ in module.types.iter() {
             if let Some(Type::Composite(ct)) = typechecked_system.types.get_by_key(&typ.name) {
                 if ct.kind == AstModelKind::Type {
@@ -131,6 +139,15 @@ fn resolve(
 
                     // If the table didn't specify a schema, use the module schema
                     let schema_name = module_schema_name.clone().or(schema_name);
+
+                    // If there is an explicit table managed attribute, that takes precedence.
+                    // Otherwise, if there is an explicit module managed attribute, use that.
+                    // Otherwise, default to managed.
+                    let table_managed = match (table_managed, module_managed) {
+                        (Some(table_managed), _) => table_managed,
+                        (None, Some(module_managed)) => module_managed,
+                        (None, None) => true,
+                    };
 
                     let representation = if ct.annotations.contains("json") {
                         EntityRepresentation::Json
@@ -1101,7 +1118,7 @@ fn field_cardinality(field_type: &AstFieldType<Typed>) -> Cardinality {
 struct TableInfo {
     name: String,
     schema: Option<String>,
-    managed: bool,
+    managed: Option<bool>,
 }
 
 /// Given parameters for `@table(name=<table-name>, schema=<schema-name>)` extract table and schema name.
@@ -1125,7 +1142,7 @@ fn extract_table_annotation(
             AstAnnotationParams::Single(value, _) => TableInfo {
                 name: value.as_string(),
                 schema: None,
-                managed: true,
+                managed: None,
             },
             AstAnnotationParams::Map(m, _) => {
                 let name = m
@@ -1133,11 +1150,7 @@ fn extract_table_annotation(
                     .map(|value| value.as_string())
                     .unwrap_or_else(default_table_name);
                 let schema = m.get("schema").cloned().map(|value| value.as_string());
-                let managed = m
-                    .get("managed")
-                    .cloned()
-                    .map(|value| value.as_boolean())
-                    .unwrap_or(true);
+                let managed = m.get("managed").cloned().map(|value| value.as_boolean());
 
                 TableInfo {
                     name,
@@ -1152,7 +1165,7 @@ fn extract_table_annotation(
             TableInfo {
                 name: name.clone(),
                 schema: None,
-                managed: true,
+                managed: None,
             }
         }
     }

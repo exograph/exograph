@@ -40,7 +40,7 @@ impl DatabaseSpec {
     pub fn required_schemas(&self, scope: &MigrationScopeMatches) -> HashSet<String> {
         self.tables
             .iter()
-            .filter(|table| scope.matches(&table.name))
+            .filter(|table| scope.matches(&table.name) && table.managed)
             .flat_map(|table| table.name.schema.clone())
             .collect()
     }
