@@ -45,7 +45,7 @@ impl Builder for ReferenceInputTypeBuilder {
             .core_subsystem
             .entity_types
             .iter()
-            .filter(|(_, et)| et.representation == EntityRepresentation::Tracked)
+            .filter(|(_, et)| et.representation == EntityRepresentation::Managed)
         {
             for (existing_id, expanded_type) in expanded_reference_types(entity_type, building) {
                 building.mutation_types[existing_id] = expanded_type;
@@ -56,7 +56,7 @@ impl Builder for ReferenceInputTypeBuilder {
     }
 
     fn needs_mutation_type(&self, composite_type: &ResolvedCompositeType) -> bool {
-        composite_type.representation == EntityRepresentation::Tracked
+        composite_type.representation == EntityRepresentation::Managed
     }
 }
 

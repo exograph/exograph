@@ -41,10 +41,10 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
         database: Database::default(),
     };
 
-    // Ensure that all types have a primary key (skip JSON and untracked types)
+    // Ensure that all types have a primary key (skip JSON and unmanaged types)
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            if c.representation == EntityRepresentation::Tracked && c.pk_field().is_none() {
+            if c.representation == EntityRepresentation::Managed && c.pk_field().is_none() {
                 let diagnostic = Diagnostic {
                     level: Level::Error,
                     message: format!(
@@ -102,7 +102,7 @@ fn expand_database_info(
         name: resolved_type.table_name.clone(),
         columns: vec![],
         indices: vec![],
-        tracked: resolved_type.representation == EntityRepresentation::Tracked,
+        managed: resolved_type.representation == EntityRepresentation::Managed,
     };
 
     let table_id = building.database.insert_table(table);

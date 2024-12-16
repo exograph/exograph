@@ -71,7 +71,7 @@ pub struct PhysicalTable {
 
     pub indices: Vec<PhysicalIndex>,
 
-    pub tracked: bool,
+    pub managed: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]

@@ -13,7 +13,7 @@ module TodoDatabase {
   }
 
   // Non-admin users can only see profitable products and only admin can create/update/delete them
-  @table(tracked=false)
+  @table(managed=false)
   @access(query=AuthContext.role == "admin" || self.profit > 0, mutation=AuthContext.role == "admin")
   type ProductProfit {
     @pk id: Int = autoIncrement()

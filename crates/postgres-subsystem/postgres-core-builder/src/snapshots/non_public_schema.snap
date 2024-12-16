@@ -40,7 +40,7 @@ values:
     - Composite:
         name: AuthSchemaTable
         plural_name: AuthSchemaTables
-        representation: Tracked
+        representation: Managed
         fields:
           - name: id
             typ:
@@ -102,7 +102,7 @@ values:
     - Composite:
         name: AuthSchemaTableWithCustomName
         plural_name: AuthSchemaTableWithCustomNames
-        representation: Tracked
+        representation: Managed
         fields:
           - name: id
             typ:

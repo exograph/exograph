@@ -9,7 +9,7 @@ module TodoDatabase {
     purchasePrice: Float
   }
 
-  @table(tracked=false)
+  @table(managed=false)
   @access(true)
   type ProductProfit {
     @pk id: Int = autoIncrement()

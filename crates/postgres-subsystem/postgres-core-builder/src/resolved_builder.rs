@@ -122,7 +122,7 @@ fn resolve(
                     let TableInfo {
                         name: table_name,
                         schema: schema_name,
-                        tracked: table_tracked,
+                        managed: table_managed,
                     } = extract_table_annotation(
                         table_annotation,
                         &ct.name,
@@ -134,10 +134,10 @@ fn resolve(
 
                     let representation = if ct.annotations.contains("json") {
                         EntityRepresentation::Json
-                    } else if table_tracked {
-                        EntityRepresentation::Tracked
+                    } else if table_managed {
+                        EntityRepresentation::Managed
                     } else {
-                        EntityRepresentation::Untracked
+                        EntityRepresentation::NotManaged
                     };
 
                     let access_annotation = ct.annotations.get("access");
@@ -212,7 +212,7 @@ fn resolve(
                                 ct,
                                 field,
                                 &typechecked_system.types,
-                                table_tracked,
+                                table_managed,
                             );
 
                             match column_info {
@@ -720,7 +720,7 @@ fn compute_column_info(
     enclosing_type: &AstModel<Typed>,
     field: &AstField<Typed>,
     types: &MappedArena<Type>,
-    table_tracked: bool,
+    table_managed: bool,
 ) -> Result<ColumnInfo, Diagnostic> {
     let user_supplied_column_name = field
         .annotations
@@ -770,7 +770,7 @@ fn compute_column_info(
     let update_sync = field.annotations.contains("update");
     let readonly = field.annotations.contains("readonly");
 
-    if (update_sync || readonly) && field.default_value.is_none() && table_tracked {
+    if (update_sync || readonly) && field.default_value.is_none() && table_managed {
         return Err(Diagnostic {
             level: Level::Error,
             message: "Fields with @readonly or @update must have a default value".to_string(),
@@ -1101,7 +1101,7 @@ fn field_cardinality(field_type: &AstFieldType<Typed>) -> Cardinality {
 struct TableInfo {
     name: String,
     schema: Option<String>,
-    tracked: bool,
+    managed: bool,
 }
 
 /// Given parameters for `@table(name=<table-name>, schema=<schema-name>)` extract table and schema name.
@@ -1125,7 +1125,7 @@ fn extract_table_annotation(
             AstAnnotationParams::Single(value, _) => TableInfo {
                 name: value.as_string(),
                 schema: None,
-                tracked: true,
+                managed: true,
             },
             AstAnnotationParams::Map(m, _) => {
                 let name = m
@@ -1133,8 +1133,8 @@ fn extract_table_annotation(
                     .map(|value| value.as_string())
                     .unwrap_or_else(default_table_name);
                 let schema = m.get("schema").cloned().map(|value| value.as_string());
-                let tracked = m
-                    .get("tracked")
+                let managed = m
+                    .get("managed")
                     .cloned()
                     .map(|value| value.as_boolean())
                     .unwrap_or(true);
@@ -1142,7 +1142,7 @@ fn extract_table_annotation(
                 TableInfo {
                     name,
                     schema,
-                    tracked,
+                    managed,
                 }
             }
             _ => panic!(),
@@ -1152,7 +1152,7 @@ fn extract_table_annotation(
             TableInfo {
                 name: name.clone(),
                 schema: None,
-                tracked: true,
+                managed: true,
             }
         }
     }

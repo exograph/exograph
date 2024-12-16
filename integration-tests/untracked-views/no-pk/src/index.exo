@@ -9,7 +9,7 @@ module TodoDatabase {
     purchasePrice: Float
   }
 
-  @table(tracked=false)
+  @table(managed=false)
   @access(query=true, delete=true, update=true) // Not allowed to create (what PK would be?)
   type ProductProfit {
     id: Int

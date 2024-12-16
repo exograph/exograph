@@ -1997,12 +1997,12 @@ mod tests {
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn untracked_type_change() {
+    async fn unmanaged_type_change() {
         assert_changes_with_scope(
             r#"
                 @postgres
                 module LogModule {
-                    @table(tracked=false)
+                    @table(managed=false)
                     type User {
                         @pk id: Int
                         name: String
@@ -2012,7 +2012,7 @@ mod tests {
             r#"
                 @postgres
                 module LogModule {
-                    @table(tracked=false)
+                    @table(managed=false)
                     type User {
                         @pk id: Int
                         name: String
@@ -2031,7 +2031,7 @@ mod tests {
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn tracked_to_untracked_type_change() {
+    async fn managed_to_unmanaged_type_change() {
         assert_changes_with_scope(
             r#"
                 @postgres
@@ -2045,7 +2045,7 @@ mod tests {
             r#"
                 @postgres
                 module LogModule {
-                    @table(tracked=false)
+                    @table(managed=false)
                     type User {
                         @pk id: Int
                         name: String
