@@ -1,4 +1,4 @@
-CREATE VIEW product_profits AS
+CREATE OR REPLACE VIEW product_profits AS
 SELECT
     p.id,
     p.name,

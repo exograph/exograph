@@ -165,6 +165,17 @@ If you allow mutation through a managed type for a view, you will want to make a
 
 An unmanaged type may skip marking a field as `@pk` if it doesn't have a primary key. For such a type, Exograph offers only collection and aggregate queries. For example, the `ProductProfit` type will have the `productProfits` and `productProfitsAgg` query but not the `productProfit` query (which would take the primary key as an argument).
 
+If you want to mark all types in a module as unmanaged, you can use the `@postgres` annotation with the `managed=false` attribute.
+
+```exo
+@postgres(managed=false)
+module CommerceViews {
+  ...
+}
+```
+
+Here, all the types in the `CommerceViews` module will be unmanaged. However, you can override the managed state of a specific type using the `@table` annotation.
+
 ## Field-level customization
 
 Exograph maps each field to a column in the database and infers a few other aspects of the column.
