@@ -40,7 +40,7 @@ values:
     - Composite:
         name: Entity
         plural_name: Entitys
-        representation: Tracked
+        representation: Managed
         fields:
           - name: _id
             typ:

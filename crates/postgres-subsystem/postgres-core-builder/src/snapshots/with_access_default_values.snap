@@ -40,7 +40,7 @@ values:
     - Composite:
         name: Concert
         plural_name: Concerts
-        representation: Tracked
+        representation: Managed
         fields:
           - name: id
             typ:

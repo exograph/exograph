@@ -213,7 +213,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                             optional: true,
                         },
                         MappedAnnotationParamSpec {
-                            name: "tracked",
+                            name: "managed",
                             optional: true,
                         },
                     ]),
