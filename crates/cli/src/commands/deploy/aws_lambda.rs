@@ -18,6 +18,7 @@ use clap::Command;
 use colored::Colorize;
 
 use crate::commands::{build::build, command::CommandDefinition};
+use crate::config::Config;
 
 use super::{download::download_if_needed, util::app_name_arg, util::app_name_from_args};
 
@@ -42,7 +43,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
             .arg(app_name_arg())
     }
 
-    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let download_file_name = "exograph-aws-lambda-linux-2023-x86_64.zip";
         let download_url = format!("https://github.com/exograph/exograph/releases/download/v{CURRENT_VERSION}/{download_file_name}");
 

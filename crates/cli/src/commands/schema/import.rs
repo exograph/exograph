@@ -24,6 +24,7 @@ use exo_sql::schema::issue::Issue;
 
 use crate::commands::command::{database_arg, get, output_arg, CommandDefinition};
 use crate::commands::util::migration_scope_from_env;
+use crate::config::Config;
 use crate::util::open_file_for_output;
 
 use super::util;
@@ -40,7 +41,7 @@ impl CommandDefinition for ImportCommandDefinition {
     }
 
     /// Create a exograph model file based on a database schema
-    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let output: Option<PathBuf> = get(matches, "output");
         let mut issues = Vec::new();
 

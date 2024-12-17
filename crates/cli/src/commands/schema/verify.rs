@@ -15,6 +15,7 @@ use std::path::PathBuf;
 
 use crate::commands::command::{database_arg, default_model_file, get, CommandDefinition};
 use crate::commands::util::{migration_scope_from_env, use_ir_arg};
+use crate::config::Config;
 
 use super::{migrate::open_database, util};
 
@@ -31,7 +32,7 @@ impl CommandDefinition for VerifyCommandDefinition {
 
     /// Verify that a schema is compatible with a exograph model
 
-    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
         let use_ir: bool = matches.get_flag("use-ir");

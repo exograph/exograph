@@ -1,0 +1,2 @@
+[watch]
+after = ["echo 'after1'", "echo 'after2'"]

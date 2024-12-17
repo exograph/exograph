@@ -14,6 +14,8 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 
+use crate::config::Config;
+
 const EXO_RUN_INTROSPECTION_TESTS: &str = "EXO_RUN_INTROSPECTION_TESTS";
 
 pub struct TestCommandDefinition {}
@@ -39,7 +41,7 @@ impl CommandDefinition for TestCommandDefinition {
             )
     }
 
-    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()> {
         let dir: PathBuf = get_required(matches, "dir")?;
         let pattern: Option<String> = get(matches, "pattern"); // glob pattern indicating tests to be executed
 

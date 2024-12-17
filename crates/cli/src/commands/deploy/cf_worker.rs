@@ -11,6 +11,7 @@ use clap::Command;
 use colored::Colorize;
 
 use crate::commands::{build::build, command::CommandDefinition};
+use crate::config::Config;
 
 use super::{
     download::download_if_needed,
@@ -32,7 +33,7 @@ impl CommandDefinition for CfWorkerCommandDefinition {
             .arg(app_name_arg())
     }
 
-    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let app_name: String = app_name_from_args(matches);
 
         build(false).await?; // Build the exo_ir file

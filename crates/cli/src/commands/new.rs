@@ -17,6 +17,7 @@ use clap::{ArgMatches, Command};
 use colored::Colorize;
 
 use super::command::{get_required, new_project_arg, CommandDefinition};
+use crate::config::Config;
 
 static SRC_INDEX_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/src/index.exo");
 static TESTS_TEST_TEMPLATE: &[u8] = include_bytes!("templates/exo-new/tests/basic-query.exotest");
@@ -33,7 +34,7 @@ impl CommandDefinition for NewCommandDefinition {
             .arg(new_project_arg())
     }
 
-    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()> {
         let path: PathBuf = get_required(matches, "path")?;
 
         let path_str = path.display().to_string();

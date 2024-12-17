@@ -13,6 +13,7 @@ use anyhow::anyhow;
 use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
 use postgres_core_model::migration::Migration;
 
+use crate::config::Config;
 use crate::{
     commands::{
         command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
@@ -55,7 +56,7 @@ impl CommandDefinition for MigrateCommandDefinition {
     }
 
     /// Perform a database migration for a exograph model
-    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let model: PathBuf = default_model_file();
         let database_url: Option<String> = get(matches, "database");
         let output: Option<PathBuf> = get(matches, "output");

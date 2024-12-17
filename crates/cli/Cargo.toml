@@ -26,10 +26,12 @@ zip = "0.6.6"
 home = "0.5.4"
 inquire = "0.7.5"
 reqwest = { workspace = true, features = ["stream"] }
+serde.workspace = true
 serde_json.workspace = true
 indicatif = "0.17.9"
 tempfile.workspace = true
 which.workspace = true
+toml = { version = "0.8.19", features = ["parse"] }
 
 exo-sql = { path = "../../libs/exo-sql", features = ["pool"] }
 builder = { path = "../builder" }

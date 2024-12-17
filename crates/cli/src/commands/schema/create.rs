@@ -15,6 +15,7 @@ use std::{io::Write, path::PathBuf};
 
 use exo_sql::schema::database_spec::DatabaseSpec;
 
+use crate::config::Config;
 use crate::{
     commands::{
         command::{default_model_file, get, output_arg, CommandDefinition},
@@ -37,7 +38,7 @@ impl CommandDefinition for CreateCommandDefinition {
     }
 
     /// Create a database schema from a exograph model
-    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let use_ir: bool = matches.get_flag("use-ir");
 
         let model: PathBuf = default_model_file();

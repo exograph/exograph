@@ -21,6 +21,7 @@ use crate::commands::{
     schema::util::create_system,
     util::use_ir_arg,
 };
+use crate::config::Config;
 
 pub(super) struct SchemaCommandDefinition {}
 
@@ -36,7 +37,7 @@ impl CommandDefinition for SchemaCommandDefinition {
     }
 
     /// Create a database schema from a exograph model
-    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let use_ir: bool = matches.get_flag("use-ir");
 
         let model_path: PathBuf = default_model_file();

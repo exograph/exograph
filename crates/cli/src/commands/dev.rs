@@ -20,6 +20,7 @@ use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use super::command::{enforce_trusted_documents_arg, get, port_arg, CommandDefinition};
+use crate::config::Config;
 use crate::{
     commands::{
         command::{
@@ -45,7 +46,7 @@ impl CommandDefinition for DevCommandDefinition {
     }
 
     /// Run local exograph server
-    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches, config: &Config) -> Result<()> {
         let root_path = PathBuf::from(".");
         ensure_exo_project_dir(&root_path)?;
 
@@ -72,7 +73,7 @@ impl CommandDefinition for DevCommandDefinition {
         const PAUSE: &str = "Pause for manual repair";
         const EXIT: &str = "Exit";
 
-        watcher::start_watcher(&root_path, port, || async {
+        watcher::start_watcher(&root_path, port, config, || async {
             println!("{}", "\nVerifying new model...".blue().bold());
             let db_client = open_database(None).await?;
 

@@ -15,6 +15,7 @@ use clap::{Arg, Command};
 use colored::Colorize;
 
 use crate::commands::{command::CommandDefinition, deploy::util::write_template_file};
+use crate::config::Config;
 
 pub(super) struct RailwayCommandDefinition {}
 
@@ -30,7 +31,7 @@ impl CommandDefinition for RailwayCommandDefinition {
     }
 
     /// Create a Dockerfile. Then provide instructions on how to deploy the app to Railway.app.
-    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let current_dir = std::env::current_dir()?;
 
         let use_railway_db: bool = match matches.get_one("use-railway-db") {
