@@ -24,6 +24,7 @@ use std::path::PathBuf;
 use std::{fs::File, io::BufWriter};
 
 use crate::commands::command::default_model_file;
+use crate::config::Config;
 
 use super::command::default_trusted_documents_dir;
 use super::command::ensure_exo_project_dir;
@@ -38,7 +39,7 @@ impl CommandDefinition for BuildCommandDefinition {
     }
 
     /// Build exograph server binary
-    async fn execute(&self, _matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, _matches: &ArgMatches, _config: &Config) -> Result<()> {
         build(true).await?;
 
         Ok(())

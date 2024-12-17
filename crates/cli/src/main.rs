@@ -33,6 +33,7 @@ use commands::{
 };
 
 mod commands;
+mod config;
 mod util;
 
 lazy_static::lazy_static! {
@@ -84,5 +85,7 @@ async fn main() -> Result<()> {
 
     let matches = command.get_matches();
 
-    subcommand_definition.execute(&matches).await
+    let config = config::load_config()?;
+
+    subcommand_definition.execute(&matches, &config).await
 }

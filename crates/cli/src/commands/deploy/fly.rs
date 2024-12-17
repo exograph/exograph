@@ -23,6 +23,8 @@ use crate::commands::{
     build::build,
     command::{get, CommandDefinition},
 };
+use crate::config::Config;
+
 use common::env_const::EXO_POSTGRES_URL;
 
 use super::util::{app_name_arg, app_name_from_args, write_template_file};
@@ -63,7 +65,7 @@ impl CommandDefinition for FlyCommandDefinition {
 
     /// Create a fly.toml file, a Dockerfile, and build the docker image. Then provide instructions
     /// on how to deploy the app to Fly.io.
-    async fn execute(&self, matches: &clap::ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let app_name: String = app_name_from_args(matches);
         let envs: Option<Vec<String>> = matches.get_many("env").map(|env| env.cloned().collect());
         let env_file: Option<PathBuf> = get(matches, "env-file");

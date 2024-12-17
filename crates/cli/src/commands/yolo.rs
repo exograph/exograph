@@ -26,6 +26,7 @@ use crate::{
         schema::{migrate::open_database, util},
         util::wait_for_enter,
     },
+    config::Config,
     util::watcher,
 };
 use common::env_const::{EXO_JWT_SECRET, EXO_POSTGRES_URL};
@@ -59,7 +60,7 @@ impl CommandDefinition for YoloCommandDefinition {
     }
 
     /// Run local exograph server with a temporary database
-    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches, config: &Config) -> Result<()> {
         let root_path = PathBuf::from(".");
         ensure_exo_project_dir(&root_path)?;
 
@@ -69,11 +70,16 @@ impl CommandDefinition for YoloCommandDefinition {
 
         let seed_path: Option<PathBuf> = get(matches, "seed");
 
-        run(&root_path, port, seed_path).await
+        run(&root_path, port, seed_path, config).await
     }
 }
 
-async fn run(root_path: &Path, port: Option<u32>, seed: Option<PathBuf>) -> Result<()> {
+async fn run(
+    root_path: &Path,
+    port: Option<u32>,
+    seed: Option<PathBuf>,
+    config: &Config,
+) -> Result<()> {
     // make sure we do not exit on SIGINT
     // we spawn processes/containers that need to be cleaned up through drop(),
     // which does not run on a normal SIGINT exit
@@ -100,7 +106,7 @@ async fn run(root_path: &Path, port: Option<u32>, seed: Option<PathBuf>) -> Resu
 
     let prestart_callback = || run_server(&model, &jwt_secret, db.as_ref(), seed.clone()).boxed();
 
-    watcher::start_watcher(root_path, port, prestart_callback).await
+    watcher::start_watcher(root_path, port, config, prestart_callback).await
 }
 
 #[async_recursion]

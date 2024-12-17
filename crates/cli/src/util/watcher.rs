@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::{path::Path, time::Duration};
+use std::{path::Path, process::Stdio, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use builder::error::ParserError;
@@ -21,12 +21,14 @@ use crate::commands::{
     build::{build, BuildError},
     command::default_trusted_documents_dir,
 };
+use crate::config::Config;
 
 /// Starts a watcher that will rebuild and serve model files with every change.
 /// Takes a callback that will be called before the start of each server.
 pub async fn start_watcher<'a, F>(
     root_path: &Path,
     server_port: Option<u32>,
+    config: &Config,
     prestart_callback: F,
 ) -> Result<()>
 where
@@ -64,7 +66,7 @@ where
             .unwrap_or(false)
     };
 
-    let mut server = build_and_start_server(server_port, &prestart_callback).await?;
+    let mut server = build_and_start_server(server_port, config, &prestart_callback).await?;
 
     loop {
         let server_death_event = if let Some(child) = server.as_mut() {
@@ -88,7 +90,7 @@ where
                 if let Ok(events) = events {
                         if events.iter().map(|event| &event.path).any(|p| should_restart(p)) {
                             println!("\nChange detected, rebuilding and restarting...");
-                            server = build_and_start_server(server_port, &prestart_callback).await?;
+                            server = build_and_start_server(server_port, config, &prestart_callback).await?;
                         }
                     };
             }
@@ -110,6 +112,7 @@ where
 
 pub(crate) async fn build_and_start_server<'a, F>(
     server_port: Option<u32>,
+    config: &Config,
     prestart_callback: &F,
 ) -> Result<Option<Child>>
 where
@@ -122,6 +125,8 @@ where
     // - if the return value is an Ok(None), this mean that we have encountered some error, but it is not necessarily
     //   unrecoverable (the watcher should not exit)
 
+    execute_before_scripts(config)?;
+
     // precompute exo-server path and exo_ir file name
     let mut server_binary = std::env::current_exe()?;
     server_binary.set_file_name("exo-server");
@@ -130,6 +135,7 @@ where
 
     match build_result {
         Ok(()) => {
+            execute_after_scripts(config)?;
             if let Err(e) = prestart_callback().await {
                 println!("{} {}", "Error:".red().bold(), e.to_string().red().bold());
             }
@@ -158,4 +164,58 @@ where
         }
         _ => Ok(None), // server encountered a parser error (we don't need to exit the watcher)
     }
+}
+
+pub fn execute_before_scripts(config: &Config) -> Result<()> {
+    if let Some(watch) = &config.watch {
+        if let Some(before) = &watch.before {
+            execute_scripts(before)?;
+        }
+    }
+    Ok(())
+}
+
+pub fn execute_after_scripts(config: &Config) -> Result<()> {
+    if let Some(watch) = &config.watch {
+        if let Some(after) = &watch.after {
+            execute_scripts(after)?;
+        }
+    }
+    Ok(())
+}
+
+pub fn execute_scripts(scripts: &[String]) -> Result<()> {
+    for script in scripts {
+        execute_script(script)?;
+    }
+    Ok(())
+}
+
+pub fn execute_script(script: &str) -> Result<()> {
+    let mut command = std::process::Command::new("sh")
+        .arg("-c")
+        .arg(script)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()?;
+
+    let status = command
+        .wait()
+        .map_err(|e| anyhow!("Failed to start process: {}", e))?;
+
+    use std::io::BufRead;
+
+    if !status.success() {
+        if let Some(stderr) = command.stderr.take() {
+            let stderr = std::io::BufReader::new(stderr);
+            stderr.lines().for_each(|line| {
+                eprintln!("{}: {}", script, line.unwrap());
+            });
+        }
+
+        return Err(anyhow!("Failed to execute script: {}", script));
+    }
+
+    Ok(())
 }

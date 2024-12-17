@@ -16,12 +16,13 @@ use colored::Colorize;
 use common::env_const::_EXO_ENFORCE_TRUSTED_DOCUMENTS;
 
 use super::build::BuildError;
+use crate::config::Config;
 
 #[async_trait]
 pub trait CommandDefinition {
     fn command(&self) -> Command;
 
-    async fn execute(&self, matches: &ArgMatches) -> Result<()>;
+    async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()>;
 }
 
 pub struct SubcommandDefinition {
@@ -59,7 +60,7 @@ impl CommandDefinition for SubcommandDefinition {
             )
     }
 
-    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches, config: &Config) -> Result<()> {
         let subcommand = matches.subcommand().unwrap();
 
         let command_definition = self
@@ -68,7 +69,7 @@ impl CommandDefinition for SubcommandDefinition {
             .find(|command_definition| command_definition.command().get_name() == subcommand.0);
 
         match command_definition {
-            Some(command_definition) => command_definition.execute(subcommand.1).await,
+            Some(command_definition) => command_definition.execute(subcommand.1, config).await,
             None => Err(anyhow!("Unknown subcommand: {}", subcommand.0)),
         }
     }

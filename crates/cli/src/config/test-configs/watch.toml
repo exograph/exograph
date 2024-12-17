@@ -1,0 +1,3 @@
+[watch]
+before = ["echo 'before1'", "echo 'before2'"]
+after = ["echo 'after1'", "echo 'after2'"]

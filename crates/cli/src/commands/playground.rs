@@ -12,7 +12,7 @@ use common::env_const::{
     _EXO_DEPLOYMENT_MODE, _EXO_UPSTREAM_ENDPOINT_URL,
 };
 
-use crate::{commands::command::get_required, util::watcher};
+use crate::{commands::command::get_required, config::Config, util::watcher};
 
 use super::command::{ensure_exo_project_dir, get, port_arg, CommandDefinition};
 
@@ -41,7 +41,7 @@ impl CommandDefinition for PlaygroundCommandDefinition {
             )
     }
 
-    async fn execute(&self, matches: &ArgMatches) -> Result<()> {
+    async fn execute(&self, matches: &ArgMatches, _config: &Config) -> Result<()> {
         let port: Option<u32> = get(matches, "port");
         let endpoint_url: String = get_required(matches, "endpoint")?;
 
@@ -61,7 +61,8 @@ impl CommandDefinition for PlaygroundCommandDefinition {
         std::env::set_var(_EXO_UPSTREAM_ENDPOINT_URL, &endpoint_url);
 
         let mut server =
-            watcher::build_and_start_server(port, &|| async { Ok(()) }.boxed()).await?;
+            watcher::build_and_start_server(port, &Config::default(), &|| async { Ok(()) }.boxed())
+                .await?;
 
         if let Some(child) = server.as_mut() {
             println!(
