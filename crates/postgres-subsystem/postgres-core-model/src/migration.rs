@@ -343,7 +343,7 @@ mod tests {
 
             let scope_folder = format!("{}/{}", folder, scope_dir_name);
 
-            println!("\tTesting scope {}", scope_spec_name);
+            println!("\tscope {}:", scope_spec_name);
 
             if let Err(e) = assert_for_scope(&old_system, &new_system, &scope_folder, &scope).await
             {
@@ -403,7 +403,7 @@ mod tests {
             println!("Old creation failed: {}", e);
             failed = true;
         } else {
-            println!("\told-creation: {}", "passed".green());
+            println!("\t\told-creation: {}", "pass".green());
         }
 
         if let Err(e) = assert_creation_and_self_migration(
@@ -416,7 +416,7 @@ mod tests {
             println!("New creation failed: {}", e);
             failed = true;
         } else {
-            println!("\t\tnew-creation: {}", "passed".green());
+            println!("\t\tnew-creation: {}", "pass".green());
         }
 
         if let Err(e) = assert_migration(
@@ -430,7 +430,7 @@ mod tests {
             println!("Up failed: {}", e);
             failed = true;
         } else {
-            println!("\t\tup: {}", "passed".green());
+            println!("\t\tup: {}", "pass".green());
         }
 
         if let Err(e) = assert_migration(
@@ -444,7 +444,7 @@ mod tests {
             println!("Down failed: {}", e);
             failed = true;
         } else {
-            println!("\t\tdown: {}", "passed".green());
+            println!("\t\tdown: {}", "pass".green());
         }
 
         if failed {
@@ -540,7 +540,7 @@ mod tests {
         };
 
         let (expected_sql, expected_destructive_indices) = {
-            let expected_sql = expected.split(";").map(|s| s.trim()).collect::<Vec<_>>();
+            let expected_sql = expected.split(";\n").map(|s| s.trim()).collect::<Vec<_>>();
             let expected_sql_destructive_indices = expected_sql
                 .iter()
                 .enumerate()
