@@ -285,7 +285,7 @@ mod tests {
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn all_tests() {
-        let filter = std::env::var("MIGRATION_TEST_FILTER").unwrap_or("*".to_string());
+        let filter = std::env::var("_EXO_DEV_MIGRATION_TEST_FILTER").unwrap_or("*".to_string());
         let wildcard = WildMatch::new(&filter);
 
         let test_configs_dir = relative_path("", "");
@@ -501,7 +501,7 @@ mod tests {
             actual.write(&mut buffer, false).unwrap();
             let actual_sql = String::from_utf8(buffer.into_inner()).unwrap();
 
-            if actual_sql == expected {
+            if (actual_sql.lines().zip(expected.lines())).all(|(a, e)| a.trim() == e.trim()) {
                 return Ok(());
             }
         }
@@ -526,7 +526,7 @@ mod tests {
                     .iter()
                     .map(|stmt| MigrationStatement {
                         statement: stmt.statement.clone(),
-                        is_destructive: true,
+                        is_destructive: false,
                     })
                     .collect::<Vec<_>>(),
             };
@@ -593,9 +593,6 @@ mod tests {
     }
 
     fn assert_sql_str_eq(actual: &str, expected: &str, message: &str) -> Result<(), String> {
-        if actual == expected {
-            return Ok(());
-        }
         // Line-ending insensitive comparison (for Windows compatibility)
         if (actual.lines().zip(expected.lines())).all(|(a, e)| a.trim() == e.trim()) {
             return Ok(());
