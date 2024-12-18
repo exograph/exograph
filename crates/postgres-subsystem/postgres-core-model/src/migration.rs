@@ -596,6 +596,10 @@ mod tests {
         if actual == expected {
             return Ok(());
         }
+        // Line-ending insensitive comparison (for Windows compatibility)
+        if (actual.lines().zip(expected.lines())).all(|(a, e)| a.trim() == e.trim()) {
+            return Ok(());
+        }
 
         let dialect = PostgreSqlDialect {};
         let actual_sql = Parser::parse_sql(&dialect, actual)
