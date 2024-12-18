@@ -1,0 +1,9 @@
+@postgres
+module LogModule {
+    @table(managed=false)
+    type User {
+        @pk id: Int
+        name: String
+        email: String
+    }
+}

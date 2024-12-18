@@ -1,0 +1,8 @@
+@postgres
+module RsvpModule {
+    type Rsvp {
+        @pk id: Int = autoIncrement()
+        email: String
+        event_id: Int
+    }
+}

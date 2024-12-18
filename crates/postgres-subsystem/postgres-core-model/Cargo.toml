@@ -13,14 +13,17 @@ exo-sql = { path = "../../../libs/exo-sql" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 
 [dev-dependencies]
-stripmargin = "0.1.1"
 tokio.workspace = true
 wasm-bindgen-test.workspace = true
 bincode.workspace = true
 exo-sql = { path = "../../../libs/exo-sql", features = ["bigdecimal"] }
+sqlparser = { git = "https://github.com/exograph/datafusion-sqlparser-rs.git", branch = "optional-columns-foreign-reference" }
+colored.workspace = true
+wildmatch.workspace = true
 
 builder = { path = "../../builder" }
 postgres-builder = { path = "../postgres-builder" }
 
 [lib]
 doctest = false
+

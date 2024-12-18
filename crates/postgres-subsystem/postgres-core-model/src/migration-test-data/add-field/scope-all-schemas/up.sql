@@ -1,0 +1,1 @@
+ALTER TABLE "concerts" ADD "published" BOOLEAN NOT NULL;

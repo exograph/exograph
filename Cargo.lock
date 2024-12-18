@@ -6831,13 +6831,15 @@ dependencies = [
  "anyhow",
  "bincode",
  "builder",
+ "colored",
  "core-plugin-interface",
  "exo-sql",
  "postgres-builder",
  "serde",
- "stripmargin",
+ "sqlparser",
  "tokio",
  "wasm-bindgen-test",
+ "wildmatch",
 ]
 
 [[package]]
@@ -8597,6 +8599,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b9b39299b249ad65f3b7e96443bad61c02ca5cd3589f46cb6d610a0fd6c0d6a"
 
 [[package]]
+name = "sqlparser"
+version = "0.53.0"
+source = "git+https://github.com/exograph/datafusion-sqlparser-rs.git?branch=optional-columns-foreign-reference#de8858305a1ba77de495091d0cb313b8133c519a"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8652,12 +8662,6 @@ checksum = "55ff8ef943b384c414f54aefa961dd2bd853add74ec75e7ac74cf91dba62bcfa"
 dependencies = [
  "vte",
 ]
-
-[[package]]
-name = "stripmargin"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "784dea3618a8c4f8bba0af715e4075f6d743d766d46f7c3339525dd95776c004"
 
 [[package]]
 name = "strsim"

@@ -1,0 +1,8 @@
+@postgres
+module ConcertModule {
+    type Concert {
+        @pk id: Int = autoIncrement()
+        title: String
+        updatedAt: Instant = now()
+    }
+}

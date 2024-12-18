@@ -1,0 +1,1 @@
+-- ALTER TABLE "concerts" DROP COLUMN "published";

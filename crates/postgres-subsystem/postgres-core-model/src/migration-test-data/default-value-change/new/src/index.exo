@@ -1,0 +1,9 @@
+@postgres
+module UserModule {
+    type User {
+        @pk id: Int = autoIncrement()
+        role: String = "USER" // Set default value
+        verified: Boolean = true // Change default value
+        enabled: Boolean // Drop default value
+    }
+}

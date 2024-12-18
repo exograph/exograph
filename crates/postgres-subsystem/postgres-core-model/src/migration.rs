@@ -268,1798 +268,395 @@ pub async fn wipe_database(database: &DatabaseClientManager) -> Result<(), Datab
 
 #[cfg(test)]
 mod tests {
+    use std::path::{Path, PathBuf};
+
     use crate::subsystem::PostgresCoreSubsystem;
+    use sqlparser::dialect::PostgreSqlDialect;
+    use sqlparser::parser::Parser;
+
+    use colored::Colorize;
+    use wildmatch::WildMatch;
 
     use super::*;
     use core_plugin_interface::{
         error::ModelSerializationError, serializable_system::SerializableSystem,
     };
-    use stripmargin::StripMargin;
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn add_model() {
-        assert_changes(
+    async fn all_tests() {
+        let filter = std::env::var("MIGRATION_TEST_FILTER").unwrap_or("*".to_string());
+        let wildcard = WildMatch::new(&filter);
+
+        let test_configs_dir = relative_path("", "");
+        let test_configs = std::fs::read_dir(test_configs_dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| entry.file_type().unwrap().is_dir())
+            .filter(|entry| wildcard.matches(entry.file_name().to_str().unwrap()));
+
+        let mut failed = false;
+
+        for test_config in test_configs {
+            let test_config_name = test_config.file_name();
+            let test_config_name = test_config_name.to_str().unwrap();
+            if let Err(e) = single_test(test_config_name).await {
+                println!("{}: {}", test_config_name, "failed".red());
+                println!("{}", e);
+                failed = true;
+            }
+        }
+
+        if failed {
+            panic!("{}", "Some tests failed".red());
+        }
+    }
+
+    async fn single_test(folder: &str) -> Result<(), String> {
+        println!("Testing {}", folder);
+        let old_exo = read_relative_file(folder, "old/src/index.exo")
+            .map_err(|e| format!("Failed to read old exo: {}", e))?;
+        let new_exo = read_relative_file(folder, "new/src/index.exo")
+            .map_err(|e| format!("Failed to read new exo: {}", e))?;
+
+        let old_system = compute_spec(&old_exo).await;
+        let new_system = compute_spec(&new_exo).await;
+
+        let scope_dirs = std::fs::read_dir(relative_path(folder, ""))
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| entry.file_type().unwrap().is_dir())
+            .filter(|entry| entry.file_name().to_str().unwrap().starts_with("scope-"));
+
+        let mut failed = false;
+
+        for scope_dir in scope_dirs {
+            let scope_dir_name = scope_dir.file_name().to_str().unwrap().to_owned();
+            let scope_spec_name = scope_dir_name.replace("scope-", "");
+            let scope = if scope_spec_name == "all-schemas" {
+                Ok(MigrationScope::all_schemas())
+            } else if scope_spec_name == "new-spec" {
+                Ok(MigrationScope::FromNewSpec)
+            } else {
+                Err(format!("Unknown scope: {}", scope_dir_name))
+            }?;
+
+            let scope_folder = format!("{}/{}", folder, scope_dir_name);
+
+            println!("\tTesting scope {}", scope_spec_name);
+
+            if let Err(e) = assert_for_scope(&old_system, &new_system, &scope_folder, &scope).await
+            {
+                println!("{}: {}", scope_folder, e);
+                failed = true;
+            }
+        }
+
+        if failed {
+            Err(format!("{}: Some tests failed", folder))
+        } else {
+            Ok(())
+        }
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    enum TestKind {
+        OldCreation,
+        NewCreation,
+        IdempotentSelfMigration,
+        Up,
+        Down,
+    }
+
+    impl TestKind {
+        fn kind_str(&self) -> &str {
+            match self {
+                TestKind::OldCreation => "old",
+                TestKind::NewCreation => "new",
+                TestKind::IdempotentSelfMigration => "idempotent",
+                TestKind::Up => "up",
+                TestKind::Down => "down",
+            }
+        }
+    }
+
+    async fn assert_for_scope(
+        old_system: &DatabaseSpec,
+        new_system: &DatabaseSpec,
+        folder: &str,
+        scope: &MigrationScope,
+    ) -> Result<(), String> {
+        let old_expected_sql = read_relative_file(folder, "old.sql").unwrap_or_default();
+        let new_expected_sql = read_relative_file(folder, "new.sql").unwrap_or_default();
+        let up_expected_sql = read_relative_file(folder, "up.sql").unwrap_or_default();
+        let down_expected_sql = read_relative_file(folder, "down.sql").unwrap_or_default();
+
+        let mut failed = false;
+
+        if let Err(e) = assert_creation_and_self_migration(
+            old_system,
+            &old_expected_sql,
+            scope,
+            folder,
+            TestKind::OldCreation,
+        ) {
+            println!("Old creation failed: {}", e);
+            failed = true;
+        } else {
+            println!("\told-creation: {}", "passed".green());
+        }
+
+        if let Err(e) = assert_creation_and_self_migration(
+            new_system,
+            &new_expected_sql,
+            scope,
+            folder,
+            TestKind::NewCreation,
+        ) {
+            println!("New creation failed: {}", e);
+            failed = true;
+        } else {
+            println!("\t\tnew-creation: {}", "passed".green());
+        }
+
+        if let Err(e) = assert_migration(
+            old_system,
+            new_system,
+            &up_expected_sql,
+            scope,
+            folder,
+            TestKind::Up,
+        ) {
+            println!("Up failed: {}", e);
+            failed = true;
+        } else {
+            println!("\t\tup: {}", "passed".green());
+        }
+
+        if let Err(e) = assert_migration(
+            new_system,
+            old_system,
+            &down_expected_sql,
+            scope,
+            folder,
+            TestKind::Down,
+        ) {
+            println!("Down failed: {}", e);
+            failed = true;
+        } else {
+            println!("\t\tdown: {}", "passed".green());
+        }
+
+        if failed {
+            Err(format!("{}: Tests for scope {:?} failed", folder, scope))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn assert_creation_and_self_migration(
+        system: &DatabaseSpec,
+        expected: &str,
+        migration_scope: &MigrationScope,
+        folder: &str,
+        kind: TestKind,
+    ) -> Result<(), String> {
+        let creation =
+            Migration::from_schemas(&DatabaseSpec::new(vec![], vec![]), system, migration_scope);
+        assert_sql_eq(creation, expected, folder, kind)?;
+
+        let self_migration = Migration::from_schemas(system, system, migration_scope);
+        assert_sql_eq(
+            self_migration,
             "",
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    published: Boolean
-                }
-            }
-            "#,
-            vec![],
-            vec![(
-                r#"CREATE TABLE "concerts" (
-                   |    "id" SERIAL PRIMARY KEY,
-                   |    "title" TEXT NOT NULL,
-                   |    "published" BOOLEAN NOT NULL
-                   |);"#,
-                false,
-            )],
-            vec![(
-                r#"CREATE TABLE "concerts" (
-                   |    "id" SERIAL PRIMARY KEY,
-                   |    "title" TEXT NOT NULL,
-                   |    "published" BOOLEAN NOT NULL
-                   |);"#,
-                false,
-            )],
-            vec![(r#"DROP TABLE "concerts" CASCADE;"#, true)],
-        )
-        .await
+            folder,
+            TestKind::IdempotentSelfMigration,
+        )?;
+
+        Ok(())
     }
 
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn add_field() {
-        assert_changes(
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                }
-            }
-            "#,
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    published: Boolean
-                }
-            }
-            "#,
-            vec![(
-                r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL
-                    |);"#,
-                false,
-            )],
-            vec![(
-                r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "published" BOOLEAN NOT NULL
-                    |);"#,
-                false,
-            )],
-            vec![(
-                r#"ALTER TABLE "concerts" ADD "published" BOOLEAN NOT NULL;"#,
-                false,
-            )],
-            vec![(r#"ALTER TABLE "concerts" DROP COLUMN "published";"#, true)],
-        )
-        .await
+    fn assert_migration(
+        old_system: &DatabaseSpec,
+        new_system: &DatabaseSpec,
+        expected: &str,
+        migration_scope: &MigrationScope,
+        folder: &str,
+        kind: TestKind,
+    ) -> Result<(), String> {
+        let migration = Migration::from_schemas(old_system, new_system, migration_scope);
+        assert_sql_eq(migration, expected, folder, kind)
     }
 
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn add_relation_and_related_model() {
-        assert_changes(
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                }
+    fn assert_sql_eq(
+        actual: Migration,
+        expected: &str,
+        folder: &str,
+        kind: TestKind,
+    ) -> Result<(), String> {
+        {
+            // Check if strings match. This lets us avoid parsing the SQL (which in some cases doesn't work with syntax such as DROP EXTENSION)
+            // TODO: Contribute to sqlparser to support DROP EXTENSION and other cases where parsing fails
+            let mut buffer = std::io::Cursor::new(vec![]);
+            actual.write(&mut buffer, false).unwrap();
+            let actual_sql = String::from_utf8(buffer.into_inner()).unwrap();
+
+            if actual_sql == expected {
+                return Ok(());
             }
-            "#,
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    venue: Venue
-                }
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    name: String
-                    concerts: Set<Concert>?
-                }
-            }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                        |    "id" SERIAL PRIMARY KEY,
-                        |    "name" TEXT NOT NULL
-                        |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"ALTER TABLE "concerts" ADD "venue_id" INT NOT NULL;"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-            ],
-            vec![
-                (r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true),
-                (r#"DROP TABLE "venues" CASCADE;"#, true),
-            ],
-        ).await
+        }
+
+        let (actual_sql, actual_destructive_indices) = {
+            let actual_sql_destructive_indices = actual
+                .statements
+                .iter()
+                .enumerate()
+                .filter_map(|(index, stmt)| {
+                    if stmt.is_destructive {
+                        Some(index)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            let actual_destructive_migration = Migration {
+                statements: actual
+                    .statements
+                    .iter()
+                    .map(|stmt| MigrationStatement {
+                        statement: stmt.statement.clone(),
+                        is_destructive: true,
+                    })
+                    .collect::<Vec<_>>(),
+            };
+
+            let mut buffer = std::io::Cursor::new(vec![]);
+            actual_destructive_migration
+                .write(&mut buffer, true)
+                .unwrap();
+            let actual_sql_str = String::from_utf8(buffer.into_inner()).unwrap();
+            (actual_sql_str, actual_sql_destructive_indices)
+        };
+
+        let (expected_sql, expected_destructive_indices) = {
+            let expected_sql = expected.split(";").map(|s| s.trim()).collect::<Vec<_>>();
+            let expected_sql_destructive_indices = expected_sql
+                .iter()
+                .enumerate()
+                .filter_map(|(index, s)| {
+                    if s.starts_with("-- ") {
+                        Some(index)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+            let expected_sql_destructive = expected_sql
+                .into_iter()
+                .map(|stmt| stmt.strip_prefix("-- ").unwrap_or(stmt).to_string())
+                .collect::<Vec<_>>()
+                .join(";\n");
+            (expected_sql_destructive, expected_sql_destructive_indices)
+        };
+
+        let message = format!("{} {}", folder, kind.kind_str());
+
+        if let Err(e) = assert_sql_str_eq(&actual_sql, &expected_sql, &message) {
+            dump_migration(&actual, folder, kind)
+                .map_err(|e| format!("Failed to dump migration: {}", e))?;
+            return Err(e);
+        }
+
+        if actual_destructive_indices != expected_destructive_indices {
+            return Err(format!(
+                "{}: Destructive indices are different.\n  Expected: {:?}\n  Actual:   {:?}",
+                message, expected_destructive_indices, actual_destructive_indices,
+            ));
+        }
+
+        Ok(())
     }
 
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn add_relation_field() {
-        assert_changes(
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                }
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    name: String
-                }
-            }
-            "#,
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    venue: Venue
-                }
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    name: String
-                    concerts: Set<Concert>?
-                }
-            }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"ALTER TABLE "concerts" ADD "venue_id" INT NOT NULL;"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-            ],
-            vec![(r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true)],
-        ).await
+    fn dump_migration(
+        migration: &Migration,
+        folder: &str,
+        kind: TestKind,
+    ) -> Result<(), std::io::Error> {
+        let kind_str = kind.kind_str();
+
+        let file_name = relative_path(folder, &format!("{}.actual.sql", kind_str));
+        println!("Dumping migration to {}", file_name.display());
+        let mut file = std::fs::File::create(file_name)?;
+        migration.write(&mut file, false)?;
+        Ok(())
     }
 
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn update_relation_optionality() {
-        // venue: Venue <-> venue: Venue?
-        assert_changes(
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    venue: Venue
-                }
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    name: String
-                    concerts: Set<Concert>?
-                }
+    fn assert_sql_str_eq(actual: &str, expected: &str, message: &str) -> Result<(), String> {
+        if actual == expected {
+            return Ok(());
+        }
+
+        let dialect = PostgreSqlDialect {};
+        let actual_sql = Parser::parse_sql(&dialect, actual)
+            .map_err(|e| format!("Failed to parse actual SQL: {}", e))?;
+        let expected_sql = Parser::parse_sql(&dialect, expected)
+            .map_err(|e| format!("Failed to parse expected SQL: {}", e))?;
+
+        if actual_sql != expected_sql {
+            if actual_sql.len() != expected_sql.len() {
+                return Err(format!(
+                    "{}: Actual SQL length {} is different from expected SQL length {}",
+                    message,
+                    actual_sql.len(),
+                    expected_sql.len(),
+                ));
             }
-            "#,
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    venue: Venue?
-                }
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    name: String
-                    concerts: Set<Concert>?
-                }
+
+            let mut messages = vec![];
+
+            actual_sql
+                .iter()
+                .zip(expected_sql.iter())
+                .enumerate()
+                .for_each(|(i, (a, e))| {
+                    if a != e {
+                        messages.push(format!(
+                            "{}: Statement at index {} is different.\n  Expected: {}\n  Actual:   {}",
+                            message,
+                            i,
+                            e,
+                            a
+                        ));
+                    }
+                });
+
+            if !messages.is_empty() {
+                return Err(messages.join("\n"));
             }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                ("ALTER TABLE \"concerts\" ADD CONSTRAINT \"concerts_venue_id_fk\" FOREIGN KEY (\"venue_id\") REFERENCES \"venues\";", false),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-            ],
-            vec![
-                ("ALTER TABLE \"concerts\" ALTER COLUMN \"venue_id\" DROP NOT NULL;", false),
-            ],
-            vec![("ALTER TABLE \"concerts\" ALTER COLUMN \"venue_id\" SET NOT NULL;", false)],
-        ).await
+        }
+
+        Ok(())
     }
 
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn add_indices() {
-        assert_changes(
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    venue: Venue
-                }
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    name: String
-                    concerts: Set<Concert>?
-                }
-            }
-            "#,
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    @index title: String
-                    @index venue: Venue
-                }
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    @index name: String
-                    concerts: Set<Concert>?
-                }
-            }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false),
-                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false),
-            ],
-            vec![
-                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false),
-                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false),
-                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false),
-            ],
-            vec![
-                ("DROP INDEX \"concert_title_idx\";", false),
-                ("DROP INDEX \"concert_venue_idx\";", false),
-                ("DROP INDEX \"venue_name_idx\";", false),
-            ],
+    fn relative_path(folder: &str, path: &str) -> PathBuf {
+        let base_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/migration-test-data");
 
-        ).await
+        if folder.is_empty() {
+            return base_path;
+        }
+
+        let folder_path = base_path.join(folder);
+
+        if path.is_empty() {
+            return folder_path;
+        }
+
+        folder_path.join(path)
     }
 
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn modify_multi_column_indices() {
-        assert_changes(
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    @index title: String
-                    @index venue: Venue
-                }
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    @index name: String
-                    concerts: Set<Concert>?
-                }
-            }
-            "#,
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    @index("title", "title-venue") title: String
-                    @index("venue", "title-venue") venue: Venue
-                }
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    @index("name") name: String
-                    concerts: Set<Concert>?
-                }
-            }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false), 
-                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false), 
-                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false)       
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-                ("CREATE INDEX \"title\" ON \"concerts\" (\"title\");", false), 
-                ("CREATE INDEX \"title-venue\" ON \"concerts\" (\"title\", \"venue_id\");", false), 
-                ("CREATE INDEX \"venue\" ON \"concerts\" (\"venue_id\");", false), 
-                ("CREATE INDEX \"name\" ON \"venues\" (\"name\");", false)
-            ],
-            vec![
-                ("DROP INDEX \"concert_title_idx\";", false), 
-                ("DROP INDEX \"concert_venue_idx\";", false), 
-                ("CREATE INDEX \"title\" ON \"concerts\" (\"title\");", false), 
-                ("CREATE INDEX \"title-venue\" ON \"concerts\" (\"title\", \"venue_id\");", false), 
-                ("CREATE INDEX \"venue\" ON \"concerts\" (\"venue_id\");", false), 
-                ("DROP INDEX \"venue_name_idx\";", false), 
-                ("CREATE INDEX \"name\" ON \"venues\" (\"name\");", false)
-            ],
-            vec![
-                ("DROP INDEX \"title\";", false), 
-                ("DROP INDEX \"title-venue\";", false), 
-                ("DROP INDEX \"venue\";", false), 
-                ("CREATE INDEX \"concert_title_idx\" ON \"concerts\" (\"title\");", false), 
-                ("CREATE INDEX \"concert_venue_idx\" ON \"concerts\" (\"venue_id\");", false), 
-                ("DROP INDEX \"name\";", false), 
-                ("CREATE INDEX \"venue_name_idx\" ON \"venues\" (\"name\");", false)
-            ],
-
-        ).await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn add_indices_non_public_schemas() {
-        assert_changes(
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    venue: Venue
-                }
-
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    name: String
-                    concerts: Set<Concert>?
-                }
-            }
-            "#,
-            r#"
-            @postgres
-            module ConcertModule {
-                @table(schema="c")
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    @index title: String
-                    @index venue: Venue
-                }
-
-                @table(schema="v")
-                type Venue {
-                    @pk id: Int = autoIncrement()
-                    @index name: String
-                    concerts: Set<Concert>?
-                }
-            }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
-                    false,
-                ),
-            ],
-            vec![
-                ("CREATE SCHEMA \"c\";", false), 
-                ("CREATE SCHEMA \"v\";", false),
-                (
-                    r#"CREATE TABLE "c"."concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "v"."venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "c"."concerts" ADD CONSTRAINT "c_concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "v"."venues";"#,
-                    false,
-                ),
-                ("CREATE INDEX \"concert_title_idx\" ON \"c\".\"concerts\" (\"title\");", false),
-                ("CREATE INDEX \"concert_venue_idx\" ON \"c\".\"concerts\" (\"venue_id\");", false),
-                ("CREATE INDEX \"venue_name_idx\" ON \"v\".\"venues\" (\"name\");", false),
-            ],
-            vec![
-                ("CREATE SCHEMA \"c\";", false), 
-                ("CREATE SCHEMA \"v\";", false),
-                ("DROP TABLE \"concerts\" CASCADE;", true), 
-                ("DROP TABLE \"venues\" CASCADE;", true),
-                (
-                    r#"CREATE TABLE "c"."concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "v"."venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                ("ALTER TABLE \"c\".\"concerts\" ADD CONSTRAINT \"c_concerts_venue_id_fk\" FOREIGN KEY (\"venue_id\") REFERENCES \"v\".\"venues\";", false),
-                ("CREATE INDEX \"concert_title_idx\" ON \"c\".\"concerts\" (\"title\");", false),
-                ("CREATE INDEX \"concert_venue_idx\" ON \"c\".\"concerts\" (\"venue_id\");", false),
-                ("CREATE INDEX \"venue_name_idx\" ON \"v\".\"venues\" (\"name\");", false),
-            ],
-            vec![
-                ("DROP TABLE \"c\".\"concerts\" CASCADE;", true), 
-                ("DROP TABLE \"v\".\"venues\" CASCADE;", true),
-                (
-                    r#"CREATE TABLE "concerts" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "title" TEXT NOT NULL,
-                    |    "venue_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "venues" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                ("DROP SCHEMA \"c\" CASCADE;", true), 
-                ("DROP SCHEMA \"v\" CASCADE;", true), 
-                ("ALTER TABLE \"concerts\" ADD CONSTRAINT \"concerts_venue_id_fk\" FOREIGN KEY (\"venue_id\") REFERENCES \"venues\";", false)
-            ],
-
-        ).await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn one_to_one_constraints() {
-        assert_changes(
-            r#"
-                @postgres
-                module MembershipModule {
-                    type Membership {
-                        @pk id: Int = autoIncrement()
-                    }
-                    type User {
-                        @pk id: Int = autoIncrement()
-                        name: String
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module MembershipModule {
-                    type Membership {
-                        @pk id: Int = autoIncrement()
-                        user: User
-                    }
-                    type User {
-                        @pk id: Int = autoIncrement()
-                        name: String
-                        membership: Membership?
-                    }
-                }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "memberships" (
-                    |    "id" SERIAL PRIMARY KEY
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "users" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "memberships" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "user_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "users" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "memberships" ADD CONSTRAINT "memberships_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "users";"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "memberships" ADD CONSTRAINT "unique_constraint_membership_user" UNIQUE ("user_id");"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"ALTER TABLE "memberships" ADD "user_id" INT NOT NULL;"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "memberships" ADD CONSTRAINT "unique_constraint_membership_user" UNIQUE ("user_id");"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "memberships" ADD CONSTRAINT "memberships_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "users";"#,
-                    false,
-                ),
-            ],
-            vec![
-                (r#"ALTER TABLE "memberships" DROP COLUMN "user_id";"#, true),
-                (
-                    r#"ALTER TABLE "memberships" DROP CONSTRAINT "unique_constraint_membership_user";"#,
-                    false,
-                ),
-            ],
-        ).await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn multi_column_unique_constraint() {
-        assert_changes(
-            r#"
-                @postgres
-                module RsvpModule {
-                    type Rsvp {
-                        @pk id: Int = autoIncrement()
-                        email: String
-                        event_id: Int
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module RsvpModule {
-                    type Rsvp {
-                        @pk id: Int = autoIncrement()
-                        @unique("email_event_id") email: String
-                        @unique("email_event_id") event_id: Int
-                    }
-                }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "rsvps" (
-                |    "id" SERIAL PRIMARY KEY,
-                |    "email" TEXT NOT NULL,
-                |    "event_id" INT NOT NULL
-                |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "rsvps" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "email" TEXT NOT NULL,
-                    |    "event_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email", "event_id");"#,
-                    false,
-                ),
-            ],
-            vec![(
-                r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email", "event_id");"#,
-                false,
-            )],
-            vec![(
-                r#"ALTER TABLE "rsvps" DROP CONSTRAINT "unique_constraint_rsvp_email_event_id";"#,
-                false,
-            )],
-        ).await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn multi_column_unique_constraint_participation_change() {
-        assert_changes(
-            r#"
-                @postgres
-                module RsvpModule {
-                    type Rsvp {
-                        @pk id: Int = autoIncrement()
-                        @unique("email_event_id") email: String
-                        event_id: Int
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module RsvpModule {
-                    type Rsvp {
-                        @pk id: Int = autoIncrement()
-                        @unique("email_event_id") email: String
-                        @unique("email_event_id") event_id: Int
-                    }
-                }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "rsvps" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "email" TEXT NOT NULL,
-                    |    "event_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email");"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"CREATE TABLE "rsvps" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "email" TEXT NOT NULL,
-                    |    "event_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email", "event_id");"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"ALTER TABLE "rsvps" DROP CONSTRAINT "unique_constraint_rsvp_email_event_id";"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email", "event_id");"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"ALTER TABLE "rsvps" DROP CONSTRAINT "unique_constraint_rsvp_email_event_id";"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "unique_constraint_rsvp_email_event_id" UNIQUE ("email");"#,
-                    false,
-                ),
-            ],
-        ).await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn default_value_change() {
-        assert_changes(
-            r#"
-                @postgres
-                module UserModule {
-                    type User {
-                        @pk id: Int = autoIncrement()
-                        role: String
-                        verified: Boolean = false
-                        enabled: Boolean = true
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module UserModule {
-                    type User {
-                        @pk id: Int = autoIncrement()
-                        role: String = "USER" // Set default value
-                        verified: Boolean = true // Change default value
-                        enabled: Boolean // Drop default value
-                    }
-                }
-            "#,
-            vec![(
-                r#"CREATE TABLE "users" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "role" TEXT NOT NULL,
-                    |    "verified" BOOLEAN NOT NULL DEFAULT false,
-                    |    "enabled" BOOLEAN NOT NULL DEFAULT true
-                    |);"#,
-                false,
-            )],
-            vec![(
-                r#"CREATE TABLE "users" (
-                    |    "id" SERIAL PRIMARY KEY,
-                    |    "role" TEXT NOT NULL DEFAULT 'USER'::text,
-                    |    "verified" BOOLEAN NOT NULL DEFAULT true,
-                    |    "enabled" BOOLEAN NOT NULL
-                    |);"#,
-                false,
-            )],
-            vec![
-                (
-                    r#"ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'USER'::text;"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "users" ALTER COLUMN "verified" SET DEFAULT true;"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "users" ALTER COLUMN "enabled" DROP DEFAULT;"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    r#"ALTER TABLE "users" ALTER COLUMN "role" DROP DEFAULT;"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "users" ALTER COLUMN "verified" SET DEFAULT false;"#,
-                    false,
-                ),
-                (
-                    r#"ALTER TABLE "users" ALTER COLUMN "enabled" SET DEFAULT true;"#,
-                    false,
-                ),
-            ],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn not_null() {
-        assert_changes(
-            r#"
-                @postgres
-                module LogModule {
-                    type Log {
-                        @pk id: Int
-                        level: String?
-                        message: String
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module LogModule {
-                    type Log {
-                        @pk id: Int
-                        level: String
-                        message: String
-                    }
-                }
-            "#,
-            vec![(
-                r#"CREATE TABLE "logs" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "level" TEXT,
-                    |    "message" TEXT NOT NULL
-                    |);"#,
-                false,
-            )],
-            vec![(
-                r#"CREATE TABLE "logs" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "level" TEXT NOT NULL,
-                    |    "message" TEXT NOT NULL
-                    |);"#,
-                false,
-            )],
-            vec![(
-                r#"ALTER TABLE "logs" ALTER COLUMN "level" SET NOT NULL;"#,
-                false,
-            )],
-            vec![(
-                r#"ALTER TABLE "logs" ALTER COLUMN "level" DROP NOT NULL;"#,
-                false,
-            )],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn non_public_schema() {
-        assert_changes(
-            r#"
-                @postgres
-                module LogModule {
-                    type Log {
-                        @pk id: Int
-                        level: String?
-                        message: String
-                        owner: User
-                    }
-
-                    type User {
-                        @pk id: Int
-                        name: String
-                        logs: Set<Log>?
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module LogModule {
-                    type Log {
-                        @pk id: Int
-                        level: String?
-                        message: String
-                        owner: User
-                    }
-
-                    @table(schema="auth")
-                    type User {
-                        @pk id: Int
-                        name: String
-                        logs: Set<Log>?
-                    }
-                }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "logs" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "level" TEXT,
-                    |    "message" TEXT NOT NULL,
-                    |    "owner_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (r#"ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "users";"#, false),
-            ],
-            vec![
-                (r#"CREATE SCHEMA "auth";"#, false),
-                (
-                    r#"CREATE TABLE "logs" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "level" TEXT,
-                    |    "message" TEXT NOT NULL,
-                    |    "owner_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "auth"."users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (r#"ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "auth"."users";"#, false),
-            ],
-            vec![
-                (r#"CREATE SCHEMA "auth";"#, false),
-                (r#"DROP TABLE "users" CASCADE;"#, true),
-                (
-                    r#"CREATE TABLE "auth"."users" (
-                 |    "id" INT PRIMARY KEY,
-                 |    "name" TEXT NOT NULL
-                 |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (r#"DROP TABLE "auth"."users" CASCADE;"#, true),
-                (
-                    r#"CREATE TABLE "users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                ("DROP SCHEMA \"auth\" CASCADE;", true),
-            ],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn non_public_module_level_schema() {
-        assert_changes(
-            r#"
-                @postgres
-                module LogModule {
-                    type Log {
-                        @pk id: Int
-                        level: String?
-                        message: String
-                        owner: User
-                    }
-
-                    type User {
-                        @pk id: Int
-                        name: String
-                        logs: Set<Log>?
-                    }
-                }
-            "#,
-            r#"
-                @postgres(schema="info")
-                module LogModule {
-                    type Log {
-                        @pk id: Int
-                        level: String?
-                        message: String
-                        owner: User
-                    }
-
-                    type User {
-                        @pk id: Int
-                        name: String
-                        logs: Set<Log>?
-                    }
-                }
-            "#,
-            vec![
-                (
-                    r#"CREATE TABLE "logs" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "level" TEXT,
-                    |    "message" TEXT NOT NULL,
-                    |    "owner_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (r#"ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "users";"#, false),
-            ],
-            vec![
-                (r#"CREATE SCHEMA "info";"#, false),
-                (
-                    r#"CREATE TABLE "info"."logs" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "level" TEXT,
-                    |    "message" TEXT NOT NULL,
-                    |    "owner_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "info"."users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (r#"ALTER TABLE "info"."logs" ADD CONSTRAINT "info_logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "info"."users";"#, false),
-            ],
-            vec![
-                (r#"CREATE SCHEMA "info";"#, false),
-                (r#"DROP TABLE "logs" CASCADE;"#, true),
-                (r#"DROP TABLE "users" CASCADE;"#, true),
-                (
-                    r#"CREATE TABLE "info"."logs" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "level" TEXT,
-                    |    "message" TEXT NOT NULL,
-                    |    "owner_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "info"."users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (r#"ALTER TABLE "info"."logs" ADD CONSTRAINT "info_logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "info"."users";"#, false),
-            ],
-            vec![
-                (r#"DROP TABLE "info"."logs" CASCADE;"#, true),
-                (r#"DROP TABLE "info"."users" CASCADE;"#, true),
-                (
-                    r#"CREATE TABLE "logs" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "level" TEXT,
-                    |    "message" TEXT NOT NULL,
-                    |    "owner_id" INT NOT NULL
-                    |);"#,
-                    false,
-                ),
-                (
-                    r#"CREATE TABLE "users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-
-                ),
-                ("DROP SCHEMA \"info\" CASCADE;", true),
-                ("ALTER TABLE \"logs\" ADD CONSTRAINT \"logs_owner_id_fk\" FOREIGN KEY (\"owner_id\") REFERENCES \"users\";", false)
-            ],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn introduce_vector_field() {
-        assert_changes(
-            r#"
-            @postgres
-            module DocumentDatabase {
-              @access(true)
-              type Document {
-                @pk id: Int = autoIncrement()
-                content: String
-              }
-            }
-            "#,
-            r#"
-            @postgres
-            module DocumentDatabase {
-              @access(true)
-              type Document {
-                @pk id: Int = autoIncrement()
-                content: String
-                contentVector: Vector?
-              }
-            }
-            "#,
-            vec![(
-                r#"CREATE TABLE "documents" (
-                 |    "id" SERIAL PRIMARY KEY,
-                 |    "content" TEXT NOT NULL
-                 |);"#,
-                false,
-            )],
-            vec![
-                (r#"CREATE EXTENSION "vector";"#, false),
-                (
-                    r#"CREATE TABLE "documents" (
-                 |    "id" SERIAL PRIMARY KEY,
-                 |    "content" TEXT NOT NULL,
-                 |    "content_vector" Vector(1536)
-                 |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                ("CREATE EXTENSION \"vector\";", false),
-                (
-                    "ALTER TABLE \"documents\" ADD \"content_vector\" Vector(1536);",
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    "ALTER TABLE \"documents\" DROP COLUMN \"content_vector\";",
-                    true,
-                ),
-                ("DROP EXTENSION \"vector\";", true),
-            ],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn vector_indexes_default_distance_function() {
-        assert_changes(
-            r#"
-            @postgres
-            module DocumentDatabase {
-              @access(true)
-              type Document {
-                @pk id: Int = autoIncrement()
-                title: String
-                content: String
-                @size(3) contentVector: Vector?
-              }
-            }
-            "#,
-            r#"
-            @postgres
-            module DocumentDatabase {
-              @access(true)
-              type Document {
-                @pk id: Int = autoIncrement()
-                title: String
-                content: String
-                @index @size(3) contentVector: Vector?
-              }
-            }
-            "#,
-            vec![
-                (r#"CREATE EXTENSION "vector";"#, false), 
-                (r#"CREATE TABLE "documents" (
-                 |    "id" SERIAL PRIMARY KEY,
-                 |    "title" TEXT NOT NULL,
-                 |    "content" TEXT NOT NULL,
-                 |    "content_vector" Vector(3)
-                 |);"#, false)],
-            vec![
-                (r#"CREATE EXTENSION "vector";"#, false), 
-                (r#"CREATE TABLE "documents" (
-                 |    "id" SERIAL PRIMARY KEY,
-                 |    "title" TEXT NOT NULL,
-                 |    "content" TEXT NOT NULL,
-                 |    "content_vector" Vector(3)
-                 |);"#, false), 
-                (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)
-            ],
-            vec![(r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)],
-            vec![(r#"DROP INDEX "document_contentvector_idx";"#, false)],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn vector_indexes_distance_function_change() {
-        assert_changes(
-            r#"
-            @postgres
-            module DocumentDatabase {
-              @access(true)
-              type Document {
-                @pk id: Int = autoIncrement()
-                title: String
-                content: String
-                @size(3) @index contentVector: Vector?
-              }
-            }
-            "#,
-            r#"
-            @postgres
-            module DocumentDatabase {
-              @access(true)
-              type Document {
-                @pk id: Int = autoIncrement()
-                title: String
-                content: String
-                @distanceFunction("l2") @index @size(3) contentVector: Vector?
-              }
-            }
-            "#,
-            vec![
-                (r#"CREATE EXTENSION "vector";"#, false), 
-                (r#"CREATE TABLE "documents" (
-                 |    "id" SERIAL PRIMARY KEY,
-                 |    "title" TEXT NOT NULL,
-                 |    "content" TEXT NOT NULL,
-                 |    "content_vector" Vector(3)
-                 |);"#, false),
-                 (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)
-            ],
-            vec![
-                (r#"CREATE EXTENSION "vector";"#, false), 
-                (r#"CREATE TABLE "documents" (
-                 |    "id" SERIAL PRIMARY KEY,
-                 |    "title" TEXT NOT NULL,
-                 |    "content" TEXT NOT NULL,
-                 |    "content_vector" Vector(3)
-                 |);"#, false), 
-                (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_l2_ops);"#, false)
-            ],
-            vec![
-                (r#"DROP INDEX "document_contentvector_idx";"#, false), 
-                (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_l2_ops);"#, false)],
-            vec![
-                (r#"DROP INDEX "document_contentvector_idx";"#, false), 
-                (r#"CREATE INDEX "document_contentvector_idx" ON "documents" USING hnsw ("content_vector" vector_cosine_ops);"#, false)],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn vector_size_change() {
-        assert_changes(
-            r#"
-            @postgres
-            module DocumentDatabase {
-              @access(true)
-              type Document {
-                @pk id: Int = autoIncrement()
-                title: String
-                content: String
-                @size(3) contentVector: Vector?
-              }
-            }
-            "#,
-            r#"
-            @postgres
-            module DocumentDatabase {
-              @access(true)
-              type Document {
-                @pk id: Int = autoIncrement()
-                title: String
-                content: String
-                @size(4) contentVector: Vector?
-              }
-            }
-            "#,
-            vec![
-                (r#"CREATE EXTENSION "vector";"#, false),
-                (
-                    r#"CREATE TABLE "documents" (
-                 |    "id" SERIAL PRIMARY KEY,
-                 |    "title" TEXT NOT NULL,
-                 |    "content" TEXT NOT NULL,
-                 |    "content_vector" Vector(3)
-                 |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (r#"CREATE EXTENSION "vector";"#, false),
-                (
-                    r#"CREATE TABLE "documents" (
-                 |    "id" SERIAL PRIMARY KEY,
-                 |    "title" TEXT NOT NULL,
-                 |    "content" TEXT NOT NULL,
-                 |    "content_vector" Vector(4)
-                 |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    "ALTER TABLE \"documents\" DROP COLUMN \"content_vector\";",
-                    true,
-                ),
-                (
-                    "ALTER TABLE \"documents\" ADD \"content_vector\" Vector(4);",
-                    false,
-                ),
-            ],
-            vec![
-                (
-                    "ALTER TABLE \"documents\" DROP COLUMN \"content_vector\";",
-                    true,
-                ),
-                (
-                    "ALTER TABLE \"documents\" ADD \"content_vector\" Vector(3);",
-                    false,
-                ),
-            ],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn add_update_sync_field() {
-        assert_changes(
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                }
-            }
-            "#,
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    @update updatedAt: Instant = now()
-                    @update modificationId: Uuid = generate_uuid()
-                }
-            }
-            "#,
-            vec![
-                ("CREATE TABLE \"concerts\" (\n    \"id\" SERIAL PRIMARY KEY,\n    \"title\" TEXT NOT NULL\n);", false)
-            ],
-            vec![
-                ("CREATE EXTENSION \"pgcrypto\";", false), 
-                ("CREATE TABLE \"concerts\" (\n    \"id\" SERIAL PRIMARY KEY,\n    \"title\" TEXT NOT NULL,\n    \"updated_at\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),\n    \"modification_id\" uuid NOT NULL DEFAULT gen_random_uuid()\n);", false),
-                ("CREATE FUNCTION exograph_update_concerts() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); NEW.modification_id = gen_random_uuid(); RETURN NEW; END; $$ language 'plpgsql';", false),
-                ("CREATE TRIGGER exograph_on_update_concerts BEFORE UPDATE ON concerts FOR EACH ROW EXECUTE FUNCTION exograph_update_concerts();", false)
-            ],
-            vec![
-                ("CREATE EXTENSION \"pgcrypto\";", false), 
-                ("ALTER TABLE \"concerts\" ADD \"updated_at\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now();", false),
-                ("ALTER TABLE \"concerts\" ADD \"modification_id\" uuid NOT NULL DEFAULT gen_random_uuid();", false),
-                ("CREATE FUNCTION exograph_update_concerts() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); NEW.modification_id = gen_random_uuid(); RETURN NEW; END; $$ language 'plpgsql';", false),
-                ("CREATE TRIGGER exograph_on_update_concerts BEFORE UPDATE ON concerts FOR EACH ROW EXECUTE FUNCTION exograph_update_concerts();", false)
-            ],
-            vec![
-                ("ALTER TABLE \"concerts\" DROP COLUMN \"updated_at\";", true),
-                ("ALTER TABLE \"concerts\" DROP COLUMN \"modification_id\";", true),
-                ("DROP TRIGGER exograph_on_update_concerts on \"concerts\";", false),
-                ("DROP FUNCTION exograph_update_concerts;", false),
-                ("DROP EXTENSION \"pgcrypto\";", true)            
-            ],
-        ).await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn add_update_annotation() {
-        assert_changes(
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    updatedAt: Instant = now()
-                }
-            }
-            "#,
-            r#"
-            @postgres
-            module ConcertModule {
-                type Concert {
-                    @pk id: Int = autoIncrement()
-                    title: String
-                    @update updatedAt: Instant = now()
-                }
-            }
-            "#,
-            vec![
-                ("CREATE TABLE \"concerts\" (\n    \"id\" SERIAL PRIMARY KEY,\n    \"title\" TEXT NOT NULL,\n    \"updated_at\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()\n);", false)
-            ],
-            vec![
-                ("CREATE TABLE \"concerts\" (\n    \"id\" SERIAL PRIMARY KEY,\n    \"title\" TEXT NOT NULL,\n    \"updated_at\" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()\n);", false),
-                ("CREATE FUNCTION exograph_update_concerts() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ language 'plpgsql';", false),
-                ("CREATE TRIGGER exograph_on_update_concerts BEFORE UPDATE ON concerts FOR EACH ROW EXECUTE FUNCTION exograph_update_concerts();", false)
-            ],
-            vec![
-                ("CREATE FUNCTION exograph_update_concerts() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ language 'plpgsql';", false),
-                ("CREATE TRIGGER exograph_on_update_concerts BEFORE UPDATE ON concerts FOR EACH ROW EXECUTE FUNCTION exograph_update_concerts();", false)
-            ],
-            vec![
-                ("DROP TRIGGER exograph_on_update_concerts on \"concerts\";", false),
-                ("DROP FUNCTION exograph_update_concerts;", false)          
-            ],
-        ).await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn public_named_schema_change_with_new_spec_scope() {
-        assert_changes_with_scope(
-            r#"
-                @postgres
-                module LogModule {
-                    type User {
-                        @pk id: Int
-                        name: String
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module LogModule {
-                    @table(schema="auth")
-                    type User {
-                        @pk id: Int
-                        name: String
-                    }
-                }
-            "#,
-            &MigrationScope::FromNewSpec,
-            vec![(
-                r#"CREATE TABLE "users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                false,
-            )],
-            vec![
-                (r#"CREATE SCHEMA "auth";"#, false),
-                (
-                    r#"CREATE TABLE "auth"."users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (r#"CREATE SCHEMA "auth";"#, false),
-                (
-                    r#"CREATE TABLE "auth"."users" (
-                 |    "id" INT PRIMARY KEY,
-                 |    "name" TEXT NOT NULL
-                 |);"#,
-                    false,
-                ),
-            ],
-            vec![(
-                r#"CREATE TABLE "users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                false,
-            )],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn two_named_schema_change_with_new_spec_scope() {
-        assert_changes_with_scope(
-            r#"
-                @postgres(schema="log")
-                module LogModule {
-                    type User {
-                        @pk id: Int
-                        name: String
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module LogModule {
-                    @table(schema="auth")
-                    type User {
-                        @pk id: Int
-                        name: String
-                    }
-                }
-            "#,
-            &MigrationScope::FromNewSpec,
-            vec![
-                (r#"CREATE SCHEMA "log";"#, false),
-                (
-                    r#"CREATE TABLE "log"."users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (r#"CREATE SCHEMA "auth";"#, false),
-                (
-                    r#"CREATE TABLE "auth"."users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (r#"CREATE SCHEMA "auth";"#, false),
-                (
-                    r#"CREATE TABLE "auth"."users" (
-                 |    "id" INT PRIMARY KEY,
-                 |    "name" TEXT NOT NULL
-                 |);"#,
-                    false,
-                ),
-            ],
-            vec![
-                (r#"CREATE SCHEMA "log";"#, false),
-                (
-                    r#"CREATE TABLE "log"."users" (
-                    |    "id" INT PRIMARY KEY,
-                    |    "name" TEXT NOT NULL
-                    |);"#,
-                    false,
-                ),
-            ],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn unmanaged_type_change() {
-        assert_changes_with_scope(
-            r#"
-                @postgres
-                module LogModule {
-                    @table(managed=false)
-                    type User {
-                        @pk id: Int
-                        name: String
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module LogModule {
-                    @table(managed=false)
-                    type User {
-                        @pk id: Int
-                        name: String
-                        email: String
-                    }
-                }
-            "#,
-            &MigrationScope::FromNewSpec,
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )
-        .await
-    }
-
-    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn managed_to_unmanaged_type_change() {
-        assert_changes_with_scope(
-            r#"
-                @postgres
-                module LogModule {
-                    type User {
-                        @pk id: Int
-                        name: String
-                    }
-                }
-            "#,
-            r#"
-                @postgres
-                module LogModule {
-                    @table(managed=false)
-                    type User {
-                        @pk id: Int
-                        name: String
-                        email: String
-                    }
-                }
-            "#,
-            &MigrationScope::FromNewSpec,
-            vec![("CREATE TABLE \"users\" (\n    \"id\" INT PRIMARY KEY,\n    \"name\" TEXT NOT NULL\n);", false)],
-            vec![],
-            vec![],
-            vec![("ALTER TABLE \"users\" DROP COLUMN \"email\";", true)],
-        )
-        .await
+    fn read_relative_file(folder: &str, path: &str) -> Result<String, std::io::Error> {
+        std::fs::read_to_string(relative_path(folder, path))
     }
 
     async fn create_postgres_system_from_str(
@@ -2104,121 +701,5 @@ mod tests {
                 .unwrap();
 
         DatabaseSpec::from_database(&postgres_core_subsystem.database)
-    }
-
-    async fn assert_changes(
-        old_system: &str,
-        new_system: &str,
-        old_create: Vec<(&str, bool)>,
-        new_create: Vec<(&str, bool)>,
-        up_migration: Vec<(&str, bool)>,
-        down_migration: Vec<(&str, bool)>,
-    ) {
-        assert_changes_with_scope(
-            old_system,
-            new_system,
-            &MigrationScope::all_schemas(),
-            old_create,
-            new_create,
-            up_migration,
-            down_migration,
-        )
-        .await;
-    }
-
-    async fn assert_changes_with_scope(
-        old_system: &str,
-        new_system: &str,
-        scope: &MigrationScope,
-        old_create: Vec<(&str, bool)>,
-        new_create: Vec<(&str, bool)>,
-        up_migration: Vec<(&str, bool)>,
-        down_migration: Vec<(&str, bool)>,
-    ) {
-        let old_system = compute_spec(old_system).await;
-        let new_system = compute_spec(new_system).await;
-
-        assert_change_with_scope(
-            &DatabaseSpec::new(vec![], vec![]),
-            &old_system,
-            scope,
-            old_create,
-            "Create old system schema",
-        );
-        assert_change_with_scope(
-            &DatabaseSpec::new(vec![], vec![]),
-            &new_system,
-            scope,
-            new_create,
-            "Create new system schema",
-        );
-
-        // Check that migration is idempotent by checking that re-migrating yield no changes
-        assert_change_with_scope(
-            &old_system,
-            &old_system,
-            scope,
-            vec![],
-            "Idempotent with old model",
-        );
-
-        assert_change_with_scope(
-            &new_system,
-            &new_system,
-            scope,
-            vec![],
-            "Idempotent with new model",
-        );
-
-        // Up changes old -> new
-        assert_change_with_scope(
-            &old_system,
-            &new_system,
-            scope,
-            up_migration,
-            "Up migration",
-        );
-        // Down changes new -> old
-        assert_change_with_scope(
-            &new_system,
-            &old_system,
-            scope,
-            down_migration,
-            "Down migration",
-        );
-    }
-
-    fn assert_change_with_scope(
-        old_system: &DatabaseSpec,
-        new_system: &DatabaseSpec,
-        scope: &MigrationScope,
-        expected: Vec<(&str, bool)>,
-        message: &str,
-    ) {
-        fn clean_actual(actual: Migration) -> Vec<(String, bool)> {
-            actual
-                .statements
-                .into_iter()
-                .map(
-                    |MigrationStatement {
-                         statement: s,
-                         is_destructive: d,
-                     }| (s.replace('\t', "    "), d),
-                )
-                .collect()
-        }
-        fn clean_expected(expected: Vec<(&str, bool)>) -> Vec<(String, bool)> {
-            expected
-                .into_iter()
-                .map(|(s, d)| (s.strip_margin(), d))
-                .collect()
-        }
-
-        let actual = Migration::from_schemas(old_system, new_system, scope);
-
-        let actual_changes = clean_actual(actual);
-        let expected_changes = clean_expected(expected);
-
-        assert_eq!(actual_changes, expected_changes, "{message}");
     }
 }

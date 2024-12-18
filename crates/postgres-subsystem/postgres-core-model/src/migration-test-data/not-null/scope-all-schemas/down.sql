@@ -1,0 +1,2 @@
+ALTER TABLE "logs" ALTER COLUMN "level" DROP NOT NULL;
+
