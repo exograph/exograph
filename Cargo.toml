@@ -116,7 +116,7 @@ wasmtime = "26.0.1"
 wasi-common = "26.0.1"
 wildmatch = "2.4.0"
 which = "6.0.3"
-wasm-bindgen-test = "0.3.45"
+wasm-bindgen-test = "0.3.49"
 wasm-bindgen-test-macro = "0.3.45"
 multiplatform_test = "0.3.0"
 
