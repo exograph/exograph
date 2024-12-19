@@ -1,0 +1,8 @@
+@postgres
+module LogModule {
+    @table(schema="auth")
+    type User {
+        @pk id: Int
+        name: String
+    }
+}

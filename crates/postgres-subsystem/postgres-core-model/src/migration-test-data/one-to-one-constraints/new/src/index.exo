@@ -1,0 +1,12 @@
+@postgres
+module MembershipModule {
+    type Membership {
+        @pk id: Int = autoIncrement()
+        user: User
+    }
+    type User {
+        @pk id: Int = autoIncrement()
+        name: String
+        membership: Membership?
+    }
+}

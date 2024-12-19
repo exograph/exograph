@@ -1,0 +1,8 @@
+@postgres
+module LogModule {
+    type Log {
+        @pk id: Int
+        level: String?
+        message: String
+    }
+}

@@ -1,0 +1,6 @@
+ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'USER'::text;
+
+ALTER TABLE "users" ALTER COLUMN "verified" SET DEFAULT true;
+
+ALTER TABLE "users" ALTER COLUMN "enabled" DROP DEFAULT;
+

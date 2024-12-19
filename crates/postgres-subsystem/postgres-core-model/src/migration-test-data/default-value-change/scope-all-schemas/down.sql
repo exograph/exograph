@@ -1,0 +1,6 @@
+ALTER TABLE "users" ALTER COLUMN "role" DROP DEFAULT;
+
+ALTER TABLE "users" ALTER COLUMN "verified" SET DEFAULT false;
+
+ALTER TABLE "users" ALTER COLUMN "enabled" SET DEFAULT true;
+

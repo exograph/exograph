@@ -1,0 +1,6 @@
+CREATE TABLE "concerts" (
+	"id" SERIAL PRIMARY KEY,
+	"title" TEXT NOT NULL,
+	"updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+

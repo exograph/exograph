@@ -1,0 +1,8 @@
+@postgres
+module DocumentDatabase {
+  @access(true)
+  type Document {
+    @pk id: Int = autoIncrement()
+    content: String
+  }
+}
