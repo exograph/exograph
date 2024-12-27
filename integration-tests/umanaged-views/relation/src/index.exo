@@ -1,0 +1,31 @@
+
+@postgres
+module ProductDatabase {
+  @access(true)
+  type Product {
+    @pk id: Int = autoIncrement()
+    name: String
+    salePrice: Float
+    purchasePrice: Float
+    department: Department
+  }
+
+  @table(managed=false)
+  @access(true)
+  type ProductProfit {
+    @pk id: Int = autoIncrement()
+    name: String
+    salePrice: Float
+    purchasePrice: Float
+    @readonly profit: Float
+    department: Department
+  }
+
+  @access(true)
+  type Department {
+    @pk id: Int = autoIncrement()
+    name: String
+    products: Set<Product>?
+    productProfits: Set<ProductProfit>?
+  }
+}
