@@ -45,7 +45,7 @@ impl Builder for ReferenceInputTypeBuilder {
             .core_subsystem
             .entity_types
             .iter()
-            .filter(|(_, et)| et.representation == EntityRepresentation::Managed)
+            .filter(|(_, et)| et.representation != EntityRepresentation::Json)
         {
             for (existing_id, expanded_type) in expanded_reference_types(entity_type, building) {
                 building.mutation_types[existing_id] = expanded_type;
@@ -56,7 +56,7 @@ impl Builder for ReferenceInputTypeBuilder {
     }
 
     fn needs_mutation_type(&self, composite_type: &ResolvedCompositeType) -> bool {
-        composite_type.representation == EntityRepresentation::Managed
+        composite_type.representation != EntityRepresentation::Json
     }
 }
 
@@ -83,6 +83,7 @@ fn expanded_reference_types(
         .collect();
 
     let existing_type_name = entity_type.reference_type();
+
     let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
     vec![(

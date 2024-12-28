@@ -65,7 +65,8 @@ impl Builder for DeleteMutationBuilder {
     }
 
     fn needs_mutation_type(&self, composite_type: &ResolvedCompositeType) -> bool {
-        composite_type.representation == EntityRepresentation::Managed
+        // Skip mutation types for Json
+        composite_type.representation != EntityRepresentation::Json
     }
 }
 

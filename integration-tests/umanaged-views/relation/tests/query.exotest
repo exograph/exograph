@@ -1,0 +1,96 @@
+
+operation: |
+  query {
+    departments @unordered {
+      id @bind(name: "departmentIds")
+      name
+      products @unordered {
+        id @bind(name: "productIds")
+        name
+        salePrice
+        purchasePrice
+      }
+      productProfits @unordered {
+        id @bind(name: "productProfitIds")
+        name
+        salePrice
+        purchasePrice
+        profit
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "departments": [
+        {
+          "id": $.departmentIds[0],
+          "name": "d1",
+          "products": [
+            {
+              "id": $.productIds[0][0],
+              "name": "P1",
+              "salePrice": 20,
+              "purchasePrice": 10
+            },
+            {
+              "id": $.productIds[0][1],
+              "name": "P2",
+              "salePrice": 40,
+              "purchasePrice": 30
+            }
+          ],
+          "productProfits": [
+            {
+              "id": $.productProfitIds[0][0],
+              "name": "P1",
+              "salePrice": 20,
+              "purchasePrice": 10,
+              "profit": 10
+            },
+            {
+              "id": $.productProfitIds[0][1],
+              "name": "P2",
+              "salePrice": 40,
+              "purchasePrice": 30,
+              "profit": 10
+            }
+          ]
+        },
+        {
+          "id": $.departmentIds[1],
+          "name": "d2",
+          "products": [
+            {
+              "id": $.productIds[1][0],
+              "name": "P3",
+              "salePrice": 50,
+              "purchasePrice": 60
+            },
+            {
+              "id": $.productIds[1][1],
+              "name": "P4",
+              "salePrice": 70,
+              "purchasePrice": 80
+            }
+          ],
+          "productProfits": [
+            {
+              "id": $.productProfitIds[1][0],
+              "name": "P3",
+              "salePrice": 50,
+              "purchasePrice": 60,
+              "profit": -10
+            },
+            {
+              "id": $.productProfitIds[1][1],
+              "name": "P4",
+              "salePrice": 70,
+              "purchasePrice": 80,
+              "profit": -10
+            }
+          ]
+        }
+      ]
+    }
+  }

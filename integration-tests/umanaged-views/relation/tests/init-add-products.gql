@@ -1,0 +1,22 @@
+operation: |
+    mutation {
+        d1:createDepartment(data: {name: "d1", products: [
+            {name: "P1", purchasePrice: 10, salePrice: 20},
+            {name: "P2", purchasePrice: 30, salePrice: 40}
+        ]}) {
+            id
+            products {
+                id @bind(name: "d1ProductIds")
+            }
+        }
+        d2:createDepartment(data: {name: "d2", products: [
+            {name: "P3", purchasePrice: 60, salePrice: 50},
+            {name: "P4", purchasePrice: 80, salePrice: 70}
+        ]}) {
+            id
+            products {
+                id @bind(name: "d2ProductIds")
+            }
+        }
+    }
+
