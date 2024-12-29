@@ -739,10 +739,7 @@ fn compute_column_info(
     types: &MappedArena<Type>,
     table_managed: bool,
 ) -> Result<ColumnInfo, Diagnostic> {
-    let user_supplied_column_name = field
-        .annotations
-        .get("column")
-        .map(|p| p.as_single().as_string());
+    let user_supplied_column_name = column_annotation_name(field);
 
     let compute_column_name = |field_name: &str| {
         user_supplied_column_name
@@ -750,19 +747,36 @@ fn compute_column_info(
             .unwrap_or_else(|| field_name.to_snake_case())
     };
 
-    let unique_constraints = field
-        .annotations
-        .get("unique")
-        .map(|p| match p {
+    let unique_constraints = match field.annotations.get("unique") {
+        None => Ok(vec![]),
+        Some(p) => match p {
             AstAnnotationParams::Single(expr, _) => match expr {
-                AstExpr::StringLiteral(string, _) => vec![string.clone()],
-                AstExpr::StringList(string_list, _) => string_list.clone(),
-                _ => panic!("Not a string nor a string list when specifying unique"),
+                AstExpr::StringLiteral(string, _) => Ok(vec![string.clone()]),
+                AstExpr::StringList(string_list, _) => Ok(string_list.clone()),
+                _ => Err(Diagnostic {
+                    level: Level::Error,
+                    message: "Not a string nor a string list when specifying unique".to_string(),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: field.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                }),
             },
-            AstAnnotationParams::None => vec![field.name.clone()],
-            AstAnnotationParams::Map(_, _) => panic!(),
-        })
-        .unwrap_or_default();
+            AstAnnotationParams::None => Ok(vec![field.name.clone()]),
+            AstAnnotationParams::Map(_, _) => Err(Diagnostic {
+                level: Level::Error,
+                message: "Cannot specify a map when specifying unique".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            }),
+        },
+    }?;
 
     let indices = {
         field
@@ -943,7 +957,8 @@ fn compute_column_info(
                                 })
                         } else {
                             Ok(ColumnInfo {
-                                name: id_column_name(&matching_field.name),
+                                name: column_annotation_name(matching_field)
+                                    .unwrap_or_else(|| id_column_name(&matching_field.name)),
                                 self_column: false,
                                 unique_constraints,
                                 indices,
@@ -1015,40 +1030,57 @@ fn compute_column_info(
     }
 }
 
+fn column_annotation_name(field: &AstField<Typed>) -> Option<String> {
+    field
+        .annotations
+        .get("column")
+        .map(|p| p.as_single().as_string())
+}
+
 fn get_matching_field<'a>(
     field: &AstField<Typed>,
     enclosing_type: &AstModel<Typed>,
     field_type: &'a AstModel<Typed>,
     types: &MappedArena<Type>,
 ) -> Result<&'a AstField<Typed>, Diagnostic> {
-    let user_supplied_column_name = field
-        .annotations
-        .annotations
-        .get("column")
-        .map(|p| p.params.as_single().as_string());
-
-    let matching_fields: Vec<_> = field_type
+    // First, we find all fields that have the same underlying type as the field we're looking for.
+    let matching_fields_by_type: Vec<_> = field_type
         .fields
         .iter()
         .filter(|f| {
-            // If the user supplied a column name, then we look for the corresponding field
-            // with the same name. We still need to check if the field is the same type though.
-            let field_column_annotation = f
-                .annotations
-                .get("column")
-                .map(|p| p.as_single().as_string());
-
-            let column_name_matches = user_supplied_column_name == field_column_annotation;
-            let field_underlying_type = f.typ.to_typ(types);
-            field_underlying_type
-                .get_underlying_typename(types)
-                .unwrap()
-                == enclosing_type.name
-                && column_name_matches
+            f.typ.to_typ(types).get_underlying_typename(types).as_ref()
+                == Some(&enclosing_type.name)
         })
         .collect();
 
+    // If there is only one field with the same underlying type, then we're done.
+    let matching_fields: Vec<_> = if matching_fields_by_type.len() == 1 {
+        matching_fields_by_type
+    } else {
+        // Otherwise, constrain the search to match the user-supplied column name.
+        let user_supplied_column_name = column_annotation_name(field);
+
+        field_type
+            .fields
+            .iter()
+            .filter(|f| {
+                let field_underlying_type = f.typ.to_typ(types);
+                // If the user supplied a column name, then we look for the corresponding field
+                // with the same name. We still need to check if the field is the same type though.
+                let field_column_annotation = column_annotation_name(f);
+
+                let column_name_matches = user_supplied_column_name == field_column_annotation;
+                field_underlying_type
+                    .get_underlying_typename(types)
+                    .unwrap()
+                    == enclosing_type.name
+                    && column_name_matches
+            })
+            .collect()
+    };
+
     match &matching_fields[..] {
+        [matching_field] => Ok(matching_field),
         [] => {
             Err(Diagnostic {
                 level: Level::Error,
@@ -1064,7 +1096,6 @@ fn get_matching_field<'a>(
                 }
             ],
         })},
-        [matching_field] => Ok(matching_field),
         _ => {
             Err(
                 Diagnostic {
