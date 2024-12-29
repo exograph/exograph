@@ -66,7 +66,7 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_database_info(c, resolved_env, &mut building);
+            expand_database_info(c, resolved_env, &mut building)?;
         }
     }
 
@@ -93,9 +93,9 @@ fn expand_database_info(
     resolved_type: &ResolvedCompositeType,
     resolved_env: &ResolvedTypeEnv,
     building: &mut DatabaseBuilding,
-) {
+) -> Result<(), ModelBuildingError> {
     if resolved_type.representation == EntityRepresentation::Json {
-        return;
+        return Ok(());
     }
 
     let table = PhysicalTable {
@@ -111,7 +111,10 @@ fn expand_database_info(
         let columns = resolved_type
             .fields
             .iter()
-            .flat_map(|field| create_column(field, table_id, resolved_type, resolved_env))
+            .map(|field| create_columns(field, table_id, resolved_type, resolved_env))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
             .collect();
         building.database.get_table_mut(table_id).columns = columns;
     }
@@ -151,6 +154,8 @@ fn expand_database_info(
         });
         building.database.get_table_mut(table_id).indices = indices;
     }
+
+    Ok(())
 }
 
 fn expand_type_relations(
@@ -215,24 +220,25 @@ fn default_value(field: &ResolvedField) -> Option<String> {
         })
 }
 
-fn create_column(
+fn create_columns(
     field: &ResolvedField,
     table_id: TableId,
     resolved_type: &ResolvedCompositeType,
     env: &ResolvedTypeEnv,
-) -> Option<PhysicalColumn> {
-    // Check that the field holds to a self column
-    let unique_constraint_name = if !field.self_column {
-        return None;
-    } else {
-        field
-            .unique_constraints
-            .iter()
-            .map(|constraint| {
-                format!("unique_constraint_{}_{}", resolved_type.name, constraint).to_snake_case()
-            })
-            .collect()
-    };
+) -> Result<Vec<PhysicalColumn>, ModelBuildingError> {
+    // If the field doesn't have a column in the same table (for example, the `concerts` field in the `Venue` type), skip it
+    if !field.self_column {
+        return Ok(vec![]);
+    }
+
+    let unique_constraint_name = field
+        .unique_constraints
+        .iter()
+        .map(|constraint| {
+            format!("unique_constraint_{}_{}", resolved_type.name, constraint).to_snake_case()
+        })
+        .collect();
+
     // split a Optional type into its inner type and the optional marker
     let (typ, optional) = match &field.typ {
         FieldType::Optional(inner_typ) => (inner_typ.as_ref(), true),
@@ -248,7 +254,7 @@ fn create_column(
             let field_type = env.get_by_key(type_name).unwrap();
 
             match field_type {
-                ResolvedType::Primitive(pt) => Some(PhysicalColumn {
+                ResolvedType::Primitive(pt) => Ok(vec![PhysicalColumn {
                     table_id,
                     name: field.column_name.to_string(),
                     typ: determine_column_type(pt, field),
@@ -266,12 +272,43 @@ fn create_column(
                     unique_constraints: unique_constraint_name,
                     default_value,
                     update_sync,
-                }),
+                }]),
                 ResolvedType::Composite(composite) => {
                     // Many-to-one:
                     // Column from the current table (but of the type of the pk column of the other table)
                     // and it refers to the pk column in the other table.
-                    Some(PhysicalColumn {
+                    // Ok(composite
+                    //     .fields
+                    //     .iter()
+                    //     .filter(|field| field.is_pk)
+                    //     .map(|field| {
+                    //         println!("creating column: {:?} in {}", field, &composite.name);
+                    //         PhysicalColumn {
+                    //             table_id,
+                    //             // name: format!("{}_{}", composite.name, field.column_name),
+                    //             name: field.column_name.to_string(),
+                    //             typ: if composite.representation == EntityRepresentation::Json {
+                    //                 PhysicalColumnType::Json
+                    //             } else {
+                    //                 // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
+                    //                 PhysicalColumnType::Boolean
+                    //             },
+                    //             is_pk: false,
+                    //             is_auto_increment: false,
+                    //             is_nullable: optional,
+                    //             unique_constraints: unique_constraint_name.clone(),
+                    //             default_value: default_value.clone(),
+                    //             update_sync,
+                    //         }
+                    //     })
+                    //     .collect())
+
+                    println!(
+                        "creating column: {:?} in {}",
+                        field.column_name, &composite.name
+                    );
+
+                    Ok(vec![PhysicalColumn {
                         table_id,
                         name: field.column_name.to_string(),
                         typ: if composite.representation == EntityRepresentation::Json {
@@ -286,7 +323,7 @@ fn create_column(
                         unique_constraints: unique_constraint_name,
                         default_value,
                         update_sync,
-                    })
+                    }])
                 }
             }
         }
@@ -323,7 +360,7 @@ fn create_column(
                     pt = PrimitiveType::Array(Box::new(pt))
                 }
 
-                Some(PhysicalColumn {
+                Ok(vec![PhysicalColumn {
                     table_id,
                     name: field.column_name.to_string(),
                     typ: determine_column_type(&pt, field),
@@ -333,13 +370,15 @@ fn create_column(
                     unique_constraints: unique_constraint_name,
                     default_value,
                     update_sync,
-                })
+                }])
             } else {
                 // this is a OneToMany relation, so the other side has the associated column
-                None
+                Ok(vec![])
             }
         }
-        FieldType::Optional(_) => panic!("Optional in an Optional?"),
+        FieldType::Optional(_) => Err(ModelBuildingError::Generic(
+            "Optional in an Optional? is not supported".to_string(),
+        )),
     }
 }
 

@@ -119,185 +119,199 @@ fn resolve(
 
         for typ in module.types.iter() {
             if let Some(Type::Composite(ct)) = typechecked_system.types.get_by_key(&typ.name) {
-                if ct.kind == AstModelKind::Type {
-                    let plural_annotation_value = ct
-                        .annotations
-                        .get("plural")
-                        .map(|p| p.as_single().as_string());
-
-                    let table_annotation = ct.annotations.get("table");
-
-                    let TableInfo {
-                        name: table_name,
-                        schema: schema_name,
-                        managed: table_managed,
-                    } = extract_table_annotation(
-                        table_annotation,
-                        &ct.name,
-                        plural_annotation_value.clone(),
-                    );
-
-                    // If the table didn't specify a schema, use the module schema
-                    let schema_name = module_schema_name.clone().or(schema_name);
-
-                    // If there is an explicit table managed attribute, that takes precedence.
-                    // Otherwise, if there is an explicit module managed attribute, use that.
-                    // Otherwise, default to managed.
-                    let table_managed = match (table_managed, module_managed) {
-                        (Some(table_managed), _) => table_managed,
-                        (None, Some(module_managed)) => module_managed,
-                        (None, None) => true,
-                    };
-
-                    let representation = if ct.annotations.contains("json") {
-                        EntityRepresentation::Json
-                    } else if table_managed {
-                        EntityRepresentation::Managed
-                    } else {
-                        EntityRepresentation::NotManaged
-                    };
-
-                    let access_annotation = ct.annotations.get("access");
-
-                    let is_json = representation == EntityRepresentation::Json;
-
-                    if is_json && access_annotation.is_some() {
-                        errors.push(Diagnostic {
-                            level: Level::Error,
-                            message: format!(
-                                "Cannot use @access for type {}. Json types behave like a primitive (and thus have always-allowed access)",
-                                ct.name
-                            ),
-                            code: Some("C000".to_string()),
-                            spans: vec![SpanLabel {
-                                span: ct.span,
-                                style: SpanStyle::Primary,
-                                label: None,
-                            }],
-                        });
-                    }
-
-                    let access = if is_json {
-                        // As if the user has annotated with `access(true)`
-                        ResolvedAccess {
-                            default: Some(AstExpr::BooleanLiteral(true, default_span())),
-                            ..Default::default()
-                        }
-                    } else {
-                        build_access(access_annotation)
-                    };
-                    let name = ct.name.clone();
-                    let plural_name =
-                        plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
-
-                    let resolved_fields = ct
-                        .fields
-                        .iter()
-                        .flat_map(|field| {
-                            let update_sync = field.annotations.contains("update");
-                            let readonly = field.annotations.contains("readonly");
-
-                            let access_annotation = field.annotations.get("access");
-
-                            if is_json && access_annotation.is_some() {
-                                errors.push(Diagnostic {
-                                    level: Level::Error,
-                                    message: format!(
-                                        "Cannot use @access for field '{}' in a type with a '@json' annotation",
-                                        field.name
-                                    ),
-                                    code: Some("C000".to_string()),
-                                    spans: vec![SpanLabel {
-                                        span: field.span,
-                                        style: SpanStyle::Primary,
-                                        label: None,
-                                    }],
-                                });
-                            }
-
-                            // For fields, by default, we assume the `access(true)` annotation
-                            let access = match access_annotation {
-                                Some(_) => build_access(access_annotation),
-                                None => ResolvedAccess {
-                                    default: AstExpr::BooleanLiteral(true, default_span())
-                                        .into(),
-                                    ..Default::default()
-                                },
-                            };
-
-                            let column_info = compute_column_info(
-                                ct,
-                                field,
-                                &typechecked_system.types,
-                                table_managed,
-                            );
-
-                            match column_info {
-                                Ok(ColumnInfo {
-                                    name: column_name,
-                                    self_column,
-                                    unique_constraints,
-                                    indices,
-                                }) => {
-                                    let typ = resolve_field_type(
-                                        &field.typ.to_typ(&typechecked_system.types),
-                                        &typechecked_system.types,
-                                    );
-
-                                    let default_value = field
-                                        .default_value
-                                        .as_ref()
-                                        .map(|v| resolve_field_default_type(v, &typ, errors));
-
-                                    Some(ResolvedField {
-                                        name: field.name.clone(),
-                                        typ,
-                                        column_name,
-                                        self_column,
-                                        is_pk: field.annotations.contains("pk"),
-                                        access,
-                                        type_hint: build_type_hint(
-                                            field,
-                                            &typechecked_system.types,
-                                            errors,
-                                        ),
-                                        unique_constraints,
-                                        indices,
-                                        default_value,
-                                        update_sync,
-                                        readonly,
-                                        span: field.span,
-                                    })
-                                }
-                                Err(e) => {
-                                    errors.push(e);
-                                    None
-                                }
-                            }
-                        })
-                        .collect();
-
-                    resolved_postgres_types.add(
-                        &ct.name,
-                        ResolvedType::Composite(ResolvedCompositeType {
-                            name,
-                            plural_name: plural_name.clone(),
-                            representation,
-                            fields: resolved_fields,
-                            table_name: PhysicalTableName {
-                                name: table_name,
-                                schema: schema_name,
-                            },
-                            access: access.clone(),
-                            span: ct.span,
-                        }),
-                    );
-                }
+                resolve_composite_type(
+                    ct,
+                    &module_schema_name,
+                    module_managed,
+                    typechecked_system,
+                    &mut resolved_postgres_types,
+                    errors,
+                );
             }
         }
     }
 
     Ok(resolved_postgres_types)
+}
+
+fn resolve_composite_type(
+    ct: &AstModel<Typed>,
+    module_schema_name: &Option<String>,
+    module_managed: Option<bool>,
+    typechecked_system: &TypecheckedSystem,
+    resolved_postgres_types: &mut MappedArena<ResolvedType>,
+    errors: &mut Vec<Diagnostic>,
+) {
+    if ct.kind == AstModelKind::Type {
+        let plural_annotation_value = ct
+            .annotations
+            .get("plural")
+            .map(|p| p.as_single().as_string());
+
+        let table_annotation = ct.annotations.get("table");
+
+        let TableInfo {
+            name: table_name,
+            schema: schema_name,
+            managed: table_managed,
+        } = extract_table_annotation(table_annotation, &ct.name, plural_annotation_value.clone());
+
+        // If the table didn't specify a schema, use the module schema
+        let schema_name = module_schema_name.clone().or(schema_name);
+
+        // If there is an explicit table managed attribute, that takes precedence.
+        // Otherwise, if there is an explicit module managed attribute, use that.
+        // Otherwise, default to managed.
+        let table_managed = match (table_managed, module_managed) {
+            (Some(table_managed), _) => table_managed,
+            (None, Some(module_managed)) => module_managed,
+            (None, None) => true,
+        };
+
+        let representation = if ct.annotations.contains("json") {
+            EntityRepresentation::Json
+        } else if table_managed {
+            EntityRepresentation::Managed
+        } else {
+            EntityRepresentation::NotManaged
+        };
+
+        let access_annotation = ct.annotations.get("access");
+
+        let is_json = representation == EntityRepresentation::Json;
+
+        if is_json && access_annotation.is_some() {
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Cannot use @access for type {}. Json types behave like a primitive (and thus have always-allowed access)",
+                    ct.name
+                ),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: ct.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            });
+        }
+
+        let access = if is_json {
+            // As if the user has annotated with `access(true)`
+            ResolvedAccess {
+                default: Some(AstExpr::BooleanLiteral(true, default_span())),
+                ..Default::default()
+            }
+        } else {
+            build_access(access_annotation)
+        };
+        let name = ct.name.clone();
+        let plural_name = plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
+
+        let resolved_fields =
+            resolve_composite_type_fields(ct, is_json, table_managed, typechecked_system, errors);
+
+        resolved_postgres_types.add(
+            &ct.name,
+            ResolvedType::Composite(ResolvedCompositeType {
+                name,
+                plural_name: plural_name.clone(),
+                representation,
+                fields: resolved_fields,
+                table_name: PhysicalTableName {
+                    name: table_name,
+                    schema: schema_name,
+                },
+                access: access.clone(),
+                span: ct.span,
+            }),
+        );
+    }
+}
+
+fn resolve_composite_type_fields(
+    ct: &AstModel<Typed>,
+    is_json: bool,
+    table_managed: bool,
+    typechecked_system: &TypecheckedSystem,
+    errors: &mut Vec<Diagnostic>,
+) -> Vec<ResolvedField> {
+    ct.fields
+        .iter()
+        .flat_map(|field| {
+            let update_sync = field.annotations.contains("update");
+            let readonly = field.annotations.contains("readonly");
+
+            let access_annotation = field.annotations.get("access");
+
+            if is_json && access_annotation.is_some() {
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!(
+                        "Cannot use @access for field '{}' in a type with a '@json' annotation",
+                        field.name
+                    ),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: field.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                });
+            }
+
+            // For fields, by default, we assume the `access(true)` annotation
+            let access = match access_annotation {
+                Some(_) => build_access(access_annotation),
+                None => ResolvedAccess {
+                    default: AstExpr::BooleanLiteral(true, default_span()).into(),
+                    ..Default::default()
+                },
+            };
+
+            let column_info =
+                compute_column_info(ct, field, &typechecked_system.types, table_managed);
+
+            match column_info {
+                Ok(ColumnInfo {
+                    name: column_name,
+                    self_column,
+                    unique_constraints,
+                    indices,
+                }) => {
+                    let typ = resolve_field_type(
+                        &field.typ.to_typ(&typechecked_system.types),
+                        &typechecked_system.types,
+                    );
+
+                    let default_value = field
+                        .default_value
+                        .as_ref()
+                        .map(|v| resolve_field_default_type(v, &typ, errors));
+
+                    Some(ResolvedField {
+                        name: field.name.clone(),
+                        typ,
+                        column_name,
+                        self_column,
+                        is_pk: field.annotations.contains("pk"),
+                        access,
+                        type_hint: build_type_hint(field, &typechecked_system.types, errors),
+                        unique_constraints,
+                        indices,
+                        default_value,
+                        update_sync,
+                        readonly,
+                        span: field.span,
+                    })
+                }
+                Err(e) => {
+                    errors.push(e);
+                    None
+                }
+            }
+        })
+        .collect()
 }
 
 fn resolve_field_default_type(
@@ -729,8 +743,6 @@ struct ColumnInfo {
     self_column: bool,
     unique_constraints: Vec<String>,
     indices: Vec<String>,
-    // // Will this field be auto-updated by the system (through triggers, etc.) to its default value?
-    // update_sync: bool,
 }
 
 fn compute_column_info(

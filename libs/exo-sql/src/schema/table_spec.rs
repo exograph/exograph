@@ -47,6 +47,10 @@ impl TableSpec {
         }
     }
 
+    pub fn has_single_pk(&self) -> bool {
+        self.columns.iter().filter(|c| c.is_pk).count() == 1
+    }
+
     pub fn to_column_less_table(&self) -> PhysicalTable {
         PhysicalTable {
             name: self.name.clone(),
@@ -331,16 +335,32 @@ impl TableSpec {
     /// Converts the table specification to SQL statements.
     pub(super) fn creation_sql(&self) -> SchemaStatement {
         let mut post_statements = Vec::new();
+
         let column_stmts: String = self
             .columns
             .iter()
             .map(|c| {
-                let mut s = c.to_sql(self);
+                let mut s = c.to_sql(self, self.has_single_pk());
                 post_statements.append(&mut s.post_statements);
                 s.statement
             })
             .collect::<Vec<_>>()
             .join(",\n\t");
+
+        let pk_str = if self.has_single_pk() {
+            "".to_string()
+        } else {
+            let pk_columns = self.columns.iter().filter(|c| c.is_pk).collect::<Vec<_>>();
+
+            format!(
+                ",\n\tPRIMARY KEY ({})",
+                pk_columns
+                    .iter()
+                    .map(|c| c.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        };
 
         let table_name = self.sql_name();
 
@@ -361,7 +381,7 @@ impl TableSpec {
         }
 
         SchemaStatement {
-            statement: format!("CREATE TABLE {table_name} (\n\t{column_stmts}\n);"),
+            statement: format!("CREATE TABLE {table_name} (\n\t{column_stmts}{pk_str}\n);",),
             pre_statements: vec![],
             post_statements,
         }

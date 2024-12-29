@@ -215,7 +215,11 @@ impl ColumnSpec {
     }
 
     /// Converts the column specification to SQL statements.
-    pub(super) fn to_sql(&self, table_spec: &TableSpec) -> SchemaStatement {
+    pub(super) fn to_sql(
+        &self,
+        table_spec: &TableSpec,
+        attach_pk_column_to_column_stmt: bool,
+    ) -> SchemaStatement {
         let SchemaStatement {
             statement,
             post_statements,
@@ -223,7 +227,11 @@ impl ColumnSpec {
         } = self
             .typ
             .to_sql(table_spec, &self.name, self.is_auto_increment);
-        let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
+        let pk_str = if self.is_pk && attach_pk_column_to_column_stmt {
+            " PRIMARY KEY"
+        } else {
+            ""
+        };
         let not_null_str = if !self.is_nullable && !self.is_pk {
             // primary keys are implied to be not null
             " NOT NULL"

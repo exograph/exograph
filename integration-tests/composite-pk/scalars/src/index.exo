@@ -1,0 +1,18 @@
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Person {
+    @pk firstName: String
+    @pk lastName: String
+    age: Int
+    address: Address?
+  }
+
+  type Address {
+    @pk street: String
+    @pk city: String
+    @pk state: String
+    @pk zip: Int
+    people: Set<Person>?
+  }
+}

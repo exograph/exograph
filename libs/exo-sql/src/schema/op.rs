@@ -119,7 +119,7 @@ impl SchemaOp<'_> {
             SchemaOp::DeleteTable { table } => table.deletion_sql(),
 
             SchemaOp::CreateColumn { table, column } => {
-                let column_stmt = column.to_sql(table);
+                let column_stmt = column.to_sql(table, table.has_single_pk());
 
                 SchemaStatement {
                     statement: format!(
