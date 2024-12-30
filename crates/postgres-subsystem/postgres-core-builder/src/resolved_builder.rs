@@ -1075,46 +1075,39 @@ fn get_matching_field<'a>(
     field_type: &'a AstModel<Typed>,
     types: &MappedArena<Type>,
 ) -> Result<&'a AstField<Typed>, Diagnostic> {
-    // First, we find all fields that have the same underlying type as the field we're looking for.
-    let matching_fields_by_type: Vec<_> = field_type
+    fn relation_field_name(field: &AstField<Typed>) -> Option<String> {
+        field
+            .annotations
+            .get("relation")
+            .map(|p| p.as_single().as_string())
+    }
+
+    // Look into the type of the field. For example, while considering the `mainVenue: Venue` field in `Concert` (the enclosing type), look into the `Venue` type.
+    let matching_fields: Vec<_> = field_type
         .fields
         .iter()
         .filter(|f| {
-            f.typ.to_typ(types).get_underlying_typename(types).as_ref()
-                == Some(&enclosing_type.name)
+            // The type of the field must match the enclosing type. For example, the type must match the `Concert` type (or its variation such as `Set<Concert>`)
+            let type_matches = f.typ.to_typ(types).get_underlying_typename(types).as_ref()
+                == Some(&enclosing_type.name);
+
+            // Ensure that relation annotation matches the field name.
+            let relation1_matches = match relation_field_name(f).as_ref() {
+                Some(relation_field_name) => relation_field_name == &field.name,
+                None => true,
+            };
+            // Check the other way around
+            let relation2_matches = match relation_field_name(field).as_ref() {
+                Some(relation_field_name) => relation_field_name == &f.name,
+                None => true,
+            };
+
+            // Both ways must match
+            let relation_field_name_matches = relation1_matches && relation2_matches;
+
+            type_matches && relation_field_name_matches
         })
         .collect();
-
-    // If there is only one field with the same underlying type, then we're done.
-    let matching_fields: Vec<_> = if matching_fields_by_type.len() == 1 {
-        matching_fields_by_type
-    } else {
-        // Otherwise, constrain the search to match the user-supplied column name.
-        fn relation_field_name(field: &AstField<Typed>) -> Option<String> {
-            field
-                .annotations
-                .get("relation")
-                .map(|p| p.as_single().as_string())
-        }
-
-        field_type
-            .fields
-            .iter()
-            .filter(|f| {
-                let field_underlying_type = f.typ.to_typ(types);
-                // Find the field that matches the relation name
-                let relation_field_name_matches = relation_field_name(f).as_ref()
-                    == Some(&field.name)
-                    || relation_field_name(field).as_ref() == Some(&f.name);
-
-                relation_field_name_matches
-                    && field_underlying_type
-                        .get_underlying_typename(types)
-                        .unwrap()
-                        == enclosing_type.name
-            })
-            .collect()
-    };
 
     match &matching_fields[..] {
         [matching_field] => Ok(matching_field),
@@ -1122,7 +1115,7 @@ fn get_matching_field<'a>(
             Err(Diagnostic {
                 level: Level::Error,
                 message: format!(
-                    "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
+                    "Could not find the matching field of the '{}' type '{}'. Ensure that there is only one field of that type or the '@relation' annotation specifies the matching field name.",
                     enclosing_type.name, field.name
                 ),
                 code: Some("C000".to_string()),

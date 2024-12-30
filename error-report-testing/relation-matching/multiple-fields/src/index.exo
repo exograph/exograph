@@ -1,0 +1,18 @@
+@postgres
+module ConcertModule {
+  @access(true)
+  type Concert {
+    @pk
+    id: Int = autoIncrement();
+    title: String
+    mainVenue: Venue 
+    secondaryVenue: Venue 
+  }
+
+  @access(true)
+  type Venue {
+    @pk id: Int = autoIncrement() 
+    name: String
+    concerts: Set<Concert>? 
+  }
+}
