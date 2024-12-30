@@ -838,6 +838,7 @@ fn compute_column_info(
                             indices,
                         });
                     }
+
                     let matching_field =
                         get_matching_field(field, enclosing_type, &field_type, types);
                     let matching_field = match matching_field {
@@ -887,12 +888,31 @@ fn compute_column_info(
                                         label: None,
                                     }],
                                 }),
-                                Cardinality::One => Ok(ColumnInfo {
-                                    name: id_column_name(&matching_field.name),
-                                    self_column: false,
-                                    unique_constraints,
-                                    indices,
-                                }),
+                                Cardinality::One => {
+                                    if user_supplied_column_name.is_some() {
+                                        Err(Diagnostic {
+                                            level: Level::Error,
+                                            message: "Cannot specify @column with the optional side of a one-to-one relationship"
+                                                .to_string(),
+                                            code: Some("C000".to_string()),
+                                            spans: vec![SpanLabel {
+                                                span: field.span,
+                                                style: SpanStyle::Primary,
+                                                label: None,
+                                            }],
+                                        })
+                                    } else {
+                                        Ok(ColumnInfo {
+                                            name: column_annotation_name(matching_field)
+                                                .unwrap_or_else(|| {
+                                                    id_column_name(&matching_field.name)
+                                                }),
+                                            self_column: false,
+                                            unique_constraints,
+                                            indices,
+                                        })
+                                    }
+                                }
                                 Cardinality::Unbounded => Ok(ColumnInfo {
                                     name: id_column_name(&field.name),
                                     self_column: true,
@@ -955,6 +975,18 @@ fn compute_column_info(
                                         label: None,
                                     }],
                                 })
+                        } else if user_supplied_column_name.is_some() {
+                            return Err(Diagnostic {
+                                level: Level::Error,
+                                message: "Cannot specify @column with a collection field"
+                                    .to_string(),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: field.span,
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            });
                         } else {
                             Ok(ColumnInfo {
                                 name: column_annotation_name(matching_field)
@@ -1058,23 +1090,28 @@ fn get_matching_field<'a>(
         matching_fields_by_type
     } else {
         // Otherwise, constrain the search to match the user-supplied column name.
-        let user_supplied_column_name = column_annotation_name(field);
+        fn relation_field_name(field: &AstField<Typed>) -> Option<String> {
+            field
+                .annotations
+                .get("relation")
+                .map(|p| p.as_single().as_string())
+        }
 
         field_type
             .fields
             .iter()
             .filter(|f| {
                 let field_underlying_type = f.typ.to_typ(types);
-                // If the user supplied a column name, then we look for the corresponding field
-                // with the same name. We still need to check if the field is the same type though.
-                let field_column_annotation = column_annotation_name(f);
+                // Find the field that matches the relation name
+                let relation_field_name_matches = relation_field_name(f).as_ref()
+                    == Some(&field.name)
+                    || relation_field_name(field).as_ref() == Some(&f.name);
 
-                let column_name_matches = user_supplied_column_name == field_column_annotation;
-                field_underlying_type
-                    .get_underlying_typename(types)
-                    .unwrap()
-                    == enclosing_type.name
-                    && column_name_matches
+                relation_field_name_matches
+                    && field_underlying_type
+                        .get_underlying_typename(types)
+                        .unwrap()
+                        == enclosing_type.name
             })
             .collect()
     };
@@ -1101,7 +1138,7 @@ fn get_matching_field<'a>(
                 Diagnostic {
                     level: Level::Error,
                     message: format!(
-                        "Found multiple matching fields ({}) of the '{}' type when determining the matching column for '{}'",
+                        "Found multiple matching fields ({}) of the '{}' type when determining the matching column for '{}'. Consider using the `@relation` annotation to resolve this ambiguity.",
                         matching_fields
                             .into_iter()
                             .map(|f| format!("'{}'", f.name))
@@ -1281,7 +1318,7 @@ mod tests {
             type Venue {
               @pk @column("custom_id") id: Int = autoIncrement() 
               @column("custom_name") name: String 
-              @column("custom_venue_id") concerts: Set<Concert> 
+              concerts: Set<Concert> 
               @bits16 capacity: Int
               @singlePrecision latitude: Float
             }       
@@ -1472,12 +1509,84 @@ mod tests {
             }
           
             type Venue {
-                id: Int  @autoIncrement @pk 
+                @pk id: Int = autoIncrement() 
                 name:String 
                 //@column("ticket_office")
                 ticket_events: Set<Concert> 
                 //@column("main")
                 main_events: Set<Concert> 
+            }  
+        }
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        assert!(resolved.is_err());
+    }
+
+    #[multiplatform_test]
+    fn column_annotation_on_collection_field() {
+        let src = r#"
+        @postgres
+        module ConcertModule {
+            type Concert {
+                @pk id: Int = autoIncrement() 
+                title: String 
+                venue: Venue 
+            }
+          
+            type Venue {
+                @pk id: Int = autoIncrement() 
+                name:String 
+                @column("concerts") concerts: Set<Concert> 
+            }  
+        }
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        assert!(resolved.is_err());
+    }
+
+    #[multiplatform_test]
+    fn column_annotation_on_collectionn_field() {
+        let src = r#"
+        @postgres
+        module ConcertModule {
+            type Concert {
+                @pk id: Int = autoIncrement() 
+                title: String 
+                venue: Venue 
+            }
+          
+            type Venue {
+                @pk id: Int = autoIncrement() 
+                name:String 
+                @column("concerts") concerts: Set<Concert>?
+            }  
+        }
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        assert!(resolved.is_err());
+    }
+
+    #[multiplatform_test]
+    fn column_annotation_on_optional_side_of_one_to_one() {
+        let src = r#"
+        @postgres
+        module ConcertModule {
+            type Concert {
+                @pk id: Int = autoIncrement() 
+                title: String 
+                venue: Venue 
+            }
+          
+            type Venue {
+                @pk id: Int = autoIncrement() 
+                name:String 
+                @column("concert") concert: Concert?
             }  
         }
         "#;
@@ -1503,8 +1612,8 @@ mod tests {
             type Venue {
                 @pk id: Int = autoIncrement() 
                 name:String 
-                @column("ticket_office") ticket_events: Set<Concert> 
-                @column("main") main_events: Set<Concert> 
+                @relation("ticket_office") ticket_events: Set<Concert> 
+                @relation("main") main_events: Set<Concert> 
             }  
         }
         "#,

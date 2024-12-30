@@ -179,3 +179,71 @@ type Membership {
 Here, we have defined a one-to-one relationship between `User` and `Membership`. The `membership` field in `User` is optional, and the `user` field in `Membership` is required. This arrangement allows us to create a user first (without a membership) and then create a membership for the user by providing it with the user as the `user` field. So, while we can't solve the chicken-or-the-egg problem, we can solve the user-or-the-membership problem: the user always comes first!
 
 So far, we have explored how to create types with scalar fields and define relationships between types using Exograph's default mapping to the database. [In the next section](configuration.md), we will zoom into customizing the mapping.
+
+### Dealing with multiple fields of the same type
+
+Reconsider the earlier example of a concert and a venue:
+
+```exo
+type Concert {
+  @pk id: Int = autoIncrement()
+  ...
+  // highlight-next-line
+  venue: Venue
+}
+
+type Venue {
+  @pk id: Int = autoIncrement()
+  ...
+  // highlight-next-line
+  concerts: Set<Concert>?
+}
+```
+
+Here, Exograph infers that the `venue` field in the `Concert` type and the `concerts` field in the `Venue` type are related. However, what if you have multiple fields of the same type in a type? For example, a concert may have multiple venues, and a venue may have multiple concerts.
+
+```exo
+type Concert {
+  @pk id: Int = autoIncrement()
+  ...
+  // highlight-next-line
+  mainVenue: Venue
+  // highlight-next-line
+  altVenue: Venue?
+}
+
+type Venue {
+  @pk id: Int = autoIncrement()
+  ...
+  // highlight-next-line
+  mainConcerts: Set<Concert>?
+  // highlight-next-line
+  altConcerts: Set<Concert>?
+}
+```
+
+Here, since there are two fields of the same type in the `Venue` type, Exograph can't infer if the `mainVenue` field in the `Concert` type is associated with the `mainConcerts` field or the `altConcerts` field in the `Venue` type. Exograph will issue an error indicating that there are multiple candidates for the relationship.
+
+To resolve this ambiguity, you can use the `@relation` annotation to specify the relationship.
+
+```exo
+type Concert {
+  @pk id: Int = autoIncrement()
+  ...
+  // highlight-next-line
+  mainVenue: Venue
+  // highlight-next-line
+  altVenue: Venue?
+}
+
+type Venue {
+  @pk id: Int = autoIncrement()
+  ...
+  // highlight-next-line
+  @relation("mainVenue") mainConcerts: Set<Concert>?
+  // highlight-next-line
+  @relation("altVenue") altConcerts: Set<Concert>?
+}
+```
+
+The `@relation` annotation takes a string argument that specifies the name of the field in the other type that is related to the current field. In this case, the `mainVenue` field in the `Concert` type is related to the `mainConcerts` field in the `Venue` type, while the `altVenue` field is related to the `altConcerts` field.
