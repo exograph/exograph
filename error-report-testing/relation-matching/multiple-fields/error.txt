@@ -1,0 +1,8 @@
+error[C000]: Found multiple matching fields ('mainVenue', 'secondaryVenue') of the 'Venue' type when determining the matching column for 'concerts'. Consider using the `@relation` annotation to resolve this ambiguity.
+  --> src/index.exo:16:5
+   |
+16 |     concerts: Set<Concert>? 
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+Error: Parser error: Could not process input exo files
+

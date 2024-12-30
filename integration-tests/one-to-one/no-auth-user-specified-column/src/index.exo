@@ -1,0 +1,19 @@
+// Tests are the same as in no-auth, but with a user-specified column name (thus soft-linked tests folder)
+@postgres
+module MembershipModule {
+  // A user may have an optional membership, but a membership must have an associated user
+  @access(true)
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    membership: Membership?
+  }
+
+  @access(true)
+  type Membership {
+    @pk id: Int = autoIncrement()
+    kind: String
+    // To test that we deal with user-specified column names correctly
+    @column("user___id") user: User
+  }
+}

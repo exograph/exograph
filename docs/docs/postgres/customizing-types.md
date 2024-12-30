@@ -210,7 +210,7 @@ module ConcertModule {
 }
 ```
 
-If you want to customize the name of the foreign key column, you can use the `@column` annotation. For example, to map the `venue` field to the `venue_pk_` column instead of `venue_id`, you can use the following setup:
+If you want to customize the name of the foreign key column, you can use the `@column` annotation. For example, to map the `venue` field to the `venue_pk` column instead of `venue_id`, you can use the following setup:
 
 ```exo
 @postgres
@@ -222,12 +222,10 @@ module ConcertModule {
 
   type Venue {
     ...
-    @column("venue_pk") concerts: Set<Concert>?
+    concerts: Set<Concert>?
   }
 }
 ```
-
-If you change the name of the foreign key column in the `Venue` type, you must also change the name of the foreign key column in the `Concert` type. This way, the column names guide Exograph to infer the relationship between the two types.
 
 ### Assigning primary key
 

@@ -69,6 +69,15 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 },
             ),
             (
+                "relation",
+                AnnotationSpec {
+                    targets: &[AnnotationTarget::Field],
+                    no_params: false,
+                    single_params: true,
+                    mapped_params: None,
+                },
+            ),
+            (
                 "dbtype",
                 AnnotationSpec {
                     targets: &[AnnotationTarget::Field],
