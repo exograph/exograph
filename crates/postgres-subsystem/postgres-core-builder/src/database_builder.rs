@@ -277,37 +277,6 @@ fn create_columns(
                     // Many-to-one:
                     // Column from the current table (but of the type of the pk column of the other table)
                     // and it refers to the pk column in the other table.
-                    // Ok(composite
-                    //     .fields
-                    //     .iter()
-                    //     .filter(|field| field.is_pk)
-                    //     .map(|field| {
-                    //         println!("creating column: {:?} in {}", field, &composite.name);
-                    //         PhysicalColumn {
-                    //             table_id,
-                    //             // name: format!("{}_{}", composite.name, field.column_name),
-                    //             name: field.column_name.to_string(),
-                    //             typ: if composite.representation == EntityRepresentation::Json {
-                    //                 PhysicalColumnType::Json
-                    //             } else {
-                    //                 // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
-                    //                 PhysicalColumnType::Boolean
-                    //             },
-                    //             is_pk: false,
-                    //             is_auto_increment: false,
-                    //             is_nullable: optional,
-                    //             unique_constraints: unique_constraint_name.clone(),
-                    //             default_value: default_value.clone(),
-                    //             update_sync,
-                    //         }
-                    //     })
-                    //     .collect())
-
-                    println!(
-                        "creating column: {:?} in {}",
-                        field.column_name, &composite.name
-                    );
-
                     Ok(vec![PhysicalColumn {
                         table_id,
                         name: field.column_name.to_string(),

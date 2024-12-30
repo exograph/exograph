@@ -31,7 +31,7 @@ use core_plugin_interface::{
     },
     core_model_builder::{
         ast::ast_types::{
-            default_span, AstAnnotationParams, AstExpr, AstField, AstFieldDefault,
+            default_span, AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstFieldDefault,
             AstFieldDefaultKind, AstFieldType, AstModel, AstModelKind,
         },
         builder::resolved_builder::AnnotationMapHelper,
@@ -126,7 +126,8 @@ fn resolve(
                     typechecked_system,
                     &mut resolved_postgres_types,
                     errors,
-                );
+                )
+                .map_err(|e| ModelBuildingError::Diagnosis(vec![e]))?;
             }
         }
     }
@@ -141,20 +142,20 @@ fn resolve_composite_type(
     typechecked_system: &TypecheckedSystem,
     resolved_postgres_types: &mut MappedArena<ResolvedType>,
     errors: &mut Vec<Diagnostic>,
-) {
+) -> Result<(), Diagnostic> {
     if ct.kind == AstModelKind::Type {
         let plural_annotation_value = ct
             .annotations
             .get("plural")
             .map(|p| p.as_single().as_string());
 
-        let table_annotation = ct.annotations.get("table");
+        let table_annotation = ct.annotations.annotations.get("table");
 
         let TableInfo {
             name: table_name,
             schema: schema_name,
             managed: table_managed,
-        } = extract_table_annotation(table_annotation, &ct.name, plural_annotation_value.clone());
+        } = extract_table_annotation(table_annotation, &ct.name, plural_annotation_value.clone())?;
 
         // If the table didn't specify a schema, use the module schema
         let schema_name = module_schema_name.clone().or(schema_name);
@@ -227,6 +228,8 @@ fn resolve_composite_type(
             }),
         );
     }
+
+    Ok(())
 }
 
 fn resolve_composite_type_fields(
@@ -745,21 +748,8 @@ struct ColumnInfo {
     indices: Vec<String>,
 }
 
-fn compute_column_info(
-    enclosing_type: &AstModel<Typed>,
-    field: &AstField<Typed>,
-    types: &MappedArena<Type>,
-    table_managed: bool,
-) -> Result<ColumnInfo, Diagnostic> {
-    let user_supplied_column_name = column_annotation_name(field);
-
-    let compute_column_name = |field_name: &str| {
-        user_supplied_column_name
-            .clone()
-            .unwrap_or_else(|| field_name.to_snake_case())
-    };
-
-    let unique_constraints = match field.annotations.get("unique") {
+fn compute_unique_constraints(field: &AstField<Typed>) -> Result<Vec<String>, Diagnostic> {
+    match field.annotations.get("unique") {
         None => Ok(vec![]),
         Some(p) => match p {
             AstAnnotationParams::Single(expr, _) => match expr {
@@ -788,28 +778,59 @@ fn compute_column_info(
                 }],
             }),
         },
-    }?;
+    }
+}
 
-    let indices = {
-        field
-            .annotations
-            .get("index")
-            .map(|p| match p {
-                AstAnnotationParams::Single(expr, _) => match expr {
-                    AstExpr::StringLiteral(string, _) => vec![string.clone()],
-                    AstExpr::StringList(string_list, _) => string_list.clone(),
-                    _ => panic!("Not a string nor a string list when specifying index"),
-                },
-                AstAnnotationParams::None => {
-                    let index_computed_name =
-                        format!("{}_{}_idx", enclosing_type.name, field.name).to_ascii_lowercase();
-                    vec![index_computed_name.clone()]
-                }
-                AstAnnotationParams::Map(_, _) => panic!(),
-            })
-            .unwrap_or_default()
-    };
+fn compute_indices(
+    field: &AstField<Typed>,
+    enclosing_type: &AstModel<Typed>,
+) -> Result<Vec<String>, Diagnostic> {
+    let index_annotation = field.annotations.get("index");
 
+    match index_annotation {
+        None => Ok(vec![]),
+        Some(p) => match p {
+            AstAnnotationParams::Single(expr, _) => match expr {
+                AstExpr::StringLiteral(string, _) => Ok(vec![string.clone()]),
+                AstExpr::StringList(string_list, _) => Ok(string_list.clone()),
+                _ => Err(Diagnostic {
+                    level: Level::Error,
+                    message: "Not a string nor a string list when specifying index".to_string(),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: field.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                }),
+            },
+            AstAnnotationParams::None => {
+                let index_computed_name =
+                    format!("{}_{}_idx", enclosing_type.name, field.name).to_ascii_lowercase();
+                Ok(vec![index_computed_name.clone()])
+            }
+            AstAnnotationParams::Map(_, _) => Err(Diagnostic {
+                level: Level::Error,
+                message: "Cannot specify a map when specifying index".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            }),
+        },
+    }
+}
+
+fn compute_column_info(
+    enclosing_type: &AstModel<Typed>,
+    field: &AstField<Typed>,
+    types: &MappedArena<Type>,
+    table_managed: bool,
+) -> Result<ColumnInfo, Diagnostic> {
+    let unique_constraints = compute_unique_constraints(field)?;
+    let indices = compute_indices(field, enclosing_type)?;
     let update_sync = field.annotations.contains("update");
     let readonly = field.annotations.contains("readonly");
 
@@ -826,11 +847,20 @@ fn compute_column_info(
         });
     }
 
-    let id_column_name = |field_name: &str| {
+    let user_supplied_column_name = column_annotation_name(field);
+
+    let compute_column_name = |field_name: &str| {
         user_supplied_column_name
             .clone()
-            .unwrap_or(format!("{}_id", field_name.to_snake_case()))
+            .unwrap_or_else(|| field_name.to_snake_case())
     };
+
+    let id_column_name = |field: &AstField<Typed>| {
+        user_supplied_column_name
+            .clone()
+            .unwrap_or(format!("{}_id", field.name.to_snake_case()))
+    };
+
     // we can treat Optional fields as their inner type for the purposes
     // of computing their default column name
     let field_base_type = match &field.typ {
@@ -839,6 +869,19 @@ fn compute_column_info(
     };
 
     match field_base_type {
+        AstFieldType::Optional(_) => {
+            // We've already unwrapped any Optional. A nested optional (e.g. venue: Venue??) doesn't make sense in our model.
+            Err(Diagnostic {
+                level: Level::Error,
+                message: "Cannot have optional of an optional".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            })
+        }
         AstFieldType::Plain(_, _, _, _, _) => {
             match field_base_type.to_typ(types).deref(types) {
                 Type::Composite(field_type) => {
@@ -852,21 +895,20 @@ fn compute_column_info(
                     }
 
                     let matching_field =
-                        get_matching_field(field, enclosing_type, &field_type, types);
-                    let matching_field = match matching_field {
-                        Ok(matching_field) => matching_field,
-                        Err(err) => return Err(err),
-                    };
+                        get_matching_field(field, enclosing_type, &field_type, types)?;
 
-                    let cardinality = field_cardinality(&matching_field.typ);
+                    let matching_field_cardinality = field_cardinality(&matching_field.typ);
 
                     match &field.typ {
                         AstFieldType::Optional(_) => {
-                            // If the field is optional, we need to look at the cardinality of the matching field in the type of
-                            // the field.
+                            // If the field is optional, we need to look at the cardinality of the matching field to determine the column name.
                             //
-                            // If the cardinality is One (thus forming a one-to-one relationship), then we need to use the matching field's name.
-                            // For example, if we have the following model, we will have a `user_id` column in `memberships` table, but no column in the `users` table:
+                            // If the cardinality is `One` (thus forming a one-to-one relationship),
+                            // we need to use the matching field's name as the basis for the column name.
+
+                            // For example, if we have the following model, we will have a `user_id` column in the `memberships` table,
+                            // but have no column in the `users` table:
+                            //
                             // type User {
                             //     ...
                             //     membership: Membership?
@@ -876,8 +918,9 @@ fn compute_column_info(
                             //     user: User
                             // }
                             //
-                            // If the cardinality is Unbounded, then we need to use the field's name. For example, if we have
+                            // If the cardinality is `Unbounded`, then we need to use the field's name. For example, if we have
                             // the following model, we will have a `venue_id` column in the `concerts` table.
+                            //
                             // type Concert {
                             //    ...
                             //    venue: Venue?
@@ -887,7 +930,7 @@ fn compute_column_info(
                             //    concerts: Set<Concert>
                             // }
 
-                            match cardinality {
+                            match matching_field_cardinality {
                                 Cardinality::ZeroOrOne => Err(Diagnostic {
                                     level: Level::Error,
                                     message:
@@ -916,9 +959,7 @@ fn compute_column_info(
                                     } else {
                                         Ok(ColumnInfo {
                                             name: column_annotation_name(matching_field)
-                                                .unwrap_or_else(|| {
-                                                    id_column_name(&matching_field.name)
-                                                }),
+                                                .unwrap_or_else(|| id_column_name(matching_field)),
                                             self_column: false,
                                             unique_constraints,
                                             indices,
@@ -926,7 +967,7 @@ fn compute_column_info(
                                     }
                                 }
                                 Cardinality::Unbounded => Ok(ColumnInfo {
-                                    name: id_column_name(&field.name),
+                                    name: id_column_name(field),
                                     self_column: true,
                                     unique_constraints,
                                     indices,
@@ -935,7 +976,7 @@ fn compute_column_info(
                         }
                         _ => {
                             let unique_constraints =
-                                if matches!(cardinality, Cardinality::ZeroOrOne) {
+                                if matches!(matching_field_cardinality, Cardinality::ZeroOrOne) {
                                     // Add an explicit unique constraint to enforce one-to-one constraint
                                     vec![field.name.clone()]
                                 } else {
@@ -943,7 +984,7 @@ fn compute_column_info(
                                 };
 
                             Ok(ColumnInfo {
-                                name: id_column_name(&field.name),
+                                name: id_column_name(field),
                                 self_column: true,
                                 unique_constraints,
                                 indices,
@@ -1002,7 +1043,7 @@ fn compute_column_info(
                         } else {
                             Ok(ColumnInfo {
                                 name: column_annotation_name(matching_field)
-                                    .unwrap_or_else(|| id_column_name(&matching_field.name)),
+                                    .unwrap_or_else(|| id_column_name(matching_field)),
                                 self_column: false,
                                 unique_constraints,
                                 indices,
@@ -1011,7 +1052,7 @@ fn compute_column_info(
                     } else {
                         Err(Diagnostic {
                             level: Level::Error,
-                            message: "Sets of non-composites are not supported".to_string(),
+                            message: "Sets of non-composites are not supported (consider using an `Array` instead)".to_string(),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
                                 span: field.span,
@@ -1056,20 +1097,6 @@ fn compute_column_info(
                     indices,
                 }),
             }
-        }
-        AstFieldType::Optional(_) => {
-            // we already unwrapped any Optional there may be
-            // a nested Optional doesn't make sense
-            Err(Diagnostic {
-                level: Level::Error,
-                message: "Cannot have Optional of an Optional".to_string(),
-                code: Some("C000".to_string()),
-                spans: vec![SpanLabel {
-                    span: field.span,
-                    style: SpanStyle::Primary,
-                    label: None,
-                }],
-            })
         }
     }
 }
@@ -1204,19 +1231,19 @@ struct TableInfo {
 /// If no parameters are provided, the table name is derived from the type name and the schema name is assumed to be `public`.
 ///
 fn extract_table_annotation(
-    annotation_params: Option<&AstAnnotationParams<Typed>>,
+    table_annotation: Option<&AstAnnotation<Typed>>,
     type_name: &str,
     plural_annotation_value: Option<String>,
-) -> TableInfo {
+) -> Result<TableInfo, Diagnostic> {
     let default_table_name = || type_name.table_name(plural_annotation_value.clone());
 
-    match annotation_params {
-        Some(p) => match p {
-            AstAnnotationParams::Single(value, _) => TableInfo {
+    match table_annotation {
+        Some(table_annotation) => match &table_annotation.params {
+            AstAnnotationParams::Single(value, _) => Ok(TableInfo {
                 name: value.as_string(),
                 schema: None,
                 managed: None,
-            },
+            }),
             AstAnnotationParams::Map(m, _) => {
                 let name = m
                     .get("name")
@@ -1225,21 +1252,30 @@ fn extract_table_annotation(
                 let schema = m.get("schema").cloned().map(|value| value.as_string());
                 let managed = m.get("managed").cloned().map(|value| value.as_boolean());
 
-                TableInfo {
+                Ok(TableInfo {
                     name,
                     schema,
                     managed,
-                }
+                })
             }
-            _ => panic!(),
+            AstAnnotationParams::None => Err(Diagnostic {
+                level: Level::Error,
+                message: "The `@table` annotation must not be empty".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: table_annotation.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            }),
         },
         None => {
             let name = default_table_name();
-            TableInfo {
+            Ok(TableInfo {
                 name: name.clone(),
                 schema: None,
                 managed: None,
-            }
+            })
         }
     }
 }
