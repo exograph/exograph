@@ -6,6 +6,6 @@ module MailingListModule {
     type MailingList {
         @pk id: Int = autoIncrement()
         email_address: String
-        @column("subscribed_mailing_list")  subscriptions: Set<UserSubscription>? 
+        subscriptions: Set<UserSubscription>? 
     }
 }

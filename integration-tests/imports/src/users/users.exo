@@ -6,7 +6,7 @@ module UserModule {
     type User {
         @pk id: Int = autoIncrement()
         username: String
-        @column("subscribed_user_id") subscribed_lists: Set<UserSubscription>? 
+        subscribed_lists: Set<UserSubscription>? 
     }
     
     @access(true)

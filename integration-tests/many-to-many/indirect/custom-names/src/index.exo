@@ -5,7 +5,7 @@ module ConcertsModule {
   type Concert {
     @pk id: Int = autoIncrement()
     title: String
-    @column("concert_id") concertArtists: Set<ConcertArtist> 
+    concertArtists: Set<ConcertArtist> 
     @column("venue_id") venue: Venue? 
   }
 
@@ -24,12 +24,12 @@ module ConcertsModule {
   type Artist {
     @pk id: Int = autoIncrement()
     name: String
-    @column("artist_id")  aristsConcerts: Set<ConcertArtist>? // An artist may yet to participate in a concert, hence optional
+    aristsConcerts: Set<ConcertArtist>? // An artist may yet to participate in a concert, hence optional
   }
 
   @access(true)
   type Venue {
     @pk id: Int = autoIncrement()
-    @column("venue_id") concerts: Set<Concert>? 
+    concerts: Set<Concert>? 
   }
 }

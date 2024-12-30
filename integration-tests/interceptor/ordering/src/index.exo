@@ -13,7 +13,7 @@ module ConcertVenues {
   type Venue {
     @pk id: Int = autoIncrement()
     name: String
-    @column("venueid") concerts: Set<Concert>? 
+    concerts: Set<Concert>? 
     published: Boolean
     @singlePrecision latitude: Float
   }
