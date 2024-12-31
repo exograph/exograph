@@ -856,9 +856,37 @@ fn compute_column_info(
     };
 
     let id_column_name = |field: &AstField<Typed>| {
-        user_supplied_column_name
-            .clone()
-            .unwrap_or(format!("{}_id", field.name.to_snake_case()))
+        let user_supplied_column_name = column_annotation_name(field);
+
+        if let Some(user_supplied_column_name) = user_supplied_column_name {
+            return user_supplied_column_name;
+        }
+
+        let field_base_type = match &field.typ {
+            AstFieldType::Optional(inner_typ) => inner_typ.as_ref(),
+            _ => &field.typ,
+        };
+        let field_type = field_base_type.to_typ(types).deref(types);
+
+        let base_name = field.name.to_snake_case();
+
+        let column_names = if let Type::Composite(ct) = field_type {
+            ct.fields
+                .iter()
+                .filter_map(|f| {
+                    if f.annotations.contains("pk") {
+                        Some(format!("{}_{}", base_name, f.name))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        } else {
+            vec![]
+        };
+
+        // TODO: handle the case where there are multiple primary key fields
+        column_names[0].clone()
     };
 
     // we can treat Optional fields as their inner type for the purposes
@@ -882,7 +910,7 @@ fn compute_column_info(
                 }],
             })
         }
-        AstFieldType::Plain(_, _, _, _, _) => {
+        AstFieldType::Plain(..) => {
             match field_base_type.to_typ(types).deref(types) {
                 Type::Composite(field_type) => {
                     if field_type.annotations.contains("json") {
@@ -958,8 +986,7 @@ fn compute_column_info(
                                         })
                                     } else {
                                         Ok(ColumnInfo {
-                                            name: column_annotation_name(matching_field)
-                                                .unwrap_or_else(|| id_column_name(matching_field)),
+                                            name: id_column_name(matching_field),
                                             self_column: false,
                                             unique_constraints,
                                             indices,
@@ -974,7 +1001,7 @@ fn compute_column_info(
                                 }),
                             }
                         }
-                        _ => {
+                        AstFieldType::Plain(..) => {
                             let unique_constraints =
                                 if matches!(matching_field_cardinality, Cardinality::ZeroOrOne) {
                                     // Add an explicit unique constraint to enforce one-to-one constraint
@@ -1042,8 +1069,7 @@ fn compute_column_info(
                             });
                         } else {
                             Ok(ColumnInfo {
-                                name: column_annotation_name(matching_field)
-                                    .unwrap_or_else(|| id_column_name(matching_field)),
+                                name: id_column_name(matching_field),
                                 self_column: false,
                                 unique_constraints,
                                 indices,
