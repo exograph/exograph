@@ -1097,7 +1097,7 @@ fn reduce_nested_primitive_expr(
 
             match head {
                 ColumnPathLink::Relation(r)
-                    if r.foreign_column_id.table_id == parent_entity.table_id =>
+                    if r.column_pairs[0].foreign_column_id.table_id == parent_entity.table_id =>
                 {
                     // Eliminate the head link. For example if the expression is self.user.id, then
                     // we can reduce it to just id (assuming that the parent entity is user)
@@ -1114,7 +1114,7 @@ fn reduce_nested_primitive_expr(
 
             match head {
                 ColumnPathLink::Relation(r)
-                    if r.foreign_column_id.table_id == parent_entity.table_id =>
+                    if r.column_pairs[0].foreign_column_id.table_id == parent_entity.table_id =>
                 {
                     // Eliminate the head link. For example if the expression is self.user.id, then
                     // we can reduce it to just id (assuming that the parent entity is user)

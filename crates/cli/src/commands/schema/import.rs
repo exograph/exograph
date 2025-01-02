@@ -10,7 +10,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Command;
-use exo_sql::schema::column_spec::{ColumnSpec, ColumnTypeSpec};
+use exo_sql::schema::column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
@@ -155,9 +155,9 @@ impl ToModel for ColumnSpec {
         };
 
         let (mut data_type, annots) = self.typ.to_model();
-        if let ColumnTypeSpec::ColumnReference {
+        if let ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
             foreign_table_name, ..
-        } = &self.typ
+        }) = &self.typ
         {
             data_type = to_model_name(&data_type);
 

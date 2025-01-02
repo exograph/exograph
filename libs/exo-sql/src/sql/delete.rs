@@ -91,7 +91,7 @@ impl<'a> TemplateDelete<'a> {
             .map(|row_index| {
                 let relation_predicate = ConcretePredicate::Eq(
                     Column::Physical {
-                        column_id: nesting_relation.foreign_column_id,
+                        column_id: nesting_relation.column_pairs[0].foreign_column_id,
                         table_alias: None,
                     },
                     Column::Param(SQLParamContainer::from_sql_value(

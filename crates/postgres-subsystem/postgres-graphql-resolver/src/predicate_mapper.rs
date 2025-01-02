@@ -79,8 +79,8 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     .column_path_link
                                     .as_ref()
                                     .unwrap()
-                                    .self_column_id()
-                                    .clone();
+                                    .self_column_ids()
+                                    .clone()[0];
 
                                 let param_column_path = ColumnPath::Physical(
                                     PhysicalColumnPath::leaf(*param_column_id),
@@ -406,7 +406,7 @@ fn operands<'a>(
         .column_path_link
         .as_ref()
         .expect("Could not find column path link while forming operands")
-        .self_column_id();
+        .self_column_ids()[0];
     let op_physical_column = op_physical_column_id.get_column(&subsystem.core_subsystem.database);
 
     let op_value = literal_column_path(

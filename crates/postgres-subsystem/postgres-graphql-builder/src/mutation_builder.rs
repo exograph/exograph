@@ -560,7 +560,7 @@ fn get_matching_field<'a>(
         let matching_fields: Vec<_> = field_typ
             .fields
             .iter()
-            .filter(|f| field.column_name == f.column_name)
+            .filter(|f| field.column_names == f.column_names)
             .collect();
 
         match &matching_fields[..] {

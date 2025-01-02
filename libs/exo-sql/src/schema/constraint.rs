@@ -22,7 +22,7 @@ pub(super) struct PrimaryKeyConstraint {
 }
 
 pub(super) struct ForeignKeyConstraint {
-    pub(super) _constraint_name: String,
+    pub(super) constraint_name: String,
     pub(super) self_columns: HashSet<String>,
     pub(super) foreign_table: PhysicalTableName,
     pub(super) foreign_columns: HashSet<String>,
@@ -101,7 +101,7 @@ impl Constraints {
                 let foreign_columns = Self::parse_column_list(&matches[3]); // name of the column in the referenced table
 
                 ForeignKeyConstraint {
-                    _constraint_name: conname.to_string(),
+                    constraint_name: conname.to_string(),
                     self_columns,
                     foreign_table: PhysicalTableName {
                         name: foreign_table,

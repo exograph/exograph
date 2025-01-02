@@ -227,22 +227,20 @@ impl TemplateFilterOperation {
     ) -> ConcreteTransactionStep<'a> {
         let rows = transaction_context.row_count(self.prev_step_id);
 
-        let pk_column_id = database
-            .get_pk_column_id(self.table_id)
-            .expect("No primary key column");
-        let pk_column_type = database
+        let pk_column_ids = database.get_pk_column_ids(self.table_id);
+        let pk_column_types = database
             .get_table(self.table_id)
-            .get_pk_physical_column()
-            .unwrap()
-            .typ
-            .get_pg_type();
+            .get_pk_physical_columns()
+            .iter()
+            .map(|pk_physical_column| pk_physical_column.typ.get_pg_type())
+            .collect::<Vec<_>>();
 
         let op = ConcreteTransactionStep {
             operation: SQLOperation::Select(Select {
                 table: Table::physical(self.table_id, None),
                 predicate: Predicate::and(
                     Predicate::Eq(
-                        Column::physical(pk_column_id, None),
+                        Column::physical(pk_column_ids[0], None),
                         Column::ArrayParam {
                             param: SQLParamContainer::from_sql_values(
                                 (0..rows)
@@ -250,7 +248,7 @@ impl TemplateFilterOperation {
                                         transaction_context.resolve_value(self.prev_step_id, row, 0)
                                     })
                                     .collect::<Vec<_>>(),
-                                pk_column_type,
+                                pk_column_types[0].clone(),
                             ),
                             wrapper: ArrayParamWrapper::Any,
                         },
@@ -261,7 +259,7 @@ impl TemplateFilterOperation {
                 offset: None,
                 limit: None,
                 top_level_selection: false,
-                columns: vec![Column::physical(pk_column_id, None)],
+                columns: vec![Column::physical(pk_column_ids[0], None)],
                 group_by: None,
             }),
         };

@@ -22,12 +22,12 @@ use core_plugin_interface::{
     core_model_builder::error::ModelBuildingError,
 };
 
-use exo_sql::Database;
 use exo_sql::{
     schema::index_spec::IndexKind, ColumnId, FloatBits, IntBits, ManyToOne, PhysicalColumn,
     PhysicalColumnType, PhysicalIndex, PhysicalTable, TableId, VectorDistanceFunction,
     DEFAULT_VECTOR_SIZE,
 };
+use exo_sql::{Database, RelationColumnPair};
 
 use heck::ToSnakeCase;
 use postgres_core_model::types::EntityRepresentation;
@@ -48,7 +48,7 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
                 let diagnostic = Diagnostic {
                     level: Level::Error,
                     message: format!(
-                        "Type '{}' has no primary key. Consider annotating a field with @pk",
+                        "Type '{}' has no primary key. Consider annotating one or more fields with @pk",
                         c.name
                     ),
                     code: Some("C000".to_string()),
@@ -127,11 +127,11 @@ fn expand_database_info(
 
                 match existing_index {
                     Some(existing_index) => {
-                        existing_index.columns.insert(field.column_name.clone());
+                        existing_index.columns.extend(field.column_names.clone());
                     }
                     None => indices.push(PhysicalIndex {
                         name: index_name.clone(),
-                        columns: HashSet::from_iter([field.column_name.clone()]),
+                        columns: HashSet::from_iter(field.column_names.clone()),
                         index_kind: if field.typ.innermost().type_name == "Vector" {
                             let distance_function = match field.type_hint {
                                 Some(ResolvedTypeHint::Vector {
@@ -181,20 +181,27 @@ fn expand_type_relations(
         }
 
         if field.self_column {
-            let self_column_id = building
-                .database
-                .get_column_id(table_id, &field.column_name)
-                .unwrap();
+            let self_column_ids: Vec<ColumnId> = field
+                .column_names
+                .iter()
+                .map(|name| building.database.get_column_id(table_id, name).unwrap())
+                .collect();
             if let Some(relation) =
-                compute_many_to_one_relation(field, self_column_id, resolved_env, building)
+                compute_many_to_one_relation(field, self_column_ids.clone(), resolved_env, building)
             {
                 // In the earlier phase, we set the type of a many-to-one column to a placeholder value
                 // Now that we have the foreign type, we can set the type of the column to the foreign type's PK
-                let foreign_column_typ = &relation
-                    .foreign_pk_column_id
-                    .get_column(&building.database)
-                    .typ;
-                building.database.get_column_mut(self_column_id).typ = foreign_column_typ.clone();
+                for RelationColumnPair {
+                    self_column_id,
+                    foreign_column_id,
+                } in relation.column_pairs.iter()
+                {
+                    let foreign_column_typ = &foreign_column_id.get_column(&building.database).typ;
+
+                    building.database.get_column_mut(*self_column_id).typ =
+                        foreign_column_typ.clone();
+                }
+
                 building.database.relations.push(relation);
             }
         }
@@ -231,7 +238,7 @@ fn create_columns(
         return Ok(vec![]);
     }
 
-    let unique_constraint_name = field
+    let unique_constraint_name: Vec<String> = field
         .unique_constraints
         .iter()
         .map(|constraint| {
@@ -254,45 +261,58 @@ fn create_columns(
             let field_type = env.get_by_key(type_name).unwrap();
 
             match field_type {
-                ResolvedType::Primitive(pt) => Ok(vec![PhysicalColumn {
-                    table_id,
-                    name: field.column_name.to_string(),
-                    typ: determine_column_type(pt, field),
-                    is_pk: field.is_pk,
-                    is_auto_increment: if field.get_is_auto_increment() {
-                        assert!(matches!(
-                            typ.deref(env),
-                            &ResolvedType::Primitive(PrimitiveType::Int)
-                        ));
-                        true
-                    } else {
-                        false
-                    },
-                    is_nullable: optional,
-                    unique_constraints: unique_constraint_name,
-                    default_value,
-                    update_sync,
-                }]),
+                ResolvedType::Primitive(pt) => Ok(field
+                    .column_names
+                    .iter()
+                    .map(|name| PhysicalColumn {
+                        table_id,
+                        name: name.to_string(),
+                        typ: determine_column_type(pt, field),
+                        is_pk: field.is_pk,
+                        is_auto_increment: if field.get_is_auto_increment() {
+                            assert!(matches!(
+                                typ.deref(env),
+                                &ResolvedType::Primitive(PrimitiveType::Int)
+                            ));
+                            true
+                        } else {
+                            false
+                        },
+                        is_nullable: optional,
+                        unique_constraints: unique_constraint_name.clone(),
+                        default_value: default_value.clone(),
+                        update_sync,
+                        group_name: Some(field.name.to_string()),
+                    })
+                    .collect()),
                 ResolvedType::Composite(composite) => {
                     // Many-to-one:
                     // Column from the current table (but of the type of the pk column of the other table)
                     // and it refers to the pk column in the other table.
-                    Ok(vec![PhysicalColumn {
-                        table_id,
-                        name: field.column_name.to_string(),
-                        typ: if composite.representation == EntityRepresentation::Json {
-                            PhysicalColumnType::Json
-                        } else {
-                            // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
-                            PhysicalColumnType::Boolean
-                        },
-                        is_pk: false,
-                        is_auto_increment: false,
-                        is_nullable: optional,
-                        unique_constraints: unique_constraint_name,
-                        default_value,
-                        update_sync,
-                    }])
+
+                    Ok(field
+                        .column_names
+                        .iter()
+                        .map(|name| {
+                            PhysicalColumn {
+                                table_id,
+                                name: name.to_string(),
+                                typ: if composite.representation == EntityRepresentation::Json {
+                                    PhysicalColumnType::Json
+                                } else {
+                                    // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
+                                    PhysicalColumnType::Boolean
+                                },
+                                is_pk: false,
+                                is_auto_increment: false,
+                                is_nullable: optional,
+                                unique_constraints: unique_constraint_name.clone(),
+                                default_value: default_value.clone(),
+                                update_sync,
+                                group_name: Some(field.name.to_string()),
+                            }
+                        })
+                        .collect())
                 }
             }
         }
@@ -329,17 +349,22 @@ fn create_columns(
                     pt = PrimitiveType::Array(Box::new(pt))
                 }
 
-                Ok(vec![PhysicalColumn {
-                    table_id,
-                    name: field.column_name.to_string(),
-                    typ: determine_column_type(&pt, field),
-                    is_pk: false,
-                    is_auto_increment: false,
-                    is_nullable: optional,
-                    unique_constraints: unique_constraint_name,
-                    default_value,
-                    update_sync,
-                }])
+                Ok(field
+                    .column_names
+                    .iter()
+                    .map(|name| PhysicalColumn {
+                        table_id,
+                        name: name.to_string(),
+                        typ: determine_column_type(&pt, field),
+                        is_pk: false,
+                        is_auto_increment: false,
+                        is_nullable: optional,
+                        unique_constraints: unique_constraint_name.clone(),
+                        default_value: default_value.clone(),
+                        update_sync,
+                        group_name: Some(field.name.to_string()),
+                    })
+                    .collect())
             } else {
                 // this is a OneToMany relation, so the other side has the associated column
                 Ok(vec![])
@@ -353,7 +378,7 @@ fn create_columns(
 
 fn compute_many_to_one_relation(
     field: &ResolvedField,
-    self_column_id: ColumnId,
+    self_column_ids: Vec<ColumnId>,
     env: &ResolvedTypeEnv,
     building: &mut DatabaseBuilding,
 ) -> Option<ManyToOne> {
@@ -370,16 +395,20 @@ fn compute_many_to_one_relation(
                     // and it refers to the pk column in the other table.
 
                     let foreign_table_id = building.database.get_table_id(&ct.table_name).unwrap();
-                    let foreign_pk_column_id = building
-                        .database
-                        .get_pk_column_id(foreign_table_id)
-                        .unwrap();
+                    let foreign_pk_column_ids =
+                        building.database.get_pk_column_ids(foreign_table_id);
 
                     let field_alias = field.name.to_snake_case().to_plural();
 
                     Some(ManyToOne {
-                        self_column_id,
-                        foreign_pk_column_id,
+                        column_pairs: self_column_ids
+                            .into_iter()
+                            .zip(foreign_pk_column_ids)
+                            .map(|(self_column_id, foreign_column_id)| RelationColumnPair {
+                                self_column_id,
+                                foreign_column_id,
+                            })
+                            .collect(),
                         foreign_table_alias: Some(field_alias),
                     })
                 }

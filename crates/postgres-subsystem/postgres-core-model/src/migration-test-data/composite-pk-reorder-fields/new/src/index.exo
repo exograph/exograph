@@ -2,8 +2,7 @@
 module PeopleDatabase {
   @access(true)
   type Person {
-    @pk firstName: String
-    @pk lastName: String
+    @pk name: String
     age: Int
     address: Address?
   }

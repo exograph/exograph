@@ -47,7 +47,8 @@ values:
               Plain:
                 type_name: Int
                 is_primitive: true
-            column_name: id
+            column_names:
+              - id
             self_column: true
             is_pk: true
             access:
@@ -70,7 +71,8 @@ values:
               Plain:
                 type_name: String
                 is_primitive: true
-            column_name: title
+            column_names:
+              - title
             self_column: true
             is_pk: false
             access:
@@ -94,7 +96,8 @@ values:
                 Plain:
                   type_name: Venue
                   is_primitive: false
-            column_name: venue_id
+            column_names:
+              - venue_id
             self_column: true
             is_pk: false
             access:
@@ -118,7 +121,8 @@ values:
                 Plain:
                   type_name: Blob
                   is_primitive: true
-            column_name: icon
+            column_names:
+              - icon
             self_column: true
             is_pk: false
             access:
@@ -157,7 +161,8 @@ values:
               Plain:
                 type_name: Int
                 is_primitive: true
-            column_name: id
+            column_names:
+              - id
             self_column: true
             is_pk: true
             access:
@@ -180,7 +185,8 @@ values:
               Plain:
                 type_name: String
                 is_primitive: true
-            column_name: name
+            column_names:
+              - name
             self_column: true
             is_pk: false
             access:
@@ -204,7 +210,8 @@ values:
                 Plain:
                   type_name: String
                   is_primitive: true
-            column_name: custom_address
+            column_names:
+              - custom_address
             self_column: true
             is_pk: false
             access:
@@ -229,7 +236,8 @@ values:
                   Plain:
                     type_name: Concert
                     is_primitive: false
-            column_name: venue_id
+            column_names:
+              - venue_id
             self_column: false
             is_pk: false
             access:

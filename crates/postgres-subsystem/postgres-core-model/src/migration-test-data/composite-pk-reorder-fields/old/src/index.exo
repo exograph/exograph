@@ -2,17 +2,16 @@
 module PeopleDatabase {
   @access(true)
   type Person {
-    @pk firstName: String
-    @pk lastName: String
+    @pk name: String
     age: Int
     address: Address?
   }
 
   type Address {
     @pk street: String
-    @pk city: String
-    @pk state: String
     @pk zip: Int
+    @pk state: String
+    @pk city: String
     people: Set<Person>?
   }
 }

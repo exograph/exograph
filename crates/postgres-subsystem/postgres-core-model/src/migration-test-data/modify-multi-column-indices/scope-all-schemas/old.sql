@@ -9,7 +9,7 @@ CREATE TABLE "venues" (
 	"name" TEXT NOT NULL
 );
 
-ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";
+ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";
 
 CREATE INDEX "concert_title_idx" ON "concerts" ("title");
 

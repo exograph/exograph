@@ -74,7 +74,7 @@ pub use sql::{
     physical_column::{ColumnId, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
     physical_table::{PhysicalIndex, PhysicalTable, PhysicalTableName},
     predicate::{CaseSensitivity, NumericComparator, ParamEquality, Predicate},
-    relation::{ManyToOne, ManyToOneId, OneToMany, OneToManyId, RelationId},
+    relation::{ManyToOne, ManyToOneId, OneToMany, OneToManyId, RelationColumnPair, RelationId},
     vector::{VectorDistanceFunction, DEFAULT_VECTOR_SIZE},
     SQLBytes, SQLParam, SQLParamContainer,
 };

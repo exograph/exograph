@@ -10,13 +10,14 @@
 use std::collections::HashSet;
 
 use crate::{
-    database_error::DatabaseError, schema::column_spec::ColumnSpec,
-    sql::connect::database_client::DatabaseClient, Database, ManyToOne, PhysicalColumn,
-    PhysicalIndex, PhysicalTable, PhysicalTableName, TableId,
+    database_error::DatabaseError,
+    schema::column_spec::ColumnSpec,
+    sql::{connect::database_client::DatabaseClient, relation::RelationColumnPair},
+    Database, ManyToOne, PhysicalColumn, PhysicalIndex, PhysicalTable, PhysicalTableName, TableId,
 };
 
 use super::{
-    column_spec::ColumnTypeSpec,
+    column_spec::{ColumnReferenceSpec, ColumnTypeSpec},
     function_spec::FunctionSpec,
     index_spec::IndexSpec,
     issue::WithIssues,
@@ -88,6 +89,7 @@ impl DatabaseSpec {
                     unique_constraints: column_spec.unique_constraints.to_owned(),
                     default_value: column_spec.default_value.to_owned(),
                     update_sync: false, // There is no good way to know from the database spec if a column should be updated on sync
+                    group_name: column_spec.group_name.to_owned(),
                 })
                 .collect();
 
@@ -120,11 +122,11 @@ impl DatabaseSpec {
                         .unwrap();
 
                     match &column_spec.typ {
-                        ColumnTypeSpec::ColumnReference {
+                        ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
                             foreign_table_name,
                             foreign_pk_column_name,
                             ..
-                        } => {
+                        }) => {
                             let foreign_table_id =
                                 database.get_table_id(foreign_table_name).unwrap();
                             let foreign_pk_column_id = database
@@ -147,8 +149,10 @@ impl DatabaseSpec {
                             });
 
                             Some(ManyToOne {
-                                self_column_id,
-                                foreign_pk_column_id,
+                                column_pairs: vec![RelationColumnPair {
+                                    self_column_id,
+                                    foreign_column_id: foreign_pk_column_id,
+                                }],
                                 foreign_table_alias,
                             })
                         }
@@ -357,6 +361,7 @@ mod tests {
                             is_nullable: false,
                             unique_constraints: vec![],
                             default_value: None,
+                            group_name: None,
                         },
                         ColumnSpec {
                             name: "name".into(),
@@ -368,6 +373,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
+                            group_name: None,
                         },
                         ColumnSpec {
                             name: "email".into(),
@@ -377,6 +383,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
+                            group_name: None,
                         },
                     ],
                     vec![],
@@ -407,6 +414,7 @@ mod tests {
                         is_nullable: true,
                         unique_constraints: vec![],
                         default_value: None,
+                        group_name: None,
                     }],
                     vec![],
                     vec![],
@@ -441,6 +449,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
+                            group_name: None,
                         },
                         ColumnSpec {
                             name: "just_precision".into(),
@@ -453,6 +462,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
+                            group_name: None,
                         },
                         ColumnSpec {
                             name: "no_precision_and_scale".into(),
@@ -465,6 +475,7 @@ mod tests {
                             is_nullable: true,
                             unique_constraints: vec![],
                             default_value: None,
+                            group_name: None,
                         },
                     ],
                     vec![],

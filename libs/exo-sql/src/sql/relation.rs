@@ -2,16 +2,29 @@ use serde::{Deserialize, Serialize};
 
 use crate::{ColumnId, ColumnPathLink, Database};
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct OneToMany {
-    pub self_pk_column_id: ColumnId,
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct RelationColumnPair {
+    pub self_column_id: ColumnId,
     pub foreign_column_id: ColumnId,
+}
+
+impl RelationColumnPair {
+    pub fn flipped(&self) -> RelationColumnPair {
+        RelationColumnPair {
+            self_column_id: self.foreign_column_id,
+            foreign_column_id: self.self_column_id,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct OneToMany {
+    pub column_pairs: Vec<RelationColumnPair>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ManyToOne {
-    pub self_column_id: ColumnId,
-    pub foreign_pk_column_id: ColumnId,
+    pub column_pairs: Vec<RelationColumnPair>,
     /// A name that may be used to alias the foreign table. This is useful when
     /// multiple columns in a table refer to the same foreign table. For example,
     /// `concerts` may have a `main_venue_id` and a `alt_venue_id`.
@@ -20,24 +33,23 @@ pub struct ManyToOne {
 
 impl OneToMany {
     pub fn column_path_link(&self) -> ColumnPathLink {
-        ColumnPathLink::relation(self.self_pk_column_id, self.foreign_column_id, None)
+        ColumnPathLink::relation(self.column_pairs.clone(), None)
     }
 }
 
 impl ManyToOne {
     fn flipped(&self) -> OneToMany {
         OneToMany {
-            self_pk_column_id: self.foreign_pk_column_id,
-            foreign_column_id: self.self_column_id,
+            column_pairs: self
+                .column_pairs
+                .iter()
+                .map(|pair| pair.flipped())
+                .collect(),
         }
     }
 
     pub fn column_path_link(&self) -> ColumnPathLink {
-        ColumnPathLink::relation(
-            self.self_column_id,
-            self.foreign_pk_column_id,
-            self.foreign_table_alias.clone(),
-        )
+        ColumnPathLink::relation(self.column_pairs.clone(), self.foreign_table_alias.clone())
     }
 }
 

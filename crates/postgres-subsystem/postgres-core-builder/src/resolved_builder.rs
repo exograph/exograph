@@ -277,7 +277,7 @@ fn resolve_composite_type_fields(
 
             match column_info {
                 Ok(ColumnInfo {
-                    name: column_name,
+                    names: column_names,
                     self_column,
                     unique_constraints,
                     indices,
@@ -295,7 +295,7 @@ fn resolve_composite_type_fields(
                     Some(ResolvedField {
                         name: field.name.clone(),
                         typ,
-                        column_name,
+                        column_names,
                         self_column,
                         is_pk: field.annotations.contains("pk"),
                         access,
@@ -742,7 +742,7 @@ fn build_type_hint(
     }
 }
 struct ColumnInfo {
-    name: String,
+    names: Vec<String>,
     self_column: bool,
     unique_constraints: Vec<String>,
     indices: Vec<String>,
@@ -855,11 +855,11 @@ fn compute_column_info(
             .unwrap_or_else(|| field_name.to_snake_case())
     };
 
-    let id_column_name = |field: &AstField<Typed>| {
+    let id_column_names = |field: &AstField<Typed>| {
         let user_supplied_column_name = column_annotation_name(field);
 
         if let Some(user_supplied_column_name) = user_supplied_column_name {
-            return user_supplied_column_name;
+            return vec![user_supplied_column_name];
         }
 
         let field_base_type = match &field.typ {
@@ -870,7 +870,7 @@ fn compute_column_info(
 
         let base_name = field.name.to_snake_case();
 
-        let column_names = if let Type::Composite(ct) = field_type {
+        if let Type::Composite(ct) = field_type {
             ct.fields
                 .iter()
                 .filter_map(|f| {
@@ -883,10 +883,7 @@ fn compute_column_info(
                 .collect::<Vec<_>>()
         } else {
             vec![]
-        };
-
-        // TODO: handle the case where there are multiple primary key fields
-        column_names[0].clone()
+        }
     };
 
     // we can treat Optional fields as their inner type for the purposes
@@ -915,7 +912,7 @@ fn compute_column_info(
                 Type::Composite(field_type) => {
                     if field_type.annotations.contains("json") {
                         return Ok(ColumnInfo {
-                            name: compute_column_name(&field.name),
+                            names: vec![compute_column_name(&field.name)],
                             self_column: true,
                             unique_constraints,
                             indices,
@@ -986,7 +983,7 @@ fn compute_column_info(
                                         })
                                     } else {
                                         Ok(ColumnInfo {
-                                            name: id_column_name(matching_field),
+                                            names: id_column_names(matching_field),
                                             self_column: false,
                                             unique_constraints,
                                             indices,
@@ -994,7 +991,7 @@ fn compute_column_info(
                                     }
                                 }
                                 Cardinality::Unbounded => Ok(ColumnInfo {
-                                    name: id_column_name(field),
+                                    names: id_column_names(field),
                                     self_column: true,
                                     unique_constraints,
                                     indices,
@@ -1011,7 +1008,7 @@ fn compute_column_info(
                                 };
 
                             Ok(ColumnInfo {
-                                name: id_column_name(field),
+                                names: id_column_names(field),
                                 self_column: true,
                                 unique_constraints,
                                 indices,
@@ -1069,7 +1066,7 @@ fn compute_column_info(
                             });
                         } else {
                             Ok(ColumnInfo {
-                                name: id_column_name(matching_field),
+                                names: id_column_names(matching_field),
                                 self_column: false,
                                 unique_constraints,
                                 indices,
@@ -1098,7 +1095,7 @@ fn compute_column_info(
                     if let Type::Primitive(_) = underlying_typ.deref(types) {
                         // base type is a primitive, which means this is an Array
                         Ok(ColumnInfo {
-                            name: compute_column_name(&field.name),
+                            names: vec![compute_column_name(&field.name)],
                             self_column: true,
                             unique_constraints,
                             indices,
@@ -1117,7 +1114,7 @@ fn compute_column_info(
                     }
                 }
                 _ => Ok(ColumnInfo {
-                    name: compute_column_name(&field.name),
+                    names: vec![compute_column_name(&field.name)],
                     self_column: true,
                     unique_constraints,
                     indices,

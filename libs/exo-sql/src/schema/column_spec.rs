@@ -31,6 +31,15 @@ pub struct ColumnSpec {
     pub is_nullable: bool,
     pub unique_constraints: Vec<String>,
     pub default_value: Option<String>,
+    // A name that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
+    pub group_name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ColumnReferenceSpec {
+    pub foreign_table_name: PhysicalTableName,
+    pub foreign_pk_column_name: String,
+    pub foreign_pk_type: Box<ColumnTypeSpec>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,11 +68,7 @@ pub enum ColumnTypeSpec {
     Array {
         typ: Box<ColumnTypeSpec>,
     },
-    ColumnReference {
-        foreign_table_name: PhysicalTableName,
-        foreign_pk_column_name: String,
-        foreign_pk_type: Box<ColumnTypeSpec>,
-    },
+    ColumnReference(ColumnReferenceSpec),
     Float {
         bits: FloatBits,
     },
@@ -85,6 +90,7 @@ impl ColumnSpec {
         is_pk: bool,
         explicit_type: Option<ColumnTypeSpec>,
         unique_constraints: Vec<String>,
+        group_name: Option<String>,
     ) -> Result<WithIssues<Option<ColumnSpec>>, DatabaseError> {
         let mut issues = Vec::new();
 
@@ -209,24 +215,19 @@ impl ColumnSpec {
                 is_nullable: !not_null,
                 unique_constraints,
                 default_value,
+                group_name,
             }),
             issues,
         })
     }
 
     /// Converts the column specification to SQL statements.
-    pub(super) fn to_sql(
-        &self,
-        table_spec: &TableSpec,
-        attach_pk_column_to_column_stmt: bool,
-    ) -> SchemaStatement {
+    pub(super) fn to_sql(&self, attach_pk_column_to_column_stmt: bool) -> SchemaStatement {
         let SchemaStatement {
             statement,
             post_statements,
             ..
-        } = self
-            .typ
-            .to_sql(table_spec, &self.name, self.is_auto_increment);
+        } = self.typ.to_sql(self.is_auto_increment);
         let pk_str = if self.is_pk && attach_pk_column_to_column_stmt {
             " PRIMARY KEY"
         } else {
@@ -331,20 +332,22 @@ impl ColumnSpec {
                 .map(|relation_id| relation_id.deref(database));
 
             match relation {
-                Some(ManyToOne {
-                    foreign_pk_column_id,
-                    ..
-                }) => {
-                    let foreign_pk_column = foreign_pk_column_id.get_column(database);
+                Some(ManyToOne { column_pairs, .. }) => {
+                    let foreign_pk_column = column_pairs
+                        .iter()
+                        .find(|cp| cp.self_column_id == column_id)
+                        .unwrap()
+                        .foreign_column_id
+                        .get_column(database);
                     let foreign_table = database.get_table(foreign_pk_column.table_id);
 
-                    ColumnTypeSpec::ColumnReference {
+                    ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
                         foreign_table_name: foreign_table.name.clone(),
                         foreign_pk_column_name: foreign_pk_column.name.clone(),
                         foreign_pk_type: Box::new(ColumnTypeSpec::from_physical(
                             foreign_pk_column.typ.clone(),
                         )),
-                    }
+                    })
                 }
                 None => ColumnTypeSpec::from_physical(column.typ),
             }
@@ -358,6 +361,7 @@ impl ColumnSpec {
             is_nullable: column.is_nullable,
             unique_constraints: column.unique_constraints,
             default_value: column.default_value,
+            group_name: column.group_name,
         }
     }
 
@@ -367,9 +371,11 @@ impl ColumnSpec {
                 (self.typ != new.typ) && {
                     Self {
                         typ: ColumnTypeSpec::Int { bits: IntBits::_16 },
+                        group_name: None,
                         ..self.clone()
                     } == Self {
                         typ: ColumnTypeSpec::Int { bits: IntBits::_16 },
+                        group_name: None,
                         ..new.clone()
                     }
                 }
@@ -531,9 +537,9 @@ impl ColumnTypeSpec {
             ColumnTypeSpec::Array { typ } => PhysicalColumnType::Array {
                 typ: Box::new(typ.to_database_type()),
             },
-            ColumnTypeSpec::ColumnReference {
+            ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
                 foreign_pk_type, ..
-            } => foreign_pk_type.to_database_type(),
+            }) => foreign_pk_type.to_database_type(),
             ColumnTypeSpec::Float { bits } => PhysicalColumnType::Float { bits: *bits },
             ColumnTypeSpec::Numeric { precision, scale } => PhysicalColumnType::Numeric {
                 precision: *precision,
@@ -619,18 +625,13 @@ impl ColumnTypeSpec {
                 (format!("[{data_type}]"), annotations)
             }
 
-            ColumnTypeSpec::ColumnReference {
+            ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
                 foreign_table_name, ..
-            } => (foreign_table_name.name.clone(), "".to_string()),
+            }) => (foreign_table_name.name.clone(), "".to_string()),
         }
     }
 
-    pub(super) fn to_sql(
-        &self,
-        table_spec: &TableSpec,
-        column_name: &str,
-        is_auto_increment: bool,
-    ) -> SchemaStatement {
+    pub(super) fn to_sql(&self, is_auto_increment: bool) -> SchemaStatement {
         match self {
             Self::Int { bits } => SchemaStatement {
                 statement: {
@@ -784,41 +785,14 @@ impl ColumnTypeSpec {
                     write!(&mut dimensions_part, "[]").unwrap();
                 }
 
-                let mut sql_statement =
-                    underlying_typ.to_sql(table_spec, column_name, is_auto_increment);
+                let mut sql_statement = underlying_typ.to_sql(is_auto_increment);
                 sql_statement.statement += &dimensions_part;
                 sql_statement
             }
 
-            Self::ColumnReference {
-                foreign_table_name,
-                foreign_pk_type,
-                ..
-            } => {
-                let mut sql_statement =
-                    foreign_pk_type.to_sql(table_spec, column_name, is_auto_increment);
-
-                let foreign_table_str = match &foreign_table_name.schema {
-                    Some(schema_name) => {
-                        format!("\"{}\".\"{}\"", schema_name, foreign_table_name.name)
-                    }
-                    None => format!("\"{}\"", foreign_table_name.name),
-                };
-
-                let constraint_name = format!(
-                    "{}_{}_fk",
-                    table_spec.name.fully_qualified_name_with_sep("_"),
-                    column_name
-                );
-
-                let foreign_constraint = format!(
-                    r#"ALTER TABLE {} ADD CONSTRAINT "{constraint_name}" FOREIGN KEY ("{column_name}") REFERENCES {foreign_table_str};"#,
-                    table_spec.sql_name()
-                );
-
-                sql_statement.post_statements.push(foreign_constraint);
-                sql_statement
-            }
+            Self::ColumnReference(ColumnReferenceSpec {
+                foreign_pk_type, ..
+            }) => foreign_pk_type.to_sql(is_auto_increment),
         }
     }
 

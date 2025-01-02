@@ -12,5 +12,5 @@ CREATE TABLE "info"."users" (
 	"name" TEXT NOT NULL
 );
 
-ALTER TABLE "info"."logs" ADD CONSTRAINT "info_logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "info"."users";
+ALTER TABLE "info"."logs" ADD CONSTRAINT "info_logs_owner_fk" FOREIGN KEY ("owner_id") REFERENCES "info"."users";
 

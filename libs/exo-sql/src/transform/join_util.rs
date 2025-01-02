@@ -9,7 +9,10 @@
 
 use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
-    sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
+    sql::{
+        column::Column, join::LeftJoin, predicate::ConcretePredicate, relation::RelationColumnPair,
+        table::Table,
+    },
     transform::table_dependency::{DependencyLink, TableDependency},
     Database, PhysicalColumnPath, TableId,
 };
@@ -48,10 +51,13 @@ pub fn compute_join(
             |acc, DependencyLink { link, dependency }| {
                 let (join_predicate, linked_table_alias) = match link {
                     ColumnPathLink::Relation(RelationLink {
-                        self_column_id,
-                        foreign_column_id: linked_column_id,
+                        column_pairs,
                         linked_table_alias,
                     }) => {
+                        let RelationColumnPair {
+                            self_column_id,
+                            foreign_column_id: linked_column_id,
+                        } = column_pairs[0];
                         let new_alias = selection_level
                             .alias((linked_column_id.table_id, linked_table_alias), database);
 

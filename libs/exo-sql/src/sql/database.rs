@@ -56,11 +56,13 @@ impl Database {
         })
     }
 
-    pub fn get_pk_column_id(&self, table_id: TableId) -> Option<ColumnId> {
+    pub fn get_pk_column_ids(&self, table_id: TableId) -> Vec<ColumnId> {
         let table = self.get_table(table_id);
         table
-            .get_pk_column_index()
+            .get_pk_column_indices()
+            .into_iter()
             .map(|column_index| new_column_id(table_id, column_index))
+            .collect()
     }
 
     pub fn get_column_id(&self, table_id: TableId, column_name: &str) -> Option<ColumnId> {

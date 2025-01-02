@@ -17,7 +17,7 @@ CREATE TABLE "v"."venues" (
 	"name" TEXT NOT NULL
 );
 
-ALTER TABLE "c"."concerts" ADD CONSTRAINT "c_concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "v"."venues";
+ALTER TABLE "c"."concerts" ADD CONSTRAINT "c_concerts_venue_fk" FOREIGN KEY ("venue_id") REFERENCES "v"."venues";
 
 CREATE INDEX "concert_title_idx" ON "c"."concerts" ("title");
 

@@ -102,8 +102,8 @@ impl std::fmt::Debug for PhysicalTable {
 }
 
 impl PhysicalTable {
-    pub fn get_pk_physical_column(&self) -> Option<&PhysicalColumn> {
-        self.columns.iter().find(|column| column.is_pk)
+    pub fn get_pk_physical_columns(&self) -> Vec<&PhysicalColumn> {
+        self.columns.iter().filter(|column| column.is_pk).collect()
     }
 
     pub fn insert<'a, C>(
@@ -160,8 +160,13 @@ impl PhysicalTable {
         self.columns.iter().position(|c| c.name == name)
     }
 
-    pub(crate) fn get_pk_column_index(&self) -> Option<usize> {
-        self.columns.iter().position(|c| c.is_pk)
+    pub(crate) fn get_pk_column_indices(&self) -> Vec<usize> {
+        self.columns
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.is_pk)
+            .map(|(i, _)| i)
+            .collect()
     }
 }
 

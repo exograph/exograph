@@ -12,5 +12,5 @@ CREATE TABLE "auth"."users" (
 	"name" TEXT NOT NULL
 );
 
-ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_id_fk" FOREIGN KEY ("owner_id") REFERENCES "auth"."users";
+ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_fk" FOREIGN KEY ("owner_id") REFERENCES "auth"."users";
 
