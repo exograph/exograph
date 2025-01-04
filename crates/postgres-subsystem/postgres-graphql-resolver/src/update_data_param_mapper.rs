@@ -86,13 +86,20 @@ fn compute_update_columns<'a>(
         .fields
         .iter()
         .flat_map(|field| match &field.relation {
-            PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
+            PostgresRelation::Pk { column_ids } => {
                 get_argument_field(argument, &field.name).map(|argument_value| {
+                    let column = column_ids[0].get_column(&subsystem.core_subsystem.database);
+                    let value_column = cast::literal_column(argument_value, column);
+                    (column_ids[0], value_column.unwrap())
+                })
+            }
+            PostgresRelation::Scalar { column_id } => get_argument_field(argument, &field.name)
+                .map(|argument_value| {
                     let column = column_id.get_column(&subsystem.core_subsystem.database);
                     let value_column = cast::literal_column(argument_value, column);
                     (*column_id, value_column.unwrap())
-                })
-            }
+                }),
+
             PostgresRelation::ManyToOne(ManyToOneRelation {
                 foreign_pk_field_id,
                 relation_id,

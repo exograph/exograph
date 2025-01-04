@@ -36,39 +36,9 @@ use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_graphql_model::query::UniqueQuery;
 use postgres_graphql_model::{
     order::OrderByParameter,
-    query::{CollectionQuery, CollectionQueryParameters, PkQuery},
+    query::{CollectionQuery, CollectionQueryParameters},
     subsystem::PostgresGraphQLSubsystem,
 };
-
-#[async_trait]
-impl OperationSelectionResolver for PkQuery {
-    async fn resolve_select<'a>(
-        &'a self,
-        field: &'a ValidatedField,
-        request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresGraphQLSubsystem,
-    ) -> Result<AbstractSelect, PostgresExecutionError> {
-        let predicate = compute_predicate(
-            &self.parameters.predicate_param,
-            &field.arguments,
-            subsystem,
-            request_context,
-        )
-        .await?;
-
-        compute_select(
-            predicate,
-            None,
-            None,
-            None,
-            &self.return_type,
-            &field.subfields,
-            subsystem,
-            request_context,
-        )
-        .await
-    }
-}
 
 #[async_trait]
 impl OperationSelectionResolver for UniqueQuery {
@@ -257,9 +227,8 @@ async fn map_persistent_field<'content>(
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement, PostgresExecutionError> {
     match &entity_field.relation {
-        PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
-            Ok(SelectionElement::Physical(*column_id))
-        }
+        PostgresRelation::Pk { column_ids } => Ok(SelectionElement::Physical(column_ids[0])),
+        PostgresRelation::Scalar { column_id } => Ok(SelectionElement::Physical(*column_id)),
         PostgresRelation::ManyToOne(relation) => {
             let ManyToOneRelation {
                 foreign_pk_field_id,

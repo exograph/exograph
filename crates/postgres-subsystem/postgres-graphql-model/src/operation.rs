@@ -41,7 +41,7 @@ use crate::types::Operation;
 /// An operation such as a query or mutation.
 ///
 /// * `P` - This parameter allows differentiating between, for example,
-///   [`PkQuery`](`super::query::PkQuery`), [`AggregateQuery`](super::query::AggregateQuery), and
+///   [`UniqueQuery`](`super::query::UniqueQuery`), [`AggregateQuery`](super::query::AggregateQuery), and
 ///   [`PostgresMutation`](super::mutation::PostgresMutation).
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresOperation<P: OperationParameters> {

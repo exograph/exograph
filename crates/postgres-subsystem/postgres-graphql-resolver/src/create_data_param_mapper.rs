@@ -122,7 +122,11 @@ async fn map_single<'a>(
 
         field_arg.map(|field_arg| async move {
             match &field.relation {
-                PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
+                PostgresRelation::Pk { column_ids } => {
+                    map_self_column(column_ids[0], field, field_arg, subsystem).await
+                }
+
+                PostgresRelation::Scalar { column_id } => {
                     map_self_column(*column_id, field, field_arg, subsystem).await
                 }
 

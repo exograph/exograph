@@ -18,7 +18,7 @@ use postgres_graphql_model::{
     mutation::PostgresMutation,
     order::OrderByParameterType,
     predicate::PredicateParameterType,
-    query::{AggregateQuery, CollectionQuery, PkQuery, UniqueQuery},
+    query::{AggregateQuery, CollectionQuery, UniqueQuery},
     subsystem::PostgresGraphQLSubsystem,
     types::MutationType,
 };
@@ -113,12 +113,13 @@ pub struct SystemContextBuilding {
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
 
-    pub pk_queries: MappedArena<PkQuery>,
+    pub pk_queries: MappedArena<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
     pub unique_queries: MappedArena<UniqueQuery>,
 
-    pub pk_queries_map: HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<PkQuery>>,
+    pub pk_queries_map:
+        HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<UniqueQuery>>,
     pub collection_queries_map:
         HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<CollectionQuery>>,
     pub aggregate_queries_map:

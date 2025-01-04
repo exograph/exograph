@@ -600,11 +600,8 @@ fn create_relation(
     let self_table_id = &self_type.table_id;
 
     if field.is_pk {
-        let column_id = building
-            .database
-            .get_column_id(*self_table_id, &field.column_names[0])
-            .unwrap();
-        PostgresRelation::Pk { column_id }
+        let column_ids = building.database.get_pk_column_ids(*self_table_id);
+        PostgresRelation::Pk { column_ids }
     } else {
         // we can treat Optional fields as their inner type for the purposes of computing relations
         let field_base_typ = &field.typ.base_type();

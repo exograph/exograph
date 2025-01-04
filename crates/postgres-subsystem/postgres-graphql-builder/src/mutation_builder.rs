@@ -260,7 +260,7 @@ pub trait DataParamBuilder<D> {
         };
 
         match &field.relation {
-            PostgresRelation::Pk { column_id } => {
+            PostgresRelation::Pk { column_ids } => {
                 if Self::data_param_role() == DataParamRole::Update {
                     // A typical way clients use update mutation is to get the data along with the id,
                     // modify the data and send it back to the server. So we accept the id
@@ -283,7 +283,7 @@ pub trait DataParamBuilder<D> {
                     //
                     // We should revisit this after we support "readonly" fields (see
                     // https://github.com/exograph/exograph/issues/926)
-                    let column = column_id.get_column(&building.core_subsystem.database);
+                    let column = column_ids[0].get_column(&building.core_subsystem.database);
 
                     if column.is_auto_increment {
                         None

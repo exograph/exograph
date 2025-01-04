@@ -23,7 +23,7 @@ pub enum RelationCardinality {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PostgresRelation {
-    Pk { column_id: ColumnId },
+    Pk { column_ids: Vec<ColumnId> },
     Scalar { column_id: ColumnId },
     ManyToOne(ManyToOneRelation),
     OneToMany(OneToManyRelation),
@@ -72,9 +72,8 @@ impl OneToManyRelation {
 impl PostgresRelation {
     pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
         match &self {
-            PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
-                ColumnPathLink::Leaf(*column_id)
-            }
+            PostgresRelation::Pk { column_ids, .. } => ColumnPathLink::Leaf(column_ids[0]),
+            PostgresRelation::Scalar { column_id, .. } => ColumnPathLink::Leaf(*column_id),
             PostgresRelation::ManyToOne(relation) => relation.column_path_link(database),
             PostgresRelation::OneToMany(relation) => relation.column_path_link(database),
             PostgresRelation::Embedded => {
