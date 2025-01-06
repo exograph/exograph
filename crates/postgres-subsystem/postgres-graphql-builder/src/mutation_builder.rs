@@ -107,14 +107,20 @@ pub trait MutationBuilder {
             return vec![];
         }
 
-        let single_mutation = entity_type.pk_field().map(|_| PostgresMutation {
-            name: Self::single_mutation_name(entity_type),
-            parameters: Self::single_mutation_parameters(entity_type, building),
-            return_type: Self::single_mutation_modified_type(BaseOperationReturnType {
-                associated_type_id: entity_type_id,
-                type_name: entity_type.name.clone(),
-            }),
-        });
+        let pk_fields = entity_type.pk_fields();
+
+        let single_mutation = if pk_fields.is_empty() {
+            None
+        } else {
+            Some(PostgresMutation {
+                name: Self::single_mutation_name(entity_type),
+                parameters: Self::single_mutation_parameters(entity_type, building),
+                return_type: Self::single_mutation_modified_type(BaseOperationReturnType {
+                    associated_type_id: entity_type_id,
+                    type_name: entity_type.name.clone(),
+                }),
+            })
+        };
 
         let multi_mutation = PostgresMutation {
             name: Self::multi_mutation_name(entity_type),

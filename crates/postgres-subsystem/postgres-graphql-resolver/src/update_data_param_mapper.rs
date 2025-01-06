@@ -101,7 +101,7 @@ fn compute_update_columns<'a>(
                 }),
 
             PostgresRelation::ManyToOne(ManyToOneRelation {
-                foreign_pk_field_id,
+                foreign_pk_field_ids,
                 relation_id,
                 ..
             }) => {
@@ -111,7 +111,7 @@ fn compute_update_columns<'a>(
                 let self_column_id = column_pairs[0].self_column_id;
 
                 let self_column = self_column_id.get_column(&subsystem.core_subsystem.database);
-                let foreign_type_pk_field_name = &foreign_pk_field_id
+                let foreign_type_pk_field_name = &foreign_pk_field_ids[0]
                     .resolve(&subsystem.core_subsystem.entity_types)
                     .name;
 

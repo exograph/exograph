@@ -79,7 +79,7 @@ impl MutationBuilder for DeleteMutationBuilder {
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationParameters {
-        PostgresMutationParameters::Delete(query_builder::pk_predicate_param(
+        PostgresMutationParameters::Delete(query_builder::pk_predicate_params(
             entity_type,
             &building.predicate_types,
             &building.core_subsystem.database,
@@ -101,9 +101,9 @@ impl MutationBuilder for DeleteMutationBuilder {
         entity_type: &EntityType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationParameters {
-        PostgresMutationParameters::Delete(query_builder::collection_predicate_param(
+        PostgresMutationParameters::Delete(vec![query_builder::collection_predicate_param(
             entity_type,
             &building.predicate_types,
-        ))
+        )])
     }
 }

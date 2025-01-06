@@ -71,6 +71,17 @@ impl Database {
             .map(|column_index| new_column_id(table_id, column_index))
     }
 
+    pub fn get_column_ids_from_names(
+        &self,
+        table_id: TableId,
+        column_names: &[String],
+    ) -> Vec<ColumnId> {
+        column_names
+            .iter()
+            .map(|column_name| self.get_column_id(table_id, column_name).unwrap())
+            .collect()
+    }
+
     pub fn get_column_mut(&mut self, column_id: ColumnId) -> &mut PhysicalColumn {
         let table = self.get_table_mut(column_id.table_id);
         &mut table.columns[column_id.column_index]

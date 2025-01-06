@@ -32,7 +32,7 @@ pub enum PostgresMutationParameters {
     /// Parameters for a delete mutation such as `deleteTodo` or `deleteTodos`
     /// The only parameter is a predicate such as `id: 1` or `where: {complete: {eq: true}}`
     /// `{ deleteTodo(id: 1)` or `{ deleteTodos(where: { complete: {eq: true }}) }`
-    Delete(PredicateParameter),
+    Delete(Vec<PredicateParameter>),
 
     /// Parameters for an update mutation such as `updateTodo` or `updateTodos`
     /// It takes two parameters: a predicate such as `id: 1` or `where: {complete: {eq: true}}`
@@ -41,7 +41,7 @@ pub enum PostgresMutationParameters {
     /// `{ updateTodos(where: { complete: {eq: true }}, data: { title: "New title" }) }`
     Update {
         data_param: DataParameter,
-        predicate_param: PredicateParameter,
+        predicate_params: Vec<PredicateParameter>,
     },
 }
 
@@ -49,11 +49,21 @@ impl OperationParameters for PostgresMutationParameters {
     fn introspect(&self) -> Vec<&dyn Parameter> {
         match &self {
             PostgresMutationParameters::Create(data_param) => vec![data_param],
-            PostgresMutationParameters::Delete(predicate_param) => vec![predicate_param],
+            PostgresMutationParameters::Delete(predicate_params) => predicate_params
+                .iter()
+                .map(|p| p as &dyn Parameter)
+                .collect(),
             PostgresMutationParameters::Update {
                 data_param,
-                predicate_param,
-            } => vec![predicate_param, data_param],
+                predicate_params,
+            } => {
+                let mut params: Vec<&dyn Parameter> = predicate_params
+                    .iter()
+                    .map(|p| p as &dyn Parameter)
+                    .collect();
+                params.push(data_param);
+                params
+            }
         }
     }
 }

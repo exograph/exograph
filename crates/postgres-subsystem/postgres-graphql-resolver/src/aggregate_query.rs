@@ -44,7 +44,7 @@ impl OperationSelectionResolver for AggregateQuery {
         .await?;
 
         let query_predicate = super::predicate_mapper::compute_predicate(
-            &self.parameters.predicate_param,
+            &[&self.parameters.predicate_param],
             &field.arguments,
             subsystem,
             request_context,

@@ -10,6 +10,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::database_error::DatabaseError;
+use crate::schema::constraint::ForeignKeyConstraintColumnPair;
 use crate::sql::connect::database_client::DatabaseClient;
 use crate::{PhysicalTable, PhysicalTableName};
 
@@ -93,36 +94,39 @@ impl TableSpec {
 
         let mut column_type_mapping = HashMap::new();
 
-        for foreign_constraint in constraints.foreign_constraints.iter() {
-            // Assumption that there is only one column in the foreign key (for now a correct assumption since we don't support composite keys)
-            let self_column_name = foreign_constraint.self_columns.iter().next().unwrap();
-            let foreign_pk_column_name = foreign_constraint.foreign_columns.iter().next().unwrap();
+        for foreign_constraint in constraints.foreign_constraints.into_iter() {
+            for column_pair in foreign_constraint.column_pairs.into_iter() {
+                let ForeignKeyConstraintColumnPair {
+                    self_column,
+                    foreign_column,
+                } = column_pair;
 
-            let mut column = ColumnSpec::from_live_db(
-                client,
-                &table_name,
-                foreign_pk_column_name,
-                true,
-                None,
-                vec![],
-                Some(foreign_constraint.constraint_name.clone()),
-            )
-            .await?;
+                let mut column = ColumnSpec::from_live_db(
+                    client,
+                    &foreign_constraint.foreign_table,
+                    &foreign_column,
+                    true,
+                    None,
+                    vec![],
+                    Some(foreign_constraint.constraint_name.clone()),
+                )
+                .await?;
 
-            issues.append(&mut column.issues);
+                issues.append(&mut column.issues);
 
-            if let Some(spec) = column.value {
-                column_type_mapping.insert(
-                    self_column_name.clone(),
-                    (
-                        ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
-                            foreign_table_name: foreign_constraint.foreign_table.clone(),
-                            foreign_pk_column_name: foreign_pk_column_name.clone(),
-                            foreign_pk_type: Box::new(spec.typ),
-                        }),
-                        spec.group_name.clone(),
-                    ),
-                );
+                if let Some(spec) = column.value {
+                    column_type_mapping.insert(
+                        self_column.clone(),
+                        (
+                            ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
+                                foreign_table_name: foreign_constraint.foreign_table.clone(),
+                                foreign_pk_column_name: foreign_column.clone(),
+                                foreign_pk_type: Box::new(spec.typ),
+                            }),
+                            spec.group_name.clone(),
+                        ),
+                    );
+                }
             }
         }
 

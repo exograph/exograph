@@ -181,11 +181,9 @@ fn expand_type_relations(
         }
 
         if field.self_column {
-            let self_column_ids: Vec<ColumnId> = field
-                .column_names
-                .iter()
-                .map(|name| building.database.get_column_id(table_id, name).unwrap())
-                .collect();
+            let self_column_ids = building
+                .database
+                .get_column_ids_from_names(table_id, &field.column_names);
             if let Some(relation) =
                 compute_many_to_one_relation(field, self_column_ids.clone(), resolved_env, building)
             {

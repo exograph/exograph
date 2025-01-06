@@ -254,7 +254,7 @@ fn expand_dynamic_default_values(
                                 resolved_env.function_definitions,
                             )?;
 
-                            match entity_field.relation {
+                            match &entity_field.relation {
                                 PostgresRelation::Scalar { .. } => {
                                     let field_type = &entity_field.typ;
                                     if !matches(field_type, context_type) {
@@ -267,10 +267,10 @@ fn expand_dynamic_default_values(
                                     }
                                 }
                                 PostgresRelation::ManyToOne(ManyToOneRelation {
-                                    foreign_pk_field_id: foreign_field_id,
+                                    foreign_pk_field_ids,
                                     ..
                                 }) => {
-                                    let foreign_type_pk = &foreign_field_id
+                                    let foreign_type_pk = &foreign_pk_field_ids[0]
                                         .resolve(building.entity_types.values_ref())
                                         .typ;
 
@@ -600,7 +600,9 @@ fn create_relation(
     let self_table_id = &self_type.table_id;
 
     if field.is_pk {
-        let column_ids = building.database.get_pk_column_ids(*self_table_id);
+        let column_ids = building
+            .database
+            .get_column_ids_from_names(*self_table_id, &field.column_names);
         PostgresRelation::Pk { column_ids }
     } else {
         // we can treat Optional fields as their inner type for the purposes of computing relations
@@ -797,13 +799,13 @@ fn compute_one_to_many_relation(
         .database
         .get_column_id(*self_table_id, &field.column_names[0])
         .unwrap();
-    let foreign_pk_field_id = foreign_type.pk_field_id(foreign_type_id).unwrap();
+    let foreign_pk_field_ids = foreign_type.pk_field_ids(foreign_type_id);
 
     let relation_id = self_column_id.get_mto_relation(&building.database).unwrap();
 
     PostgresRelation::ManyToOne(ManyToOneRelation {
         cardinality,
-        foreign_pk_field_id,
+        foreign_pk_field_ids,
         relation_id,
     })
 }

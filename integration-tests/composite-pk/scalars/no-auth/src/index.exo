@@ -1,6 +1,7 @@
 @postgres
 module PeopleDatabase {
   @access(true)
+  @plural("People")
   type Person {
     @pk firstName: String
     @pk lastName: String
@@ -8,6 +9,8 @@ module PeopleDatabase {
     address: Address?
   }
 
+  @access(true)
+  @plural("Addresses")
   type Address {
     @pk street: String
     @pk city: String

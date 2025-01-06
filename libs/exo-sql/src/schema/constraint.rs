@@ -18,20 +18,24 @@ use crate::{
 
 pub(super) struct PrimaryKeyConstraint {
     pub(super) _constraint_name: String,
-    pub(super) columns: HashSet<String>,
+    pub(super) columns: Vec<String>,
+}
+
+pub(super) struct ForeignKeyConstraintColumnPair {
+    pub(super) self_column: String,
+    pub(super) foreign_column: String,
 }
 
 pub(super) struct ForeignKeyConstraint {
     pub(super) constraint_name: String,
-    pub(super) self_columns: HashSet<String>,
+    pub(super) column_pairs: Vec<ForeignKeyConstraintColumnPair>,
     pub(super) foreign_table: PhysicalTableName,
-    pub(super) foreign_columns: HashSet<String>,
 }
 
 #[derive(Debug)]
 pub(super) struct UniqueConstraint {
     pub(super) constraint_name: String,
-    pub(super) columns: HashSet<String>,
+    pub(super) columns: Vec<String>,
 }
 
 pub(super) struct Constraints {
@@ -102,12 +106,20 @@ impl Constraints {
 
                 ForeignKeyConstraint {
                     constraint_name: conname.to_string(),
-                    self_columns,
+                    column_pairs: self_columns
+                        .into_iter()
+                        .zip(foreign_columns.into_iter())
+                        .map(
+                            |(self_column, foreign_column)| ForeignKeyConstraintColumnPair {
+                                self_column,
+                                foreign_column,
+                            },
+                        )
+                        .collect(),
                     foreign_table: PhysicalTableName {
                         name: foreign_table,
                         schema: None,
                     },
-                    foreign_columns,
                 }
             })
             .collect::<Vec<_>>();
@@ -132,7 +144,7 @@ impl Constraints {
         })
     }
 
-    fn parse_column_list(column_list: &str) -> HashSet<String> {
+    fn parse_column_list(column_list: &str) -> Vec<String> {
         // Basically just split the string on commas and remove the quotes (the regex takes care of the quotes)
         LIST_RE
             .captures_iter(column_list)

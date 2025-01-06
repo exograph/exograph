@@ -34,11 +34,11 @@ pub enum PostgresRelation {
 pub struct ManyToOneRelation {
     // For the `Concert.venue` field (assuming [Concert] -> Venue), we will have:
     // - cardinality: Unbounded
-    // - foreign_pk_field_id: Venue.id
+    // - foreign_pk_field_ids: [Venue.id]
     // - relation_id.self_column_id: concerts.venue_id
     // - relation_id.foreign_pk_column_id: venues.id
     pub cardinality: RelationCardinality,
-    pub foreign_pk_field_id: EntityFieldId,
+    pub foreign_pk_field_ids: Vec<EntityFieldId>,
     pub relation_id: ManyToOneId,
 }
 

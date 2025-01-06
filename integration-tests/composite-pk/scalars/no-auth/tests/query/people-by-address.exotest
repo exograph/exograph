@@ -1,0 +1,148 @@
+operation: |
+    fragment personInfo on Person {
+      firstName
+      lastName
+      address {
+        street
+        city
+        state
+        zip
+      }
+    }
+    query {
+      all: people @unordered {
+        ...personInfo
+      }
+      maPeople: people(where: { address: { state: {eq: "MA"} } }) @unordered {
+        ...personInfo
+      }
+    }
+response: |
+    {
+      "data": {
+        "all": [
+          {
+            "firstName": "John",
+            "lastName": "DoeAlbany",
+            "address": {
+              "street": "1 Main St",
+              "city": "Albany",
+              "state": "NY",
+              "zip": 10001
+            }
+          },
+          {
+            "firstName": "Jane",
+            "lastName": "SmithAlbany",
+            "address": {
+              "street": "1 Main St",
+              "city": "Albany",
+              "state": "NY",
+              "zip": 10001
+            }
+          },
+          {
+            "firstName": "John",
+            "lastName": "DoeBoston",
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          },
+          {
+            "firstName": "Jane",
+            "lastName": "SmithBoston",
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          },
+          {
+            "firstName": "John",
+            "lastName": "DoeChicago",
+            "address": {
+              "street": "3 Main St",
+              "city": "Chicago",
+              "state": "IL",
+              "zip": 60601
+            }
+          },
+          {
+            "firstName": "Jane",
+            "lastName": "SmithChicago",
+            "address": {
+              "street": "3 Main St",
+              "city": "Chicago",
+              "state": "IL",
+              "zip": 60601
+            }
+          },
+          {
+            "firstName": "John",
+            "lastName": "DoePlymouth",
+            "address": {
+              "street": "4 Main St",
+              "city": "Plymouth",
+              "state": "MA",
+              "zip": 23600
+            }
+          },
+          {
+            "firstName": "Jane",
+            "lastName": "SmithPlymouth",
+            "address": {
+              "street": "4 Main St",
+              "city": "Plymouth",
+              "state": "MA",
+              "zip": 23600
+            }
+          }
+        ],
+        "maPeople": [
+          {
+            "firstName": "John",
+            "lastName": "DoeBoston",
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          },
+          {
+            "firstName": "Jane",
+            "lastName": "SmithBoston",
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          },
+          {
+            "firstName": "John",
+            "lastName": "DoePlymouth",
+            "address": {
+              "street": "4 Main St",
+              "city": "Plymouth",
+              "state": "MA",
+              "zip": 23600
+            }
+          },
+          {
+            "firstName": "Jane",
+            "lastName": "SmithPlymouth",
+            "address": {
+              "street": "4 Main St",
+              "city": "Plymouth",
+              "state": "MA",
+              "zip": 23600
+            }
+          }
+        ]
+      }
+    }

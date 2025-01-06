@@ -1,0 +1,42 @@
+operation: |
+    fragment personInfo on Person {
+      firstName
+      lastName
+      address {
+        street
+        city
+        state
+        zip
+      }
+    }
+    mutation {
+      maPeople: deletePeople(where: { address: { state: {eq: "MA"} } }) @unordered {
+        ...personInfo
+      }
+      nonExisting: deletePeople(where: { address: { state: {eq: "CA"} } }) @unordered {
+        ...personInfo
+      }
+    }
+auth: |
+    {
+      firstName: "Jane",
+      lastName: "SmithBoston"
+    }
+response: |
+    {
+      "data": {
+        "maPeople": [
+          {
+            "firstName": "Jane",
+            "lastName": "SmithBoston",
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          }
+        ],
+        "nonExisting": []
+      }
+    }

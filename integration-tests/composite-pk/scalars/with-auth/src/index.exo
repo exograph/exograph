@@ -1,0 +1,29 @@
+context AuthContext {
+  @jwt firstName: String
+  @jwt lastName: String
+  @jwt role: String
+}
+
+
+@postgres
+module PeopleDatabase {
+  @access(AuthContext.role == "admin" || (AuthContext.firstName == self.firstName && AuthContext.lastName == self.lastName))
+  @plural("People")
+  type Person {
+    @pk firstName: String
+    @pk lastName: String
+    age: Int
+    address: Address?
+  }
+
+  // Addresses are only accessible to admins or the person they belong to
+  @access(AuthContext.role == "admin" || (self.people.some(p => p.firstName == AuthContext.firstName && p.lastName == AuthContext.lastName)))
+  @plural("Addresses")
+  type Address {
+    @pk street: String
+    @pk city: String
+    @pk state: String
+    @pk zip: Int
+    people: Set<Person>?
+  }
+}

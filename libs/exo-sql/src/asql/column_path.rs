@@ -77,6 +77,28 @@ impl ColumnPathLink {
         column_pairs: Vec<RelationColumnPair>,
         linked_table_alias: Option<String>,
     ) -> Self {
+        assert!(!column_pairs.is_empty(), "Column pairs must not be empty");
+
+        assert!(
+            column_pairs
+                .iter()
+                .all(|RelationColumnPair { self_column_id, .. }| {
+                    self_column_id.table_id == column_pairs[0].self_column_id.table_id
+                }),
+            "All self columns in the column pairs must refer to the same table"
+        );
+
+        assert!(
+            column_pairs.iter().all(
+                |RelationColumnPair {
+                     foreign_column_id, ..
+                 }| {
+                    foreign_column_id.table_id == column_pairs[0].foreign_column_id.table_id
+                }
+            ),
+            "All foreign columns in the column pairs must refer to the same table"
+        );
+
         Self::Relation(RelationLink {
             column_pairs,
             linked_table_alias,
@@ -104,6 +126,16 @@ pub struct RelationLink {
     /// to "main_venue_id_table" and "alternative_venue_id_table" respectively. Then we can join the venues table twice with different aliases.
     /// The alias name should not matter as long as it is unique within the self table
     pub linked_table_alias: Option<String>,
+}
+
+impl RelationLink {
+    pub fn self_table_id(&self) -> TableId {
+        self.column_pairs[0].self_column_id.table_id
+    }
+
+    pub fn linked_table_id(&self) -> TableId {
+        self.column_pairs[0].foreign_column_id.table_id
+    }
 }
 
 impl PartialOrd for RelationLink {

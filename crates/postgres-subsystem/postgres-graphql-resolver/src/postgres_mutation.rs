@@ -68,10 +68,10 @@ impl OperationResolver for PostgresMutation {
                 )
                 .await?,
             ),
-            PostgresMutationParameters::Delete(predicate_param) => AbstractOperation::Delete(
+            PostgresMutationParameters::Delete(predicate_params) => AbstractOperation::Delete(
                 delete_operation(
                     return_type,
-                    predicate_param,
+                    predicate_params,
                     field,
                     abstract_select,
                     subsystem,
@@ -81,12 +81,12 @@ impl OperationResolver for PostgresMutation {
             ),
             PostgresMutationParameters::Update {
                 data_param,
-                predicate_param,
+                predicate_params,
             } => AbstractOperation::Update(
                 update_operation(
                     return_type,
                     data_param,
-                    predicate_param,
+                    predicate_params,
                     field,
                     abstract_select,
                     subsystem,
@@ -121,7 +121,7 @@ async fn create_operation<'content>(
 
 async fn delete_operation<'content>(
     return_type: &'content OperationReturnType<EntityType>,
-    predicate_param: &'content PredicateParameter,
+    predicate_params: &'content [PredicateParameter],
     field: &'content ValidatedField,
     select: AbstractSelect,
     subsystem: &'content PostgresGraphQLSubsystem,
@@ -140,7 +140,7 @@ async fn delete_operation<'content>(
     .await?;
 
     let arg_predicate = compute_predicate(
-        predicate_param,
+        &predicate_params.iter().collect::<Vec<_>>(),
         &field.arguments,
         subsystem,
         request_context,
@@ -158,7 +158,7 @@ async fn delete_operation<'content>(
 async fn update_operation<'content>(
     return_type: &'content OperationReturnType<EntityType>,
     data_param: &'content DataParameter,
-    predicate_param: &'content PredicateParameter,
+    predicate_param: &'content [PredicateParameter],
     field: &'content ValidatedField,
     select: AbstractSelect,
     subsystem: &'content PostgresGraphQLSubsystem,
@@ -176,7 +176,7 @@ async fn update_operation<'content>(
     .await?;
 
     let arg_predicate = compute_predicate(
-        predicate_param,
+        &predicate_param.iter().collect::<Vec<_>>(),
         &field.arguments,
         subsystem,
         request_context,

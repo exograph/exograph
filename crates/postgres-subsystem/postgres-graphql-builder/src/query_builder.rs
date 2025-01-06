@@ -161,17 +161,20 @@ fn expand_pk_query(
 
     if let Some(existing_query) = existing_query {
         existing_query.parameters.predicate_params =
-            vec![pk_predicate_param(entity_type, predicate_types, database)];
+            pk_predicate_params(entity_type, predicate_types, database);
     }
 }
 
-pub fn pk_predicate_param(
+pub fn pk_predicate_params(
     entity_type: &EntityType,
     predicate_types: &MappedArena<PredicateParameterType>,
     database: &Database,
-) -> PredicateParameter {
-    let pk_field = entity_type.pk_field().unwrap();
-    implicit_equals_predicate_param(pk_field, predicate_types, database)
+) -> Vec<PredicateParameter> {
+    let pk_fields = entity_type.pk_fields();
+    pk_fields
+        .iter()
+        .map(|field| implicit_equals_predicate_param(field, predicate_types, database))
+        .collect()
 }
 
 fn implicit_equals_predicate_param(

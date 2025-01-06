@@ -1,0 +1,72 @@
+operation: |
+    fragment personInfo on Person {
+      firstName
+      lastName
+      age
+      address {
+        street
+        city
+        state
+        zip
+      }
+    }
+    mutation {
+      maPeople: updatePeople(where: { address: { state: {eq: "MA"} } }, data: { age: 20 }) @unordered {
+        ...personInfo
+      }
+      nonExisting: updatePeople(where: { address: { state: {eq: "CA"} } }, data: { age: 30 }) @unordered {
+        ...personInfo
+      }
+    }
+response: |
+    {
+      "data": {
+        "maPeople": [
+          {
+            "firstName": "John",
+            "lastName": "DoeBoston",
+            "age": 20,
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          },
+          {
+            "firstName": "Jane",
+            "lastName": "SmithBoston",
+            "age": 20,
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          },
+          {
+            "firstName": "John",
+            "lastName": "DoePlymouth",
+            "age": 20,
+            "address": {
+              "street": "4 Main St",
+              "city": "Plymouth",
+              "state": "MA",
+              "zip": 23600
+            }
+          },
+          {
+            "firstName": "Jane",
+            "lastName": "SmithPlymouth",
+            "age": 20,
+            "address": {
+              "street": "4 Main St",
+              "city": "Plymouth",
+              "state": "MA",
+              "zip": 23600
+            }
+          }
+        ],
+        "nonExisting": []
+      }
+    }

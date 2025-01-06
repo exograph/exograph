@@ -102,63 +102,83 @@ async fn map_single<'a>(
     )
     .await?;
 
-    let mapped = data_type.fields.iter().map(|field| async move {
-        let field_arg = super::util::get_argument_field(argument, &field.name);
+    use futures::stream::{self, StreamExt};
 
-        // If the argument has not been supplied, but has a default value, extract it from the context
-        let field_arg = match field_arg {
-            Some(_) => Ok(field_arg),
-            None => {
-                if let Some(selection) = &field.dynamic_default_value {
-                    subsystem
-                        .extract_context_selection(request_context, selection)
-                        .await
-                } else {
-                    Ok(None)
+    let mapped = stream::iter(&data_type.fields)
+        .map(|field| async move {
+            let field_arg = super::util::get_argument_field(argument, &field.name);
+
+            // If the argument has not been supplied, but has a default value, extract it from the context
+            let field_arg = match field_arg {
+                Some(_) => Ok(field_arg),
+                None => {
+                    if let Some(selection) = &field.dynamic_default_value {
+                        subsystem
+                            .extract_context_selection(request_context, selection)
+                            .await
+                    } else {
+                        Ok(None)
+                    }
                 }
             }
-        }
-        .ok()?;
+            .ok()?;
 
-        field_arg.map(|field_arg| async move {
-            match &field.relation {
-                PostgresRelation::Pk { column_ids } => {
-                    map_self_column(column_ids[0], field, field_arg, subsystem).await
-                }
-
-                PostgresRelation::Scalar { column_id } => {
-                    map_self_column(*column_id, field, field_arg, subsystem).await
-                }
-
-                PostgresRelation::ManyToOne(ManyToOneRelation { relation_id, .. }) => {
-                    let ManyToOne { column_pairs, .. } =
-                        relation_id.deref(&subsystem.core_subsystem.database);
-                    map_self_column(column_pairs[0].self_column_id, field, field_arg, subsystem)
+            field_arg.map(|field_arg| async move {
+                match &field.relation {
+                    PostgresRelation::Pk { column_ids } => {
+                        // let relevat_column = column_ids.iter().find(|column_id| column_id == field.)
+                        join_all(column_ids.iter().map(|column_id| {
+                            map_self_column(*column_id, field, field_arg, subsystem)
+                        }))
                         .await
-                }
+                    }
 
-                PostgresRelation::OneToMany(one_to_many_relation) => {
-                    map_foreign(
-                        field,
-                        field_arg,
-                        one_to_many_relation,
-                        subsystem,
-                        request_context,
-                    )
-                    .await
+                    PostgresRelation::Scalar { column_id } => {
+                        vec![map_self_column(*column_id, field, field_arg, subsystem).await]
+                    }
+
+                    PostgresRelation::ManyToOne(ManyToOneRelation { relation_id, .. }) => {
+                        let ManyToOne { column_pairs, .. } =
+                            relation_id.deref(&subsystem.core_subsystem.database);
+                        vec![
+                            map_self_column(
+                                column_pairs[0].self_column_id,
+                                field,
+                                field_arg,
+                                subsystem,
+                            )
+                            .await,
+                        ]
+                    }
+
+                    PostgresRelation::OneToMany(one_to_many_relation) => {
+                        vec![
+                            map_foreign(
+                                field,
+                                field_arg,
+                                one_to_many_relation,
+                                subsystem,
+                                request_context,
+                            )
+                            .await,
+                        ]
+                    }
+
+                    PostgresRelation::Embedded => {
+                        panic!("Embedded relations cannot be used in create operations")
+                    }
                 }
-                PostgresRelation::Embedded => {
-                    panic!("Embedded relations cannot be used in create operations")
-                }
-            }
+            })
         })
-    });
+        .collect::<Vec<_>>()
+        .await;
 
     let row = join_all(mapped).await;
     let row = row.into_iter().flatten().collect::<Vec<_>>();
-    let row = try_join_all(row).await?;
+    let row: Result<Vec<InsertionElement>, PostgresExecutionError> =
+        join_all(row).await.into_iter().flatten().collect();
 
-    Ok(InsertionRow { elems: row })
+    Ok(InsertionRow { elems: row? })
 }
 
 async fn map_self_column<'a>(
@@ -168,12 +188,13 @@ async fn map_self_column<'a>(
     subsystem: &'a PostgresGraphQLSubsystem,
 ) -> Result<InsertionElement, PostgresExecutionError> {
     let key_column = key_column_id.get_column(&subsystem.core_subsystem.database);
+
     let argument_value = match &field.relation {
         PostgresRelation::ManyToOne(ManyToOneRelation {
-            foreign_pk_field_id,
+            foreign_pk_field_ids,
             ..
         }) => {
-            let foreign_type_pk_field_name = &foreign_pk_field_id
+            let foreign_type_pk_field_name = &foreign_pk_field_ids[0]
                 .resolve(&subsystem.core_subsystem.entity_types)
                 .name;
             match super::util::get_argument_field(argument, foreign_type_pk_field_name) {

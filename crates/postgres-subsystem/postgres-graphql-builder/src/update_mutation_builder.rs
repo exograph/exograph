@@ -121,7 +121,7 @@ impl MutationBuilder for UpdateMutationBuilder {
     ) -> PostgresMutationParameters {
         PostgresMutationParameters::Update {
             data_param: Self::data_param(entity_type, building, false),
-            predicate_param: query_builder::pk_predicate_param(
+            predicate_params: query_builder::pk_predicate_params(
                 entity_type,
                 &building.predicate_types,
                 &building.core_subsystem.database,
@@ -146,10 +146,10 @@ impl MutationBuilder for UpdateMutationBuilder {
     ) -> PostgresMutationParameters {
         PostgresMutationParameters::Update {
             data_param: Self::data_param(entity_type, building, true),
-            predicate_param: query_builder::collection_predicate_param(
+            predicate_params: vec![query_builder::collection_predicate_param(
                 entity_type,
                 &building.predicate_types,
-            ),
+            )],
         }
     }
 }
@@ -313,7 +313,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                         // For a non-nested type ("base type"), we already have the PK field, but it is optional. So here
                         // we make it required (by not wrapping the entity_pk_field it as optional)
                         if let Some(base_type_pk_field) = base_type_pk_field {
-                            let entity_pk_field = entity_type.pk_field().unwrap();
+                            let entity_pk_field = entity_type.pk_fields()[0];
                             base_type_pk_field.typ = to_mutation_type(
                                 &entity_pk_field.typ,
                                 MutationTypeKind::Update,
