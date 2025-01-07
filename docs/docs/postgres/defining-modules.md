@@ -15,8 +15,8 @@ module TodoDatabase {
 
 The `@postgres` annotation takes two optional parameters:
 
-- `schema`: The default schema for all tables in the module. See [specifying a schema](customizing-types.md#specifying-a-schema) for more details.
-- `managed`: The default managed state for all tables in the module. See [unmanaged views](customizing-types.md#unmanaged-views) for more details.
+- `schema`: The default schema for all tables in the module. See [specifying a schema](customizing-types.md#table-schema) for more details.
+- `managed`: The default managed state for all tables in the module. See [unmanaged views](customizing-types.md#using-unmanaged-tables) for more details.
 
 For example, the following module will associated the `Product` type with the `products` table in the `commerce` schema.
 

@@ -146,7 +146,7 @@ module TodoDatabase {
 
 Exograph will map the `ProductProfit` type to the `product_profits` view (it could also be a table, possibly a foreign table). However, Exograph will ignore the `ProductProfit` type during schema migration.
 
-Exograph will apply access control and infer queries for the `ProductProfit` type as usual, including [aggregated queries](operations/queries.md#aggregated-query). If you have an unmanaged type representing a view, you will typically want to set `mutation=false`, thus removing the mutation APIs for it. However, this is more of a convention than a restriction imposed by Exograph. Therefore, you may put any other access control rules if you want to modify the underlying data through the unmanaged type.
+Exograph will apply access control and infer queries for the `ProductProfit` type as usual, including [aggregated queries](operations/queries.md#aggregate-query). If you have an unmanaged type representing a view, you will typically want to set `mutation=false`, thus removing the mutation APIs for it. However, this is more of a convention than a restriction imposed by Exograph. Therefore, you may put any other access control rules if you want to modify the underlying data through the unmanaged type.
 
 If you allow mutation through a managed type for a view, you will want to make any derived fields read-only. For example, if you allow mutation through the `ProductProfit` type, you will want to make the `profit` field read-only.
 
@@ -229,7 +229,7 @@ module ConcertModule {
 
 ### Assigning primary key
 
-The `@pk` annotation designates the primary key of a type. The current implementation of Exograph only supports a single primary key (we will lift this restriction in the future):
+The `@pk` annotation designates the primary key of a type. Typically, you will mark one of the fields as the primary key, but Exograph supports composite primary keys as well.
 
 #### Auto-incrementing primary key
 
@@ -267,6 +267,34 @@ type Venue {
   ...
 }
 ```
+
+#### Composite primary key
+
+You can also specify a composite primary key by marking multiple fields with the `@pk` annotation. For example, if you want to make the combination of the `firstName` and `lastName` fields the primary key of the `Person` type and the combination of the `street`, `city`, `state`, and `zip` fields the primary key of the `Address` type, you can use the following definition:
+
+```exo
+@postgres
+module PeopleDatabase {
+  @access(true)
+  type Person {
+    @pk firstName: String
+    @pk lastName: String
+    age: Int
+    address: Address?
+  }
+
+  @access(true)
+  type Address {
+    @pk street: String
+    @pk city: String
+    @pk state: String
+    @pk zip: Int
+    people: Set<Person>?
+  }
+}
+```
+
+Other than marking multiple fields with `@pk`, all other aspects of the primary key are the same as for a single primary key.
 
 ### Specifying a default value
 

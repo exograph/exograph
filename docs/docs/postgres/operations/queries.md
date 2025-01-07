@@ -26,6 +26,16 @@ concert(id: 5) {
 }
 ```
 
+If a type has a composite primary key, Exograph enforces that you provide all the fields of the primary key as arguments to the query. For example, if the `Person` type has a composite primary key of `firstName` and `lastName`, you can use the following query to get a person by their first and last name:
+
+```graphql
+person(firstName: "John", lastName: "Doe") {
+  id
+  firstName
+  lastName
+}
+```
+
 ## Collection Query
 
 When you want to display a list of entities, for example, when displaying a list of concerts in a given year, you can use the query to get a list of entities. The query to get a list of entities is the "camelCased" version of the pluralized entity type. For example, if the entity type is `Concert`, the query name will be `concerts`, whereas if the entity type is `ShoppingCart`, the query name will be `shoppingCarts`.
