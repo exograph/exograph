@@ -47,7 +47,8 @@ values:
               Plain:
                 type_name: Int
                 is_primitive: true
-            column_name: custom_id
+            column_names:
+              - custom_id
             self_column: true
             is_pk: true
             access:
@@ -72,7 +73,8 @@ values:
               Plain:
                 type_name: String
                 is_primitive: true
-            column_name: custom_title
+            column_names:
+              - custom_title
             self_column: true
             is_pk: false
             access:
@@ -97,7 +99,8 @@ values:
               Plain:
                 type_name: Venue
                 is_primitive: false
-            column_name: custom_venue_id
+            column_names:
+              - custom_venue_id
             self_column: true
             is_pk: false
             access:
@@ -120,7 +123,8 @@ values:
               Plain:
                 type_name: Int
                 is_primitive: true
-            column_name: reserved
+            column_names:
+              - reserved
             self_column: true
             is_pk: false
             access:
@@ -148,7 +152,8 @@ values:
               Plain:
                 type_name: Instant
                 is_primitive: true
-            column_name: time
+            column_names:
+              - time
             self_column: true
             is_pk: false
             access:
@@ -173,7 +178,8 @@ values:
               Plain:
                 type_name: Decimal
                 is_primitive: true
-            column_name: price
+            column_names:
+              - price
             self_column: true
             is_pk: false
             access:
@@ -215,7 +221,8 @@ values:
               Plain:
                 type_name: Int
                 is_primitive: true
-            column_name: custom_id
+            column_names:
+              - custom_id
             self_column: true
             is_pk: true
             access:
@@ -238,7 +245,8 @@ values:
               Plain:
                 type_name: String
                 is_primitive: true
-            column_name: custom_name
+            column_names:
+              - custom_name
             self_column: true
             is_pk: false
             access:
@@ -262,7 +270,8 @@ values:
                 Plain:
                   type_name: Concert
                   is_primitive: false
-            column_name: custom_venue_id
+            column_names:
+              - custom_venue_id
             self_column: false
             is_pk: false
             access:
@@ -285,7 +294,8 @@ values:
               Plain:
                 type_name: Int
                 is_primitive: true
-            column_name: capacity
+            column_names:
+              - capacity
             self_column: true
             is_pk: false
             access:
@@ -311,7 +321,8 @@ values:
               Plain:
                 type_name: Float
                 is_primitive: true
-            column_name: latitude
+            column_names:
+              - latitude
             self_column: true
             is_pk: false
             access:

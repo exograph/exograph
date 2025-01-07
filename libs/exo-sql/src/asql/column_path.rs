@@ -12,7 +12,7 @@ use std::cmp::Ordering;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    sql::{predicate::ParamEquality, SQLParamContainer},
+    sql::{predicate::ParamEquality, relation::RelationColumnPair, SQLParamContainer},
     ColumnId, Database, TableId,
 };
 
@@ -74,36 +74,68 @@ pub enum ColumnPathLink {
 
 impl ColumnPathLink {
     pub fn relation(
-        self_column_id: ColumnId,
-        linked_column_id: ColumnId,
+        column_pairs: Vec<RelationColumnPair>,
         linked_table_alias: Option<String>,
     ) -> Self {
+        assert!(!column_pairs.is_empty(), "Column pairs must not be empty");
+
+        assert!(
+            column_pairs
+                .iter()
+                .all(|RelationColumnPair { self_column_id, .. }| {
+                    self_column_id.table_id == column_pairs[0].self_column_id.table_id
+                }),
+            "All self columns in the column pairs must refer to the same table"
+        );
+
+        assert!(
+            column_pairs.iter().all(
+                |RelationColumnPair {
+                     foreign_column_id, ..
+                 }| {
+                    foreign_column_id.table_id == column_pairs[0].foreign_column_id.table_id
+                }
+            ),
+            "All foreign columns in the column pairs must refer to the same table"
+        );
+
         Self::Relation(RelationLink {
-            self_column_id,
-            foreign_column_id: linked_column_id,
+            column_pairs,
             linked_table_alias,
         })
     }
 
-    pub fn self_column_id(&self) -> ColumnId {
+    pub fn self_column_ids(&self) -> Vec<ColumnId> {
         match self {
-            ColumnPathLink::Relation(relation) => relation.self_column_id,
-            ColumnPathLink::Leaf(column_id) => *column_id,
+            ColumnPathLink::Relation(relation) => relation
+                .column_pairs
+                .iter()
+                .map(|pair| pair.self_column_id)
+                .collect(),
+            ColumnPathLink::Leaf(column_id) => vec![*column_id],
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RelationLink {
-    /// The column in the current table that is linked to the next table.
-    pub self_column_id: ColumnId,
-    /// The column in the next table that is linked to the current table.
-    pub foreign_column_id: ColumnId,
+    pub column_pairs: Vec<RelationColumnPair>,
+
     /// Alias that could be used when joining the table, etc. Useful when multiple columns in the self table refers to the same linked column
     /// For example, if "concerts" has "main_venue_id" and "alternative_venue_id" (both link to the venues.id column), we can set linked_table_alias
     /// to "main_venue_id_table" and "alternative_venue_id_table" respectively. Then we can join the venues table twice with different aliases.
     /// The alias name should not matter as long as it is unique within the self table
     pub linked_table_alias: Option<String>,
+}
+
+impl RelationLink {
+    pub fn self_table_id(&self) -> TableId {
+        self.column_pairs[0].self_column_id.table_id
+    }
+
+    pub fn linked_table_id(&self) -> TableId {
+        self.column_pairs[0].foreign_column_id.table_id
+    }
 }
 
 impl PartialOrd for RelationLink {
@@ -114,8 +146,8 @@ impl PartialOrd for RelationLink {
 
 impl Ord for RelationLink {
     fn cmp(&self, other: &Self) -> Ordering {
-        (self.self_column_id, self.foreign_column_id)
-            .cmp(&(other.self_column_id, other.foreign_column_id))
+        (&self.column_pairs, &self.linked_table_alias)
+            .cmp(&(&other.column_pairs, &other.linked_table_alias))
     }
 }
 
@@ -127,9 +159,9 @@ impl ColumnPathLink {
     /// be the self column and `concert.venue_id` would be the linked column.
     pub fn is_one_to_many(&self, database: &Database) -> bool {
         match self {
-            ColumnPathLink::Relation(RelationLink { self_column_id, .. }) => {
-                self_column_id.get_column(database).is_pk
-            }
+            ColumnPathLink::Relation(RelationLink { column_pairs, .. }) => column_pairs
+                .iter()
+                .any(|pair| pair.self_column_id.get_column(database).is_pk),
             ColumnPathLink::Leaf(_) => false,
         }
     }
@@ -186,7 +218,7 @@ impl PhysicalColumnPath {
     }
 
     pub fn lead_table_id(&self) -> TableId {
-        self.0[0].self_column_id().table_id
+        self.0[0].self_column_ids()[0].table_id
     }
 
     pub fn push(mut self, link: ColumnPathLink) -> Self {
@@ -197,9 +229,9 @@ impl PhysicalColumnPath {
             matches!(
                 self.0.last().unwrap(),
                 ColumnPathLink::Relation(RelationLink {
-                    foreign_column_id,
+                    column_pairs,
                     ..
-                }) if foreign_column_id.table_id == link.self_column_id().table_id
+                }) if column_pairs[0].foreign_column_id.table_id == link.self_column_ids()[0].table_id
             ),
             "Expected link to point to next table"
         );
@@ -216,9 +248,9 @@ impl PhysicalColumnPath {
         assert!(matches!(
             self.0.last().unwrap(),
             ColumnPathLink::Relation(RelationLink {
-                foreign_column_id,
+                column_pairs,
                 ..
-            }) if foreign_column_id.table_id == tail.0[0].self_column_id().table_id
+            }) if column_pairs[0].foreign_column_id.table_id == tail.0[0].self_column_ids()[0].table_id
         ));
 
         self.0.extend(tail.0);

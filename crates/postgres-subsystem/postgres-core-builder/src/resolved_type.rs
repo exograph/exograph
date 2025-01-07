@@ -70,7 +70,7 @@ impl ToPlural for ResolvedCompositeType {
 pub struct ResolvedField {
     pub name: String,
     pub typ: FieldType<ResolvedFieldType>,
-    pub column_name: String,
+    pub column_names: Vec<String>,
     pub self_column: bool, // is the column name in the same table or does it point to a column in a different table?
     pub is_pk: bool,
     pub access: ResolvedAccess,
@@ -155,8 +155,8 @@ impl ResolvedCompositeType {
         self.fields.iter().find(|f| f.is_pk)
     }
 
-    pub fn field_by_column_name(&self, column_name: &str) -> Option<&ResolvedField> {
-        self.fields.iter().find(|f| f.column_name == column_name)
+    pub fn field_by_column_names(&self, column_names: &[String]) -> Option<&ResolvedField> {
+        self.fields.iter().find(|f| f.column_names == column_names)
     }
 
     pub fn unique_constraints(&self) -> HashMap<String, Vec<&ResolvedField>> {

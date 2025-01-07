@@ -86,6 +86,8 @@ impl Migration {
                 | SchemaOp::CreateExtension { .. }
                 | SchemaOp::CreateUniqueConstraint { .. }
                 | SchemaOp::RemoveUniqueConstraint { .. }
+                | SchemaOp::CreateForeignKeyReference { .. }
+                | SchemaOp::DeleteForeignKeyReference { .. }
                 | SchemaOp::SetColumnDefaultValue { .. }
                 | SchemaOp::UnsetColumnDefaultValue { .. }
                 | SchemaOp::SetNotNull { .. }
@@ -100,13 +102,19 @@ impl Migration {
             let statement = diff.to_sql();
 
             for constraint in statement.pre_statements.into_iter() {
-                pre_statements.push(MigrationStatement::new(constraint, is_destructive));
+                if !constraint.trim().is_empty() {
+                    pre_statements.push(MigrationStatement::new(constraint, is_destructive));
+                }
             }
 
-            statements.push(MigrationStatement::new(statement.statement, is_destructive));
+            if !statement.statement.trim().is_empty() {
+                statements.push(MigrationStatement::new(statement.statement, is_destructive));
+            }
 
             for constraint in statement.post_statements.into_iter() {
-                post_statements.push(MigrationStatement::new(constraint, is_destructive));
+                if !constraint.trim().is_empty() {
+                    post_statements.push(MigrationStatement::new(constraint, is_destructive));
+                }
             }
         }
 
@@ -495,13 +503,18 @@ mod tests {
         kind: TestKind,
     ) -> Result<(), String> {
         {
-            // Check if strings match. This lets us avoid parsing the SQL (which in some cases doesn't work with syntax such as DROP EXTENSION)
-            // TODO: Contribute to sqlparser to support DROP EXTENSION and other cases where parsing fails
+            // Check if strings match. This lets us avoid parsing the SQL (which in some cases doesn't work with syntax such as pgvector indexes)
+            // TODO: Contribute to sqlparser to support pgvector and other cases where parsing fails
             let mut buffer = std::io::Cursor::new(vec![]);
             actual.write(&mut buffer, false).unwrap();
             let actual_sql = String::from_utf8(buffer.into_inner()).unwrap();
 
-            if (actual_sql.lines().zip(expected.lines())).all(|(a, e)| a.trim() == e.trim()) {
+            if actual_sql.lines().count() == expected.lines().count()
+                && actual_sql
+                    .lines()
+                    .zip(expected.lines())
+                    .all(|(a, e)| a.trim() == e.trim())
+            {
                 return Ok(());
             }
         }
@@ -586,7 +599,6 @@ mod tests {
         let kind_str = kind.kind_str();
 
         let file_name = relative_path(folder, &format!("{}.actual.sql", kind_str));
-        println!("Dumping migration to {}", file_name.display());
         let mut file = std::fs::File::create(file_name)?;
         migration.write(&mut file, false)?;
         Ok(())
@@ -594,7 +606,9 @@ mod tests {
 
     fn assert_sql_str_eq(actual: &str, expected: &str, message: &str) -> Result<(), String> {
         // Line-ending insensitive comparison (for Windows compatibility)
-        if (actual.lines().zip(expected.lines())).all(|(a, e)| a.trim() == e.trim()) {
+        if actual.lines().count() == expected.lines().count()
+            && (actual.lines().zip(expected.lines())).all(|(a, e)| a.trim() == e.trim())
+        {
             return Ok(());
         }
 

@@ -10,10 +10,11 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::database_error::DatabaseError;
+use crate::schema::constraint::ForeignKeyConstraintColumnPair;
 use crate::sql::connect::database_client::DatabaseClient;
 use crate::{PhysicalTable, PhysicalTableName};
 
-use super::column_spec::{ColumnSpec, ColumnTypeSpec};
+use super::column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
 use super::constraint::{sorted_comma_list, Constraints};
 use super::index_spec::IndexSpec;
 use super::issue::WithIssues;
@@ -45,6 +46,10 @@ impl TableSpec {
             triggers,
             managed,
         }
+    }
+
+    pub fn has_single_pk(&self) -> bool {
+        self.columns.iter().filter(|c| c.is_pk).count() == 1
     }
 
     pub fn to_column_less_table(&self) -> PhysicalTable {
@@ -89,31 +94,39 @@ impl TableSpec {
 
         let mut column_type_mapping = HashMap::new();
 
-        for foreign_constraint in constraints.foreign_constraints.iter() {
-            // Assumption that there is only one column in the foreign key (for now a correct assumption since we don't support composite keys)
-            let self_column_name = foreign_constraint.self_columns.iter().next().unwrap();
-            let foreign_pk_column_name = foreign_constraint.foreign_columns.iter().next().unwrap();
+        for foreign_constraint in constraints.foreign_constraints.into_iter() {
+            for column_pair in foreign_constraint.column_pairs.into_iter() {
+                let ForeignKeyConstraintColumnPair {
+                    self_column,
+                    foreign_column,
+                } = column_pair;
 
-            let mut column = ColumnSpec::from_live_db(
-                client,
-                &table_name,
-                foreign_pk_column_name,
-                true,
-                None,
-                vec![],
-            )
-            .await?;
-            issues.append(&mut column.issues);
+                let mut column = ColumnSpec::from_live_db(
+                    client,
+                    &foreign_constraint.foreign_table,
+                    &foreign_column,
+                    true,
+                    None,
+                    vec![],
+                    Some(foreign_constraint.constraint_name.clone()),
+                )
+                .await?;
 
-            if let Some(spec) = column.value {
-                column_type_mapping.insert(
-                    self_column_name.clone(),
-                    ColumnTypeSpec::ColumnReference {
-                        foreign_table_name: foreign_constraint.foreign_table.clone(),
-                        foreign_pk_column_name: foreign_pk_column_name.clone(),
-                        foreign_pk_type: Box::new(spec.typ),
-                    },
-                );
+                issues.append(&mut column.issues);
+
+                if let Some(spec) = column.value {
+                    column_type_mapping.insert(
+                        self_column.clone(),
+                        (
+                            ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
+                                foreign_table_name: foreign_constraint.foreign_table.clone(),
+                                foreign_pk_column_name: foreign_column.clone(),
+                                foreign_pk_type: Box::new(spec.typ),
+                            }),
+                            spec.group_name.clone(),
+                        ),
+                    );
+                }
             }
         }
 
@@ -133,6 +146,12 @@ impl TableSpec {
                 })
                 .collect();
 
+            let explicit_column_type = column_type_mapping.get(&name).cloned().map(|(typ, _)| typ);
+            let group_name = column_type_mapping
+                .get(&name)
+                .cloned()
+                .and_then(|(_, group_name)| group_name);
+
             let mut column = ColumnSpec::from_live_db(
                 client,
                 &table_name,
@@ -142,8 +161,9 @@ impl TableSpec {
                     .as_ref()
                     .map(|pk| pk.columns.contains(&name))
                     .unwrap_or(false),
-                column_type_mapping.get(&name).cloned(),
+                explicit_column_type,
                 unique_constraint_names,
+                group_name,
             )
             .await?;
             issues.append(&mut column.issues);
@@ -325,22 +345,70 @@ impl TableSpec {
             }
         }
 
+        let self_foreign_key_references = self.foreign_key_references();
+        let new_foreign_key_references = new.foreign_key_references();
+
+        // No need to remove the foreign key references since deleting the column will take care of it
+
+        for (column_group_name, column_map) in new_foreign_key_references.into_iter() {
+            let existing_column_map_by_group_name = self_foreign_key_references
+                .iter()
+                .find(|(group_name, _)| group_name == &column_group_name);
+
+            if existing_column_map_by_group_name.is_none() {
+                // new foreign key reference
+                let new_column_map = column_map
+                    .iter()
+                    .map(|(column, _)| column.name.clone())
+                    .collect::<Vec<_>>();
+                let column_map_by_columns =
+                    self_foreign_key_references.iter().find(|(_, columns)| {
+                        columns
+                            .iter()
+                            .all(|(column, _)| new_column_map.contains(&column.name))
+                    });
+                if column_map_by_columns.is_none() {
+                    changes.push(SchemaOp::CreateForeignKeyReference {
+                        table: new,
+                        name: column_group_name.clone(),
+                        reference_columns: column_map,
+                    });
+                }
+            }
+        }
+
         changes
     }
 
     /// Converts the table specification to SQL statements.
     pub(super) fn creation_sql(&self) -> SchemaStatement {
         let mut post_statements = Vec::new();
+
         let column_stmts: String = self
             .columns
             .iter()
             .map(|c| {
-                let mut s = c.to_sql(self);
+                let mut s = c.to_sql(self.has_single_pk());
                 post_statements.append(&mut s.post_statements);
                 s.statement
             })
             .collect::<Vec<_>>()
             .join(",\n\t");
+
+        let pk_str = if self.has_single_pk() {
+            "".to_string()
+        } else {
+            let pk_columns = self.columns.iter().filter(|c| c.is_pk).collect::<Vec<_>>();
+
+            format!(
+                ",\n\tPRIMARY KEY ({})",
+                pk_columns
+                    .iter()
+                    .map(|c| format!("\"{}\"", c.name))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        };
 
         let table_name = self.sql_name();
 
@@ -352,6 +420,23 @@ impl TableSpec {
             ));
         }
 
+        {
+            // Add foreign key constraints
+
+            let foreign_key_references = self.foreign_key_references();
+
+            for (column_group_name, column_map) in foreign_key_references.into_iter() {
+                let op = SchemaOp::CreateForeignKeyReference {
+                    table: self,
+                    name: column_group_name,
+                    reference_columns: column_map,
+                };
+
+                let stmt = op.to_sql();
+                post_statements.extend(stmt.post_statements);
+            }
+        }
+
         for index in self.indices.iter() {
             post_statements.push(index.creation_sql(&self.name));
         }
@@ -361,7 +446,7 @@ impl TableSpec {
         }
 
         SchemaStatement {
-            statement: format!("CREATE TABLE {table_name} (\n\t{column_stmts}\n);"),
+            statement: format!("CREATE TABLE {table_name} (\n\t{column_stmts}{pk_str}\n);",),
             pre_statements: vec![],
             post_statements,
         }
@@ -382,5 +467,37 @@ impl TableSpec {
             pre_statements,
             post_statements: vec![],
         }
+    }
+
+    pub(super) fn foreign_key_references(
+        &self,
+    ) -> Vec<(String, Vec<(&ColumnSpec, &ColumnReferenceSpec)>)> {
+        // (column group name ->  (referring column, foreign column))
+        let mut foreign_key_map: HashMap<String, Vec<(&ColumnSpec, &ColumnReferenceSpec)>> =
+            HashMap::new();
+
+        for column in self.columns.iter() {
+            if let ColumnTypeSpec::ColumnReference(column_reference) = &column.typ {
+                let group_name = column
+                    .group_name
+                    .clone()
+                    .unwrap_or_else(|| panic!("Column {} has no group name", column.name.as_str()));
+                foreign_key_map
+                    .entry(group_name)
+                    .or_default()
+                    .push((column, column_reference));
+            }
+        }
+
+        let mut foreign_key_map: Vec<_> = foreign_key_map.into_iter().collect();
+        foreign_key_map.sort_by(|(group1, _), (group2, _)| group1.cmp(group2));
+
+        foreign_key_map
+            .into_iter()
+            .map(|(group_name, mut column_map)| {
+                column_map.sort_by(|(column1, _), (column2, _)| column1.name.cmp(&column2.name));
+                (group_name, column_map)
+            })
+            .collect()
     }
 }

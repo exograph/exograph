@@ -23,7 +23,7 @@ pub enum RelationCardinality {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PostgresRelation {
-    Pk { column_id: ColumnId },
+    Pk { column_ids: Vec<ColumnId> },
     Scalar { column_id: ColumnId },
     ManyToOne(ManyToOneRelation),
     OneToMany(OneToManyRelation),
@@ -34,11 +34,11 @@ pub enum PostgresRelation {
 pub struct ManyToOneRelation {
     // For the `Concert.venue` field (assuming [Concert] -> Venue), we will have:
     // - cardinality: Unbounded
-    // - foreign_pk_field_id: Venue.id
+    // - foreign_pk_field_ids: [Venue.id]
     // - relation_id.self_column_id: concerts.venue_id
     // - relation_id.foreign_pk_column_id: venues.id
     pub cardinality: RelationCardinality,
-    pub foreign_pk_field_id: EntityFieldId,
+    pub foreign_pk_field_ids: Vec<EntityFieldId>,
     pub relation_id: ManyToOneId,
 }
 
@@ -72,9 +72,8 @@ impl OneToManyRelation {
 impl PostgresRelation {
     pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
         match &self {
-            PostgresRelation::Pk { column_id, .. } | PostgresRelation::Scalar { column_id, .. } => {
-                ColumnPathLink::Leaf(*column_id)
-            }
+            PostgresRelation::Pk { column_ids, .. } => ColumnPathLink::Leaf(column_ids[0]),
+            PostgresRelation::Scalar { column_id, .. } => ColumnPathLink::Leaf(*column_id),
             PostgresRelation::ManyToOne(relation) => relation.column_path_link(database),
             PostgresRelation::OneToMany(relation) => relation.column_path_link(database),
             PostgresRelation::Embedded => {

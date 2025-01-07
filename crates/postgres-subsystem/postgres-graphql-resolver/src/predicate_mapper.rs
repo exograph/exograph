@@ -79,8 +79,8 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
                                     .column_path_link
                                     .as_ref()
                                     .unwrap()
-                                    .self_column_id()
-                                    .clone();
+                                    .self_column_ids()
+                                    .clone()[0];
 
                                 let param_column_path = ColumnPath::Physical(
                                     PhysicalColumnPath::leaf(*param_column_id),
@@ -406,7 +406,7 @@ fn operands<'a>(
         .column_path_link
         .as_ref()
         .expect("Could not find column path link while forming operands")
-        .self_column_id();
+        .self_column_ids()[0];
     let op_physical_column = op_physical_column_id.get_column(&subsystem.core_subsystem.database);
 
     let op_value = literal_column_path(
@@ -422,20 +422,28 @@ fn operands<'a>(
 }
 
 pub async fn compute_predicate<'a>(
-    param: &'a PredicateParameter,
+    params: &'a [&'a PredicateParameter],
     arguments: &'a Arguments,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
-    extract_and_map(
-        PredicateParamInput {
-            param,
-            parent_column_path: None,
-        },
-        arguments,
-        subsystem,
-        request_context,
-    )
-    .await
-    .map(|predicate| predicate.unwrap_or(AbstractPredicate::True))
+    let predicates = futures::future::try_join_all(params.iter().map(|param| async {
+        extract_and_map(
+            PredicateParamInput {
+                param,
+                parent_column_path: None,
+            },
+            arguments,
+            subsystem,
+            request_context,
+        )
+        .await
+    }))
+    .await?;
+
+    let predicates = predicates.into_iter().flatten();
+
+    Ok(predicates.fold(AbstractPredicate::True, |acc, predicate| {
+        AbstractPredicate::and(acc, predicate)
+    }))
 }

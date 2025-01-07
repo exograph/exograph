@@ -47,7 +47,8 @@ values:
               Plain:
                 type_name: Int
                 is_primitive: true
-            column_name: id
+            column_names:
+              - id
             self_column: true
             is_pk: true
             access:
@@ -72,7 +73,8 @@ values:
               Plain:
                 type_name: String
                 is_primitive: true
-            column_name: title
+            column_names:
+              - title
             self_column: true
             is_pk: false
             access:
@@ -95,7 +97,8 @@ values:
               Plain:
                 type_name: Venue
                 is_primitive: false
-            column_name: venue_id
+            column_names:
+              - venue_id
             self_column: true
             is_pk: false
             access:
@@ -120,7 +123,8 @@ values:
                 Plain:
                   type_name: String
                   is_primitive: true
-            column_name: attending
+            column_names:
+              - attending
             self_column: true
             is_pk: false
             access:
@@ -145,7 +149,8 @@ values:
                   Plain:
                     type_name: Boolean
                     is_primitive: true
-            column_name: seating
+            column_names:
+              - seating
             self_column: true
             is_pk: false
             access:
@@ -184,7 +189,8 @@ values:
               Plain:
                 type_name: Int
                 is_primitive: true
-            column_name: id
+            column_names:
+              - id
             self_column: true
             is_pk: true
             access:
@@ -209,7 +215,8 @@ values:
               Plain:
                 type_name: String
                 is_primitive: true
-            column_name: name
+            column_names:
+              - name
             self_column: true
             is_pk: false
             access:
@@ -233,7 +240,8 @@ values:
                 Plain:
                   type_name: Concert
                   is_primitive: false
-            column_name: venue_id
+            column_names:
+              - venue_id
             self_column: false
             is_pk: false
             access:

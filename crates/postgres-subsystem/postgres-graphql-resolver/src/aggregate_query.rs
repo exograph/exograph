@@ -44,7 +44,7 @@ impl OperationSelectionResolver for AggregateQuery {
         .await?;
 
         let query_predicate = super::predicate_mapper::compute_predicate(
-            &self.parameters.predicate_param,
+            &[&self.parameters.predicate_param],
             &field.arguments,
             subsystem,
             request_context,
@@ -107,7 +107,26 @@ async fn map_field<'content>(
         let model_field_agg_type = format!("{model_field_type}Agg");
 
         match &model_field.relation {
-            PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
+            PostgresRelation::Pk { column_ids } => {
+                let elements = field
+                    .subfields
+                    .iter()
+                    .map(|subfield| {
+                        let selection_elem = if subfield.name == "__typename" {
+                            SelectionElement::Constant(model_field_agg_type.clone())
+                        } else {
+                            SelectionElement::Function(exo_sql::Function::Named {
+                                function_name: subfield.name.to_string(),
+                                column_id: column_ids[0],
+                            })
+                        };
+                        (subfield.output_name(), selection_elem)
+                    })
+                    .collect();
+                SelectionElement::Object(elements)
+            }
+
+            PostgresRelation::Scalar { column_id } => {
                 let elements = field
                     .subfields
                     .iter()
@@ -125,6 +144,7 @@ async fn map_field<'content>(
                     .collect();
                 SelectionElement::Object(elements)
             }
+
             _ => {
                 return Err(PostgresExecutionError::Generic(
                     "Invalid nested aggregation of a composite type".into(),

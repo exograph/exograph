@@ -125,20 +125,20 @@ impl EntityType {
         self.fields.iter().find(|field| field.name == name)
     }
 
-    pub fn pk_field(&self) -> Option<&PostgresField<EntityType>> {
+    pub fn pk_fields(&self) -> Vec<&PostgresField<EntityType>> {
         self.fields
             .iter()
-            .find(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
+            .filter(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
+            .collect()
     }
 
-    pub fn pk_field_id(
-        &self,
-        entity_id: SerializableSlabIndex<EntityType>,
-    ) -> Option<EntityFieldId> {
+    pub fn pk_field_ids(&self, entity_id: SerializableSlabIndex<EntityType>) -> Vec<EntityFieldId> {
         self.fields
             .iter()
-            .position(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
-            .map(|field_index| EntityFieldId(field_index, entity_id))
+            .enumerate()
+            .filter(|(_, field)| matches!(&field.relation, PostgresRelation::Pk { .. }))
+            .map(|(field_index, _)| EntityFieldId(field_index, entity_id))
+            .collect()
     }
 
     pub fn aggregate_field_by_name(&self, name: &str) -> Option<&AggregateField> {

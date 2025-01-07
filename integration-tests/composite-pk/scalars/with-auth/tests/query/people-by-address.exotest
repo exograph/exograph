@@ -1,0 +1,54 @@
+operation: |
+    fragment personInfo on Person {
+      firstName
+      lastName
+      address {
+        street
+        city
+        state
+        zip
+      }
+    }
+    query {
+      all: people @unordered {
+        ...personInfo
+      }
+      maPeople: people(where: { address: { state: {eq: "MA"} } }) @unordered {
+        ...personInfo
+      }
+    }
+auth: |
+    {
+      firstName: "Jane",
+      lastName: "SmithBoston"
+    }
+response: |
+    {
+      "data": {
+        "all": [
+          {
+            "firstName": "Jane",
+            "lastName": "SmithBoston",
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          }
+        ],
+        "maPeople": [
+          {
+            "firstName": "Jane",
+            "lastName": "SmithBoston",
+            "address": {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101
+            }
+          }
+        ]
+      }
+    }
+

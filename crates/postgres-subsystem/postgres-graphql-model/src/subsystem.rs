@@ -13,7 +13,6 @@ use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 
 use super::{
     mutation::PostgresMutation, order::OrderByParameterType, predicate::PredicateParameterType,
-    query::PkQuery,
 };
 use crate::{
     query::{AggregateQuery, CollectionQuery, UniqueQuery},
@@ -40,12 +39,13 @@ pub struct PostgresGraphQLSubsystem {
     pub order_by_types: SerializableSlab<OrderByParameterType>,
     pub predicate_types: SerializableSlab<PredicateParameterType>,
 
-    pub pk_queries: MappedArena<PkQuery>,
+    pub pk_queries: MappedArena<UniqueQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
     pub unique_queries: MappedArena<UniqueQuery>,
 
-    pub pk_queries_map: HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<PkQuery>>,
+    pub pk_queries_map:
+        HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<UniqueQuery>>,
     pub collection_queries_map:
         HashMap<SerializableSlabIndex<EntityType>, SerializableSlabIndex<CollectionQuery>>,
     pub aggregate_queries_map:
@@ -128,7 +128,7 @@ impl PostgresGraphQLSubsystem {
         all_type_definitions
     }
 
-    pub fn get_pk_query(&self, entity_type_id: SerializableSlabIndex<EntityType>) -> &PkQuery {
+    pub fn get_pk_query(&self, entity_type_id: SerializableSlabIndex<EntityType>) -> &UniqueQuery {
         let pk_query_index = self.pk_queries_map[&entity_type_id];
         &self.pk_queries[pk_query_index]
     }

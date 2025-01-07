@@ -47,7 +47,8 @@ values:
               Plain:
                 type_name: Int
                 is_primitive: true
-            column_name: id
+            column_names:
+              - id
             self_column: true
             is_pk: true
             access:
@@ -70,7 +71,8 @@ values:
               Plain:
                 type_name: String
                 is_primitive: true
-            column_name: title
+            column_names:
+              - title
             self_column: true
             is_pk: false
             access:
@@ -93,7 +95,8 @@ values:
               Plain:
                 type_name: Boolean
                 is_primitive: true
-            column_name: public
+            column_names:
+              - public
             self_column: true
             is_pk: false
             access:

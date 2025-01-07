@@ -1,0 +1,41 @@
+operation: |
+  fragment AddressFragment on Address {
+    street
+    city
+    state
+    zip
+  }
+
+  query {
+    address1: address(street: "1 Main St", city: "Albany", state: "NY", zip: 10001) {
+      ...AddressFragment
+    }
+    address2: address(street: "2 Main St", city: "Boston", state: "MA", zip: 22101) {
+      ...AddressFragment
+    }
+    address3: address(street: "3 Main St", city: "Chicago", state: "IL", zip: 60601) {
+      ...AddressFragment
+    }
+    nonExisting: address(street: "1 Main St", city: "Boston", state: "MA", zip: 60601) {
+      ...AddressFragment
+    }
+  }
+auth: |
+  {
+    firstName: "Jane",
+    lastName: "SmithBoston"
+  }  
+response: |
+  {
+    "data": {
+      "address1": null,
+      "address2": {
+        "street": "2 Main St",
+        "city": "Boston",
+        "state": "MA",
+        "zip": 22101
+      },
+      "address3": null,
+      "nonExisting": null
+    }
+  }

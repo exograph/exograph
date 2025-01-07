@@ -9,7 +9,7 @@
 
 use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
-    sql::predicate::ConcretePredicate,
+    sql::{predicate::ConcretePredicate, relation::RelationColumnPair},
     transform::{pg::selection_level::SelectionLevel, transformer::PredicateTransformer},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, Database,
     NumericComparator, Selection, SelectionElement, VectorDistanceFunction,
@@ -180,11 +180,12 @@ fn form_subselect(
     database: &Database,
     select_transformer: &Postgres,
 ) -> ConcretePredicate {
-    let RelationLink {
+    let RelationLink { column_pairs, .. } = relation_link;
+
+    let RelationColumnPair {
         self_column_id,
         foreign_column_id,
-        ..
-    } = relation_link;
+    } = column_pairs[0];
 
     let foreign_column = foreign_column_id.get_column(database);
     let abstract_select = AbstractSelect {

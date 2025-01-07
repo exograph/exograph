@@ -153,20 +153,19 @@ pub(super) fn compute_relation_predicate(
         .map(|relation_id| {
             let (self_column_id, foreign_column_id) = match relation_id {
                 RelationId::OneToMany(relation_id) => {
-                    let OneToMany {
-                        self_pk_column_id,
-                        foreign_column_id,
-                    } = relation_id.deref(database);
+                    let OneToMany { column_pairs } = relation_id.deref(database);
 
-                    (self_pk_column_id, foreign_column_id)
+                    (
+                        column_pairs[0].self_column_id,
+                        column_pairs[0].foreign_column_id,
+                    )
                 }
                 RelationId::ManyToOne(relation_id) => {
-                    let ManyToOne {
-                        self_column_id,
-                        foreign_pk_column_id,
-                        ..
-                    } = relation_id.deref(database);
-                    (self_column_id, foreign_pk_column_id)
+                    let ManyToOne { column_pairs, .. } = relation_id.deref(database);
+                    (
+                        column_pairs[0].self_column_id,
+                        column_pairs[0].foreign_column_id,
+                    )
                 }
             };
 

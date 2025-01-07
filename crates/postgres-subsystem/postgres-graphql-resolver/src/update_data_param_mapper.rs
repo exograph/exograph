@@ -86,23 +86,32 @@ fn compute_update_columns<'a>(
         .fields
         .iter()
         .flat_map(|field| match &field.relation {
-            PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
+            PostgresRelation::Pk { column_ids } => {
                 get_argument_field(argument, &field.name).map(|argument_value| {
+                    let column = column_ids[0].get_column(&subsystem.core_subsystem.database);
+                    let value_column = cast::literal_column(argument_value, column);
+                    (column_ids[0], value_column.unwrap())
+                })
+            }
+            PostgresRelation::Scalar { column_id } => get_argument_field(argument, &field.name)
+                .map(|argument_value| {
                     let column = column_id.get_column(&subsystem.core_subsystem.database);
                     let value_column = cast::literal_column(argument_value, column);
                     (*column_id, value_column.unwrap())
-                })
-            }
+                }),
+
             PostgresRelation::ManyToOne(ManyToOneRelation {
-                foreign_pk_field_id,
+                foreign_pk_field_ids,
                 relation_id,
                 ..
             }) => {
-                let ManyToOne { self_column_id, .. } =
+                let ManyToOne { column_pairs, .. } =
                     relation_id.deref(&subsystem.core_subsystem.database);
 
+                let self_column_id = column_pairs[0].self_column_id;
+
                 let self_column = self_column_id.get_column(&subsystem.core_subsystem.database);
-                let foreign_type_pk_field_name = &foreign_pk_field_id
+                let foreign_type_pk_field_name = &foreign_pk_field_ids[0]
                     .resolve(&subsystem.core_subsystem.entity_types)
                     .name;
 
@@ -300,7 +309,7 @@ async fn compute_nested_update_object_arg<'a>(
     let predicate = AbstractPredicate::and(arg_predicate, access_predicate);
 
     Ok(NestedAbstractUpdate {
-        nesting_relation: *nesting_relation,
+        nesting_relation: nesting_relation.clone(),
         update: AbstractUpdate {
             table_id,
             predicate,
@@ -346,7 +355,7 @@ async fn compute_nested_inserts<'a>(
         .await?;
 
         Ok(NestedAbstractInsert {
-            relation_column_id: nesting_relation.foreign_column_id,
+            relation_column_id: nesting_relation.column_pairs[0].foreign_column_id,
             insert: AbstractInsert {
                 table_id,
                 rows,
@@ -510,7 +519,7 @@ async fn compute_nested_delete_object_arg<'a>(
     let table_id = subsystem.core_subsystem.entity_types[field_mutation_type.entity_id].table_id;
 
     Ok(NestedAbstractDelete {
-        nesting_relation: *nesting_relation,
+        nesting_relation: nesting_relation.clone(),
         delete: AbstractDelete {
             table_id,
             predicate,

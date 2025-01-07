@@ -1,0 +1,60 @@
+operation: |
+    fragment addressInfo on Address {
+      street
+      city
+      state
+      zip
+    }
+    query {
+      all: addresses @unordered {
+        ...addressInfo
+      }
+      maCities: addresses(where: { state: {eq: "MA"} }) @unordered {
+        ...addressInfo
+      }
+    }
+response: |
+    {
+      "data": {
+        "all": [
+          {
+            "street": "1 Main St",
+            "city": "Albany",
+            "state": "NY",
+            "zip": 10001
+          },
+          {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101
+          },
+          {
+            "street": "3 Main St",
+            "city": "Chicago",
+            "state": "IL",
+            "zip": 60601
+          },
+          {
+            "street": "4 Main St",
+            "city": "Plymouth",
+            "state": "MA",
+            "zip": 23600
+          }
+        ],
+        "maCities": [
+          {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101
+          },
+          {
+            "street": "4 Main St",
+            "city": "Plymouth",
+            "state": "MA",
+            "zip": 23600
+          }
+        ]
+      }
+    }

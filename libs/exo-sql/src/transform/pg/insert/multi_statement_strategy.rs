@@ -62,12 +62,12 @@ impl InsertionStrategy for MultiStatementStrategy {
 
         let select = transformer.to_select(selection, database);
 
-        let pk_column_type = database
+        let pk_column_types = database
             .get_table(*table_id)
-            .get_pk_physical_column()
-            .unwrap()
-            .typ
-            .get_pg_type();
+            .get_pk_physical_columns()
+            .iter()
+            .map(|pk_physical_column| pk_physical_column.typ.get_pg_type())
+            .collect::<Vec<_>>();
 
         // Take the previous insert steps and use them as the input to the select
         // statement to form a predicate `pk IN (insert_step_1_pk, insert_step_2_pk, ...)`
@@ -77,17 +77,12 @@ impl InsertionStrategy for MultiStatementStrategy {
                     .into_iter()
                     .map(|insert_step_id| transaction_context.resolve_value(insert_step_id, 0, 0))
                     .collect::<Vec<_>>(),
-                pk_column_type,
+                pk_column_types[0].clone(),
             );
 
             let predicate = Predicate::and(
                 Predicate::Eq(
-                    Column::physical(
-                        database
-                            .get_pk_column_id(*table_id)
-                            .expect("No primary key column"),
-                        None,
-                    ),
+                    Column::physical(database.get_pk_column_ids(*table_id).remove(0), None),
                     Column::ArrayParam {
                         param: in_values,
                         wrapper: ArrayParamWrapper::Any,
@@ -138,12 +133,7 @@ fn insert_self_row<'a>(
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,
 ) -> TransactionStepId {
-    let pk_column = Column::physical(
-        database
-            .get_pk_column_id(table_id)
-            .expect("No primary key column"),
-        None,
-    );
+    let pk_column = Column::physical(database.get_pk_column_ids(table_id).remove(0), None);
 
     let table = database.get_table(table_id);
 
@@ -198,10 +188,9 @@ fn insert_nested_row<'a>(
         insertions,
     } = nested_row;
 
-    let OneToMany {
-        foreign_column_id, ..
-    } = relation_id.deref(database);
+    let OneToMany { column_pairs } = relation_id.deref(database);
 
+    let foreign_column_id = column_pairs[0].foreign_column_id;
     for insertion in insertions {
         insert_row(
             foreign_column_id.table_id,

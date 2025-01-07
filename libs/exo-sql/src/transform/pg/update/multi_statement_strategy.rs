@@ -89,23 +89,19 @@ impl UpdateStrategy for MultiStatementStrategy {
 
         // Select only the primary key column, so that we can use that
         // as the proxy column in the nested updates added to the transaction script.
-        let return_col = Column::physical(
-            database
-                .get_pk_column_id(abstract_update.table_id)
-                .expect("No primary key column"),
-            None,
-        );
+        let return_cols = database
+            .get_pk_column_ids(abstract_update.table_id)
+            .into_iter()
+            .map(|pk_column_id| Column::physical(pk_column_id, None).into())
+            .collect::<Vec<_>>();
 
         let table = database.get_table(abstract_update.table_id);
         let column_values = column_id_values
             .into_iter()
             .map(|(col_id, col)| (col_id.get_column(database), col))
             .collect();
-        let root_update = SQLOperation::Update(table.update(
-            column_values,
-            predicate.into(),
-            vec![return_col.into()],
-        ));
+        let root_update =
+            SQLOperation::Update(table.update(column_values, predicate.into(), return_cols));
 
         let root_step_id = transaction_script.add_step(TransactionStep::Concrete(
             ConcreteTransactionStep::new(root_update),
@@ -169,7 +165,11 @@ impl UpdateStrategy for MultiStatementStrategy {
 
         let select = transformer.to_select(&abstract_update.selection, database);
 
-        let pk_column_type = table.get_pk_physical_column().unwrap().typ.get_pg_type();
+        let pk_column_types = table
+            .get_pk_physical_columns()
+            .iter()
+            .map(|pk_physical_column| pk_physical_column.typ.get_pg_type())
+            .collect::<Vec<_>>();
 
         // Take the root step and use ids returned by it as the input to the select
         // statement to form a predicate `pk IN (update_pk1, update_pk2, ...)`
@@ -179,15 +179,15 @@ impl UpdateStrategy for MultiStatementStrategy {
                 (0..update_count)
                     .map(|i| transaction_context.resolve_value(root_step_id, i, 0))
                     .collect::<Vec<_>>(),
-                pk_column_type,
+                pk_column_types[0].clone(),
             );
 
             let predicate = Predicate::and(
                 Predicate::Eq(
                     Column::physical(
                         database
-                            .get_pk_column_id(abstract_update.table_id)
-                            .expect("No primary key column"),
+                            .get_pk_column_ids(abstract_update.table_id)
+                            .remove(0),
                         None,
                     ),
                     Column::ArrayParam {
@@ -229,7 +229,7 @@ fn update_op<'a>(
             false,
             database,
         ),
-        nesting_relation: nested_update.nesting_relation,
+        nesting_relation: nested_update.nesting_relation.clone(),
         column_values,
         returning: vec![],
     })
@@ -270,7 +270,7 @@ fn delete_op<'a>(
     TemplateSQLOperation::Delete(TemplateDelete {
         table: database.get_table(nested_delete.delete.table_id),
         predicate,
-        nesting_relation: nested_delete.nesting_relation,
+        nesting_relation: nested_delete.nesting_relation.clone(),
         returning: vec![],
     })
 }

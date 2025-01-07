@@ -19,7 +19,7 @@ use postgres_graphql_model::{
     predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeWrapper},
     query::{
         AggregateQuery, AggregateQueryParameters, CollectionQuery, CollectionQueryParameters,
-        PkQuery, PkQueryParameters, UniqueQuery, UniqueQueryParameters,
+        UniqueQuery, UniqueQueryParameters,
     },
 };
 
@@ -107,47 +107,74 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
     }
 }
 
-fn shallow_pk_query(
+fn shallow_unique_query(
+    name: String,
     entity_type_id: SerializableSlabIndex<EntityType>,
-    typ: &ResolvedCompositeType,
-) -> PkQuery {
-    let operation_name = typ.pk_query();
-    PkQuery {
-        name: operation_name,
-        parameters: PkQueryParameters {
-            predicate_param: PredicateParameter::shallow(),
+    return_type: &ResolvedCompositeType,
+) -> UniqueQuery {
+    UniqueQuery {
+        name,
+        parameters: UniqueQueryParameters {
+            predicate_params: vec![],
         },
         return_type: OperationReturnType::Optional(Box::new(OperationReturnType::Plain(
             BaseOperationReturnType {
                 associated_type_id: entity_type_id,
-                type_name: typ.name.clone(),
+                type_name: return_type.name.clone(),
             },
         ))),
     }
 }
 
+fn shallow_pk_query(
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    return_type: &ResolvedCompositeType,
+) -> UniqueQuery {
+    shallow_unique_query(return_type.pk_query(), entity_type_id, return_type)
+}
+
+fn shallow_unique_queries(
+    entity_type_id: SerializableSlabIndex<EntityType>,
+    resolved_entity_type: &ResolvedCompositeType,
+) -> Vec<UniqueQuery> {
+    resolved_entity_type
+        .unique_constraints()
+        .keys()
+        .map(|name| {
+            shallow_unique_query(
+                resolved_entity_type.unique_query(name),
+                entity_type_id,
+                resolved_entity_type,
+            )
+        })
+        .collect()
+}
+
 fn expand_pk_query(
     entity_type: &EntityType,
     predicate_types: &MappedArena<PredicateParameterType>,
-    pk_queries: &mut MappedArena<PkQuery>,
+    pk_queries: &mut MappedArena<UniqueQuery>,
     database: &Database,
 ) {
     let operation_name = entity_type.pk_query();
     let existing_query = &mut pk_queries.get_by_key_mut(&operation_name);
 
     if let Some(existing_query) = existing_query {
-        existing_query.parameters.predicate_param =
-            pk_predicate_param(entity_type, predicate_types, database);
+        existing_query.parameters.predicate_params =
+            pk_predicate_params(entity_type, predicate_types, database);
     }
 }
 
-pub fn pk_predicate_param(
+pub fn pk_predicate_params(
     entity_type: &EntityType,
     predicate_types: &MappedArena<PredicateParameterType>,
     database: &Database,
-) -> PredicateParameter {
-    let pk_field = entity_type.pk_field().unwrap();
-    implicit_equals_predicate_param(pk_field, predicate_types, database)
+) -> Vec<PredicateParameter> {
+    let pk_fields = entity_type.pk_fields();
+    pk_fields
+        .iter()
+        .map(|field| implicit_equals_predicate_param(field, predicate_types, database))
+        .collect()
 }
 
 fn implicit_equals_predicate_param(
@@ -242,28 +269,6 @@ fn expand_aggregate_query(
 
     let existing_query = &mut aggregate_queries.get_by_key_mut(&operation_name).unwrap();
     existing_query.parameters.predicate_param = predicate_param;
-}
-
-fn shallow_unique_queries(
-    entity_type_id: SerializableSlabIndex<EntityType>,
-    resolved_entity_type: &ResolvedCompositeType,
-) -> Vec<UniqueQuery> {
-    resolved_entity_type
-        .unique_constraints()
-        .keys()
-        .map(|name| UniqueQuery {
-            name: resolved_entity_type.unique_query(name),
-            parameters: UniqueQueryParameters {
-                predicate_params: vec![],
-            },
-            return_type: OperationReturnType::Optional(Box::new(OperationReturnType::Plain(
-                BaseOperationReturnType {
-                    associated_type_id: entity_type_id,
-                    type_name: resolved_entity_type.name.clone(),
-                },
-            ))),
-        })
-        .collect()
 }
 
 pub fn expand_unique_queries(

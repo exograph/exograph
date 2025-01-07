@@ -38,6 +38,9 @@ pub struct PhysicalColumn {
     /// optional default value for this column
     pub default_value: Option<String>,
     pub update_sync: bool,
+
+    /// A name that can be used to group columns together (for example to generate a foreign key constraint name for composite primary keys)
+    pub group_name: Option<String>,
 }
 
 /// Simpler implementation of Debug for PhysicalColumn.
@@ -348,7 +351,12 @@ impl ColumnId {
         database
             .relations
             .iter()
-            .position(|relation| &relation.self_column_id == self)
+            .position(|relation| {
+                relation
+                    .column_pairs
+                    .iter()
+                    .any(|pair| &pair.self_column_id == self)
+            })
             .map(ManyToOneId)
     }
 

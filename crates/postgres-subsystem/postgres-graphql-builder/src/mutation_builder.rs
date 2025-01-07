@@ -107,14 +107,20 @@ pub trait MutationBuilder {
             return vec![];
         }
 
-        let single_mutation = entity_type.pk_field().map(|_| PostgresMutation {
-            name: Self::single_mutation_name(entity_type),
-            parameters: Self::single_mutation_parameters(entity_type, building),
-            return_type: Self::single_mutation_modified_type(BaseOperationReturnType {
-                associated_type_id: entity_type_id,
-                type_name: entity_type.name.clone(),
-            }),
-        });
+        let pk_fields = entity_type.pk_fields();
+
+        let single_mutation = if pk_fields.is_empty() {
+            None
+        } else {
+            Some(PostgresMutation {
+                name: Self::single_mutation_name(entity_type),
+                parameters: Self::single_mutation_parameters(entity_type, building),
+                return_type: Self::single_mutation_modified_type(BaseOperationReturnType {
+                    associated_type_id: entity_type_id,
+                    type_name: entity_type.name.clone(),
+                }),
+            })
+        };
 
         let multi_mutation = PostgresMutation {
             name: Self::multi_mutation_name(entity_type),
@@ -260,7 +266,7 @@ pub trait DataParamBuilder<D> {
         };
 
         match &field.relation {
-            PostgresRelation::Pk { column_id } => {
+            PostgresRelation::Pk { column_ids } => {
                 if Self::data_param_role() == DataParamRole::Update {
                     // A typical way clients use update mutation is to get the data along with the id,
                     // modify the data and send it back to the server. So we accept the id
@@ -283,7 +289,7 @@ pub trait DataParamBuilder<D> {
                     //
                     // We should revisit this after we support "readonly" fields (see
                     // https://github.com/exograph/exograph/issues/926)
-                    let column = column_id.get_column(&building.core_subsystem.database);
+                    let column = column_ids[0].get_column(&building.core_subsystem.database);
 
                     if column.is_auto_increment {
                         None
@@ -560,7 +566,7 @@ fn get_matching_field<'a>(
         let matching_fields: Vec<_> = field_typ
             .fields
             .iter()
-            .filter(|f| field.column_name == f.column_name)
+            .filter(|f| field.column_names == f.column_names)
             .collect();
 
         match &matching_fields[..] {

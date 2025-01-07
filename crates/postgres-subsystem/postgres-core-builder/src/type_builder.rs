@@ -254,7 +254,7 @@ fn expand_dynamic_default_values(
                                 resolved_env.function_definitions,
                             )?;
 
-                            match entity_field.relation {
+                            match &entity_field.relation {
                                 PostgresRelation::Scalar { .. } => {
                                     let field_type = &entity_field.typ;
                                     if !matches(field_type, context_type) {
@@ -267,10 +267,10 @@ fn expand_dynamic_default_values(
                                     }
                                 }
                                 PostgresRelation::ManyToOne(ManyToOneRelation {
-                                    foreign_pk_field_id: foreign_field_id,
+                                    foreign_pk_field_ids,
                                     ..
                                 }) => {
-                                    let foreign_type_pk = &foreign_field_id
+                                    let foreign_type_pk = &foreign_pk_field_ids[0]
                                         .resolve(building.entity_types.values_ref())
                                         .typ;
 
@@ -562,7 +562,7 @@ fn create_vector_distance_field(
             let self_table_id = &self_type.table_id;
             let column_id = building
                 .database
-                .get_column_id(*self_table_id, &field.column_name)
+                .get_column_id(*self_table_id, &field.column_names[0])
                 .unwrap();
 
             let access = compute_access(&field.access, *type_id, env, building).unwrap();
@@ -600,11 +600,10 @@ fn create_relation(
     let self_table_id = &self_type.table_id;
 
     if field.is_pk {
-        let column_id = building
+        let column_ids = building
             .database
-            .get_column_id(*self_table_id, &field.column_name)
-            .unwrap();
-        PostgresRelation::Pk { column_id }
+            .get_column_ids_from_names(*self_table_id, &field.column_names);
+        PostgresRelation::Pk { column_ids }
     } else {
         // we can treat Optional fields as their inner type for the purposes of computing relations
         let field_base_typ = &field.typ.base_type();
@@ -621,7 +620,7 @@ fn create_relation(
                         ResolvedType::Primitive(_) => PostgresRelation::Scalar {
                             column_id: building
                                 .database
-                                .get_column_id(*self_table_id, &field.column_name)
+                                .get_column_id(*self_table_id, &field.column_names[0])
                                 .unwrap(),
                         },
                         ResolvedType::Composite(foreign_field_type) => {
@@ -629,7 +628,7 @@ fn create_relation(
                                 PostgresRelation::Scalar {
                                     column_id: building
                                         .database
-                                        .get_column_id(*self_table_id, &field.column_name)
+                                        .get_column_id(*self_table_id, &field.column_names[0])
                                         .unwrap(),
                                 }
                             } else if expand_foreign_relations {
@@ -657,7 +656,7 @@ fn create_relation(
                         } else {
                             let column_id = building
                                 .database
-                                .get_column_id(*self_table_id, &field.column_name)
+                                .get_column_id(*self_table_id, &field.column_names[0])
                                 .unwrap();
                             PostgresRelation::Scalar { column_id }
                         }
@@ -667,7 +666,7 @@ fn create_relation(
                             PostgresRelation::Scalar {
                                 column_id: building
                                     .database
-                                    .get_column_id(*self_table_id, &field.column_name)
+                                    .get_column_id(*self_table_id, &field.column_names[0])
                                     .unwrap(),
                             }
                         } else {
@@ -675,7 +674,7 @@ fn create_relation(
                             // but we can't be sure if this is a ManyToOne or OneToMany unless we examine the other side's type.
                             let foreign_type_field_typ = &foreign_resolved_type
                                 .as_composite()
-                                .field_by_column_name(&field.column_name)
+                                .field_by_column_names(&field.column_names)
                                 .unwrap()
                                 .typ;
 
@@ -755,13 +754,13 @@ fn compute_many_to_one(
 
     let foreign_column_id = building
         .database
-        .get_column_id(foreign_table_id, &field.column_name)
+        .get_column_id(foreign_table_id, &field.column_names[0])
         .unwrap();
 
     let foreign_resolved_field = foreign_field_type
         .fields
         .iter()
-        .find(|f| f.column_name == field.column_name)
+        .find(|f| f.column_names == field.column_names)
         .unwrap();
 
     let foreign_field_id = get_field_id(
@@ -798,15 +797,15 @@ fn compute_one_to_many_relation(
 
     let self_column_id = building
         .database
-        .get_column_id(*self_table_id, &field.column_name)
+        .get_column_id(*self_table_id, &field.column_names[0])
         .unwrap();
-    let foreign_pk_field_id = foreign_type.pk_field_id(foreign_type_id).unwrap();
+    let foreign_pk_field_ids = foreign_type.pk_field_ids(foreign_type_id);
 
     let relation_id = self_column_id.get_mto_relation(&building.database).unwrap();
 
     PostgresRelation::ManyToOne(ManyToOneRelation {
         cardinality,
-        foreign_pk_field_id,
+        foreign_pk_field_ids,
         relation_id,
     })
 }

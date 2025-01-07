@@ -56,17 +56,30 @@ impl Database {
         })
     }
 
-    pub fn get_pk_column_id(&self, table_id: TableId) -> Option<ColumnId> {
+    pub fn get_pk_column_ids(&self, table_id: TableId) -> Vec<ColumnId> {
         let table = self.get_table(table_id);
         table
-            .get_pk_column_index()
+            .get_pk_column_indices()
+            .into_iter()
             .map(|column_index| new_column_id(table_id, column_index))
+            .collect()
     }
 
     pub fn get_column_id(&self, table_id: TableId, column_name: &str) -> Option<ColumnId> {
         self.tables[table_id]
             .column_index(column_name)
             .map(|column_index| new_column_id(table_id, column_index))
+    }
+
+    pub fn get_column_ids_from_names(
+        &self,
+        table_id: TableId,
+        column_names: &[String],
+    ) -> Vec<ColumnId> {
+        column_names
+            .iter()
+            .map(|column_name| self.get_column_id(table_id, column_name).unwrap())
+            .collect()
     }
 
     pub fn get_column_mut(&mut self, column_id: ColumnId) -> &mut PhysicalColumn {

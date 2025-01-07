@@ -113,7 +113,7 @@ impl<'a> TemplateUpdate<'a> {
 
                 let relation_predicate = ConcretePredicate::Eq(
                     Column::Physical {
-                        column_id: self.nesting_relation.foreign_column_id,
+                        column_id: self.nesting_relation.column_pairs[0].foreign_column_id,
                         table_alias: None,
                     },
                     Column::Param(SQLParamContainer::from_sql_value(

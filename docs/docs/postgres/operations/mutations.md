@@ -137,6 +137,16 @@ mutation {
 }
 ```
 
+Like the [query to get a single entity](queries.md#primary-key-query), if the entity type has a composite primary key, you must supply all the fields of the primary key as arguments to the mutation. For example, if the `Person` type has a composite primary key of `firstName` and `lastName`, you must supply both `firstName` and `lastName` as arguments to the mutation.
+
+```graphql
+mutation {
+  updatePerson(firstName: "John", lastName: "Doe", data: {age: 30}) {
+    ...
+  }
+}
+```
+
 ### Updating multiple entities
 
 If you want to update multiple concerts, you can do so as follows. In the following, the goal is to move all concerts hosted in venue 3 to venue 2.
@@ -183,7 +193,7 @@ There is one more detail to note here. The `performances` added will automatical
 
 ## Deleting data
 
-To delete a single entity by its primary key, Exograph offers the `delete<EntityType>` mutation, which takes the primary key as an argument. To delete multiple entities, Exograph offers the `delete<PluralizedEntityName>` mutation, which takes a `where` argument to filter the entities to be deleted (it is the same `where` argument that is used to filter data in the queries in the [earlier section](queries.md#collection-query)).
+To delete a single entity by its primary key, Exograph offers the `delete<EntityType>` mutation, which takes the primary key as an argument. 
 
 Given this mutation, you can delete a concert as follows:
 
@@ -197,7 +207,19 @@ mutation {
 }
 ```
 
-If you want to delete all concerts hosted in venue 3, you could do so as follows:
+Like the [query to delete a single entity](queries.md#primary-key-query) and [update a single entity](mutations.md#updating-a-single-entity), if the entity type has a composite primary key, you must supply all the fields of the primary key as arguments to the mutation.
+
+```graphql
+mutation {
+  deletePerson(firstName: "John", lastName: "Doe") {
+    id
+    firstName
+    lastName
+  }
+}
+```
+
+To delete multiple entities, Exograph offers the `delete<PluralizedEntityName>` mutation, which takes a `where` argument to filter the entities to be deleted (it is the same `where` argument that is used to filter data in the queries in the [earlier section](queries.md#collection-query)). If you want to delete all concerts hosted in venue 3, you could do so as follows:
 
 ```graphql
 mutation {

@@ -1,0 +1,65 @@
+operation: |
+    fragment address on Address {
+      street
+      city
+      state
+      zip
+      people {
+        firstName
+        lastName
+        age
+      }
+    }
+    
+    query {
+      johnAddresses: addresses(where: { people: { firstName: {eq: "John"} } }) @unordered {
+        ...address
+      }
+      janeAddresses: addresses(where: { people: { firstName: {eq: "Jane"} } }) @unordered {
+        ...address
+      }
+      olderThan30Addresses: addresses(where: { people: { age: {gt: 30} } }) @unordered {
+        ...address
+      }
+    }
+auth: |
+    {
+      firstName: "Jane",
+      lastName: "SmithBoston"
+    }
+response: |
+    {
+      "data": {
+        "johnAddresses": [],
+        "janeAddresses": [
+          {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "people": [
+              {
+                "firstName": "Jane",
+                "lastName": "SmithBoston",
+                "age": 35
+              }
+            ]
+          }
+        ],
+        "olderThan30Addresses": [
+          {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "people": [
+              {
+                "firstName": "Jane",
+                "lastName": "SmithBoston",
+                "age": 35
+              }
+            ]
+          }
+        ]
+      }
+    }

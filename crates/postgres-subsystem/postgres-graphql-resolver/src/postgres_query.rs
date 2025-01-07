@@ -24,7 +24,6 @@ use exo_sql::{
     RelationId, SelectionCardinality, SelectionElement,
 };
 use exo_sql::{Function, SQLParamContainer};
-use futures::stream::TryStreamExt;
 use futures::StreamExt;
 use postgres_core_model::vector_distance::VectorDistanceField;
 use postgres_core_model::{
@@ -36,39 +35,9 @@ use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_graphql_model::query::UniqueQuery;
 use postgres_graphql_model::{
     order::OrderByParameter,
-    query::{CollectionQuery, CollectionQueryParameters, PkQuery},
+    query::{CollectionQuery, CollectionQueryParameters},
     subsystem::PostgresGraphQLSubsystem,
 };
-
-#[async_trait]
-impl OperationSelectionResolver for PkQuery {
-    async fn resolve_select<'a>(
-        &'a self,
-        field: &'a ValidatedField,
-        request_context: &'a RequestContext<'a>,
-        subsystem: &'a PostgresGraphQLSubsystem,
-    ) -> Result<AbstractSelect, PostgresExecutionError> {
-        let predicate = compute_predicate(
-            &self.parameters.predicate_param,
-            &field.arguments,
-            subsystem,
-            request_context,
-        )
-        .await?;
-
-        compute_select(
-            predicate,
-            None,
-            None,
-            None,
-            &self.return_type,
-            &field.subfields,
-            subsystem,
-            request_context,
-        )
-        .await
-    }
-}
 
 #[async_trait]
 impl OperationSelectionResolver for UniqueQuery {
@@ -78,17 +47,12 @@ impl OperationSelectionResolver for UniqueQuery {
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
-        let predicate = futures::stream::iter(
-            self.parameters
-                .predicate_params
-                .iter()
-                .map(Ok::<_, PostgresExecutionError>),
+        let predicate = compute_predicate(
+            &self.parameters.predicate_params.iter().collect::<Vec<_>>(),
+            &field.arguments,
+            subsystem,
+            request_context,
         )
-        .try_fold(AbstractPredicate::True, |acc, p| async {
-            let predicate =
-                compute_predicate(p, &field.arguments, subsystem, request_context).await?;
-            Ok(AbstractPredicate::and(acc, predicate))
-        })
         .await?;
 
         compute_select(
@@ -123,7 +87,7 @@ impl OperationSelectionResolver for CollectionQuery {
         let arguments = &field.arguments;
 
         compute_select(
-            compute_predicate(predicate_param, arguments, subsystem, request_context).await?,
+            compute_predicate(&[predicate_param], arguments, subsystem, request_context).await?,
             compute_order_by(order_by_param, arguments, subsystem, request_context).await?,
             extract_and_map(limit_param, arguments, subsystem, request_context).await?,
             extract_and_map(offset_param, arguments, subsystem, request_context).await?,
@@ -257,16 +221,15 @@ async fn map_persistent_field<'content>(
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement, PostgresExecutionError> {
     match &entity_field.relation {
-        PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
-            Ok(SelectionElement::Physical(*column_id))
-        }
+        PostgresRelation::Pk { column_ids } => Ok(SelectionElement::Physical(column_ids[0])),
+        PostgresRelation::Scalar { column_id } => Ok(SelectionElement::Physical(*column_id)),
         PostgresRelation::ManyToOne(relation) => {
             let ManyToOneRelation {
-                foreign_pk_field_id,
+                foreign_pk_field_ids,
                 ..
             } = relation;
 
-            let foreign_type_id = foreign_pk_field_id.entity_type_id();
+            let foreign_type_id = foreign_pk_field_ids[0].entity_type_id();
 
             let foreign_table_pk_query = subsystem.get_pk_query(foreign_type_id);
 

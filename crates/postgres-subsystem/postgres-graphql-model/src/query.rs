@@ -19,21 +19,6 @@ use crate::{
 
 use super::operation::{OperationParameters, PostgresOperation};
 
-/// Query by primary key such as `todo(id: 1)`
-pub type PkQuery = PostgresOperation<PkQueryParameters>;
-
-/// Primary key query parameter such as `id: 1` in `todo(id: 1)`
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PkQueryParameters {
-    pub predicate_param: PredicateParameter,
-}
-
-impl OperationParameters for PkQueryParameters {
-    fn introspect(&self) -> Vec<&dyn Parameter> {
-        vec![&self.predicate_param]
-    }
-}
-
 /// Query that return a collection such as `todos(where: { title: { eq: "Hello" } })`
 pub type CollectionQuery = PostgresOperation<CollectionQueryParameters>;
 
@@ -76,7 +61,9 @@ impl OperationParameters for AggregateQueryParameters {
     }
 }
 
-/// Query by unique constrained parameters such as `userByEmail(email: "hello@example.com")` or `userByFirstAndLastName(firstName: "John", lastName: "Doe")`
+/// Query that returns a single entity (due to the constraint)
+/// - Primary key: such as single `todo(id: 1)` or composite `user(firstName: "John", lastName: "Doe")`
+/// - Uniqueness: such as `userByEmail(email: "hello@example.com")` or `userByFirstAndLastName(firstName: "John", lastName: "Doe")`
 pub type UniqueQuery = PostgresOperation<UniqueQueryParameters>;
 
 #[derive(Serialize, Deserialize, Debug)]

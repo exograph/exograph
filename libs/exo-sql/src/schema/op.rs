@@ -12,8 +12,11 @@ use std::collections::HashSet;
 use crate::schema::{constraint::sorted_comma_list, index_spec::IndexSpec};
 
 use super::{
-    column_spec::ColumnSpec, function_spec::FunctionSpec, statement::SchemaStatement,
-    table_spec::TableSpec, trigger_spec::TriggerSpec,
+    column_spec::{ColumnReferenceSpec, ColumnSpec},
+    function_spec::FunctionSpec,
+    statement::SchemaStatement,
+    table_spec::TableSpec,
+    trigger_spec::TriggerSpec,
 };
 
 /// An execution unit of SQL, representing an operation that can create or destroy resources.
@@ -76,6 +79,16 @@ pub enum SchemaOp<'a> {
         constraint: String,
     },
 
+    CreateForeignKeyReference {
+        table: &'a TableSpec,
+        name: String,
+        reference_columns: Vec<(&'a ColumnSpec, &'a ColumnReferenceSpec)>,
+    },
+    DeleteForeignKeyReference {
+        table: &'a TableSpec,
+        name: String,
+    },
+
     SetNotNull {
         table: &'a TableSpec,
         column: &'a ColumnSpec,
@@ -119,7 +132,7 @@ impl SchemaOp<'_> {
             SchemaOp::DeleteTable { table } => table.deletion_sql(),
 
             SchemaOp::CreateColumn { table, column } => {
-                let column_stmt = column.to_sql(table);
+                let column_stmt = column.to_sql(table.has_single_pk());
 
                 SchemaStatement {
                     statement: format!(
@@ -198,6 +211,66 @@ impl SchemaOp<'_> {
                     "ALTER TABLE {} DROP CONSTRAINT \"{}\";",
                     table.sql_name(),
                     constraint
+                ),
+                ..Default::default()
+            },
+
+            SchemaOp::CreateForeignKeyReference {
+                table,
+                name,
+                reference_columns,
+            } => {
+                let mut reference_columns = reference_columns.clone();
+                reference_columns
+                    .sort_by(|(column1, _), (column2, _)| column1.name.cmp(&column2.name));
+
+                let (self_columns, foreign_columns): (Vec<&ColumnSpec>, Vec<&ColumnReferenceSpec>) =
+                    reference_columns.into_iter().unzip();
+
+                let constraint_name = format!(
+                    "{}_{}_fk",
+                    table.name.fully_qualified_name_with_sep("_"),
+                    name
+                );
+
+                let foreign_reference_columns = if foreign_columns.len() == 1 {
+                    // If there is only one foreign column, we don't need to specify the columns in the foreign key constraint (assume it's the primary key)
+                    // TODO: We keep this behavior for now to avoid changing all migration tests, but we should do that in a future PR
+                    "".to_string()
+                } else {
+                    let names = foreign_columns
+                        .iter()
+                        .map(|column_reference| {
+                            format!("\"{}\"", column_reference.foreign_pk_column_name)
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
+                    format!(" ({names})")
+                };
+
+                let foreign_constraint = format!(
+                    r#"ALTER TABLE {} ADD CONSTRAINT "{constraint_name}" FOREIGN KEY ({}) REFERENCES {}{};"#,
+                    table.name.sql_name(),
+                    self_columns
+                        .iter()
+                        .map(|c| format!("\"{}\"", c.name.as_str()))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    foreign_columns[0].foreign_table_name.sql_name(),
+                    foreign_reference_columns
+                );
+
+                SchemaStatement {
+                    post_statements: vec![foreign_constraint],
+                    ..Default::default()
+                }
+            }
+            SchemaOp::DeleteForeignKeyReference { table, name } => SchemaStatement {
+                statement: format!(
+                    "ALTER TABLE {} DROP CONSTRAINT \"{}\";",
+                    table.sql_name(),
+                    name
                 ),
                 ..Default::default()
             },
@@ -281,6 +354,12 @@ impl SchemaOp<'_> {
             SchemaOp::RemoveUniqueConstraint { table, constraint } => {
                 // Extra uniqueness constraint may make inserts fail even if model allows it
                 Some(format!("Extra unique constaint `{}` in table `{}` found that is not require by the model.", constraint, table.sql_name()))
+            }
+            SchemaOp::CreateForeignKeyReference { table, reference_columns, .. } => {
+                Some(format!("The model requires a foreign key constraint in table `{}` for the following columns: {}", table.sql_name(), reference_columns.iter().map(|(c, _)| c.name.as_str()).collect::<Vec<_>>().join(", ")))
+            }
+            SchemaOp::DeleteForeignKeyReference { table, name } => {
+                Some(format!("Extra foreign key constraint `{}` in table `{}` found that is not require by the model.", name, table.sql_name()))
             }
 
             SchemaOp::SetNotNull { table, column } => {
