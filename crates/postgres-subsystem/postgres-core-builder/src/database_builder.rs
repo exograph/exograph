@@ -44,7 +44,7 @@ pub fn build(resolved_env: &ResolvedTypeEnv) -> Result<Database, ModelBuildingEr
     // Ensure that all types have a primary key (skip JSON and unmanaged types)
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            if c.representation == EntityRepresentation::Managed && c.pk_field().is_none() {
+            if c.representation == EntityRepresentation::Managed && c.pk_fields().is_empty() {
                 let diagnostic = Diagnostic {
                     level: Level::Error,
                     message: format!(

@@ -151,8 +151,8 @@ impl TypeValidationProvider for ResolvedTypeHint {
 }
 
 impl ResolvedCompositeType {
-    pub fn pk_field(&self) -> Option<&ResolvedField> {
-        self.fields.iter().find(|f| f.is_pk)
+    pub fn pk_fields(&self) -> Vec<&ResolvedField> {
+        self.fields.iter().filter(|f| f.is_pk).collect()
     }
 
     pub fn field_by_column_names(&self, column_names: &[String]) -> Option<&ResolvedField> {

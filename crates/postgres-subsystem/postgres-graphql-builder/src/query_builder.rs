@@ -28,7 +28,7 @@ use postgres_core_model::{
     types::{EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType},
 };
 
-use crate::predicate_builder::{get_pk_filter_type_name, get_unique_filter_type_name};
+use crate::predicate_builder::get_unique_filter_type_name;
 
 use crate::shallow::Shallow;
 use postgres_core_builder::aggregate_type_builder::aggregate_type_name;
@@ -50,7 +50,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
             let aggregate_query = shallow_aggregate_query(entity_type_id, c);
             let unique_queries = shallow_unique_queries(entity_type_id, c);
 
-            if c.pk_field().is_some() {
+            if !c.pk_fields().is_empty() {
                 let shallow_query = shallow_pk_query(entity_type_id, c);
 
                 building
@@ -171,10 +171,7 @@ pub fn pk_predicate_params(
     database: &Database,
 ) -> Vec<PredicateParameter> {
     let pk_fields = entity_type.pk_fields();
-    pk_fields
-        .iter()
-        .map(|field| implicit_equals_predicate_param(field, predicate_types, database))
-        .collect()
+    compute_unique_query_predicate_param(&pk_fields, predicate_types, database)
 }
 
 fn implicit_equals_predicate_param(
@@ -184,7 +181,6 @@ fn implicit_equals_predicate_param(
 ) -> PredicateParameter {
     let predicate_type_name = match field.relation {
         PostgresRelation::Scalar { .. } => field.typ.name().to_owned(),
-        PostgresRelation::ManyToOne { .. } => get_pk_filter_type_name(field.typ.name()),
         _ => panic!("Invalid relation type"),
     };
     let param_type_id = predicate_types.get_id(&predicate_type_name).unwrap();
@@ -276,6 +272,43 @@ fn expand_aggregate_query(
     existing_query.parameters.predicate_param = predicate_param;
 }
 
+fn compute_unique_query_predicate_param(
+    fields: &[&PostgresField<EntityType>],
+    predicate_types: &MappedArena<PredicateParameterType>,
+    database: &Database,
+) -> Vec<PredicateParameter> {
+    fields
+        .iter()
+        .map(|field| match field.relation {
+            PostgresRelation::Scalar { .. } => {
+                implicit_equals_predicate_param(field, predicate_types, database)
+            }
+            PostgresRelation::ManyToOne { .. } => {
+                let param_type_name = get_unique_filter_type_name(field.typ.name());
+                let param_type_id = predicate_types.get_id(&param_type_name).unwrap();
+                let param_type = PredicateParameterTypeWrapper {
+                    name: param_type_name,
+                    type_id: param_type_id,
+                };
+
+                PredicateParameter {
+                    name: field.name.to_string(),
+                    typ: FieldType::Plain(param_type),
+                    column_path_link: Some(field.relation.column_path_link(database)),
+                    access: None,
+                    vector_distance_function: None,
+                }
+            }
+            PostgresRelation::OneToMany { .. } => {
+                panic!("OneToMany relations cannot be used in unique queries")
+            }
+            PostgresRelation::Embedded => {
+                panic!("Embedded relations cannot be used in unique queries")
+            }
+        })
+        .collect()
+}
+
 pub fn expand_unique_queries(
     entity_type: &EntityType,
     predicate_types: &MappedArena<PredicateParameterType>,
@@ -289,42 +322,13 @@ pub fn expand_unique_queries(
         for (name, fields) in resolved_composite_type.unique_constraints().iter() {
             let operation_name = entity_type.unique_query(name);
 
-            let predicate_params = fields
+            let entity_fields: Vec<_> = fields
                 .iter()
-                .map(|field| {
-                    let entity_field = entity_type.field_by_name(&field.name).unwrap();
-
-                    match entity_field.relation {
-                        PostgresRelation::Scalar { .. } => {
-                            implicit_equals_predicate_param(entity_field, predicate_types, database)
-                        }
-                        PostgresRelation::ManyToOne { .. } => {
-                            let param_type_name = get_unique_filter_type_name(field.typ.name());
-                            let param_type_id = predicate_types.get_id(&param_type_name).unwrap();
-                            let param_type = PredicateParameterTypeWrapper {
-                                name: param_type_name,
-                                type_id: param_type_id,
-                            };
-
-                            PredicateParameter {
-                                name: field.name.to_string(),
-                                typ: FieldType::Plain(param_type),
-                                column_path_link: Some(
-                                    entity_field.relation.column_path_link(database),
-                                ),
-                                access: None,
-                                vector_distance_function: None,
-                            }
-                        }
-                        PostgresRelation::OneToMany { .. } => {
-                            panic!("OneToMany relations cannot be used in unique queries")
-                        }
-                        PostgresRelation::Embedded => {
-                            panic!("Embedded relations cannot be used in unique queries")
-                        }
-                    }
-                })
+                .map(|field| entity_type.field_by_name(&field.name).unwrap())
                 .collect();
+
+            let predicate_params =
+                compute_unique_query_predicate_param(&entity_fields, predicate_types, database);
 
             let existing_query = &mut unique_queries.get_by_key_mut(&operation_name).unwrap();
             existing_query.parameters.predicate_params = predicate_params;

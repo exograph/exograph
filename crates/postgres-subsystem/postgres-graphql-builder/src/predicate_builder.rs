@@ -100,16 +100,6 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                         .predicate_types
                         .add(&shallow_type.name.clone(), shallow_type);
                 }
-                // Filter for the pk fields
-                {
-                    let shallow_type = PredicateParameterType {
-                        name: get_pk_filter_type_name(&c.name),
-                        kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
-                    };
-                    building
-                        .predicate_types
-                        .add(&shallow_type.name.clone(), shallow_type);
-                }
             }
         }
     }
@@ -155,13 +145,6 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
             let new_kind = expand_unique_type(entity_type, building);
             building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
         }
-
-        {
-            let param_type_name = get_pk_filter_type_name(&entity_type.name);
-            let existing_param_id = building.predicate_types.get_id(&param_type_name);
-            let new_kind = expand_pk_type(entity_type, building);
-            building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
-        }
     }
 }
 
@@ -171,10 +154,6 @@ pub fn get_filter_type_name(type_name: &str) -> String {
 
 pub fn get_unique_filter_type_name(type_name: &str) -> String {
     format!("{type_name}UniqueFilter")
-}
-
-pub fn get_pk_filter_type_name(type_name: &str) -> String {
-    format!("{type_name}PkFilter")
 }
 
 fn expand_primitive_type(
@@ -324,46 +303,11 @@ fn expand_unique_type(
                     vector_distance_function: None,
                 })
             }
-            _ => None,
-        })
-        .collect();
-
-    PredicateParameterTypeKind::Reference(field_predicates)
-}
-
-fn expand_pk_type(
-    entity_type: &EntityType,
-    building: &SystemContextBuilding,
-) -> PredicateParameterTypeKind {
-    let field_predicates = entity_type
-        .fields
-        .iter()
-        .flat_map(|field| match &field.relation {
-            PostgresRelation::Scalar { is_pk: true, .. } => {
-                let field_type_name = field.typ.name();
-                let param_type_id = building
-                    .predicate_types
-                    .get_id(field_type_name)
-                    .unwrap_or_else(|| panic!("Could not find predicate type '{field_type_name}'"));
-
-                let param_type = FieldType::Plain(PredicateParameterTypeWrapper {
-                    name: field_type_name.to_owned(),
-                    type_id: param_type_id,
-                });
-
-                Some(PredicateParameter {
-                    name: field.name.clone(),
-                    typ: param_type,
-                    access: Some(field.access.clone()),
-                    column_path_link: None,
-                    vector_distance_function: None,
-                })
-            }
             PostgresRelation::ManyToOne { is_pk: true, .. } => {
                 let field_type_name = field.typ.name();
                 let param_type_id = building
                     .predicate_types
-                    .get_id(&get_pk_filter_type_name(field_type_name))
+                    .get_id(&get_unique_filter_type_name(field_type_name))
                     .unwrap_or_else(|| panic!("Could not find predicate type '{field_type_name}'"));
 
                 let param_type = FieldType::Plain(PredicateParameterTypeWrapper {
