@@ -266,7 +266,10 @@ pub trait DataParamBuilder<D> {
         };
 
         match &field.relation {
-            PostgresRelation::Pk { column_ids } => {
+            PostgresRelation::Scalar {
+                column_id,
+                is_pk: true,
+            } => {
                 if Self::data_param_role() == DataParamRole::Update {
                     // A typical way clients use update mutation is to get the data along with the id,
                     // modify the data and send it back to the server. So we accept the id
@@ -289,7 +292,7 @@ pub trait DataParamBuilder<D> {
                     //
                     // We should revisit this after we support "readonly" fields (see
                     // https://github.com/exograph/exograph/issues/926)
-                    let column = column_ids[0].get_column(&building.core_subsystem.database);
+                    let column = column_id.get_column(&building.core_subsystem.database);
 
                     if column.is_auto_increment {
                         None
@@ -315,20 +318,22 @@ pub trait DataParamBuilder<D> {
                     }
                 }
             }
-            PostgresRelation::Scalar { .. } | PostgresRelation::Embedded => Some(PostgresField {
-                name: field.name.clone(),
-                typ: if optional {
-                    to_mutation_type(&field.typ, mutation_type_kind, building).optional()
-                } else {
-                    to_mutation_type(&field.typ, mutation_type_kind, building)
-                },
-                access: field.access.clone(),
-                relation: field.relation.clone(),
-                has_default_value: field.has_default_value,
-                dynamic_default_value: field.dynamic_default_value.clone(),
-                readonly: field.readonly,
-                type_validation: field.type_validation.clone(),
-            }),
+            PostgresRelation::Scalar { is_pk: false, .. } | PostgresRelation::Embedded => {
+                Some(PostgresField {
+                    name: field.name.clone(),
+                    typ: if optional {
+                        to_mutation_type(&field.typ, mutation_type_kind, building).optional()
+                    } else {
+                        to_mutation_type(&field.typ, mutation_type_kind, building)
+                    },
+                    access: field.access.clone(),
+                    relation: field.relation.clone(),
+                    has_default_value: field.has_default_value,
+                    dynamic_default_value: field.dynamic_default_value.clone(),
+                    readonly: field.readonly,
+                    type_validation: field.type_validation.clone(),
+                })
+            }
             PostgresRelation::OneToMany { .. } => {
                 self.compute_one_to_many_data_field(field, container_type, building)
             }

@@ -125,19 +125,14 @@ async fn map_single<'a>(
 
             field_arg.map(|field_arg| async move {
                 match &field.relation {
-                    PostgresRelation::Pk { column_ids } => {
-                        // let relevat_column = column_ids.iter().find(|column_id| column_id == field.)
-                        join_all(column_ids.iter().map(|column_id| {
-                            map_self_column(*column_id, field, field_arg, subsystem)
-                        }))
-                        .await
-                    }
-
-                    PostgresRelation::Scalar { column_id } => {
+                    PostgresRelation::Scalar { column_id, .. } => {
                         vec![map_self_column(*column_id, field, field_arg, subsystem).await]
                     }
 
-                    PostgresRelation::ManyToOne(ManyToOneRelation { relation_id, .. }) => {
+                    PostgresRelation::ManyToOne {
+                        relation: ManyToOneRelation { relation_id, .. },
+                        ..
+                    } => {
                         let ManyToOne { column_pairs, .. } =
                             relation_id.deref(&subsystem.core_subsystem.database);
                         vec![
@@ -190,10 +185,14 @@ async fn map_self_column<'a>(
     let key_column = key_column_id.get_column(&subsystem.core_subsystem.database);
 
     let argument_value = match &field.relation {
-        PostgresRelation::ManyToOne(ManyToOneRelation {
-            foreign_pk_field_ids,
+        PostgresRelation::ManyToOne {
+            relation:
+                ManyToOneRelation {
+                    foreign_pk_field_ids,
+                    ..
+                },
             ..
-        }) => {
+        } => {
             let foreign_type_pk_field_name = &foreign_pk_field_ids[0]
                 .resolve(&subsystem.core_subsystem.entity_types)
                 .name;

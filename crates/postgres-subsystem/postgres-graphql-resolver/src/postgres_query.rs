@@ -221,9 +221,8 @@ async fn map_persistent_field<'content>(
     request_context: &'content RequestContext<'content>,
 ) -> Result<SelectionElement, PostgresExecutionError> {
     match &entity_field.relation {
-        PostgresRelation::Pk { column_ids } => Ok(SelectionElement::Physical(column_ids[0])),
-        PostgresRelation::Scalar { column_id } => Ok(SelectionElement::Physical(*column_id)),
-        PostgresRelation::ManyToOne(relation) => {
+        PostgresRelation::Scalar { column_id, .. } => Ok(SelectionElement::Physical(*column_id)),
+        PostgresRelation::ManyToOne { relation, .. } => {
             let ManyToOneRelation {
                 foreign_pk_field_ids,
                 ..

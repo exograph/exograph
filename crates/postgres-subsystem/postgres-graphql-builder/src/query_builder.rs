@@ -28,7 +28,7 @@ use postgres_core_model::{
     types::{EntityRepresentation, EntityType, PostgresField, PostgresPrimitiveType},
 };
 
-use crate::predicate_builder::get_unique_filter_type_name;
+use crate::predicate_builder::{get_pk_filter_type_name, get_unique_filter_type_name};
 
 use crate::shallow::Shallow;
 use postgres_core_builder::aggregate_type_builder::aggregate_type_name;
@@ -182,7 +182,12 @@ fn implicit_equals_predicate_param(
     predicate_types: &MappedArena<PredicateParameterType>,
     database: &Database,
 ) -> PredicateParameter {
-    let param_type_id = predicate_types.get_id(field.typ.name()).unwrap();
+    let predicate_type_name = match field.relation {
+        PostgresRelation::Scalar { .. } => field.typ.name().to_owned(),
+        PostgresRelation::ManyToOne { .. } => get_pk_filter_type_name(field.typ.name()),
+        _ => panic!("Invalid relation type"),
+    };
+    let param_type_id = predicate_types.get_id(&predicate_type_name).unwrap();
     let param_type = PredicateParameterTypeWrapper {
         name: field.typ.name().to_owned(),
         type_id: param_type_id,
@@ -290,7 +295,7 @@ pub fn expand_unique_queries(
                     let entity_field = entity_type.field_by_name(&field.name).unwrap();
 
                     match entity_field.relation {
-                        PostgresRelation::Pk { .. } | PostgresRelation::Scalar { .. } => {
+                        PostgresRelation::Scalar { .. } => {
                             implicit_equals_predicate_param(entity_field, predicate_types, database)
                         }
                         PostgresRelation::ManyToOne { .. } => {

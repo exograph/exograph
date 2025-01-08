@@ -70,7 +70,7 @@ impl ToPlural for ResolvedCompositeType {
 pub struct ResolvedField {
     pub name: String,
     pub typ: FieldType<ResolvedFieldType>,
-    pub column_names: Vec<String>,
+    pub column_names: Vec<String>, // column names for this field (will be multiple of the field is composite and that composite type has multiple pks)
     pub self_column: bool, // is the column name in the same table or does it point to a column in a different table?
     pub is_pk: bool,
     pub access: ResolvedAccess,

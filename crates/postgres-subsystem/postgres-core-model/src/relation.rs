@@ -23,11 +23,26 @@ pub enum RelationCardinality {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PostgresRelation {
-    Pk { column_ids: Vec<ColumnId> },
-    Scalar { column_id: ColumnId },
-    ManyToOne(ManyToOneRelation),
+    Scalar {
+        column_id: ColumnId,
+        is_pk: bool,
+    },
+    ManyToOne {
+        relation: ManyToOneRelation,
+        is_pk: bool,
+    },
     OneToMany(OneToManyRelation),
     Embedded, // Such as a field in typed json
+}
+
+impl PostgresRelation {
+    pub fn is_pk(&self) -> bool {
+        matches!(
+            self,
+            PostgresRelation::Scalar { is_pk: true, .. }
+                | PostgresRelation::ManyToOne { is_pk: true, .. }
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -72,9 +87,8 @@ impl OneToManyRelation {
 impl PostgresRelation {
     pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
         match &self {
-            PostgresRelation::Pk { column_ids, .. } => ColumnPathLink::Leaf(column_ids[0]),
             PostgresRelation::Scalar { column_id, .. } => ColumnPathLink::Leaf(*column_id),
-            PostgresRelation::ManyToOne(relation) => relation.column_path_link(database),
+            PostgresRelation::ManyToOne { relation, .. } => relation.column_path_link(database),
             PostgresRelation::OneToMany(relation) => relation.column_path_link(database),
             PostgresRelation::Embedded => {
                 panic!("Embedded relations cannot be used in queries")

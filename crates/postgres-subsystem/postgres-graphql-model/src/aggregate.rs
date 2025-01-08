@@ -49,9 +49,7 @@ impl FieldDefinitionProvider<PostgresGraphQLSubsystem> for AggregateField {
     fn field_definition(&self, system: &PostgresGraphQLSubsystem) -> FieldDefinition {
         let arguments = match &self.relation {
             Some(relation) => match relation {
-                PostgresRelation::Pk { .. }
-                | PostgresRelation::Scalar { .. }
-                | PostgresRelation::ManyToOne { .. } => {
+                PostgresRelation::Scalar { .. } | PostgresRelation::ManyToOne { .. } => {
                     vec![]
                 }
                 PostgresRelation::OneToMany(OneToManyRelation {

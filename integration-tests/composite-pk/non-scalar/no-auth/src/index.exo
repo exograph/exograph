@@ -1,0 +1,25 @@
+@postgres
+module ChatModule {
+  @access(true)
+  type Chat {
+    @pk id: Int = autoIncrement()
+    title: String
+    participants: Set<ChatParticipant>?
+  }
+
+  @access(true)
+  type ChatParticipant {
+    // @pk id: Int = autoIncrement()
+    // @unique("participant") chat: Chat
+    // @unique("participant") user: User
+    @pk chat: Chat
+    @pk user: User
+  }
+
+  @access(true)
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    chats: Set<ChatParticipant>?
+  }
+}

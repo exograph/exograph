@@ -128,7 +128,7 @@ impl EntityType {
     pub fn pk_fields(&self) -> Vec<&PostgresField<EntityType>> {
         self.fields
             .iter()
-            .filter(|field| matches!(&field.relation, PostgresRelation::Pk { .. }))
+            .filter(|field| field.relation.is_pk())
             .collect()
     }
 
@@ -136,7 +136,7 @@ impl EntityType {
         self.fields
             .iter()
             .enumerate()
-            .filter(|(_, field)| matches!(&field.relation, PostgresRelation::Pk { .. }))
+            .filter(|(_, field)| field.relation.is_pk())
             .map(|(field_index, _)| EntityFieldId(field_index, entity_id))
             .collect()
     }
