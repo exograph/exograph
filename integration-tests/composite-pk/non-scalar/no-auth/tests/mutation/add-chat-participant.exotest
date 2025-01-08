@@ -1,0 +1,118 @@
+stages:
+  - operation: |
+      # Add u4 to c1 (c1 already has u1 and u2)
+      mutation($u4_id: Int!, $c1_id: Int!) {
+        createChatParticipation(data: {user: { id: $u4_id }, chat: { id: $c1_id }}) {
+          user {
+            id
+          }
+          chat {
+            id
+          }
+        }
+      }
+    variable: |
+      {
+        "u4_id": $.u4_id,
+        "c1_id": $.c1_id
+      }
+    response: |
+      {
+        "data": {
+          "createChatParticipation": {
+            "user": {
+              "id": 4
+            },
+            "chat": {
+              "id": 1
+            }
+          }
+        }
+      }
+  - operation: |
+      query {
+        chats @unordered {
+          id
+          title
+          participants @unordered {
+            user {
+              id
+              name
+            }
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "chats": [
+            {
+              "id": $.c1_id,
+              "title": "c1-between-u1-u2",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c2_id,
+              "title": "c2-between-u1-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c3_id,
+              "title": "c3-between-u1-u2-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+

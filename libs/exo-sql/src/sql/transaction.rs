@@ -235,31 +235,45 @@ impl TemplateFilterOperation {
             .map(|pk_physical_column| pk_physical_column.typ.get_pg_type())
             .collect::<Vec<_>>();
 
-        let op = ConcreteTransactionStep {
-            operation: SQLOperation::Select(Select {
-                table: Table::physical(self.table_id, None),
-                predicate: Predicate::and(
+        let predicate = pk_column_ids.iter().enumerate().fold(
+            self.predicate,
+            |predicate, (index, pk_column_id)| {
+                Predicate::and(
+                    predicate,
                     Predicate::Eq(
-                        Column::physical(pk_column_ids[0], None),
+                        Column::physical(*pk_column_id, None),
                         Column::ArrayParam {
                             param: SQLParamContainer::from_sql_values(
                                 (0..rows)
                                     .map(|row| {
-                                        transaction_context.resolve_value(self.prev_step_id, row, 0)
+                                        transaction_context.resolve_value(
+                                            self.prev_step_id,
+                                            row,
+                                            index,
+                                        )
                                     })
                                     .collect::<Vec<_>>(),
-                                pk_column_types[0].clone(),
+                                pk_column_types[index].clone(),
                             ),
                             wrapper: ArrayParamWrapper::Any,
                         },
                     ),
-                    self.predicate,
-                ),
+                )
+            },
+        );
+
+        let op = ConcreteTransactionStep {
+            operation: SQLOperation::Select(Select {
+                table: Table::physical(self.table_id, None),
+                predicate,
                 order_by: None,
                 offset: None,
                 limit: None,
                 top_level_selection: false,
-                columns: vec![Column::physical(pk_column_ids[0], None)],
+                columns: pk_column_ids
+                    .into_iter()
+                    .map(|pk_column_id| Column::physical(pk_column_id, None))
+                    .collect(),
                 group_by: None,
             }),
         };

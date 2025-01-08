@@ -62,34 +62,48 @@ impl InsertionStrategy for MultiStatementStrategy {
 
         let select = transformer.to_select(selection, database);
 
-        let pk_column_types = database
-            .get_table(*table_id)
-            .get_pk_physical_columns()
-            .iter()
-            .map(|pk_physical_column| pk_physical_column.typ.get_pg_type())
-            .collect::<Vec<_>>();
-
         // Take the previous insert steps and use them as the input to the select
         // statement to form a predicate `pk IN (insert_step_1_pk, insert_step_2_pk, ...)`
         let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
-            let in_values = SQLParamContainer::from_sql_values(
-                insert_step_ids
-                    .into_iter()
-                    .map(|insert_step_id| transaction_context.resolve_value(insert_step_id, 0, 0))
-                    .collect::<Vec<_>>(),
-                pk_column_types[0].clone(),
-            );
+            let predicate = database
+                .get_table(*table_id)
+                .get_pk_column_indices()
+                .into_iter()
+                .enumerate()
+                .fold(
+                    select.predicate,
+                    |predicate, (i, pk_physical_column_index)| {
+                        let pk_column_id = ColumnId {
+                            table_id: *table_id,
+                            column_index: pk_physical_column_index,
+                        };
+                        let pk_physical_column =
+                            &database.get_table(*table_id).columns[pk_physical_column_index];
 
-            let predicate = Predicate::and(
-                Predicate::Eq(
-                    Column::physical(database.get_pk_column_ids(*table_id).remove(0), None),
-                    Column::ArrayParam {
-                        param: in_values,
-                        wrapper: ArrayParamWrapper::Any,
+                        let in_values = SQLParamContainer::from_sql_values(
+                            insert_step_ids
+                                .clone()
+                                .into_iter()
+                                .map(|insert_step_id| {
+                                    transaction_context.resolve_value(insert_step_id, 0, i)
+                                })
+                                .collect::<Vec<_>>(),
+                            pk_physical_column.typ.get_pg_type(),
+                        );
+
+                        Predicate::and(
+                            predicate,
+                            Predicate::Eq(
+                                Column::physical(pk_column_id, None),
+                                Column::ArrayParam {
+                                    param: in_values,
+                                    wrapper: ArrayParamWrapper::Any,
+                                },
+                            ),
+                        )
                     },
-                ),
-                select.predicate,
-            );
+                );
+
             ConcreteTransactionStep::new(SQLOperation::Select(Select {
                 predicate,
                 ..select
@@ -133,8 +147,6 @@ fn insert_self_row<'a>(
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,
 ) -> TransactionStepId {
-    let pk_column = Column::physical(database.get_pk_column_ids(table_id).remove(0), None);
-
     let table = database.get_table(table_id);
 
     let (mut columns, values): (Vec<_>, Vec<_>) = row
@@ -144,6 +156,13 @@ fn insert_self_row<'a>(
         })
         .unzip();
 
+    let pk_column_ids = database.get_pk_column_ids(table_id);
+
+    let returning = pk_column_ids
+        .into_iter()
+        .map(|column_id| Column::physical(column_id, None))
+        .collect();
+
     match parent_step {
         Some((parent_step_id, parent_column_id)) => {
             columns.push(parent_column_id.get_column(database));
@@ -151,6 +170,7 @@ fn insert_self_row<'a>(
                 .into_iter()
                 .map(ProxyColumn::Concrete)
                 .collect::<Vec<_>>();
+
             proxy_values.push(ProxyColumn::Template {
                 col_index: 0,
                 step_id: parent_step_id,
@@ -160,7 +180,7 @@ fn insert_self_row<'a>(
                 table,
                 columns,
                 column_values_seq: vec![proxy_values],
-                returning: vec![pk_column],
+                returning,
             });
             transaction_script.add_step(TransactionStep::Template(TemplateTransactionStep {
                 operation: insert,
@@ -168,8 +188,11 @@ fn insert_self_row<'a>(
             }))
         }
         None => {
-            let insert =
-                SQLOperation::Insert(table.insert(columns, vec![values], vec![pk_column.into()]));
+            let insert = SQLOperation::Insert(table.insert(
+                columns,
+                vec![values],
+                returning.into_iter().map(|c| c.into()).collect(),
+            ));
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 insert,
             )))

@@ -1,0 +1,155 @@
+stages:
+  - operation: |
+      mutation($u1_id: Int!, $u4_id: Int!, $c1_id: Int!) {
+        # add user 4 to chat 1
+        updateChat(id: $c1_id, data: { title: "updated", participants: { create: { user: { id: $u4_id } } } }) {
+          id
+          title
+          participants @unordered {
+            user {
+              id
+              name
+            }
+            chat {
+              id
+              title
+            }
+          }
+        }
+      }
+    variable: |
+      {
+        "u1_id": $.u1_id,
+        "u4_id": $.u4_id,
+        "c1_id": $.c1_id
+      }
+    response: |
+      {
+        "data": {
+          "updateChat": {
+            "id": $.c1_id,
+            "title": "updated",
+            "participants": [
+              {
+                "user": {
+                  "id": $.u1_id,
+                  "name": "u1"
+                },
+                "chat": {
+                  "id": $.c1_id,
+                  "title": "updated"
+                }
+              },
+              {
+                "user": {
+                  "id": $.u2_id,
+                  "name": "u2"
+                },
+                "chat": {
+                  "id": $.c1_id,
+                  "title": "updated"
+                }
+              },
+              {
+                "user": {
+                  "id": $.u4_id,
+                  "name": "u4"
+                },
+                "chat": {
+                  "id": $.c1_id,
+                  "title": "updated"
+                }
+              }
+            ]
+          }
+        }
+      }
+
+
+
+  - operation: |
+      query {
+        chats @unordered {
+          id
+          title
+          participants @unordered {
+            user {
+              id
+              name
+            }
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "chats": [
+            {
+              "id": $.c2_id,
+              "title": "c2-between-u1-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c3_id,
+              "title": "c3-between-u1-u2-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c1_id,
+              "title": "updated",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }

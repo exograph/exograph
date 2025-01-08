@@ -4,14 +4,11 @@ module ChatModule {
   type Chat {
     @pk id: Int = autoIncrement()
     title: String
-    participants: Set<ChatParticipant>?
+    participants: Set<ChatParticipation>?
   }
 
   @access(true)
-  type ChatParticipant {
-    // @pk id: Int = autoIncrement()
-    // @unique("participant") chat: Chat
-    // @unique("participant") user: User
+  type ChatParticipation {
     @pk chat: Chat
     @pk user: User
   }
@@ -20,6 +17,6 @@ module ChatModule {
   type User {
     @pk id: Int = autoIncrement()
     name: String
-    chats: Set<ChatParticipant>?
+    participatesIn: Set<ChatParticipation>?
   }
 }

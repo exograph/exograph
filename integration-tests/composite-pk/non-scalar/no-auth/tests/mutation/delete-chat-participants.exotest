@@ -1,0 +1,110 @@
+stages:
+  - operation: |
+      mutation($u1_id: Int!) {
+        # Delete all chat participations for user u1 (user u1 leaves the organization, for example)
+        deleteChatParticipations(where: { user: { id: { eq: $u1_id } } }) @unordered {
+          user {
+            id
+          }
+          chat {
+            id
+          }
+        }
+      }
+    variable: |
+      {
+        "u1_id": $.u1_id
+      }
+    response: |
+      {
+        "data": {
+          "deleteChatParticipations": [
+            {
+              "user": {
+                "id": $.u1_id
+              },
+              "chat": {
+                "id": $.c1_id
+              }
+            },
+            {
+              "user": {
+                "id": $.u1_id
+              },
+              "chat": {
+                "id": $.c2_id
+              }
+            },
+            {
+              "user": {
+                "id": $.u1_id
+              },
+              "chat": {
+                "id": $.c3_id
+              }
+            }
+          ]
+        }
+      }
+  - operation: |
+      query {
+        chats @unordered {
+          id
+          title
+          participants @unordered {
+            user {
+              id
+              name
+            }
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "chats": [
+            {
+              "id": $.c1_id,
+              "title": "c1-between-u1-u2",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c2_id,
+              "title": "c2-between-u1-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c3_id,
+              "title": "c3-between-u1-u2-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
