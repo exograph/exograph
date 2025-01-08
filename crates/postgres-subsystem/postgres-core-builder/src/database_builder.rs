@@ -301,7 +301,7 @@ fn create_columns(
                                     // A placeholder value. Will be resolved in the next phase (see expand_type_relations)
                                     PhysicalColumnType::Boolean
                                 },
-                                is_pk: false,
+                                is_pk: field.is_pk,
                                 is_auto_increment: false,
                                 is_nullable: optional,
                                 unique_constraints: unique_constraint_name.clone(),
