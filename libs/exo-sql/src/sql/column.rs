@@ -31,6 +31,9 @@ pub enum Column {
         column_id: ColumnId,
         table_alias: Option<String>,
     },
+    // A column that is an array of columns (used for IN clauses)
+    ColumnArray(Vec<Column>),
+
     /// A literal value such as a string or number e.g. 'Sam'. This will be mapped to a placeholder
     /// to avoid SQL injection.
     Param(SQLParamContainer),
@@ -87,6 +90,15 @@ impl ExpressionBuilder for Column {
                         builder.push_column_with_table_alias(&column.name, table_alias);
                     }
                     _ => column.build(database, builder),
+                }
+            }
+            Column::ColumnArray(columns) => {
+                if columns.len() == 1 {
+                    columns[0].build(database, builder);
+                } else {
+                    builder.push('(');
+                    builder.push_elems(database, columns, ",");
+                    builder.push(')');
                 }
             }
             Column::Function(function) => {

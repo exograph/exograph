@@ -352,7 +352,11 @@ async fn compute_nested_inserts<'a>(
         .await?;
 
         Ok(NestedAbstractInsert {
-            relation_column_id: nesting_relation.column_pairs[0].foreign_column_id,
+            relation_column_ids: nesting_relation
+                .column_pairs
+                .iter()
+                .map(|pair| pair.foreign_column_id)
+                .collect(),
             insert: AbstractInsert {
                 table_id,
                 rows,

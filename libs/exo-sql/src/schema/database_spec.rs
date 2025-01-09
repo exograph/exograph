@@ -148,13 +148,13 @@ impl DatabaseSpec {
                                 column.name.clone()
                             });
 
-                            Some(ManyToOne {
-                                column_pairs: vec![RelationColumnPair {
+                            Some(ManyToOne::new(
+                                vec![RelationColumnPair {
                                     self_column_id,
                                     foreign_column_id: foreign_pk_column_id,
                                 }],
                                 foreign_table_alias,
-                            })
+                            ))
                         }
                         _ => None,
                     }

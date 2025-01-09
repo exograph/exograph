@@ -83,7 +83,9 @@ impl ColumnPathLink {
             column_pairs
                 .iter()
                 .all(|RelationColumnPair { self_column_id, .. }| {
-                    self_column_id.table_id == column_pairs[0].self_column_id.table_id
+                    column_pairs.iter().all(|column_pair| {
+                        column_pair.self_column_id.table_id == self_column_id.table_id
+                    })
                 }),
             "All self columns in the column pairs must refer to the same table"
         );
@@ -93,7 +95,9 @@ impl ColumnPathLink {
                 |RelationColumnPair {
                      foreign_column_id, ..
                  }| {
-                    foreign_column_id.table_id == column_pairs[0].foreign_column_id.table_id
+                    column_pairs.iter().all(|column_pair| {
+                        column_pair.foreign_column_id.table_id == foreign_column_id.table_id
+                    })
                 }
             ),
             "All foreign columns in the column pairs must refer to the same table"

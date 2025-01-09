@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{ColumnId, ColumnPathLink, Database};
+use crate::{ColumnId, ColumnPathLink, Database, TableId};
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct RelationColumnPair {
@@ -22,6 +22,25 @@ pub struct OneToMany {
     pub column_pairs: Vec<RelationColumnPair>,
 }
 
+impl OneToMany {
+    pub fn new(column_pairs: Vec<RelationColumnPair>) -> Self {
+        assert!(!column_pairs.is_empty());
+        Self { column_pairs }
+    }
+
+    pub fn self_table_id(&self) -> TableId {
+        self.column_pairs[0].self_column_id.table_id
+    }
+
+    pub fn linked_table_id(&self) -> TableId {
+        self.column_pairs[0].foreign_column_id.table_id
+    }
+
+    pub fn column_path_link(&self) -> ColumnPathLink {
+        ColumnPathLink::relation(self.column_pairs.clone(), None)
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ManyToOne {
     pub column_pairs: Vec<RelationColumnPair>,
@@ -31,25 +50,34 @@ pub struct ManyToOne {
     pub foreign_table_alias: Option<String>,
 }
 
-impl OneToMany {
-    pub fn column_path_link(&self) -> ColumnPathLink {
-        ColumnPathLink::relation(self.column_pairs.clone(), None)
-    }
-}
-
 impl ManyToOne {
+    pub fn new(column_pairs: Vec<RelationColumnPair>, foreign_table_alias: Option<String>) -> Self {
+        assert!(!column_pairs.is_empty());
+        Self {
+            column_pairs,
+            foreign_table_alias,
+        }
+    }
+
     fn flipped(&self) -> OneToMany {
-        OneToMany {
-            column_pairs: self
-                .column_pairs
+        OneToMany::new(
+            self.column_pairs
                 .iter()
                 .map(|pair| pair.flipped())
                 .collect(),
-        }
+        )
     }
 
     pub fn column_path_link(&self) -> ColumnPathLink {
         ColumnPathLink::relation(self.column_pairs.clone(), self.foreign_table_alias.clone())
+    }
+
+    pub fn self_table_id(&self) -> TableId {
+        self.column_pairs[0].self_column_id.table_id
+    }
+
+    pub fn linked_table_id(&self) -> TableId {
+        self.column_pairs[0].foreign_column_id.table_id
     }
 }
 

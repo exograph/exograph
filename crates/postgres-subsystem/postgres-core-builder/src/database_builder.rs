@@ -398,8 +398,8 @@ fn compute_many_to_one_relation(
 
                     let field_alias = field.name.to_snake_case().to_plural();
 
-                    Some(ManyToOne {
-                        column_pairs: self_column_ids
+                    Some(ManyToOne::new(
+                        self_column_ids
                             .into_iter()
                             .zip(foreign_pk_column_ids)
                             .map(|(self_column_id, foreign_column_id)| RelationColumnPair {
@@ -407,8 +407,8 @@ fn compute_many_to_one_relation(
                                 foreign_column_id,
                             })
                             .collect(),
-                        foreign_table_alias: Some(field_alias),
-                    })
+                        Some(field_alias),
+                    ))
                 }
                 _ => None,
             }

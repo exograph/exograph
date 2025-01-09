@@ -11,6 +11,7 @@ module ChatModule {
   type ChatParticipation {
     @pk chat: Chat
     @pk user: User
+    moods: Set<Mood>?
   }
 
   @access(true)
@@ -18,5 +19,12 @@ module ChatModule {
     @pk id: Int = autoIncrement()
     name: String
     participatesIn: Set<ChatParticipation>?
+  }
+
+  @access(true)
+  type Mood {
+    @pk id: Int = autoIncrement()
+    name: String
+    chatParticipation: ChatParticipation
   }
 }

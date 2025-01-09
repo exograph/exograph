@@ -9,7 +9,7 @@
 
 use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
-    sql::{predicate::ConcretePredicate, relation::RelationColumnPair},
+    sql::predicate::ConcretePredicate,
     transform::{pg::selection_level::SelectionLevel, transformer::PredicateTransformer},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, Column, ColumnPath, Database,
     NumericComparator, Selection, SelectionElement, VectorDistanceFunction,
@@ -180,20 +180,24 @@ fn form_subselect(
     database: &Database,
     select_transformer: &Postgres,
 ) -> ConcretePredicate {
-    let RelationLink { column_pairs, .. } = relation_link;
+    let selection = Selection::Seq(
+        relation_link
+            .column_pairs
+            .iter()
+            .map(|column_pair| {
+                let foreign_column_id = column_pair.foreign_column_id;
+                let foreign_column = foreign_column_id.get_column(database);
+                AliasedSelectionElement::new(
+                    foreign_column.name.clone(),
+                    SelectionElement::Physical(foreign_column_id),
+                )
+            })
+            .collect(),
+    );
 
-    let RelationColumnPair {
-        self_column_id,
-        foreign_column_id,
-    } = column_pairs[0];
-
-    let foreign_column = foreign_column_id.get_column(database);
     let abstract_select = AbstractSelect {
-        table_id: self_column_id.table_id,
-        selection: Selection::Seq(vec![AliasedSelectionElement::new(
-            foreign_column.name.clone(),
-            SelectionElement::Physical(foreign_column_id),
-        )]),
+        table_id: relation_link.self_table_id(),
+        selection,
         predicate,
         order_by: None,
         offset: None,
@@ -209,7 +213,16 @@ fn form_subselect(
 
     let select_column = Column::SubSelect(Box::new(select));
 
-    ConcretePredicate::In(Column::physical(self_column_id, None), select_column)
+    ConcretePredicate::In(
+        Column::ColumnArray(
+            relation_link
+                .column_pairs
+                .iter()
+                .map(|column_pair| Column::physical(column_pair.self_column_id, None))
+                .collect(),
+        ),
+        select_column,
+    )
 }
 
 fn leaf_column(

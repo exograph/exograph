@@ -1,0 +1,138 @@
+stages:
+  - operation: |
+      mutation($u1_id: Int!, $c2_id: Int!) {
+        # Add a mood participation to user 1's chat 2
+        updateChatParticipation(user: { id: $u1_id }, chat: { id: $c2_id }, data: { moods: { create: { name: "happy" } } }) {
+          user {
+            id
+          }
+          chat {
+            id
+          }
+          moods @unordered @bind(name: "moods") {
+            id
+            name
+          }
+        }
+      }
+    variable: |
+      {
+        "u1_id": $.u1_id,
+        "c2_id": $.c2_id
+      }
+    response: |
+      {
+        "data": {
+          "updateChatParticipation": {
+            "user": {
+              "id": $.u1_id
+            },
+            "chat": {
+              "id": $.c2_id
+            },
+            "moods": [
+              {
+                "id": $.moods[0].id,
+                "name": "happy"
+              }
+            ]
+          }
+        }
+      }
+
+  - operation: |
+      query {
+        chats @unordered {
+          id
+          title
+          participants @unordered {
+            user {
+              id
+              name
+            }
+            moods @unordered {
+              id
+              name
+            }
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "chats": [
+            {
+              "id": $.c1_id,
+              "title": "c1-between-u1-u2",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  },
+                  "moods": []
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  },
+                  "moods": []
+                }
+              ]
+            },
+            {
+              "id": $.c2_id,
+              "title": "c2-between-u1-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  },
+                  "moods": [
+                    {
+                      "id": $.moods[0].id,
+                      "name": "happy"
+                    }
+                  ]
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  },
+                  "moods": []
+                }
+              ]
+            },
+            {
+              "id": $.c3_id,
+              "title": "c3-between-u1-u2-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  },
+                  "moods": []
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  },
+                  "moods": []
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  },
+                  "moods": []
+                }
+              ]
+            }
+          ]
+        }
+      }

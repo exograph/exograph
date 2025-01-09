@@ -110,7 +110,7 @@ impl NestedAbstractInsertSet {
         }
 
         assert!(
-            all_same(ops.iter().map(|op| op.relation_column_id)),
+            all_same(ops.iter().map(|op| op.relation_column_ids.clone())),
             "All nested inserts must be for the same relation"
         );
         assert!(
@@ -132,7 +132,7 @@ impl NestedAbstractInsertSet {
 #[derive(Debug)]
 pub struct NestedAbstractInsert {
     /// Same as `NestedAbstractUpdate::relation_column_id`
-    pub relation_column_id: ColumnId,
+    pub relation_column_ids: Vec<ColumnId>,
     /// The insert to apply to the nested table
     pub insert: AbstractInsert,
 }
