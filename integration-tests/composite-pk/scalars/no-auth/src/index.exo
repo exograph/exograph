@@ -16,6 +16,7 @@ module PeopleDatabase {
     @pk city: String
     @pk state: String
     @pk zip: Int
+    info: String?
     people: Set<Person>?
   }
 }

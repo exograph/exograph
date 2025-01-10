@@ -1,0 +1,39 @@
+operation: |
+    mutation {
+        user1: createUser(data: {
+            orgId: 1,
+            email: "user1@example.com",
+            profile: {
+                name: "User 1"
+            }
+        }) {
+            orgId
+            email
+            profile {
+                name
+            }
+        }
+        user2: createUser(data: {
+            orgId: 2,
+            email: "user2@example.com",
+            profile: {
+                name: "User 2"
+            }
+        }) {
+            orgId
+            email
+            profile {
+                name
+            }
+        }
+        user3: createUser(data: {
+            orgId: 3,
+            email: "user3@example.com",
+        }) {
+            orgId
+            email
+            profile {
+                name
+            }
+        }
+    }  

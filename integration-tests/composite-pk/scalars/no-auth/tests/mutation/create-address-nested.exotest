@@ -1,0 +1,168 @@
+stages:
+  - operation: |
+      mutation {
+        createAddress(data: {
+          street: "123 Main St"
+          city: "San Francisco"
+          state: "CA"
+          zip: 94101
+          info: "Creating a new address and adding people to it"
+          people: [
+            {
+              firstName: "John",
+              lastName: "DoeSan Francisco",
+              age: 20
+            },
+            {
+              firstName: "Jane",
+              lastName: "SmithSan Francisco",
+              age: 25
+            }
+          ]
+        }) {
+          street
+          city
+          state
+          zip
+          people {
+            firstName
+            lastName
+            age
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "createAddress": {
+            "street": "123 Main St",
+            "city": "San Francisco",
+            "state": "CA",
+            "zip": 94101,
+            "people": [
+              {
+                "firstName": "John",
+                "lastName": "DoeSan Francisco",
+                "age": 20
+              },
+              {
+                "firstName": "Jane",
+                "lastName": "SmithSan Francisco",
+                "age": 25
+              }
+            ]
+          }
+        }
+      }
+
+  - operation: |
+      query {
+        addresses @unordered {
+          street
+          city
+          state
+          zip
+          people @unordered {
+            firstName
+            lastName
+            age
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "addresses": [
+            {
+              "street": "1 Main St",
+              "city": "Albany",
+              "state": "NY",
+              "zip": 10001,
+              "people": [
+                {
+                  "firstName": "John",
+                  "lastName": "DoeAlbany",
+                  "age": 20
+                },
+                {
+                  "firstName": "Jane",
+                  "lastName": "SmithAlbany",
+                  "age": 25
+                }
+              ]
+            },
+            {
+              "street": "2 Main St",
+              "city": "Boston",
+              "state": "MA",
+              "zip": 22101,
+              "people": [
+                {
+                  "firstName": "John",
+                  "lastName": "DoeBoston",
+                  "age": 30
+                },
+                {
+                  "firstName": "Jane",
+                  "lastName": "SmithBoston",
+                  "age": 35
+                }
+              ]
+            },
+            {
+              "street": "3 Main St",
+              "city": "Chicago",
+              "state": "IL",
+              "zip": 60601,
+              "people": [
+                {
+                  "firstName": "John",
+                  "lastName": "DoeChicago",
+                  "age": 40
+                },
+                {
+                  "firstName": "Jane",
+                  "lastName": "SmithChicago",
+                  "age": 45
+                }
+              ]
+            },
+            {
+              "street": "4 Main St",
+              "city": "Plymouth",
+              "state": "MA",
+              "zip": 23600,
+              "people": [
+                {
+                  "firstName": "John",
+                  "lastName": "DoePlymouth",
+                  "age": 50
+                },
+                {
+                  "firstName": "Jane",
+                  "lastName": "SmithPlymouth",
+                  "age": 55
+                }
+              ]
+            },
+            {
+              "street": "123 Main St",
+              "city": "San Francisco",
+              "state": "CA",
+              "zip": 94101,
+              "people": [
+                {
+                  "firstName": "John",
+                  "lastName": "DoeSan Francisco",
+                  "age": 20
+                },
+                {
+                  "firstName": "Jane",
+                  "lastName": "SmithSan Francisco",
+                  "age": 25
+                }
+              ]
+            }
+          ]
+        }
+      }

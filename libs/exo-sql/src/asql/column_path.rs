@@ -251,6 +251,7 @@ impl PhysicalColumnPath {
     }
 
     pub fn lead_table_id(&self) -> TableId {
+        // The ColumnPathLink construction ensures that all links point to the same table, so we can use the first (or any) to get the table id
         self.0[0].self_column_ids()[0].table_id
     }
 

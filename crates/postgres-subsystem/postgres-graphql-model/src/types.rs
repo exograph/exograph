@@ -163,10 +163,9 @@ impl<CT> FieldDefinitionProvider<PostgresGraphQLSubsystem> for PostgresField<CT>
                 vec![]
             }
             PostgresRelation::OneToMany(OneToManyRelation {
-                foreign_field_id, ..
+                foreign_entity_id, ..
             }) => {
-                let foreign_type_id = foreign_field_id.entity_type_id();
-                let collection_query = system.get_collection_query(foreign_type_id);
+                let collection_query = system.get_collection_query(foreign_entity_id);
 
                 let CollectionQueryParameters {
                     predicate_param,

@@ -1,0 +1,15 @@
+@postgres
+module UserModule {
+  @access(true)
+  type User {
+    @pk orgId: Int
+    @pk email: String
+    profile: Profile?
+  }
+
+  @access(true)
+  type Profile {
+    @pk user: User
+    name: String
+  }
+}

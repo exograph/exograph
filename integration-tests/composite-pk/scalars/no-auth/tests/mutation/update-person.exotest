@@ -1,0 +1,74 @@
+stages:
+  - operation: |
+      mutation {
+        updatePerson(firstName: "John", lastName: "DoeBoston", data: { age: 100 }) {
+          firstName
+          lastName
+          age
+        }
+      }
+    response: |
+      {
+        "data": {
+          "updatePerson": {
+            "firstName": "John",
+            "lastName": "DoeBoston",
+            "age": 100
+          }
+        }
+      }
+  - operation: |
+      query {
+        people @unordered {
+          firstName
+          lastName
+          age
+        }
+      }
+    response: |
+      {
+        "data": {
+          "people": [
+            {
+              "firstName": "John",
+              "lastName": "DoeAlbany",
+              "age": 20
+            },
+            {
+              "firstName": "Jane",
+              "lastName": "SmithAlbany",
+              "age": 25
+            },
+            {
+              "firstName": "Jane",
+              "lastName": "SmithBoston",
+              "age": 35
+            },
+            {
+              "firstName": "John",
+              "lastName": "DoeChicago",
+              "age": 40
+            },
+            {
+              "firstName": "Jane",
+              "lastName": "SmithChicago",
+              "age": 45
+            },
+            {
+              "firstName": "John",
+              "lastName": "DoePlymouth",
+              "age": 50
+            },
+            {
+              "firstName": "Jane",
+              "lastName": "SmithPlymouth",
+              "age": 55
+            },
+            {
+              "firstName": "John",
+              "lastName": "DoeBoston",
+              "age": 100
+            }
+          ]
+        }
+      }

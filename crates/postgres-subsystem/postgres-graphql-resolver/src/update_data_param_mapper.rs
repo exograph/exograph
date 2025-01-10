@@ -87,11 +87,13 @@ fn compute_update_columns<'a>(
         .iter()
         .flat_map(|field| match &field.relation {
             PostgresRelation::Scalar { column_id, .. } => get_argument_field(argument, &field.name)
+                .iter()
                 .map(|argument_value| {
                     let column = column_id.get_column(&subsystem.core_subsystem.database);
                     let value_column = cast::literal_column(argument_value, column);
                     (*column_id, value_column.unwrap())
-                }),
+                })
+                .collect(),
 
             PostgresRelation::ManyToOne {
                 relation:
@@ -105,30 +107,38 @@ fn compute_update_columns<'a>(
                 let ManyToOne { column_pairs, .. } =
                     relation_id.deref(&subsystem.core_subsystem.database);
 
-                let self_column_id = column_pairs[0].self_column_id;
+                column_pairs
+                    .iter()
+                    .zip(foreign_pk_field_ids.iter())
+                    .flat_map(|(column_pair, foreign_pk_field_id)| {
+                        let self_column_id = column_pair.self_column_id;
 
-                let self_column = self_column_id.get_column(&subsystem.core_subsystem.database);
-                let foreign_type_pk_field_name = &foreign_pk_field_ids[0]
-                    .resolve(&subsystem.core_subsystem.entity_types)
-                    .name;
+                        let self_column =
+                            self_column_id.get_column(&subsystem.core_subsystem.database);
+                        let foreign_type_pk_field_name = &foreign_pk_field_id
+                            .resolve(&subsystem.core_subsystem.entity_types)
+                            .name;
 
-                match get_argument_field(argument, &field.name) {
-                    Some(Val::Null) => Some((self_column_id, Column::Null)), // `{..., foreign_field: null}` means set the column to null
-                    Some(argument_value) => {
-                        // `{..., foreign_field: { id: 1 }}` means set the column to the id of the nested object
-                        match get_argument_field(argument_value, foreign_type_pk_field_name) {
-                            Some(foreign_type_pk_arg) => {
-                                let value_column =
-                                    cast::literal_column(foreign_type_pk_arg, self_column);
-                                Some((self_column_id, value_column.unwrap()))
+                        match get_argument_field(argument, &field.name) {
+                            Some(Val::Null) => Some((self_column_id, Column::Null)), // `{..., foreign_field: null}` means set the column to null
+                            Some(argument_value) => {
+                                // `{..., foreign_field: { id: 1 }}` means set the column to the id of the nested object
+                                match get_argument_field(argument_value, foreign_type_pk_field_name)
+                                {
+                                    Some(foreign_type_pk_arg) => {
+                                        let value_column =
+                                            cast::literal_column(foreign_type_pk_arg, self_column);
+                                        Some((self_column_id, value_column.unwrap()))
+                                    }
+                                    None => unreachable!("Expected pk argument"), // Validation should have caught this
+                                }
                             }
-                            None => unreachable!("Expected pk argument"), // Validation should have caught this
+                            None => None,
                         }
-                    }
-                    None => None,
-                }
+                    })
+                    .collect()
             }
-            PostgresRelation::OneToMany { .. } => None,
+            PostgresRelation::OneToMany { .. } => vec![],
             PostgresRelation::Embedded => {
                 panic!("Embedded relations cannot be used in update operations")
             }

@@ -39,10 +39,7 @@ use postgres_core_model::{
     },
     aggregate::{AggregateField, AggregateFieldType},
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
-    types::{
-        get_field_id, EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType,
-        TypeIndex,
-    },
+    types::{EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, TypeIndex},
     vector_distance::{VectorDistanceField, VectorDistanceType},
 };
 
@@ -274,6 +271,11 @@ fn expand_dynamic_default_values(
                                         },
                                     ..
                                 } => {
+                                    if foreign_pk_field_ids.len() != 1 {
+                                        return Err(ModelBuildingError::Generic(
+                                            "Context-based initialization of composite pk fields is not supported".to_string(),
+                                        ));
+                                    }
                                     let foreign_type_pk = &foreign_pk_field_ids[0]
                                         .resolve(building.entity_types.values_ref())
                                         .typ;
@@ -750,36 +752,25 @@ fn compute_many_to_one(
     // If the field is of a list type and the underlying type is not a primitive,
     // then it is a OneToMany relation with the self's type being the "One" side
     // and the field's type being the "Many" side.
-    let foreign_type_id = building
+    let foreign_entity_id = building
         .get_entity_type_id(&foreign_field_type.name)
         .unwrap();
-    let foreign_type = &building.entity_types[foreign_type_id];
+    let foreign_type = &building.entity_types[foreign_entity_id];
     let foreign_table_id = foreign_type.table_id;
 
+    // It is okay to get the first (or any) column, since `get_otm_relation` will look for a relation
+    // matching that column (and the relations have all the columns related to the composite pk)
     let foreign_column_id = building
         .database
         .get_column_id(foreign_table_id, &field.column_names[0])
         .unwrap();
-
-    let foreign_resolved_field = foreign_field_type
-        .fields
-        .iter()
-        .find(|f| f.column_names == field.column_names)
-        .unwrap();
-
-    let foreign_field_id = get_field_id(
-        building.entity_types.values_ref(),
-        foreign_type_id,
-        &foreign_resolved_field.name,
-    )
-    .unwrap();
 
     let relation_id = foreign_column_id
         .get_otm_relation(&building.database)
         .unwrap();
 
     PostgresRelation::OneToMany(OneToManyRelation {
-        foreign_field_id,
+        foreign_entity_id,
         cardinality,
         relation_id,
     })
@@ -794,22 +785,25 @@ fn compute_one_to_many_relation(
 ) -> PostgresRelation {
     let self_table_id = &self_type.table_id;
 
-    let foreign_type_id = building
+    let foreign_entity_id = building
         .get_entity_type_id(&foreign_field_type.name)
         .unwrap();
-    let foreign_type = &building.entity_types[foreign_type_id];
+    let foreign_type = &building.entity_types[foreign_entity_id];
 
+    // It is okay to get the first (or any) column, since `get_mto_relation` will look for a relation
+    // matching that column (and the relations have all the columns related to the composite pk)
     let self_column_id = building
         .database
         .get_column_id(*self_table_id, &field.column_names[0])
         .unwrap();
-    let foreign_pk_field_ids = foreign_type.pk_field_ids(foreign_type_id);
+    let foreign_pk_field_ids = foreign_type.pk_field_ids(foreign_entity_id);
 
     let relation_id = self_column_id.get_mto_relation(&building.database).unwrap();
 
     PostgresRelation::ManyToOne {
         relation: ManyToOneRelation {
             cardinality,
+            foreign_entity_id,
             foreign_pk_field_ids,
             relation_id,
         },

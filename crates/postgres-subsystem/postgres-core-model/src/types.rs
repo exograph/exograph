@@ -83,19 +83,6 @@ pub struct EntityType {
     pub access: Access,
 }
 
-pub fn get_field_id(
-    types: &SerializableSlab<EntityType>,
-    entity_id: SerializableSlabIndex<EntityType>,
-    field_name: &str,
-) -> Option<EntityFieldId> {
-    let entity = &types[entity_id];
-    entity
-        .fields
-        .iter()
-        .position(|field| field.name == field_name)
-        .map(|field_index| EntityFieldId(field_index, entity_id))
-}
-
 /// Encapsulates a field on an entity type (mirros how `ColumnId` is structured)
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct EntityFieldId(usize, SerializableSlabIndex<EntityType>);

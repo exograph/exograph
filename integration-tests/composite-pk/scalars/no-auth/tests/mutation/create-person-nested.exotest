@@ -1,0 +1,153 @@
+stages:
+  - operation: |
+      # Create a new person to live in an existing address
+      mutation {
+        createPerson(data: { firstName: "John", lastName: "DoeAlbany-new", age: 20, address: { street: "1 Main St", city: "Albany", state: "NY", zip: 10001 } }) {
+          firstName
+          lastName
+          age
+          address {
+            street
+            city
+            state
+            zip
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "createPerson": {
+            "firstName": "John",
+            "lastName": "DoeAlbany-new",
+            "age": 20,
+            "address": {
+              "street": "1 Main St",
+              "city": "Albany",
+              "state": "NY",
+              "zip": 10001
+            }
+          }
+        }
+      }
+
+  - operation: |
+      query {
+        people @unordered {
+          firstName
+          lastName
+          age
+          address {
+            street
+            city
+            state
+            zip
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "people": [
+            {
+              "firstName": "John",
+              "lastName": "DoeAlbany",
+              "age": 20,
+              "address": {
+                "street": "1 Main St",
+                "city": "Albany",
+                "state": "NY",
+                "zip": 10001
+              }
+            },
+            {
+              "firstName": "Jane",
+              "lastName": "SmithAlbany",
+              "age": 25,
+              "address": {
+                "street": "1 Main St",
+                "city": "Albany",
+                "state": "NY",
+                "zip": 10001
+              }
+            },
+            {
+              "firstName": "John",
+              "lastName": "DoeBoston",
+              "age": 30,
+              "address": {
+                "street": "2 Main St",
+                "city": "Boston",
+                "state": "MA",
+                "zip": 22101
+              }
+            },
+            {
+              "firstName": "Jane",
+              "lastName": "SmithBoston",
+              "age": 35,
+              "address": {
+                "street": "2 Main St",
+                "city": "Boston",
+                "state": "MA",
+                "zip": 22101
+              }
+            },
+            {
+              "firstName": "John",
+              "lastName": "DoeChicago",
+              "age": 40,
+              "address": {
+                "street": "3 Main St",
+                "city": "Chicago",
+                "state": "IL",
+                "zip": 60601
+              }
+            },
+            {
+              "firstName": "Jane",
+              "lastName": "SmithChicago",
+              "age": 45,
+              "address": {
+                "street": "3 Main St",
+                "city": "Chicago",
+                "state": "IL",
+                "zip": 60601
+              }
+            },
+            {
+              "firstName": "John",
+              "lastName": "DoePlymouth",
+              "age": 50,
+              "address": {
+                "street": "4 Main St",
+                "city": "Plymouth",
+                "state": "MA",
+                "zip": 23600
+              }
+            },
+            {
+              "firstName": "Jane",
+              "lastName": "SmithPlymouth",
+              "age": 55,
+              "address": {
+                "street": "4 Main St",
+                "city": "Plymouth",
+                "state": "MA",
+                "zip": 23600
+              }
+            },
+            {
+              "firstName": "John",
+              "lastName": "DoeAlbany-new",
+              "age": 20,
+              "address": {
+                "street": "1 Main St",
+                "city": "Albany",
+                "state": "NY",
+                "zip": 10001
+              }
+            }
+          ]
+        }
+      }

@@ -53,10 +53,9 @@ impl FieldDefinitionProvider<PostgresGraphQLSubsystem> for AggregateField {
                     vec![]
                 }
                 PostgresRelation::OneToMany(OneToManyRelation {
-                    foreign_field_id, ..
+                    foreign_entity_id, ..
                 }) => {
-                    let foreign_type_id = foreign_field_id.entity_type_id();
-                    let aggregate_query = system.get_aggregate_query(foreign_type_id);
+                    let aggregate_query = system.get_aggregate_query(*foreign_entity_id);
 
                     let AggregateQueryParameters { predicate_param } = &aggregate_query.parameters;
 

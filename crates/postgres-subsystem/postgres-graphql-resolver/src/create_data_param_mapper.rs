@@ -135,15 +135,11 @@ async fn map_single<'a>(
                     } => {
                         let ManyToOne { column_pairs, .. } =
                             relation_id.deref(&subsystem.core_subsystem.database);
-                        vec![
-                            map_self_column(
-                                column_pairs[0].self_column_id,
-                                field,
-                                field_arg,
-                                subsystem,
-                            )
-                            .await,
-                        ]
+
+                        let mapped = column_pairs.iter().map(|column_pair| {
+                            map_self_column(column_pair.self_column_id, field, field_arg, subsystem)
+                        });
+                        join_all(mapped).await
                     }
 
                     PostgresRelation::OneToMany(one_to_many_relation) => {
@@ -189,13 +185,30 @@ async fn map_self_column<'a>(
             relation:
                 ManyToOneRelation {
                     foreign_pk_field_ids,
+                    relation_id,
                     ..
                 },
             ..
         } => {
-            let foreign_type_pk_field_name = &foreign_pk_field_ids[0]
-                .resolve(&subsystem.core_subsystem.entity_types)
-                .name;
+            let ManyToOne { column_pairs, .. } =
+                relation_id.deref(&subsystem.core_subsystem.database);
+
+            let foreign_type_pk_field_name = column_pairs
+                .iter()
+                .zip(foreign_pk_field_ids)
+                .find_map(|(column_pair, foreign_pk_field_id)| {
+                    if column_pair.self_column_id == key_column_id {
+                        Some(
+                            &foreign_pk_field_id
+                                .resolve(&subsystem.core_subsystem.entity_types)
+                                .name,
+                        )
+                    } else {
+                        None
+                    }
+                })
+                .expect("Foreign key field not found");
+
             match super::util::get_argument_field(argument, foreign_type_pk_field_name) {
                 Some(foreign_type_pk_arg) => foreign_type_pk_arg,
                 None => {

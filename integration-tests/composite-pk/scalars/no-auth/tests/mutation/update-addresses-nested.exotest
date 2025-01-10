@@ -1,0 +1,57 @@
+operation: |
+    mutation {
+      updateAddresses(where: { state: {eq: "MA"} }, data: { people: { update: { firstName: "John", lastName: "DoeBoston", age: 20 } } }) @unordered {
+        street
+        city
+        state
+        zip
+        people @unordered {
+          firstName
+          lastName
+          age
+        }
+      }
+    }
+response: |
+    {
+      "data": {
+        "updateAddresses": [
+          {
+            "street": "2 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": 22101,
+            "people": [
+              {
+                "firstName": "Jane",
+                "lastName": "SmithBoston",
+                "age": 35
+              },
+              {
+                "firstName": "John",
+                "lastName": "DoeBoston",
+                "age": 20
+              }
+            ]
+          },
+          {
+            "street": "4 Main St",
+            "city": "Plymouth",
+            "state": "MA",
+            "zip": 23600,
+            "people": [
+              {
+                "firstName": "John",
+                "lastName": "DoePlymouth",
+                "age": 50
+              },
+              {
+                "firstName": "Jane",
+                "lastName": "SmithPlymouth",
+                "age": 55
+              }
+            ]
+          }
+        ]
+      }
+    }

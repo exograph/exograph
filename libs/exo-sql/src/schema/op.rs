@@ -257,7 +257,7 @@ impl SchemaOp<'_> {
                         .map(|c| format!("\"{}\"", c.name.as_str()))
                         .collect::<Vec<_>>()
                         .join(", "),
-                    foreign_columns[0].foreign_table_name.sql_name(),
+                    foreign_columns[0].foreign_table_name.sql_name(), // Foreign columns all point to the same table, so use any of them
                     foreign_reference_columns
                 );
 
