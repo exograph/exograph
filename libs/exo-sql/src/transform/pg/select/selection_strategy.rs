@@ -154,11 +154,11 @@ pub(super) fn compute_relation_predicate(
             let (relation_table_id, relation_column_pairs) = match relation_id {
                 RelationId::OneToMany(relation_id) => {
                     let relation = relation_id.deref(database);
-                    (relation.self_table_id(), relation.column_pairs)
+                    (relation.self_table_id, relation.column_pairs)
                 }
                 RelationId::ManyToOne(relation_id) => {
                     let relation = relation_id.deref(database);
-                    (relation.self_table_id(), relation.column_pairs)
+                    (relation.self_table_id, relation.column_pairs)
                 }
             };
 

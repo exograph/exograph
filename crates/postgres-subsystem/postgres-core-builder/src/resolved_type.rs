@@ -95,6 +95,14 @@ impl ResolvedField {
             Some(ResolvedFieldDefault::AutoIncrement)
         )
     }
+
+    // In many cases, the field has a single column name, so provide a way to get it while asserting that it has only one column name
+    pub fn column_name(&self) -> &str {
+        match &self.column_names[..] {
+            [name] => name,
+            _ => panic!("Expected a single column name for field {self:?}"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

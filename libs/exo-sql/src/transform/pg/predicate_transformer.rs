@@ -196,7 +196,7 @@ fn form_subselect(
     );
 
     let abstract_select = AbstractSelect {
-        table_id: relation_link.self_table_id(),
+        table_id: relation_link.self_table_id,
         selection,
         predicate,
         order_by: None,

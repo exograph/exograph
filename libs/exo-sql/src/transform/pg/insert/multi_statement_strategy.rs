@@ -228,7 +228,7 @@ fn insert_nested_row<'a>(
     } = nested_row;
 
     let relation = relation_id.deref(database);
-    let foreign_table_id = relation.linked_table_id();
+    let foreign_table_id = relation.linked_table_id;
     let foreign_column_ids = relation
         .column_pairs
         .iter()

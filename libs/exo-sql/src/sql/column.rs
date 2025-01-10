@@ -93,11 +93,11 @@ impl ExpressionBuilder for Column {
                 }
             }
             Column::ColumnArray(columns) => {
-                if columns.len() == 1 {
-                    columns[0].build(database, builder);
-                } else {
+                if columns.len() > 1 {
                     builder.push('(');
-                    builder.push_elems(database, columns, ",");
+                }
+                builder.push_elems(database, columns, ",");
+                if columns.len() > 1 {
                     builder.push(')');
                 }
             }

@@ -7,7 +7,7 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use std::cmp::Ordering;
+use std::{cmp::Ordering, marker::PhantomData};
 
 use serde::{Deserialize, Serialize};
 
@@ -103,10 +103,7 @@ impl ColumnPathLink {
             "All foreign columns in the column pairs must refer to the same table"
         );
 
-        Self::Relation(RelationLink {
-            column_pairs,
-            linked_table_alias,
-        })
+        Self::Relation(RelationLink::new(column_pairs, linked_table_alias))
     }
 
     pub fn self_column_ids(&self) -> Vec<ColumnId> {
@@ -119,26 +116,58 @@ impl ColumnPathLink {
             ColumnPathLink::Leaf(column_id) => vec![*column_id],
         }
     }
+
+    pub fn self_table_id(&self) -> TableId {
+        match self {
+            ColumnPathLink::Relation(relation) => relation.self_table_id,
+            ColumnPathLink::Leaf(column_id) => column_id.table_id,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RelationLink {
     pub column_pairs: Vec<RelationColumnPair>,
 
+    pub self_table_id: TableId,
+    pub linked_table_id: TableId,
+
     /// Alias that could be used when joining the table, etc. Useful when multiple columns in the self table refers to the same linked column
     /// For example, if "concerts" has "main_venue_id" and "alternative_venue_id" (both link to the venues.id column), we can set linked_table_alias
     /// to "main_venue_id_table" and "alternative_venue_id_table" respectively. Then we can join the venues table twice with different aliases.
     /// The alias name should not matter as long as it is unique within the self table
     pub linked_table_alias: Option<String>,
+
+    _phantom: PhantomData<()>,
 }
 
 impl RelationLink {
-    pub fn self_table_id(&self) -> TableId {
-        self.column_pairs[0].self_column_id.table_id
-    }
+    pub fn new(column_pairs: Vec<RelationColumnPair>, linked_table_alias: Option<String>) -> Self {
+        let (self_table_id, linked_table_id) = match &column_pairs[..] {
+            [first, ..] => {
+                assert!(
+                    column_pairs.iter().all(|pair| {
+                        pair.self_column_id.table_id == first.self_column_id.table_id
+                            && pair.foreign_column_id.table_id == first.foreign_column_id.table_id
+                    }),
+                    "All self columns in the column pairs must refer to the same table"
+                );
 
-    pub fn linked_table_id(&self) -> TableId {
-        self.column_pairs[0].foreign_column_id.table_id
+                (
+                    first.self_column_id.table_id,
+                    first.foreign_column_id.table_id,
+                )
+            }
+            _ => unreachable!("Column pairs must not be empty"),
+        };
+
+        Self {
+            column_pairs,
+            self_table_id,
+            linked_table_id,
+            linked_table_alias,
+            _phantom: PhantomData,
+        }
     }
 }
 
@@ -230,13 +259,16 @@ impl PhysicalColumnPath {
         // This checks for the last two invariants (see above):
         // the last link must be a relation and its table must be the same as the new link's self table
         assert!(
-            matches!(
-                self.0.last().unwrap(),
-                ColumnPathLink::Relation(RelationLink {
-                    column_pairs,
-                    ..
-                }) if column_pairs[0].foreign_column_id.table_id == link.self_column_ids()[0].table_id
-            ),
+            {
+                let last_link = self.0.last().unwrap();
+                matches!(
+                    last_link,
+                    ColumnPathLink::Relation(RelationLink {
+                        column_pairs,
+                        ..
+                    }) if column_pairs.iter().all(|pair| pair.foreign_column_id.table_id == link.self_table_id())
+                )
+            },
             "Expected link to point to next table"
         );
 
@@ -254,7 +286,7 @@ impl PhysicalColumnPath {
             ColumnPathLink::Relation(RelationLink {
                 column_pairs,
                 ..
-            }) if column_pairs[0].foreign_column_id.table_id == tail.0[0].self_column_ids()[0].table_id
+            }) if column_pairs.iter().all(|pair| pair.foreign_column_id.table_id == tail.0[0].self_table_id())
         ));
 
         self.0.extend(tail.0);

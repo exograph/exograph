@@ -566,7 +566,7 @@ fn create_vector_distance_field(
             let self_table_id = &self_type.table_id;
             let column_id = building
                 .database
-                .get_column_id(*self_table_id, &field.column_names[0])
+                .get_column_id(*self_table_id, field.column_name())
                 .unwrap();
 
             let access = compute_access(&field.access, *type_id, env, building).unwrap();
@@ -619,7 +619,7 @@ fn create_relation(
                     ResolvedType::Primitive(_) => PostgresRelation::Scalar {
                         column_id: building
                             .database
-                            .get_column_id(*self_table_id, &field.column_names[0])
+                            .get_column_id(*self_table_id, field.column_name())
                             .unwrap(),
                         is_pk: false,
                     },
@@ -628,7 +628,7 @@ fn create_relation(
                             PostgresRelation::Scalar {
                                 column_id: building
                                     .database
-                                    .get_column_id(*self_table_id, &field.column_names[0])
+                                    .get_column_id(*self_table_id, field.column_name())
                                     .unwrap(),
                                 is_pk: false,
                             }
@@ -657,7 +657,7 @@ fn create_relation(
                     } else {
                         let column_id = building
                             .database
-                            .get_column_id(*self_table_id, &field.column_names[0])
+                            .get_column_id(*self_table_id, field.column_name())
                             .unwrap();
                         PostgresRelation::Scalar {
                             column_id,
@@ -670,7 +670,7 @@ fn create_relation(
                         PostgresRelation::Scalar {
                             column_id: building
                                 .database
-                                .get_column_id(*self_table_id, &field.column_names[0])
+                                .get_column_id(*self_table_id, field.column_name())
                                 .unwrap(),
                             is_pk: field.is_pk,
                         }

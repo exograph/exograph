@@ -48,10 +48,11 @@ pub fn compute_join(
             |acc, DependencyLink { link, dependency }| {
                 let (join_predicate, linked_table_alias) = match link {
                     ColumnPathLink::Relation(relation_link) => {
-                        let linked_table_id = relation_link.linked_table_id();
+                        let linked_table_id = relation_link.linked_table_id;
                         let RelationLink {
                             column_pairs,
                             linked_table_alias,
+                            ..
                         } = relation_link;
 
                         let new_alias =

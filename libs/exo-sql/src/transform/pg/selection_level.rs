@@ -109,14 +109,14 @@ impl SelectionLevel {
                     RelationId::ManyToOne(r) => {
                         let many_to_one = r.deref(database);
                         (
-                            many_to_one.self_table_id(),
+                            many_to_one.self_table_id,
                             many_to_one.foreign_table_alias.clone(),
                         )
                     }
                     RelationId::OneToMany(r) => {
                         let one_to_many = r.deref(database);
 
-                        (one_to_many.self_table_id(), None)
+                        (one_to_many.self_table_id, None)
                     }
                 });
 
