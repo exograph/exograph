@@ -1,0 +1,74 @@
+stages:
+    - operation: |
+        mutation {
+            deleteProfile(user: {orgId: 1, email: "user1@example.com"}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user1@example.com"
+        }        
+      response: |
+        {
+          "data": {
+            "deleteProfile": {
+              "user": {
+                "orgId": 1,
+                "email": "user1@example.com"
+              },
+              "name": "User 1"
+            }
+          }
+        }
+
+    # Deleting non-existent profile should be allowed
+    - operation: |
+        mutation {
+            deleteProfile(user: {orgId: 3, email: "user3@example.com"}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      auth: |
+        {
+            "orgId": 3,
+            "email": "user3@example.com"
+        }        
+      response: |
+        {
+          "data": {
+            "deleteProfile": null
+          }
+        }
+
+    # Deleting profile for a different user should be forbidden
+    - operation: |
+        mutation {
+            deleteProfile(user: {orgId: 1, email: "user1@example.com"}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      auth: |
+        {
+            "orgId": 2,
+            "email": "user2@example.com"
+        }        
+      response: |
+        {
+          "data": {
+            "deleteProfile": null
+          }
+        }

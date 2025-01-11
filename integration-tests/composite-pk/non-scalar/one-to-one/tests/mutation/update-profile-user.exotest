@@ -1,0 +1,74 @@
+stages:
+    - operation: |
+        mutation {
+            updateProfile(user: {orgId: 1, email: "user1@example.com"}, data: {name: "User 1 Updated"}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user1@example.com"
+        }        
+      response: |
+        {
+          "data": {
+            "updateProfile": {
+              "user": {
+                "orgId": 1,
+                "email": "user1@example.com"
+              },
+              "name": "User 1 Updated"
+            }
+          }
+        }
+
+    # Deleting non-existent profile should be allowed
+    - operation: |
+        mutation {
+            updateProfile(user: {orgId: 3, email: "user3@example.com"}, data: {name: "User 3 Updated"}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      auth: |
+        {
+            "orgId": 3,
+            "email": "user3@example.com"
+        }        
+      response: |
+        {
+          "data": {
+            "updateProfile": null
+          }
+        }
+
+    # Deleting profile for a different user should be forbidden
+    - operation: |
+        mutation {
+            updateProfile(user: {orgId: 1, email: "user1@example.com"}, data: {name: "User 1 Updated"}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      auth: |
+        {
+            "orgId": 2,
+            "email": "user2@example.com"
+        }        
+      response: |
+        {
+          "data": {
+            "updateProfile": null
+          }
+        }

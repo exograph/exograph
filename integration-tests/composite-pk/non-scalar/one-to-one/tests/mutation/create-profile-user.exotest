@@ -1,0 +1,80 @@
+stages:
+    - operation: |
+        mutation {
+            createProfile(data: {user: {orgId: 3, email: "user3@example.com"}, name: "User Profile 3"}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      auth: |
+        {
+            "orgId": 3,
+            "email": "user3@example.com"
+        }        
+      response: |
+        {
+          "data": {
+            "createProfile": {
+              "user": {
+                "orgId": 3,
+                "email": "user3@example.com"
+              },
+              "name": "User Profile 3"
+            }
+          }
+        }
+
+
+    # User is trying to create a duplicate profile
+    - operation: |
+        mutation {
+            createProfile(data: {user: {orgId: 3, email: "user3@example.com"}, name: "User Profile 3-duplicate"}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      auth: |
+        {
+            "orgId": 3,
+            "email": "user3@example.com"
+        }  
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Operation failed"
+            }
+          ]
+        }
+      
+
+    # Creating a profile for a different user
+    - operation: |
+        mutation {
+            createProfile(data: {user: {orgId: 2, email: "user2@example.com"}, name: "User Profile 2"}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user1@example.com"
+        }
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Not authorized"
+            }
+          ]
+        }
