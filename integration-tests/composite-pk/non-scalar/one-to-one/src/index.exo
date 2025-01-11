@@ -1,13 +1,20 @@
+context AuthContext {
+  @jwt orgId: Int
+  @jwt email: String
+  @jwt role: String
+}
+
 @postgres
 module UserModule {
-  @access(true)
+  @access(AuthContext.role == "admin" || (AuthContext.orgId == self.orgId && AuthContext.email == self.email))
   type User {
     @pk orgId: Int
     @pk email: String
+    phone: String?
     profile: Profile?
   }
 
-  @access(true)
+  @access(AuthContext.role == "admin" || (AuthContext.orgId == self.user.orgId && AuthContext.email == self.user.email))
   type Profile {
     @pk user: User
     name: String

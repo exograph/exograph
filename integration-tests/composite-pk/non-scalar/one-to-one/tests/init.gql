@@ -37,3 +37,7 @@ operation: |
             }
         }
     }  
+auth: |
+    {
+        role: "admin"
+    }

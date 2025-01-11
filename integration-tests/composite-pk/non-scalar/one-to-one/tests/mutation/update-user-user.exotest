@@ -1,0 +1,74 @@
+stages:
+    - operation: |
+        mutation {
+            updateUser(orgId: 1, email: "user1@example.com", data: {phone: "1111111111", profile: {update: {name: "User 1-updated"}}}) {
+                orgId
+                email
+                profile {
+                    name
+                }
+            }
+        }
+      response: |
+          {
+            "data": {
+              "updateUser": {
+                "orgId": 1,
+                "email": "user1@example.com",
+                "profile": {
+                  "name": "User 1-updated"
+                }
+              }
+            }
+          }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user1@example.com"
+        }
+
+    # User is trying to create a user with a different email
+    - operation: |
+        mutation {
+            updateUser(orgId: 1, email: "user1@example.com", data: {phone: "1234567890", profile: {update: {name: "User 1-updated"}}}) {
+                orgId
+                email
+                profile {
+                    name
+                }
+            }
+        }
+      response: |
+        {
+          "data": {
+            "updateUser": null
+          }
+        }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user2@example.com"
+        }
+      
+    # User is trying to create a user with a different orgId
+    - operation: |
+        mutation {
+            updateUser(orgId: 1, email: "user1@example.com", data: {phone: "1234567890", profile: {update: {name: "User 1-updated"}}}) {
+                orgId
+                email
+                profile {
+                    name
+                }
+            }
+        }
+      response: |
+        {
+          "data": {
+            "updateUser": null
+          }
+        }
+      auth: |
+        {
+            "orgId": 2,
+            "email": "user1@example.com"
+        }              

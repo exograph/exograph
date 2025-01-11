@@ -30,3 +30,7 @@ response: |
         ]
     }
     }
+auth: |
+    {
+        role: "admin"
+    }

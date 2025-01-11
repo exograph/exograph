@@ -13,8 +13,11 @@ response: |
         "data": {
             "users": [
                 {"orgId": 1, "email": "user1@example.com", "profile": {"name": "User 1"}},
-                {"orgId": 2, "email": "user2@example.com", "profile": {"name": "User 2"}},
-                {"orgId": 3, "email": "user3@example.com", "profile": null}
             ]
         }
+    }
+auth: |
+    {
+        "orgId": 1,
+        "email": "user1@example.com"
     }

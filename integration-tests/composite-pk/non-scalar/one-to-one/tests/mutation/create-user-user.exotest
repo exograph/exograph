@@ -1,0 +1,78 @@
+stages:
+    - operation: |
+        mutation {
+            createUser(data: {orgId: 1, email: "user11@example.com", phone: "1234567890", profile: {name: "User 11"}}) {
+                orgId
+                email
+                profile {
+                    name
+                }
+            }
+        }
+      response: |
+          {
+            "data": {
+              "createUser": {
+                "orgId": 1,
+                "email": "user11@example.com",
+                "profile": {
+                  "name": "User 11"
+                }
+              }
+            }
+          }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user11@example.com"
+        }
+
+    # User is trying to create a user with a different email
+    - operation: |
+        mutation {
+            createUser(data: {orgId: 1, email: "user11@example.com", phone: "1234567890", profile: {name: "User 11"}}) {
+                orgId
+                email
+                profile {
+                    name
+                }
+            }
+        }
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Not authorized"
+            }
+          ]
+        }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user1@example.com"
+        }
+      
+    # User is trying to create a user with a different orgId
+    - operation: |
+        mutation {
+            createUser(data: {orgId: 1, email: "user11@example.com", phone: "1234567890", profile: {name: "User 11"}}) {
+                orgId
+                email
+                profile {
+                    name
+                }
+            }
+        }
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Not authorized"
+            }
+          ]
+        }
+      auth: |
+        {
+            "orgId": 2,
+            "email": "user11@example.com"
+        }              
