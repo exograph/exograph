@@ -7,8 +7,9 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use crate::types::EntityFieldId;
+use crate::types::{EntityFieldId, EntityType};
 
+use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use exo_sql::{ColumnId, ColumnPathLink, Database, ManyToOneId, OneToManyId};
 use serde::{Deserialize, Serialize};
 
@@ -23,11 +24,26 @@ pub enum RelationCardinality {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PostgresRelation {
-    Pk { column_ids: Vec<ColumnId> },
-    Scalar { column_id: ColumnId },
-    ManyToOne(ManyToOneRelation),
+    Scalar {
+        column_id: ColumnId,
+        is_pk: bool,
+    },
+    ManyToOne {
+        relation: ManyToOneRelation,
+        is_pk: bool,
+    },
     OneToMany(OneToManyRelation),
     Embedded, // Such as a field in typed json
+}
+
+impl PostgresRelation {
+    pub fn is_pk(&self) -> bool {
+        matches!(
+            self,
+            PostgresRelation::Scalar { is_pk: true, .. }
+                | PostgresRelation::ManyToOne { is_pk: true, .. }
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -38,6 +54,7 @@ pub struct ManyToOneRelation {
     // - relation_id.self_column_id: concerts.venue_id
     // - relation_id.foreign_pk_column_id: venues.id
     pub cardinality: RelationCardinality,
+    pub foreign_entity_id: SerializableSlabIndex<EntityType>,
     pub foreign_pk_field_ids: Vec<EntityFieldId>,
     pub relation_id: ManyToOneId,
 }
@@ -58,7 +75,7 @@ pub struct OneToManyRelation {
     // - relation_id.self_pk_column_id: venues.id
     // - relation_id.foreign_column_id: concerts.venue_id
     pub cardinality: RelationCardinality,
-    pub foreign_field_id: EntityFieldId,
+    pub foreign_entity_id: SerializableSlabIndex<EntityType>,
     pub relation_id: OneToManyId,
 }
 
@@ -72,9 +89,8 @@ impl OneToManyRelation {
 impl PostgresRelation {
     pub fn column_path_link(&self, database: &Database) -> ColumnPathLink {
         match &self {
-            PostgresRelation::Pk { column_ids, .. } => ColumnPathLink::Leaf(column_ids[0]),
             PostgresRelation::Scalar { column_id, .. } => ColumnPathLink::Leaf(*column_id),
-            PostgresRelation::ManyToOne(relation) => relation.column_path_link(database),
+            PostgresRelation::ManyToOne { relation, .. } => relation.column_path_link(database),
             PostgresRelation::OneToMany(relation) => relation.column_path_link(database),
             PostgresRelation::Embedded => {
                 panic!("Embedded relations cannot be used in queries")

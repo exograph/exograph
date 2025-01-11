@@ -68,7 +68,17 @@ fn expanded_reference_types(
         .fields
         .iter()
         .flat_map(|field| match &field.relation {
-            PostgresRelation::Pk { .. } => Some(PostgresField {
+            PostgresRelation::Scalar { is_pk: true, .. } => Some(PostgresField {
+                name: field.name.clone(),
+                typ: to_mutation_type(&field.typ, MutationTypeKind::Reference, building),
+                access: field.access.clone(),
+                relation: field.relation.clone(),
+                has_default_value: field.has_default_value,
+                dynamic_default_value: None,
+                readonly: field.readonly,
+                type_validation: None,
+            }),
+            PostgresRelation::ManyToOne { is_pk: true, .. } => Some(PostgresField {
                 name: field.name.clone(),
                 typ: to_mutation_type(&field.typ, MutationTypeKind::Reference, building),
                 access: field.access.clone(),

@@ -15,6 +15,7 @@ use crate::{
         delete::TemplateDelete,
         select::Select,
         sql_operation::TemplateSQLOperation,
+        table::Table,
         transaction::{
             DynamicTransactionStep, TemplateFilterOperation, TemplateTransactionStep,
             TransactionContext, TransactionStepId,
@@ -74,12 +75,6 @@ impl UpdateStrategy for MultiStatementStrategy {
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
     ) {
-        let column_id_values: Vec<(ColumnId, MaybeOwned<'a, Column>)> = abstract_update
-            .column_values
-            .iter()
-            .map(|(c, v)| (*c, v.into()))
-            .collect();
-
         let predicate = transformer.to_predicate(
             &abstract_update.predicate,
             &SelectionLevel::TopLevel,
@@ -92,19 +87,46 @@ impl UpdateStrategy for MultiStatementStrategy {
         let return_cols = database
             .get_pk_column_ids(abstract_update.table_id)
             .into_iter()
-            .map(|pk_column_id| Column::physical(pk_column_id, None).into())
+            .map(|pk_column_id| Column::physical(pk_column_id, None))
             .collect::<Vec<_>>();
 
         let table = database.get_table(abstract_update.table_id);
-        let column_values = column_id_values
-            .into_iter()
-            .map(|(col_id, col)| (col_id.get_column(database), col))
-            .collect();
-        let root_update =
-            SQLOperation::Update(table.update(column_values, predicate.into(), return_cols));
+
+        // If there are no self columns to update, just select the primary key columns
+        let root_step = if abstract_update.column_values.is_empty() {
+            SQLOperation::Select(Select {
+                table: Table::Physical {
+                    table_id: abstract_update.table_id,
+                    alias: None,
+                },
+                columns: return_cols,
+                predicate,
+                order_by: None,
+                offset: None,
+                limit: None,
+                group_by: None,
+                top_level_selection: false,
+            })
+        } else {
+            let column_id_values: Vec<(ColumnId, MaybeOwned<'a, Column>)> = abstract_update
+                .column_values
+                .iter()
+                .map(|(c, v)| (*c, v.into()))
+                .collect();
+
+            let column_values = column_id_values
+                .into_iter()
+                .map(|(col_id, col)| (col_id.get_column(database), col))
+                .collect();
+            SQLOperation::Update(table.update(
+                column_values,
+                predicate.into(),
+                return_cols.into_iter().map(|c| c.into()).collect(),
+            ))
+        };
 
         let root_step_id = transaction_script.add_step(TransactionStep::Concrete(
-            ConcreteTransactionStep::new(root_update),
+            ConcreteTransactionStep::new(root_step),
         ));
 
         abstract_update
@@ -165,38 +187,54 @@ impl UpdateStrategy for MultiStatementStrategy {
 
         let select = transformer.to_select(&abstract_update.selection, database);
 
-        let pk_column_types = table
-            .get_pk_physical_columns()
-            .iter()
-            .map(|pk_physical_column| pk_physical_column.typ.get_pg_type())
-            .collect::<Vec<_>>();
+        let table_id = abstract_update.table_id;
 
         // Take the root step and use ids returned by it as the input to the select
         // statement to form a predicate `pk IN (update_pk1, update_pk2, ...)`
         let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
             let update_count = transaction_context.row_count(root_step_id);
-            let update_ids = SQLParamContainer::from_sql_values(
-                (0..update_count)
-                    .map(|i| transaction_context.resolve_value(root_step_id, i, 0))
-                    .collect::<Vec<_>>(),
-                pk_column_types[0].clone(),
-            );
 
-            let predicate = Predicate::and(
-                Predicate::Eq(
-                    Column::physical(
-                        database
-                            .get_pk_column_ids(abstract_update.table_id)
-                            .remove(0),
-                        None,
-                    ),
-                    Column::ArrayParam {
-                        param: update_ids,
-                        wrapper: ArrayParamWrapper::Any,
+            let predicate = database
+                .get_table(table_id)
+                .get_pk_column_indices()
+                .into_iter()
+                .enumerate()
+                .fold(
+                    select.predicate,
+                    |predicate, (pk_column_index, pk_physical_column_index)| {
+                        let pk_column_id = ColumnId {
+                            table_id,
+                            column_index: pk_physical_column_index,
+                        };
+                        let pk_physical_column =
+                            &database.get_table(table_id).columns[pk_physical_column_index];
+
+                        let in_values = SQLParamContainer::from_sql_values(
+                            (0..update_count)
+                                .map(|row_index| {
+                                    transaction_context.resolve_value(
+                                        root_step_id,
+                                        row_index,
+                                        pk_column_index,
+                                    )
+                                })
+                                .collect::<Vec<_>>(),
+                            pk_physical_column.typ.get_pg_type(),
+                        );
+
+                        Predicate::and(
+                            predicate,
+                            Predicate::Eq(
+                                Column::physical(pk_column_id, None),
+                                Column::ArrayParam {
+                                    param: in_values,
+                                    wrapper: ArrayParamWrapper::Any,
+                                },
+                            ),
+                        )
                     },
-                ),
-                select.predicate,
-            );
+                );
+
             ConcreteTransactionStep::new(SQLOperation::Select(Select {
                 predicate,
                 ..select
@@ -244,12 +282,12 @@ fn add_insert_steps<'a>(
 ) {
     let NestedAbstractInsert {
         insert,
-        relation_column_id,
+        relation_column_ids,
     } = nested_insert;
 
     transformer.update_transaction_script(
         insert,
-        Some((parent_step_id, *relation_column_id)),
+        Some((parent_step_id, relation_column_ids.clone())),
         database,
         transaction_script,
     );

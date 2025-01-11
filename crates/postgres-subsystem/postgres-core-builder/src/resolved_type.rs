@@ -70,7 +70,7 @@ impl ToPlural for ResolvedCompositeType {
 pub struct ResolvedField {
     pub name: String,
     pub typ: FieldType<ResolvedFieldType>,
-    pub column_names: Vec<String>,
+    pub column_names: Vec<String>, // column names for this field (will be multiple of the field is composite and that composite type has multiple pks)
     pub self_column: bool, // is the column name in the same table or does it point to a column in a different table?
     pub is_pk: bool,
     pub access: ResolvedAccess,
@@ -94,6 +94,14 @@ impl ResolvedField {
             &self.default_value,
             Some(ResolvedFieldDefault::AutoIncrement)
         )
+    }
+
+    // In many cases, the field has a single column name, so provide a way to get it while asserting that it has only one column name
+    pub fn column_name(&self) -> &str {
+        match &self.column_names[..] {
+            [name] => name,
+            _ => panic!("Expected a single column name for field {self:?}"),
+        }
     }
 }
 
@@ -151,8 +159,8 @@ impl TypeValidationProvider for ResolvedTypeHint {
 }
 
 impl ResolvedCompositeType {
-    pub fn pk_field(&self) -> Option<&ResolvedField> {
-        self.fields.iter().find(|f| f.is_pk)
+    pub fn pk_fields(&self) -> Vec<&ResolvedField> {
+        self.fields.iter().filter(|f| f.is_pk).collect()
     }
 
     pub fn field_by_column_names(&self, column_names: &[String]) -> Option<&ResolvedField> {

@@ -17,8 +17,8 @@ use crate::{
         pg::{selection_level::SelectionLevel, Postgres},
         transformer::{OrderByTransformer, PredicateTransformer},
     },
-    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, ManyToOne, Offset, OneToMany,
-    PhysicalColumnPath, RelationId, Selection, TableId,
+    AbstractOrderBy, AbstractPredicate, Column, Database, Limit, Offset, PhysicalColumnPath,
+    RelationId, Selection, TableId,
 };
 
 use super::selection_context::SelectionContext;
@@ -151,33 +151,34 @@ pub(super) fn compute_relation_predicate(
 
     subselect_relation
         .map(|relation_id| {
-            let (self_column_id, foreign_column_id) = match relation_id {
+            let (relation_table_id, relation_column_pairs) = match relation_id {
                 RelationId::OneToMany(relation_id) => {
-                    let OneToMany { column_pairs } = relation_id.deref(database);
-
-                    (
-                        column_pairs[0].self_column_id,
-                        column_pairs[0].foreign_column_id,
-                    )
+                    let relation = relation_id.deref(database);
+                    (relation.self_table_id, relation.column_pairs)
                 }
                 RelationId::ManyToOne(relation_id) => {
-                    let ManyToOne { column_pairs, .. } = relation_id.deref(database);
-                    (
-                        column_pairs[0].self_column_id,
-                        column_pairs[0].foreign_column_id,
-                    )
+                    let relation = relation_id.deref(database);
+                    (relation.self_table_id, relation.column_pairs)
                 }
             };
 
             let alias = if use_alias {
-                Some(selection_level.alias((self_column_id.table_id, None), database))
+                Some(selection_level.alias((relation_table_id, None), database))
             } else {
                 None
             };
 
-            ConcretePredicate::Eq(
-                Column::physical(self_column_id, alias),
-                Column::physical(foreign_column_id, None),
+            relation_column_pairs.into_iter().fold(
+                ConcretePredicate::True,
+                |predicate, column_pair| {
+                    ConcretePredicate::and(
+                        predicate,
+                        ConcretePredicate::Eq(
+                            Column::physical(column_pair.self_column_id, alias.clone()),
+                            Column::physical(column_pair.foreign_column_id, None),
+                        ),
+                    )
+                },
             )
         })
         .unwrap_or(ConcretePredicate::True)

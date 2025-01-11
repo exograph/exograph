@@ -36,7 +36,7 @@ impl<'s> InsertionStrategyChain<'s> {
     pub fn update_transaction_script<'a>(
         &self,
         abstract_insert: &'a AbstractInsert,
-        parent_step: Option<(TransactionStepId, ColumnId)>,
+        parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,

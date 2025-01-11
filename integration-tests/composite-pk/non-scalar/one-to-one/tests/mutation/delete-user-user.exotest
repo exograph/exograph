@@ -1,0 +1,86 @@
+stages:
+    - operation: |
+        mutation {
+            deleteProfile(user: {orgId: 1, email: "user1@example.com"}) {
+              name
+            }
+            deleteUser(orgId: 1, email: "user1@example.com") {
+                orgId
+                email
+                profile {
+                    name
+                }
+            }
+        }
+      response: |
+        {
+          "data": {
+            "deleteProfile": {
+              "name": "User 1"
+            },
+            "deleteUser": {
+              "orgId": 1,
+              "email": "user1@example.com",
+              "profile": null
+            }
+          }
+        }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user1@example.com"
+        }
+
+    # User is trying to delete a user with a different email
+    - operation: |
+        mutation {
+            deleteProfile(user: {orgId: 1, email: "user1@example.com"}) {
+              name
+            }
+            deleteUser(orgId: 1, email: "user1@example.com") {
+                orgId
+                email
+                profile {
+                    name
+                }
+            }
+        }
+      response: |
+        {
+          "data": {
+            "deleteProfile": null,
+            "deleteUser": null
+          }
+        }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user2@example.com"
+        }
+      
+    # User is trying to delete a user with a different orgId
+    - operation: |
+        mutation {
+            deleteProfile(user: {orgId: 1, email: "user1@example.com"}) {
+              name
+            }
+            deleteUser(orgId: 1, email: "user1@example.com") {
+                orgId
+                email
+                profile {
+                    name
+                }
+            }
+        }
+      response: |
+        {
+          "data": {
+            "deleteProfile": null,
+            "deleteUser": null
+          }
+        }
+      auth: |
+        {
+            "orgId": 2,
+            "email": "user1@example.com"
+        }              

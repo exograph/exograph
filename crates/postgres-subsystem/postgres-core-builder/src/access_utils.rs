@@ -1096,7 +1096,7 @@ fn reduce_nested_primitive_expr(
             let (head, tail) = pc.split_head();
 
             match head {
-                ColumnPathLink::Relation(r) if r.linked_table_id() == parent_entity.table_id => {
+                ColumnPathLink::Relation(r) if r.linked_table_id == parent_entity.table_id => {
                     // Eliminate the head link. For example if the expression is self.user.id, then
                     // we can reduce it to just id (assuming that the parent entity is user)
                     NestedPredicatePart::Parent(DatabaseAccessPrimitiveExpression::Column(
@@ -1111,7 +1111,7 @@ fn reduce_nested_primitive_expr(
             let (head, tail) = pc.split_head();
 
             match head {
-                ColumnPathLink::Relation(r) if r.linked_table_id() == parent_entity.table_id => {
+                ColumnPathLink::Relation(r) if r.linked_table_id == parent_entity.table_id => {
                     // Eliminate the head link. For example if the expression is self.user.id, then
                     // we can reduce it to just id (assuming that the parent entity is user)
                     NestedPredicatePart::Parent(DatabaseAccessPrimitiveExpression::Column(

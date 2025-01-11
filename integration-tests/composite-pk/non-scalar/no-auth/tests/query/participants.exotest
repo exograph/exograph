@@ -1,0 +1,90 @@
+operation: |
+  query {
+      chatParticipations @unordered {
+          user {
+              id
+              name
+          }
+          chat {
+              id
+              title
+          }
+      }
+  }
+response: |
+  {
+    "data": {
+      "chatParticipations": [
+        {
+          "user": {
+            "id": $.u1_id,
+            "name": "u1"
+          },
+          "chat": {
+            "id": $.c1_id,
+            "title": "c1-between-u1-u2"
+          }
+        },
+        {
+          "user": {
+            "id": $.u2_id,
+            "name": "u2"
+          },
+          "chat": {
+            "id": $.c1_id,
+            "title": "c1-between-u1-u2"
+          }
+        },
+        {
+          "user": {
+            "id": $.u1_id,
+            "name": "u1"
+          },
+          "chat": {
+            "id": $.c2_id,
+            "title": "c2-between-u1-u3"
+          }
+        },
+        {
+          "user": {
+            "id": $.u3_id,
+            "name": "u3"
+          },
+          "chat": {
+            "id": $.c2_id,
+            "title": "c2-between-u1-u3"
+          }
+        },
+        {
+          "user": {
+            "id": $.u1_id,
+            "name": "u1"
+          },
+          "chat": {
+            "id": $.c3_id,
+            "title": "c3-between-u1-u2-u3"
+          }
+        },
+        {
+          "user": {
+            "id": $.u2_id,
+            "name": "u2"
+          },
+          "chat": {
+            "id": $.c3_id,
+            "title": "c3-between-u1-u2-u3"
+          }
+        },
+        {
+          "user": {
+            "id": $.u3_id,
+            "name": "u3"
+          },
+          "chat": {
+            "id": $.c3_id,
+            "title": "c3-between-u1-u2-u3"
+          }
+        }
+      ]
+    }
+  }

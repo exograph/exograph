@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use core_plugin_interface::core_model::types::FieldType;
-use postgres_core_model::types::{EntityRepresentation, EntityType, PostgresFieldType, TypeIndex};
+use postgres_core_model::types::{EntityType, PostgresFieldType, TypeIndex};
 use postgres_graphql_model::types::MutationType;
 
 use crate::{naming::ToPostgresTypeNames, system_builder::SystemContextBuilding};
@@ -33,9 +33,6 @@ pub(super) fn to_mutation_type(
             TypeIndex::Composite(index) => {
                 let entity_type = &building.core_subsystem.entity_types[*index];
 
-                if entity_type.representation == EntityRepresentation::Managed {
-                    panic!("Composite field in mutation: {:?}", type_name);
-                }
                 let entity_type_name = &entity_type.name;
 
                 let mutation_type_name = match kind {

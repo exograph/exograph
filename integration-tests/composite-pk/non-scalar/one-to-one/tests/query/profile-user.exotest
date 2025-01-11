@@ -1,0 +1,50 @@
+stages:
+    - operation: |
+        query {
+            profile(user: {email: "user1@example.com", orgId: 1}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      response: |
+        {
+            "data": {
+                "profile": {
+                    "user": {
+                        "orgId": 1,
+                        "email": "user1@example.com"
+                    },
+                    "name": "User 1"
+                }
+            }
+        }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user1@example.com"
+        }
+
+    - operation: |
+        query {
+            profile(user: {email: "user1@example.com", orgId: 1}) {
+                user {
+                    orgId
+                    email
+                }
+                name
+            }
+        }
+      response: |
+        {
+            "data": {
+                "profile": null
+            }
+        }
+      auth: |
+        {
+            "orgId": 1,
+            "email": "user2@example.com"
+        }        

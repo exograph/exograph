@@ -1,0 +1,36 @@
+stages:
+    - operation: |
+        mutation {
+          u1: createUser(data: { name: "u1" }) {
+            id @bind(name: "u1_id")
+          }
+          u2: createUser(data: { name: "u2" }) {
+              id @bind(name: "u2_id")
+          }
+          u3: createUser(data: { name: "u3" }) {
+              id @bind(name: "u3_id")
+          }
+          u4: createUser(data: { name: "u4" }) {
+              id @bind(name: "u4_id")
+          }
+        }
+    - operation: |
+        mutation($u1_id: Int!, $u2_id: Int!, $u3_id: Int!) {
+            c1: createChat(data: { title: "c1-between-u1-u2", participants: [{ user: { id: $u1_id } }, { user: { id: $u2_id } }] }) {
+                id @bind(name: "c1_id")
+            }
+            c2: createChat(data: { title: "c2-between-u1-u3", participants: [{ user: { id: $u1_id } }, { user: { id: $u3_id } }] }) {
+                id @bind(name: "c2_id")
+            }
+            c3: createChat(data: { title: "c3-between-u1-u2-u3", participants: [{ user: { id: $u1_id } }, { user: { id: $u2_id } }, { user: { id: $u3_id } }] }) {
+                id @bind(name: "c3_id")
+            }
+        }
+      variable: |
+        {
+            "u1_id": $.u1_id,
+            "u2_id": $.u2_id,
+            "u3_id": $.u3_id,
+            "u4_id": $.u4_id
+        }
+

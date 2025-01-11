@@ -1,0 +1,209 @@
+stages:
+  - operation: |
+      mutation( $u4_id: Int!) {
+        # Add user 4 to all chats that user 2 is in (and update the title)
+        updateChats(
+          where: { participants: { user: { name: {eq: "u2" } } } }, 
+          data: { title: "u2-and-u4-are-here (others may be, too)", participants: { create: { user: { id: $u4_id } } } }
+        ) {
+          id
+          title
+          participants @unordered {
+            user {
+              id
+              name
+            }
+            chat {
+              id
+              title
+            }
+          }
+        }
+      }
+    variable: |
+      {
+        "u4_id": $.u4_id
+      }
+    response: |
+      {
+        "data": {
+          "updateChats": [
+            {
+              "id": $.c1_id,
+              "title": "u2-and-u4-are-here (others may be, too)",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  },
+                  "chat": {
+                    "id": $.c1_id,
+                    "title": "u2-and-u4-are-here (others may be, too)"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  },
+                  "chat": {
+                    "id": $.c1_id,
+                    "title": "u2-and-u4-are-here (others may be, too)"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
+                  },
+                  "chat": {
+                    "id": 1,
+                    "title": "u2-and-u4-are-here (others may be, too)"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c3_id,
+              "title": "u2-and-u4-are-here (others may be, too)",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  },
+                  "chat": {
+                    "id": $.c3_id,
+                    "title": "u2-and-u4-are-here (others may be, too)"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  },
+                  "chat": {
+                    "id": $.c3_id,
+                    "title": "u2-and-u4-are-here (others may be, too)"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  },
+                  "chat": {
+                    "id": $.c3_id,
+                    "title": "u2-and-u4-are-here (others may be, too)"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
+                  },
+                  "chat": {
+                    "id": $.c3_id,
+                    "title": "u2-and-u4-are-here (others may be, too)"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+
+
+  - operation: |
+      query {
+        chats @unordered {
+          id
+          title
+          participants @unordered {
+            user {
+              id
+              name
+            }
+          }
+        }
+      }
+    response: |
+      {
+        "data": {
+          "chats": [
+            {
+              "id": $.c2_id,
+              "title": "c2-between-u1-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c1_id,
+              "title": "u2-and-u4-are-here (others may be, too)",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c3_id,
+              "title": "u2-and-u4-are-here (others may be, too)",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }

@@ -13,8 +13,8 @@ use futures::{StreamExt, TryStreamExt};
 use common::context::RequestContext;
 use common::value::Val;
 use exo_sql::{
-    AbstractPredicate, CaseSensitivity, ColumnPath, ParamEquality, PhysicalColumnPath,
-    PhysicalColumnType, Predicate,
+    AbstractPredicate, CaseSensitivity, ColumnPath, ColumnPathLink, ParamEquality,
+    PhysicalColumnPath, PhysicalColumnType, Predicate,
 };
 
 use exo_sql::{NumericComparator, SQLParamContainer};
@@ -74,23 +74,51 @@ impl<'a> SQLMapper<'a, AbstractPredicate> for PredicateParamInput<'a> {
 
                         match arg {
                             Some(arg) => {
-                                let param_column_id = &self
-                                    .param
-                                    .column_path_link
-                                    .as_ref()
-                                    .unwrap()
-                                    .self_column_ids()
-                                    .clone()[0];
+                                // For the reference parameter with composite primary key, we need to find
+                                // the column id for the parameter. Then we can coerece the arguments to its type.
 
-                                let param_column_path = ColumnPath::Physical(
-                                    PhysicalColumnPath::leaf(*param_column_id),
-                                );
+                                // Leaf column id is the column corresponding to the leaf parameter.
+                                // For example, if the argument is `user: {email: "user1@example.com", orgId: 1}`,
+                                // and the parameter is `email`, then the leaf column id is the column id for the `email` column.
+                                let leaf_column_id = match parameter.column_path_link.as_ref() {
+                                    Some(column_path_link) => {
+                                        match &column_path_link.self_column_ids()[..] {
+                                            [column_id] => *column_id,
+                                            _ => panic!("Expected a single column id"),
+                                        }
+                                    }
+                                    None => panic!("Expected column path link"),
+                                };
 
-                                let param_physical_column =
-                                    param_column_id.get_column(&subsystem.core_subsystem.database);
+                                let op_value = literal_column_path(
+                                    arg,
+                                    &leaf_column_id
+                                        .get_column(&subsystem.core_subsystem.database)
+                                        .typ,
+                                    false,
+                                )?;
 
-                                let op_value =
-                                    literal_column_path(arg, &param_physical_column.typ, false)?;
+                                let param_column_id = match &self.param.column_path_link {
+                                    Some(ColumnPathLink::Leaf(column_id)) => *column_id,
+                                    Some(ColumnPathLink::Relation(column_path_link)) => {
+                                        // Composite pks. Find the index of the column id in the column pairs
+                                        column_path_link
+                                            .column_pairs
+                                            .iter()
+                                            .find_map(|column_pair| {
+                                                if column_pair.foreign_column_id == leaf_column_id {
+                                                    Some(column_pair.self_column_id)
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .expect("Expected a matching column path link")
+                                    }
+                                    None => panic!("Expected column path link"),
+                                };
+
+                                let param_column_path =
+                                    ColumnPath::Physical(PhysicalColumnPath::leaf(param_column_id));
 
                                 let new_predicate =
                                     AbstractPredicate::eq(param_column_path, op_value);
@@ -402,11 +430,16 @@ fn operands<'a>(
     parent_column_path: &Option<PhysicalColumnPath>,
     subsystem: &'a PostgresGraphQLSubsystem,
 ) -> Result<(ColumnPath, ColumnPath), PostgresExecutionError> {
-    let op_physical_column_id = param
+    let op_param_column_path = param
         .column_path_link
         .as_ref()
-        .expect("Could not find column path link while forming operands")
-        .self_column_ids()[0];
+        .expect("Could not find column path link while forming operands");
+    let op_physical_column_ids = op_param_column_path.self_column_ids();
+    assert!(
+        op_physical_column_ids.len() == 1,
+        "Operand must be non-composite columns"
+    );
+    let op_physical_column_id = op_physical_column_ids[0];
     let op_physical_column = op_physical_column_id.get_column(&subsystem.core_subsystem.database);
 
     let op_value = literal_column_path(

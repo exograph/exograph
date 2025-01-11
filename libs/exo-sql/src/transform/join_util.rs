@@ -9,10 +9,7 @@
 
 use crate::{
     asql::column_path::{ColumnPathLink, RelationLink},
-    sql::{
-        column::Column, join::LeftJoin, predicate::ConcretePredicate, relation::RelationColumnPair,
-        table::Table,
-    },
+    sql::{column::Column, join::LeftJoin, predicate::ConcretePredicate, table::Table},
     transform::table_dependency::{DependencyLink, TableDependency},
     Database, PhysicalColumnPath, TableId,
 };
@@ -50,24 +47,33 @@ pub fn compute_join(
             init_table,
             |acc, DependencyLink { link, dependency }| {
                 let (join_predicate, linked_table_alias) = match link {
-                    ColumnPathLink::Relation(RelationLink {
-                        column_pairs,
-                        linked_table_alias,
-                    }) => {
-                        let RelationColumnPair {
-                            self_column_id,
-                            foreign_column_id: linked_column_id,
-                        } = column_pairs[0];
-                        let new_alias = selection_level
-                            .alias((linked_column_id.table_id, linked_table_alias), database);
+                    ColumnPathLink::Relation(relation_link) => {
+                        let linked_table_id = relation_link.linked_table_id;
+                        let RelationLink {
+                            column_pairs,
+                            linked_table_alias,
+                            ..
+                        } = relation_link;
 
-                        (
-                            ConcretePredicate::Eq(
-                                Column::physical(self_column_id, None),
-                                Column::physical(linked_column_id, Some(new_alias.clone())),
-                            ),
-                            new_alias,
-                        )
+                        let new_alias =
+                            selection_level.alias((linked_table_id, linked_table_alias), database);
+
+                        let predicate = column_pairs.iter().fold(
+                            ConcretePredicate::True,
+                            |acc, column_pair| {
+                                ConcretePredicate::and(
+                                    acc,
+                                    ConcretePredicate::Eq(
+                                        Column::physical(column_pair.self_column_id, None),
+                                        Column::physical(
+                                            column_pair.foreign_column_id,
+                                            Some(new_alias.clone()),
+                                        ),
+                                    ),
+                                )
+                            },
+                        );
+                        (predicate, new_alias)
                     }
                     ColumnPathLink::Leaf(_) => {
                         panic!("Unexpected leaf in dependency link")

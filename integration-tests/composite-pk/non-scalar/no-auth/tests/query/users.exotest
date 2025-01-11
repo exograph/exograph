@@ -1,0 +1,85 @@
+operation: |
+  query {
+      users @unordered {
+          id
+          name
+          participatesIn @unordered {
+              chat {
+                  id
+                  title
+              }
+          }
+      }
+  }
+response: |
+  {
+    "data": {
+      "users": [
+        {
+          "id": $.u1_id,
+          "name": "u1",
+          "participatesIn": [
+            {
+              "chat": {
+                "id": $.c1_id,
+                "title": "c1-between-u1-u2"
+              }
+            },
+            {
+              "chat": {
+                "id": $.c2_id,
+                "title": "c2-between-u1-u3"
+              }
+            },
+            {
+              "chat": {
+                "id": $.c3_id,
+                "title": "c3-between-u1-u2-u3"
+              }
+            }
+          ]
+        },
+        {
+          "id": $.u2_id,
+          "name": "u2",
+          "participatesIn": [
+            {
+              "chat": {
+                "id": $.c1_id,
+                "title": "c1-between-u1-u2"
+              }
+            },
+            {
+              "chat": {
+                "id": $.c3_id,
+                "title": "c3-between-u1-u2-u3"
+              }
+            }
+          ]
+        },
+        {
+          "id": $.u3_id,
+          "name": "u3",
+          "participatesIn": [
+            {
+              "chat": {
+                "id": $.c2_id,
+                "title": "c2-between-u1-u3"
+              }
+            },
+            {
+              "chat": {
+                "id": $.c3_id,
+                "title": "c3-between-u1-u2-u3"
+              }
+            }
+          ]
+        },
+        {
+          "id": $.u4_id,
+          "name": "u4",
+          "participatesIn": []
+        }
+      ]
+    }
+  }

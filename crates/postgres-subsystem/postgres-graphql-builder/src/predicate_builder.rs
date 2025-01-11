@@ -11,6 +11,7 @@ use core_plugin_interface::core_model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
     types::{FieldType, Named},
 };
+use exo_sql::ColumnPathLink;
 use postgres_graphql_model::predicate::PredicateParameterTypeWrapper;
 
 use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveType, TypeIndex};
@@ -283,11 +284,34 @@ fn expand_unique_type(
         .fields
         .iter()
         .flat_map(|field| match &field.relation {
-            PostgresRelation::Pk { .. } => {
+            PostgresRelation::Scalar {
+                is_pk: true,
+                column_id,
+            } => {
                 let field_type_name = field.typ.name();
                 let param_type_id = building
                     .predicate_types
                     .get_id(field_type_name)
+                    .unwrap_or_else(|| panic!("Could not find predicate type '{field_type_name}'"));
+
+                let param_type = FieldType::Plain(PredicateParameterTypeWrapper {
+                    name: field_type_name.to_owned(),
+                    type_id: param_type_id,
+                });
+
+                Some(PredicateParameter {
+                    name: field.name.clone(),
+                    typ: param_type,
+                    access: Some(field.access.clone()),
+                    column_path_link: Some(ColumnPathLink::Leaf(*column_id)),
+                    vector_distance_function: None,
+                })
+            }
+            PostgresRelation::ManyToOne { is_pk: true, .. } => {
+                let field_type_name = field.typ.name();
+                let param_type_id = building
+                    .predicate_types
+                    .get_id(&get_unique_filter_type_name(field_type_name))
                     .unwrap_or_else(|| panic!("Could not find predicate type '{field_type_name}'"));
 
                 let param_type = FieldType::Plain(PredicateParameterTypeWrapper {

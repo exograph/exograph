@@ -89,14 +89,26 @@ impl<'a> TemplateDelete<'a> {
         // Go over all the rows in the previous step and create a concrete update for each row.
         (0..rows)
             .map(|row_index| {
-                let relation_predicate = ConcretePredicate::Eq(
-                    Column::Physical {
-                        column_id: nesting_relation.column_pairs[0].foreign_column_id,
-                        table_alias: None,
+                let relation_predicate = nesting_relation.column_pairs.iter().enumerate().fold(
+                    ConcretePredicate::True,
+                    |acc, (column_index, column_pair)| {
+                        ConcretePredicate::and(
+                            acc,
+                            ConcretePredicate::Eq(
+                                Column::Physical {
+                                    column_id: column_pair.foreign_column_id,
+                                    table_alias: None,
+                                },
+                                Column::Param(SQLParamContainer::from_sql_value(
+                                    transaction_context.resolve_value(
+                                        prev_step_id,
+                                        row_index,
+                                        column_index,
+                                    ),
+                                )),
+                            ),
+                        )
                     },
-                    Column::Param(SQLParamContainer::from_sql_value(
-                        transaction_context.resolve_value(prev_step_id, row_index, 0),
-                    )),
                 );
 
                 Delete {

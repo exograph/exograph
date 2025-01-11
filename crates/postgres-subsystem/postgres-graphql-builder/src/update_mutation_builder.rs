@@ -22,10 +22,7 @@ use postgres_graphql_model::{
     types::MutationType,
 };
 
-use postgres_core_model::{
-    relation::PostgresRelation,
-    types::{EntityType, PostgresField, PostgresFieldType, TypeIndex},
-};
+use postgres_core_model::types::{EntityType, PostgresField, PostgresFieldType, TypeIndex};
 
 use crate::{
     mutation_builder::DataParamRole,
@@ -306,22 +303,19 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                         let base_type = tpe.1.clone();
                         let mut base_type_fields = base_type.fields;
 
-                        let base_type_pk_field = base_type_fields
-                            .iter_mut()
-                            .find(|f| matches!(f.relation, PostgresRelation::Pk { .. }));
+                        let base_type_pk_fields =
+                            base_type_fields.iter_mut().filter(|f| f.relation.is_pk());
 
                         // For a non-nested type ("base type"), we already have the PK field, but it is optional. So here
                         // we make it required (by not wrapping the entity_pk_field it as optional)
-                        if let Some(base_type_pk_field) = base_type_pk_field {
-                            let entity_pk_field = entity_type.pk_fields()[0];
+                        for (i, base_type_pk_field) in base_type_pk_fields.enumerate() {
+                            let entity_pk_field = entity_type.pk_fields()[i];
                             base_type_pk_field.typ = to_mutation_type(
                                 &entity_pk_field.typ,
                                 MutationTypeKind::Update,
                                 building,
                             );
-                        } else {
-                            panic!("Expected a PK field in the base type")
-                        };
+                        }
 
                         let type_with_id = MutationType {
                             name: nested_existing_type_name,

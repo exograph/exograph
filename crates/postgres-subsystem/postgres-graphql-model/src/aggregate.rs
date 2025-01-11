@@ -49,16 +49,13 @@ impl FieldDefinitionProvider<PostgresGraphQLSubsystem> for AggregateField {
     fn field_definition(&self, system: &PostgresGraphQLSubsystem) -> FieldDefinition {
         let arguments = match &self.relation {
             Some(relation) => match relation {
-                PostgresRelation::Pk { .. }
-                | PostgresRelation::Scalar { .. }
-                | PostgresRelation::ManyToOne { .. } => {
+                PostgresRelation::Scalar { .. } | PostgresRelation::ManyToOne { .. } => {
                     vec![]
                 }
                 PostgresRelation::OneToMany(OneToManyRelation {
-                    foreign_field_id, ..
+                    foreign_entity_id, ..
                 }) => {
-                    let foreign_type_id = foreign_field_id.entity_type_id();
-                    let aggregate_query = system.get_aggregate_query(foreign_type_id);
+                    let aggregate_query = system.get_aggregate_query(*foreign_entity_id);
 
                     let AggregateQueryParameters { predicate_param } = &aggregate_query.parameters;
 

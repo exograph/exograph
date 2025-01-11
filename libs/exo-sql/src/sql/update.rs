@@ -111,15 +111,28 @@ impl<'a> TemplateUpdate<'a> {
                     })
                     .collect();
 
-                let relation_predicate = ConcretePredicate::Eq(
-                    Column::Physical {
-                        column_id: self.nesting_relation.column_pairs[0].foreign_column_id,
-                        table_alias: None,
-                    },
-                    Column::Param(SQLParamContainer::from_sql_value(
-                        transaction_context.resolve_value(prev_step_id, row_index, 0),
-                    )),
-                );
+                let relation_predicate =
+                    self.nesting_relation.column_pairs.iter().enumerate().fold(
+                        ConcretePredicate::True,
+                        |acc, (column_index, column_pair)| {
+                            ConcretePredicate::and(
+                                acc,
+                                ConcretePredicate::Eq(
+                                    Column::Physical {
+                                        column_id: column_pair.foreign_column_id,
+                                        table_alias: None,
+                                    },
+                                    Column::Param(SQLParamContainer::from_sql_value(
+                                        transaction_context.resolve_value(
+                                            prev_step_id,
+                                            row_index,
+                                            column_index,
+                                        ),
+                                    )),
+                                ),
+                            )
+                        },
+                    );
 
                 Update {
                     table: self.table,

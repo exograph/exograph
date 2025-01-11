@@ -1,0 +1,23 @@
+operation: |
+    query {
+        users {
+            orgId
+            email
+            profile {
+                name
+            }
+        }
+    }
+response: |
+    {
+        "data": {
+            "users": [
+                {"orgId": 1, "email": "user1@example.com", "profile": {"name": "User 1"}},
+            ]
+        }
+    }
+auth: |
+    {
+        "orgId": 1,
+        "email": "user1@example.com"
+    }

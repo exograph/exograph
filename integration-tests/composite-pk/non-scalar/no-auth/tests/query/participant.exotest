@@ -1,0 +1,33 @@
+operation: |
+  query($chat_id: Int!, $user_id: Int!) {
+      chatParticipation(chat: {id: $chat_id}, user: {id: $user_id}) {
+          user {
+              id
+              name
+          }
+          chat {
+              id
+              title
+          }
+      }
+  }
+variable: |
+  {
+    "chat_id": $.c1_id,
+    "user_id": $.u1_id
+  }
+response: |
+  {
+    "data": {
+      "chatParticipation": {
+        "user": {
+          "id": 1,
+          "name": "u1"
+        },
+        "chat": {
+          "id": 1,
+          "title": "c1-between-u1-u2"
+        }
+      }
+    }
+  }

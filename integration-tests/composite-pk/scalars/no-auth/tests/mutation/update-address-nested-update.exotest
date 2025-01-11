@@ -1,0 +1,39 @@
+operation: |
+    mutation {
+      updateAddress(street: "2 Main St", city: "Boston", state: "MA", zip: 22101, data: { info: "The best address in the world", people: { update: { firstName: "John", lastName: "DoeBoston", age: 20 } } }) @unordered {
+        street
+        city
+        state
+        zip
+        info
+        people @unordered {
+          firstName
+          lastName
+          age
+        }
+      }
+    }
+response: |
+    {
+      "data": {
+        "updateAddress": {
+          "street": "2 Main St",
+          "city": "Boston",
+          "state": "MA",
+          "zip": 22101,
+          "info": "The best address in the world",
+          "people": [
+            {
+              "firstName": "Jane",
+              "lastName": "SmithBoston",
+              "age": 35
+            },
+            {
+              "firstName": "John",
+              "lastName": "DoeBoston",
+              "age": 20
+            }
+          ]
+        }
+      }
+    }
