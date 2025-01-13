@@ -15,6 +15,7 @@ use crate::resolved_type::{
     ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
+use postgres_core_model::access::CreationAccessExpression;
 use postgres_core_model::types::EntityRepresentation;
 
 use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
@@ -446,6 +447,14 @@ fn compute_access(
     };
 
     let query_access = compute_database_access_expr(&[&resolved.query, &resolved.default])?;
+    let creation_database_access = {
+        // compute_database_access_expr(&[&resolved.creation, &resolved.mutation, &resolved.default])?;
+        building
+            .database_access_expressions
+            .lock()
+            .unwrap()
+            .insert(AccessPredicateExpression::BooleanLiteral(true))
+    };
     let update_database_access =
         compute_database_access_expr(&[&resolved.update, &resolved.mutation, &resolved.default])?;
     let delete_access =
@@ -453,7 +462,10 @@ fn compute_access(
 
     Ok(Access {
         read: query_access,
-        creation: creation_input_access,
+        creation: CreationAccessExpression {
+            input: creation_input_access,
+            pre_creation: creation_database_access,
+        },
         update: UpdateAccessExpression {
             input: update_input_access,
             database: update_database_access,
@@ -813,7 +825,10 @@ fn compute_one_to_many_relation(
 
 fn restrictive_access() -> Access {
     Access {
-        creation: SerializableSlabIndex::shallow(),
+        creation: CreationAccessExpression {
+            input: SerializableSlabIndex::shallow(),
+            pre_creation: SerializableSlabIndex::shallow(),
+        },
         read: SerializableSlabIndex::shallow(),
         update: UpdateAccessExpression {
             input: SerializableSlabIndex::shallow(),
