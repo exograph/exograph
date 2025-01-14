@@ -371,14 +371,6 @@ fn compute_database_access_expr(
             .restricted_access_index()
     };
 
-    let permissive_access_index = || {
-        building
-            .database_access_expressions
-            .lock()
-            .unwrap()
-            .permissive_access_index()
-    };
-
     let access_predicate_expr = match ast_expr {
         Some(ast_expr) => {
             let entity = &building.entity_types[entity_id];
@@ -397,18 +389,12 @@ fn compute_database_access_expr(
     }?;
 
     Ok(match access_predicate_expr {
-        None => permissive_access_index(), // None means there was no relevant access expression (for example, pre-check that didn't involve any database entities)
-        Some(expr) => {
-            if matches!(expr, AccessPredicateExpression::BooleanLiteral(false)) {
-                restricted_access_index()
-            } else {
-                building
-                    .database_access_expressions
-                    .lock()
-                    .unwrap()
-                    .insert(expr)
-            }
-        }
+        AccessPredicateExpression::BooleanLiteral(false) => restricted_access_index(),
+        _ => building
+            .database_access_expressions
+            .lock()
+            .unwrap()
+            .insert(access_predicate_expr),
     })
 }
 
@@ -433,14 +419,6 @@ fn compute_input_access_expr(
             .restricted_access_index()
     };
 
-    let permissive_access_index = || {
-        building
-            .input_access_expressions
-            .lock()
-            .unwrap()
-            .permissive_access_index()
-    };
-
     let expr = match ast_expr {
         Some(ast_expr) => access_utils::compute_input_predicate_expression(
             ast_expr,
@@ -453,18 +431,12 @@ fn compute_input_access_expr(
     }?;
 
     Ok(match expr {
-        None => permissive_access_index(),
-        Some(expr) => {
-            if matches!(expr, AccessPredicateExpression::BooleanLiteral(false)) {
-                restricted_access_index()
-            } else {
-                building
-                    .input_access_expressions
-                    .lock()
-                    .unwrap()
-                    .insert(expr)
-            }
-        }
+        AccessPredicateExpression::BooleanLiteral(false) => restricted_access_index(),
+        _ => building
+            .input_access_expressions
+            .lock()
+            .unwrap()
+            .insert(expr),
     })
 }
 
