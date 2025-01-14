@@ -106,6 +106,7 @@ impl SystemContextBuilding {
 pub struct AccessExpressionsBuilding<T: Send + Sync> {
     elems: SerializableSlab<AccessPredicateExpression<T>>,
     restrictive_access_index: SerializableSlabIndex<AccessPredicateExpression<T>>,
+    permissive_access_index: SerializableSlabIndex<AccessPredicateExpression<T>>,
 }
 
 impl<T: Send + Sync> AccessExpressionsBuilding<T> {
@@ -119,17 +120,23 @@ impl<T: Send + Sync> AccessExpressionsBuilding<T> {
     pub fn restricted_access_index(&self) -> SerializableSlabIndex<AccessPredicateExpression<T>> {
         self.restrictive_access_index
     }
+
+    pub fn permissive_access_index(&self) -> SerializableSlabIndex<AccessPredicateExpression<T>> {
+        self.permissive_access_index
+    }
 }
 
 impl<T: Send + Sync> Default for AccessExpressionsBuilding<T> {
     fn default() -> Self {
         let mut elems = SerializableSlab::new();
-        // Insert a default restrictive access expression and keep around its index
+        // Insert a default restrictive and permissive access expressions and keep around their indices
         let restrictive_access_index =
             elems.insert(AccessPredicateExpression::BooleanLiteral(false));
+        let permissive_access_index = elems.insert(AccessPredicateExpression::BooleanLiteral(true));
         Self {
             elems,
             restrictive_access_index,
+            permissive_access_index,
         }
     }
 }

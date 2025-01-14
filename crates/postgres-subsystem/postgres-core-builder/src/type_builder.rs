@@ -342,9 +342,16 @@ fn expand_type_access(
     Ok(())
 }
 
+fn first_non_optional_access_expr<'a>(
+    ast_exprs: &[&'a Option<AstExpr<Typed>>],
+) -> Option<&'a AstExpr<Typed>> {
+    ast_exprs.iter().copied().flatten().next()
+}
+
 /// Compute access expression for database access.
 ///
 /// Goes over the chain of the expressions and maps the first non-optional expression to a database access expression.
+/// If no non-optional expression is found, returns a restricted access expression.
 fn compute_database_access_expr(
     ast_exprs: &[&Option<AstExpr<Typed>>],
     entity_id: SerializableSlabIndex<EntityType>,
@@ -354,36 +361,54 @@ fn compute_database_access_expr(
     SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
     ModelBuildingError,
 > {
-    let entity = &building.entity_types[entity_id];
+    let ast_expr = first_non_optional_access_expr(ast_exprs);
 
-    let expr = ast_exprs
-        .iter()
-        .find_map(|ast_expr| {
-            ast_expr.as_ref().map(|ast_expr| {
-                access_utils::compute_predicate_expression(
-                    ast_expr,
-                    entity,
-                    HashMap::new(),
-                    resolved_env,
-                    &building.primitive_types,
-                    &building.entity_types,
-                    &building.database,
-                )
-            })
-        })
-        .transpose()?;
-
-    Ok(match expr {
-        Some(AccessPredicateExpression::BooleanLiteral(false)) | None => building
+    let restricted_access_index = || {
+        building
             .database_access_expressions
             .lock()
             .unwrap()
-            .restricted_access_index(),
-        Some(expr) => building
+            .restricted_access_index()
+    };
+
+    let permissive_access_index = || {
+        building
             .database_access_expressions
             .lock()
             .unwrap()
-            .insert(expr),
+            .permissive_access_index()
+    };
+
+    let access_predicate_expr = match ast_expr {
+        Some(ast_expr) => {
+            let entity = &building.entity_types[entity_id];
+
+            access_utils::compute_predicate_expression(
+                ast_expr,
+                entity,
+                HashMap::new(),
+                resolved_env,
+                &building.primitive_types,
+                &building.entity_types,
+                &building.database,
+            )
+        }
+        None => return Ok(restricted_access_index()),
+    }?;
+
+    Ok(match access_predicate_expr {
+        None => permissive_access_index(), // None means there was no relevant access expression (for example, pre-check that didn't involve any database entities)
+        Some(expr) => {
+            if matches!(expr, AccessPredicateExpression::BooleanLiteral(false)) {
+                restricted_access_index()
+            } else {
+                building
+                    .database_access_expressions
+                    .lock()
+                    .unwrap()
+                    .insert(expr)
+            }
+        }
     })
 }
 
@@ -398,32 +423,48 @@ fn compute_input_access_expr(
 > {
     let entity = &building.entity_types[entity_id];
 
-    let expr = ast_exprs
-        .iter()
-        .find_map(|ast_expr| {
-            ast_expr.as_ref().map(|ast_expr| {
-                access_utils::compute_input_predicate_expression(
-                    ast_expr,
-                    HashMap::from_iter([("self".to_string(), entity)]),
-                    resolved_env,
-                    &building.primitive_types,
-                    &building.entity_types,
-                )
-            })
-        })
-        .transpose()?;
+    let ast_expr = first_non_optional_access_expr(ast_exprs);
+
+    let restricted_access_index = || {
+        building
+            .input_access_expressions
+            .lock()
+            .unwrap()
+            .restricted_access_index()
+    };
+
+    let permissive_access_index = || {
+        building
+            .input_access_expressions
+            .lock()
+            .unwrap()
+            .permissive_access_index()
+    };
+
+    let expr = match ast_expr {
+        Some(ast_expr) => access_utils::compute_input_predicate_expression(
+            ast_expr,
+            HashMap::from_iter([("self".to_string(), entity)]),
+            resolved_env,
+            &building.primitive_types,
+            &building.entity_types,
+        ),
+        _ => return Ok(restricted_access_index()),
+    }?;
 
     Ok(match expr {
-        Some(AccessPredicateExpression::BooleanLiteral(false)) | None => building
-            .input_access_expressions
-            .lock()
-            .unwrap()
-            .restricted_access_index(),
-        Some(expr) => building
-            .input_access_expressions
-            .lock()
-            .unwrap()
-            .insert(expr),
+        None => permissive_access_index(),
+        Some(expr) => {
+            if matches!(expr, AccessPredicateExpression::BooleanLiteral(false)) {
+                restricted_access_index()
+            } else {
+                building
+                    .input_access_expressions
+                    .lock()
+                    .unwrap()
+                    .insert(expr)
+            }
+        }
     })
 }
 
