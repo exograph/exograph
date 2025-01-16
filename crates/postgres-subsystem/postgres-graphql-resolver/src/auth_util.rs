@@ -191,7 +191,7 @@ async fn check_update_access<'a>(
             &subsystem.core_subsystem.input_access_expressions[expr.input],
         )
         .await?
-        .map(|p| p.0)
+        .map(|predicate| predicate.0)
         .unwrap_or(AbstractPredicate::False);
 
     // Input predicate cannot have a residue (i.e. it must fully evaluated to true or false)

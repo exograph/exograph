@@ -27,7 +27,7 @@ pub struct Access {
 pub struct CreationAccessExpression {
     pub input: SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
     pub pre_creation:
-        SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+        SerializableSlabIndex<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -53,4 +53,46 @@ pub enum InputAccessPrimitiveExpression {
     Path(Vec<String>, Option<String>), // JSON path, for example self.user.id and parameter name (such as "du", default: "self")
     Function(Vec<String>, FunctionCall<Self>), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
     Common(CommonAccessPrimitiveExpression),   // expression shared by all access expressions
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum PrecheckAccessPrimitiveExpression {
+    Path(AccessPrimitiveExpressionPath, Option<String>),
+    Function(AccessPrimitiveExpressionPath, FunctionCall<Self>),
+    Common(CommonAccessPrimitiveExpression),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AccessPrimitiveExpressionPath {
+    pub column_path: PhysicalColumnPath,
+    pub field_path: FieldPath,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum FieldPath {
+    Valid(Vec<String>),
+    Invalid,
+}
+
+impl AccessPrimitiveExpressionPath {
+    pub fn new(column_path: PhysicalColumnPath, field_path: FieldPath) -> Self {
+        Self {
+            column_path,
+            field_path,
+        }
+    }
+
+    pub fn join(self, other: Self) -> Self {
+        Self {
+            column_path: self.column_path.join(other.column_path),
+            field_path: match (self.field_path, other.field_path) {
+                (FieldPath::Valid(a), FieldPath::Valid(b)) => {
+                    let mut field_path = a.clone();
+                    field_path.extend(b.clone());
+                    FieldPath::Valid(field_path)
+                }
+                _ => FieldPath::Invalid,
+            },
+        }
+    }
 }

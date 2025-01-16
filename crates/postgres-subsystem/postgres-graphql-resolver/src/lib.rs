@@ -10,7 +10,7 @@
 pub use resolver::PostgresSubsystemResolver;
 
 mod abstract_operation_resolver;
-mod access_solver;
+mod access;
 mod aggregate_query;
 mod auth_util;
 mod column_path_util;

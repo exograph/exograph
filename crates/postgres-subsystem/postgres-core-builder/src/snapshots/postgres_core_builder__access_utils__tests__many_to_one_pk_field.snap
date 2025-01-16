@@ -1,0 +1,42 @@
+---
+source: crates/postgres-subsystem/postgres-core-builder/src/access_utils.rs
+expression: selection
+---
+Path:
+  - column_path:
+      - Relation:
+          column_pairs:
+            - self_column_id:
+                table_id:
+                  index: 0
+                  generation: ~
+                column_index: 2
+              foreign_column_id:
+                table_id:
+                  index: 1
+                  generation: ~
+                column_index: 0
+          self_table_id:
+            index: 0
+            generation: ~
+          linked_table_id:
+            index: 1
+            generation: ~
+          linked_table_alias: assignees
+          _phantom: ~
+      - Leaf:
+          table_id:
+            index: 1
+            generation: ~
+          column_index: 0
+    field_path:
+      Valid:
+        - assignee
+        - id
+  - Plain:
+      type_id:
+        Primitive:
+          index: 1
+          generation: ~
+      type_name: Int
+  - ~

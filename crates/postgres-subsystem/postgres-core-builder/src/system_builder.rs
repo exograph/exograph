@@ -18,6 +18,7 @@ use core_plugin_interface::{
 };
 
 use postgres_core_model::{
+    access::PrecheckAccessPrimitiveExpression,
     aggregate::AggregateType,
     subsystem::PostgresCoreSubsystem,
     types::{EntityType, PostgresPrimitiveType},
@@ -76,6 +77,9 @@ pub struct SystemContextBuilding {
     pub input_access_expressions: Mutex<AccessExpressionsBuilding<InputAccessPrimitiveExpression>>,
     pub database_access_expressions:
         Mutex<AccessExpressionsBuilding<DatabaseAccessPrimitiveExpression>>,
+
+    pub precheck_access_expressions:
+        Mutex<AccessExpressionsBuilding<PrecheckAccessPrimitiveExpression>>,
 
     pub database: Database,
 }

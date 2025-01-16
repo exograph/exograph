@@ -21,7 +21,7 @@ use crate::{
 
 /// A type that can be used as a type for fields and return types
 /// Currently supports only list and optional decorations
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum FieldType<T> {
     Plain(T),
     List(Box<FieldType<T>>),

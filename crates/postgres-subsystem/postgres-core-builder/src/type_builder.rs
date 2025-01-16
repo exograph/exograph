@@ -15,7 +15,7 @@ use crate::resolved_type::{
     ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
-use postgres_core_model::access::CreationAccessExpression;
+use postgres_core_model::access::{CreationAccessExpression, PrecheckAccessPrimitiveExpression};
 use postgres_core_model::types::EntityRepresentation;
 
 use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
@@ -440,6 +440,50 @@ fn compute_input_access_expr(
     })
 }
 
+fn compute_precheck_access_expr(
+    ast_exprs: &[&Option<AstExpr<Typed>>],
+    entity_id: SerializableSlabIndex<EntityType>,
+    resolved_env: &ResolvedTypeEnv,
+    building: &SystemContextBuilding,
+) -> Result<
+    SerializableSlabIndex<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>>,
+    ModelBuildingError,
+> {
+    let entity = &building.entity_types[entity_id];
+
+    let ast_expr = first_non_optional_access_expr(ast_exprs);
+
+    let restricted_access_index = || {
+        building
+            .precheck_access_expressions
+            .lock()
+            .unwrap()
+            .restricted_access_index()
+    };
+
+    let expr = match ast_expr {
+        Some(ast_expr) => access_utils::compute_precheck_predicate_expression(
+            ast_expr,
+            entity,
+            HashMap::new(),
+            resolved_env,
+            &building.primitive_types,
+            &building.entity_types,
+            &building.database,
+        ),
+        _ => return Ok(restricted_access_index()),
+    }?;
+
+    Ok(match expr {
+        AccessPredicateExpression::BooleanLiteral(false) => restricted_access_index(),
+        _ => building
+            .precheck_access_expressions
+            .lock()
+            .unwrap()
+            .insert(expr),
+    })
+}
+
 fn compute_access(
     resolved: &ResolvedAccess,
     entity_id: SerializableSlabIndex<EntityType>,
@@ -460,14 +504,13 @@ fn compute_access(
     };
 
     let query_access = compute_database_access_expr(&[&resolved.query, &resolved.default])?;
-    let creation_database_access = {
-        // compute_database_access_expr(&[&resolved.creation, &resolved.mutation, &resolved.default])?;
-        building
-            .database_access_expressions
-            .lock()
-            .unwrap()
-            .insert(AccessPredicateExpression::BooleanLiteral(true))
-    };
+    let creation_database_access = compute_precheck_access_expr(
+        &[&resolved.creation, &resolved.mutation, &resolved.default],
+        entity_id,
+        resolved_env,
+        building,
+    )?;
+
     let update_database_access =
         compute_database_access_expr(&[&resolved.update, &resolved.mutation, &resolved.default])?;
     let delete_access =

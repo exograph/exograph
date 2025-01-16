@@ -78,7 +78,7 @@ pub trait ContextContainer {
 }
 
 /// A path representing context selection such as `AuthContext.role`
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct ContextSelection {
     /// The name of the context such as `AuthContext`
     pub context_name: String,
@@ -87,7 +87,7 @@ pub struct ContextSelection {
     pub path: (String, Vec<ContextSelectionElement>),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum ContextSelectionElement {
     Identifier(String),
     NormalCall {
