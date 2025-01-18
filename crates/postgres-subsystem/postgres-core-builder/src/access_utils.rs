@@ -625,7 +625,7 @@ fn compute_precheck_function_expr(
                 // for the `self.id` part.
                 Ok(PrecheckAccessPrimitiveExpression::Path(
                     if parameter_name == Some(function_param_name) {
-                        lead_path.join(function_column_path)
+                        lead_path.join(function_column_path)?
                     } else {
                         function_column_path
                     },
@@ -635,7 +635,7 @@ fn compute_precheck_function_expr(
             PrecheckAccessPrimitiveExpression::Function(_, _) => Err(ModelBuildingError::Generic(
                 "Cannot have a function call inside another function call".to_string(),
             )),
-            expr => Ok(expr),
+            PrecheckAccessPrimitiveExpression::Common(..) => Ok(expr),
         }
     }
 
@@ -1222,39 +1222,32 @@ fn compute_precheck_selection<'a>(
     subsystem_entity_types: &'a MappedArena<EntityType>,
     database: &Database,
 ) -> Result<PrecheckPathSelection<'a>, ModelBuildingError> {
-    fn get_field<'a>(
-        entity_type: &'a EntityType,
-        field_name: &str,
-    ) -> &'a PostgresField<EntityType> {
-        entity_type
-            .field_by_name(field_name)
-            .unwrap_or_else(|| panic!("Field {field_name} not found while processing access rules"))
-    }
-
-    let path = selection.path();
-    let (path_head, path_tail) = path.split_first().unwrap(); // Parser ensures that the path is not empty
-
     #[allow(clippy::type_complexity)]
     let compute_path = |lead_type: &'a EntityType,
                         selection_elems: &[FieldSelectionElement<Typed>]|
-     -> (
-        Option<&'a EntityType>,
-        Option<AccessPrimitiveExpressionPath>,
-        Option<&'a FieldType<PostgresFieldType<EntityType>>>,
-    ) {
-        let (lead_type, column_path, field_type, _) = selection_elems.iter().fold(
+     -> Result<
+        (
+            Option<&'a EntityType>,
+            Option<AccessPrimitiveExpressionPath>,
+            Option<&'a FieldType<PostgresFieldType<EntityType>>>,
+        ),
+        ModelBuildingError,
+    > {
+        let (lead_type, path, field_type, _) = selection_elems.iter().try_fold(
             (
                 Some(lead_type),
                 None::<AccessPrimitiveExpressionPath>,
                 None,
                 false,
             ),
-            |(lead_type, column_path, _field_type, in_many_to_one), selection_elem| {
+            |(lead_type, path, _field_type, in_many_to_one), selection_elem| {
                 let lead_type = lead_type.expect("Type for the access selection is not defined");
 
                 match selection_elem {
                     FieldSelectionElement::Identifier(field_name, _, _) => {
-                        let field = get_field(lead_type, field_name);
+                        let field = lead_type
+                            .field_by_name(field_name)
+                            .expect("Field {field_name} not found while processing access rules");
                         let field_relation = &field.relation;
                         let field_type = &field.typ;
                         let field_column_path = field.relation.column_path_link(database);
@@ -1268,46 +1261,66 @@ fn compute_precheck_selection<'a>(
                             _ => None,
                         };
 
-                        let new_path = match column_path {
+                        let new_path = match path {
                             Some(AccessPrimitiveExpressionPath {
                                 column_path,
                                 field_path,
-                            }) => AccessPrimitiveExpressionPath {
-                                column_path: column_path.push(field_column_path),
-                                field_path: match (
+                            }) => {
+                                let column_path = column_path.push(field_column_path);
+
+                                let field_path =
+                                    match (field_path, !in_many_to_one || field_relation.is_pk()) {
+                                        (FieldPath::Normal(a), true) => {
+                                            let mut field_path = a.clone();
+                                            field_path.push(field_name.clone());
+                                            FieldPath::Normal(field_path)
+                                        }
+                                        (FieldPath::Normal(a), false) => FieldPath::Pk {
+                                            lead: a.clone(),
+                                            pk_fields: lead_type
+                                                .pk_fields()
+                                                .iter()
+                                                .map(|f| f.name.clone())
+                                                .collect(),
+                                        },
+                                        (field_path, _) => {
+                                            // If the field path is already a pk, we leave it as is (will lead to a database residue)
+                                            field_path
+                                        }
+                                    };
+
+                                AccessPrimitiveExpressionPath {
+                                    column_path,
                                     field_path,
-                                    !in_many_to_one || field_relation.is_pk(),
-                                ) {
-                                    (FieldPath::Valid(a), true) => {
-                                        let mut field_path = a.clone();
-                                        field_path.push(field_name.clone());
-                                        FieldPath::Valid(field_path)
-                                    }
-                                    _ => FieldPath::Invalid,
-                                },
-                            },
+                                }
+                            }
                             None => AccessPrimitiveExpressionPath::new(
                                 PhysicalColumnPath::init(field_column_path),
-                                FieldPath::Valid(vec![field_name.clone()]),
+                                FieldPath::Normal(vec![field_name.clone()]),
                             ),
                         };
 
-                        (
+                        Ok((
                             field_composite_type,
                             Some(new_path),
                             Some(field_type),
                             in_many_to_one
                                 || matches!(field_relation, PostgresRelation::ManyToOne { .. }),
-                        )
+                        ))
                     }
                     FieldSelectionElement::HofCall { .. }
-                    | FieldSelectionElement::NormalCall { .. } => unreachable!(),
+                    | FieldSelectionElement::NormalCall { .. } => Err(ModelBuildingError::Generic(
+                        "Function calls supported only on context fields".to_string(),
+                    )),
                 }
             },
-        );
+        )?;
 
-        (lead_type, column_path, field_type)
+        Ok((lead_type, path, field_type))
     };
+
+    let path = selection.path();
+    let (path_head, path_tail) = path.split_first().unwrap(); // Parser ensures that the path is not empty
 
     match path_head {
         FieldSelectionElement::Identifier(value, _, _) => {
@@ -1318,6 +1331,7 @@ fn compute_precheck_selection<'a>(
                     (function_context.get(value).unwrap(), Some(value.clone()))
                 };
 
+                // The last element could be an ordinary field or a function call
                 let (tail_last, tail_init) =
                     path_tail
                         .split_last()
@@ -1327,8 +1341,8 @@ fn compute_precheck_selection<'a>(
 
                 match tail_last {
                     FieldSelectionElement::Identifier(_, _, _) => {
-                        let (_, column_path, field_type) = compute_path(lead_type, path_tail);
-                        // TODO: Avoid this unwrap (parser should have caught expression "self" without any fields)
+                        let (_, column_path, field_type) = compute_path(lead_type, path_tail)?;
+                        // TODO: Avoid these unwrap (parser should have caught expression "self" without any fields)
                         Ok(PrecheckPathSelection::Path(
                             column_path.unwrap(),
                             field_type.unwrap(),
@@ -1342,7 +1356,7 @@ fn compute_precheck_selection<'a>(
                         ..
                     } => {
                         let (field_composite_type, column_path, _field_type) =
-                            compute_path(lead_type, tail_init);
+                            compute_path(lead_type, tail_init)?;
                         let mut new_function_context = function_context.clone();
                         new_function_context
                             .extend([(elem_name.0.clone(), field_composite_type.unwrap())]);

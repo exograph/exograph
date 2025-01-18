@@ -219,12 +219,12 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     }
 }
 
-fn to_column_path(column_id: &PhysicalColumnPath) -> ColumnPath {
-    ColumnPath::Physical(column_id.clone())
+pub(super) fn to_column_path(physical_column_path: &PhysicalColumnPath) -> ColumnPath {
+    ColumnPath::Physical(physical_column_path.clone())
 }
 
 /// Converts a value to a literal column path
-fn literal_column(value: Val) -> ColumnPath {
+pub(super) fn literal_column(value: Val) -> ColumnPath {
     match value {
         Val::Null => ColumnPath::Null,
         Val::Bool(v) => ColumnPath::Param(SQLParamContainer::bool(v)),
@@ -245,14 +245,13 @@ mod tests {
         context_type::ContextSelection,
     };
 
-    use common::{
-        http::{RequestHead, RequestPayload, ResponsePayload},
-        router::{PlainRequestPayload, Router},
-    };
+    use common::router::{PlainRequestPayload, Router};
 
-    use exo_env::{Environment, MapEnvironment};
+    use exo_env::MapEnvironment;
     use exo_sql::PhysicalTableName;
     use serde_json::{json, Value};
+
+    use crate::access::test_util::{context_selection, test_request_context, TestRouter};
 
     use super::*;
 
@@ -265,42 +264,6 @@ mod tests {
         test_system_router:
             Box<dyn for<'request> Router<PlainRequestPayload<'request>> + Send + Sync>,
     }
-
-    struct TestRequest {}
-
-    impl RequestPayload for TestRequest {
-        fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
-            self
-        }
-
-        fn take_body(&self) -> serde_json::Value {
-            Default::default()
-        }
-    }
-
-    impl RequestHead for TestRequest {
-        fn get_headers(&self, _key: &str) -> Vec<String> {
-            vec![]
-        }
-
-        fn get_ip(&self) -> Option<std::net::IpAddr> {
-            None
-        }
-
-        fn get_method(&self) -> http::Method {
-            http::Method::POST
-        }
-
-        fn get_path(&self) -> String {
-            "".to_string()
-        }
-
-        fn get_query(&self) -> serde_json::Value {
-            Default::default()
-        }
-    }
-
-    const REQUEST: TestRequest = TestRequest {};
 
     impl TestSystem {
         fn published_column(&self) -> ColumnPath {
@@ -317,18 +280,6 @@ mod tests {
 
         fn dept2_id_column(&self) -> ColumnPath {
             super::to_column_path(&self.dept2_id_column_path)
-        }
-    }
-
-    struct TestRouter {}
-
-    #[async_trait::async_trait]
-    impl<'request> Router<PlainRequestPayload<'request>> for TestRouter {
-        async fn route(
-            &self,
-            _request_context: &PlainRequestPayload<'request>,
-        ) -> Option<ResponsePayload> {
-            None
         }
     }
 
@@ -363,17 +314,15 @@ mod tests {
         .await
         .unwrap();
 
-        let table_id = postgres_subsystem
-            .core_subsystem
-            .database
+        let database = &postgres_subsystem.core_subsystem.database;
+
+        let article_table_id = database
             .get_table_id(&PhysicalTableName::new("articles", None))
             .unwrap();
 
         let get_column_id = |column_name: &str| {
-            postgres_subsystem
-                .core_subsystem
-                .database
-                .get_column_id(table_id, column_name)
+            database
+                .get_column_id(article_table_id, column_name)
                 .unwrap()
         };
 
@@ -398,13 +347,6 @@ mod tests {
             dept1_id_column_path,
             dept2_id_column_path,
             test_system_router,
-        }
-    }
-
-    fn context_selection(context_name: &str, path_head: &str) -> ContextSelection {
-        ContextSelection {
-            context_name: context_name.to_string(),
-            path: (path_head.to_string(), vec![]),
         }
     }
 
@@ -1408,21 +1350,5 @@ mod tests {
                 assert_eq!(solved_predicate, AbstractPredicate::True);
             }
         }
-    }
-
-    fn test_request_context<'a>(
-        test_values: Value,
-        system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>> + Send + Sync),
-        env: &'a dyn Environment,
-    ) -> RequestContext<'a> {
-        RequestContext::new(
-            &REQUEST,
-            vec![Box::new(common::context::TestRequestContext {
-                test_values,
-            })],
-            system_router,
-            &None,
-            env,
-        )
     }
 }

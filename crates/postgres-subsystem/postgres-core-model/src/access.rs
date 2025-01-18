@@ -7,9 +7,12 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use core_plugin_interface::core_model::{
-    access::{AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall},
-    mapped_arena::SerializableSlabIndex,
+use core_plugin_interface::{
+    core_model::{
+        access::{AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall},
+        mapped_arena::SerializableSlabIndex,
+    },
+    core_model_builder::error::ModelBuildingError,
 };
 use exo_sql::PhysicalColumnPath;
 use serde::{Deserialize, Serialize};
@@ -68,10 +71,14 @@ pub struct AccessPrimitiveExpressionPath {
     pub field_path: FieldPath,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum FieldPath {
-    Valid(Vec<String>),
-    Invalid,
+    Normal(Vec<String>), // Non-pk field path such as self.title
+    Pk {
+        // pk field path such as self.project.owner.id
+        lead: Vec<String>,      // project
+        pk_fields: Vec<String>, // id (pk fields of Project)
+    },
 }
 
 impl AccessPrimitiveExpressionPath {
@@ -82,17 +89,30 @@ impl AccessPrimitiveExpressionPath {
         }
     }
 
-    pub fn join(self, other: Self) -> Self {
-        Self {
+    pub fn join(self, other: Self) -> Result<Self, ModelBuildingError> {
+        Ok(Self {
             column_path: self.column_path.join(other.column_path),
             field_path: match (self.field_path, other.field_path) {
-                (FieldPath::Valid(a), FieldPath::Valid(b)) => {
+                (FieldPath::Normal(a), FieldPath::Normal(b)) => {
                     let mut field_path = a.clone();
                     field_path.extend(b.clone());
-                    FieldPath::Valid(field_path)
+                    FieldPath::Normal(field_path)
                 }
-                _ => FieldPath::Invalid,
+                (FieldPath::Normal(a), FieldPath::Pk { lead, pk_fields }) => {
+                    let mut field_path = a.clone();
+                    field_path.extend(lead.clone());
+
+                    FieldPath::Pk {
+                        lead: field_path,
+                        pk_fields: pk_fields.clone(),
+                    }
+                }
+                _ => {
+                    return Err(ModelBuildingError::Generic(
+                        "Cannot join field paths".to_string(),
+                    ));
+                }
             },
-        }
+        })
     }
 }

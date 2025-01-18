@@ -10,7 +10,7 @@ Path:
             generation: ~
           column_index: 0
     field_path:
-      Valid:
+      Normal:
         - id
   - Plain:
       type_id:

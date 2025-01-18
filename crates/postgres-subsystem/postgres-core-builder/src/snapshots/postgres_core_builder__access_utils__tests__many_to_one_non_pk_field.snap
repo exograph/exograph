@@ -29,7 +29,12 @@ Path:
             index: 1
             generation: ~
           column_index: 2
-    field_path: Invalid
+    field_path:
+      Pk:
+        lead:
+          - assignee
+        pk_fields:
+          - id
   - Plain:
       type_id:
         Primitive:
