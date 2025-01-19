@@ -34,7 +34,7 @@ use postgres_core_model::{
 };
 
 use crate::utils::{to_mutation_type, MutationTypeKind};
-use postgres_core_builder::access_utils::parent_predicate;
+use postgres_core_builder::access::parent_predicate;
 
 use postgres_core_builder::resolved_type::{
     ResolvedCompositeType, ResolvedField, ResolvedFieldTypeHelper, ResolvedType,

@@ -356,7 +356,7 @@ mod test {
     };
     use exo_env::MapEnvironment;
     use exo_sql::{
-        AbstractPredicate, ColumnPathLink, PhysicalColumnPath, PhysicalTableName,
+        AbstractPredicate, ColumnId, ColumnPathLink, PhysicalColumnPath, PhysicalTableName,
         RelationColumnPair, TableId,
     };
     use postgres_core_model::access::FieldPath;
@@ -515,7 +515,7 @@ mod test {
 
         let relation_predicate = || {
             AbstractPredicate::Eq(
-                to_column_path(&test_system.user_id_column_path),
+                to_column_path(&test_system.user_id_column_path()),
                 literal_column(Val::Number(author_id.into())),
             )
         };
@@ -525,8 +525,8 @@ mod test {
                 test_ae(),
                 AbstractPredicate::and(
                     AbstractPredicate::eq(
-                        to_column_path(&test_system.article_author_name_physical_column_path),
-                        to_column_path(&test_system.article_author_skill_physical_column_path),
+                        to_column_path(&test_system.article_author_name_physical_column_path()),
+                        to_column_path(&test_system.article_author_skill_physical_column_path()),
                     ),
                     relation_predicate(),
                 ),
@@ -535,8 +535,8 @@ mod test {
                 test_ae_commuted(),
                 AbstractPredicate::and(
                     AbstractPredicate::eq(
-                        to_column_path(&test_system.article_author_skill_physical_column_path),
-                        to_column_path(&test_system.article_author_name_physical_column_path),
+                        to_column_path(&test_system.article_author_skill_physical_column_path()),
+                        to_column_path(&test_system.article_author_name_physical_column_path()),
                     ),
                     relation_predicate(),
                 ),
@@ -562,8 +562,6 @@ mod test {
         let test_system = test_system().await;
         let TestSystem {
             system,
-            user_id_column_path,
-            user_age_column_path,
             test_system_router,
             ..
         } = &test_system;
@@ -582,7 +580,7 @@ mod test {
         let test_ae = || lt_expr(self_author_age(), authcontext_id());
         let test_ae_commuted = || lt_expr(authcontext_id(), self_author_age());
 
-        let age_path = to_column_path(user_age_column_path);
+        let age_path = to_column_path(&test_system.user_age_column_path());
 
         // Non-commuted: self.author.age < AuthContext.id
         let matrix = [
@@ -616,7 +614,7 @@ mod test {
             let solved_predicate =
                 solve_access(&test_ae, &context, input_context.as_ref(), system).await;
             let expected_relational_predicate = AbstractPredicate::Eq(
-                to_column_path(user_id_column_path),
+                to_column_path(&test_system.user_id_column_path()),
                 literal_column(Val::Number(100.into())),
             );
             assert_eq!(
@@ -624,6 +622,35 @@ mod test {
                 AbstractPredicate::and(expected_core_predicate, expected_relational_predicate)
             );
         }
+    }
+
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn hof_call() {
+        // Scenario: self.articles.some(i => i.title == AuthContext.name)
+        let test_system = test_system().await;
+        let TestSystem {
+            system,
+            test_system_router,
+            ..
+        } = &test_system;
+
+        let test_system_router = test_system_router.as_ref();
+        let env = &MapEnvironment::from(HashMap::new());
+
+        let test_ae = || {
+            AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+                test_system.user_articles_title_expr().into(),
+                context_selection_expr("AccessContext", "name"),
+            ))
+        };
+
+        let context = test_request_context(json!({"name": "John"} ), test_system_router, env);
+        let input_context =
+            Some(json!({"articles": [{"title": "Article 1"}, {"title": "Article 2"}]}).into());
+
+        let _solved_predicate =
+            solve_access(&test_ae(), &context, input_context.as_ref(), system).await;
     }
 
     async fn solve_access<'a>(
@@ -645,50 +672,55 @@ mod test {
         system: PostgresGraphQLSubsystem,
 
         article_table_id: TableId,
-        article_title_column_path: PhysicalColumnPath,
-        article_author_column_path: PhysicalColumnPath,
+        article_title_column_id: ColumnId,
+        article_author_column_id: ColumnId,
+
         user_table_id: TableId,
-
-        user_id_column_path: PhysicalColumnPath,
-        user_name_column_path: PhysicalColumnPath,
-        user_skill_column_path: PhysicalColumnPath,
-        user_age_column_path: PhysicalColumnPath,
-
-        article_author_name_physical_column_path: PhysicalColumnPath,
-        article_author_skill_physical_column_path: PhysicalColumnPath,
-        article_author_age_physical_column_path: PhysicalColumnPath,
+        user_id_column_id: ColumnId,
+        user_name_column_id: ColumnId,
+        user_skill_column_id: ColumnId,
+        user_age_column_id: ColumnId,
 
         test_system_router:
             Box<dyn for<'request> Router<PlainRequestPayload<'request>> + Send + Sync>,
     }
 
     impl TestSystem {
+        pub fn article_author_column_path(&self) -> PhysicalColumnPath {
+            PhysicalColumnPath::leaf(self.article_author_column_id)
+        }
+
+        pub fn article_author_link(&self) -> ColumnPathLink {
+            ColumnPathLink::relation(
+                vec![RelationColumnPair {
+                    self_column_id: self.article_author_column_id,
+                    foreign_column_id: self.user_id_column_id,
+                }],
+                Some("author".to_string()),
+            )
+        }
+
+        pub fn article_author_name_physical_column_path(&self) -> PhysicalColumnPath {
+            let path = PhysicalColumnPath::init(self.article_author_link());
+            path.push(ColumnPathLink::Leaf(self.user_name_column_id))
+        }
+
+        pub fn article_author_skill_physical_column_path(&self) -> PhysicalColumnPath {
+            let path = PhysicalColumnPath::init(self.article_author_link());
+            path.push(ColumnPathLink::Leaf(self.user_skill_column_id))
+        }
+
+        pub fn article_author_age_physical_column_path(&self) -> PhysicalColumnPath {
+            let path = PhysicalColumnPath::init(self.article_author_link());
+            path.push(ColumnPathLink::Leaf(self.user_age_column_id))
+        }
+
         // self.author.id for `Article`
         pub fn article_self_author_id_expr(&self) -> PrecheckAccessPrimitiveExpression {
             PrecheckAccessPrimitiveExpression::Path(
                 AccessPrimitiveExpressionPath {
-                    column_path: self.article_author_column_path.clone(),
+                    column_path: self.article_author_column_path(),
                     field_path: FieldPath::Normal(vec!["author".to_string(), "id".to_string()]),
-                },
-                None,
-            )
-        }
-
-        pub fn user_self_age_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.user_age_column_path.clone(),
-                    field_path: FieldPath::Normal(vec!["age".to_string()]),
-                },
-                None,
-            )
-        }
-
-        pub fn user_self_name_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.user_name_column_path.clone(),
-                    field_path: FieldPath::Normal(vec!["name".to_string()]),
                 },
                 None,
             )
@@ -697,7 +729,7 @@ mod test {
         pub fn article_author_name_expr(&self) -> PrecheckAccessPrimitiveExpression {
             PrecheckAccessPrimitiveExpression::Path(
                 AccessPrimitiveExpressionPath {
-                    column_path: self.article_author_name_physical_column_path.clone(),
+                    column_path: self.article_author_name_physical_column_path(),
                     field_path: FieldPath::Pk {
                         lead: vec!["author".to_string()],
                         pk_fields: vec!["id".to_string()],
@@ -710,7 +742,7 @@ mod test {
         pub fn article_author_skill_expr(&self) -> PrecheckAccessPrimitiveExpression {
             PrecheckAccessPrimitiveExpression::Path(
                 AccessPrimitiveExpressionPath {
-                    column_path: self.article_author_skill_physical_column_path.clone(),
+                    column_path: self.article_author_skill_physical_column_path(),
                     field_path: FieldPath::Pk {
                         lead: vec!["author".to_string()],
                         pk_fields: vec!["id".to_string()],
@@ -723,11 +755,71 @@ mod test {
         pub fn article_author_age_expr(&self) -> PrecheckAccessPrimitiveExpression {
             PrecheckAccessPrimitiveExpression::Path(
                 AccessPrimitiveExpressionPath {
-                    column_path: self.article_author_age_physical_column_path.clone(),
+                    column_path: self.article_author_age_physical_column_path(),
                     field_path: FieldPath::Pk {
                         lead: vec!["author".to_string()],
                         pk_fields: vec!["id".to_string()],
                     },
+                },
+                None,
+            )
+        }
+
+        pub fn user_id_column_path(&self) -> PhysicalColumnPath {
+            PhysicalColumnPath::leaf(self.user_id_column_id)
+        }
+
+        pub fn user_name_column_path(&self) -> PhysicalColumnPath {
+            PhysicalColumnPath::leaf(self.user_name_column_id)
+        }
+
+        pub fn user_age_column_path(&self) -> PhysicalColumnPath {
+            PhysicalColumnPath::leaf(self.user_age_column_id)
+        }
+
+        pub fn user_self_age_expr(&self) -> PrecheckAccessPrimitiveExpression {
+            PrecheckAccessPrimitiveExpression::Path(
+                AccessPrimitiveExpressionPath {
+                    column_path: self.user_age_column_path(),
+                    field_path: FieldPath::Normal(vec!["age".to_string()]),
+                },
+                None,
+            )
+        }
+
+        pub fn user_self_name_expr(&self) -> PrecheckAccessPrimitiveExpression {
+            PrecheckAccessPrimitiveExpression::Path(
+                AccessPrimitiveExpressionPath {
+                    column_path: self.user_name_column_path(),
+                    field_path: FieldPath::Normal(vec!["name".to_string()]),
+                },
+                None,
+            )
+        }
+
+        pub fn user_articles_link(&self) -> ColumnPathLink {
+            ColumnPathLink::relation(
+                vec![RelationColumnPair {
+                    self_column_id: self.user_id_column_id,
+                    foreign_column_id: self.article_author_column_id,
+                }],
+                Some("articles".to_string()),
+            )
+        }
+
+        pub fn user_articles_title_physical_column_path(&self) -> PhysicalColumnPath {
+            let path = PhysicalColumnPath::init(self.user_articles_link());
+            path.push(ColumnPathLink::Leaf(self.article_title_column_id))
+        }
+
+        pub fn user_articles_title_expr(&self) -> PrecheckAccessPrimitiveExpression {
+            PrecheckAccessPrimitiveExpression::Path(
+                AccessPrimitiveExpressionPath {
+                    column_path: self.user_articles_title_physical_column_path(),
+                    field_path: FieldPath::Normal(vec![
+                        "articles".to_string(),
+                        "title".to_string(),
+                    ]),
                 },
                 None,
             )
@@ -776,48 +868,16 @@ mod test {
             .get_column_id(article_table_id, "author_id")
             .unwrap();
 
-        let article_title_column_path = PhysicalColumnPath::leaf(article_title_column_id);
-        let article_author_column_path = PhysicalColumnPath::leaf(article_author_column_id);
-
         let user_table_id = database
             .get_table_id(&PhysicalTableName::new("users", None))
             .unwrap();
 
         let user_id_column_id = database.get_column_id(user_table_id, "id").unwrap();
-        let user_id_column_path = PhysicalColumnPath::leaf(user_id_column_id);
 
         let user_name_column_id = database.get_column_id(user_table_id, "name").unwrap();
-        let user_name_column_path = PhysicalColumnPath::leaf(user_name_column_id);
         let user_age_column_id = database.get_column_id(user_table_id, "age").unwrap();
-        let user_age_column_path = PhysicalColumnPath::leaf(user_age_column_id);
 
         let user_skill_column_id = database.get_column_id(user_table_id, "skill").unwrap();
-        let user_skill_column_path = PhysicalColumnPath::leaf(user_skill_column_id);
-
-        let article_user_link = || {
-            ColumnPathLink::relation(
-                vec![RelationColumnPair {
-                    self_column_id: article_author_column_id,
-                    foreign_column_id: user_id_column_id,
-                }],
-                Some("author".to_string()),
-            )
-        };
-
-        let article_author_name_physical_column_path = {
-            let path = PhysicalColumnPath::init(article_user_link());
-            path.push(ColumnPathLink::Leaf(user_name_column_id))
-        };
-
-        let article_author_skill_physical_column_path = {
-            let path = PhysicalColumnPath::init(article_user_link());
-            path.push(ColumnPathLink::Leaf(user_skill_column_id))
-        };
-
-        let article_author_age_physical_column_path = {
-            let path = PhysicalColumnPath::init(article_user_link());
-            path.push(ColumnPathLink::Leaf(user_age_column_id))
-        };
 
         // Create an empty Router. Since in tests we never invoke it (since we don't have @query context),
         // we don't need to populate it.
@@ -826,16 +886,13 @@ mod test {
         TestSystem {
             system: postgres_subsystem,
             article_table_id,
-            article_title_column_path,
-            article_author_column_path,
+            article_title_column_id,
+            article_author_column_id,
             user_table_id,
-            user_id_column_path,
-            user_name_column_path,
-            user_skill_column_path,
-            user_age_column_path,
-            article_author_name_physical_column_path,
-            article_author_skill_physical_column_path,
-            article_author_age_physical_column_path,
+            user_id_column_id,
+            user_name_column_id,
+            user_skill_column_id,
+            user_age_column_id,
             test_system_router,
         }
     }

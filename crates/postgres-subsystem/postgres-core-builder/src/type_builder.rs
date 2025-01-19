@@ -20,7 +20,7 @@ use postgres_core_model::types::EntityRepresentation;
 
 use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
 
-use super::access_utils;
+use super::access;
 
 use core_plugin_interface::{
     core_model::{
@@ -375,7 +375,7 @@ fn compute_database_access_expr(
         Some(ast_expr) => {
             let entity = &building.entity_types[entity_id];
 
-            access_utils::compute_predicate_expression(
+            access::compute_predicate_expression(
                 ast_expr,
                 entity,
                 HashMap::new(),
@@ -420,7 +420,7 @@ fn compute_input_access_expr(
     };
 
     let expr = match ast_expr {
-        Some(ast_expr) => access_utils::compute_input_predicate_expression(
+        Some(ast_expr) => access::compute_input_predicate_expression(
             ast_expr,
             HashMap::from_iter([("self".to_string(), entity)]),
             resolved_env,
@@ -462,7 +462,7 @@ fn compute_precheck_access_expr(
     };
 
     let expr = match ast_expr {
-        Some(ast_expr) => access_utils::compute_precheck_predicate_expression(
+        Some(ast_expr) => access::compute_precheck_predicate_expression(
             ast_expr,
             entity,
             HashMap::new(),

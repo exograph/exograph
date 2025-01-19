@@ -1,5 +1,5 @@
 ---
-source: crates/postgres-subsystem/postgres-core-builder/src/access_utils.rs
+source: crates/postgres-subsystem/postgres-core-builder/src/access/precheck_builder.rs
 expression: selection
 ---
 Path:

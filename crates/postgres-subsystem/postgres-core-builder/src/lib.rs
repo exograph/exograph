@@ -1,4 +1,4 @@
-pub mod access_utils;
+pub mod access;
 pub mod aggregate_type_builder;
 pub mod database_builder;
 pub mod naming;
