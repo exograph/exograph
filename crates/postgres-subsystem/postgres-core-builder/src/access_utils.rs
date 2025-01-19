@@ -1245,9 +1245,9 @@ fn compute_precheck_selection<'a>(
 
                 match selection_elem {
                     FieldSelectionElement::Identifier(field_name, _, _) => {
-                        let field = lead_type
-                            .field_by_name(field_name)
-                            .expect("Field {field_name} not found while processing access rules");
+                        let field = lead_type.field_by_name(field_name).unwrap_or_else(|| {
+                            panic!("Field {field_name} not found while processing access rules")
+                        });
                         let field_relation = &field.relation;
                         let field_type = &field.typ;
                         let field_column_path = field.relation.column_path_link(database);
@@ -1625,7 +1625,7 @@ fn reduce_nested_primitive_expr(
 #[cfg(test)]
 mod tests {
     use codemap::{CodeMap, Span};
-    use core_model_builder::typechecker::typ::Type;
+    use core_model_builder::{ast::ast_types::Identifier, typechecker::typ::Type};
 
     use crate::{
         test_util::{
@@ -1638,6 +1638,10 @@ mod tests {
     use super::*;
 
     const ISSUE_TRACKING_SRC: &str = "
+        context AuthContext {
+            @jwt title: String
+        }
+
         @postgres
         module IssueDatabase {
             @access(true)
@@ -1659,25 +1663,53 @@ mod tests {
 
     #[test]
     fn direct_field() -> Result<(), ModelBuildingError> {
-        assert_precheck_selection("self.id", "Issue", "direct_field")
+        let selection = create_field_selection("self.id");
+        assert_precheck_selection(selection, "Issue", "direct_field")
     }
 
     #[test]
     fn many_to_one_pk_field() -> Result<(), ModelBuildingError> {
-        assert_precheck_selection("self.assignee.id", "Issue", "many_to_one_pk_field")
+        let selection = create_field_selection("self.assignee.id");
+        assert_precheck_selection(selection, "Issue", "many_to_one_pk_field")
     }
 
     #[test]
     fn many_to_one_non_pk_field() -> Result<(), ModelBuildingError> {
-        assert_precheck_selection(
-            "self.assignee.position",
-            "Issue",
-            "many_to_one_non_pk_field",
-        )
+        let selection = create_field_selection("self.assignee.position");
+        assert_precheck_selection(selection, "Issue", "many_to_one_non_pk_field")
+    }
+
+    #[test]
+    fn hof_call() -> Result<(), ModelBuildingError> {
+        // self.issues.some(i => i.title == AuthContext.title)
+        let self_issues_selection = create_field_selection("self.issues");
+
+        let hof_elem = FieldSelectionElement::HofCall {
+            span: null_span(),
+            name: Identifier("some".to_string(), null_span()),
+            param_name: Identifier("i".to_string(), null_span()),
+            expr: Box::new(AstExpr::RelationalOp(RelationalOp::Eq(
+                Box::new(AstExpr::FieldSelection(create_field_selection("i.title"))),
+                Box::new(AstExpr::FieldSelection(create_field_selection(
+                    "AuthContext.title",
+                ))),
+                Type::Defer,
+            ))),
+            typ: Type::Defer,
+        };
+
+        let selection = FieldSelection::Select(
+            Box::new(self_issues_selection),
+            hof_elem,
+            null_span(),
+            Type::Defer,
+        );
+
+        assert_precheck_selection(selection, "Employee", "hof_call")
     }
 
     fn assert_precheck_selection(
-        selection: &str,
+        selection: FieldSelection<Typed>,
         entity_name: &str,
         test_name: &str,
     ) -> Result<(), ModelBuildingError> {
@@ -1696,8 +1728,6 @@ mod tests {
         let database = &system.database;
 
         let entity_type = get_entity_type(&system, entity_name);
-
-        let selection = create_field_selection(selection);
 
         let selection = compute_precheck_selection(
             &selection,
