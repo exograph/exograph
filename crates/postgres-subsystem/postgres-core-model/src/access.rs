@@ -71,7 +71,7 @@ pub struct AccessPrimitiveExpressionPath {
     pub field_path: FieldPath,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum FieldPath {
     Normal(Vec<String>), // Non-pk field path such as self.title
     Pk {

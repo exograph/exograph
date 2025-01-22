@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
 use core_plugin_interface::{
-    core_model::access::AccessRelationalOp,
+    core_model::access::{AccessRelationalOp, FunctionCall},
     core_resolver::access_solver::{
         eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
         reduce_common_primitive_expression, AccessSolver, AccessSolverError,
@@ -49,21 +49,71 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresGraphQLSubsystem,
             request_context: &'a RequestContext<'a>,
+            input_context: Option<&'a Val>,
             expr: &'a PrecheckAccessPrimitiveExpression,
         ) -> Result<Option<SolvedPrecheckPrimitiveExpression>, AccessSolverError> {
-            Ok(match expr {
+            match expr {
                 PrecheckAccessPrimitiveExpression::Common(expr) => {
                     let primitive_expr =
                         reduce_common_primitive_expression(solver, request_context, expr).await?;
-                    Some(SolvedPrecheckPrimitiveExpression::Common(primitive_expr))
+                    Ok(Some(SolvedPrecheckPrimitiveExpression::Common(
+                        primitive_expr,
+                    )))
                 }
                 PrecheckAccessPrimitiveExpression::Path(path, _) => {
-                    Some(SolvedPrecheckPrimitiveExpression::Path(path.clone()))
+                    Ok(Some(SolvedPrecheckPrimitiveExpression::Path(path.clone())))
                 }
-                PrecheckAccessPrimitiveExpression::Function(_, _) => {
-                    unreachable!("Function calls should not remain in the resolver expression")
+                PrecheckAccessPrimitiveExpression::Function(lead, func_call) => {
+                    let FunctionCall { name, expr, .. } = func_call;
+
+                    if name != "some" {
+                        return Err(AccessSolverError::Generic(
+                            format!("Unsupported function: {}", name).into(),
+                        ));
+                    }
+
+                    let field_path = match &lead.field_path {
+                        FieldPath::Normal(field_path) => field_path,
+                        FieldPath::Pk { .. } => {
+                            return Err(AccessSolverError::Generic(
+                                "Unexpected path leading to the `some` function".into(),
+                            ));
+                        }
+                    };
+
+                    let function_input_context =
+                        input_context.and_then(|ctx| resolve_value(ctx, field_path));
+
+                    match function_input_context {
+                        Some(Val::List(list)) => {
+                            let mut result =
+                                SolvedPrecheckPrimitiveExpression::Common(Some(Val::Bool(false)));
+                            for item in list {
+                                let solved_expr =
+                                    solver.solve(request_context, Some(item), expr).await?;
+
+                                match solved_expr {
+                                    Some(AbstractPredicateWrapper(p)) => {
+                                        if p == AbstractPredicate::True {
+                                            result = SolvedPrecheckPrimitiveExpression::Common(
+                                                Some(Val::Bool(true)),
+                                            );
+                                            break;
+                                        }
+                                    }
+                                    _ => {
+                                        todo!()
+                                    }
+                                }
+                            }
+                            Ok(Some(result))
+                        }
+                        _ => Err(AccessSolverError::Generic(
+                            "The path leading to the `some` function must be a list".into(),
+                        )),
+                    }
                 }
-            })
+            }
         }
 
         fn resolve_path<'a>(
@@ -97,8 +147,9 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
         }
 
         let (left, right) = op.sides();
-        let left = reduce_primitive_expression(self, request_context, left).await?;
-        let right = reduce_primitive_expression(self, request_context, right).await?;
+        let left = reduce_primitive_expression(self, request_context, input_context, left).await?;
+        let right =
+            reduce_primitive_expression(self, request_context, input_context, right).await?;
 
         let (left, right) = match (left, right) {
             (Some(left), Some(right)) => (left, right),
@@ -352,7 +403,7 @@ mod test {
 
     use common::router::{PlainRequestPayload, Router};
     use core_plugin_interface::core_model::access::{
-        AccessPredicateExpression, CommonAccessPrimitiveExpression,
+        AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall,
     };
     use exo_env::MapEnvironment;
     use exo_sql::{
@@ -626,7 +677,7 @@ mod test {
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn hof_call() {
+    async fn hof_call_with_equality() {
         // Scenario: self.articles.some(i => i.title == AuthContext.name)
         let test_system = test_system().await;
         let TestSystem {
@@ -638,19 +689,90 @@ mod test {
         let test_system_router = test_system_router.as_ref();
         let env = &MapEnvironment::from(HashMap::new());
 
-        let test_ae = || {
-            AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-                test_system.user_articles_title_expr().into(),
-                context_selection_expr("AccessContext", "name"),
-            ))
+        let function_call = |op: fn(
+            Box<PrecheckAccessPrimitiveExpression>,
+            Box<PrecheckAccessPrimitiveExpression>,
+        )
+            -> AccessRelationalOp<PrecheckAccessPrimitiveExpression>| {
+            PrecheckAccessPrimitiveExpression::Function(
+                test_system.user_articles_path(),
+                FunctionCall {
+                    name: "some".to_string(),
+                    parameter_name: "i".to_string(),
+                    expr: AccessPredicateExpression::RelationalOp(op(
+                        test_system.article_title_expr().into(),
+                        context_selection_expr("AccessContext", "name"),
+                    )),
+                },
+            )
         };
 
-        let context = test_request_context(json!({"name": "John"} ), test_system_router, env);
-        let input_context =
-            Some(json!({"articles": [{"title": "Article 1"}, {"title": "Article 2"}]}).into());
+        let eq_call = || function_call(AccessRelationalOp::Eq);
+        let neq_call = || function_call(AccessRelationalOp::Neq);
 
-        let _solved_predicate =
-            solve_access(&test_ae(), &context, input_context.as_ref(), system).await;
+        let eq_call: Box<dyn Fn() -> PrecheckAccessPrimitiveExpression> = Box::new(eq_call);
+        let neq_call: Box<dyn Fn() -> PrecheckAccessPrimitiveExpression> = Box::new(neq_call);
+
+        let form_expr =
+            |lhs, rhs| AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(lhs, rhs));
+
+        let no_john = || json!({"articles": [{"title": "Article 1"}, {"title": "Article 2"}]});
+        let only_john = || json!({"articles": [{"title": "John"}]});
+        let first_john = || json!({"articles": [{"title": "John"}, {"title": "Article 2"}]});
+        let second_john = || json!({"articles": [{"title": "Article 1"}, {"title": "John"}]});
+        let empty = || json!({"articles": []});
+
+        let matrix = [
+            (&eq_call, true, no_john(), false),
+            (&eq_call, true, empty(), false),
+            (&eq_call, true, only_john(), true),
+            (&eq_call, true, first_john(), true),
+            (&eq_call, true, second_john(), true),
+            // With false
+            (&eq_call, false, no_john(), true),
+            (&eq_call, false, empty(), true),
+            (&eq_call, false, only_john(), false),
+            (&eq_call, false, first_john(), false),
+            (&eq_call, false, second_john(), false),
+            // NEQ cases
+            (&neq_call, true, no_john(), true),
+            (&neq_call, true, empty(), false), // some evaluation is false on an empty list
+            (&neq_call, true, only_john(), false),
+            (&neq_call, true, first_john(), true), // There are some non-john articles
+            (&neq_call, true, second_john(), true), // There are some non-john articles
+            // With false
+            (&neq_call, false, no_john(), false),
+            (&neq_call, false, empty(), true), // some evaluation is false on an empty list
+            (&neq_call, false, only_john(), true),
+            (&neq_call, false, first_john(), false), // There are some non-john articles
+            (&neq_call, false, second_john(), false), // There are some non-john articles
+        ];
+
+        for (i, (lhs, rhs, input_context, expected_result)) in matrix.into_iter().enumerate() {
+            let context = test_request_context(json!({"name": "John"}), test_system_router, env);
+            let input_context = Some(input_context.into());
+
+            let boolean_expr = || {
+                Box::new(PrecheckAccessPrimitiveExpression::Common(
+                    CommonAccessPrimitiveExpression::BooleanLiteral(rhs),
+                ))
+            };
+
+            let test_ae = form_expr(Box::new(lhs()), boolean_expr());
+            let expected_result = expected_result.into();
+
+            let solved_predicate =
+                solve_access(&test_ae, &context, input_context.as_ref(), system).await;
+            assert_eq!(solved_predicate, expected_result, "Test case {i}");
+
+            let commuted_test_ae = form_expr(boolean_expr(), Box::new(lhs()));
+            let solved_predicate =
+                solve_access(&commuted_test_ae, &context, input_context.as_ref(), system).await;
+            assert_eq!(
+                solved_predicate, expected_result,
+                "Test case (commuted) {i}"
+            );
+        }
     }
 
     async fn solve_access<'a>(
@@ -686,6 +808,21 @@ mod test {
     }
 
     impl TestSystem {
+        pub fn article_title_column_path(&self) -> PhysicalColumnPath {
+            PhysicalColumnPath::leaf(self.article_title_column_id)
+        }
+
+        // self.title for `Article`
+        pub fn article_title_expr(&self) -> PrecheckAccessPrimitiveExpression {
+            PrecheckAccessPrimitiveExpression::Path(
+                AccessPrimitiveExpressionPath {
+                    column_path: self.article_title_column_path(),
+                    field_path: FieldPath::Normal(vec!["title".to_string()]),
+                },
+                None,
+            )
+        }
+
         pub fn article_author_column_path(&self) -> PhysicalColumnPath {
             PhysicalColumnPath::leaf(self.article_author_column_id)
         }
@@ -807,11 +944,20 @@ mod test {
             )
         }
 
+        pub fn user_articles_path(&self) -> AccessPrimitiveExpressionPath {
+            AccessPrimitiveExpressionPath {
+                column_path: PhysicalColumnPath::init(self.user_articles_link()),
+                field_path: FieldPath::Normal(vec!["articles".to_string()]),
+            }
+        }
+
+        #[allow(dead_code)]
         pub fn user_articles_title_physical_column_path(&self) -> PhysicalColumnPath {
             let path = PhysicalColumnPath::init(self.user_articles_link());
             path.push(ColumnPathLink::Leaf(self.article_title_column_id))
         }
 
+        #[allow(dead_code)]
         pub fn user_articles_title_expr(&self) -> PrecheckAccessPrimitiveExpression {
             PrecheckAccessPrimitiveExpression::Path(
                 AccessPrimitiveExpressionPath {

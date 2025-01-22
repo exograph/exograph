@@ -131,11 +131,34 @@ pub fn compute_precheck_predicate_expression(
                 }
 
                 PrecheckPathSelection::Function(path, function_call) => {
-                    compute_precheck_function_expr(
-                        path,
-                        function_call.parameter_name,
-                        function_call.expr,
-                    )
+                    if function_call.name != "some" {
+                        Err(ModelBuildingError::Generic(
+                            "Only `some` function is supported".to_string(),
+                        ))
+                    } else {
+                        let function_expr = compute_precheck_function_expr(
+                            &path,
+                            function_call.name.clone(),
+                            function_call.parameter_name.clone(),
+                            function_call.expr,
+                        )?;
+
+                        Ok(AccessPredicateExpression::RelationalOp(
+                            AccessRelationalOp::Eq(
+                                Box::new(PrecheckAccessPrimitiveExpression::Function(
+                                    path,
+                                    FunctionCall {
+                                        name: function_call.name,
+                                        parameter_name: function_call.parameter_name,
+                                        expr: function_expr,
+                                    },
+                                )),
+                                Box::new(PrecheckAccessPrimitiveExpression::Common(
+                                    CommonAccessPrimitiveExpression::BooleanLiteral(true),
+                                )),
+                            ),
+                        ))
+                    }
                 }
             }
         }
@@ -184,7 +207,8 @@ pub fn compute_precheck_predicate_expression(
 }
 
 fn compute_precheck_function_expr(
-    path: AccessPrimitiveExpressionPath,
+    path: &AccessPrimitiveExpressionPath,
+    function_name: String,
     function_param_name: String,
     function_expr: AccessPredicateExpression<PrecheckAccessPrimitiveExpression>,
 ) -> Result<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>, ModelBuildingError> {
@@ -219,19 +243,25 @@ fn compute_precheck_function_expr(
     match function_expr {
         AccessPredicateExpression::LogicalOp(op) => match op {
             AccessLogicalExpression::Not(p) => {
-                let updated_expr = compute_precheck_function_expr(path, function_param_name, *p)?;
+                let updated_expr =
+                    compute_precheck_function_expr(path, function_name, function_param_name, *p)?;
                 Ok(AccessPredicateExpression::LogicalOp(
                     AccessLogicalExpression::Not(Box::new(updated_expr)),
                 ))
             }
             AccessLogicalExpression::And(left, right) => {
                 let updated_left = compute_precheck_function_expr(
-                    path.clone(),
+                    path,
+                    function_name.clone(),
                     function_param_name.clone(),
                     *left,
                 )?;
-                let updated_right =
-                    compute_precheck_function_expr(path, function_param_name, *right)?;
+                let updated_right = compute_precheck_function_expr(
+                    path,
+                    function_name,
+                    function_param_name,
+                    *right,
+                )?;
 
                 Ok(AccessPredicateExpression::LogicalOp(
                     AccessLogicalExpression::And(Box::new(updated_left), Box::new(updated_right)),
@@ -239,12 +269,17 @@ fn compute_precheck_function_expr(
             }
             AccessLogicalExpression::Or(left, right) => {
                 let updated_left = compute_precheck_function_expr(
-                    path.clone(),
+                    path,
+                    function_name.clone(),
                     function_param_name.clone(),
                     *left,
                 )?;
-                let updated_right =
-                    compute_precheck_function_expr(path, function_param_name, *right)?;
+                let updated_right = compute_precheck_function_expr(
+                    path,
+                    function_name.clone(),
+                    function_param_name.clone(),
+                    *right,
+                )?;
 
                 Ok(AccessPredicateExpression::LogicalOp(
                     AccessLogicalExpression::Or(Box::new(updated_left), Box::new(updated_right)),
@@ -257,7 +292,8 @@ fn compute_precheck_function_expr(
 
             let updated_left =
                 function_elem_path(path.clone(), function_param_name.clone(), *left)?;
-            let updated_right = function_elem_path(path, function_param_name, *right)?;
+            let updated_right =
+                function_elem_path(path.clone(), function_param_name.clone(), *right)?;
             Ok(AccessPredicateExpression::RelationalOp(combiner(
                 Box::new(updated_left),
                 Box::new(updated_right),
@@ -606,6 +642,51 @@ mod tests {
         assert_precheck_selection(selection, "Employee", "hof_call")
     }
 
+    #[test]
+    fn many_to_one_predicate() -> Result<(), ModelBuildingError> {
+        // self.assignee.position == "developer" (will lead to a database residue when resolving)
+        let expr = AstExpr::RelationalOp(RelationalOp::Eq(
+            Box::new(AstExpr::FieldSelection(create_field_selection(
+                "self.assignee.position",
+            ))),
+            Box::new(AstExpr::StringLiteral("developer".to_string(), null_span())),
+            Type::Defer,
+        ));
+
+        assert_precheck_predicate(expr, "Issue", "many_to_one_predicate")
+    }
+
+    #[test]
+    fn hof_call_predicate() -> Result<(), ModelBuildingError> {
+        // self.issues.some(i => i.title == AuthContext.title)
+        let self_issues_selection = create_field_selection("self.issues");
+
+        let hof_elem = FieldSelectionElement::HofCall {
+            span: null_span(),
+            name: Identifier("some".to_string(), null_span()),
+            param_name: Identifier("i".to_string(), null_span()),
+            expr: Box::new(AstExpr::RelationalOp(RelationalOp::Eq(
+                Box::new(AstExpr::FieldSelection(create_field_selection("i.title"))),
+                Box::new(AstExpr::FieldSelection(create_field_selection(
+                    "AuthContext.title",
+                ))),
+                Type::Defer,
+            ))),
+            typ: Type::Defer,
+        };
+
+        let selection = FieldSelection::Select(
+            Box::new(self_issues_selection),
+            hof_elem,
+            null_span(),
+            Type::Defer,
+        );
+
+        let expr = AstExpr::FieldSelection(selection);
+
+        assert_precheck_predicate(expr, "Employee", "hof_call_predicate")
+    }
+
     fn assert_precheck_selection(
         selection: FieldSelection<Typed>,
         entity_name: &str,
@@ -623,21 +704,49 @@ mod tests {
             function_definitions: &base_system.function_definitions,
         };
 
-        let database = &system.database;
-
-        let entity_type = get_entity_type(&system, entity_name);
-
         let selection = compute_precheck_selection(
             &selection,
-            entity_type,
+            get_entity_type(&system, entity_name),
             HashMap::new(),
             &resolved_env,
             &system.primitive_types,
             &system.entity_types,
-            database,
+            &system.database,
         )?;
 
         insta::assert_yaml_snapshot!(test_name, selection);
+
+        Ok(())
+    }
+
+    fn assert_precheck_predicate(
+        predicate: AstExpr<Typed>,
+        entity_name: &str,
+        test_name: &str,
+    ) -> Result<(), ModelBuildingError> {
+        let typechecked_system = create_typechecked_system_from_src(ISSUE_TRACKING_SRC)?;
+        let resolved_types = crate::resolved_builder::build(&typechecked_system)?;
+
+        let base_system = create_base_model_system(&typechecked_system)?;
+        let system = create_postgres_core_subsystem(&base_system, &typechecked_system)?;
+
+        let resolved_env = ResolvedTypeEnv {
+            contexts: &base_system.contexts,
+            resolved_types,
+            function_definitions: &base_system.function_definitions,
+        };
+
+        let predicate = compute_precheck_predicate_expression(
+            &predicate,
+            get_entity_type(&system, entity_name),
+            HashMap::new(),
+            &resolved_env,
+            &system.primitive_types,
+            &system.entity_types,
+            &system.database,
+        )?;
+
+        insta::assert_yaml_snapshot!(test_name, predicate);
 
         Ok(())
     }
