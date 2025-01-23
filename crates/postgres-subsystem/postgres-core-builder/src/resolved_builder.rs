@@ -1305,32 +1305,14 @@ fn extract_table_annotation(
 
 #[cfg(test)]
 mod tests {
-    use codemap::CodeMap;
+    use crate::test_util::create_resolved_system_from_src;
+
     use multiplatform_test::multiplatform_test;
-
-    use super::*;
-    use builder::{load_subsystem_builders, parser, typechecker};
     use std::fs::File;
-
-    fn create_resolved_system(src: &str) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
-        let mut codemap = CodeMap::new();
-        let subsystem_builders = load_subsystem_builders(vec![
-            Box::new(postgres_builder::PostgresSubsystemBuilder::default()),
-            #[cfg(not(target_family = "wasm"))]
-            Box::new(deno_builder::DenoSubsystemBuilder::default()),
-        ])
-        .unwrap();
-        let parsed = parser::parse_str(src, &mut codemap, "input.exo")
-            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
-        let typechecked_system = typechecker::build(&subsystem_builders, parsed)
-            .map_err(|e| ModelBuildingError::Generic(format!("{e:?}")))?;
-
-        build(&typechecked_system)
-    }
 
     macro_rules! assert_resolved {
         ($src:expr, $fn_name:expr) => {
-            let resolved = create_resolved_system($src).unwrap();
+            let resolved = create_resolved_system_from_src($src).unwrap();
             insta::with_settings!({sort_maps => true, prepend_module_to_snapshot => false}, {
                 #[cfg(target_family = "wasm")]
                 {
@@ -1354,7 +1336,7 @@ mod tests {
 
     macro_rules! assert_resolved_err {
         ($src:expr, $error_string:expr) => {
-            let system = create_resolved_system($src);
+            let system = create_resolved_system_from_src($src);
             assert_eq!(system.is_err(), true, $error_string);
         };
     }
@@ -1583,7 +1565,7 @@ mod tests {
         }
         "#;
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system_from_src(src);
 
         assert!(resolved.is_err());
     }
@@ -1607,7 +1589,7 @@ mod tests {
         }
         "#;
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system_from_src(src);
 
         assert!(resolved.is_err());
     }
@@ -1631,7 +1613,7 @@ mod tests {
         }
         "#;
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system_from_src(src);
 
         assert!(resolved.is_err());
     }
@@ -1655,7 +1637,7 @@ mod tests {
         }
         "#;
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system_from_src(src);
 
         assert!(resolved.is_err());
     }

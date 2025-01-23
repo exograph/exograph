@@ -1,0 +1,28 @@
+operation: |
+  mutation($uId: Int!) {
+      createIssue(data: {title: "I-new", assignee: {id: $uId}}) {
+          id
+          title
+          assignee {
+            id
+            name
+            position
+          }
+      }
+  }
+variable: |
+  {
+    "uId": $.u1id
+  }
+auth: |
+  {
+    "sub": $.u2id
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }

@@ -24,6 +24,7 @@ builder = { path = "../../builder" }
 
 exo-sql = { path = "../../../libs/exo-sql" }
 postgres-builder = { path = "../postgres-builder" }
+core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
 deno-builder = { path = "../../deno-subsystem/deno-builder" }

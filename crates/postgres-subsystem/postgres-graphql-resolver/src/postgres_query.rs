@@ -113,7 +113,7 @@ pub(super) async fn compute_select<'content>(
 ) -> Result<AbstractSelect, PostgresExecutionError> {
     let return_entity_type = return_type.typ(&subsystem.core_subsystem.entity_types);
 
-    let access_predicate = check_access(
+    let (_precheck_predicate, entity_predicate) = check_access(
         return_entity_type,
         selection,
         &SQLOperationKind::Retrieve,
@@ -123,7 +123,7 @@ pub(super) async fn compute_select<'content>(
     )
     .await?;
 
-    let predicate = AbstractPredicate::and(predicate, access_predicate);
+    let predicate = AbstractPredicate::and(predicate, entity_predicate);
 
     let content_object =
         content_select(return_entity_type, selection, subsystem, request_context).await?;

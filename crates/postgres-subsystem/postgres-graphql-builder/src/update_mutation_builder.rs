@@ -68,9 +68,9 @@ impl Builder for UpdateMutationBuilder {
             matches!(
                 building
                     .core_subsystem
-                    .input_access_expressions
+                    .precheck_access_expressions
                     .lock()
-                    .unwrap()[entity_type.access.update.input],
+                    .unwrap()[entity_type.access.update.precheck],
                 AccessPredicateExpression::BooleanLiteral(false)
             ) || matches!(
                 building
@@ -278,7 +278,6 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                         .entity_types
                         .get_id(&field_type.name)
                         .unwrap(),
-                    input_access: None,
                     database_access: None,
                 },
             )];

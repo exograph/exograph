@@ -1,0 +1,29 @@
+operation: |
+  mutation($issueId: Int!, $uId: Int!) {
+      updateIssue(id: $issueId, data: {title: "I1-updated", assignee: {id: $uId}}) {
+          id
+          title
+          assignee {
+            id
+            name
+            position
+          }
+      }
+  }
+variable: |
+  {
+    "uId": $.u3id,
+    "issueId": $.issue1Id
+  }
+auth: |
+  {
+    "sub": $.u3id
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }

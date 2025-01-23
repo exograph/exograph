@@ -17,7 +17,8 @@ use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
     core_resolver::access_solver::{
         eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-        reduce_common_primitive_expression, AccessPredicate, AccessSolver, AccessSolverError,
+        reduce_common_primitive_expression, AccessInputContext, AccessPredicate, AccessSolver,
+        AccessSolverError,
     },
 };
 
@@ -60,7 +61,7 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
     async fn solve_relational_op(
         &self,
         request_context: &RequestContext<'a>,
-        _input_context: Option<&'a Val>,
+        _input_context: Option<&AccessInputContext<'a>>,
         op: &AccessRelationalOp<ModuleAccessPrimitiveExpression>,
     ) -> Result<Option<ModuleAccessPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(

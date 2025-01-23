@@ -6811,6 +6811,7 @@ dependencies = [
  "builder",
  "codemap",
  "codemap-diagnostic",
+ "core-model-builder",
  "core-plugin-interface",
  "deno-builder",
  "exo-sql",

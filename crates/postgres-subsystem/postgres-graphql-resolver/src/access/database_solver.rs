@@ -22,16 +22,14 @@ use common::value::Val;
 use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
     core_resolver::access_solver::{
-        eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-        reduce_common_primitive_expression, AccessPredicate, AccessSolver, AccessSolverError,
+        eq_values, neq_values, reduce_common_primitive_expression, AccessInputContext,
+        AccessPredicate, AccessSolver, AccessSolverError,
     },
 };
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
-use postgres_core_model::access::{
-    DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
-};
+use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
 
 use postgres_core_resolver::cast;
 
@@ -43,23 +41,23 @@ impl std::ops::Not for AbstractPredicateWrapper {
     type Output = AbstractPredicateWrapper;
 
     fn not(self) -> Self::Output {
-        AbstractPredicateWrapper(self.0.not())
+        Self(self.0.not())
     }
 }
 
 impl From<bool> for AbstractPredicateWrapper {
     fn from(value: bool) -> Self {
-        AbstractPredicateWrapper(AbstractPredicate::from(value))
+        Self(AbstractPredicate::from(value))
     }
 }
 
 impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper {
     fn and(self, other: Self) -> Self {
-        AbstractPredicateWrapper(AbstractPredicate::and(self.0, other.0))
+        Self(AbstractPredicate::and(self.0, other.0))
     }
 
     fn or(self, other: Self) -> Self {
-        AbstractPredicateWrapper(AbstractPredicate::or(self.0, other.0))
+        Self(AbstractPredicate::or(self.0, other.0))
     }
 }
 
@@ -69,12 +67,6 @@ pub enum SolvedPrimitiveExpression {
     Column(PhysicalColumnPath),
 }
 
-#[derive(Debug)]
-pub enum SolvedJsonPrimitiveExpression {
-    Common(Option<Val>),
-    Path(Vec<String>),
-}
-
 #[async_trait]
 impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWrapper>
     for PostgresGraphQLSubsystem
@@ -82,7 +74,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     async fn solve_relational_op(
         &self,
         request_context: &RequestContext<'a>,
-        _input_context: Option<&'a Val>,
+        _input_context: Option<&AccessInputContext<'a>>,
         op: &AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
     ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(
@@ -227,142 +219,12 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     }
 }
 
-#[async_trait]
-impl<'a> AccessSolver<'a, InputAccessPrimitiveExpression, AbstractPredicateWrapper>
-    for PostgresGraphQLSubsystem
-{
-    async fn solve_relational_op(
-        &self,
-        request_context: &RequestContext<'a>,
-        input_context: Option<&'a Val>,
-        op: &AccessRelationalOp<InputAccessPrimitiveExpression>,
-    ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
-        async fn reduce_primitive_expression<'a>(
-            solver: &PostgresGraphQLSubsystem,
-            request_context: &'a RequestContext<'a>,
-            expr: &'a InputAccessPrimitiveExpression,
-        ) -> Result<Option<SolvedJsonPrimitiveExpression>, AccessSolverError> {
-            Ok(match expr {
-                InputAccessPrimitiveExpression::Common(expr) => {
-                    let primitive_expr =
-                        reduce_common_primitive_expression(solver, request_context, expr).await?;
-                    Some(SolvedJsonPrimitiveExpression::Common(primitive_expr))
-                }
-                InputAccessPrimitiveExpression::Path(path, _) => {
-                    Some(SolvedJsonPrimitiveExpression::Path(path.clone()))
-                }
-                InputAccessPrimitiveExpression::Function(_, _) => {
-                    unreachable!("Function calls should not remain in the resolver expression")
-                }
-            })
-        }
-
-        let (left, right) = op.sides();
-        let left = reduce_primitive_expression(self, request_context, left).await?;
-        let right = reduce_primitive_expression(self, request_context, right).await?;
-
-        let (left, right) = match (left, right) {
-            (Some(left), Some(right)) => (left, right),
-            _ => return Ok(None), // If either side is None, we can't produce a predicate
-        };
-
-        type ValuePredicateFn = fn(&Val, &Val) -> bool;
-
-        let helper = |value_predicate: ValuePredicateFn| -> Option<bool> {
-            match (left, right) {
-                (SolvedJsonPrimitiveExpression::Common(None), _)
-                | (_, SolvedJsonPrimitiveExpression::Common(None)) => None,
-
-                (
-                    SolvedJsonPrimitiveExpression::Path(left_path),
-                    SolvedJsonPrimitiveExpression::Path(right_path),
-                ) => Some(match_paths(
-                    &left_path,
-                    &right_path,
-                    input_context,
-                    value_predicate,
-                )),
-
-                (
-                    SolvedJsonPrimitiveExpression::Common(Some(left_value)),
-                    SolvedJsonPrimitiveExpression::Common(Some(right_value)),
-                ) => Some(value_predicate(&left_value, &right_value)),
-
-                // The next two need to be handled separately, since we need to pass the left side
-                // and right side to the predicate in the correct order. For example, `age > 18` is
-                // different from `18 > age`.
-                (
-                    SolvedJsonPrimitiveExpression::Common(Some(left_value)),
-                    SolvedJsonPrimitiveExpression::Path(right_path),
-                ) => {
-                    let right_value = resolve_value(input_context.unwrap(), &right_path);
-                    // If the user didn't provide a value, we evaluate to true. Since the purpose of
-                    // an input predicate is to enforce an invariant, if the user didn't provide a
-                    // value, the original value will remain unchanged thus keeping the invariant
-                    // intact.
-                    match right_value {
-                        Some(right_value) => Some(value_predicate(&left_value, right_value)),
-                        None => Some(true),
-                    }
-                }
-
-                (
-                    SolvedJsonPrimitiveExpression::Path(left_path),
-                    SolvedJsonPrimitiveExpression::Common(Some(right_value)),
-                ) => {
-                    let left_value = resolve_value(input_context.unwrap(), &left_path);
-                    // See above
-                    match left_value {
-                        Some(left_value) => Some(value_predicate(left_value, &right_value)),
-                        None => Some(true),
-                    }
-                }
-            }
-        };
-
-        Ok(match op {
-            AccessRelationalOp::Eq(..) => helper(eq_values),
-            AccessRelationalOp::Neq(_, _) => helper(neq_values),
-            AccessRelationalOp::Lt(_, _) => helper(lt_values),
-            AccessRelationalOp::Lte(_, _) => helper(lte_values),
-            AccessRelationalOp::Gt(_, _) => helper(gt_values),
-            AccessRelationalOp::Gte(_, _) => helper(gte_values),
-            AccessRelationalOp::In(..) => helper(in_values),
-        }
-        .map(|p| AbstractPredicateWrapper(p.into())))
-    }
-}
-
-fn match_paths<'a>(
-    left_path: &'a Vec<String>,
-    right_path: &'a Vec<String>,
-    input_context: Option<&'a Val>,
-    match_values: fn(&Val, &Val) -> bool,
-) -> bool {
-    let left_value = resolve_value(input_context.unwrap(), left_path).unwrap();
-    let right_value = resolve_value(input_context.unwrap(), right_path).unwrap();
-    match_values(left_value, right_value)
-}
-
-fn resolve_value<'a>(val: &'a Val, path: &'a Vec<String>) -> Option<&'a Val> {
-    let mut current = val;
-    for part in path {
-        match current {
-            Val::Object(map) => {
-                current = map.get(part)?;
-            }
-            _ => return None,
-        }
-    }
-    Some(current)
-}
-
-fn to_column_path(column_id: &PhysicalColumnPath) -> ColumnPath {
-    ColumnPath::Physical(column_id.clone())
+pub(super) fn to_column_path(physical_column_path: &PhysicalColumnPath) -> ColumnPath {
+    ColumnPath::Physical(physical_column_path.clone())
 }
 
 /// Converts a value to a literal column path
-fn literal_column(value: Val) -> ColumnPath {
+pub(super) fn literal_column(value: Val) -> ColumnPath {
     match value {
         Val::Null => ColumnPath::Null,
         Val::Bool(v) => ColumnPath::Param(SQLParamContainer::bool(v)),
@@ -383,14 +245,13 @@ mod tests {
         context_type::ContextSelection,
     };
 
-    use common::{
-        http::{RequestHead, RequestPayload, ResponsePayload},
-        router::{PlainRequestPayload, Router},
-    };
+    use common::router::{PlainRequestPayload, Router};
 
-    use exo_env::{Environment, MapEnvironment};
+    use exo_env::MapEnvironment;
     use exo_sql::PhysicalTableName;
     use serde_json::{json, Value};
+
+    use crate::access::test_util::{context_selection, test_request_context, TestRouter};
 
     use super::*;
 
@@ -403,42 +264,6 @@ mod tests {
         test_system_router:
             Box<dyn for<'request> Router<PlainRequestPayload<'request>> + Send + Sync>,
     }
-
-    struct TestRequest {}
-
-    impl RequestPayload for TestRequest {
-        fn get_head(&self) -> &(dyn RequestHead + Send + Sync) {
-            self
-        }
-
-        fn take_body(&self) -> serde_json::Value {
-            Default::default()
-        }
-    }
-
-    impl RequestHead for TestRequest {
-        fn get_headers(&self, _key: &str) -> Vec<String> {
-            vec![]
-        }
-
-        fn get_ip(&self) -> Option<std::net::IpAddr> {
-            None
-        }
-
-        fn get_method(&self) -> http::Method {
-            http::Method::POST
-        }
-
-        fn get_path(&self) -> String {
-            "".to_string()
-        }
-
-        fn get_query(&self) -> serde_json::Value {
-            Default::default()
-        }
-    }
-
-    const REQUEST: TestRequest = TestRequest {};
 
     impl TestSystem {
         fn published_column(&self) -> ColumnPath {
@@ -455,18 +280,6 @@ mod tests {
 
         fn dept2_id_column(&self) -> ColumnPath {
             super::to_column_path(&self.dept2_id_column_path)
-        }
-    }
-
-    struct TestRouter {}
-
-    #[async_trait::async_trait]
-    impl<'request> Router<PlainRequestPayload<'request>> for TestRouter {
-        async fn route(
-            &self,
-            _request_context: &PlainRequestPayload<'request>,
-        ) -> Option<ResponsePayload> {
-            None
         }
     }
 
@@ -501,17 +314,15 @@ mod tests {
         .await
         .unwrap();
 
-        let table_id = postgres_subsystem
-            .core_subsystem
-            .database
+        let database = &postgres_subsystem.core_subsystem.database;
+
+        let article_table_id = database
             .get_table_id(&PhysicalTableName::new("articles", None))
             .unwrap();
 
         let get_column_id = |column_name: &str| {
-            postgres_subsystem
-                .core_subsystem
-                .database
-                .get_column_id(table_id, column_name)
+            database
+                .get_column_id(article_table_id, column_name)
                 .unwrap()
         };
 
@@ -536,13 +347,6 @@ mod tests {
             dept1_id_column_path,
             dept2_id_column_path,
             test_system_router,
-        }
-    }
-
-    fn context_selection(context_name: &str, path_head: &str) -> ContextSelection {
-        ContextSelection {
-            context_name: context_name.to_string(),
-            path: (path_head.to_string(), vec![]),
         }
     }
 
@@ -1546,21 +1350,5 @@ mod tests {
                 assert_eq!(solved_predicate, AbstractPredicate::True);
             }
         }
-    }
-
-    fn test_request_context<'a>(
-        test_values: Value,
-        system_router: &'a (dyn for<'request> Router<PlainRequestPayload<'request>> + Send + Sync),
-        env: &'a dyn Environment,
-    ) -> RequestContext<'a> {
-        RequestContext::new(
-            &REQUEST,
-            vec![Box::new(common::context::TestRequestContext {
-                test_values,
-            })],
-            system_router,
-            &None,
-            env,
-        )
     }
 }

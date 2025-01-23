@@ -15,11 +15,12 @@ use crate::resolved_type::{
     ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
+use postgres_core_model::access::{CreationAccessExpression, PrecheckAccessPrimitiveExpression};
 use postgres_core_model::types::EntityRepresentation;
 
 use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
 
-use super::access_utils;
+use super::access;
 
 use core_plugin_interface::{
     core_model::{
@@ -33,10 +34,7 @@ use core_plugin_interface::{
 use exo_sql::{ColumnId, VectorDistanceFunction, DEFAULT_VECTOR_SIZE};
 
 use postgres_core_model::{
-    access::{
-        Access, DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
-        UpdateAccessExpression,
-    },
+    access::{Access, DatabaseAccessPrimitiveExpression, UpdateAccessExpression},
     aggregate::{AggregateField, AggregateFieldType},
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, TypeIndex},
@@ -341,9 +339,16 @@ fn expand_type_access(
     Ok(())
 }
 
+fn first_non_optional_access_expr<'a>(
+    ast_exprs: &[&'a Option<AstExpr<Typed>>],
+) -> Option<&'a AstExpr<Typed>> {
+    ast_exprs.iter().copied().flatten().next()
+}
+
 /// Compute access expression for database access.
 ///
 /// Goes over the chain of the expressions and maps the first non-optional expression to a database access expression.
+/// If no non-optional expression is found, returns a restricted access expression.
 fn compute_database_access_expr(
     ast_exprs: &[&Option<AstExpr<Typed>>],
     entity_id: SerializableSlabIndex<EntityType>,
@@ -353,73 +358,81 @@ fn compute_database_access_expr(
     SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
     ModelBuildingError,
 > {
-    let entity = &building.entity_types[entity_id];
+    let ast_expr = first_non_optional_access_expr(ast_exprs);
 
-    let expr = ast_exprs
-        .iter()
-        .find_map(|ast_expr| {
-            ast_expr.as_ref().map(|ast_expr| {
-                access_utils::compute_predicate_expression(
-                    ast_expr,
-                    entity,
-                    HashMap::new(),
-                    resolved_env,
-                    &building.primitive_types,
-                    &building.entity_types,
-                    &building.database,
-                )
-            })
-        })
-        .transpose()?;
-
-    Ok(match expr {
-        Some(AccessPredicateExpression::BooleanLiteral(false)) | None => building
+    let restricted_access_index = || {
+        building
             .database_access_expressions
             .lock()
             .unwrap()
-            .restricted_access_index(),
-        Some(expr) => building
+            .restricted_access_index()
+    };
+
+    let access_predicate_expr = match ast_expr {
+        Some(ast_expr) => {
+            let entity = &building.entity_types[entity_id];
+
+            access::compute_predicate_expression(
+                ast_expr,
+                entity,
+                HashMap::new(),
+                resolved_env,
+                &building.primitive_types,
+                &building.entity_types,
+                &building.database,
+            )
+        }
+        None => return Ok(restricted_access_index()),
+    }?;
+
+    Ok(match access_predicate_expr {
+        AccessPredicateExpression::BooleanLiteral(false) => restricted_access_index(),
+        _ => building
             .database_access_expressions
             .lock()
             .unwrap()
-            .insert(expr),
+            .insert(access_predicate_expr),
     })
 }
 
-fn compute_input_access_expr(
+fn compute_precheck_access_expr(
     ast_exprs: &[&Option<AstExpr<Typed>>],
     entity_id: SerializableSlabIndex<EntityType>,
     resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> Result<
-    SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
+    SerializableSlabIndex<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>>,
     ModelBuildingError,
 > {
     let entity = &building.entity_types[entity_id];
 
-    let expr = ast_exprs
-        .iter()
-        .find_map(|ast_expr| {
-            ast_expr.as_ref().map(|ast_expr| {
-                access_utils::compute_input_predicate_expression(
-                    ast_expr,
-                    HashMap::from_iter([("self".to_string(), entity)]),
-                    resolved_env,
-                    &building.primitive_types,
-                    &building.entity_types,
-                )
-            })
-        })
-        .transpose()?;
+    let ast_expr = first_non_optional_access_expr(ast_exprs);
 
-    Ok(match expr {
-        Some(AccessPredicateExpression::BooleanLiteral(false)) | None => building
-            .input_access_expressions
+    let restricted_access_index = || {
+        building
+            .precheck_access_expressions
             .lock()
             .unwrap()
-            .restricted_access_index(),
-        Some(expr) => building
-            .input_access_expressions
+            .restricted_access_index()
+    };
+
+    let expr = match ast_expr {
+        Some(ast_expr) => access::compute_precheck_predicate_expression(
+            ast_expr,
+            entity,
+            HashMap::new(),
+            resolved_env,
+            &building.primitive_types,
+            &building.entity_types,
+            &building.database,
+        ),
+        _ => return Ok(restricted_access_index()),
+    }?;
+
+    Ok(match expr {
+        AccessPredicateExpression::BooleanLiteral(false) => restricted_access_index(),
+        _ => building
+            .precheck_access_expressions
             .lock()
             .unwrap()
             .insert(expr),
@@ -432,20 +445,24 @@ fn compute_access(
     resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> Result<Access, ModelBuildingError> {
-    let compute_input_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
-        compute_input_access_expr(ast_exprs, entity_id, resolved_env, building)
-    };
-
-    let creation_input_access =
-        compute_input_access_expr(&[&resolved.creation, &resolved.mutation, &resolved.default])?;
-    let update_input_access =
-        compute_input_access_expr(&[&resolved.update, &resolved.mutation, &resolved.default])?;
-
     let compute_database_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
         compute_database_access_expr(ast_exprs, entity_id, resolved_env, building)
     };
 
     let query_access = compute_database_access_expr(&[&resolved.query, &resolved.default])?;
+    let creation_precheck_access = compute_precheck_access_expr(
+        &[&resolved.creation, &resolved.mutation, &resolved.default],
+        entity_id,
+        resolved_env,
+        building,
+    )?;
+
+    let update_precheck_access = compute_precheck_access_expr(
+        &[&resolved.update, &resolved.mutation, &resolved.default],
+        entity_id,
+        resolved_env,
+        building,
+    )?;
     let update_database_access =
         compute_database_access_expr(&[&resolved.update, &resolved.mutation, &resolved.default])?;
     let delete_access =
@@ -453,9 +470,11 @@ fn compute_access(
 
     Ok(Access {
         read: query_access,
-        creation: creation_input_access,
+        creation: CreationAccessExpression {
+            precheck: creation_precheck_access,
+        },
         update: UpdateAccessExpression {
-            input: update_input_access,
+            precheck: update_precheck_access,
             database: update_database_access,
         },
         delete: delete_access,
@@ -813,10 +832,12 @@ fn compute_one_to_many_relation(
 
 fn restrictive_access() -> Access {
     Access {
-        creation: SerializableSlabIndex::shallow(),
+        creation: CreationAccessExpression {
+            precheck: SerializableSlabIndex::shallow(),
+        },
         read: SerializableSlabIndex::shallow(),
         update: UpdateAccessExpression {
-            input: SerializableSlabIndex::shallow(),
+            precheck: SerializableSlabIndex::shallow(),
             database: SerializableSlabIndex::shallow(),
         },
         delete: SerializableSlabIndex::shallow(),

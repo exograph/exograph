@@ -61,9 +61,16 @@ impl Builder for CreateMutationBuilder {
             matches!(
                 building
                     .core_subsystem
-                    .input_access_expressions
+                    .precheck_access_expressions
                     .lock()
-                    .unwrap()[entity_type.access.creation],
+                    .unwrap()[entity_type.access.creation.precheck],
+                AccessPredicateExpression::BooleanLiteral(false)
+            ) || matches!(
+                building
+                    .core_subsystem
+                    .precheck_access_expressions
+                    .lock()
+                    .unwrap()[entity_type.access.creation.precheck],
                 AccessPredicateExpression::BooleanLiteral(false)
             )
         };

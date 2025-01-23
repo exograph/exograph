@@ -24,7 +24,10 @@ use core_plugin_interface::{
     },
     interception::InterceptorIndex,
 };
-use exo_sql::DatabaseExecutor;
+use exo_sql::{
+    AbstractPredicate, AbstractSelect, AliasedSelectionElement, ColumnPath, DatabaseExecutor,
+    SelectionElement,
+};
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
@@ -87,9 +90,29 @@ impl SubsystemGraphQLResolver for PostgresSubsystemResolver {
         };
 
         match operation {
-            Some(Ok(operation)) => Ok(Some(
-                resolve_operation(&operation, self, request_context).await?,
-            )),
+            Some(Ok(operation)) => {
+                let precheck_queries = operation
+                    .precheck_predicates
+                    .into_iter()
+                    .filter_map(|p| {
+                        if p == AbstractPredicate::True {
+                            None
+                        } else {
+                            Some(create_precheck_query(p))
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(Some(
+                    resolve_operation(
+                        &operation.operation,
+                        precheck_queries,
+                        self,
+                        request_context,
+                    )
+                    .await?,
+                ))
+            }
             Some(Err(e)) => Err(e.into()),
             None => Ok(None),
         }
@@ -116,4 +139,47 @@ impl SubsystemGraphQLResolver for PostgresSubsystemResolver {
     fn schema_types(&self) -> Vec<TypeDefinition> {
         self.subsystem.schema_types()
     }
+}
+
+fn create_precheck_query(
+    predicate: AbstractPredicate,
+) -> Result<AbstractSelect, PostgresExecutionError> {
+    let lead_table_ids: Vec<_> = predicate
+        .column_paths()
+        .iter()
+        .filter_map(|path| match path {
+            ColumnPath::Physical(physical_path) => Some(physical_path.lead_table_id()),
+            _ => None,
+        })
+        .collect();
+
+    let lead_table_id = match &lead_table_ids[..] {
+        [table_id] => table_id,
+        [lead_table_id, rest @ ..] => {
+            if rest.iter().all(|table_id| table_id == lead_table_id) {
+                lead_table_id
+            } else {
+                return Err(PostgresExecutionError::Generic(
+                    "Access predicates with multiple lead table ids are not supported".to_string(),
+                ));
+            }
+        }
+        [] => {
+            return Err(PostgresExecutionError::Generic(
+                "Access predicates with no lead table ids are not supported".to_string(),
+            ))
+        }
+    };
+
+    Ok(AbstractSelect {
+        table_id: *lead_table_id,
+        selection: exo_sql::Selection::Seq(vec![AliasedSelectionElement::new(
+            "access_predicate".to_string(),
+            SelectionElement::Constant("true".to_string()),
+        )]),
+        predicate,
+        order_by: None,
+        offset: None,
+        limit: None,
+    })
 }

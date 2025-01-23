@@ -1,0 +1,34 @@
+operation: |
+  mutation($uId: Int!) {
+      createIssue(data: {title: "I-new", assignee: {id: $uId}}) {
+          id
+          title
+          assignee {
+            id
+            name
+            position
+          }
+      }
+  }
+variable: |
+  {
+    "uId": $.u1id
+  }
+auth: |
+  {
+    "sub": $.u1id
+  }
+response: |
+  {
+    "data": {
+      "createIssue": {
+        "id": 3,
+        "title": "I-new",
+        "assignee": {
+          "id": $.u1id,
+          "name": "U1-dev",
+          "position": "developer"
+        }
+      }
+    }
+  }

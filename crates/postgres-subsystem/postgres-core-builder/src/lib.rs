@@ -1,5 +1,4 @@
-pub mod access_builder;
-pub mod access_utils;
+pub mod access;
 pub mod aggregate_type_builder;
 pub mod database_builder;
 pub mod naming;
@@ -10,3 +9,7 @@ pub mod system_builder;
 pub mod type_builder;
 
 pub use system_builder::SystemContextBuilding;
+
+mod access_builder;
+
+mod test_util;

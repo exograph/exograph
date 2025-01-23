@@ -1,0 +1,36 @@
+stages:
+  - operation: |
+        mutation {
+            u1: createEmployee(data: {name: "U1-dev", position: "developer"}) {
+                id @bind(name: "u1id")
+            }
+            u2: createEmployee(data: {name: "U2-dev", position: "developer"}) {
+                id @bind(name: "u2id")
+            }
+            u3: createEmployee(data: {name: "U3-sales", position: "sales"}) {
+                id @bind(name: "u3id")
+            }
+        }
+    auth: |
+        {
+            role: "admin"
+        }
+
+  - operation: |
+        mutation($u1Id: Int!, $u2Id: Int!) {
+            i1: createIssue(data: {title: "I1", assignee: {id: $u1Id}}) {
+                id @bind(name: "issue1Id")
+            }
+            i2: createIssue(data: {title: "I2", assignee: {id: $u2Id}}) {
+                id @bind(name: "issue2Id")
+            }
+        }
+    variable: |
+        {
+            "u1Id": $.u1id,
+            "u2Id": $.u2id
+        }
+    auth: |
+        {
+            role: "admin"
+        }
