@@ -14,7 +14,7 @@ use core_plugin_interface::{
     core_model::access::{AccessRelationalOp, FunctionCall},
     core_resolver::access_solver::{
         eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-        reduce_common_primitive_expression, AccessSolver, AccessSolverError,
+        reduce_common_primitive_expression, AccessInputContext, AccessSolver, AccessSolverError,
     },
 };
 use exo_sql::{
@@ -43,13 +43,13 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
     async fn solve_relational_op(
         &self,
         request_context: &RequestContext<'a>,
-        input_context: Option<&'a Val>,
+        input_context: Option<&AccessInputContext<'a>>,
         op: &AccessRelationalOp<PrecheckAccessPrimitiveExpression>,
     ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresGraphQLSubsystem,
             request_context: &'a RequestContext<'a>,
-            input_context: Option<&'a Val>,
+            input_context: Option<&AccessInputContext<'a>>,
             expr: &'a PrecheckAccessPrimitiveExpression,
         ) -> Result<Option<SolvedPrecheckPrimitiveExpression>, AccessSolverError> {
             match expr {
@@ -81,16 +81,23 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                         }
                     };
 
-                    let function_input_context =
-                        input_context.and_then(|ctx| resolve_value(ctx, field_path));
+                    let function_input_context = input_context
+                        .as_ref()
+                        .and_then(|ctx| resolve_value(ctx.value, field_path));
 
                     match function_input_context {
                         Some(Val::List(list)) => {
                             let mut result =
                                 SolvedPrecheckPrimitiveExpression::Common(Some(Val::Bool(false)));
                             for item in list {
-                                let solved_expr =
-                                    solver.solve(request_context, Some(item), expr).await?;
+                                let new_input_context =
+                                    input_context.map(|ctx| AccessInputContext {
+                                        value: item,
+                                        ignore_missing_context: ctx.ignore_missing_context,
+                                    });
+                                let solved_expr = solver
+                                    .solve(request_context, new_input_context.as_ref(), expr)
+                                    .await?;
 
                                 if let Some(AbstractPredicateWrapper(p)) = solved_expr {
                                     if p == AbstractPredicate::True {
@@ -103,9 +110,22 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                             }
                             Ok(Some(result))
                         }
-                        _ => Err(AccessSolverError::Generic(
-                            "The path leading to the `some` function must be a list".into(),
-                        )),
+                        _ => {
+                            let ignore_missing_context = input_context
+                                .as_ref()
+                                .map(|ctx| ctx.ignore_missing_context)
+                                .unwrap_or(true);
+
+                            if ignore_missing_context {
+                                Ok(Some(SolvedPrecheckPrimitiveExpression::Common(Some(
+                                    Val::Bool(true),
+                                ))))
+                            } else {
+                                Err(AccessSolverError::Generic(
+                                    "Could not evaluate the access condition".into(),
+                                ))
+                            }
+                        }
                     }
                 }
             }
@@ -113,7 +133,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
 
         fn resolve_path<'a>(
             path: &'a AccessPrimitiveExpressionPath,
-            input_context: Option<&'a Val>,
+            input_context: Option<&AccessInputContext<'a>>,
             database: &'a Database,
         ) -> Result<(Option<ColumnPath>, AbstractPredicate), AccessSolverError> {
             let column_path = &path.column_path;
@@ -122,7 +142,9 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
             match &field_path {
                 FieldPath::Normal(field_path) => {
                     let relational_predicate = AbstractPredicate::True;
-                    let value = input_context.and_then(|ctx| resolve_value(ctx, field_path));
+                    let value = input_context
+                        .as_ref()
+                        .and_then(|ctx| resolve_value(ctx.value, field_path));
 
                     let literal_column_path =
                         compute_literal_column_path(value, column_path, database)?;
@@ -211,8 +233,9 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                             // an input predicate is to enforce an invariant, if the user didn't provide a
                             // value, the original value will remain unchanged thus keeping the invariant
                             // intact.
-                            let right_value =
-                                input_context.and_then(|ctx| resolve_value(ctx, field_path));
+                            let right_value = input_context
+                                .as_ref()
+                                .and_then(|ctx| resolve_value(ctx.value, field_path));
                             match right_value {
                                 Some(right_value) => {
                                     Ok(Some(value_predicate(&left_value, right_value).into()))
@@ -252,8 +275,9 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                     SolvedPrecheckPrimitiveExpression::Common(Some(right_value)),
                 ) => match &left_path.field_path {
                     FieldPath::Normal(field_path) => {
-                        let left_value =
-                            input_context.and_then(|ctx| resolve_value(ctx, field_path));
+                        let left_value = input_context
+                            .as_ref()
+                            .and_then(|ctx| resolve_value(ctx.value, field_path));
                         match left_value {
                             Some(left_value) => {
                                 Ok(Some(value_predicate(left_value, &right_value).into()))
@@ -361,10 +385,12 @@ fn compute_relational_predicate(
     head_link: ColumnPathLink,
     lead: &Vec<String>,
     pk_fields: &Vec<String>,
-    input_context: Option<&Val>,
+    input_context: Option<&AccessInputContext<'_>>,
     database: &Database,
 ) -> Result<AbstractPredicate, AccessSolverError> {
-    let lead_value = input_context.and_then(|ctx| resolve_value(ctx, lead));
+    let lead_value = input_context
+        .as_ref()
+        .and_then(|ctx| resolve_value(ctx.value, lead));
 
     match head_link {
         ColumnPathLink::Relation(relation) => relation.column_pairs.iter().zip(pk_fields).try_fold(
@@ -483,7 +509,11 @@ mod test {
 
         for (test_ae, input_age, context_id, expected_result) in matrix {
             let context = test_request_context(json!({"id": context_id} ), test_system_router, env);
-            let input_context = Some(json!({"age": input_age}).into());
+            let input_value = json!({"age": input_age}).into();
+            let input_context = Some(AccessInputContext {
+                value: &input_value,
+                ignore_missing_context: false,
+            });
 
             let solved_predicate =
                 solve_access(&test_ae, &context, input_context.as_ref(), system).await;
@@ -513,10 +543,13 @@ mod test {
         ));
 
         let context = test_request_context(json!({}), test_system_router, env);
-        let input_context = Some(json!({"name": "John"}).into());
+        let input_context = json!({"name": "John"}).into();
 
-        let solved_predicate =
-            solve_access(&test_ae, &context, input_context.as_ref(), system).await;
+        let input_context = AccessInputContext {
+            value: &input_context,
+            ignore_missing_context: false,
+        };
+        let solved_predicate = solve_access(&test_ae, &context, Some(&input_context), system).await;
         assert_eq!(solved_predicate, true.into());
     }
 
@@ -556,7 +589,11 @@ mod test {
 
         for (test_ae, input_id, context_id, expected_result) in matrix {
             let context = test_request_context(json!({"id": context_id} ), test_system_router, env);
-            let input_context = Some(json!({"author": {"id": input_id}}).into());
+            let input_value = json!({"author": {"id": input_id}}).into();
+            let input_context = Some(AccessInputContext {
+                value: &input_value,
+                ignore_missing_context: false,
+            });
 
             let solved_predicate =
                 solve_access(&test_ae, &context, input_context.as_ref(), system).await;
@@ -625,7 +662,11 @@ mod test {
 
         for (test_ae, expected_result) in matrix {
             let context = test_request_context(json!({}), test_system_router, env);
-            let input_context = Some(json!({"author": {"id": author_id}}).into());
+            let input_value = json!({"author": {"id": author_id}}).into();
+            let input_context = Some(AccessInputContext {
+                value: &input_value,
+                ignore_missing_context: false,
+            });
 
             let solved_predicate =
                 solve_access(&test_ae, &context, input_context.as_ref(), system).await;
@@ -689,7 +730,12 @@ mod test {
 
         for (test_ae, context_id, expected_core_predicate) in matrix {
             let context = test_request_context(json!({"id": context_id} ), test_system_router, env);
-            let input_context = Some(json!({"author": {"id": 100}}).into()); // We don't/can't provide the age
+            let input_context = json!({"author": {"id": 100}}).into(); // We don't/can't provide the age
+
+            let input_context = Some(AccessInputContext {
+                value: &input_context,
+                ignore_missing_context: false,
+            });
 
             let solved_predicate =
                 solve_access(&test_ae, &context, input_context.as_ref(), system).await;
@@ -779,9 +825,13 @@ mod test {
             (&neq_call, false, second_john(), false), // There are some non-john articles
         ];
 
-        for (i, (lhs, rhs, input_context, expected_result)) in matrix.into_iter().enumerate() {
+        for (i, (lhs, rhs, input_value, expected_result)) in matrix.into_iter().enumerate() {
             let context = test_request_context(json!({"name": "John"}), test_system_router, env);
-            let input_context = Some(input_context.into());
+            let input_value = input_value.into();
+            let input_context = Some(AccessInputContext {
+                value: &input_value,
+                ignore_missing_context: false,
+            });
 
             let boolean_expr = || {
                 Box::new(PrecheckAccessPrimitiveExpression::Common(
@@ -809,7 +859,7 @@ mod test {
     async fn solve_access<'a>(
         expr: &'a AccessPredicateExpression<PrecheckAccessPrimitiveExpression>,
         request_context: &'a RequestContext<'a>,
-        input_context: Option<&'a Val>,
+        input_context: Option<&AccessInputContext<'a>>,
         subsystem: &'a PostgresGraphQLSubsystem,
     ) -> AbstractPredicate {
         subsystem

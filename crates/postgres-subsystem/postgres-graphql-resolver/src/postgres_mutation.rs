@@ -21,8 +21,10 @@ use crate::{
 };
 use async_trait::async_trait;
 use common::context::RequestContext;
-use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::validation::field::ValidatedField;
+use core_plugin_interface::{
+    core_model::types::OperationReturnType, core_resolver::access_solver::AccessInputContext,
+};
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
     AbstractUpdate, Predicate,
@@ -147,7 +149,7 @@ async fn delete_operation<'content>(
 ) -> Result<OperationResolution<AbstractDelete>, PostgresExecutionError> {
     let table_id = subsystem.core_subsystem.entity_types[return_type.typ_id()].table_id;
 
-    let access_predicate = check_access(
+    let (precheck_predicate, entity_predicate) = check_access(
         return_type.typ(&subsystem.core_subsystem.entity_types),
         &field.subfields,
         &SQLOperationKind::Delete,
@@ -164,10 +166,10 @@ async fn delete_operation<'content>(
         request_context,
     )
     .await?;
-    let predicate = Predicate::and(access_predicate, arg_predicate);
+    let predicate = Predicate::and(entity_predicate, arg_predicate);
 
     Ok(OperationResolution {
-        precheck_predicates: vec![],
+        precheck_predicates: vec![precheck_predicate],
         operation: AbstractDelete {
             table_id,
             predicate,
@@ -186,13 +188,17 @@ async fn update_operation<'content>(
     request_context: &'content RequestContext<'content>,
 ) -> Result<OperationResolution<AbstractUpdate>, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
-    let access_predicate = check_access(
+    let input_context = data_arg.map(|arg| AccessInputContext {
+        value: arg,
+        ignore_missing_context: true,
+    });
+    let (precheck_predicate, entity_predicate) = check_access(
         return_type.typ(&subsystem.core_subsystem.entity_types),
         &field.subfields,
         &SQLOperationKind::Update,
         subsystem,
         request_context,
-        data_arg,
+        input_context.as_ref(),
     )
     .await?;
 
@@ -203,7 +209,7 @@ async fn update_operation<'content>(
         request_context,
     )
     .await?;
-    let predicate = Predicate::and(access_predicate, arg_predicate);
+    let predicate = Predicate::and(entity_predicate, arg_predicate);
 
     match data_arg {
         Some(argument) => {
@@ -217,7 +223,7 @@ async fn update_operation<'content>(
             .await?;
 
             Ok(OperationResolution {
-                precheck_predicates: vec![],
+                precheck_predicates: vec![precheck_predicate],
                 operation: update,
             })
         }

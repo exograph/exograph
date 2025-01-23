@@ -10,8 +10,10 @@
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use core_plugin_interface::core_model::types::OperationReturnType;
 use core_plugin_interface::core_resolver::access_solver::AccessSolver;
+use core_plugin_interface::{
+    core_model::types::OperationReturnType, core_resolver::access_solver::AccessInputContext,
+};
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
     ColumnId, ColumnPath, ManyToOne, NestedAbstractDelete, NestedAbstractInsert,
@@ -275,13 +277,18 @@ async fn compute_nested_update_object_arg<'a>(
 ) -> Result<NestedAbstractUpdate, PostgresExecutionError> {
     assert!(matches!(argument, Val::Object(..)));
 
-    let access_predicate = check_access(
+    let input_context = Some(AccessInputContext {
+        value: argument,
+        ignore_missing_context: true,
+    });
+
+    let (_precheck_predicate, entity_predicate) = check_access(
         &subsystem.core_subsystem.entity_types[field_entity_type.entity_id],
         &[],
         &SQLOperationKind::Update,
         subsystem,
         request_context,
-        Some(argument),
+        input_context.as_ref(),
     )
     .await?;
 
@@ -313,7 +320,7 @@ async fn compute_nested_update_object_arg<'a>(
                 )
             });
 
-    let predicate = AbstractPredicate::and(arg_predicate, access_predicate);
+    let predicate = AbstractPredicate::and(arg_predicate, entity_predicate);
 
     Ok(NestedAbstractUpdate {
         nesting_relation: nesting_relation.clone(),
@@ -495,13 +502,18 @@ async fn compute_nested_delete_object_arg<'a>(
         column.is_pk
     });
 
-    let access_predicate = check_access(
+    let input_context = Some(AccessInputContext {
+        value: argument,
+        ignore_missing_context: false,
+    });
+
+    let (_precheck_predicate, entity_predicate) = check_access(
         &subsystem.core_subsystem.entity_types[field_mutation_type.entity_id],
         &[],
         &SQLOperationKind::Delete,
         subsystem,
         request_context,
-        Some(argument),
+        input_context.as_ref(),
     )
     .await?;
 
@@ -525,7 +537,7 @@ async fn compute_nested_delete_object_arg<'a>(
                 )
             });
 
-    let predicate = AbstractPredicate::and(arg_predicate, access_predicate);
+    let predicate = AbstractPredicate::and(arg_predicate, entity_predicate);
 
     let table_id = subsystem.core_subsystem.entity_types[field_mutation_type.entity_id].table_id;
 

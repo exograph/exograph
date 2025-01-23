@@ -33,7 +33,7 @@ impl OperationSelectionResolver for AggregateQuery {
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresGraphQLSubsystem,
     ) -> Result<AbstractSelect, PostgresExecutionError> {
-        let access_predicate = check_access(
+        let (_precheck_predicate, entity_predicate) = check_access(
             self.return_type.typ(&subsystem.core_subsystem.entity_types),
             &field.subfields,
             &SQLOperationKind::Retrieve,
@@ -50,7 +50,7 @@ impl OperationSelectionResolver for AggregateQuery {
             request_context,
         )
         .await?;
-        let predicate = AbstractPredicate::and(query_predicate, access_predicate);
+        let predicate = AbstractPredicate::and(query_predicate, entity_predicate);
         let return_postgres_type = &self.return_type.typ(&subsystem.core_subsystem.entity_types);
 
         let root_physical_table_id = return_postgres_type.table_id;

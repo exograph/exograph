@@ -63,7 +63,6 @@ RelationalOp:
                             column_index: 1
                       field_path:
                         Normal:
-                          - issues
                           - title
                     - i
                 - Common:

@@ -34,10 +34,7 @@ use core_plugin_interface::{
 use exo_sql::{ColumnId, VectorDistanceFunction, DEFAULT_VECTOR_SIZE};
 
 use postgres_core_model::{
-    access::{
-        Access, DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
-        UpdateAccessExpression,
-    },
+    access::{Access, DatabaseAccessPrimitiveExpression, UpdateAccessExpression},
     aggregate::{AggregateField, AggregateFieldType},
     relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation, RelationCardinality},
     types::{EntityType, PostgresField, PostgresFieldType, PostgresPrimitiveType, TypeIndex},
@@ -398,48 +395,6 @@ fn compute_database_access_expr(
     })
 }
 
-fn compute_input_access_expr(
-    ast_exprs: &[&Option<AstExpr<Typed>>],
-    entity_id: SerializableSlabIndex<EntityType>,
-    resolved_env: &ResolvedTypeEnv,
-    building: &SystemContextBuilding,
-) -> Result<
-    SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
-    ModelBuildingError,
-> {
-    let entity = &building.entity_types[entity_id];
-
-    let ast_expr = first_non_optional_access_expr(ast_exprs);
-
-    let restricted_access_index = || {
-        building
-            .input_access_expressions
-            .lock()
-            .unwrap()
-            .restricted_access_index()
-    };
-
-    let expr = match ast_expr {
-        Some(ast_expr) => access::compute_input_predicate_expression(
-            ast_expr,
-            HashMap::from_iter([("self".to_string(), entity)]),
-            resolved_env,
-            &building.primitive_types,
-            &building.entity_types,
-        ),
-        _ => return Ok(restricted_access_index()),
-    }?;
-
-    Ok(match expr {
-        AccessPredicateExpression::BooleanLiteral(false) => restricted_access_index(),
-        _ => building
-            .input_access_expressions
-            .lock()
-            .unwrap()
-            .insert(expr),
-    })
-}
-
 fn compute_precheck_access_expr(
     ast_exprs: &[&Option<AstExpr<Typed>>],
     entity_id: SerializableSlabIndex<EntityType>,
@@ -490,27 +445,24 @@ fn compute_access(
     resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> Result<Access, ModelBuildingError> {
-    let compute_input_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
-        compute_input_access_expr(ast_exprs, entity_id, resolved_env, building)
-    };
-
-    let creation_input_access =
-        compute_input_access_expr(&[&resolved.creation, &resolved.mutation, &resolved.default])?;
-    let update_input_access =
-        compute_input_access_expr(&[&resolved.update, &resolved.mutation, &resolved.default])?;
-
     let compute_database_access_expr = |ast_exprs: &[&Option<AstExpr<Typed>>]| {
         compute_database_access_expr(ast_exprs, entity_id, resolved_env, building)
     };
 
     let query_access = compute_database_access_expr(&[&resolved.query, &resolved.default])?;
-    let creation_database_access = compute_precheck_access_expr(
+    let creation_precheck_access = compute_precheck_access_expr(
         &[&resolved.creation, &resolved.mutation, &resolved.default],
         entity_id,
         resolved_env,
         building,
     )?;
 
+    let update_precheck_access = compute_precheck_access_expr(
+        &[&resolved.update, &resolved.mutation, &resolved.default],
+        entity_id,
+        resolved_env,
+        building,
+    )?;
     let update_database_access =
         compute_database_access_expr(&[&resolved.update, &resolved.mutation, &resolved.default])?;
     let delete_access =
@@ -519,11 +471,10 @@ fn compute_access(
     Ok(Access {
         read: query_access,
         creation: CreationAccessExpression {
-            input: creation_input_access,
-            pre_creation: creation_database_access,
+            precheck: creation_precheck_access,
         },
         update: UpdateAccessExpression {
-            input: update_input_access,
+            precheck: update_precheck_access,
             database: update_database_access,
         },
         delete: delete_access,
@@ -882,12 +833,11 @@ fn compute_one_to_many_relation(
 fn restrictive_access() -> Access {
     Access {
         creation: CreationAccessExpression {
-            input: SerializableSlabIndex::shallow(),
-            pre_creation: SerializableSlabIndex::shallow(),
+            precheck: SerializableSlabIndex::shallow(),
         },
         read: SerializableSlabIndex::shallow(),
         update: UpdateAccessExpression {
-            input: SerializableSlabIndex::shallow(),
+            precheck: SerializableSlabIndex::shallow(),
             database: SerializableSlabIndex::shallow(),
         },
         delete: SerializableSlabIndex::shallow(),

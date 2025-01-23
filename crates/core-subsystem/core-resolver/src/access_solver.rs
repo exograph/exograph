@@ -36,6 +36,11 @@ pub enum AccessSolverError {
     Generic(Box<dyn std::error::Error + Send + Sync>),
 }
 
+pub struct AccessInputContext<'a> {
+    pub value: &'a Val,
+    pub ignore_missing_context: bool,
+}
+
 /// Solve access control logic.
 ///
 /// Typically, the user of this trait will use the `solve` method.
@@ -62,7 +67,7 @@ where
     async fn solve(
         &self,
         request_context: &RequestContext<'a>,
-        input_context: Option<&'a Val>, // User provided context (such as input to a mutation)
+        input_context: Option<&AccessInputContext<'a>>,
         expr: &AccessPredicateExpression<PrimExpr>,
     ) -> Result<Option<Res>, AccessSolverError> {
         match expr {
@@ -86,7 +91,7 @@ where
     async fn solve_relational_op(
         &self,
         request_context: &RequestContext<'a>,
-        input_context: Option<&'a Val>,
+        input_context: Option<&AccessInputContext<'a>>,
         op: &AccessRelationalOp<PrimExpr>,
     ) -> Result<Option<Res>, AccessSolverError>;
 
@@ -94,7 +99,7 @@ where
     async fn solve_logical_op(
         &self,
         request_context: &RequestContext<'a>,
-        input_context: Option<&'a Val>,
+        input_context: Option<&AccessInputContext<'a>>,
         op: &AccessLogicalExpression<PrimExpr>,
     ) -> Result<Option<Res>, AccessSolverError> {
         Ok(match op {

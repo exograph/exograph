@@ -7,7 +7,10 @@ context AuthContext {
 module IssueDatabase {
   @access(
     query=true,
-    mutation=AuthContext.role == "admin" || (self.assignee.id == AuthContext.id && self.assignee.position == "developer"),
+    mutation=
+      AuthContext.role == "admin" || 
+      (AuthContext.role == "manager" && self.assignee.position == "developer") || // to allow assigning an issue to a non-developer (for testing precheck)
+      (self.assignee.id == AuthContext.id && self.assignee.position == "developer"),
     delete=AuthContext.role == "admin"
   )
   type Issue {

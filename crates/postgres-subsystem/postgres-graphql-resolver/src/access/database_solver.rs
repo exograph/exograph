@@ -22,8 +22,8 @@ use common::value::Val;
 use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
     core_resolver::access_solver::{
-        eq_values, neq_values, reduce_common_primitive_expression, AccessPredicate, AccessSolver,
-        AccessSolverError,
+        eq_values, neq_values, reduce_common_primitive_expression, AccessInputContext,
+        AccessPredicate, AccessSolver, AccessSolverError,
     },
 };
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
@@ -74,7 +74,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
     async fn solve_relational_op(
         &self,
         request_context: &RequestContext<'a>,
-        _input_context: Option<&'a Val>,
+        _input_context: Option<&AccessInputContext<'a>>,
         op: &AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
     ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(

@@ -496,7 +496,6 @@ pub trait DataParamBuilder<D> {
                     .entity_types
                     .get_id(&entity_type.name)
                     .unwrap(),
-                input_access: None,
                 database_access: nested_predicate,
             },
         ));

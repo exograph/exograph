@@ -27,9 +27,7 @@ use core_plugin_interface::core_model::{
 use postgres_core_model::relation::OneToManyRelation;
 use postgres_core_model::relation::PostgresRelation;
 
-use postgres_core_model::access::{
-    DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
-};
+use postgres_core_model::access::DatabaseAccessPrimitiveExpression;
 
 use postgres_core_model::types::{EntityType, PostgresField, PostgresPrimitiveType};
 use serde::{Deserialize, Serialize};
@@ -41,8 +39,6 @@ pub struct MutationType {
     pub fields: Vec<PostgresField<MutationType>>,
     pub entity_id: SerializableSlabIndex<EntityType>,
 
-    pub input_access:
-        Option<SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>>,
     pub database_access:
         Option<SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>>,
 }

@@ -1,6 +1,6 @@
 operation: |
-  mutation($uId: Int!) {
-      createIssue(data: {title: "I-new", assignee: {id: $uId}}) {
+  mutation($issueId: Int!, $uId: Int!) {
+      updateIssue(id: $issueId, data: {title: "I1-updated", assignee: {id: $uId}}) {
           id
           title
           assignee {
@@ -12,11 +12,12 @@ operation: |
   }
 variable: |
   {
-    "uId": $.u1id
+    "uId": $.u3id,
+    "issueId": $.issue1Id
   }
 auth: |
   {
-    "sub": $.u2id
+    "sub": $.u3id
   }
 response: |
   {

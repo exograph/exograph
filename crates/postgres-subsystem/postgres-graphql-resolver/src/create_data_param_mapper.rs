@@ -11,6 +11,7 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
+use core_plugin_interface::core_resolver::access_solver::AccessInputContext;
 use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
 use exo_sql::{
     AbstractInsert, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement, InsertionRow,
@@ -113,13 +114,16 @@ async fn map_single<'a>(
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<OperationResolution<InsertionRow>, PostgresExecutionError> {
-    let precheck_predicate = check_access(
+    let (precheck_predicate, _entity_predicate) = check_access(
         &subsystem.core_subsystem.entity_types[data_type.entity_id],
         &[],
         &SQLOperationKind::Create,
         subsystem,
         request_context,
-        Some(argument),
+        Some(&AccessInputContext {
+            value: argument,
+            ignore_missing_context: false,
+        }),
     )
     .await?;
 

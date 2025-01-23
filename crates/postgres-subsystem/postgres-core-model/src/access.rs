@@ -28,14 +28,14 @@ pub struct Access {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreationAccessExpression {
-    pub input: SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
-    pub pre_creation:
+    pub precheck:
         SerializableSlabIndex<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateAccessExpression {
-    pub input: SerializableSlabIndex<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
+    pub precheck:
+        SerializableSlabIndex<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>>,
     pub database:
         SerializableSlabIndex<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
 }
@@ -52,17 +52,10 @@ pub enum DatabaseAccessPrimitiveExpression {
 
 /// Primitive expressions that can express data input access control rules.
 #[derive(Serialize, Deserialize, Debug)]
-pub enum InputAccessPrimitiveExpression {
-    Path(Vec<String>, Option<String>), // JSON path, for example self.user.id and parameter name (such as "du", default: "self")
-    Function(Vec<String>, FunctionCall<Self>), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
-    Common(CommonAccessPrimitiveExpression),   // expression shared by all access expressions
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub enum PrecheckAccessPrimitiveExpression {
-    Path(AccessPrimitiveExpressionPath, Option<String>),
-    Function(AccessPrimitiveExpressionPath, FunctionCall<Self>),
-    Common(CommonAccessPrimitiveExpression),
+    Path(AccessPrimitiveExpressionPath, Option<String>), // JSON path, for example self.user.id and parameter name (such as "du", default: "self")
+    Function(AccessPrimitiveExpressionPath, FunctionCall<Self>), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
+    Common(CommonAccessPrimitiveExpression), // expression shared by all access expressions
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
