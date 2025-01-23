@@ -12,8 +12,11 @@ use super::{auth_util::check_access, sql_mapper::SQLOperationKind, util::find_ar
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 
 use crate::{
-    create_data_param_mapper::InsertOperation, operation_resolver::OperationResolver,
-    postgres_query::compute_select, predicate_mapper::compute_predicate, sql_mapper::SQLMapper,
+    create_data_param_mapper::InsertOperation,
+    operation_resolver::{OperationResolution, OperationResolver},
+    postgres_query::compute_select,
+    predicate_mapper::compute_predicate,
+    sql_mapper::SQLMapper,
     update_data_param_mapper::UpdateOperation,
 };
 use async_trait::async_trait;
@@ -38,7 +41,7 @@ impl OperationResolver for PostgresMutation {
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a PostgresGraphQLSubsystem,
-    ) -> Result<AbstractOperation, PostgresExecutionError> {
+    ) -> Result<OperationResolution<AbstractOperation>, PostgresExecutionError> {
         let return_type = &self.return_type;
 
         // Compute a select without any **user-specified** predicate, order-by etc. The surrounding
@@ -58,18 +61,23 @@ impl OperationResolver for PostgresMutation {
         .await?;
 
         Ok(match &self.parameters {
-            PostgresMutationParameters::Create(data_param) => AbstractOperation::Insert(
-                create_operation(
+            PostgresMutationParameters::Create(data_param) => {
+                let insert = create_operation(
                     data_param,
                     field,
                     abstract_select,
                     subsystem,
                     request_context,
                 )
-                .await?,
-            ),
-            PostgresMutationParameters::Delete(predicate_params) => AbstractOperation::Delete(
-                delete_operation(
+                .await?;
+
+                OperationResolution {
+                    precheck_predicates: insert.precheck_predicates,
+                    operation: AbstractOperation::Insert(insert.operation),
+                }
+            }
+            PostgresMutationParameters::Delete(predicate_params) => {
+                let delete = delete_operation(
                     return_type,
                     predicate_params,
                     field,
@@ -77,13 +85,18 @@ impl OperationResolver for PostgresMutation {
                     subsystem,
                     request_context,
                 )
-                .await?,
-            ),
+                .await?;
+
+                OperationResolution {
+                    precheck_predicates: delete.precheck_predicates,
+                    operation: AbstractOperation::Delete(delete.operation),
+                }
+            }
             PostgresMutationParameters::Update {
                 data_param,
                 predicate_params,
-            } => AbstractOperation::Update(
-                update_operation(
+            } => {
+                let update = update_operation(
                     return_type,
                     data_param,
                     predicate_params,
@@ -92,8 +105,13 @@ impl OperationResolver for PostgresMutation {
                     subsystem,
                     request_context,
                 )
-                .await?,
-            ),
+                .await?;
+
+                OperationResolution {
+                    precheck_predicates: update.precheck_predicates,
+                    operation: AbstractOperation::Update(update.operation),
+                }
+            }
         })
     }
 }
@@ -104,7 +122,7 @@ async fn create_operation<'content>(
     select: AbstractSelect,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractInsert, PostgresExecutionError> {
+) -> Result<OperationResolution<AbstractInsert>, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
 
     match data_arg {
@@ -126,7 +144,7 @@ async fn delete_operation<'content>(
     select: AbstractSelect,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractDelete, PostgresExecutionError> {
+) -> Result<OperationResolution<AbstractDelete>, PostgresExecutionError> {
     let table_id = subsystem.core_subsystem.entity_types[return_type.typ_id()].table_id;
 
     let access_predicate = check_access(
@@ -148,10 +166,13 @@ async fn delete_operation<'content>(
     .await?;
     let predicate = Predicate::and(access_predicate, arg_predicate);
 
-    Ok(AbstractDelete {
-        table_id,
-        predicate,
-        selection: select,
+    Ok(OperationResolution {
+        precheck_predicates: vec![],
+        operation: AbstractDelete {
+            table_id,
+            predicate,
+            selection: select,
+        },
     })
 }
 
@@ -163,7 +184,7 @@ async fn update_operation<'content>(
     select: AbstractSelect,
     subsystem: &'content PostgresGraphQLSubsystem,
     request_context: &'content RequestContext<'content>,
-) -> Result<AbstractUpdate, PostgresExecutionError> {
+) -> Result<OperationResolution<AbstractUpdate>, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
     let access_predicate = check_access(
         return_type.typ(&subsystem.core_subsystem.entity_types),
@@ -186,14 +207,19 @@ async fn update_operation<'content>(
 
     match data_arg {
         Some(argument) => {
-            UpdateOperation {
+            let update = UpdateOperation {
                 data_param,
                 predicate,
                 select,
                 return_type,
             }
             .to_sql(argument, subsystem, request_context)
-            .await
+            .await?;
+
+            Ok(OperationResolution {
+                precheck_predicates: vec![],
+                operation: update,
+            })
         }
         None => Err(PostgresExecutionError::MissingArgument(
             data_param.name.clone(),

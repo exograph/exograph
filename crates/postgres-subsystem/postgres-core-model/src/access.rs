@@ -89,29 +89,15 @@ impl AccessPrimitiveExpressionPath {
         }
     }
 
-    pub fn join(self, other: Self) -> Result<Self, ModelBuildingError> {
+    pub fn with_function_context(self, other: Self) -> Result<Self, ModelBuildingError> {
         Ok(Self {
             column_path: self.column_path.join(other.column_path),
             field_path: match (self.field_path, other.field_path) {
-                (FieldPath::Normal(a), FieldPath::Normal(b)) => {
-                    let mut field_path = a.clone();
-                    field_path.extend(b.clone());
-                    FieldPath::Normal(field_path)
-                }
-                (FieldPath::Normal(a), FieldPath::Pk { lead, pk_fields }) => {
-                    let mut field_path = a.clone();
-                    field_path.extend(lead.clone());
-
-                    FieldPath::Pk {
-                        lead: field_path,
-                        pk_fields: pk_fields.clone(),
-                    }
-                }
-                _ => {
-                    return Err(ModelBuildingError::Generic(
-                        "Cannot join field paths".to_string(),
-                    ));
-                }
+                (_, FieldPath::Normal(b)) => FieldPath::Normal(b.clone()),
+                (_, FieldPath::Pk { lead, pk_fields }) => FieldPath::Pk {
+                    lead: lead.clone(),
+                    pk_fields: pk_fields.clone(),
+                },
             },
         })
     }

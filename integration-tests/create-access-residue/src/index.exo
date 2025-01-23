@@ -1,0 +1,27 @@
+context AuthContext {
+  @jwt("sub") id: Int
+  @jwt role: String
+}
+
+@postgres
+module IssueDatabase {
+  @access(
+    query=true,
+    mutation=AuthContext.role == "admin" || (self.assignee.id == AuthContext.id && self.assignee.position == "developer"),
+    delete=AuthContext.role == "admin"
+  )
+  type Issue {
+    @pk id: Int = autoIncrement()
+    title: String
+    assignee: Employee
+  }
+
+  
+  @access(true)
+  type Employee {
+    @pk id: Int = autoIncrement()
+    name: String
+    position: String
+    issues: Set<Issue>?
+  }
+}

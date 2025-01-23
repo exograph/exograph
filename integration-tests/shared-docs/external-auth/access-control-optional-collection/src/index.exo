@@ -6,7 +6,7 @@ context AuthContext {
 @postgres
 module DocsDatabase {
   @access(
-    query = AuthContext.role == "admin"|| self.documentUsers.some(du => du.userId == AuthContext.id && du.read),
+    query = AuthContext.role == "admin" || self.documentUsers.some(du => du.userId == AuthContext.id && du.read),
     mutation = AuthContext.role == "admin" || self.documentUsers.some(du => du.userId == AuthContext.id && du.write)
   )  
   type Document {

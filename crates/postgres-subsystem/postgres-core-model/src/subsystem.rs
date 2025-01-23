@@ -20,7 +20,10 @@ use exo_sql::Database;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    access::{DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression},
+    access::{
+        DatabaseAccessPrimitiveExpression, InputAccessPrimitiveExpression,
+        PrecheckAccessPrimitiveExpression,
+    },
     aggregate::AggregateType,
     types::{EntityType, PostgresPrimitiveType},
 };
@@ -37,6 +40,8 @@ pub struct PostgresCoreSubsystem {
         SerializableSlab<AccessPredicateExpression<InputAccessPrimitiveExpression>>,
     pub database_access_expressions:
         SerializableSlab<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>>,
+    pub precheck_expressions:
+        SerializableSlab<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>>,
 
     pub database: Database,
 }
@@ -65,6 +70,7 @@ impl Default for PostgresCoreSubsystem {
 
             input_access_expressions: SerializableSlab::new(),
             database_access_expressions: SerializableSlab::new(),
+            precheck_expressions: SerializableSlab::new(),
 
             database: Database::default(),
         }

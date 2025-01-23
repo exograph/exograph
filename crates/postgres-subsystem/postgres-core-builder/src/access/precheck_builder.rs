@@ -226,7 +226,7 @@ fn compute_precheck_function_expr(
                 // for the `self.id` part.
                 Ok(PrecheckAccessPrimitiveExpression::Path(
                     if parameter_name == Some(function_param_name) {
-                        lead_path.join(function_column_path)?
+                        lead_path.with_function_context(function_column_path)?
                     } else {
                         function_column_path
                     },

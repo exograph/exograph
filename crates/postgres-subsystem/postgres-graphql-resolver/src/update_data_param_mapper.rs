@@ -369,7 +369,7 @@ async fn compute_nested_inserts<'a>(
                 .collect(),
             insert: AbstractInsert {
                 table_id,
-                rows,
+                rows: rows.operation,
                 selection: AbstractSelect {
                     table_id,
                     selection: Selection::Seq(vec![]),

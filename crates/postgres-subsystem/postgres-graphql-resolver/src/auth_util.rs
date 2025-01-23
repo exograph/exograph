@@ -59,10 +59,13 @@ pub(crate) async fn check_access<'a>(
                     )
                     .await?;
 
-                    if field_access_predicate == AbstractPredicate::True {
-                        Ok(AbstractPredicate::True)
-                    } else {
+                    if field_access_predicate == AbstractPredicate::False {
                         Err(PostgresExecutionError::Authorization)
+                    } else {
+                        Ok(AbstractPredicate::and(
+                            entity_access,
+                            field_access_predicate,
+                        ))
                     }
                 }?
             }
@@ -148,20 +151,20 @@ async fn check_create_access<'a>(
     request_context: &'a RequestContext<'a>,
     input_context: Option<&'a Val>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
-    let input_predicate = subsystem
+    let precheck_predicate = subsystem
         .solve(
             request_context,
             input_context,
-            &subsystem.core_subsystem.input_access_expressions[expr.input],
+            &subsystem.core_subsystem.precheck_expressions[expr.pre_creation],
         )
         .await?
         .map(|predicate| predicate.0)
         .unwrap_or(AbstractPredicate::False);
 
-    if input_predicate != AbstractPredicate::True {
+    if precheck_predicate == AbstractPredicate::False {
         Err(PostgresExecutionError::Authorization)
     } else {
-        Ok(input_predicate)
+        Ok(precheck_predicate)
     }
 }
 

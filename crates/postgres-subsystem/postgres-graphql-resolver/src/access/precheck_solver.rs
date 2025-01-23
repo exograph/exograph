@@ -28,7 +28,7 @@ use postgres_core_model::access::{
 };
 
 use super::access_op::AbstractPredicateWrapper;
-use super::database_solver::{literal_column, to_column_path};
+use super::database_solver::to_column_path;
 
 #[derive(Debug)]
 pub enum SolvedPrecheckPrimitiveExpression {
@@ -92,17 +92,12 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                                 let solved_expr =
                                     solver.solve(request_context, Some(item), expr).await?;
 
-                                match solved_expr {
-                                    Some(AbstractPredicateWrapper(p)) => {
-                                        if p == AbstractPredicate::True {
-                                            result = SolvedPrecheckPrimitiveExpression::Common(
-                                                Some(Val::Bool(true)),
-                                            );
-                                            break;
-                                        }
-                                    }
-                                    _ => {
-                                        todo!()
+                                if let Some(AbstractPredicateWrapper(p)) = solved_expr {
+                                    if p == AbstractPredicate::True {
+                                        result = SolvedPrecheckPrimitiveExpression::Common(Some(
+                                            Val::Bool(true),
+                                        ));
+                                        break;
                                     }
                                 }
                             }
@@ -119,6 +114,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
         fn resolve_path<'a>(
             path: &'a AccessPrimitiveExpressionPath,
             input_context: Option<&'a Val>,
+            database: &'a Database,
         ) -> Result<(Option<ColumnPath>, AbstractPredicate), AccessSolverError> {
             let column_path = &path.column_path;
             let field_path = &path.field_path;
@@ -127,16 +123,22 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                 FieldPath::Normal(field_path) => {
                     let relational_predicate = AbstractPredicate::True;
                     let value = input_context.and_then(|ctx| resolve_value(ctx, field_path));
-                    Ok((
-                        value.map(|v| literal_column(v.clone())),
-                        relational_predicate,
-                    ))
+
+                    let literal_column_path =
+                        compute_literal_column_path(value, column_path, database)?;
+
+                    Ok((literal_column_path, relational_predicate))
                 }
                 FieldPath::Pk { lead, pk_fields } => {
                     let (head, ..) = column_path.split_head();
 
-                    let relational_predicate =
-                        compute_relational_predicate(head, lead, pk_fields, input_context)?;
+                    let relational_predicate = compute_relational_predicate(
+                        head,
+                        lead,
+                        pk_fields,
+                        input_context,
+                        database,
+                    )?;
 
                     Ok((
                         Some(ColumnPath::Physical(column_path.clone())),
@@ -171,10 +173,10 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                     SolvedPrecheckPrimitiveExpression::Path(right_path),
                 ) => {
                     let (left_column_path, left_predicate) =
-                        resolve_path(&left_path, input_context)?;
+                        resolve_path(&left_path, input_context, &self.core_subsystem.database)?;
 
                     let (right_column_path, right_predicate) =
-                        resolve_path(&right_path, input_context)?;
+                        resolve_path(&right_path, input_context, &self.core_subsystem.database)?;
 
                     let core_predicate = match (left_column_path, right_column_path) {
                         (Some(left_column_path), Some(right_column_path)) => {
@@ -234,6 +236,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                                 lead,
                                 pk_fields,
                                 input_context,
+                                &self.core_subsystem.database,
                             )?;
 
                             Ok(Some(AbstractPredicate::and(
@@ -273,6 +276,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                             lead,
                             pk_fields,
                             input_context,
+                            &self.core_subsystem.database,
                         )?;
 
                         Ok(Some(AbstractPredicate::and(
@@ -342,11 +346,23 @@ fn compute_relational_sides(
     Ok((path_column_path, value_column_path))
 }
 
+fn compute_literal_column_path(
+    value: Option<&Val>,
+    associated_column_path: &PhysicalColumnPath,
+    database: &Database,
+) -> Result<Option<ColumnPath>, AccessSolverError> {
+    value
+        .map(|v| cast::literal_column_path(v, column_type(associated_column_path, database), false))
+        .transpose()
+        .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))
+}
+
 fn compute_relational_predicate(
     head_link: ColumnPathLink,
     lead: &Vec<String>,
     pk_fields: &Vec<String>,
     input_context: Option<&Val>,
+    database: &Database,
 ) -> Result<AbstractPredicate, AccessSolverError> {
     let lead_value = input_context.and_then(|ctx| resolve_value(ctx, lead));
 
@@ -358,13 +374,23 @@ fn compute_relational_predicate(
                 let pk_value = lead_value.and_then(|ctx| resolve_value(ctx, &pk_field_path));
 
                 match pk_value {
-                    Some(pk_value) => Ok(AbstractPredicate::and(
-                        acc,
-                        AbstractPredicate::eq(
-                            ColumnPath::Physical(PhysicalColumnPath::leaf(pair.foreign_column_id)),
-                            literal_column(pk_value.clone()),
-                        ),
-                    )),
+                    Some(pk_value) => {
+                        let foreign_physical_column_path =
+                            PhysicalColumnPath::leaf(pair.foreign_column_id);
+                        let foreign_column_path =
+                            ColumnPath::Physical(foreign_physical_column_path.clone());
+                        let literal_column_path = compute_literal_column_path(
+                            Some(pk_value),
+                            &foreign_physical_column_path,
+                            database,
+                        )?
+                        .unwrap_or(ColumnPath::Null);
+
+                        Ok(AbstractPredicate::and(
+                            acc,
+                            AbstractPredicate::eq(foreign_column_path, literal_column_path),
+                        ))
+                    }
                     None => Err(AccessSolverError::Generic(
                         format!("Could not resolve value for primary key {}", pk_field).into(),
                     )),
@@ -413,7 +439,10 @@ mod test {
     use postgres_core_model::access::FieldPath;
     use serde_json::json;
 
-    use crate::access::test_util::{context_selection, test_request_context, TestRouter};
+    use crate::access::{
+        database_solver::literal_column,
+        test_util::{context_selection, test_request_context, TestRouter},
+    };
 
     use super::*;
 
@@ -664,6 +693,8 @@ mod test {
 
             let solved_predicate =
                 solve_access(&test_ae, &context, input_context.as_ref(), system).await;
+
+            // The expected predicate should be the core predicate (author.age < ??) AND a predicate that specifies the value of the author's id.
             let expected_relational_predicate = AbstractPredicate::Eq(
                 to_column_path(&test_system.user_id_column_path()),
                 literal_column(Val::Number(100.into())),

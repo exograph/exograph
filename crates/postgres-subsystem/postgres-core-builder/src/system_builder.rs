@@ -77,7 +77,6 @@ pub struct SystemContextBuilding {
     pub input_access_expressions: Mutex<AccessExpressionsBuilding<InputAccessPrimitiveExpression>>,
     pub database_access_expressions:
         Mutex<AccessExpressionsBuilding<DatabaseAccessPrimitiveExpression>>,
-
     pub precheck_access_expressions:
         Mutex<AccessExpressionsBuilding<PrecheckAccessPrimitiveExpression>>,
 
@@ -100,6 +99,7 @@ impl SystemContextBuilding {
                 .into_inner()
                 .unwrap()
                 .elems,
+            precheck_expressions: self.precheck_access_expressions.into_inner().unwrap().elems,
         }
     }
 }

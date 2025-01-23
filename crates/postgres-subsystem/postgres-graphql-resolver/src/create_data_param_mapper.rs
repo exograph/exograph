@@ -23,6 +23,7 @@ use postgres_graphql_model::{
     mutation::DataParameter, subsystem::PostgresGraphQLSubsystem, types::MutationType,
 };
 
+use crate::operation_resolver::OperationResolution;
 use crate::{
     auth_util::check_access,
     sql_mapper::{SQLMapper, SQLOperationKind},
@@ -39,13 +40,13 @@ pub struct InsertOperation<'a> {
 }
 
 #[async_trait]
-impl<'a> SQLMapper<'a, AbstractInsert> for InsertOperation<'a> {
+impl<'a> SQLMapper<'a, OperationResolution<AbstractInsert>> for InsertOperation<'a> {
     async fn to_sql(
         self,
         argument: &'a Val,
         subsystem: &'a PostgresGraphQLSubsystem,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractInsert, PostgresExecutionError> {
+    ) -> Result<OperationResolution<AbstractInsert>, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.data_param.typ.innermost().type_id];
         let table_id = subsystem.core_subsystem.entity_types[data_type.entity_id].table_id;
 
@@ -53,11 +54,14 @@ impl<'a> SQLMapper<'a, AbstractInsert> for InsertOperation<'a> {
 
         let abs_insert = AbstractInsert {
             table_id,
-            rows,
+            rows: rows.operation,
             selection: self.select,
         };
 
-        Ok(abs_insert)
+        Ok(OperationResolution {
+            precheck_predicates: rows.precheck_predicates,
+            operation: abs_insert,
+        })
     }
 
     fn param_name(&self) -> &str {
@@ -70,17 +74,34 @@ pub(crate) async fn map_argument<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<Vec<InsertionRow>, PostgresExecutionError> {
+) -> Result<OperationResolution<Vec<InsertionRow>>, PostgresExecutionError> {
     match argument {
         Val::List(arguments) => {
             let mapped = arguments
                 .iter()
                 .map(|argument| map_single(data_type, argument, subsystem, request_context));
-            try_join_all(mapped).await
+            let mapped: Vec<OperationResolution<InsertionRow>> = try_join_all(mapped).await?;
+
+            let mut precheck_queries = vec![];
+            let mut operations = vec![];
+
+            for elem in mapped {
+                precheck_queries.extend(elem.precheck_predicates);
+                operations.push(elem.operation);
+            }
+
+            Ok(OperationResolution {
+                precheck_predicates: precheck_queries,
+                operation: operations.into_iter().collect(),
+            })
         }
-        _ => vec![map_single(data_type, argument, subsystem, request_context).await]
-            .into_iter()
-            .collect(),
+        _ => {
+            let operation = map_single(data_type, argument, subsystem, request_context).await?;
+            Ok(OperationResolution {
+                precheck_predicates: operation.precheck_predicates,
+                operation: vec![operation.operation],
+            })
+        }
     }
 }
 
@@ -91,8 +112,8 @@ async fn map_single<'a>(
     argument: &'a Val,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-) -> Result<InsertionRow, PostgresExecutionError> {
-    check_access(
+) -> Result<OperationResolution<InsertionRow>, PostgresExecutionError> {
+    let precheck_predicate = check_access(
         &subsystem.core_subsystem.entity_types[data_type.entity_id],
         &[],
         &SQLOperationKind::Create,
@@ -169,7 +190,10 @@ async fn map_single<'a>(
     let row: Result<Vec<InsertionElement>, PostgresExecutionError> =
         join_all(row).await.into_iter().flatten().collect();
 
-    Ok(InsertionRow { elems: row? })
+    Ok(OperationResolution {
+        precheck_predicates: vec![precheck_predicate],
+        operation: InsertionRow { elems: row? },
+    })
 }
 
 async fn map_self_column<'a>(
@@ -258,6 +282,6 @@ async fn map_foreign<'a>(
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
         relation_id: one_to_many_relation.relation_id,
-        insertions: insertion,
+        insertions: insertion.operation,
     }))
 }

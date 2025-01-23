@@ -1,0 +1,16 @@
+operation: |
+    mutation {
+        u1: createEmployee(data: {name: "U1-dev", position: "developer"}) {
+            id @bind(name: "u1id")
+        }
+        u2: createEmployee(data: {name: "U2-dev", position: "developer"}) {
+            id @bind(name: "u2id")
+        }
+        u3: createEmployee(data: {name: "U3-sales", position: "sales"}) {
+            id @bind(name: "u3id")
+        }
+    }
+auth: |
+    {
+        role: "admin"
+    }
