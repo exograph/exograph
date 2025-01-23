@@ -30,7 +30,7 @@ impl<'s> DeleteStrategyChain<'s> {
     /// `TransactionScript` with steps to execute.
     pub fn update_transaction_script<'a>(
         &self,
-        abstract_delete: &'a AbstractDelete,
+        abstract_delete: AbstractDelete,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
@@ -38,7 +38,7 @@ impl<'s> DeleteStrategyChain<'s> {
         let strategy = self
             .strategies
             .iter()
-            .find(|s| s.suitable(abstract_delete, database))
+            .find(|s| s.suitable(&abstract_delete, database))
             .unwrap();
 
         debug!("Using deletion strategy: {}", strategy.id());

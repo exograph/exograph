@@ -18,7 +18,7 @@ use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use super::PostgresSubsystemResolver;
 
 pub async fn resolve_operation<'e>(
-    op: &AbstractOperation,
+    op: AbstractOperation,
     precheck_queries: Vec<AbstractSelect>,
     subsystem_resolver: &'e PostgresSubsystemResolver,
     request_context: &'e RequestContext<'e>,
@@ -35,7 +35,7 @@ pub async fn resolve_operation<'e>(
         let rows = subsystem_resolver
             .executor
             .execute(
-                &AbstractOperation::Select(precheck_query),
+                AbstractOperation::Select(precheck_query),
                 &mut tx,
                 &subsystem_resolver.subsystem.core_subsystem.database,
             )

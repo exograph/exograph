@@ -42,7 +42,7 @@ impl UpdateStrategy for CteStrategy {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_update: &'a AbstractUpdate,
+        abstract_update: AbstractUpdate,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
@@ -51,7 +51,7 @@ impl UpdateStrategy for CteStrategy {
 
         let column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column>)> = abstract_update
             .column_values
-            .iter()
+            .into_iter()
             .map(|(col_id, v)| (col_id.get_column(database), v.into()))
             .collect();
 
@@ -68,7 +68,7 @@ impl UpdateStrategy for CteStrategy {
             vec![Column::Star(None).into()],
         ));
 
-        let select = transformer.to_select(&abstract_update.selection, database);
+        let select = transformer.to_select(abstract_update.selection, database);
 
         let table_name = &database.get_table(abstract_update.table_id).name;
 

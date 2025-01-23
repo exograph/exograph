@@ -43,7 +43,7 @@ impl InsertionStrategy for MultiStatementStrategy {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_insert: &'a AbstractInsert,
+        abstract_insert: AbstractInsert,
         parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
         transformer: &Postgres,
@@ -56,10 +56,10 @@ impl InsertionStrategy for MultiStatementStrategy {
         } = abstract_insert;
 
         let insert_step_ids: Vec<_> = rows
-            .iter()
+            .into_iter()
             .map(|row| {
                 insert_row(
-                    *table_id,
+                    table_id,
                     row,
                     parent_step.clone(),
                     transaction_script,
@@ -74,7 +74,7 @@ impl InsertionStrategy for MultiStatementStrategy {
         // statement to form a predicate `pk IN (insert_step_1_pk, insert_step_2_pk, ...)`
         let select_transformation = Box::new(move |transaction_context: &TransactionContext| {
             let predicate = database
-                .get_table(*table_id)
+                .get_table(table_id)
                 .get_pk_column_indices()
                 .into_iter()
                 .enumerate()
@@ -82,11 +82,11 @@ impl InsertionStrategy for MultiStatementStrategy {
                     select.predicate,
                     |predicate, (pk_column_index, pk_physical_column_index)| {
                         let pk_column_id = ColumnId {
-                            table_id: *table_id,
+                            table_id,
                             column_index: pk_physical_column_index,
                         };
                         let pk_physical_column =
-                            &database.get_table(*table_id).columns[pk_physical_column_index];
+                            &database.get_table(table_id).columns[pk_physical_column_index];
 
                         let in_values = SQLParamContainer::from_sql_values(
                             insert_step_ids
@@ -130,7 +130,7 @@ impl InsertionStrategy for MultiStatementStrategy {
 
 fn insert_row<'a>(
     table_id: TableId,
-    row: &'a InsertionRow,
+    row: InsertionRow,
     parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,
@@ -154,7 +154,7 @@ fn insert_row<'a>(
 
 fn insert_self_row<'a>(
     table_id: TableId,
-    row: Vec<&'a ColumnValuePair>,
+    row: Vec<ColumnValuePair>,
     parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,
@@ -164,7 +164,7 @@ fn insert_self_row<'a>(
     let (mut columns, values): (Vec<_>, Vec<_>) = row
         .into_iter()
         .map(|ColumnValuePair { column, value }| {
-            (column.get_column(database), MaybeOwned::Borrowed(value))
+            (column.get_column(database), MaybeOwned::Owned(value))
         })
         .unzip();
 
@@ -217,7 +217,7 @@ fn insert_self_row<'a>(
 }
 
 fn insert_nested_row<'a>(
-    nested_row: &'a NestedInsertion,
+    nested_row: NestedInsertion,
     parent_step_id: TransactionStepId,
     transaction_script: &mut TransactionScript<'a>,
     database: &'a Database,

@@ -23,14 +23,14 @@ pub enum SelectionSQL {
 
 impl Selection {
     pub fn to_sql(
-        &self,
+        self,
         selection_level: &SelectionLevel,
         select_transformer: &Postgres,
         database: &Database,
     ) -> SelectionSQL {
         match self {
             Selection::Seq(seq) => SelectionSQL::Seq(
-                seq.iter()
+                seq.into_iter()
                     .map(
                         |AliasedSelectionElement {
                              alias: _alias,
@@ -43,7 +43,7 @@ impl Selection {
             ),
             Selection::Json(seq, cardinality) => {
                 let object_elems = seq
-                    .iter()
+                    .into_iter()
                     .map(|AliasedSelectionElement { alias, column }| {
                         JsonObjectElement::new(
                             alias.clone(),
@@ -65,7 +65,7 @@ impl Selection {
     }
 
     pub fn selection_aggregate(
-        &self,
+        self,
         selection_level: &SelectionLevel,
         select_transformer: &Postgres,
         database: &Database,
@@ -79,18 +79,18 @@ impl Selection {
 
 impl SelectionElement {
     pub fn to_sql(
-        &self,
+        self,
         selection_level: &SelectionLevel,
         transformer: &Postgres,
         database: &Database,
     ) -> Column {
         match self {
-            SelectionElement::Physical(column_id) => Column::physical(*column_id, None),
+            SelectionElement::Physical(column_id) => Column::physical(column_id, None),
             SelectionElement::Function(function) => Column::Function(function.clone()),
             SelectionElement::Constant(s) => Column::Constant(s.clone()),
             SelectionElement::Object(elements) => {
                 let elements = elements
-                    .iter()
+                    .into_iter()
                     .map(|(alias, column)| {
                         JsonObjectElement::new(
                             alias.to_owned(),
@@ -101,7 +101,7 @@ impl SelectionElement {
                 Column::JsonObject(JsonObject(elements))
             }
             SelectionElement::SubSelect(relation_id, select) => {
-                let new_selection_level = selection_level.with_relation_id(*relation_id);
+                let new_selection_level = selection_level.with_relation_id(relation_id);
                 Column::SubSelect(Box::new(transformer.compute_select(
                     select,
                     &new_selection_level,

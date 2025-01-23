@@ -35,7 +35,7 @@ impl<'s> InsertionStrategyChain<'s> {
     /// `TransactionScript` to execute.
     pub fn update_transaction_script<'a>(
         &self,
-        abstract_insert: &'a AbstractInsert,
+        abstract_insert: AbstractInsert,
         parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
         transformer: &Postgres,
@@ -44,7 +44,7 @@ impl<'s> InsertionStrategyChain<'s> {
         let strategy = self
             .strategies
             .iter()
-            .find(|s| s.suitable(abstract_insert, database))
+            .find(|s| s.suitable(&abstract_insert, database))
             .unwrap();
 
         debug!("Using insertion strategy: {}", strategy.id());

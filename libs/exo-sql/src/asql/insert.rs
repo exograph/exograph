@@ -46,10 +46,10 @@ pub struct InsertionRow {
 impl InsertionRow {
     /// Partitions the elements into two groups: those that are inserted into
     /// the table itself, and those that are inserted into nested tables.
-    pub fn partition_self_and_nested(&self) -> (Vec<&ColumnValuePair>, Vec<&NestedInsertion>) {
+    pub fn partition_self_and_nested(self) -> (Vec<ColumnValuePair>, Vec<NestedInsertion>) {
         let mut self_elems = Vec::new();
         let mut nested_elems = Vec::new();
-        for elem in &self.elems {
+        for elem in self.elems {
             match elem {
                 InsertionElement::SelfInsert(pair) => self_elems.push(pair),
                 InsertionElement::NestedInsert(nested) => nested_elems.push(nested),

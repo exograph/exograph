@@ -34,7 +34,7 @@ impl DatabaseExecutor {
     /// Currently makes a hard assumption on Postgres implementation, but this could be made more generic.
     pub async fn execute(
         &self,
-        operation: &AbstractOperation,
+        operation: AbstractOperation,
         tx_holder: &mut TransactionHolder,
         database: &Database,
     ) -> Result<TransactionStepResult, DatabaseError> {

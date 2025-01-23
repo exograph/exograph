@@ -104,13 +104,8 @@ impl SubsystemGraphQLResolver for PostgresSubsystemResolver {
                     .collect::<Result<Vec<_>, _>>()?;
 
                 Ok(Some(
-                    resolve_operation(
-                        &operation.operation,
-                        precheck_queries,
-                        self,
-                        request_context,
-                    )
-                    .await?,
+                    resolve_operation(operation.operation, precheck_queries, self, request_context)
+                        .await?,
                 ))
             }
             Some(Err(e)) => Err(e.into()),

@@ -111,13 +111,13 @@ impl SelectTransformer for Postgres {
         name = "SelectTransformer::to_select for Postgres"
         skip(self, database)
         )]
-    fn to_select<'a>(&self, abstract_select: &AbstractSelect, database: &'a Database) -> Select {
+    fn to_select<'a>(&self, abstract_select: AbstractSelect, database: &'a Database) -> Select {
         self.compute_select(abstract_select, &SelectionLevel::TopLevel, false, database)
     }
 
     fn to_transaction_script<'a>(
         &self,
-        abstract_select: &'a AbstractSelect,
+        abstract_select: AbstractSelect,
         database: &'a Database,
     ) -> TransactionScript<'a> {
         let select = self.to_select(abstract_select, database);
@@ -134,7 +134,7 @@ impl Postgres {
     /// control over whether duplicate rows are allowed.
     pub fn compute_select(
         &self,
-        abstract_select: &AbstractSelect,
+        abstract_select: AbstractSelect,
         selection_level: &SelectionLevel,
         allow_duplicate_rows: bool,
         database: &Database,
@@ -193,7 +193,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT "concerts"."id" FROM "concerts""#
@@ -228,7 +228,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."id" = $1"#,
@@ -262,7 +262,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts""#
@@ -330,7 +330,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id", 'venue', (SELECT json_build_object('id', "venues"."id") FROM "venues" WHERE "venues"."id" = "concerts"."venue_id"))), '[]'::json)::text FROM "concerts""#
@@ -392,7 +392,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" WHERE "venues"."id" = "concerts"."venue_id"))), '[]'::json)::text FROM "venues""#
@@ -462,7 +462,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'concerts', (SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) FROM "concerts" LEFT JOIN "venues" AS "venues$venues" ON "concerts"."venue_id" = "venues$venues"."id" WHERE ("venues$venues"."id" = $1 AND "venues"."id" = "concerts"."venue_id")))), '[]'::json)::text FROM "venues""#,
@@ -510,7 +510,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT COALESCE(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
@@ -547,7 +547,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT "concerts"."id" FROM "concerts" ORDER BY "concerts"."name" ASC"#
@@ -584,7 +584,7 @@ mod tests {
                     limit: Some(Limit(20)),
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT "concerts"."id" FROM "concerts" WHERE "concerts"."name" = $1 LIMIT $2 OFFSET $3"#,
@@ -627,7 +627,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = Postgres {}.to_select(&aselect, &database);
+                let select = Postgres {}.to_select(aselect, &database);
                 assert_binding!(
                     select.to_sql(&database),
                     r#"SELECT "concerts"."id" FROM "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC"#

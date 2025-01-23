@@ -39,7 +39,7 @@ impl DeleteStrategy for CteStrategy {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_delete: &'a AbstractDelete,
+        abstract_delete: AbstractDelete,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
@@ -53,7 +53,7 @@ impl DeleteStrategy for CteStrategy {
 }
 
 fn to_delete<'a>(
-    abstract_delete: &'a AbstractDelete,
+    abstract_delete: AbstractDelete,
     database: &'a Database,
     transformer: &Postgres,
 ) -> WithQuery<'a> {
@@ -92,7 +92,7 @@ fn to_delete<'a>(
     );
 
     // The select (often a json aggregation)
-    let select = transformer.to_select(&abstract_delete.selection, database);
+    let select = transformer.to_select(abstract_delete.selection, database);
 
     // A WITH query that uses the `root_delete` as a CTE and then selects from it.
     // `WITH "concerts" AS <the delete above> <the select above>`. For example:
@@ -147,7 +147,7 @@ mod tests {
                     predicate: Predicate::True,
                 };
 
-                let delete = to_delete(&adelete, &database, &Postgres {});
+                let delete = to_delete(adelete, &database, &Postgres {});
                 assert_binding!(
                     delete.to_sql(&database),
                     r#"WITH "concerts" AS (DELETE FROM "concerts" RETURNING *) SELECT "concerts"."id" FROM "concerts""#
@@ -187,7 +187,7 @@ mod tests {
                     predicate,
                 };
 
-                let delete = to_delete(&adelete, &database, &Postgres {});
+                let delete = to_delete(adelete, &database, &Postgres {});
 
                 assert_binding!(
                     delete.to_sql(&database),
@@ -233,7 +233,7 @@ mod tests {
                     predicate,
                 };
 
-                let delete = to_delete(&adelete, &database, &Postgres {});
+                let delete = to_delete(adelete, &database, &Postgres {});
 
                 assert_binding!(
                     delete.to_sql(&database),

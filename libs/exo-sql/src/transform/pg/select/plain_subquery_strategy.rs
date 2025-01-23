@@ -105,7 +105,7 @@ impl SelectionStrategy for PlainSubqueryStrategy {
 
         nest_subselect(
             inner_select,
-            &abstract_select.selection,
+            abstract_select.selection,
             selection_level,
             alias_info,
             transformer,

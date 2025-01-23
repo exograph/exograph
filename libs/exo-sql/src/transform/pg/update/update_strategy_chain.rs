@@ -33,7 +33,7 @@ impl<'s> UpdateStrategyChain<'s> {
     /// `TransactionScript` with steps to execute.
     pub fn update_transaction_script<'a>(
         &self,
-        abstract_update: &'a AbstractUpdate,
+        abstract_update: AbstractUpdate,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
@@ -41,7 +41,7 @@ impl<'s> UpdateStrategyChain<'s> {
         let strategy = self
             .strategies
             .iter()
-            .find(|s| s.suitable(abstract_update, database))
+            .find(|s| s.suitable(&abstract_update, database))
             .unwrap();
 
         debug!("Using update strategy: {}", strategy.id());
