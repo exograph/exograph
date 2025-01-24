@@ -20,7 +20,10 @@ use crate::{
             TransactionContext, TransactionScript, TransactionStep, TransactionStepId,
         },
     },
-    transform::{pg::Postgres, transformer::SelectTransformer},
+    transform::{
+        pg::{precheck::add_precheck_queries, Postgres},
+        transformer::SelectTransformer,
+    },
     AbstractInsert, Column, ColumnId, ColumnValuePair, Database, InsertionRow, NestedInsertion,
     Predicate, SQLParamContainer, TableId,
 };
@@ -53,7 +56,15 @@ impl InsertionStrategy for MultiStatementStrategy {
             table_id,
             rows,
             selection,
+            precheck_predicates,
         } = abstract_insert;
+
+        add_precheck_queries(
+            precheck_predicates,
+            database,
+            transformer,
+            transaction_script,
+        );
 
         let insert_step_ids: Vec<_> = rows
             .into_iter()
@@ -225,6 +236,7 @@ fn insert_nested_row<'a>(
     let NestedInsertion {
         relation_id,
         insertions,
+        ..
     } = nested_row;
 
     let relation = relation_id.deref(database);

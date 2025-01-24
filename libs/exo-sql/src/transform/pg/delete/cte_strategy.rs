@@ -9,7 +9,7 @@
 
 use crate::{
     sql::cte::{CteExpression, WithQuery},
-    transform::transformer::PredicateTransformer,
+    transform::{pg::precheck::add_precheck_queries, transformer::PredicateTransformer},
 };
 
 use crate::{
@@ -44,7 +44,30 @@ impl DeleteStrategy for CteStrategy {
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
     ) {
-        let delete_query = to_delete(abstract_delete, database, transformer);
+        let AbstractDelete {
+            table_id,
+            predicate,
+            selection,
+            precheck_predicates,
+        } = abstract_delete;
+
+        add_precheck_queries(
+            precheck_predicates,
+            database,
+            transformer,
+            transaction_script,
+        );
+
+        let delete_query = to_delete(
+            AbstractDelete {
+                table_id,
+                predicate,
+                selection,
+                precheck_predicates: vec![],
+            },
+            database,
+            transformer,
+        );
 
         let _ = transaction_script.add_step(TransactionStep::Concrete(
             ConcreteTransactionStep::new(SQLOperation::WithQuery(delete_query)),
@@ -145,6 +168,7 @@ mod tests {
                         limit: None,
                     },
                     predicate: Predicate::True,
+                    precheck_predicates: vec![],
                 };
 
                 let delete = to_delete(adelete, &database, &Postgres {});
@@ -185,6 +209,7 @@ mod tests {
                         limit: None,
                     },
                     predicate,
+                    precheck_predicates: vec![],
                 };
 
                 let delete = to_delete(adelete, &database, &Postgres {});
@@ -231,6 +256,7 @@ mod tests {
                         limit: None,
                     },
                     predicate,
+                    precheck_predicates: vec![],
                 };
 
                 let delete = to_delete(adelete, &database, &Postgres {});

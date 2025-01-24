@@ -22,7 +22,10 @@ use crate::{
         },
         update::TemplateUpdate,
     },
-    transform::transformer::{InsertTransformer, PredicateTransformer},
+    transform::{
+        pg::precheck::add_precheck_queries,
+        transformer::{InsertTransformer, PredicateTransformer},
+    },
     ColumnId, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
     NestedAbstractUpdate, PhysicalColumn, Predicate, SQLParamContainer,
 };
@@ -75,6 +78,13 @@ impl UpdateStrategy for MultiStatementStrategy {
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
     ) {
+        add_precheck_queries(
+            abstract_update.precheck_predicates,
+            database,
+            transformer,
+            transaction_script,
+        );
+
         let predicate = transformer.to_predicate(
             &abstract_update.predicate,
             &SelectionLevel::TopLevel,
@@ -374,6 +384,7 @@ mod tests {
                         offset: None,
                         limit: None,
                     },
+                    precheck_predicates: vec![],
                 };
 
                 let update =
@@ -429,6 +440,7 @@ mod tests {
                         nested_updates: vec![],
                         nested_inserts: vec![],
                         nested_deletes: vec![],
+                        precheck_predicates: vec![],
                     },
                 };
 
@@ -459,6 +471,7 @@ mod tests {
                         offset: None,
                         limit: None,
                     },
+                    precheck_predicates: vec![],
                 };
 
                 let update =

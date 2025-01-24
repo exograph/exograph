@@ -99,6 +99,7 @@ pub enum TransactionStep<'a> {
     Template(TemplateTransactionStep<'a>),
     Filter(TemplateFilterOperation),
     Dynamic(DynamicTransactionStep<'a>),
+    Precheck(Select),
 }
 
 impl<'a> TransactionStep<'a> {
@@ -142,6 +143,18 @@ impl<'a> TransactionStep<'a> {
                 step.resolve(transaction_context)
                     .execute(database, client)
                     .await
+            }
+            Self::Precheck(select) => {
+                let precheck_result =
+                    run_query(SQLOperation::Select(select), database, client).await?;
+                if precheck_result.len() != 1 {
+                    return Err(DatabaseError::Precheck(format!(
+                        "Expected 1 row, got {}",
+                        precheck_result.len()
+                    )));
+                }
+
+                Ok(precheck_result)
             }
         }
     }

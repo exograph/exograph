@@ -20,4 +20,7 @@ pub struct AbstractDelete {
     pub predicate: AbstractPredicate,
     /// The selection to return
     pub selection: AbstractSelect,
+
+    /// The precheck predicates to run before deleting
+    pub precheck_predicates: Vec<AbstractPredicate>,
 }

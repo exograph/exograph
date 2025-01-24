@@ -69,6 +69,7 @@ impl<'a> SQLMapper<'a, AbstractUpdate> for UpdateOperation<'a> {
             nested_updates,
             nested_inserts,
             nested_deletes,
+            precheck_predicates: vec![],
         };
 
         Ok(abs_update)
@@ -282,7 +283,7 @@ async fn compute_nested_update_object_arg<'a>(
         ignore_missing_context: true,
     });
 
-    let (_precheck_predicate, entity_predicate) = check_access(
+    let (precheck_predicate, entity_predicate) = check_access(
         &subsystem.core_subsystem.entity_types[field_entity_type.entity_id],
         &[],
         &SQLOperationKind::Update,
@@ -339,6 +340,7 @@ async fn compute_nested_update_object_arg<'a>(
             nested_updates: vec![],
             nested_inserts: vec![],
             nested_deletes: vec![],
+            precheck_predicates: vec![precheck_predicate],
         },
     })
 }
@@ -360,7 +362,7 @@ async fn compute_nested_inserts<'a>(
     ) -> Result<NestedAbstractInsert, PostgresExecutionError> {
         let table_id = subsystem.core_subsystem.entity_types[field_entity_type.entity_id].table_id;
 
-        let rows = super::create_data_param_mapper::map_argument(
+        let (rows, precheck_predicates) = super::create_data_param_mapper::map_argument(
             field_entity_type,
             argument,
             subsystem,
@@ -376,7 +378,8 @@ async fn compute_nested_inserts<'a>(
                 .collect(),
             insert: AbstractInsert {
                 table_id,
-                rows: rows.operation,
+                rows,
+                precheck_predicates,
                 selection: AbstractSelect {
                     table_id,
                     selection: Selection::Seq(vec![]),
@@ -507,7 +510,7 @@ async fn compute_nested_delete_object_arg<'a>(
         ignore_missing_context: false,
     });
 
-    let (_precheck_predicate, entity_predicate) = check_access(
+    let (precheck_predicate, entity_predicate) = check_access(
         &subsystem.core_subsystem.entity_types[field_mutation_type.entity_id],
         &[],
         &SQLOperationKind::Delete,
@@ -554,6 +557,7 @@ async fn compute_nested_delete_object_arg<'a>(
                 offset: None,
                 limit: None,
             },
+            precheck_predicates: vec![precheck_predicate],
         },
     })
 }
