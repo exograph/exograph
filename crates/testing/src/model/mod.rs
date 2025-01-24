@@ -51,4 +51,10 @@ pub struct ApiOperation {
     pub headers: Option<String>, // stringified
 
     pub expected_response: Option<String>, // stringified
+    pub invariants: Vec<ApiOperationInvariant>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ApiOperationInvariant {
+    pub operation: ApiOperation,
 }

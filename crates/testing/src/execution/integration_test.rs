@@ -27,6 +27,7 @@ use regex::Regex;
 use serde_json::{json, Map, Value};
 use system_router::{create_system_router_from_file, SystemRouter};
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -35,8 +36,10 @@ use std::{collections::HashMap, time::SystemTime};
 
 use exo_env::MapEnvironment;
 
+use crate::execution::assertion::assert_using_deno;
 use crate::model::{
-    resolve_testvariable, ApiOperation, DatabaseOperation, InitOperation, IntegrationTest,
+    resolve_testvariable, ApiOperation, ApiOperationInvariant, DatabaseOperation, InitOperation,
+    IntegrationTest,
 };
 
 use super::assertion::{dynamic_assert_using_deno, evaluate_using_deno};
@@ -221,7 +224,7 @@ impl IntegrationTest {
 
         let mut fail = None;
         for operation in self.test_operations.iter() {
-            let result = run_api_operation(operation, &mut ctx)
+            let result = assert_api_operation(operation, &mut ctx)
                 .await
                 .with_context(|| anyhow!("While running tests for {}", self.name()));
 
@@ -263,7 +266,7 @@ async fn run_init_operation(
 ) -> Result<OperationResult> {
     match operation {
         InitOperation::Database(operation) => run_database_operation(operation, ctx).await,
-        InitOperation::Api(operation) => run_api_operation(operation, ctx).await,
+        InitOperation::Api(operation) => assert_api_operation(operation, ctx).await,
     }
 }
 
@@ -283,18 +286,136 @@ async fn run_database_operation(
     Ok(OperationResult::Pass)
 }
 
-async fn run_api_operation(
+async fn assert_api_operation(
     operation: &ApiOperation,
     ctx: &mut TestfileContext,
 ) -> Result<OperationResult> {
     let ApiOperation {
-        document,
         metadata: operations_metadata,
-        variables,
         expected_response: expected_payload,
+        deno_prelude,
+        invariants,
+        ..
+    } = operation;
+
+    let deno_prelude = deno_prelude.clone().unwrap_or_default();
+
+    let pre_results = collect_invariants_results(invariants, ctx).await?;
+
+    let body = execute_api_operation(operation, ctx).await?;
+
+    let post_results = collect_invariants_results(invariants, ctx).await?;
+
+    let invariant_result = match assert_invariant_results(
+        pre_results,
+        post_results,
+        &operations_metadata.unordered_paths,
+    )
+    .await
+    {
+        Ok(()) => OperationResult::Pass,
+        Err(e) => OperationResult::Fail(e),
+    };
+
+    // resolve testvariables from the result of our current operation
+    // and extend our collection with them
+    let resolved_variables_keys = operations_metadata.bindings.keys().cloned();
+    let resolved_variables_values = operations_metadata
+        .bindings
+        .keys()
+        .map(|name| resolve_testvariable(name, &body, &operations_metadata.bindings))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter();
+    let resolved_variables: HashMap<_, _> = resolved_variables_keys
+        .zip(resolved_variables_values)
+        .collect();
+    ctx.testvariables.extend(resolved_variables);
+
+    let test_result = match expected_payload {
+        Some(expected_payload) => {
+            // expected response specified - do an assertion
+            match dynamic_assert_using_deno(
+                expected_payload,
+                body,
+                &deno_prelude,
+                &ctx.testvariables,
+                &operations_metadata.unordered_paths,
+            )
+            .await
+            {
+                Ok(()) => OperationResult::Pass,
+                Err(e) => OperationResult::Fail(e),
+            }
+        }
+
+        None => {
+            // No expected response specified - just check for errors
+            match body.get("errors") {
+                Some(_) => OperationResult::Fail(anyhow!(
+                    "Unexpected error in response: {}",
+                    serde_json::to_string_pretty(&body)?
+                )),
+                None => OperationResult::Pass,
+            }
+        }
+    };
+
+    match (test_result, invariant_result) {
+        (OperationResult::Pass, OperationResult::Pass) => Ok(OperationResult::Pass),
+        (OperationResult::Fail(e), OperationResult::Pass) => Ok(OperationResult::Fail(e)),
+        (OperationResult::Pass, OperationResult::Fail(e)) => Ok(OperationResult::Fail(e)),
+        (OperationResult::Fail(e), OperationResult::Fail(_)) => Ok(OperationResult::Fail(e)),
+    }
+}
+
+async fn collect_invariants_results(
+    invariants: &[ApiOperationInvariant],
+    ctx: &mut TestfileContext,
+) -> Result<Vec<Value>> {
+    let mut invariant_results: Vec<Value> = vec![];
+
+    for invariant in invariants {
+        let result = execute_api_operation(&invariant.operation, ctx).await?;
+        invariant_results.push(result);
+    }
+
+    Ok(invariant_results)
+}
+
+async fn assert_invariant_results(
+    pre_results: Vec<Value>,
+    post_results: Vec<Value>,
+    unordered_paths: &HashSet<Vec<String>>,
+) -> Result<()> {
+    if pre_results.len() != post_results.len() {
+        return Err(anyhow!(
+            "Invariants failed to return the same number of results before and after the operation"
+        ));
+    }
+
+    for (pre_result, post_result) in pre_results.into_iter().zip(post_results.into_iter()) {
+        if pre_result.get("errors").is_some() || post_result.get("errors").is_some() {
+            println!("pre_result: {:?}", pre_result);
+            println!("post_result: {:?}", post_result);
+            return Err(anyhow!("Invariants queries should not return errors"));
+        }
+        assert_using_deno(post_result, pre_result, unordered_paths).await?;
+    }
+
+    Ok(())
+}
+
+async fn execute_api_operation(
+    operation: &ApiOperation,
+    ctx: &mut TestfileContext,
+) -> Result<Value> {
+    let ApiOperation {
+        document,
+        variables,
         auth,
         headers,
         deno_prelude,
+        ..
     } = operation;
 
     let deno_prelude = deno_prelude.clone().unwrap_or_default();
@@ -377,50 +498,7 @@ async fn run_api_operation(
 
     let request = MemoryRequestPayload::new(operations_payload.to_json()?, request_head);
     // run the operation
-    let body = run_query(request, &ctx.router, &mut ctx.cookies).await?;
-
-    // resolve testvariables from the result of our current operation
-    // and extend our collection with them
-    let resolved_variables_keys = operations_metadata.bindings.keys().cloned();
-    let resolved_variables_values = operations_metadata
-        .bindings
-        .keys()
-        .map(|name| resolve_testvariable(name, &body, &operations_metadata.bindings))
-        .collect::<Result<Vec<_>>>()?
-        .into_iter();
-    let resolved_variables: HashMap<_, _> = resolved_variables_keys
-        .zip(resolved_variables_values)
-        .collect();
-    ctx.testvariables.extend(resolved_variables);
-
-    match expected_payload {
-        Some(expected_payload) => {
-            // expected response specified - do an assertion
-            match dynamic_assert_using_deno(
-                expected_payload,
-                body,
-                &deno_prelude,
-                &ctx.testvariables,
-                &operations_metadata.unordered_paths,
-            )
-            .await
-            {
-                Ok(()) => Ok(OperationResult::Pass),
-                Err(e) => Ok(OperationResult::Fail(e)),
-            }
-        }
-
-        None => {
-            // No expected response specified - just check for errors
-            match body.get("errors") {
-                Some(_) => Ok(OperationResult::Fail(anyhow!(
-                    "Unexpected error in response: {}",
-                    serde_json::to_string_pretty(&body)?
-                ))),
-                None => Ok(OperationResult::Pass),
-            }
-        }
-    }
+    Ok(run_query(request, &ctx.router, &mut ctx.cookies).await?)
 }
 
 pub async fn run_query(

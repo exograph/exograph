@@ -17,6 +17,10 @@ class AssertionError extends Error {
     }
 }
 
+// Called from Rust to substitute variables in `variable`, `headers`, and `auth` from gql/exotest files.
+//
+// The Rust code replaces `%%JSON%%` with the stringified JSON object to be substituted in.
+// See `evaluate_using_deno` in `mod.rs` for more details.
 export async function evaluate(testvariables) {
     var $ = testvariables;
 
@@ -27,7 +31,11 @@ export async function evaluate(testvariables) {
     return JSON.parse(JSON.stringify(json));
 }
 
-export async function test(actualPayload, testvariables, unorderedSelections) {
+// Variable-substitution-sensitive assertion that the actual response matches the expected response.
+//
+// The Rust code replaces `%%JSON%%` with the stringified JSON object to be substituted in.
+// See `dynamic_assert_using_deno` in `mod.rs` for more details.
+export async function dynamic_assert(actualPayload, testvariables, unorderedSelections) {
     var $ = testvariables;
 
     // substituted in from Rust
@@ -35,6 +43,18 @@ export async function test(actualPayload, testvariables, unorderedSelections) {
 
     try {
         await assertEquals(expectedPayload, actualPayload, [], unorderedSelections);
+    } catch (e) {
+        if (e instanceof AssertionError) {
+            throw new ExographError(`assertion failed at '${e.path.join(".")}': ${e.message}`);
+        } else {
+            throw e;
+        }
+    }
+}
+
+export async function assert(expected, actual, unorderedSelections) {
+    try {
+        await assertEquals(expected, actual, [], unorderedSelections);
     } catch (e) {
         if (e instanceof AssertionError) {
             throw new ExographError(`assertion failed at '${e.path.join(".")}': ${e.message}`);
@@ -60,7 +80,7 @@ async function assertEquals(expected, actual, path, unorderedSelections) {
                     await assertEquals(expectedValue, actualValue, newPath, unorderedSelections);
                 }
 
-                // recursively verify that no extraneous key/values are present in actualValue
+                // verify that no extraneous key/values are present in actualValue
                 for (const key in actual) {
                     if (expected[key] === undefined) {
                         throw new AssertionError(`unexpected key ${key} in actual response`, path)

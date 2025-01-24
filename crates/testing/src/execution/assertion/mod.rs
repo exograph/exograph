@@ -48,7 +48,93 @@ pub async fn dynamic_assert_using_deno(
     let script = script.replace("\"%%PRELUDE%%\"", prelude);
     let script = script.replace("\"%%JSON%%\"", expected);
 
-    let mut deno_module = DenoModule::new(
+    let mut deno_module = create_deno_module(script).await?;
+
+    // run method
+    let _ = deno_module
+        .execute_function(
+            "dynamic_assert",
+            vec![
+                Arg::Serde(actual.clone()),
+                Arg::Serde(testvariables_json),
+                Arg::Serde(unordeded_selections_json),
+            ],
+        )
+        .await
+        .map_err(|e| {
+            anyhow!(
+                "{}\n➞ Expected: \n{}\n➞ Got: \n{}\n",
+                e,
+                expected,
+                serde_json::to_string_pretty(&actual).unwrap()
+            )
+        })?;
+
+    Ok(())
+}
+
+// Evaluates substitutions only in a stringified 'JSON' payload.
+//
+// Used to substitute variable in `variable`, `headers`, and `auth` from gql/exotest files.
+pub async fn evaluate_using_deno(
+    not_really_json: &str,
+    prelude: &str,
+    testvariables: &HashMap<String, serde_json::Value>,
+) -> Result<serde_json::Value> {
+    let testvariables_json = serde_json::to_value(testvariables)?;
+
+    // first substitute expected variables
+    let script = ASSERT_JS.to_owned();
+    let script = script.replace("\"%%PRELUDE%%\"", prelude);
+    let script = script.replace("\"%%JSON%%\"", not_really_json);
+
+    let mut deno_module = create_deno_module(script).await?;
+
+    // run method
+    deno_module
+        .execute_function("evaluate", vec![Arg::Serde(testvariables_json)])
+        .await
+        .map_err(|e| anyhow!(e))
+}
+
+// Evaluates substitutions only in a stringified 'JSON' payload.
+//
+// Used to substitute variable in `variable`, `headers`, and `auth` from gql/exotest files.
+pub async fn assert_using_deno(
+    actual: serde_json::Value,
+    expected: serde_json::Value,
+    unordeded_selections: &HashSet<Vec<String>>,
+) -> Result<()> {
+    let script = ASSERT_JS.to_owned();
+    let unordeded_selections_json = serde_json::to_value(unordeded_selections)?;
+
+    let mut deno_module = create_deno_module(script).await?;
+
+    // run method
+    deno_module
+        .execute_function(
+            "assert",
+            vec![
+                Arg::Serde(expected.clone()),
+                Arg::Serde(actual.clone()),
+                Arg::Serde(unordeded_selections_json),
+            ],
+        )
+        .await
+        .map_err(|e| {
+            anyhow!(
+                "{}\n➞ Expected: \n{}\n➞ Got: \n{}\n",
+                e,
+                serde_json::to_string_pretty(&expected).unwrap(),
+                serde_json::to_string_pretty(&actual).unwrap()
+            )
+        })?;
+
+    Ok(())
+}
+
+async fn create_deno_module(script: String) -> Result<DenoModule> {
+    let deno_module = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "file:///internal/assert.js".to_owned(),
             script: DenoScriptDefn {
@@ -79,85 +165,14 @@ pub async fn dynamic_assert_using_deno(
     )
     .await?;
 
-    // run method
-    let _ = deno_module
-        .execute_function(
-            "test",
-            vec![
-                Arg::Serde(actual.clone()),
-                Arg::Serde(testvariables_json),
-                Arg::Serde(unordeded_selections_json),
-            ],
-        )
-        .await
-        .map_err(|e| {
-            anyhow!(
-                "{}\n➞ Expected: \n{}\n➞ Got: \n{}\n",
-                e,
-                expected,
-                serde_json::to_string_pretty(&actual).unwrap()
-            )
-        })?;
-
-    Ok(())
-}
-
-// Evaluates substitutions only in a stringified 'JSON' payload.
-pub async fn evaluate_using_deno(
-    not_really_json: &str,
-    prelude: &str,
-    testvariables: &HashMap<String, serde_json::Value>,
-) -> Result<serde_json::Value> {
-    let testvariables_json = serde_json::to_value(testvariables)?;
-
-    // first substitute expected variables
-    let script = ASSERT_JS.to_owned();
-    let script = script.replace("\"%%PRELUDE%%\"", prelude);
-    let script = script.replace("\"%%JSON%%\"", not_really_json);
-
-    let mut deno_module = DenoModule::new(
-        UserCode::LoadFromMemory {
-            path: "file:///internal/assert.js".to_owned(),
-            script: DenoScriptDefn {
-                modules: vec![(
-                    Url::parse("file:///internal/assert.js").unwrap(),
-                    ResolvedModule::Module(
-                        script,
-                        ModuleType::JavaScript,
-                        Url::parse("file:///internal/assert.js").unwrap(),
-                        false,
-                    ),
-                )]
-                .into_iter()
-                .collect(),
-                npm_snapshot: None,
-            },
-        },
-        "ExographTest",
-        vec![],
-        vec![],
-        vec![],
-        DenoModuleSharedState::default(),
-        None,
-        None,
-        None,
-    )
-    .await?;
-
-    // run method
-    deno_module
-        .execute_function("evaluate", vec![Arg::Serde(testvariables_json)])
-        .await
-        .map_err(|e| anyhow!(e))
+    Ok(deno_module)
 }
 
 #[cfg(test)]
 mod tests {
     use std::collections::{HashMap, HashSet};
 
-    use crate::execution::assertion::evaluate_using_deno;
-
-    use super::dynamic_assert_using_deno;
+    use super::*;
 
     fn actual_payload() -> serde_json::Value {
         serde_json::from_str(
@@ -175,7 +190,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_dynamic_assert() {
+    async fn dynamic_assert() {
         let expected = r#"
             {
                 "data": {
@@ -205,7 +220,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_evaluation() {
+    async fn evaluation() {
         let payload = r#"
             {
                 "data": {
@@ -233,7 +248,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_dynamic_assert_failing_normal_payloads() {
+    async fn dynamic_assert_failing_normal_payloads() {
         let expected = r#"
             {
                 "data": {
@@ -262,7 +277,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_dynamic_assert_failing_closure_test() {
+    async fn dynamic_assert_failing_closure_test() {
         let expected = r#"
             {
                 "data": {
@@ -291,7 +306,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_deno_prelude_and_async() {
+    async fn deno_prelude_and_async() {
         let prelude = r#"
             function someAsyncOp() {
                 return new Promise(resolve => setTimeout(resolve, 1000));
@@ -322,7 +337,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn unordered_assert() {
+    async fn unordered_dynamic_and_static_assert() {
         let expected = r#"
             {
                 "data": {
@@ -380,6 +395,16 @@ mod tests {
         .await
         .unwrap();
 
+        assert_using_deno(
+            serde_json::from_str(expected).unwrap(),
+            serde_json::from_str(actual).unwrap(),
+            &vec![vec!["data".to_string(), "products".to_string()]]
+                .into_iter()
+                .collect(),
+        )
+        .await
+        .unwrap();
+
         // failure cases (non-matching selections)
         for unordered_selection in [
             vec![].into_iter().collect(),
@@ -387,15 +412,26 @@ mod tests {
             vec!["products".to_string()].into_iter().collect(),
             vec!["id".to_string()].into_iter().collect(),
         ] {
+            let unordered_selection = vec![unordered_selection].into_iter().collect();
+
             let result = dynamic_assert_using_deno(
                 expected,
                 serde_json::from_str(actual).unwrap(),
                 "",
                 &testvariables,
-                &vec![unordered_selection].into_iter().collect(),
+                &unordered_selection,
             )
             .await;
-            assert!(result.is_err());
+            assert!(result.is_err(), "Dynamic assert should fail");
+
+            let result = assert_using_deno(
+                serde_json::from_str(expected).unwrap(),
+                serde_json::from_str(actual).unwrap(),
+                &unordered_selection,
+            )
+            .await;
+
+            assert!(result.is_err(), "Assert should fail");
         }
     }
 }
