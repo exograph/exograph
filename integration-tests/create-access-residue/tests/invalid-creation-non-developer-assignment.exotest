@@ -1,3 +1,5 @@
+invariants:
+  - path: system-state.gql
 operation: |
   mutation($uId: Int!) {
       createIssue(data: {title: "I-new", assignee: {id: $uId}}) {

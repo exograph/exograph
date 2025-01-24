@@ -357,4 +357,51 @@ If you want to use an externally implemented function to implement the assertion
 
 By importing the `v4` function from the `uuid` module, you bring that code into your test file. You can then use it to implement the assertion.
 
+## Adding invariants
+
+Often, especially when testing access control rejection with mutations, you want to ensure that the system remains in the same state as before the operation. For example, if you are testing that a user without the `admin` role cannot create a new `Product`, you want to ensure that no new product enters the database. You can do that by adding invariants.
+
+Invariants are specified using the `invariants` section of the test file. For example, if you want to ensure that all products remain the same after a mutation, you can specify an invariant that queries the products and compares the result with the previous state:
+
+```graphql file=tests/create-product-user.exotest
+invariants:
+  - path: system-state.gql
+operation: |
+  mutation {
+      createProduct(data: {name: "P1", price: 100}) {
+          id
+      }
+  }
+auth: |
+  {
+      "role": "user"
+  }
+...
+```
+
+Here, the `path` is relative to the test file.
+
+The format for the invariant file is the same as [init files](#initializing-seed-data). For example, to ensure that all products and departments remain the same, you can use the following `system-state.gql` file:
+
+```graphql file=tests/system-state.gql
+- operation: |
+    query {
+        products @unordered {
+            id
+            name
+        }
+        departments @unordered {
+            id
+            name
+        }
+    }
+- auth: |
+    {
+        "role": "admin"
+    }
+```
+
+Exograph will execute the invariant operations before and after each test. If the results do not match, the test is considered to have failed.
+
+
 <!-- TODO: Multi-stage tests -->

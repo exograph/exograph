@@ -1,0 +1,25 @@
+operation: |
+  query {
+    issues {
+      id
+      title
+      assignee {
+        id
+        name
+        position
+      }
+    }
+    employees {
+      id
+      name
+      position
+      issues {
+        id
+        title
+      }
+    }
+  }
+auth: |
+  {
+    "role": "admin"
+  }

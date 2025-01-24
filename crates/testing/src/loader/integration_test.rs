@@ -19,8 +19,8 @@ use async_graphql_parser::parse_query;
 use serde::Deserialize;
 
 use crate::model::{
-    build_operations_metadata, ApiOperation, DatabaseOperation, InitOperation, IntegrationTest,
-    OperationMetadata,
+    build_operations_metadata, ApiOperation, ApiOperationInvariant, DatabaseOperation,
+    InitOperation, IntegrationTest, OperationMetadata,
 };
 
 // serde file formats
@@ -32,6 +32,14 @@ struct TestfileStage {
     pub variable: Option<String>,
     pub auth: Option<String>,
     pub response: Option<String>,
+    pub invariants: Option<Vec<TestfileStageInvariant>>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct TestfileStageInvariant {
+    // Path the invariant file (relative to the testfile)
+    pub path: String,
+    // TODO: Allow overriding headers, auth, variables, etc.
 }
 
 #[derive(Deserialize, Debug)]
@@ -156,6 +164,9 @@ impl IntegrationTest {
                         OperationMetadata::default()
                     });
 
+                let invariants =
+                    Self::load_invariants(testfile_path, stage.invariants.unwrap_or_default())?;
+
                 Ok(ApiOperation {
                     document: stage.operation,
                     metadata: operations_metadata,
@@ -164,6 +175,7 @@ impl IntegrationTest {
                     expected_response: stage.response,
                     headers: stage.headers,
                     deno_prelude: stage.deno,
+                    invariants,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
@@ -177,5 +189,25 @@ impl IntegrationTest {
             init_operations: init_ops,
             test_operations: test_operation_sequence,
         })
+    }
+
+    fn load_invariants(
+        testfile_path: &Path,
+        invariants: Vec<TestfileStageInvariant>,
+    ) -> Result<Vec<ApiOperationInvariant>> {
+        let testfile_dir = testfile_path.parent().unwrap();
+
+        let mut invariant_ops: Vec<ApiOperationInvariant> = vec![];
+
+        for invariant in invariants {
+            let invariant_path = testfile_dir.join(invariant.path.clone());
+            let integration_test = Self::load(&invariant_path, vec![])?;
+
+            for op in integration_test.test_operations {
+                invariant_ops.push(ApiOperationInvariant { operation: op });
+            }
+        }
+
+        Ok(invariant_ops)
     }
 }

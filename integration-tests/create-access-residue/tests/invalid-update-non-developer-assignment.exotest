@@ -1,3 +1,5 @@
+invariants:
+  - path: system-state.gql
 operation: |
   mutation($issueId: Int!, $uId: Int!) {
       updateIssue(id: $issueId, data: {title: "I1-updated", assignee: {id: $uId}}) {
