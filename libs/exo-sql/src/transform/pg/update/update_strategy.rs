@@ -21,7 +21,7 @@ pub(crate) trait UpdateStrategy {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_update: &'a AbstractUpdate,
+        abstract_update: AbstractUpdate,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,

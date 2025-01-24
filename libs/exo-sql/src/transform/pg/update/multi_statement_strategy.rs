@@ -22,7 +22,10 @@ use crate::{
         },
         update::TemplateUpdate,
     },
-    transform::transformer::{InsertTransformer, PredicateTransformer},
+    transform::{
+        pg::precheck::add_precheck_queries,
+        transformer::{InsertTransformer, PredicateTransformer},
+    },
     ColumnId, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractInsertSet,
     NestedAbstractUpdate, PhysicalColumn, Predicate, SQLParamContainer,
 };
@@ -70,11 +73,18 @@ impl UpdateStrategy for MultiStatementStrategy {
     /// ```
     fn update_transaction_script<'a>(
         &self,
-        abstract_update: &'a AbstractUpdate,
+        abstract_update: AbstractUpdate,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
     ) {
+        add_precheck_queries(
+            abstract_update.precheck_predicates,
+            database,
+            transformer,
+            transaction_script,
+        );
+
         let predicate = transformer.to_predicate(
             &abstract_update.predicate,
             &SelectionLevel::TopLevel,
@@ -110,8 +120,8 @@ impl UpdateStrategy for MultiStatementStrategy {
         } else {
             let column_id_values: Vec<(ColumnId, MaybeOwned<'a, Column>)> = abstract_update
                 .column_values
-                .iter()
-                .map(|(c, v)| (*c, v.into()))
+                .into_iter()
+                .map(|(c, v)| (c, v.into()))
                 .collect();
 
             let column_values = column_id_values
@@ -131,7 +141,7 @@ impl UpdateStrategy for MultiStatementStrategy {
 
         abstract_update
             .nested_updates
-            .iter()
+            .into_iter()
             .for_each(|nested_update| {
                 // Create a template update operation and bind it to the root step
                 let update_op = TemplateTransactionStep {
@@ -142,13 +152,13 @@ impl UpdateStrategy for MultiStatementStrategy {
                 let _ = transaction_script.add_step(TransactionStep::Template(update_op));
             });
 
-        abstract_update.nested_inserts.iter().for_each(
+        abstract_update.nested_inserts.into_iter().for_each(
             |NestedAbstractInsertSet {
                  ops,
                  filter_predicate,
              }| {
                 let filter_step_predicate = transformer.to_predicate(
-                    filter_predicate,
+                    &filter_predicate,
                     &SelectionLevel::TopLevel,
                     false,
                     database,
@@ -175,7 +185,7 @@ impl UpdateStrategy for MultiStatementStrategy {
 
         abstract_update
             .nested_deletes
-            .iter()
+            .into_iter()
             .for_each(|nested_delete| {
                 let delete_op = TemplateTransactionStep {
                     operation: delete_op(nested_delete, transformer, database),
@@ -185,7 +195,7 @@ impl UpdateStrategy for MultiStatementStrategy {
                 let _ = transaction_script.add_step(TransactionStep::Template(delete_op));
             });
 
-        let select = transformer.to_select(&abstract_update.selection, database);
+        let select = transformer.to_select(abstract_update.selection, database);
 
         let table_id = abstract_update.table_id;
 
@@ -248,14 +258,14 @@ impl UpdateStrategy for MultiStatementStrategy {
 }
 
 fn update_op<'a>(
-    nested_update: &'a NestedAbstractUpdate,
+    nested_update: NestedAbstractUpdate,
     predicate_transformer: &impl PredicateTransformer,
     database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
-    let column_values: Vec<(&PhysicalColumn, &Column)> = nested_update
+    let column_values: Vec<(&PhysicalColumn, Column)> = nested_update
         .update
         .column_values
-        .iter()
+        .into_iter()
         .map(|(col_id, col)| (col_id.get_column(database), col))
         .collect();
 
@@ -274,7 +284,7 @@ fn update_op<'a>(
 }
 
 fn add_insert_steps<'a>(
-    nested_insert: &'a NestedAbstractInsert,
+    nested_insert: NestedAbstractInsert,
     parent_step_id: TransactionStepId,
     database: &'a Database,
     transformer: &Postgres,
@@ -294,7 +304,7 @@ fn add_insert_steps<'a>(
 }
 
 fn delete_op<'a>(
-    nested_delete: &'a NestedAbstractDelete,
+    nested_delete: NestedAbstractDelete,
     predicate_transformer: &impl PredicateTransformer,
     database: &'a Database,
 ) -> TemplateSQLOperation<'a> {
@@ -374,10 +384,11 @@ mod tests {
                         offset: None,
                         limit: None,
                     },
+                    precheck_predicates: vec![],
                 };
 
                 let update =
-                    UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update, &database);
+                    UpdateTransformer::to_transaction_script(&Postgres {}, abs_update, &database);
 
                 // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{update:#?}");
@@ -429,6 +440,7 @@ mod tests {
                         nested_updates: vec![],
                         nested_inserts: vec![],
                         nested_deletes: vec![],
+                        precheck_predicates: vec![],
                     },
                 };
 
@@ -459,10 +471,11 @@ mod tests {
                         offset: None,
                         limit: None,
                     },
+                    precheck_predicates: vec![],
                 };
 
                 let update =
-                    UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update, &database);
+                    UpdateTransformer::to_transaction_script(&Postgres {}, abs_update, &database);
 
                 // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{update:#?}");

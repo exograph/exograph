@@ -12,6 +12,8 @@ mod insert;
 mod select;
 mod update;
 
+mod precheck;
+
 mod order_by_transformer;
 mod predicate_transformer;
 

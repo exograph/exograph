@@ -85,7 +85,7 @@ pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: ConcretePredicate,
     pub nesting_relation: OneToMany,
-    pub column_values: Vec<(&'a PhysicalColumn, &'a Column)>,
+    pub column_values: Vec<(&'a PhysicalColumn, Column)>,
     pub returning: Vec<Column>,
 }
 
@@ -106,7 +106,7 @@ impl<'a> TemplateUpdate<'a> {
                     .column_values
                     .iter()
                     .map(|(physical_col, col)| {
-                        let resolved_col = (*col).into();
+                        let resolved_col = col.into();
                         (*physical_col, resolved_col)
                     })
                     .collect();

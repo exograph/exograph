@@ -23,7 +23,7 @@ pub(crate) trait InsertionStrategy {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_insert: &'a AbstractInsert,
+        abstract_insert: AbstractInsert,
         parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
         transformer: &Postgres,

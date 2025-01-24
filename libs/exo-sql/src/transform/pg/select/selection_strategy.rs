@@ -77,7 +77,7 @@ pub(super) fn compute_inner_select(
 /// Compute a nested version of the given inner select, with the given selection applied.
 pub(super) fn nest_subselect(
     inner_select: Select,
-    selection: &Selection,
+    selection: Selection,
     selection_level: &SelectionLevel,
     alias: (String, PhysicalTableName),
     transformer: &Postgres,

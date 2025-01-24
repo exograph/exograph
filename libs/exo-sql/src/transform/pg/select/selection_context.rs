@@ -15,7 +15,7 @@ use crate::{
 /// A context for the selection transformation to avoid repeating the same work
 /// by each strategy.
 pub(crate) struct SelectionContext<'c> {
-    pub abstract_select: &'c AbstractSelect,
+    pub abstract_select: AbstractSelect,
     pub has_a_one_to_many_predicate: bool,
     pub predicate_column_paths: Vec<PhysicalColumnPath>,
     pub order_by_column_paths: Vec<PhysicalColumnPath>,
@@ -27,7 +27,7 @@ pub(crate) struct SelectionContext<'c> {
 impl<'c> SelectionContext<'c> {
     pub fn new(
         database: &Database,
-        abstract_select: &'c AbstractSelect,
+        abstract_select: AbstractSelect,
         selection_level: &'c SelectionLevel,
         allow_duplicate_rows: bool,
         transformer: &'c Postgres,

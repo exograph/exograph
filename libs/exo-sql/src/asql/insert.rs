@@ -25,7 +25,7 @@
 
 use super::select::AbstractSelect;
 use crate::sql::column::Column;
-use crate::{ColumnId, OneToManyId, TableId};
+use crate::{AbstractPredicate, ColumnId, OneToManyId, TableId};
 
 #[derive(Debug)]
 pub struct AbstractInsert {
@@ -35,6 +35,8 @@ pub struct AbstractInsert {
     pub rows: Vec<InsertionRow>,
     /// The selection to return
     pub selection: AbstractSelect,
+    /// Check to run before inserting (if the resulting select returns 1 row, then the precheck passes)
+    pub precheck_predicates: Vec<AbstractPredicate>,
 }
 
 /// A logical row to be inserted (see `InsertionElement` for more details).
@@ -46,10 +48,10 @@ pub struct InsertionRow {
 impl InsertionRow {
     /// Partitions the elements into two groups: those that are inserted into
     /// the table itself, and those that are inserted into nested tables.
-    pub fn partition_self_and_nested(&self) -> (Vec<&ColumnValuePair>, Vec<&NestedInsertion>) {
+    pub fn partition_self_and_nested(self) -> (Vec<ColumnValuePair>, Vec<NestedInsertion>) {
         let mut self_elems = Vec::new();
         let mut nested_elems = Vec::new();
-        for elem in &self.elems {
+        for elem in self.elems {
             match elem {
                 InsertionElement::SelfInsert(pair) => self_elems.push(pair),
                 InsertionElement::NestedInsert(nested) => nested_elems.push(nested),
@@ -64,6 +66,7 @@ pub struct NestedInsertion {
     /// The relation with the parent element (the self_pk_column_id is the parent table's pk column and the self_column_id is the column in the table being inserted that refers to the the parent table)
     pub relation_id: OneToManyId,
     pub insertions: Vec<InsertionRow>,
+    pub precheck_predicates: Vec<AbstractPredicate>,
 }
 
 /// A pair of column and value to be inserted into the table.

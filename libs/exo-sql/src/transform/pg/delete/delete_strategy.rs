@@ -21,7 +21,7 @@ pub(crate) trait DeleteStrategy {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_delete: &'a AbstractDelete,
+        abstract_delete: AbstractDelete,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,

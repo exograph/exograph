@@ -19,7 +19,7 @@ use super::delete_strategy_chain::DeleteStrategyChain;
 impl DeleteTransformer for Postgres {
     fn update_transaction_script<'a>(
         &self,
-        abstract_delete: &'a AbstractDelete,
+        abstract_delete: AbstractDelete,
         database: &'a Database,
         transaction_script: &mut TransactionScript<'a>,
     ) {

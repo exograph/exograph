@@ -99,6 +99,7 @@ pub enum TransactionStep<'a> {
     Template(TemplateTransactionStep<'a>),
     Filter(TemplateFilterOperation),
     Dynamic(DynamicTransactionStep<'a>),
+    Precheck(Select),
 }
 
 impl<'a> TransactionStep<'a> {
@@ -143,6 +144,18 @@ impl<'a> TransactionStep<'a> {
                     .execute(database, client)
                     .await
             }
+            Self::Precheck(select) => {
+                let precheck_result =
+                    run_query(SQLOperation::Select(select), database, client).await?;
+                if precheck_result.len() != 1 {
+                    return Err(DatabaseError::Precheck(format!(
+                        "Expected 1 row, got {}",
+                        precheck_result.len()
+                    )));
+                }
+
+                Ok(precheck_result)
+            }
         }
     }
 }
@@ -170,27 +183,27 @@ impl<'a> ConcreteTransactionStep<'a> {
         database: &Database,
         client: &mut impl GenericClient,
     ) -> Result<TransactionStepResult, DatabaseError> {
-        self.run_query(database, client).await
+        run_query(self.operation, database, client).await
     }
+}
 
-    async fn run_query(
-        &'a self,
-        database: &Database,
-        client: &mut impl GenericClient,
-    ) -> Result<TransactionStepResult, DatabaseError> {
-        let mut sql_builder = SQLBuilder::new();
-        self.operation.build(database, &mut sql_builder);
-        let (stmt, params) = sql_builder.into_sql();
+async fn run_query(
+    operation: SQLOperation<'_>,
+    database: &Database,
+    client: &mut impl GenericClient,
+) -> Result<TransactionStepResult, DatabaseError> {
+    let mut sql_builder = SQLBuilder::new();
+    operation.build(database, &mut sql_builder);
+    let (stmt, params) = sql_builder.into_sql();
 
-        let params: Vec<_> = params.iter().map(|p| (p.0.as_pg(), p.1.clone())).collect();
+    let params: Vec<_> = params.iter().map(|p| (p.0.as_pg(), p.1.clone())).collect();
 
-        info!("Executing SQL operation: {}", stmt);
+    info!("Executing SQL operation: {}", stmt);
 
-        client.query_typed(&stmt, &params[..]).await.map_err(|e| {
-            error!("Failed to execute query: {e:?}");
-            DatabaseError::Delegate(e).with_context("Database operation failed".into())
-        })
-    }
+    client.query_typed(&stmt, &params[..]).await.map_err(|e| {
+        error!("Failed to execute query: {e:?}");
+        DatabaseError::Delegate(e).with_context("Database operation failed".into())
+    })
 }
 
 #[derive(Debug)]

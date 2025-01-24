@@ -9,7 +9,7 @@
 
 use crate::{
     sql::cte::{CteExpression, WithQuery},
-    transform::transformer::PredicateTransformer,
+    transform::{pg::precheck::add_precheck_queries, transformer::PredicateTransformer},
 };
 
 use crate::{
@@ -39,12 +39,35 @@ impl DeleteStrategy for CteStrategy {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_delete: &'a AbstractDelete,
+        abstract_delete: AbstractDelete,
         database: &'a Database,
         transformer: &Postgres,
         transaction_script: &mut TransactionScript<'a>,
     ) {
-        let delete_query = to_delete(abstract_delete, database, transformer);
+        let AbstractDelete {
+            table_id,
+            predicate,
+            selection,
+            precheck_predicates,
+        } = abstract_delete;
+
+        add_precheck_queries(
+            precheck_predicates,
+            database,
+            transformer,
+            transaction_script,
+        );
+
+        let delete_query = to_delete(
+            AbstractDelete {
+                table_id,
+                predicate,
+                selection,
+                precheck_predicates: vec![],
+            },
+            database,
+            transformer,
+        );
 
         let _ = transaction_script.add_step(TransactionStep::Concrete(
             ConcreteTransactionStep::new(SQLOperation::WithQuery(delete_query)),
@@ -53,7 +76,7 @@ impl DeleteStrategy for CteStrategy {
 }
 
 fn to_delete<'a>(
-    abstract_delete: &'a AbstractDelete,
+    abstract_delete: AbstractDelete,
     database: &'a Database,
     transformer: &Postgres,
 ) -> WithQuery<'a> {
@@ -92,7 +115,7 @@ fn to_delete<'a>(
     );
 
     // The select (often a json aggregation)
-    let select = transformer.to_select(&abstract_delete.selection, database);
+    let select = transformer.to_select(abstract_delete.selection, database);
 
     // A WITH query that uses the `root_delete` as a CTE and then selects from it.
     // `WITH "concerts" AS <the delete above> <the select above>`. For example:
@@ -145,9 +168,10 @@ mod tests {
                         limit: None,
                     },
                     predicate: Predicate::True,
+                    precheck_predicates: vec![],
                 };
 
-                let delete = to_delete(&adelete, &database, &Postgres {});
+                let delete = to_delete(adelete, &database, &Postgres {});
                 assert_binding!(
                     delete.to_sql(&database),
                     r#"WITH "concerts" AS (DELETE FROM "concerts" RETURNING *) SELECT "concerts"."id" FROM "concerts""#
@@ -185,9 +209,10 @@ mod tests {
                         limit: None,
                     },
                     predicate,
+                    precheck_predicates: vec![],
                 };
 
-                let delete = to_delete(&adelete, &database, &Postgres {});
+                let delete = to_delete(adelete, &database, &Postgres {});
 
                 assert_binding!(
                     delete.to_sql(&database),
@@ -231,9 +256,10 @@ mod tests {
                         limit: None,
                     },
                     predicate,
+                    precheck_predicates: vec![],
                 };
 
-                let delete = to_delete(&adelete, &database, &Postgres {});
+                let delete = to_delete(adelete, &database, &Postgres {});
 
                 assert_binding!(
                     delete.to_sql(&database),

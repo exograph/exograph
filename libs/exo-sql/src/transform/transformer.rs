@@ -30,7 +30,7 @@ pub trait OperationTransformer {
     fn to_transaction_script<'a>(
         &self,
         database: &'a Database,
-        abstract_operation: &'a AbstractOperation,
+        abstract_operation: AbstractOperation,
     ) -> TransactionScript<'a>;
 }
 
@@ -38,7 +38,7 @@ impl OperationTransformer for Postgres {
     fn to_transaction_script<'a>(
         &self,
         database: &'a Database,
-        abstract_operation: &'a AbstractOperation,
+        abstract_operation: AbstractOperation,
     ) -> TransactionScript<'a> {
         match abstract_operation {
             AbstractOperation::Select(select) => {
@@ -58,11 +58,11 @@ impl OperationTransformer for Postgres {
 }
 
 pub trait SelectTransformer {
-    fn to_select(&self, abstract_select: &AbstractSelect, database: &Database) -> Select;
+    fn to_select(&self, abstract_select: AbstractSelect, database: &Database) -> Select;
 
     fn to_transaction_script<'a>(
         &self,
-        abstract_select: &'a AbstractSelect,
+        abstract_select: AbstractSelect,
         database: &'a Database,
     ) -> TransactionScript<'a>;
 }
@@ -74,7 +74,7 @@ pub trait DeleteTransformer {
         )]
     fn to_transaction_script<'a>(
         &self,
-        abstract_delete: &'a AbstractDelete,
+        abstract_delete: AbstractDelete,
         database: &'a Database,
     ) -> TransactionScript<'a> {
         let mut transaction_script = TransactionScript::default();
@@ -86,7 +86,7 @@ pub trait DeleteTransformer {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_delete: &'a AbstractDelete,
+        abstract_delete: AbstractDelete,
         database: &'a Database,
         transaction_script: &mut TransactionScript<'a>,
     );
@@ -99,7 +99,7 @@ pub trait InsertTransformer {
         )]
     fn to_transaction_script<'a>(
         &self,
-        abstract_insert: &'a AbstractInsert,
+        abstract_insert: AbstractInsert,
         parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
     ) -> TransactionScript<'a> {
@@ -117,7 +117,7 @@ pub trait InsertTransformer {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_insert: &'a AbstractInsert,
+        abstract_insert: AbstractInsert,
         parent_step: Option<(TransactionStepId, Vec<ColumnId>)>,
         database: &'a Database,
         transaction_script: &mut TransactionScript<'a>,
@@ -131,7 +131,7 @@ pub trait UpdateTransformer {
         )]
     fn to_transaction_script<'a>(
         &self,
-        abstract_update: &'a AbstractUpdate,
+        abstract_update: AbstractUpdate,
         database: &'a Database,
     ) -> TransactionScript<'a> {
         let mut transaction_script = TransactionScript::default();
@@ -143,7 +143,7 @@ pub trait UpdateTransformer {
 
     fn update_transaction_script<'a>(
         &self,
-        abstract_update: &'a AbstractUpdate,
+        abstract_update: AbstractUpdate,
         database: &'a Database,
         transaction_script: &mut TransactionScript<'a>,
     );

@@ -52,7 +52,7 @@ impl SubsystemRestResolver for PostgresSubsystemRestResolver {
             let mut result = self
                 .executor
                 .execute(
-                    &operation,
+                    operation,
                     &mut tx,
                     &self.subsystem.core_subsystem.as_ref().database,
                 )

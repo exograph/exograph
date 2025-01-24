@@ -205,7 +205,7 @@ fn form_subselect(
     };
 
     let select = select_transformer.compute_select(
-        &abstract_select,
+        abstract_select,
         &SelectionLevel::TopLevel,
         true, // allow duplicate rows to be returned since this is going to be used as a part of `IN`
         database,

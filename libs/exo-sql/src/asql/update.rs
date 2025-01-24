@@ -75,6 +75,9 @@ pub struct AbstractUpdate {
 
     /// The selection to return
     pub selection: AbstractSelect,
+
+    /// Check to run before inserting (if the resulting select returns 1 row, then the precheck passes)
+    pub precheck_predicates: Vec<AbstractPredicate>,
 }
 
 /// In our example, the `update: [{id: 100, artist: {id: 10}, rank: 2}, {id: 101, artist: {id: 10}, role: "accompanying"}]` part

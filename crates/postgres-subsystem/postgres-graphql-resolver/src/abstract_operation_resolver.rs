@@ -7,7 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
-use exo_sql::{AbstractOperation, AbstractSelect};
+use exo_sql::database_error::DatabaseError;
+use exo_sql::AbstractOperation;
 
 use common::context::RequestContext;
 use core_plugin_interface::core_resolver::{QueryResponse, QueryResponseBody};
@@ -18,8 +19,7 @@ use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
 use super::PostgresSubsystemResolver;
 
 pub async fn resolve_operation<'e>(
-    op: &AbstractOperation,
-    precheck_queries: Vec<AbstractSelect>,
+    op: AbstractOperation,
     subsystem_resolver: &'e PostgresSubsystemResolver,
     request_context: &'e RequestContext<'e>,
 ) -> Result<QueryResponse, PostgresExecutionError> {
@@ -29,38 +29,20 @@ pub async fn resolve_operation<'e>(
         .try_lock()
         .unwrap();
 
-    let mut precheck_result = true;
-
-    for precheck_query in precheck_queries {
-        let rows = subsystem_resolver
-            .executor
-            .execute(
-                &AbstractOperation::Select(precheck_query),
-                &mut tx,
-                &subsystem_resolver.subsystem.core_subsystem.database,
-            )
-            .await
-            .map_err(PostgresExecutionError::Postgres)?;
-
-        if rows.len() != 1 {
-            precheck_result = false;
-            break;
-        }
-    }
-
-    if !precheck_result {
-        return Err(PostgresExecutionError::Authorization);
-    }
-
-    let mut result = subsystem_resolver
+    let result = subsystem_resolver
         .executor
         .execute(
             op,
             &mut tx,
             &subsystem_resolver.subsystem.core_subsystem.database,
         )
-        .await
-        .map_err(PostgresExecutionError::Postgres)?;
+        .await;
+
+    if let Err(DatabaseError::Precheck(_)) = result {
+        return Err(PostgresExecutionError::Authorization);
+    }
+
+    let mut result = result.map_err(PostgresExecutionError::Postgres)?;
 
     let body = if result.len() == 1 {
         let string_result = extractor(result.swap_remove(0))?;

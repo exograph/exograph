@@ -43,7 +43,7 @@ impl UpdateTransformer for Postgres {
         )]
     fn update_transaction_script<'a>(
         &self,
-        abstract_update: &'a AbstractUpdate,
+        abstract_update: AbstractUpdate,
         database: &'a Database,
         transaction_script: &mut TransactionScript<'a>,
     ) {
