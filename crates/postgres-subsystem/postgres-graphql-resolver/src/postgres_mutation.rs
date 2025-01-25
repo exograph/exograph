@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use super::{auth_util::check_access, sql_mapper::SQLOperationKind, util::find_arg};
 
 use postgres_core_resolver::postgres_execution_error::PostgresExecutionError;
@@ -171,6 +173,7 @@ async fn update_operation<'content>(
     let input_context = data_arg.map(|arg| AccessInputContext {
         value: arg,
         ignore_missing_context: true,
+        aliases: HashMap::new(),
     });
     let (precheck_predicate, entity_predicate) = check_access(
         return_type.typ(&subsystem.core_subsystem.entity_types),

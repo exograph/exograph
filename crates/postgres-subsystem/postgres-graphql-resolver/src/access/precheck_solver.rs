@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
@@ -14,7 +16,8 @@ use core_plugin_interface::{
     core_model::access::{AccessRelationalOp, FunctionCall},
     core_resolver::access_solver::{
         eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-        reduce_common_primitive_expression, AccessInputContext, AccessSolver, AccessSolverError,
+        reduce_common_primitive_expression, AccessInputContext, AccessInputContextPath,
+        AccessInputContextPathElement, AccessSolver, AccessSolverError,
     },
 };
 use exo_sql::{
@@ -60,11 +63,42 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                         primitive_expr,
                     )))
                 }
-                PrecheckAccessPrimitiveExpression::Path(path, _) => {
-                    Ok(Some(SolvedPrecheckPrimitiveExpression::Path(path.clone())))
+                PrecheckAccessPrimitiveExpression::Path(path, parameter_name) => {
+                    let mut path_elements = match parameter_name {
+                        Some(parameter_name) => {
+                            vec![AccessInputContextPathElement::Property(parameter_name)]
+                        }
+                        None => vec![],
+                    };
+                    let field_path_strings = match &path.field_path {
+                        FieldPath::Normal(field_path) => field_path,
+                        FieldPath::Pk { .. } => {
+                            return Ok(Some(SolvedPrecheckPrimitiveExpression::Path(path.clone())));
+                        }
+                    };
+                    path_elements.extend(
+                        field_path_strings
+                            .iter()
+                            .map(|s| AccessInputContextPathElement::Property(s.as_str())),
+                    );
+                    let value =
+                        input_context.map(|ctx| ctx.resolve(AccessInputContextPath(path_elements)));
+
+                    let value = value.transpose()?.flatten();
+
+                    match value {
+                        Some(value) => Ok(Some(SolvedPrecheckPrimitiveExpression::Common(Some(
+                            value.clone(),
+                        )))),
+                        None => Ok(Some(SolvedPrecheckPrimitiveExpression::Path(path.clone()))),
+                    }
                 }
                 PrecheckAccessPrimitiveExpression::Function(lead, func_call) => {
-                    let FunctionCall { name, expr, .. } = func_call;
+                    let FunctionCall {
+                        name,
+                        parameter_name,
+                        expr,
+                    } = func_call;
 
                     if name != "some" {
                         return Err(AccessSolverError::Generic(
@@ -75,26 +109,60 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                     let field_path = match &lead.field_path {
                         FieldPath::Normal(field_path) => field_path,
                         FieldPath::Pk { .. } => {
+                            // return Ok(Some(SolvedPrecheckPrimitiveExpression::Path(
+                            //     AccessPrimitiveExpressionPath {
+                            //         column_path: lead
+                            //             .clone()
+                            //             .column_path
+                            //             .join(func_call.expr.column_path),
+                            //         field_path: lead.field_path.clone(),
+                            //     },
+                            // )));
                             return Err(AccessSolverError::Generic(
                                 "Unexpected path leading to the `some` function".into(),
                             ));
                         }
                     };
 
-                    let function_input_context = input_context
-                        .as_ref()
-                        .and_then(|ctx| resolve_value(ctx.value, field_path));
+                    let function_input_value: Option<Result<Option<&Val>, _>> =
+                        input_context.as_ref().map(|ctx| {
+                            ctx.resolve(AccessInputContextPath(
+                                field_path
+                                    .iter()
+                                    .map(|s| AccessInputContextPathElement::Property(s.as_str()))
+                                    .collect(),
+                            ))
+                        });
 
-                    match function_input_context {
+                    let function_input_value = function_input_value.transpose()?.flatten();
+
+                    match function_input_value {
                         Some(Val::List(list)) => {
                             let mut result =
                                 SolvedPrecheckPrimitiveExpression::Common(Some(Val::Bool(false)));
-                            for item in list {
+                            for index in 0..list.len() {
+                                let item_input_path = {
+                                    let mut item_input_path_elements: Vec<_> = field_path
+                                        .iter()
+                                        .map(|s| {
+                                            AccessInputContextPathElement::Property(s.as_str())
+                                        })
+                                        .collect();
+                                    item_input_path_elements
+                                        .push(AccessInputContextPathElement::Index(index));
+                                    AccessInputContextPath(item_input_path_elements)
+                                };
+
                                 let new_input_context =
                                     input_context.map(|ctx| AccessInputContext {
-                                        value: item,
+                                        value: ctx.value,
                                         ignore_missing_context: ctx.ignore_missing_context,
+                                        aliases: HashMap::from([(
+                                            parameter_name.as_str(),
+                                            item_input_path,
+                                        )]),
                                     });
+
                                 let solved_expr = solver
                                     .solve(request_context, new_input_context.as_ref(), expr)
                                     .await?;
@@ -142,9 +210,8 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
             match &field_path {
                 FieldPath::Normal(field_path) => {
                     let relational_predicate = AbstractPredicate::True;
-                    let value = input_context
-                        .as_ref()
-                        .and_then(|ctx| resolve_value(ctx.value, field_path));
+
+                    let value = resolve_value(input_context, field_path)?;
 
                     let literal_column_path =
                         compute_literal_column_path(value, column_path, database)?;
@@ -233,9 +300,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                             // an input predicate is to enforce an invariant, if the user didn't provide a
                             // value, the original value will remain unchanged thus keeping the invariant
                             // intact.
-                            let right_value = input_context
-                                .as_ref()
-                                .and_then(|ctx| resolve_value(ctx.value, field_path));
+                            let right_value = resolve_value(input_context, field_path)?;
                             match right_value {
                                 Some(right_value) => {
                                     Ok(Some(value_predicate(&left_value, right_value).into()))
@@ -275,9 +340,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                     SolvedPrecheckPrimitiveExpression::Common(Some(right_value)),
                 ) => match &left_path.field_path {
                     FieldPath::Normal(field_path) => {
-                        let left_value = input_context
-                            .as_ref()
-                            .and_then(|ctx| resolve_value(ctx.value, field_path));
+                        let left_value = resolve_value(input_context, field_path)?;
                         match left_value {
                             Some(left_value) => {
                                 Ok(Some(value_predicate(left_value, &right_value).into()))
@@ -383,21 +446,31 @@ fn compute_literal_column_path(
 
 fn compute_relational_predicate(
     head_link: ColumnPathLink,
-    lead: &Vec<String>,
-    pk_fields: &Vec<String>,
+    lead: &[String],
+    pk_fields: &[String],
     input_context: Option<&AccessInputContext<'_>>,
     database: &Database,
 ) -> Result<AbstractPredicate, AccessSolverError> {
-    let lead_value = input_context
-        .as_ref()
-        .and_then(|ctx| resolve_value(ctx.value, lead));
+    let lead_value = resolve_value(input_context, lead)?;
 
     match head_link {
         ColumnPathLink::Relation(relation) => relation.column_pairs.iter().zip(pk_fields).try_fold(
             AbstractPredicate::True,
             |acc, (pair, pk_field)| {
                 let pk_field_path = vec![pk_field.clone()];
-                let pk_value = lead_value.and_then(|ctx| resolve_value(ctx, &pk_field_path));
+                let pk_value = lead_value.and_then(|lead_value| {
+                    resolve_value(
+                        Some(&AccessInputContext {
+                            value: lead_value,
+                            ignore_missing_context: false,
+                            aliases: input_context
+                                .map(|ctx| ctx.aliases.clone())
+                                .unwrap_or_default(),
+                        }),
+                        &pk_field_path,
+                    )
+                    .unwrap()
+                });
 
                 match pk_value {
                     Some(pk_value) => {
@@ -436,38 +509,38 @@ fn column_type<'a>(
     &physical_column_path.leaf_column().get_column(database).typ
 }
 
-fn resolve_value<'a>(val: &'a Val, path: &'a Vec<String>) -> Option<&'a Val> {
-    let mut current = val;
-    for part in path {
-        match current {
-            Val::Object(map) => {
-                current = map.get(part)?;
-            }
-            _ => return None,
-        }
-    }
-    Some(current)
+fn resolve_value<'a>(
+    input_context: Option<&AccessInputContext<'a>>,
+    path: &'a [String],
+) -> Result<Option<&'a Val>, AccessSolverError> {
+    let value: Option<Result<Option<&Val>, _>> = input_context.as_ref().map(|ctx| {
+        ctx.resolve(AccessInputContextPath(
+            path.iter()
+                .map(|s| AccessInputContextPathElement::Property(s.as_str()))
+                .collect(),
+        ))
+    });
+
+    let value = value.transpose()?.flatten();
+
+    Ok(value)
 }
 
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
 
-    use common::router::{PlainRequestPayload, Router};
     use core_plugin_interface::core_model::access::{
         AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall,
     };
     use exo_env::MapEnvironment;
-    use exo_sql::{
-        AbstractPredicate, ColumnId, ColumnPathLink, PhysicalColumnPath, PhysicalTableName,
-        RelationColumnPair, TableId,
-    };
-    use postgres_core_model::access::FieldPath;
+    use exo_sql::AbstractPredicate;
     use serde_json::json;
 
     use crate::access::{
+        article_user_test_system::TestSystem,
         database_solver::literal_column,
-        test_util::{context_selection, test_request_context, TestRouter},
+        test_util::{context_selection, test_request_context},
     };
 
     use super::*;
@@ -477,7 +550,7 @@ mod test {
     async fn self_field_against_context() {
         // Scenario: self.age < AuthContext.id (self is a User)
         // Should leave no database residue (i.e. fully solved based on input and context)
-        let test_system = test_system().await;
+        let test_system = TestSystem::new().await;
         let TestSystem {
             system,
             test_system_router,
@@ -513,6 +586,7 @@ mod test {
             let input_context = Some(AccessInputContext {
                 value: &input_value,
                 ignore_missing_context: false,
+                aliases: HashMap::new(),
             });
 
             let solved_predicate =
@@ -525,7 +599,7 @@ mod test {
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn self_field_path_static_resolve() {
         // Scenario: self.name == self.name
-        let test_system = test_system().await;
+        let test_system = TestSystem::new().await;
         let TestSystem {
             system,
             test_system_router,
@@ -548,6 +622,7 @@ mod test {
         let input_context = AccessInputContext {
             value: &input_context,
             ignore_missing_context: false,
+            aliases: HashMap::new(),
         };
         let solved_predicate = solve_access(&test_ae, &context, Some(&input_context), system).await;
         assert_eq!(solved_predicate, true.into());
@@ -557,7 +632,7 @@ mod test {
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn many_to_one_pk_against_context() {
         // Scenario: self.author.id < AuthContext.id (self is an Article)
-        let test_system = test_system().await;
+        let test_system = TestSystem::new().await;
         let TestSystem {
             system,
             test_system_router,
@@ -593,6 +668,7 @@ mod test {
             let input_context = Some(AccessInputContext {
                 value: &input_value,
                 ignore_missing_context: false,
+                aliases: HashMap::new(),
             });
 
             let solved_predicate =
@@ -605,7 +681,7 @@ mod test {
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn many_to_one_non_pk_field_to_against_another_non_pk_field() {
         // Scenario: self.author.name == self.author.skill (self is an Article)
-        let test_system = test_system().await;
+        let test_system = TestSystem::new().await;
         let TestSystem {
             system,
             test_system_router,
@@ -666,6 +742,7 @@ mod test {
             let input_context = Some(AccessInputContext {
                 value: &input_value,
                 ignore_missing_context: false,
+                aliases: HashMap::new(),
             });
 
             let solved_predicate =
@@ -680,7 +757,7 @@ mod test {
         // Scenario: self.author.age < AuthContext.id (self is an Article)
         // And input cannot provide the name (may provide only the id).
         // This should lead to a database residue.
-        let test_system = test_system().await;
+        let test_system = TestSystem::new().await;
         let TestSystem {
             system,
             test_system_router,
@@ -730,11 +807,12 @@ mod test {
 
         for (test_ae, context_id, expected_core_predicate) in matrix {
             let context = test_request_context(json!({"id": context_id} ), test_system_router, env);
-            let input_context = json!({"author": {"id": 100}}).into(); // We don't/can't provide the age
+            let input_value = json!({"author": {"id": 100}}).into(); // We don't/can't provide the age
 
             let input_context = Some(AccessInputContext {
-                value: &input_context,
+                value: &input_value,
                 ignore_missing_context: false,
+                aliases: HashMap::new(),
             });
 
             let solved_predicate =
@@ -755,8 +833,8 @@ mod test {
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn hof_call_with_equality() {
-        // Scenario: self.articles.some(i => i.title == AuthContext.name)
-        let test_system = test_system().await;
+        // Scenario: self.articles.some(a => a.title == AuthContext.name)
+        let test_system = TestSystem::new().await;
         let TestSystem {
             system,
             test_system_router,
@@ -775,9 +853,9 @@ mod test {
                 test_system.user_articles_path(),
                 FunctionCall {
                     name: "some".to_string(),
-                    parameter_name: "i".to_string(),
+                    parameter_name: "a".to_string(),
                     expr: AccessPredicateExpression::RelationalOp(op(
-                        test_system.article_title_expr().into(),
+                        test_system.article_title_expr(Some("a".to_string())).into(),
                         context_selection_expr("AccessContext", "name"),
                     )),
                 },
@@ -831,6 +909,7 @@ mod test {
             let input_context = Some(AccessInputContext {
                 value: &input_value,
                 ignore_missing_context: false,
+                aliases: HashMap::new(),
             });
 
             let boolean_expr = || {
@@ -856,271 +935,130 @@ mod test {
         }
     }
 
+    #[cfg_attr(not(target_family = "wasm"), tokio::test)]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+    async fn hof_call_residue() {
+        // Scenario: self.articles.some(a => a.title == self.name)
+        let test_system = TestSystem::new().await;
+        let TestSystem {
+            system,
+            test_system_router,
+            ..
+        } = &test_system;
+
+        let test_system_router = test_system_router.as_ref();
+        let env = &MapEnvironment::from(HashMap::new());
+
+        let function_call = |op: fn(
+            Box<PrecheckAccessPrimitiveExpression>,
+            Box<PrecheckAccessPrimitiveExpression>,
+        )
+            -> AccessRelationalOp<PrecheckAccessPrimitiveExpression>| {
+            PrecheckAccessPrimitiveExpression::Function(
+                test_system.user_articles_path(),
+                FunctionCall {
+                    name: "some".to_string(),
+                    parameter_name: "a".to_string(),
+                    expr: AccessPredicateExpression::RelationalOp(op(
+                        test_system.article_title_expr(Some("a".to_string())).into(),
+                        test_system.user_self_name_expr().into(),
+                    )),
+                },
+            )
+        };
+
+        let eq_call = || function_call(AccessRelationalOp::Eq);
+        let neq_call = || function_call(AccessRelationalOp::Neq);
+
+        let eq_call: Box<dyn Fn() -> PrecheckAccessPrimitiveExpression> = Box::new(eq_call);
+        let neq_call: Box<dyn Fn() -> PrecheckAccessPrimitiveExpression> = Box::new(neq_call);
+
+        let form_expr =
+            |lhs, rhs| AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(lhs, rhs));
+
+        let no_john = || json!({"name": "John", "articles": [{"title": "Article 1"}, {"title": "Article 2"}]});
+        let only_john = || json!({"name": "John", "articles": [{"title": "John"}]});
+        let first_john =
+            || json!({"name": "John", "articles": [{"title": "John"}, {"title": "Article 2"}]});
+        let second_john =
+            || json!({"name": "John", "articles": [{"title": "Article 1"}, {"title": "John"}]});
+        let empty = || json!({"name": "John", "articles": []});
+
+        let matrix = [
+            (&eq_call, true, no_john(), false),
+            (&eq_call, true, empty(), false),
+            (&eq_call, true, only_john(), true),
+            (&eq_call, true, first_john(), true),
+            (&eq_call, true, second_john(), true),
+            // With false
+            (&eq_call, false, no_john(), true),
+            (&eq_call, false, empty(), true),
+            (&eq_call, false, only_john(), false),
+            (&eq_call, false, first_john(), false),
+            (&eq_call, false, second_john(), false),
+            // NEQ cases
+            (&neq_call, true, no_john(), true),
+            (&neq_call, true, empty(), false), // some evaluation is false on an empty list
+            (&neq_call, true, only_john(), false),
+            (&neq_call, true, first_john(), true), // There are some non-john articles
+            (&neq_call, true, second_john(), true), // There are some non-john articles
+            // With false
+            (&neq_call, false, no_john(), false),
+            (&neq_call, false, empty(), true), // some evaluation is false on an empty list
+            (&neq_call, false, only_john(), true),
+            (&neq_call, false, first_john(), false), // There are some non-john articles
+            (&neq_call, false, second_john(), false), // There are some non-john articles
+        ];
+
+        // Scenario: self.articles.some(a => a.title == self.name)
+        // Example success operation (an article name matches the user name ("John")):
+        // createUser(name: "John", articles: [{title: "John"}, {title: "Article 2"}])
+        // Example failure operation:
+        // createUser(name: "John", articles: [{title: "Article 1"}, {title: "Article 2"}])
+        for (i, (lhs, rhs, input_value, expected_result)) in matrix.into_iter().enumerate() {
+            let context = test_request_context(json!({}), test_system_router, env);
+            let input_value = input_value.into();
+            let input_context = Some(AccessInputContext {
+                value: &input_value,
+                ignore_missing_context: false,
+                aliases: HashMap::new(),
+            });
+
+            let rhs_expr = || {
+                Box::new(PrecheckAccessPrimitiveExpression::Common(
+                    CommonAccessPrimitiveExpression::BooleanLiteral(rhs),
+                ))
+            };
+
+            let test_ae = form_expr(Box::new(lhs()), rhs_expr());
+            let expected_result = expected_result.into();
+
+            let solved_predicate =
+                solve_access(&test_ae, &context, input_context.as_ref(), system).await;
+            assert_eq!(solved_predicate, expected_result, "Test case {i}");
+
+            let commuted_test_ae = form_expr(rhs_expr(), Box::new(lhs()));
+            let solved_predicate =
+                solve_access(&commuted_test_ae, &context, input_context.as_ref(), system).await;
+            assert_eq!(
+                solved_predicate, expected_result,
+                "Test case (commuted) {i}"
+            );
+        }
+    }
+
     async fn solve_access<'a>(
         expr: &'a AccessPredicateExpression<PrecheckAccessPrimitiveExpression>,
         request_context: &'a RequestContext<'a>,
         input_context: Option<&AccessInputContext<'a>>,
         subsystem: &'a PostgresGraphQLSubsystem,
     ) -> AbstractPredicate {
-        subsystem
-            .solve(request_context, input_context, expr)
-            .await
-            .unwrap()
-            .map(|p| p.0)
-            .unwrap_or(AbstractPredicate::False)
-    }
+        let result = subsystem.solve(request_context, input_context, expr).await;
 
-    #[allow(dead_code)]
-    struct TestSystem {
-        system: PostgresGraphQLSubsystem,
-
-        article_table_id: TableId,
-        article_title_column_id: ColumnId,
-        article_author_column_id: ColumnId,
-
-        user_table_id: TableId,
-        user_id_column_id: ColumnId,
-        user_name_column_id: ColumnId,
-        user_skill_column_id: ColumnId,
-        user_age_column_id: ColumnId,
-
-        test_system_router:
-            Box<dyn for<'request> Router<PlainRequestPayload<'request>> + Send + Sync>,
-    }
-
-    impl TestSystem {
-        pub fn article_title_column_path(&self) -> PhysicalColumnPath {
-            PhysicalColumnPath::leaf(self.article_title_column_id)
-        }
-
-        // self.title for `Article`
-        pub fn article_title_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.article_title_column_path(),
-                    field_path: FieldPath::Normal(vec!["title".to_string()]),
-                },
-                None,
-            )
-        }
-
-        pub fn article_author_column_path(&self) -> PhysicalColumnPath {
-            PhysicalColumnPath::leaf(self.article_author_column_id)
-        }
-
-        pub fn article_author_link(&self) -> ColumnPathLink {
-            ColumnPathLink::relation(
-                vec![RelationColumnPair {
-                    self_column_id: self.article_author_column_id,
-                    foreign_column_id: self.user_id_column_id,
-                }],
-                Some("author".to_string()),
-            )
-        }
-
-        pub fn article_author_name_physical_column_path(&self) -> PhysicalColumnPath {
-            let path = PhysicalColumnPath::init(self.article_author_link());
-            path.push(ColumnPathLink::Leaf(self.user_name_column_id))
-        }
-
-        pub fn article_author_skill_physical_column_path(&self) -> PhysicalColumnPath {
-            let path = PhysicalColumnPath::init(self.article_author_link());
-            path.push(ColumnPathLink::Leaf(self.user_skill_column_id))
-        }
-
-        pub fn article_author_age_physical_column_path(&self) -> PhysicalColumnPath {
-            let path = PhysicalColumnPath::init(self.article_author_link());
-            path.push(ColumnPathLink::Leaf(self.user_age_column_id))
-        }
-
-        // self.author.id for `Article`
-        pub fn article_self_author_id_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.article_author_column_path(),
-                    field_path: FieldPath::Normal(vec!["author".to_string(), "id".to_string()]),
-                },
-                None,
-            )
-        }
-
-        pub fn article_author_name_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.article_author_name_physical_column_path(),
-                    field_path: FieldPath::Pk {
-                        lead: vec!["author".to_string()],
-                        pk_fields: vec!["id".to_string()],
-                    },
-                },
-                None,
-            )
-        }
-
-        pub fn article_author_skill_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.article_author_skill_physical_column_path(),
-                    field_path: FieldPath::Pk {
-                        lead: vec!["author".to_string()],
-                        pk_fields: vec!["id".to_string()],
-                    },
-                },
-                None,
-            )
-        }
-
-        pub fn article_author_age_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.article_author_age_physical_column_path(),
-                    field_path: FieldPath::Pk {
-                        lead: vec!["author".to_string()],
-                        pk_fields: vec!["id".to_string()],
-                    },
-                },
-                None,
-            )
-        }
-
-        pub fn user_id_column_path(&self) -> PhysicalColumnPath {
-            PhysicalColumnPath::leaf(self.user_id_column_id)
-        }
-
-        pub fn user_name_column_path(&self) -> PhysicalColumnPath {
-            PhysicalColumnPath::leaf(self.user_name_column_id)
-        }
-
-        pub fn user_age_column_path(&self) -> PhysicalColumnPath {
-            PhysicalColumnPath::leaf(self.user_age_column_id)
-        }
-
-        pub fn user_self_age_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.user_age_column_path(),
-                    field_path: FieldPath::Normal(vec!["age".to_string()]),
-                },
-                None,
-            )
-        }
-
-        pub fn user_self_name_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.user_name_column_path(),
-                    field_path: FieldPath::Normal(vec!["name".to_string()]),
-                },
-                None,
-            )
-        }
-
-        pub fn user_articles_link(&self) -> ColumnPathLink {
-            ColumnPathLink::relation(
-                vec![RelationColumnPair {
-                    self_column_id: self.user_id_column_id,
-                    foreign_column_id: self.article_author_column_id,
-                }],
-                Some("articles".to_string()),
-            )
-        }
-
-        pub fn user_articles_path(&self) -> AccessPrimitiveExpressionPath {
-            AccessPrimitiveExpressionPath {
-                column_path: PhysicalColumnPath::init(self.user_articles_link()),
-                field_path: FieldPath::Normal(vec!["articles".to_string()]),
-            }
-        }
-
-        #[allow(dead_code)]
-        pub fn user_articles_title_physical_column_path(&self) -> PhysicalColumnPath {
-            let path = PhysicalColumnPath::init(self.user_articles_link());
-            path.push(ColumnPathLink::Leaf(self.article_title_column_id))
-        }
-
-        #[allow(dead_code)]
-        pub fn user_articles_title_expr(&self) -> PrecheckAccessPrimitiveExpression {
-            PrecheckAccessPrimitiveExpression::Path(
-                AccessPrimitiveExpressionPath {
-                    column_path: self.user_articles_title_physical_column_path(),
-                    field_path: FieldPath::Normal(vec![
-                        "articles".to_string(),
-                        "title".to_string(),
-                    ]),
-                },
-                None,
-            )
-        }
-    }
-
-    async fn test_system() -> TestSystem {
-        let postgres_subsystem = crate::test_utils::create_postgres_system_from_str(
-            r#"
-                context AccessContext {
-                    @test("role") role: String
-                    @test("name") name: String
-                    @test("id") id: Int
-                }
-
-                @postgres
-                module ArticleModule {
-                    type Article {
-                        @pk id: Int = autoIncrement()
-                        title: String
-                        author: User
-                    }
-
-                    type User {
-                        @pk id: Int = autoIncrement()
-                        name: String
-                        skill: String
-                        age: Int
-                        articles: Set<Article>?
-                    }
-                }
-            "#,
-            "index.exo".to_string(),
-        )
-        .await
-        .unwrap();
-
-        let database = &postgres_subsystem.core_subsystem.database;
-
-        let article_table_id = database
-            .get_table_id(&PhysicalTableName::new("articles", None))
-            .unwrap();
-
-        let article_title_column_id = database.get_column_id(article_table_id, "title").unwrap();
-        let article_author_column_id = database
-            .get_column_id(article_table_id, "author_id")
-            .unwrap();
-
-        let user_table_id = database
-            .get_table_id(&PhysicalTableName::new("users", None))
-            .unwrap();
-
-        let user_id_column_id = database.get_column_id(user_table_id, "id").unwrap();
-
-        let user_name_column_id = database.get_column_id(user_table_id, "name").unwrap();
-        let user_age_column_id = database.get_column_id(user_table_id, "age").unwrap();
-
-        let user_skill_column_id = database.get_column_id(user_table_id, "skill").unwrap();
-
-        // Create an empty Router. Since in tests we never invoke it (since we don't have @query context),
-        // we don't need to populate it.
-        let test_system_router = Box::new(TestRouter {});
-
-        TestSystem {
-            system: postgres_subsystem,
-            article_table_id,
-            article_title_column_id,
-            article_author_column_id,
-            user_table_id,
-            user_id_column_id,
-            user_name_column_id,
-            user_skill_column_id,
-            user_age_column_id,
-            test_system_router,
+        match result {
+            Ok(Some(value)) => value.0,
+            Ok(None) => AbstractPredicate::False,
+            Err(e) => panic!("Error solving access predicate: {:?}", e),
         }
     }
 

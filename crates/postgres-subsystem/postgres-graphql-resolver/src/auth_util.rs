@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_resolver::access_solver::AccessInputContext;
 use futures::stream::TryStreamExt;
@@ -312,6 +314,7 @@ async fn check_input_access<'a>(
                                         Some(&AccessInputContext {
                                             value: elem_value,
                                             ignore_missing_context: false,
+                                            aliases: HashMap::new(),
                                         }),
                                         &subsystem.core_subsystem.precheck_expressions
                                             [field_access(postgres_field)],

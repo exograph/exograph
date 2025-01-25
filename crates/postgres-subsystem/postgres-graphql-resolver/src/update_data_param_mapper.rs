@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
@@ -281,6 +283,7 @@ async fn compute_nested_update_object_arg<'a>(
     let input_context = Some(AccessInputContext {
         value: argument,
         ignore_missing_context: true,
+        aliases: HashMap::new(),
     });
 
     let (precheck_predicate, entity_predicate) = check_access(
@@ -508,6 +511,7 @@ async fn compute_nested_delete_object_arg<'a>(
     let input_context = Some(AccessInputContext {
         value: argument,
         ignore_missing_context: false,
+        aliases: HashMap::new(),
     });
 
     let (precheck_predicate, entity_predicate) = check_access(

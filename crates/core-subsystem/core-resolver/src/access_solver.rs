@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use core_model::access::{
     AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
@@ -34,11 +36,132 @@ pub enum AccessSolverError {
 
     #[error("{0}")]
     Generic(Box<dyn std::error::Error + Send + Sync>),
+
+    #[error("{0}")]
+    AccessInputContextPathElement(#[from] AccessInputContextPathElementError),
 }
 
+#[derive(Error, Debug)]
+pub enum AccessInputContextPathElementError {
+    #[error("Index cannot be used on an object: {0}")]
+    IndexOnObject(String),
+
+    #[error("Property key cannot be used on a list: {0}")]
+    PropertyOnList(String),
+}
+
+#[derive(Debug)]
 pub struct AccessInputContext<'a> {
     pub value: &'a Val,
     pub ignore_missing_context: bool,
+    pub aliases: HashMap<&'a str, AccessInputContextPath<'a>>,
+}
+
+#[derive(Clone)]
+pub enum AccessInputContextPathElement<'a> {
+    Property(&'a str),
+    Index(usize),
+}
+
+impl<'a> std::fmt::Debug for AccessInputContextPathElement<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AccessInputContextPathElement::Property(s) => write!(f, "{}", s),
+            AccessInputContextPathElement::Index(i) => write!(f, "[{}]", i),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct AccessInputContextPath<'a>(pub Vec<AccessInputContextPathElement<'a>>);
+
+impl<'a> AccessInputContextPath<'a> {
+    pub fn iter(&self) -> impl Iterator<Item = &AccessInputContextPathElement<'a>> {
+        self.0.iter()
+    }
+}
+
+impl<'a> std::ops::Index<usize> for AccessInputContextPath<'a> {
+    type Output = AccessInputContextPathElement<'a>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl<'a> std::fmt::Debug for AccessInputContextPath<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, e) in self.0.iter().enumerate() {
+            if i > 0 && matches!(e, AccessInputContextPathElement::Property(_)) {
+                write!(f, ".")?;
+            }
+            write!(f, "{:?}", e)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> AccessInputContext<'a> {
+    pub fn resolve(
+        &self,
+        path: AccessInputContextPath<'a>,
+    ) -> Result<Option<&'a Val>, AccessInputContextPathElementError> {
+        fn _resolve<'a>(
+            val: Option<&'a Val>,
+            path: &AccessInputContextPath<'a>,
+        ) -> Result<Option<&'a Val>, AccessInputContextPathElementError> {
+            let mut current = val;
+            for part in path.iter() {
+                match current {
+                    Some(Val::Object(map)) => match part {
+                        AccessInputContextPathElement::Property(key) => {
+                            current = map.get(*key);
+                        }
+                        AccessInputContextPathElement::Index(_) => {
+                            return Err(AccessInputContextPathElementError::IndexOnObject(
+                                format!("{:?}", &path),
+                            ));
+                        }
+                    },
+                    Some(Val::List(list)) => match part {
+                        AccessInputContextPathElement::Property(_) => {
+                            return Err(AccessInputContextPathElementError::PropertyOnList(
+                                format!("{:?}", &path),
+                            ));
+                        }
+                        AccessInputContextPathElement::Index(index) => {
+                            current = list.get(*index);
+                        }
+                    },
+                    _ => return Ok(None),
+                }
+            }
+            Ok(current)
+        }
+
+        match path.0.as_slice() {
+            [] => Ok(Some(self.value)), // "self"
+            [key, rest @ ..] => {
+                match key {
+                    AccessInputContextPathElement::Property(key) => {
+                        let alias_path = self.aliases.get(key); // "a" -> ["articles"]
+
+                        match alias_path {
+                            Some(alias_path) => {
+                                let alias_root_value = _resolve(Some(self.value), alias_path)?;
+                                _resolve(alias_root_value, &AccessInputContextPath(rest.to_vec()))
+                                // For expression a.title, the path will be ["title"]
+                            }
+                            None => _resolve(Some(self.value), &path),
+                        }
+                    }
+                    AccessInputContextPathElement::Index(_) => Err(
+                        AccessInputContextPathElementError::IndexOnObject(format!("{:?}", &path)),
+                    ),
+                }
+            }
+        }
+    }
 }
 
 /// Solve access control logic.
@@ -203,4 +326,61 @@ pub fn gt_values(left_value: &Val, right_value: &Val) -> bool {
 
 pub fn gte_values(left_value: &Val, right_value: &Val) -> bool {
     !lt_values(left_value, right_value)
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_access_input_context_path() {
+        let input_context = AccessInputContext {
+            value: &json!({
+                "name": "John",
+                "articles": [
+                    {
+                        "title": "Article 1",
+                    },
+                    {
+                        "title": "Article 2",
+                    }
+                ]
+            })
+            .into(),
+            ignore_missing_context: false,
+            aliases: HashMap::from([(
+                "a",
+                AccessInputContextPath(vec![
+                    AccessInputContextPathElement::Property("articles"),
+                    AccessInputContextPathElement::Index(0),
+                ]),
+            )]),
+        };
+
+        let existing_value = input_context
+            .resolve(AccessInputContextPath(vec![
+                AccessInputContextPathElement::Property("a"),
+                AccessInputContextPathElement::Property("title"),
+            ]))
+            .unwrap();
+        assert_eq!(Some(&json!("Article 1").into()), existing_value);
+
+        let non_existing_value = input_context
+            .resolve(AccessInputContextPath(vec![
+                AccessInputContextPathElement::Property("a"),
+                AccessInputContextPathElement::Property("author"),
+            ]))
+            .unwrap();
+        assert_eq!(None, non_existing_value);
+
+        let non_existing_alias = input_context
+            .resolve(AccessInputContextPath(vec![
+                AccessInputContextPathElement::Property("b"),
+                AccessInputContextPathElement::Property("title"),
+            ]))
+            .unwrap();
+        assert_eq!(None, non_existing_alias);
+    }
 }

@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use common::context::RequestContext;
@@ -114,6 +116,7 @@ async fn map_single<'a>(
         Some(&AccessInputContext {
             value: argument,
             ignore_missing_context: false,
+            aliases: HashMap::new(),
         }),
     )
     .await?;
