@@ -631,7 +631,7 @@ mod test {
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn many_to_one_pk_against_context() {
-        // Scenario: self.author.id < AuthContext.id (self is an Article)
+        // Scenario: self.author.id < AuthContext.id (self is an Publication)
         let test_system = TestSystem::new().await;
         let TestSystem {
             system,
@@ -648,7 +648,7 @@ mod test {
             AccessPredicateExpression::RelationalOp(AccessRelationalOp::Lt(expr1, expr2))
         };
 
-        let self_author_id = || test_system.article_self_author_id_expr().into();
+        let self_author_id = || test_system.publication_author_id_expr().into();
 
         let test_ae = || lt_expr(self_author_id(), auth_context_id());
         let test_ae_commuted = || lt_expr(auth_context_id(), self_author_id());
@@ -680,7 +680,7 @@ mod test {
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn many_to_one_non_pk_field_to_against_another_non_pk_field() {
-        // Scenario: self.author.name == self.author.skill (self is an Article)
+        // Scenario: self.author.name == self.author.skill (self is an Publication)
         let test_system = TestSystem::new().await;
         let TestSystem {
             system,
@@ -691,8 +691,8 @@ mod test {
         let test_system_router = test_system_router.as_ref();
         let env = &MapEnvironment::from(HashMap::new());
 
-        let article_author_name_path = || test_system.article_author_name_expr();
-        let article_author_skill_path = || test_system.article_author_skill_expr();
+        let publication_author_name_path = || test_system.publication_author_name_expr();
+        let publication_author_skill_path = || test_system.publication_author_skill_expr();
 
         let eq_expr = |expr1, expr2| {
             AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
@@ -701,8 +701,18 @@ mod test {
             ))
         };
 
-        let test_ae = || eq_expr(article_author_name_path(), article_author_skill_path());
-        let test_ae_commuted = || eq_expr(article_author_skill_path(), article_author_name_path());
+        let test_ae = || {
+            eq_expr(
+                publication_author_name_path(),
+                publication_author_skill_path(),
+            )
+        };
+        let test_ae_commuted = || {
+            eq_expr(
+                publication_author_skill_path(),
+                publication_author_name_path(),
+            )
+        };
 
         let author_id = 100;
 
@@ -718,8 +728,10 @@ mod test {
                 test_ae(),
                 AbstractPredicate::and(
                     AbstractPredicate::eq(
-                        to_column_path(&test_system.article_author_name_physical_column_path()),
-                        to_column_path(&test_system.article_author_skill_physical_column_path()),
+                        to_column_path(&test_system.publication_author_name_physical_column_path()),
+                        to_column_path(
+                            &test_system.publication_author_skill_physical_column_path(),
+                        ),
                     ),
                     relation_predicate(),
                 ),
@@ -728,8 +740,10 @@ mod test {
                 test_ae_commuted(),
                 AbstractPredicate::and(
                     AbstractPredicate::eq(
-                        to_column_path(&test_system.article_author_skill_physical_column_path()),
-                        to_column_path(&test_system.article_author_name_physical_column_path()),
+                        to_column_path(
+                            &test_system.publication_author_skill_physical_column_path(),
+                        ),
+                        to_column_path(&test_system.publication_author_name_physical_column_path()),
                     ),
                     relation_predicate(),
                 ),
@@ -754,7 +768,7 @@ mod test {
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn many_to_one_non_pk_match() {
-        // Scenario: self.author.age < AuthContext.id (self is an Article)
+        // Scenario: self.author.age < AuthContext.id (self is an Publication)
         // And input cannot provide the name (may provide only the id).
         // This should lead to a database residue.
         let test_system = TestSystem::new().await;
@@ -767,7 +781,7 @@ mod test {
         let test_system_router = test_system_router.as_ref();
         let env = &MapEnvironment::from(HashMap::new());
 
-        let self_author_age = || test_system.article_author_age_expr().into();
+        let self_author_age = || test_system.publication_author_age_expr().into();
 
         let authcontext_id = || context_selection_expr("AccessContext", "id");
 
@@ -833,7 +847,8 @@ mod test {
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
     async fn hof_call_with_equality() {
-        // Scenario: self.articles.some(a => a.title == AuthContext.name)
+        // Scenario: self.publications.some(p => p.royalty == AuthContext.id) (where self is User)
+        // This should lead to no database residue (publications and their royalty are available in the input context)
         let test_system = TestSystem::new().await;
         let TestSystem {
             system,
@@ -850,13 +865,15 @@ mod test {
         )
             -> AccessRelationalOp<PrecheckAccessPrimitiveExpression>| {
             PrecheckAccessPrimitiveExpression::Function(
-                test_system.user_articles_path(),
+                test_system.user_publications_path(),
                 FunctionCall {
                     name: "some".to_string(),
-                    parameter_name: "a".to_string(),
+                    parameter_name: "p".to_string(),
                     expr: AccessPredicateExpression::RelationalOp(op(
-                        test_system.article_title_expr(Some("a".to_string())).into(),
-                        context_selection_expr("AccessContext", "name"),
+                        test_system
+                            .publication_royalty_expr(Some("p".to_string()))
+                            .into(),
+                        context_selection_expr("AccessContext", "id"),
                     )),
                 },
             )
@@ -871,40 +888,40 @@ mod test {
         let form_expr =
             |lhs, rhs| AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(lhs, rhs));
 
-        let no_john = || json!({"articles": [{"title": "Article 1"}, {"title": "Article 2"}]});
-        let only_john = || json!({"articles": [{"title": "John"}]});
-        let first_john = || json!({"articles": [{"title": "John"}, {"title": "Article 2"}]});
-        let second_john = || json!({"articles": [{"title": "Article 1"}, {"title": "John"}]});
-        let empty = || json!({"articles": []});
+        let no_100 = || json!({"publications": [{"royalty": 10}, {"royalty": 20}]});
+        let only_100 = || json!({"publications": [{"royalty": 100}]});
+        let first_100 = || json!({"publications": [{"royalty": 100}, {"royalty": 20}]});
+        let second_100 = || json!({"publications": [{"royalty": 20}, {"royalty": 100}]});
+        let empty = || json!({"publications": []});
 
         let matrix = [
-            (&eq_call, true, no_john(), false),
+            (&eq_call, true, no_100(), false),
             (&eq_call, true, empty(), false),
-            (&eq_call, true, only_john(), true),
-            (&eq_call, true, first_john(), true),
-            (&eq_call, true, second_john(), true),
+            (&eq_call, true, only_100(), true),
+            (&eq_call, true, first_100(), true),
+            (&eq_call, true, second_100(), true),
             // With false
-            (&eq_call, false, no_john(), true),
+            (&eq_call, false, no_100(), true),
             (&eq_call, false, empty(), true),
-            (&eq_call, false, only_john(), false),
-            (&eq_call, false, first_john(), false),
-            (&eq_call, false, second_john(), false),
+            (&eq_call, false, only_100(), false),
+            (&eq_call, false, first_100(), false),
+            (&eq_call, false, second_100(), false),
             // NEQ cases
-            (&neq_call, true, no_john(), true),
+            (&neq_call, true, no_100(), true),
             (&neq_call, true, empty(), false), // some evaluation is false on an empty list
-            (&neq_call, true, only_john(), false),
-            (&neq_call, true, first_john(), true), // There are some non-john articles
-            (&neq_call, true, second_john(), true), // There are some non-john articles
+            (&neq_call, true, only_100(), false),
+            (&neq_call, true, first_100(), true), // There are some non-100 articles
+            (&neq_call, true, second_100(), true), // There are some non-100 articles
             // With false
-            (&neq_call, false, no_john(), false),
+            (&neq_call, false, no_100(), false),
             (&neq_call, false, empty(), true), // some evaluation is false on an empty list
-            (&neq_call, false, only_john(), true),
-            (&neq_call, false, first_john(), false), // There are some non-john articles
-            (&neq_call, false, second_john(), false), // There are some non-john articles
+            (&neq_call, false, only_100(), true),
+            (&neq_call, false, first_100(), false), // There are some non-100 articles
+            (&neq_call, false, second_100(), false), // There are some non-100 articles
         ];
 
         for (i, (lhs, rhs, input_value, expected_result)) in matrix.into_iter().enumerate() {
-            let context = test_request_context(json!({"name": "John"}), test_system_router, env);
+            let context = test_request_context(json!({"id": 100}), test_system_router, env);
             let input_value = input_value.into();
             let input_context = Some(AccessInputContext {
                 value: &input_value,
@@ -937,8 +954,8 @@ mod test {
 
     #[cfg_attr(not(target_family = "wasm"), tokio::test)]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-    async fn hof_call_residue() {
-        // Scenario: self.articles.some(a => a.title == self.name)
+    async fn hof_call_no_residue() {
+        // Scenario: self.publications.some(p => p.royalty == self.age) (where self is User)
         let test_system = TestSystem::new().await;
         let TestSystem {
             system,
@@ -955,13 +972,15 @@ mod test {
         )
             -> AccessRelationalOp<PrecheckAccessPrimitiveExpression>| {
             PrecheckAccessPrimitiveExpression::Function(
-                test_system.user_articles_path(),
+                test_system.user_publications_path(),
                 FunctionCall {
                     name: "some".to_string(),
-                    parameter_name: "a".to_string(),
+                    parameter_name: "p".to_string(),
                     expr: AccessPredicateExpression::RelationalOp(op(
-                        test_system.article_title_expr(Some("a".to_string())).into(),
-                        test_system.user_self_name_expr().into(),
+                        test_system
+                            .publication_royalty_expr(Some("p".to_string()))
+                            .into(),
+                        test_system.user_self_age_expr().into(),
                     )),
                 },
             )
@@ -976,45 +995,44 @@ mod test {
         let form_expr =
             |lhs, rhs| AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(lhs, rhs));
 
-        let no_john = || json!({"name": "John", "articles": [{"title": "Article 1"}, {"title": "Article 2"}]});
-        let only_john = || json!({"name": "John", "articles": [{"title": "John"}]});
-        let first_john =
-            || json!({"name": "John", "articles": [{"title": "John"}, {"title": "Article 2"}]});
-        let second_john =
-            || json!({"name": "John", "articles": [{"title": "Article 1"}, {"title": "John"}]});
-        let empty = || json!({"name": "John", "articles": []});
+        let no_100 = || json!({"age": 100, "publications": [{"royalty": 10}, {"royalty": 20}]});
+        let only_100 = || json!({"age": 100, "publications": [{"royalty": 100}]});
+        let first_100 = || json!({"age": 100, "publications": [{"royalty": 100}, {"royalty": 20}]});
+        let second_100 =
+            || json!({"age": 100, "publications": [{"royalty": 20}, {"royalty": 100}]});
+        let empty = || json!({"age": 100, "publications": []});
 
         let matrix = [
-            (&eq_call, true, no_john(), false),
+            (&eq_call, true, no_100(), false),
             (&eq_call, true, empty(), false),
-            (&eq_call, true, only_john(), true),
-            (&eq_call, true, first_john(), true),
-            (&eq_call, true, second_john(), true),
+            (&eq_call, true, only_100(), true),
+            (&eq_call, true, first_100(), true),
+            (&eq_call, true, second_100(), true),
             // With false
-            (&eq_call, false, no_john(), true),
+            (&eq_call, false, no_100(), true),
             (&eq_call, false, empty(), true),
-            (&eq_call, false, only_john(), false),
-            (&eq_call, false, first_john(), false),
-            (&eq_call, false, second_john(), false),
+            (&eq_call, false, only_100(), false),
+            (&eq_call, false, first_100(), false),
+            (&eq_call, false, second_100(), false),
             // NEQ cases
-            (&neq_call, true, no_john(), true),
+            (&neq_call, true, no_100(), true),
             (&neq_call, true, empty(), false), // some evaluation is false on an empty list
-            (&neq_call, true, only_john(), false),
-            (&neq_call, true, first_john(), true), // There are some non-john articles
-            (&neq_call, true, second_john(), true), // There are some non-john articles
+            (&neq_call, true, only_100(), false),
+            (&neq_call, true, first_100(), true), // There are some non-100 articles
+            (&neq_call, true, second_100(), true), // There are some non-100 articles
             // With false
-            (&neq_call, false, no_john(), false),
+            (&neq_call, false, no_100(), false),
             (&neq_call, false, empty(), true), // some evaluation is false on an empty list
-            (&neq_call, false, only_john(), true),
-            (&neq_call, false, first_john(), false), // There are some non-john articles
-            (&neq_call, false, second_john(), false), // There are some non-john articles
+            (&neq_call, false, only_100(), true),
+            (&neq_call, false, first_100(), false), // There are some non-100 articles
+            (&neq_call, false, second_100(), false), // There are some non-100 articles
         ];
 
-        // Scenario: self.articles.some(a => a.title == self.name)
-        // Example success operation (an article name matches the user name ("John")):
-        // createUser(name: "John", articles: [{title: "John"}, {title: "Article 2"}])
-        // Example failure operation:
-        // createUser(name: "John", articles: [{title: "Article 1"}, {title: "Article 2"}])
+        // Scenario: self.publications.some(p => p.royalty == self.age)
+        // Example success operation (a publication's royalty matches the user age):
+        // createUser(age: 100, publications: [{royalty: 100}, {royalty: 20}])
+        // Example failure operation (none of the publications' royalties match the user age):
+        // createUser(age: 100, publications: [{royalty: 10}, {royalty: 20}])
         for (i, (lhs, rhs, input_value, expected_result)) in matrix.into_iter().enumerate() {
             let context = test_request_context(json!({}), test_system_router, env);
             let input_value = input_value.into();
