@@ -241,6 +241,7 @@ fn leaf_column(
         }
         ColumnPath::Param(l) => Column::Param(l.clone()),
         ColumnPath::Null => Column::Null,
+        ColumnPath::Predicate(_) => unreachable!(),
     }
 }
 
@@ -260,7 +261,7 @@ fn attempt_subselect_predicate(
                     _ => None,
                 }
             }
-            ColumnPath::Param(_) | ColumnPath::Null => None,
+            ColumnPath::Param(_) | ColumnPath::Null | ColumnPath::Predicate(_) => None,
         }
     }
 

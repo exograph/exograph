@@ -12,7 +12,7 @@ use core_plugin_interface::{
         access::{AccessPredicateExpression, CommonAccessPrimitiveExpression, FunctionCall},
         mapped_arena::SerializableSlabIndex,
     },
-    core_model_builder::error::ModelBuildingError,
+    core_resolver::access_solver::AccessSolverError,
 };
 use exo_sql::PhysicalColumnPath;
 use serde::{Deserialize, Serialize};
@@ -51,7 +51,7 @@ pub enum DatabaseAccessPrimitiveExpression {
 }
 
 /// Primitive expressions that can express data input access control rules.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PrecheckAccessPrimitiveExpression {
     Path(AccessPrimitiveExpressionPath, Option<String>), // JSON path, for example self.user.id and parameter name (such as "du", default: "self")
     Function(AccessPrimitiveExpressionPath, FunctionCall<Self>), // Function, for example self.documentUser.some(du => du.id == AuthContext.id && du.read)
@@ -82,15 +82,27 @@ impl AccessPrimitiveExpressionPath {
         }
     }
 
-    pub fn with_function_context(self, other: Self) -> Result<Self, ModelBuildingError> {
+    pub fn with_function_context(
+        self,
+        other: Self,
+        parameter_name: String,
+    ) -> Result<Self, AccessSolverError> {
         Ok(Self {
             column_path: self.column_path.join(other.column_path),
-            field_path: match (self.field_path, other.field_path) {
-                (_, FieldPath::Normal(b)) => FieldPath::Normal(b.clone()),
-                (_, FieldPath::Pk { lead, pk_fields }) => FieldPath::Pk {
-                    lead: lead.clone(),
-                    pk_fields: pk_fields.clone(),
-                },
+            field_path: match other.field_path {
+                FieldPath::Normal(b) => {
+                    let mut new_field_path = vec![parameter_name.to_string()];
+                    new_field_path.extend(b);
+                    FieldPath::Normal(new_field_path)
+                }
+                FieldPath::Pk { lead, pk_fields } => {
+                    let mut new_field_path = vec![parameter_name.to_string()];
+                    new_field_path.extend(lead);
+                    FieldPath::Pk {
+                        lead: new_field_path,
+                        pk_fields: pk_fields.clone(),
+                    }
+                }
             },
         })
     }

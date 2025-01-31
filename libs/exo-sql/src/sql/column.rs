@@ -9,7 +9,7 @@
 
 use maybe_owned::MaybeOwned;
 
-use crate::{ColumnId, Database, ParamEquality, PhysicalTableName};
+use crate::{ColumnId, Database, ParamEquality, PhysicalTableName, Predicate};
 
 use super::{
     function::Function, json_agg::JsonAgg, json_object::JsonObject, select::Select,
@@ -59,6 +59,8 @@ pub enum Column {
     Null,
     /// A function applied to a column. For example, `count(id)` or `lower(first_name)`.
     Function(Function),
+
+    Predicate(Box<Predicate<Column>>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -152,6 +154,11 @@ impl ExpressionBuilder for Column {
             }
             Column::Null => {
                 builder.push_str("NULL");
+            }
+            Column::Predicate(predicate) => {
+                builder.push('(');
+                predicate.build(database, builder);
+                builder.push(')');
             }
         }
     }

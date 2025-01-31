@@ -36,26 +36,6 @@ RelationalOp:
               Eq:
                 - Path:
                     - column_path:
-                        - Relation:
-                            column_pairs:
-                              - self_column_id:
-                                  table_id:
-                                    index: 1
-                                    generation: ~
-                                  column_index: 0
-                                foreign_column_id:
-                                  table_id:
-                                    index: 0
-                                    generation: ~
-                                  column_index: 2
-                            self_table_id:
-                              index: 1
-                              generation: ~
-                            linked_table_id:
-                              index: 0
-                              generation: ~
-                            linked_table_alias: ~
-                            _phantom: ~
                         - Leaf:
                             table_id:
                               index: 0

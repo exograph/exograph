@@ -13,7 +13,7 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
-use core_plugin_interface::core_resolver::access_solver::AccessInputContext;
+use core_plugin_interface::core_resolver::access_solver::AccessInput;
 use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
 use exo_sql::{
     AbstractInsert, AbstractPredicate, AbstractSelect, ColumnId, ColumnValuePair, InsertionElement,
@@ -113,9 +113,9 @@ async fn map_single<'a>(
         &SQLOperationKind::Create,
         subsystem,
         request_context,
-        Some(&AccessInputContext {
+        Some(&AccessInput {
             value: argument,
-            ignore_missing_context: false,
+            ignore_missing_value: false,
             aliases: HashMap::new(),
         }),
     )

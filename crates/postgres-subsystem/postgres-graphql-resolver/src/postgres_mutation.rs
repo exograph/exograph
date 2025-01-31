@@ -22,7 +22,7 @@ use async_trait::async_trait;
 use common::context::RequestContext;
 use core_plugin_interface::core_resolver::validation::field::ValidatedField;
 use core_plugin_interface::{
-    core_model::types::OperationReturnType, core_resolver::access_solver::AccessInputContext,
+    core_model::types::OperationReturnType, core_resolver::access_solver::AccessInput,
 };
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
@@ -170,9 +170,9 @@ async fn update_operation<'content>(
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractUpdate, PostgresExecutionError> {
     let data_arg = find_arg(&field.arguments, &data_param.name);
-    let input_context = data_arg.map(|arg| AccessInputContext {
+    let input_value = data_arg.map(|arg| AccessInput {
         value: arg,
-        ignore_missing_context: true,
+        ignore_missing_value: true,
         aliases: HashMap::new(),
     });
     let (precheck_predicate, entity_predicate) = check_access(
@@ -181,7 +181,7 @@ async fn update_operation<'content>(
         &SQLOperationKind::Update,
         subsystem,
         request_context,
-        input_context.as_ref(),
+        input_value.as_ref(),
     )
     .await?;
 

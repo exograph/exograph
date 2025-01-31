@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     sql::{predicate::ParamEquality, relation::RelationColumnPair, SQLParamContainer},
-    ColumnId, Database, TableId,
+    AbstractPredicate, ColumnId, Database, TableId,
 };
 
 /// A link in `ColumnPath` to a column starting at a root table and ending at a leaf column. This
@@ -31,6 +31,7 @@ use crate::{
 pub enum ColumnPath {
     Physical(PhysicalColumnPath),
     Param(SQLParamContainer),
+    Predicate(Box<AbstractPredicate>), // TODO: Generalize this to be any expression
     Null,
 }
 
@@ -168,6 +169,11 @@ impl RelationLink {
             linked_table_alias,
             _phantom: PhantomData,
         }
+    }
+
+    pub fn with_alias(mut self, alias: String) -> Self {
+        self.linked_table_alias = Some(alias);
+        self
     }
 }
 
