@@ -19,7 +19,7 @@ use core_plugin_interface::{
     core_resolver::access_solver::{
         eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
         reduce_common_primitive_expression, AccessInput, AccessInputPath, AccessInputPathElement,
-        AccessSolver, AccessSolverError,
+        AccessSolution, AccessSolver, AccessSolverError,
     },
 };
 use exo_sql::{
@@ -60,14 +60,18 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
         request_context: &RequestContext<'a>,
         input_value: Option<&AccessInput<'a>>,
         op: &AccessRelationalOp<PrecheckAccessPrimitiveExpression>,
-    ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
+    ) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
         let (left, right) = op.sides();
         let left = reduce_primitive_expression(self, request_context, input_value, left).await?;
         let right = reduce_primitive_expression(self, request_context, input_value, right).await?;
 
         let (left, right) = match (left, right) {
-            (Some(left), Some(right)) => (left, right),
-            _ => return Ok(None), // If either side is None, we can't produce a predicate
+            (AccessSolution::Solved(left), AccessSolution::Solved(right)) => (left, right),
+            _ => {
+                return Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
+                    AbstractPredicate::True,
+                )))
+            } // If either side is None, we can't produce a predicate
         };
 
         let ignore_missing_value = input_value
@@ -75,19 +79,20 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
             .map(|ctx| ctx.ignore_missing_value)
             .unwrap_or(false);
 
-        let helper = |column_predicate: ColumnPredicateFn,
-                      value_predicate: ValuePredicateFn|
-         -> Result<Option<AbstractPredicate>, AccessSolverError> {
-            evaluate_relation(
-                left,
-                right,
-                input_value,
-                &self.core_subsystem.database,
-                ignore_missing_value,
-                column_predicate,
-                value_predicate,
-            )
-        };
+        let helper =
+            |column_predicate: ColumnPredicateFn,
+             value_predicate: ValuePredicateFn|
+             -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
+                evaluate_relation(
+                    left,
+                    right,
+                    input_value,
+                    &self.core_subsystem.database,
+                    ignore_missing_value,
+                    column_predicate,
+                    value_predicate,
+                )
+            };
 
         let access_predicate = match op {
             AccessRelationalOp::Eq(..) => {
@@ -129,7 +134,7 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
             }
         }?;
 
-        Ok(access_predicate.map(AbstractPredicateWrapper))
+        Ok(access_predicate)
     }
 }
 
@@ -138,14 +143,14 @@ async fn reduce_primitive_expression<'a>(
     request_context: &'a RequestContext<'a>,
     input_value: Option<&AccessInput<'a>>,
     expr: &'a PrecheckAccessPrimitiveExpression,
-) -> Result<Option<SolvedPrecheckPrimitiveExpression>, AccessSolverError> {
+) -> Result<AccessSolution<SolvedPrecheckPrimitiveExpression>, AccessSolverError> {
     match expr {
         PrecheckAccessPrimitiveExpression::Common(expr) => {
             let primitive_expr =
                 reduce_common_primitive_expression(solver, request_context, expr).await?;
-            Ok(Some(SolvedPrecheckPrimitiveExpression::Common(
-                primitive_expr,
-            )))
+            Ok(AccessSolution::Solved(
+                SolvedPrecheckPrimitiveExpression::Common(primitive_expr),
+            ))
         }
         PrecheckAccessPrimitiveExpression::Path(path, parameter_name) => {
             let mut path_elements = match parameter_name {
@@ -157,10 +162,12 @@ async fn reduce_primitive_expression<'a>(
             let field_path_strings = match &path.field_path {
                 FieldPath::Normal(field_path) => field_path,
                 FieldPath::Pk { .. } => {
-                    return Ok(Some(SolvedPrecheckPrimitiveExpression::Path(
-                        path.clone(),
-                        parameter_name.clone(),
-                    )));
+                    return Ok(AccessSolution::Solved(
+                        SolvedPrecheckPrimitiveExpression::Path(
+                            path.clone(),
+                            parameter_name.clone(),
+                        ),
+                    ));
                 }
             };
             path_elements.extend(
@@ -174,13 +181,12 @@ async fn reduce_primitive_expression<'a>(
             let value = value.transpose()?.flatten();
 
             match value {
-                Some(value) => Ok(Some(SolvedPrecheckPrimitiveExpression::Common(Some(
-                    value.clone(),
-                )))),
-                None => Ok(Some(SolvedPrecheckPrimitiveExpression::Path(
-                    path.clone(),
-                    parameter_name.clone(),
-                ))),
+                Some(value) => Ok(AccessSolution::Solved(
+                    SolvedPrecheckPrimitiveExpression::Common(Some(value.clone())),
+                )),
+                None => Ok(AccessSolution::Solved(
+                    SolvedPrecheckPrimitiveExpression::Path(path.clone(), parameter_name.clone()),
+                )),
             }
         }
         PrecheckAccessPrimitiveExpression::Function(lead, func_call) => {
@@ -292,7 +298,7 @@ async fn reduce_primitive_expression<'a>(
                             .solve(request_context, new_input_value.as_ref(), expr)
                             .await?;
 
-                        if let Some(AbstractPredicateWrapper(p)) = solved_expr {
+                        if let AccessSolution::Solved(AbstractPredicateWrapper(p)) = solved_expr {
                             if p == AbstractPredicate::True {
                                 result = SolvedPrecheckPrimitiveExpression::Common(Some(
                                     Val::Bool(true),
@@ -301,7 +307,7 @@ async fn reduce_primitive_expression<'a>(
                             }
                         }
                     }
-                    Ok(Some(result))
+                    Ok(AccessSolution::Solved(result))
                 }
                 _ => {
                     let ignore_missing_value = input_value
@@ -310,9 +316,9 @@ async fn reduce_primitive_expression<'a>(
                         .unwrap_or(true);
 
                     if ignore_missing_value {
-                        Ok(Some(SolvedPrecheckPrimitiveExpression::Common(Some(
-                            Val::Bool(true),
-                        ))))
+                        Ok(AccessSolution::Solved(
+                            SolvedPrecheckPrimitiveExpression::Common(Some(Val::Bool(true))),
+                        ))
                     } else {
                         Err(AccessSolverError::Generic(
                             "Could not evaluate the access condition".into(),
@@ -332,10 +338,12 @@ fn evaluate_relation(
     ignore_missing_value: bool,
     column_predicate: ColumnPredicateFn,
     value_predicate: ValuePredicateFn,
-) -> Result<Option<AbstractPredicate>, AccessSolverError> {
+) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
     match (left, right) {
         (SolvedPrecheckPrimitiveExpression::Common(None), _)
-        | (_, SolvedPrecheckPrimitiveExpression::Common(None)) => Ok(None),
+        | (_, SolvedPrecheckPrimitiveExpression::Common(None)) => Ok(AccessSolution::Unsolvable(
+            AbstractPredicateWrapper(AbstractPredicate::False),
+        )),
 
         (
             SolvedPrecheckPrimitiveExpression::Path(left_path, _),
@@ -355,16 +363,17 @@ fn evaluate_relation(
             };
             let relational_predicate = AbstractPredicate::and(left_predicate, right_predicate);
 
-            Ok(Some(AbstractPredicate::and(
-                core_predicate,
-                relational_predicate,
+            Ok(AccessSolution::Solved(AbstractPredicateWrapper(
+                AbstractPredicate::and(core_predicate, relational_predicate),
             )))
         }
 
         (
             SolvedPrecheckPrimitiveExpression::Common(Some(left_value)),
             SolvedPrecheckPrimitiveExpression::Common(Some(right_value)),
-        ) => Ok(Some(value_predicate(&left_value, &right_value).into())),
+        ) => Ok(AccessSolution::Solved(
+            value_predicate(&left_value, &right_value).into(),
+        )),
 
         // The next two need to be handled separately, since we need to pass the left side
         // and right side to the predicate in the correct order. For example, `age > 18` is
@@ -397,16 +406,20 @@ fn evaluate_relation(
         (
             SolvedPrecheckPrimitiveExpression::Predicate(left_predicate),
             SolvedPrecheckPrimitiveExpression::Common(Some(right_value)),
-        ) => Ok(Some(AbstractPredicate::eq(
-            ColumnPath::Predicate(Box::new(left_predicate.clone())),
-            literal_column_path(&right_value, &PhysicalColumnType::Boolean, false).unwrap(),
+        ) => Ok(AccessSolution::Solved(AbstractPredicateWrapper(
+            AbstractPredicate::eq(
+                ColumnPath::Predicate(Box::new(left_predicate.clone())),
+                literal_column_path(&right_value, &PhysicalColumnType::Boolean, false).unwrap(),
+            ),
         ))),
         (
             SolvedPrecheckPrimitiveExpression::Common(Some(left_value)),
             SolvedPrecheckPrimitiveExpression::Predicate(right_predicate),
-        ) => Ok(Some(AbstractPredicate::eq(
-            literal_column_path(&left_value, &PhysicalColumnType::Boolean, false).unwrap(),
-            ColumnPath::Predicate(Box::new(right_predicate.clone())),
+        ) => Ok(AccessSolution::Solved(AbstractPredicateWrapper(
+            AbstractPredicate::eq(
+                literal_column_path(&left_value, &PhysicalColumnType::Boolean, false).unwrap(),
+                ColumnPath::Predicate(Box::new(right_predicate.clone())),
+            ),
         ))),
         _ => Err(AccessSolverError::Generic("Unsupported expression".into())),
     }
@@ -452,30 +465,36 @@ fn process_path_common_expr(
     database: &Database,
     column_predicate: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
     value_predicate: impl Fn(&Val, &Val) -> bool,
-) -> Result<Option<AbstractPredicate>, AccessSolverError> {
+) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
     match &left_path.field_path {
         FieldPath::Normal(field_path) => {
             let left_value = resolve_value(input_value, field_path)?;
 
             match left_value {
-                Some(left_value) => Ok(Some(value_predicate(left_value, &right_value).into())),
+                Some(left_value) => Ok(AccessSolution::Solved(
+                    value_predicate(left_value, &right_value).into(),
+                )),
                 None => {
                     if parameter_name
                         .as_ref()
                         .map(|p| p == &field_path[0])
                         .unwrap_or(false)
                     {
-                        Ok(Some(column_predicate(
-                            ColumnPath::Physical(left_path.column_path.clone()),
-                            literal_column_path(
-                                &right_value,
-                                column_type(&left_path.column_path, database),
-                                false,
-                            )
-                            .unwrap(),
+                        Ok(AccessSolution::Solved(AbstractPredicateWrapper(
+                            column_predicate(
+                                ColumnPath::Physical(left_path.column_path.clone()),
+                                literal_column_path(
+                                    &right_value,
+                                    column_type(&left_path.column_path, database),
+                                    false,
+                                )
+                                .unwrap(),
+                            ),
                         )))
                     } else {
-                        Ok(Some(AbstractPredicate::True))
+                        Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
+                            AbstractPredicate::True,
+                        )))
                     }
                 }
             }
@@ -489,9 +508,8 @@ fn process_path_common_expr(
             let core_predicate = column_predicate(left_column_path, right_column_path);
             let relational_predicate =
                 compute_relational_predicate(left_head, lead, pk_fields, input_value, database)?;
-            Ok(Some(AbstractPredicate::and(
-                core_predicate,
-                relational_predicate,
+            Ok(AccessSolution::Solved(AbstractPredicateWrapper(
+                AbstractPredicate::and(core_predicate, relational_predicate),
             )))
         }
     }

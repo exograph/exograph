@@ -439,7 +439,7 @@ async fn compute_nested_inserts<'a>(
             )
             .await?
             .map(|expr| expr.0)
-            .unwrap_or(AbstractPredicate::True),
+            .resolve(),
         None => AbstractPredicate::True,
     };
 

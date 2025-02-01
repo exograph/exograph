@@ -9,7 +9,7 @@
 
 use common::value::Val;
 use core_plugin_interface::{
-    core_model::access::AccessRelationalOp,
+    core_model::access::{AccessLogicalExpression, AccessRelationalOp},
     core_resolver::access_solver::{AccessInput, AccessSolver},
 };
 use exo_sql::ColumnPath;
@@ -108,6 +108,54 @@ async fn self_field_default_value() {
         self_user_id(),
         context_selection_expr("AccessContext", "id"),
     ));
+
+    let context_value = json!({"id": 1});
+    let input_value =
+        json!({"title": "Buy groceries", "completed": false, "user": {"id": 1}}).into();
+
+    let input_value = Some(AccessInput {
+        value: &input_value,
+        ignore_missing_value: false,
+        aliases: HashMap::new(),
+    });
+    let solved_predicate = solve_access(
+        &test_ae,
+        context_value.clone(),
+        input_value,
+        &test_system.system,
+    )
+    .await;
+    assert_eq!(solved_predicate, true.into());
+
+    // Use the default value for user.id (Todo has `user: User = AccessContext.id`)
+    let input_value = json!({"title": "Buy groceries", "completed": false}).into();
+
+    let input_value = Some(AccessInput {
+        value: &input_value,
+        ignore_missing_value: false,
+        aliases: HashMap::new(),
+    });
+
+    let solved_predicate =
+        solve_access(&test_ae, context_value, input_value, &test_system.system).await;
+    assert_eq!(solved_predicate, true.into());
+}
+
+#[cfg_attr(not(target_family = "wasm"), tokio::test)]
+#[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+async fn self_field_default_value_logical_ops() {
+    // Scenario: !(self.user.id != AuthContext.id) (self is a Todo)
+    // Effectively the same condition as the earlier test, but uses a logical not and inside uses != instead of ==
+    let test_system = TestSystem::new().await;
+
+    let self_user_id = || test_system.expr("Todo", "user.id", None).into();
+
+    let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(Box::new(
+        AccessPredicateExpression::RelationalOp(AccessRelationalOp::Neq(
+            self_user_id(),
+            context_selection_expr("AccessContext", "id"),
+        )),
+    )));
 
     let context_value = json!({"id": 1});
     let input_value =
@@ -702,8 +750,7 @@ async fn solve_access<'a>(
         .await;
 
     match result {
-        Ok(Some(value)) => value.0,
-        Ok(None) => AbstractPredicate::False,
+        Ok(result) => result.resolve().0,
         Err(e) => panic!("Error solving access predicate: {:?}", e),
     }
 }

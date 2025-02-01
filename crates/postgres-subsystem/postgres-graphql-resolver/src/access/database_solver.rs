@@ -23,7 +23,7 @@ use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
     core_resolver::access_solver::{
         eq_values, neq_values, reduce_common_primitive_expression, AccessInput, AccessPredicate,
-        AccessSolver, AccessSolverError,
+        AccessSolution, AccessSolver, AccessSolverError,
     },
 };
 use exo_sql::{AbstractPredicate, ColumnPath, PhysicalColumnPath, SQLParamContainer};
@@ -51,7 +51,7 @@ impl From<bool> for AbstractPredicateWrapper {
     }
 }
 
-impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper {
+impl AccessPredicate for AbstractPredicateWrapper {
     fn and(self, other: Self) -> Self {
         Self(AbstractPredicate::and(self.0, other.0))
     }
@@ -76,20 +76,20 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         request_context: &RequestContext<'a>,
         _input_value: Option<&AccessInput<'a>>,
         op: &AccessRelationalOp<DatabaseAccessPrimitiveExpression>,
-    ) -> Result<Option<AbstractPredicateWrapper>, AccessSolverError> {
+    ) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(
             solver: &PostgresGraphQLSubsystem,
             request_context: &'a RequestContext<'a>,
             expr: &'a DatabaseAccessPrimitiveExpression,
-        ) -> Result<Option<SolvedPrimitiveExpression>, AccessSolverError> {
+        ) -> Result<AccessSolution<SolvedPrimitiveExpression>, AccessSolverError> {
             Ok(match expr {
                 DatabaseAccessPrimitiveExpression::Common(expr) => {
                     let primitive_expr =
                         reduce_common_primitive_expression(solver, request_context, expr).await?;
-                    Some(SolvedPrimitiveExpression::Common(primitive_expr))
+                    AccessSolution::Solved(SolvedPrimitiveExpression::Common(primitive_expr))
                 }
                 DatabaseAccessPrimitiveExpression::Column(column_path, _) => {
-                    Some(SolvedPrimitiveExpression::Column(column_path.clone()))
+                    AccessSolution::Solved(SolvedPrimitiveExpression::Column(column_path.clone()))
                 }
                 DatabaseAccessPrimitiveExpression::Function(_, _) => {
                     // TODO: Fix this through better types
@@ -103,8 +103,12 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
         let right = reduce_primitive_expression(self, request_context, right).await?;
 
         let (left, right) = match (left, right) {
-            (Some(left), Some(right)) => (left, right),
-            _ => return Ok(None), // If either side is None, we can't produce a predicate
+            (AccessSolution::Solved(left), AccessSolution::Solved(right)) => (left, right),
+            _ => {
+                return Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
+                    AbstractPredicate::True,
+                )))
+            } // If either side is None, we can't produce a predicate
         };
 
         type ColumnPredicateFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;
@@ -112,15 +116,17 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
 
         let helper = |column_predicate: ColumnPredicateFn,
                       value_predicate: ValuePredicateFn|
-         -> Result<Option<AbstractPredicate>, AccessSolverError> {
+         -> Result<AccessSolution<AbstractPredicate>, AccessSolverError> {
             match (left, right) {
                 (SolvedPrimitiveExpression::Common(None), _)
-                | (_, SolvedPrimitiveExpression::Common(None)) => Ok(None),
+                | (_, SolvedPrimitiveExpression::Common(None)) => {
+                    Ok(AccessSolution::Unsolvable(AbstractPredicate::False))
+                }
 
                 (
                     SolvedPrimitiveExpression::Column(left_col),
                     SolvedPrimitiveExpression::Column(right_col),
-                ) => Ok(Some(column_predicate(
+                ) => Ok(AccessSolution::Solved(column_predicate(
                     to_column_path(&left_col),
                     to_column_path(&right_col),
                 ))),
@@ -128,7 +134,10 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                 (
                     SolvedPrimitiveExpression::Common(Some(left_value)),
                     SolvedPrimitiveExpression::Common(Some(right_value)),
-                ) => Ok(Some(value_predicate(left_value, right_value))),
+                ) => Ok(AccessSolution::Solved(value_predicate(
+                    left_value,
+                    right_value,
+                ))),
 
                 // The next two need to be handled separately, since we need to pass the left side
                 // and right side to the predicate in the correct order. For example, `age > 18` is
@@ -141,7 +150,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                         .leaf_column()
                         .get_column(&self.core_subsystem.database);
 
-                    Ok(Some(column_predicate(
+                    Ok(AccessSolution::Solved(column_predicate(
                         cast::literal_column_path(&value, &physical_column.typ, op.needs_unnest())
                             .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))?,
                         to_column_path(&column),
@@ -164,7 +173,7 @@ impl<'a> AccessSolver<'a, DatabaseAccessPrimitiveExpression, AbstractPredicateWr
                                 )
                             })?;
 
-                    Ok(Some(column_predicate(
+                    Ok(AccessSolution::Solved(column_predicate(
                         to_column_path(&column),
                         literal_column_path,
                     )))
@@ -392,7 +401,7 @@ mod tests {
             .await
             .unwrap()
             .map(|p| p.0)
-            .unwrap_or(AbstractPredicate::False)
+            .resolve()
     }
 
     type CompareFn = fn(ColumnPath, ColumnPath) -> AbstractPredicate;

@@ -162,7 +162,7 @@ async fn check_create_access<'a>(
         )
         .await?
         .map(|predicate| predicate.0)
-        .unwrap_or(AbstractPredicate::False);
+        .resolve();
 
     if precheck_predicate == AbstractPredicate::False {
         Err(PostgresExecutionError::Authorization)
@@ -180,7 +180,7 @@ pub(super) async fn check_retrieve_access<'a>(
         .solve(request_context, None, expr)
         .await?
         .map(|p| p.0)
-        .unwrap_or(AbstractPredicate::False))
+        .resolve())
 }
 
 async fn check_update_access<'a>(
@@ -198,7 +198,7 @@ async fn check_update_access<'a>(
         )
         .await?
         .map(|predicate| predicate.0)
-        .unwrap_or(AbstractPredicate::False);
+        .resolve();
 
     // Input predicate cannot have a residue (i.e. it must fully evaluated to true or false)
     if precheck_predicate == AbstractPredicate::False {
@@ -215,7 +215,7 @@ async fn check_update_access<'a>(
         )
         .await?
         .map(|p| p.0)
-        .unwrap_or(AbstractPredicate::False);
+        .resolve();
 
     Ok((precheck_predicate, database_predicate))
 }
@@ -231,7 +231,7 @@ async fn check_delete_access<'a>(
             .solve(request_context, None, expr)
             .await?
             .map(|p| p.0)
-            .unwrap_or(AbstractPredicate::False),
+            .resolve(),
     ))
 }
 
@@ -321,7 +321,7 @@ async fn check_input_access<'a>(
                                     )
                                     .await?
                                     .map(|predicate| predicate.0)
-                                    .unwrap_or(AbstractPredicate::False);
+                                    .resolve();
 
                                 if input_predicate == AbstractPredicate::False {
                                     Err(PostgresExecutionError::Authorization)

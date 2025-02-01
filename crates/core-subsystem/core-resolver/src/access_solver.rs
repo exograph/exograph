@@ -22,9 +22,7 @@ use common::value::Val;
 use crate::{context_extractor::ContextExtractor, number_cmp::NumberWrapper};
 
 /// Access predicate that can be logically combined with other predicates.
-pub trait AccessPredicate<'a>:
-    From<bool> + std::ops::Not<Output = Self> + 'a + Send + Sync
-{
+pub trait AccessPredicate: From<bool> + std::ops::Not<Output = Self> + Send + Sync {
     fn and(self, other: Self) -> Self;
     fn or(self, other: Self) -> Self;
 }
@@ -166,6 +164,94 @@ impl<'a> AccessInput<'a> {
     }
 }
 
+pub enum AccessSolution<Res> {
+    Solved(Res),
+    Unsolvable(Res), // the attribute indicates that if forced to resolve, what it should be
+}
+
+impl<Res> std::fmt::Debug for AccessSolution<Res>
+where
+    Res: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AccessSolution::Solved(res) => write!(f, "Solved({:?})", res),
+            AccessSolution::Unsolvable(res) => write!(f, "NotSolved({:?})", res),
+        }
+    }
+}
+
+impl<Res> AccessSolution<Res>
+where
+    Res: std::fmt::Debug,
+{
+    pub fn map<U>(self, f: impl FnOnce(Res) -> U) -> AccessSolution<U> {
+        match self {
+            AccessSolution::Solved(res) => AccessSolution::Solved(f(res)),
+            AccessSolution::Unsolvable(res) => AccessSolution::Unsolvable(f(res)),
+        }
+    }
+
+    pub fn resolve(self) -> Res {
+        match self {
+            AccessSolution::Solved(res) => res,
+            AccessSolution::Unsolvable(res) => res,
+        }
+    }
+}
+
+impl<Res> AccessSolution<Res>
+where
+    Res: AccessPredicate + std::fmt::Debug,
+{
+    fn not(self) -> Self {
+        match self {
+            AccessSolution::Solved(res) => AccessSolution::Solved(res.not()),
+            AccessSolution::Unsolvable(res) => AccessSolution::Unsolvable(res),
+        }
+    }
+
+    pub fn and(self, other: Self) -> Self {
+        match (self, other) {
+            (AccessSolution::Solved(left_predicate), AccessSolution::Solved(right_predicate)) => {
+                AccessSolution::Solved(left_predicate.and(right_predicate))
+            }
+            (
+                AccessSolution::Solved(left_predicate),
+                AccessSolution::Unsolvable(right_predicate),
+            )
+            | (
+                AccessSolution::Unsolvable(left_predicate),
+                AccessSolution::Solved(right_predicate),
+            ) => AccessSolution::Solved(left_predicate.and(right_predicate)),
+            (
+                AccessSolution::Unsolvable(left_predicate),
+                AccessSolution::Unsolvable(right_predicate),
+            ) => AccessSolution::Unsolvable(left_predicate.and(right_predicate)),
+        }
+    }
+
+    pub fn or(self, other: Self) -> Self {
+        match (self, other) {
+            (AccessSolution::Solved(left_predicate), AccessSolution::Solved(right_predicate)) => {
+                AccessSolution::Solved(left_predicate.or(right_predicate))
+            }
+            (
+                AccessSolution::Solved(left_predicate),
+                AccessSolution::Unsolvable(right_predicate),
+            )
+            | (
+                AccessSolution::Unsolvable(left_predicate),
+                AccessSolution::Solved(right_predicate),
+            ) => AccessSolution::Solved(left_predicate.or(right_predicate)),
+            (
+                AccessSolution::Unsolvable(left_predicate),
+                AccessSolution::Unsolvable(right_predicate),
+            ) => AccessSolution::Unsolvable(left_predicate.or(right_predicate)),
+        }
+    }
+}
+
 /// Solve access control logic.
 ///
 /// Typically, the user of this trait will use the `solve` method.
@@ -177,7 +263,7 @@ impl<'a> AccessInput<'a> {
 pub trait AccessSolver<'a, PrimExpr, Res>
 where
     PrimExpr: Send + Sync + std::fmt::Debug,
-    Res: AccessPredicate<'a> + std::fmt::Debug,
+    Res: AccessPredicate + std::fmt::Debug,
 {
     /// Solve access control logic.
     ///
@@ -194,7 +280,7 @@ where
         request_context: &RequestContext<'a>,
         input_value: Option<&AccessInput<'a>>,
         expr: &AccessPredicateExpression<PrimExpr>,
-    ) -> Result<Option<Res>, AccessSolverError> {
+    ) -> Result<AccessSolution<Res>, AccessSolverError> {
         match expr {
             AccessPredicateExpression::LogicalOp(op) => {
                 self.solve_logical_op(request_context, input_value, op)
@@ -204,7 +290,9 @@ where
                 self.solve_relational_op(request_context, input_value, op)
                     .await
             }
-            AccessPredicateExpression::BooleanLiteral(value) => Ok(Some((*value).into())),
+            AccessPredicateExpression::BooleanLiteral(value) => {
+                Ok(AccessSolution::Solved((*value).into()))
+            }
         }
     }
 
@@ -218,7 +306,7 @@ where
         request_context: &RequestContext<'a>,
         input_value: Option<&AccessInput<'a>>,
         op: &AccessRelationalOp<PrimExpr>,
-    ) -> Result<Option<Res>, AccessSolverError>;
+    ) -> Result<AccessSolution<Res>, AccessSolverError>;
 
     /// Solve logical operations such as `not`, `and`, `or`.
     async fn solve_logical_op(
@@ -226,36 +314,24 @@ where
         request_context: &RequestContext<'a>,
         input_value: Option<&AccessInput<'a>>,
         op: &AccessLogicalExpression<PrimExpr>,
-    ) -> Result<Option<Res>, AccessSolverError> {
+    ) -> Result<AccessSolution<Res>, AccessSolverError> {
         Ok(match op {
             AccessLogicalExpression::Not(underlying) => {
                 let underlying_predicate =
                     self.solve(request_context, input_value, underlying).await?;
-                underlying_predicate.map(|p| p.not())
+                underlying_predicate.not()
             }
             AccessLogicalExpression::And(left, right) => {
                 let left_predicate = self.solve(request_context, input_value, left).await?;
                 let right_predicate = self.solve(request_context, input_value, right).await?;
 
-                match (left_predicate, right_predicate) {
-                    (Some(left_predicate), Some(right_predicate)) => {
-                        Some(left_predicate.and(right_predicate))
-                    }
-                    _ => None,
-                }
+                left_predicate.and(right_predicate)
             }
             AccessLogicalExpression::Or(left, right) => {
                 let left_predicate = self.solve(request_context, input_value, left).await?;
                 let right_predicate = self.solve(request_context, input_value, right).await?;
 
-                match (left_predicate, right_predicate) {
-                    (Some(left_predicate), Some(right_predicate)) => {
-                        Some(left_predicate.or(right_predicate))
-                    }
-                    (Some(left_predicate), None) => Some(left_predicate),
-                    (None, Some(right_predicate)) => Some(right_predicate),
-                    (None, None) => None,
-                }
+                left_predicate.or(right_predicate)
             }
         })
     }
