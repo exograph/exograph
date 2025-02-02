@@ -1,0 +1,31 @@
+stages:
+  - operation: |
+      mutation($u2_id: Int!, $u4_id: Int!, $c3_id: Int!) {
+        # Substitute user 2 with user 4 in chat 3 (u1 is not admin of c3 so this should fail)
+        updateChatParticipation(user: { id: $u2_id }, chat: { id: $c3_id }, data: { user: { id: $u4_id } }) {
+          user {
+            id
+          }
+          chat {
+            id
+          }
+        }
+      }
+    variable: |
+      {
+        "u2_id": $.u2_id,
+        "u4_id": $.u4_id,
+        "c3_id": $.c3_id
+      }
+    auth: |
+      {
+        "sub": $.u1_id
+      }
+    invariants:
+      - path: ../system-state.gql      
+    response: |
+      {
+        "data": {
+          "updateChatParticipation": null
+        }
+      }

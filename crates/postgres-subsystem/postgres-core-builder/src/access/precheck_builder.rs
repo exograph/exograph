@@ -137,7 +137,6 @@ pub fn compute_precheck_predicate_expression(
                         ))
                     } else {
                         let function_expr = compute_precheck_function_expr(
-                            &path,
                             function_call.name.clone(),
                             function_call.parameter_name.clone(),
                             function_call.expr,
@@ -207,61 +206,27 @@ pub fn compute_precheck_predicate_expression(
 }
 
 fn compute_precheck_function_expr(
-    path: &AccessPrimitiveExpressionPath,
     function_name: String,
     function_param_name: String,
     function_expr: AccessPredicateExpression<PrecheckAccessPrimitiveExpression>,
 ) -> Result<AccessPredicateExpression<PrecheckAccessPrimitiveExpression>, ModelBuildingError> {
-    fn function_elem_path(
-        lead_path: AccessPrimitiveExpressionPath,
-        function_param_name: String,
-        expr: PrecheckAccessPrimitiveExpression,
-    ) -> Result<PrecheckAccessPrimitiveExpression, ModelBuildingError> {
-        match expr {
-            PrecheckAccessPrimitiveExpression::Path(function_column_path, parameter_name) => {
-                // We may have expression like `self.documentUser.some(du => du.read)`, in which case we want to join the column path
-                // to form `self.documentUser.read`.
-                //
-                // However, if the lead path is `self.documentUser.some(du => du.id === self.id)`, we don't want to join the column path
-                // for the `self.id` part.
-                Ok(PrecheckAccessPrimitiveExpression::Path(
-                    if parameter_name == Some(function_param_name) {
-                        lead_path.with_function_context(function_column_path)?
-                    } else {
-                        function_column_path
-                    },
-                    parameter_name,
-                ))
-            }
-            PrecheckAccessPrimitiveExpression::Function(_, _) => Err(ModelBuildingError::Generic(
-                "Cannot have a function call inside another function call".to_string(),
-            )),
-            PrecheckAccessPrimitiveExpression::Common(..) => Ok(expr),
-        }
-    }
-
     match function_expr {
         AccessPredicateExpression::LogicalOp(op) => match op {
             AccessLogicalExpression::Not(p) => {
                 let updated_expr =
-                    compute_precheck_function_expr(path, function_name, function_param_name, *p)?;
+                    compute_precheck_function_expr(function_name, function_param_name, *p)?;
                 Ok(AccessPredicateExpression::LogicalOp(
                     AccessLogicalExpression::Not(Box::new(updated_expr)),
                 ))
             }
             AccessLogicalExpression::And(left, right) => {
                 let updated_left = compute_precheck_function_expr(
-                    path,
                     function_name.clone(),
                     function_param_name.clone(),
                     *left,
                 )?;
-                let updated_right = compute_precheck_function_expr(
-                    path,
-                    function_name,
-                    function_param_name,
-                    *right,
-                )?;
+                let updated_right =
+                    compute_precheck_function_expr(function_name, function_param_name, *right)?;
 
                 Ok(AccessPredicateExpression::LogicalOp(
                     AccessLogicalExpression::And(Box::new(updated_left), Box::new(updated_right)),
@@ -269,13 +234,11 @@ fn compute_precheck_function_expr(
             }
             AccessLogicalExpression::Or(left, right) => {
                 let updated_left = compute_precheck_function_expr(
-                    path,
                     function_name.clone(),
                     function_param_name.clone(),
                     *left,
                 )?;
                 let updated_right = compute_precheck_function_expr(
-                    path,
                     function_name.clone(),
                     function_param_name.clone(),
                     *right,
@@ -290,13 +253,9 @@ fn compute_precheck_function_expr(
             let combiner = op.combiner();
             let (left, right) = op.owned_sides();
 
-            let updated_left =
-                function_elem_path(path.clone(), function_param_name.clone(), *left)?;
-            let updated_right =
-                function_elem_path(path.clone(), function_param_name.clone(), *right)?;
             Ok(AccessPredicateExpression::RelationalOp(combiner(
-                Box::new(updated_left),
-                Box::new(updated_right),
+                Box::new(*left),
+                Box::new(*right),
             )))
         }
         AccessPredicateExpression::BooleanLiteral(value) => {
@@ -361,7 +320,7 @@ fn compute_primitive_precheck_expr(
 fn compute_precheck_selection<'a>(
     selection: &FieldSelection<Typed>,
     self_type_info: &'a EntityType,
-    function_context: HashMap<String, &'a EntityType>,
+    function_context: HashMap<String, &'a EntityType>, // parameter name -> type such as "du" -> DocumentUser
     resolved_env: &'a ResolvedTypeEnv<'a>,
     subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
     subsystem_entity_types: &'a MappedArena<EntityType>,

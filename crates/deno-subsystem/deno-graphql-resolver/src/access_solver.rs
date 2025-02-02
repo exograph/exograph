@@ -17,8 +17,8 @@ use core_plugin_interface::{
     core_model::access::AccessRelationalOp,
     core_resolver::access_solver::{
         eq_values, gt_values, gte_values, in_values, lt_values, lte_values, neq_values,
-        reduce_common_primitive_expression, AccessInputContext, AccessPredicate, AccessSolver,
-        AccessSolverError,
+        reduce_common_primitive_expression, AccessInput, AccessPredicate, AccessSolution,
+        AccessSolver, AccessSolverError,
     },
 };
 
@@ -44,7 +44,7 @@ impl From<bool> for ModuleAccessPredicateWrapper {
     }
 }
 
-impl<'a> AccessPredicate<'a> for ModuleAccessPredicateWrapper {
+impl AccessPredicate for ModuleAccessPredicateWrapper {
     fn and(self, other: Self) -> Self {
         ModuleAccessPredicateWrapper((self.0.into() && other.0.into()).into())
     }
@@ -61,9 +61,9 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
     async fn solve_relational_op(
         &self,
         request_context: &RequestContext<'a>,
-        _input_context: Option<&AccessInputContext<'a>>,
+        _input_value: Option<&AccessInput<'a>>,
         op: &AccessRelationalOp<ModuleAccessPrimitiveExpression>,
-    ) -> Result<Option<ModuleAccessPredicateWrapper>, AccessSolverError> {
+    ) -> Result<AccessSolution<ModuleAccessPredicateWrapper>, AccessSolverError> {
         async fn reduce_primitive_expression<'a>(
             solver: &DenoSubsystem,
             request_context: &'a RequestContext<'a>,
@@ -81,19 +81,23 @@ impl<'a> AccessSolver<'a, ModuleAccessPrimitiveExpression, ModuleAccessPredicate
         let right_value = reduce_primitive_expression(self, request_context, right).await?;
 
         Ok(match (left_value, right_value) {
-            (None, _) | (_, None) => None,
-            (Some(ref left_value), Some(ref right_value)) => Some(ModuleAccessPredicateWrapper(
-                match op {
-                    AccessRelationalOp::Eq(..) => eq_values(left_value, right_value),
-                    AccessRelationalOp::Neq(_, _) => neq_values(left_value, right_value),
-                    AccessRelationalOp::Lt(_, _) => lt_values(left_value, right_value),
-                    AccessRelationalOp::Lte(_, _) => lte_values(left_value, right_value),
-                    AccessRelationalOp::Gt(_, _) => gt_values(left_value, right_value),
-                    AccessRelationalOp::Gte(_, _) => gte_values(left_value, right_value),
-                    AccessRelationalOp::In(..) => in_values(left_value, right_value),
-                }
-                .into(),
+            (None, _) | (_, None) => AccessSolution::Unsolvable(ModuleAccessPredicateWrapper(
+                ModuleAccessPredicate::False,
             )),
+            (Some(ref left_value), Some(ref right_value)) => {
+                AccessSolution::Solved(ModuleAccessPredicateWrapper(
+                    match op {
+                        AccessRelationalOp::Eq(..) => eq_values(left_value, right_value),
+                        AccessRelationalOp::Neq(_, _) => neq_values(left_value, right_value),
+                        AccessRelationalOp::Lt(_, _) => lt_values(left_value, right_value),
+                        AccessRelationalOp::Lte(_, _) => lte_values(left_value, right_value),
+                        AccessRelationalOp::Gt(_, _) => gt_values(left_value, right_value),
+                        AccessRelationalOp::Gte(_, _) => gte_values(left_value, right_value),
+                        AccessRelationalOp::In(..) => in_values(left_value, right_value),
+                    }
+                    .into(),
+                ))
+            }
         })
     }
 }

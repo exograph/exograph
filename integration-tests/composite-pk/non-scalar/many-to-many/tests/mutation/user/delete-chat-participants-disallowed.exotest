@@ -1,0 +1,20 @@
+stages:
+  - operation: |
+      mutation {
+        # U3, who isn't admin for any chat, is trying to delete all participations
+        deleteChatParticipations @unordered {
+          chatAdmin
+        }
+      }
+    auth: |
+      {
+        "sub": $.u3_id
+      }
+    invariants:
+      - path: ../system-state.gql       
+    response: |
+      {
+        "data": {
+          "deleteChatParticipations": []
+        }
+      }

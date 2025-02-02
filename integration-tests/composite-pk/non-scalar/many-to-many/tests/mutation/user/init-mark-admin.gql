@@ -1,0 +1,37 @@
+operation: |
+  fragment ParticipantInfo on Participant {
+    user {
+      id
+    }
+    chat {
+      id
+    }
+    chatAdmin
+  }
+  mutation($u1_id: Int!, $u2_id: Int!, $c1_id: Int!, $c2_id: Int!, $c3_id: Int!) {
+    # u1 is the admin of c1 and c2, u2 is the admin of c3
+    # c1-between-u1-u2
+    c1: updateChatParticipation(user: {id: $u1_id}, chat: {id: $c1_id}, data: {chatAdmin: true}) {
+      ...ParticipantInfo
+    }
+    # c2-between-u1-u3
+    c2: updateChatParticipation(user: {id: $u1_id}, chat: {id: $c2_id}, data: {chatAdmin: true}) {
+      ...ParticipantInfo
+    }
+    # c3-between-u1-u2-u3
+    c3: updateChatParticipation(user: {id: $u2_id}, chat: {id: $c3_id}, data: {chatAdmin: true}) {
+      ...ParticipantInfo
+    }
+  }
+variable: |
+  {
+    "u1_id": $.u1_id,
+    "u2_id": $.u2_id,
+    "c1_id": $.c1_id,
+    "c2_id": $.c2_id,
+    "c3_id": $.c3_id
+  }
+auth: |
+  {
+    "role": "admin"
+  }

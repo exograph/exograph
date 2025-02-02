@@ -7,8 +7,10 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
-use core_plugin_interface::core_resolver::access_solver::AccessInputContext;
+use core_plugin_interface::core_resolver::access_solver::AccessInput;
 use futures::stream::TryStreamExt;
 use postgres_core_model::access::{
     CreationAccessExpression, DatabaseAccessPrimitiveExpression, PrecheckAccessPrimitiveExpression,
@@ -35,7 +37,7 @@ pub(crate) async fn check_access<'a>(
     kind: &SQLOperationKind,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-    input_context: Option<&AccessInputContext<'a>>,
+    input_value: Option<&AccessInput<'a>>,
 ) -> Result<(AbstractPredicate, AbstractPredicate), PostgresExecutionError> {
     let (precheck_predicate, entity_predicate) = {
         match kind {
@@ -44,7 +46,7 @@ pub(crate) async fn check_access<'a>(
                     &return_type.access.creation,
                     subsystem,
                     request_context,
-                    input_context,
+                    input_value,
                 )
                 .await?;
 
@@ -52,7 +54,7 @@ pub(crate) async fn check_access<'a>(
                     Err(PostgresExecutionError::Authorization)
                 } else {
                     let field_access_predicate = check_input_access(
-                        input_context,
+                        input_value,
                         return_type,
                         subsystem,
                         request_context,
@@ -99,7 +101,7 @@ pub(crate) async fn check_access<'a>(
                     &return_type.access.update,
                     subsystem,
                     request_context,
-                    input_context,
+                    input_value,
                 )
                 .await?;
 
@@ -110,7 +112,7 @@ pub(crate) async fn check_access<'a>(
                     Err(PostgresExecutionError::Authorization)
                 } else {
                     let field_access_predicate = check_input_access(
-                        input_context,
+                        input_value,
                         return_type,
                         subsystem,
                         request_context,
@@ -150,17 +152,17 @@ async fn check_create_access<'a>(
     expr: &CreationAccessExpression,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-    input_context: Option<&AccessInputContext<'a>>,
+    input_value: Option<&AccessInput<'a>>,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
     let precheck_predicate = subsystem
         .solve(
             request_context,
-            input_context,
+            input_value,
             &subsystem.core_subsystem.precheck_expressions[expr.precheck],
         )
         .await?
         .map(|predicate| predicate.0)
-        .unwrap_or(AbstractPredicate::False);
+        .resolve();
 
     if precheck_predicate == AbstractPredicate::False {
         Err(PostgresExecutionError::Authorization)
@@ -178,25 +180,25 @@ pub(super) async fn check_retrieve_access<'a>(
         .solve(request_context, None, expr)
         .await?
         .map(|p| p.0)
-        .unwrap_or(AbstractPredicate::False))
+        .resolve())
 }
 
 async fn check_update_access<'a>(
     expr: &UpdateAccessExpression,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
-    input_context: Option<&AccessInputContext<'a>>,
+    input_value: Option<&AccessInput<'a>>,
 ) -> Result<(AbstractPredicate, AbstractPredicate), PostgresExecutionError> {
     // First check the input predicate (i.e. the "data" parameter matches the access predicate)
     let precheck_predicate = subsystem
         .solve(
             request_context,
-            input_context,
+            input_value,
             &subsystem.core_subsystem.precheck_expressions[expr.precheck],
         )
         .await?
         .map(|predicate| predicate.0)
-        .unwrap_or(AbstractPredicate::False);
+        .resolve();
 
     // Input predicate cannot have a residue (i.e. it must fully evaluated to true or false)
     if precheck_predicate == AbstractPredicate::False {
@@ -213,7 +215,7 @@ async fn check_update_access<'a>(
         )
         .await?
         .map(|p| p.0)
-        .unwrap_or(AbstractPredicate::False);
+        .resolve();
 
     Ok((precheck_predicate, database_predicate))
 }
@@ -229,7 +231,7 @@ async fn check_delete_access<'a>(
             .solve(request_context, None, expr)
             .await?
             .map(|p| p.0)
-            .unwrap_or(AbstractPredicate::False),
+            .resolve(),
     ))
 }
 
@@ -285,7 +287,7 @@ async fn check_selection_access<'a>(
 }
 
 async fn check_input_access<'a>(
-    input_context: Option<&AccessInputContext<'a>>,
+    input_value: Option<&AccessInput<'a>>,
     return_type: &'a EntityType,
     subsystem: &'a PostgresGraphQLSubsystem,
     request_context: &'a RequestContext<'a>,
@@ -295,7 +297,7 @@ async fn check_input_access<'a>(
         AccessPredicateExpression<PrecheckAccessPrimitiveExpression>,
     >,
 ) -> Result<AbstractPredicate, PostgresExecutionError> {
-    match input_context.as_ref().map(|ctx| ctx.value) {
+    match input_value.as_ref().map(|ctx| ctx.value) {
         None => Ok(AbstractPredicate::True),
         Some(Val::Object(elems)) => {
             futures::stream::iter(elems.iter().map(Ok))
@@ -309,16 +311,17 @@ async fn check_input_access<'a>(
                                 let input_predicate = subsystem
                                     .solve(
                                         request_context,
-                                        Some(&AccessInputContext {
+                                        Some(&AccessInput {
                                             value: elem_value,
-                                            ignore_missing_context: false,
+                                            ignore_missing_value: false,
+                                            aliases: HashMap::new(),
                                         }),
                                         &subsystem.core_subsystem.precheck_expressions
                                             [field_access(postgres_field)],
                                     )
                                     .await?
                                     .map(|predicate| predicate.0)
-                                    .unwrap_or(AbstractPredicate::False);
+                                    .resolve();
 
                                 if input_predicate == AbstractPredicate::False {
                                     Err(PostgresExecutionError::Authorization)

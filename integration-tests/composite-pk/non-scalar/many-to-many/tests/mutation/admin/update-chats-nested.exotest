@@ -24,6 +24,10 @@ stages:
       {
         "u4_id": $.u4_id
       }
+    auth: |
+      {
+        "role": "admin"
+      }
     response: |
       {
         "data": {
@@ -127,6 +131,10 @@ stages:
             }
           }
         }
+      }
+    auth: |
+      {
+        "role": "admin"
       }
     response: |
       {

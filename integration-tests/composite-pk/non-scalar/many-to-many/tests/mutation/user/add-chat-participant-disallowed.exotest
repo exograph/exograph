@@ -1,0 +1,27 @@
+stages:
+  - operation: |
+      # u4 is trying to add himself to c1. Should fail, since only a participant of c1 can do this
+      mutation($u4_id: Int!, $c1_id: Int!) {
+        createChatParticipation(data: {user: { id: $u4_id }, chat: { id: $c1_id }}) {
+          chatAdmin # don't ask for much to make sure that authorization result is not due to a query access control
+        }
+      }
+    invariants:
+      - path: ../system-state.gql
+    variable: |
+      {
+        "u4_id": $.u4_id,
+        "c1_id": $.c1_id
+      }
+    auth: |
+      {
+        "sub": $.u4_id
+      }      
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

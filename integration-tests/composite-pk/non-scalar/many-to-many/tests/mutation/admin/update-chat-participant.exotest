@@ -1,0 +1,120 @@
+stages:
+  - operation: |
+      mutation($u1_id: Int!, $u4_id: Int!, $c1_id: Int!) {
+        # Substitute user 1 with user 4
+        updateChatParticipation(user: { id: $u1_id }, chat: { id: $c1_id }, data: { user: { id: $u4_id } }) {
+          user {
+            id
+          }
+          chat {
+            id
+          }
+        }
+      }
+    variable: |
+      {
+        "u1_id": $.u1_id,
+        "u4_id": $.u4_id,
+        "c1_id": $.c1_id
+      }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "data": {
+          "updateChatParticipation": {
+            "user": {
+              "id": 4
+            },
+            "chat": {
+              "id": 1
+            }
+          }
+        }
+      }
+  - operation: |
+      query {
+        chats @unordered {
+          id
+          title
+          participants @unordered {
+            user {
+              id
+              name
+            }
+          }
+        }
+      }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "data": {
+          "chats": [
+            {
+              "id": $.c1_id,
+              "title": "c1-between-u1-u2",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c2_id,
+              "title": "c2-between-u1-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c3_id,
+              "title": "c3-between-u1-u2-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }

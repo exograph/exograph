@@ -7,12 +7,14 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use common::context::RequestContext;
 use common::value::Val;
 use core_plugin_interface::core_resolver::access_solver::AccessSolver;
 use core_plugin_interface::{
-    core_model::types::OperationReturnType, core_resolver::access_solver::AccessInputContext,
+    core_model::types::OperationReturnType, core_resolver::access_solver::AccessInput,
 };
 use exo_sql::{
     AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, Column,
@@ -278,9 +280,10 @@ async fn compute_nested_update_object_arg<'a>(
 ) -> Result<NestedAbstractUpdate, PostgresExecutionError> {
     assert!(matches!(argument, Val::Object(..)));
 
-    let input_context = Some(AccessInputContext {
+    let input_value = Some(AccessInput {
         value: argument,
-        ignore_missing_context: true,
+        ignore_missing_value: true,
+        aliases: HashMap::new(),
     });
 
     let (precheck_predicate, entity_predicate) = check_access(
@@ -289,7 +292,7 @@ async fn compute_nested_update_object_arg<'a>(
         &SQLOperationKind::Update,
         subsystem,
         request_context,
-        input_context.as_ref(),
+        input_value.as_ref(),
     )
     .await?;
 
@@ -436,7 +439,7 @@ async fn compute_nested_inserts<'a>(
             )
             .await?
             .map(|expr| expr.0)
-            .unwrap_or(AbstractPredicate::True),
+            .resolve(),
         None => AbstractPredicate::True,
     };
 
@@ -505,9 +508,10 @@ async fn compute_nested_delete_object_arg<'a>(
         column.is_pk
     });
 
-    let input_context = Some(AccessInputContext {
+    let input_value = Some(AccessInput {
         value: argument,
-        ignore_missing_context: false,
+        ignore_missing_value: false,
+        aliases: HashMap::new(),
     });
 
     let (precheck_predicate, entity_predicate) = check_access(
@@ -516,7 +520,7 @@ async fn compute_nested_delete_object_arg<'a>(
         &SQLOperationKind::Delete,
         subsystem,
         request_context,
-        input_context.as_ref(),
+        input_value.as_ref(),
     )
     .await?;
 

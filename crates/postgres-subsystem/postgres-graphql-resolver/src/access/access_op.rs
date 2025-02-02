@@ -19,7 +19,7 @@ impl From<bool> for AbstractPredicateWrapper {
     }
 }
 
-impl<'a> AccessPredicate<'a> for AbstractPredicateWrapper {
+impl AccessPredicate for AbstractPredicateWrapper {
     fn and(self, other: Self) -> Self {
         AbstractPredicateWrapper(AbstractPredicate::and(self.0, other.0))
     }

@@ -7,6 +7,8 @@
 // the Business Source License, use of this software will be governed
 // by the Apache License, Version 2.0.
 
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use core_model::access::{
     AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
@@ -20,9 +22,7 @@ use common::value::Val;
 use crate::{context_extractor::ContextExtractor, number_cmp::NumberWrapper};
 
 /// Access predicate that can be logically combined with other predicates.
-pub trait AccessPredicate<'a>:
-    From<bool> + std::ops::Not<Output = Self> + 'a + Send + Sync
-{
+pub trait AccessPredicate: From<bool> + std::ops::Not<Output = Self> + Send + Sync {
     fn and(self, other: Self) -> Self;
     fn or(self, other: Self) -> Self;
 }
@@ -34,11 +34,222 @@ pub enum AccessSolverError {
 
     #[error("{0}")]
     Generic(Box<dyn std::error::Error + Send + Sync>),
+
+    #[error("{0}")]
+    AccessInputPathElement(#[from] AccessInputPathElementError),
 }
 
-pub struct AccessInputContext<'a> {
+#[derive(Error, Debug)]
+pub enum AccessInputPathElementError {
+    #[error("Index cannot be used on an object: {0}")]
+    IndexOnObject(String),
+
+    #[error("Property key cannot be used on a list: {0}")]
+    PropertyOnList(String),
+}
+
+#[derive(Debug)]
+pub struct AccessInput<'a> {
     pub value: &'a Val,
-    pub ignore_missing_context: bool,
+    pub ignore_missing_value: bool,
+    pub aliases: HashMap<&'a str, AccessInputPath<'a>>,
+}
+
+#[derive(Clone)]
+pub enum AccessInputPathElement<'a> {
+    Property(&'a str),
+    Index(usize),
+}
+
+impl<'a> std::fmt::Debug for AccessInputPathElement<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AccessInputPathElement::Property(s) => write!(f, "{}", s),
+            AccessInputPathElement::Index(i) => write!(f, "[{}]", i),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct AccessInputPath<'a>(pub Vec<AccessInputPathElement<'a>>);
+
+impl<'a> AccessInputPath<'a> {
+    pub fn iter(&self) -> impl Iterator<Item = &AccessInputPathElement<'a>> {
+        self.0.iter()
+    }
+}
+
+impl<'a> std::ops::Index<usize> for AccessInputPath<'a> {
+    type Output = AccessInputPathElement<'a>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl<'a> std::fmt::Debug for AccessInputPath<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, e) in self.0.iter().enumerate() {
+            if i > 0 && matches!(e, AccessInputPathElement::Property(_)) {
+                write!(f, ".")?;
+            }
+            write!(f, "{:?}", e)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> AccessInput<'a> {
+    pub fn resolve(
+        &self,
+        path: AccessInputPath<'a>,
+    ) -> Result<Option<&'a Val>, AccessInputPathElementError> {
+        fn _resolve<'a>(
+            val: Option<&'a Val>,
+            path: &AccessInputPath<'a>,
+        ) -> Result<Option<&'a Val>, AccessInputPathElementError> {
+            let mut current = val;
+            for part in path.iter() {
+                match current {
+                    Some(Val::Object(map)) => match part {
+                        AccessInputPathElement::Property(key) => {
+                            current = map.get(*key);
+                        }
+                        AccessInputPathElement::Index(_) => {
+                            return Err(AccessInputPathElementError::IndexOnObject(format!(
+                                "{:?}",
+                                &path
+                            )));
+                        }
+                    },
+                    Some(Val::List(list)) => match part {
+                        AccessInputPathElement::Property(_) => {
+                            return Err(AccessInputPathElementError::PropertyOnList(format!(
+                                "{:?}",
+                                &path
+                            )));
+                        }
+                        AccessInputPathElement::Index(index) => {
+                            current = list.get(*index);
+                        }
+                    },
+                    _ => return Ok(None),
+                }
+            }
+            Ok(current)
+        }
+
+        match path.0.as_slice() {
+            [] => Ok(Some(self.value)), // "self"
+            [key, rest @ ..] => {
+                match key {
+                    AccessInputPathElement::Property(key) => {
+                        let alias_path = self.aliases.get(key); // "a" -> ["articles"]
+
+                        match alias_path {
+                            Some(alias_path) => {
+                                let alias_root_value = _resolve(Some(self.value), alias_path)?;
+                                _resolve(alias_root_value, &AccessInputPath(rest.to_vec()))
+                                // For expression a.title, the path will be ["title"]
+                            }
+                            None => _resolve(Some(self.value), &path),
+                        }
+                    }
+                    AccessInputPathElement::Index(_) => Err(
+                        AccessInputPathElementError::IndexOnObject(format!("{:?}", &path)),
+                    ),
+                }
+            }
+        }
+    }
+}
+
+pub enum AccessSolution<Res> {
+    Solved(Res),
+    Unsolvable(Res), // the attribute indicates that if forced to resolve, what it should be
+}
+
+impl<Res> std::fmt::Debug for AccessSolution<Res>
+where
+    Res: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AccessSolution::Solved(res) => write!(f, "Solved({:?})", res),
+            AccessSolution::Unsolvable(res) => write!(f, "NotSolved({:?})", res),
+        }
+    }
+}
+
+impl<Res> AccessSolution<Res>
+where
+    Res: std::fmt::Debug,
+{
+    pub fn map<U>(self, f: impl FnOnce(Res) -> U) -> AccessSolution<U> {
+        match self {
+            AccessSolution::Solved(res) => AccessSolution::Solved(f(res)),
+            AccessSolution::Unsolvable(res) => AccessSolution::Unsolvable(f(res)),
+        }
+    }
+
+    pub fn resolve(self) -> Res {
+        match self {
+            AccessSolution::Solved(res) => res,
+            AccessSolution::Unsolvable(res) => res,
+        }
+    }
+}
+
+impl<Res> AccessSolution<Res>
+where
+    Res: AccessPredicate + std::fmt::Debug,
+{
+    fn not(self) -> Self {
+        match self {
+            AccessSolution::Solved(res) => AccessSolution::Solved(res.not()),
+            AccessSolution::Unsolvable(res) => AccessSolution::Unsolvable(res),
+        }
+    }
+
+    pub fn and(self, other: Self) -> Self {
+        match (self, other) {
+            (AccessSolution::Solved(left_predicate), AccessSolution::Solved(right_predicate)) => {
+                AccessSolution::Solved(left_predicate.and(right_predicate))
+            }
+            (
+                AccessSolution::Solved(left_predicate),
+                AccessSolution::Unsolvable(right_predicate),
+            )
+            | (
+                AccessSolution::Unsolvable(left_predicate),
+                AccessSolution::Solved(right_predicate),
+            ) => AccessSolution::Solved(left_predicate.and(right_predicate)),
+            (
+                AccessSolution::Unsolvable(left_predicate),
+                AccessSolution::Unsolvable(right_predicate),
+            ) => AccessSolution::Unsolvable(left_predicate.and(right_predicate)),
+        }
+    }
+
+    pub fn or(self, other: Self) -> Self {
+        match (self, other) {
+            (AccessSolution::Solved(left_predicate), AccessSolution::Solved(right_predicate)) => {
+                AccessSolution::Solved(left_predicate.or(right_predicate))
+            }
+            (
+                AccessSolution::Solved(left_predicate),
+                AccessSolution::Unsolvable(right_predicate),
+            )
+            | (
+                AccessSolution::Unsolvable(left_predicate),
+                AccessSolution::Solved(right_predicate),
+            ) => AccessSolution::Solved(left_predicate.or(right_predicate)),
+            (
+                AccessSolution::Unsolvable(left_predicate),
+                AccessSolution::Unsolvable(right_predicate),
+            ) => AccessSolution::Unsolvable(left_predicate.or(right_predicate)),
+        }
+    }
 }
 
 /// Solve access control logic.
@@ -52,7 +263,7 @@ pub struct AccessInputContext<'a> {
 pub trait AccessSolver<'a, PrimExpr, Res>
 where
     PrimExpr: Send + Sync + std::fmt::Debug,
-    Res: AccessPredicate<'a> + std::fmt::Debug,
+    Res: AccessPredicate + std::fmt::Debug,
 {
     /// Solve access control logic.
     ///
@@ -67,19 +278,21 @@ where
     async fn solve(
         &self,
         request_context: &RequestContext<'a>,
-        input_context: Option<&AccessInputContext<'a>>,
+        input_value: Option<&AccessInput<'a>>,
         expr: &AccessPredicateExpression<PrimExpr>,
-    ) -> Result<Option<Res>, AccessSolverError> {
+    ) -> Result<AccessSolution<Res>, AccessSolverError> {
         match expr {
             AccessPredicateExpression::LogicalOp(op) => {
-                self.solve_logical_op(request_context, input_context, op)
+                self.solve_logical_op(request_context, input_value, op)
                     .await
             }
             AccessPredicateExpression::RelationalOp(op) => {
-                self.solve_relational_op(request_context, input_context, op)
+                self.solve_relational_op(request_context, input_value, op)
                     .await
             }
-            AccessPredicateExpression::BooleanLiteral(value) => Ok(Some((*value).into())),
+            AccessPredicateExpression::BooleanLiteral(value) => {
+                Ok(AccessSolution::Solved((*value).into()))
+            }
         }
     }
 
@@ -91,47 +304,34 @@ where
     async fn solve_relational_op(
         &self,
         request_context: &RequestContext<'a>,
-        input_context: Option<&AccessInputContext<'a>>,
+        input_value: Option<&AccessInput<'a>>,
         op: &AccessRelationalOp<PrimExpr>,
-    ) -> Result<Option<Res>, AccessSolverError>;
+    ) -> Result<AccessSolution<Res>, AccessSolverError>;
 
     /// Solve logical operations such as `not`, `and`, `or`.
     async fn solve_logical_op(
         &self,
         request_context: &RequestContext<'a>,
-        input_context: Option<&AccessInputContext<'a>>,
+        input_value: Option<&AccessInput<'a>>,
         op: &AccessLogicalExpression<PrimExpr>,
-    ) -> Result<Option<Res>, AccessSolverError> {
+    ) -> Result<AccessSolution<Res>, AccessSolverError> {
         Ok(match op {
             AccessLogicalExpression::Not(underlying) => {
-                let underlying_predicate = self
-                    .solve(request_context, input_context, underlying)
-                    .await?;
-                underlying_predicate.map(|p| p.not())
+                let underlying_predicate =
+                    self.solve(request_context, input_value, underlying).await?;
+                underlying_predicate.not()
             }
             AccessLogicalExpression::And(left, right) => {
-                let left_predicate = self.solve(request_context, input_context, left).await?;
-                let right_predicate = self.solve(request_context, input_context, right).await?;
+                let left_predicate = self.solve(request_context, input_value, left).await?;
+                let right_predicate = self.solve(request_context, input_value, right).await?;
 
-                match (left_predicate, right_predicate) {
-                    (Some(left_predicate), Some(right_predicate)) => {
-                        Some(left_predicate.and(right_predicate))
-                    }
-                    _ => None,
-                }
+                left_predicate.and(right_predicate)
             }
             AccessLogicalExpression::Or(left, right) => {
-                let left_predicate = self.solve(request_context, input_context, left).await?;
-                let right_predicate = self.solve(request_context, input_context, right).await?;
+                let left_predicate = self.solve(request_context, input_value, left).await?;
+                let right_predicate = self.solve(request_context, input_value, right).await?;
 
-                match (left_predicate, right_predicate) {
-                    (Some(left_predicate), Some(right_predicate)) => {
-                        Some(left_predicate.or(right_predicate))
-                    }
-                    (Some(left_predicate), None) => Some(left_predicate),
-                    (None, Some(right_predicate)) => Some(right_predicate),
-                    (None, None) => None,
-                }
+                left_predicate.or(right_predicate)
             }
         })
     }
@@ -203,4 +403,61 @@ pub fn gt_values(left_value: &Val, right_value: &Val) -> bool {
 
 pub fn gte_values(left_value: &Val, right_value: &Val) -> bool {
     !lt_values(left_value, right_value)
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_access_input_path() {
+        let input_value = AccessInput {
+            value: &json!({
+                "name": "John",
+                "articles": [
+                    {
+                        "title": "Article 1",
+                    },
+                    {
+                        "title": "Article 2",
+                    }
+                ]
+            })
+            .into(),
+            ignore_missing_value: false,
+            aliases: HashMap::from([(
+                "a",
+                AccessInputPath(vec![
+                    AccessInputPathElement::Property("articles"),
+                    AccessInputPathElement::Index(0),
+                ]),
+            )]),
+        };
+
+        let existing_value = input_value
+            .resolve(AccessInputPath(vec![
+                AccessInputPathElement::Property("a"),
+                AccessInputPathElement::Property("title"),
+            ]))
+            .unwrap();
+        assert_eq!(Some(&json!("Article 1").into()), existing_value);
+
+        let non_existing_value = input_value
+            .resolve(AccessInputPath(vec![
+                AccessInputPathElement::Property("a"),
+                AccessInputPathElement::Property("author"),
+            ]))
+            .unwrap();
+        assert_eq!(None, non_existing_value);
+
+        let non_existing_alias = input_value
+            .resolve(AccessInputPath(vec![
+                AccessInputPathElement::Property("b"),
+                AccessInputPathElement::Property("title"),
+            ]))
+            .unwrap();
+        assert_eq!(None, non_existing_alias);
+    }
 }

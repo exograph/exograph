@@ -1,70 +1,51 @@
 stages:
   - operation: |
-      mutation($u1_id: Int!, $u4_id: Int!, $c1_id: Int!) {
-        # add user 4 to chat 1
-        updateChat(id: $c1_id, data: { title: "updated", participants: { create: { user: { id: $u4_id } } } }) {
-          id
-          title
-          participants @unordered {
-            user {
-              id
-              name
-            }
-            chat {
-              id
-              title
-            }
+      # As u2, add u4 to c1 and c3 (u2 is a participant of c1 and c3, so should be able to do this)
+      mutation($u4_id: Int!, $c1_id: Int!, $c3_id: Int!) {
+        createChatParticipations(data: [
+          {user: { id: $u4_id }, chat: { id: $c1_id }}, 
+          {user: { id: $u4_id }, chat: { id: $c3_id }}]) @unordered {
+          user {
+            id
+          }
+          chat {
+            id
           }
         }
       }
     variable: |
       {
-        "u1_id": $.u1_id,
         "u4_id": $.u4_id,
-        "c1_id": $.c1_id
+        "c1_id": $.c1_id,
+        "c3_id": $.c3_id
+      }
+    auth: |
+      {
+        "sub": $.u2_id
       }
     response: |
       {
         "data": {
-          "updateChat": {
-            "id": $.c1_id,
-            "title": "updated",
-            "participants": [
-              {
-                "user": {
-                  "id": $.u1_id,
-                  "name": "u1"
-                },
-                "chat": {
-                  "id": $.c1_id,
-                  "title": "updated"
-                }
+          "createChatParticipations": [
+            {
+              "user": {
+                "id": $.u4_id
               },
-              {
-                "user": {
-                  "id": $.u2_id,
-                  "name": "u2"
-                },
-                "chat": {
-                  "id": $.c1_id,
-                  "title": "updated"
-                }
-              },
-              {
-                "user": {
-                  "id": $.u4_id,
-                  "name": "u4"
-                },
-                "chat": {
-                  "id": $.c1_id,
-                  "title": "updated"
-                }
+              "chat": {
+                "id": $.c1_id
               }
-            ]
-          }
+            },
+            {
+              "user": {
+                "id": $.u4_id
+              },
+              "chat": {
+                "id": $.c3_id
+              }
+            }
+          ]
         }
       }
-
 
 
   - operation: |
@@ -80,12 +61,40 @@ stages:
           }
         }
       }
+    auth: |
+      {
+        "role": "admin"
+      }
     response: |
       {
         "data": {
           "chats": [
             {
-              "id": $.c2_id,
+              "id": $.c1_id,
+              "title": "c1-between-u1-u2",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
+                  }
+                }
+              ]
+            },
+            {
+              "id": 2,
               "title": "c2-between-u1-u3",
               "participants": [
                 {
@@ -103,7 +112,7 @@ stages:
               ]
             },
             {
-              "id": $.c3_id,
+              "id": 3,
               "title": "c3-between-u1-u2-u3",
               "participants": [
                 {
@@ -122,24 +131,6 @@ stages:
                   "user": {
                     "id": $.u3_id,
                     "name": "u3"
-                  }
-                }
-              ]
-            },
-            {
-              "id": $.c1_id,
-              "title": "updated",
-              "participants": [
-                {
-                  "user": {
-                    "id": $.u1_id,
-                    "name": "u1"
-                  }
-                },
-                {
-                  "user": {
-                    "id": $.u2_id,
-                    "name": "u2"
                   }
                 },
                 {

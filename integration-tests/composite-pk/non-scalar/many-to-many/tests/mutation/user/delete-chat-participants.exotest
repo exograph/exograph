@@ -1,0 +1,106 @@
+stages:
+  - operation: |
+      mutation($u2_id: Int!) {
+        # Delete participations for u1 (implictly, where u2 is the admin)
+        deleteChatParticipations(where: { user: { id: { eq: $u2_id } } }) @unordered {
+          chatAdmin
+          # user {
+          #   id
+          # }
+          # chat {
+          #   id
+          # }
+        }
+      }
+    variable: |
+      {
+        "u2_id": $.u2_id
+      }
+    auth: |
+      {
+        "sub": $.u1_id
+      }
+    response: |
+      {
+        "data": {
+          "deleteChatParticipations": []
+        }
+      }
+  - operation: |
+      query {
+        chats @unordered {
+          id
+          title
+          participants @unordered {
+            user {
+              id
+              name
+            }
+          }
+        }
+      }
+    auth: |
+      {
+        "role": "admin"
+      }
+    response: |
+      {
+        "data": {
+          "chats": [
+            {
+              "id": $.c1_id,
+              "title": "c1-between-u1-u2",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c2_id,
+              "title": "c2-between-u1-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            },
+            {
+              "id": $.c3_id,
+              "title": "c3-between-u1-u2-u3",
+              "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u2_id,
+                    "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u3_id,
+                    "name": "u3"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }

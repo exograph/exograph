@@ -70,14 +70,14 @@ impl<'a> DenoOperation<'a> {
                         .solve(self.request_context, None, &access.value)
                         .await?
                         .map(|r| matches!(r.0, ModuleAccessPredicate::True))
-                        .unwrap_or(false),
+                        .resolve(),
                 };
 
                 let method_level_access = subsystem
                     .solve(self.request_context, None, &self.method.access.value)
                     .await?
                     .map(|r| r.0)
-                    .unwrap_or(ModuleAccessPredicate::False);
+                    .resolve();
 
                 // deny if either access check fails
                 Ok(type_level_access

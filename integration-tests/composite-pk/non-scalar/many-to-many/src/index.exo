@@ -1,0 +1,52 @@
+context AuthContext {
+  @jwt("sub") id: Int?
+  @jwt role: String
+}
+
+@postgres
+module ChatModule {
+  // Create: Any authenticated user can create a chat
+  // Update: Only the admin of the chat can update it
+  // Delete: Only the admin of the chat can delete it
+  // Query: A user can query a chat if they are a participant
+  @access(query=AuthContext.role == "admin" || self.participants.some(p => p.user.id == AuthContext.id), 
+          create=AuthContext.role == "admin" || AuthContext.id != null,
+          update=AuthContext.role == "admin" || self.participants.some(p => p.user.id == AuthContext.id),
+          delete=AuthContext.role == "admin" || self.participants.some(p => p.user.id == AuthContext.id && p.chatAdmin == true)
+  )
+  type Chat {
+    @pk id: Int = autoIncrement()
+    title: String
+    participants: Set<ChatParticipation>?
+  }
+
+  // Only a current participant can query, create, or mutate a chat participation
+  // Specifically, only a current partipant can invite (add) a new participant
+  @access(query=AuthContext.role == "admin" || self.chat.participants.some(p => p.user.id == AuthContext.id),
+          create=AuthContext.role == "admin" || self.chat.participants.some(p => p.user.id == AuthContext.id),
+          mutation=AuthContext.role == "admin" || self.chat.participants.some(p => p.user.id == AuthContext.id && p.chatAdmin == true)
+  )
+  type ChatParticipation {
+    @pk chat: Chat
+    @pk user: User
+    chatAdmin: Boolean?
+    moods: Set<Mood>?
+  }
+
+  // Users may be queried by anyone
+  // Users may be mutated by the admin or the user themselves
+  @access(query=true, mutation=AuthContext.role == "admin" || self.id == AuthContext.id)
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+    participatesIn: Set<ChatParticipation>?
+  }
+
+  // Mood can be queried/mutated by the admin or the user themselves
+  @access(AuthContext.role == "admin" || self.chatParticipation.user.id == AuthContext.id)
+  type Mood {
+    @pk id: Int = autoIncrement()
+    name: String
+    chatParticipation: ChatParticipation
+  }
+}

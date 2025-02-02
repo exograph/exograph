@@ -1,0 +1,45 @@
+operation: |
+  query {
+    chats @unordered {
+      id
+      title
+      participants @unordered {
+        user {
+          id
+        }
+      }
+    }
+    users @unordered {
+      id
+      participatesIn @unordered {
+        chat {
+          id
+        }
+      }
+    }
+    moods @unordered {
+      id
+      chatParticipation {
+        chat {
+          id
+        }
+      }
+    }
+    chatParticipations @unordered {
+      chat {
+        id
+      }
+      user {
+        id
+      }
+      chatAdmin
+      moods @unordered {
+        id
+        name
+      }
+    }
+  }
+auth: |
+  {
+    "role": "admin"
+  }

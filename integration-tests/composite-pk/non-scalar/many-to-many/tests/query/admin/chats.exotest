@@ -15,6 +15,10 @@ operation: |
           }
       }
   }
+auth: |
+  {
+    "role": "admin"
+  }
 response: |
   {
     "data": {
