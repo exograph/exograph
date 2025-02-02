@@ -210,6 +210,24 @@ async fn reduce_primitive_expression<'a>(
                 } => {
                     let (head, tail) = lead.column_path.split_head();
 
+                    let lead_value = resolve_value(input_value, lead_path)?;
+
+                    // If the lead value itself is unknown, return the value of `ignore_missing_value`.
+                    // See the `upspecifiable_field_with_hof` test for more details
+
+                    let ignore_missing_value = input_value
+                        .as_ref()
+                        .map(|ctx| ctx.ignore_missing_value)
+                        .unwrap_or(false);
+
+                    if lead_value.is_none() {
+                        return Ok(AccessSolution::Solved(
+                            SolvedPrecheckPrimitiveExpression::Common(Some(Val::Bool(
+                                ignore_missing_value,
+                            ))),
+                        ));
+                    }
+
                     let relational_predicate = compute_relational_predicate(
                         head,
                         lead_path,
@@ -406,21 +424,11 @@ fn evaluate_relation(
         (
             SolvedPrecheckPrimitiveExpression::Predicate(left_predicate),
             SolvedPrecheckPrimitiveExpression::Common(Some(right_value)),
-        ) => Ok(AccessSolution::Solved(AbstractPredicateWrapper(
-            AbstractPredicate::eq(
-                ColumnPath::Predicate(Box::new(left_predicate.clone())),
-                literal_column_path(&right_value, &PhysicalColumnType::Boolean, false).unwrap(),
-            ),
-        ))),
+        ) => process_predicate_common_expr(left_predicate, right_value, false),
         (
             SolvedPrecheckPrimitiveExpression::Common(Some(left_value)),
             SolvedPrecheckPrimitiveExpression::Predicate(right_predicate),
-        ) => Ok(AccessSolution::Solved(AbstractPredicateWrapper(
-            AbstractPredicate::eq(
-                literal_column_path(&left_value, &PhysicalColumnType::Boolean, false).unwrap(),
-                ColumnPath::Predicate(Box::new(right_predicate.clone())),
-            ),
-        ))),
+        ) => process_predicate_common_expr(right_predicate, left_value, true),
         _ => Err(AccessSolverError::Generic("Unsupported expression".into())),
     }
 }
@@ -515,6 +523,42 @@ fn process_path_common_expr(
     }
 }
 
+fn process_predicate_common_expr(
+    predicate: AbstractPredicate,
+    value: Val,
+    commute: bool,
+) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
+    // Simplify the predicate if possible (i.e. one side is a boolean literal)
+    match value {
+        Val::Bool(value) => {
+            let left_predicate = predicate.clone();
+            let left_predicate = if value {
+                left_predicate
+            } else {
+                use std::ops::Not;
+                left_predicate.not()
+            };
+
+            Ok(AccessSolution::Solved(AbstractPredicateWrapper(
+                left_predicate.clone(),
+            )))
+        }
+        _ => {
+            let predicate_column_path = ColumnPath::Predicate(Box::new(predicate.clone()));
+            let value_column_path =
+                literal_column_path(&value, &PhysicalColumnType::Boolean, false).unwrap();
+
+            Ok(AccessSolution::Solved(AbstractPredicateWrapper(
+                if commute {
+                    AbstractPredicate::eq(predicate_column_path, value_column_path)
+                } else {
+                    AbstractPredicate::eq(value_column_path, predicate_column_path)
+                },
+            )))
+        }
+    }
+}
+
 fn compute_relational_sides(
     tail_path: &PhysicalColumnPath,
     value: &Val,
@@ -587,9 +631,10 @@ fn compute_relational_predicate(
                             AbstractPredicate::eq(foreign_column_path, literal_column_path),
                         ))
                     }
-                    None => Err(AccessSolverError::Generic(
-                        format!("Could not resolve value for primary key {}", pk_field).into(),
-                    )),
+                    None => {
+                        // If the pk value is not found, it means we are performing a nested mutation (where the value would be from the parent mutation)
+                        Ok(AbstractPredicate::True)
+                    }
                 }
             },
         ),

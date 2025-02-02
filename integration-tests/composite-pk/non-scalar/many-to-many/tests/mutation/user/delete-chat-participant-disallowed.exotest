@@ -1,0 +1,50 @@
+stages:
+  - operation: |
+      mutation($u1_id: Int!, $c1_id: Int!) {
+        # u2 is a participant of c1, but not the admin, so should not be able to delete u1 from c1
+        deleteChatParticipation(user: { id: $u1_id }, chat: { id: $c1_id }) {
+          chatAdmin
+        }
+      }
+    variable: |
+      {
+        "u1_id": $.u1_id,
+        "c1_id": $.c1_id
+      }
+    auth: |
+      {
+        "sub": $.u2_id
+      }
+    invariants:
+      - path: ../system-state.gql      
+    response: |
+      {
+        "data": {
+          "deleteChatParticipation": null
+        }
+      }
+
+  - operation: |
+      mutation($u1_id: Int!, $c1_id: Int!) {
+        # u4 isn't a participant of c1, so should not be able to delete u1 from c1
+        deleteChatParticipation(user: { id: $u1_id }, chat: { id: $c1_id }) {
+          chatAdmin
+        }
+      }
+    variable: |
+      {
+        "u1_id": $.u1_id,
+        "c1_id": $.c1_id
+      }
+    auth: |
+      {
+        "sub": $.u4_id
+      }
+    invariants:
+      - path: ../system-state.gql      
+    response: |
+      {
+        "data": {
+          "deleteChatParticipation": null
+        }
+      }

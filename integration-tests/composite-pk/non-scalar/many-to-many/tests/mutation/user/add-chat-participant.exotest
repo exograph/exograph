@@ -1,7 +1,9 @@
 stages:
   - operation: |
-      mutation($u1_id: Int!, $c1_id: Int!) {
-        deleteChatParticipation(user: { id: $u1_id }, chat: { id: $c1_id }) {
+      # Add u4 to c1 (c1 already has u1 and u2). u2 should be able to, since it is a participant of c1
+      # u1 would also work, but it has additional admin permissions and we don't want to rely on that
+      mutation($u4_id: Int!, $c1_id: Int!) {
+        createChatParticipation(data: {user: { id: $u4_id }, chat: { id: $c1_id }}) {
           user {
             id
           }
@@ -12,22 +14,28 @@ stages:
       }
     variable: |
       {
-        "u1_id": $.u1_id,
+        "u4_id": $.u4_id,
         "c1_id": $.c1_id
       }
+    auth: |
+      {
+        "sub": $.u2_id
+      }      
     response: |
       {
         "data": {
-          "deleteChatParticipation": {
+          "createChatParticipation": {
             "user": {
-                "id": $.u1_id
-              },
-              "chat": {
-                "id": $.c1_id
+              "id": $.u4_id
+            },
+            "chat": {
+              "id": $.c1_id
             }
           }
         }
       }
+
+  # Check the result using the admin role. u4 should be in c1
   - operation: |
       query {
         chats @unordered {
@@ -41,6 +49,10 @@ stages:
           }
         }
       }
+    auth: |
+      {
+        "role": "admin"
+      }
     response: |
       {
         "data": {
@@ -51,8 +63,20 @@ stages:
               "participants": [
                 {
                   "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
                     "id": $.u2_id,
                     "name": "u2"
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
                   }
                 }
               ]
@@ -102,3 +126,4 @@ stages:
           ]
         }
       }
+

@@ -2,7 +2,7 @@ use crate::{
     database_error::DatabaseError,
     sql::transaction::{TransactionScript, TransactionStep},
     AbstractPredicate, AbstractSelect, AliasedSelectionElement, ColumnPath, Database, Selection,
-    SelectionElement,
+    SelectionElement, TableId,
 };
 
 use crate::transform::transformer::SelectTransformer;
@@ -39,13 +39,22 @@ fn compute_precheck_query(
         return Ok(None);
     }
 
+    fn get_lead_table_ids(column_path: &ColumnPath) -> Vec<TableId> {
+        match column_path {
+            ColumnPath::Physical(physical_path) => vec![physical_path.lead_table_id()],
+            ColumnPath::Predicate(predicate) => predicate
+                .column_paths()
+                .iter()
+                .flat_map(|path| get_lead_table_ids(path))
+                .collect(),
+            ColumnPath::Param(_) | ColumnPath::Null => vec![],
+        }
+    }
+
     let lead_table_ids: Vec<_> = predicate
         .column_paths()
         .iter()
-        .filter_map(|path| match path {
-            ColumnPath::Physical(physical_path) => Some(physical_path.lead_table_id()),
-            _ => None,
-        })
+        .flat_map(|path| get_lead_table_ids(path))
         .collect();
 
     let lead_table_id = match &lead_table_ids[..] {

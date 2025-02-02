@@ -14,6 +14,10 @@ stages:
               id @bind(name: "u4_id")
           }
         }
+      auth: |
+        {
+          "role": "admin"
+        }
     - operation: |
         mutation($u1_id: Int!, $u2_id: Int!, $u3_id: Int!) {
             c1: createChat(data: { title: "c1-between-u1-u2", participants: [{ user: { id: $u1_id } }, { user: { id: $u2_id } }] }) {
@@ -32,5 +36,9 @@ stages:
             "u2_id": $.u2_id,
             "u3_id": $.u3_id,
             "u4_id": $.u4_id
+        }
+      auth: |
+        {
+          "role": "admin"
         }
 

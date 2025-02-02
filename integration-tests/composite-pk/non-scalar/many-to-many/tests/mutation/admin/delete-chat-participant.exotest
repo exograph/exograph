@@ -1,8 +1,7 @@
 stages:
   - operation: |
-      mutation($u1_id: Int!) {
-        # Delete all chat participations for user u1 (user u1 leaves the organization, for example)
-        deleteChatParticipations(where: { user: { id: { eq: $u1_id } } }) @unordered {
+      mutation($u1_id: Int!, $c1_id: Int!) {
+        deleteChatParticipation(user: { id: $u1_id }, chat: { id: $c1_id }) {
           user {
             id
           }
@@ -13,37 +12,24 @@ stages:
       }
     variable: |
       {
-        "u1_id": $.u1_id
+        "u1_id": $.u1_id,
+        "c1_id": $.c1_id
+      }
+    auth: |
+      {
+        "role": "admin"
       }
     response: |
       {
         "data": {
-          "deleteChatParticipations": [
-            {
-              "user": {
+          "deleteChatParticipation": {
+            "user": {
                 "id": $.u1_id
               },
               "chat": {
                 "id": $.c1_id
-              }
-            },
-            {
-              "user": {
-                "id": $.u1_id
-              },
-              "chat": {
-                "id": $.c2_id
-              }
-            },
-            {
-              "user": {
-                "id": $.u1_id
-              },
-              "chat": {
-                "id": $.c3_id
-              }
             }
-          ]
+          }
         }
       }
   - operation: |
@@ -58,6 +44,10 @@ stages:
             }
           }
         }
+      }
+    auth: |
+      {
+        "role": "admin"
       }
     response: |
       {
@@ -81,6 +71,12 @@ stages:
               "participants": [
                 {
                   "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
+                {
+                  "user": {
                     "id": $.u3_id,
                     "name": "u3"
                   }
@@ -91,6 +87,12 @@ stages:
               "id": $.c3_id,
               "title": "c3-between-u1-u2-u3",
               "participants": [
+                {
+                  "user": {
+                    "id": $.u1_id,
+                    "name": "u1"
+                  }
+                },
                 {
                   "user": {
                     "id": $.u2_id,

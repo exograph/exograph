@@ -1,0 +1,37 @@
+stages:
+  - operation: |
+      # Add u4 to c1 all chats
+      mutation($u4_id: Int!, $c1_id: Int!, $c2_id: Int!, $c3_id: Int!) {
+        createChatParticipations(data: [
+          {user: { id: $u4_id }, chat: { id: $c1_id }}, 
+          {user: { id: $u4_id }, chat: { id: $c2_id }}, 
+          {user: { id: $u4_id }, chat: { id: $c3_id }}]) @unordered{
+          user {
+            id
+          }
+          chat {
+            id
+          }
+        }
+      }
+    variable: |
+      {
+        "u4_id": $.u4_id,
+        "c1_id": $.c1_id,
+        "c2_id": $.c2_id,
+        "c3_id": $.c3_id
+      }
+    auth: |
+      {
+        "sub": $.u3_id
+      }
+    invariants:
+      - path: ../system-state.gql
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }

@@ -1,0 +1,90 @@
+operation: |
+  query {
+      chats @unordered {
+          id
+          title
+          participants @unordered {
+              user {
+                  id
+                  name
+              }
+              chat {
+                  id
+                  title
+              }
+          }
+      }
+  }
+auth: |
+  {
+    "sub": $.u2_id
+  }
+response: |
+  {
+    "data": {
+      "chats": [
+        {
+          "id": $.c1_id,
+          "title": "c1-between-u1-u2",
+          "participants": [
+            {
+              "user": {
+                "id": $.u1_id,
+                "name": "u1"
+              },
+              "chat": {
+                "id": $.c1_id,
+                "title": "c1-between-u1-u2"
+              }
+            },
+            {
+              "user": {
+                "id": $.u2_id,
+                "name": "u2"
+              },
+              "chat": {
+                "id": $.c1_id,
+                "title": "c1-between-u1-u2"
+              }
+            }
+          ]
+        },
+        {
+          "id": $.c3_id,
+          "title": "c3-between-u1-u2-u3",
+          "participants": [
+            {
+              "user": {
+                "id": $.u1_id,
+                "name": "u1"
+              },
+              "chat": {
+                "id": $.c3_id,
+                "title": "c3-between-u1-u2-u3"
+              }
+            },
+            {
+              "user": {
+                "id": $.u2_id,
+                "name": "u2"
+              },
+              "chat": {
+                "id": $.c3_id,
+                "title": "c3-between-u1-u2-u3"
+              }
+            },
+            {
+              "user": {
+                "id": $.u3_id,
+                "name": "u3"
+              },
+              "chat": {
+                "id": $.c3_id,
+                "title": "c3-between-u1-u2-u3"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }

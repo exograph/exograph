@@ -1,33 +1,23 @@
 stages:
   - operation: |
-      mutation($u1_id: Int!, $u4_id: Int!, $c1_id: Int!) {
-        # Substitute user 1 with user 4
-        updateChatParticipation(user: { id: $u1_id }, chat: { id: $c1_id }, data: { user: { id: $u4_id } }) {
-          user {
-            id
-          }
-          chat {
-            id
-          }
+      mutation($u2_id: Int!, $c1_id: Int!) {
+        deleteChatParticipation(user: { id: $u2_id }, chat: { id: $c1_id }) {
+          chatAdmin
         }
       }
     variable: |
       {
-        "u1_id": $.u1_id,
-        "u4_id": $.u4_id,
+        "u2_id": $.u2_id,
         "c1_id": $.c1_id
+      }
+    auth: |
+      {
+        "sub": $.u1_id
       }
     response: |
       {
         "data": {
-          "updateChatParticipation": {
-            "user": {
-              "id": 4
-            },
-            "chat": {
-              "id": 1
-            }
-          }
+          "deleteChatParticipation": null
         }
       }
   - operation: |
@@ -43,6 +33,10 @@ stages:
           }
         }
       }
+    auth: |
+      {
+        "role": "admin"
+      }
     response: |
       {
         "data": {
@@ -53,14 +47,8 @@ stages:
               "participants": [
                 {
                   "user": {
-                    "id": $.u2_id,
-                    "name": "u2"
-                  }
-                },
-                {
-                  "user": {
-                    "id": $.u4_id,
-                    "name": "u4"
+                    "id": $.u1_id,
+                    "name": "u1"
                   }
                 }
               ]

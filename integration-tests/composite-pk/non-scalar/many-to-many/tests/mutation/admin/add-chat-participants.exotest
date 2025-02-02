@@ -5,7 +5,7 @@ stages:
         createChatParticipations(data: [
           {user: { id: $u4_id }, chat: { id: $c1_id }}, 
           {user: { id: $u4_id }, chat: { id: $c2_id }}, 
-          {user: { id: $u4_id }, chat: { id: $c3_id }}]) @unordered{
+          {user: { id: $u4_id }, chat: { id: $c3_id }}]) @unordered {
           user {
             id
           }
@@ -20,6 +20,10 @@ stages:
         "c1_id": $.c1_id,
         "c2_id": $.c2_id,
         "c3_id": $.c3_id
+      }
+    auth: |
+      {
+        "role": "admin"
       }
     response: |
       {
@@ -65,6 +69,10 @@ stages:
             }
           }
         }
+      }
+    auth: |
+      {
+        "role": "admin"
       }
     response: |
       {

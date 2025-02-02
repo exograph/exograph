@@ -16,6 +16,10 @@ variable: |
     "chat_id": $.c1_id,
     "user_id": $.u1_id
   }
+auth: |
+  {
+    "role": "admin"
+  }
 response: |
   {
     "data": {

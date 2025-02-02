@@ -1,42 +1,46 @@
 stages:
   - operation: |
-      mutation($u1_id: Int!, $c2_id: Int!) {
-        # Add a mood participation to user 1's chat 2
-        updateChatParticipation(user: { id: $u1_id }, chat: { id: $c2_id }, data: { moods: { create: { name: "happy" } } }) {
+      mutation($u2_id: Int!, $u4_id: Int!) {
+        # Substitute user 2 with user 4 in all chats
+        updateChatParticipations(where: { user: { id: {eq: $u2_id } } }, data: { user: { id: $u4_id } }) {
           user {
             id
           }
           chat {
             id
           }
-          moods @unordered @bind(name: "moods") {
-            id
-            name
-          }
         }
       }
     variable: |
       {
-        "u1_id": $.u1_id,
-        "c2_id": $.c2_id
+        "u2_id": $.u2_id,
+        "u4_id": $.u4_id
+      }
+    auth: |
+      {
+        "role": "admin"
       }
     response: |
       {
         "data": {
-          "updateChatParticipation": {
-            "user": {
-              "id": $.u1_id
-            },
-            "chat": {
-              "id": $.c2_id
-            },
-            "moods": [
-              {
-                "id": $.moods[0].id,
-                "name": "happy"
+          "updateChatParticipations": [
+            {
+              "user": {
+                "id": $.u4_id
+              },
+              "chat": {
+                "id": $.c1_id
               }
-            ]
-          }
+            },
+            {
+              "user": {
+                "id": $.u4_id
+              },
+              "chat": {
+                "id": $.c3_id
+              }
+            }
+          ]
         }
       }
 
@@ -50,12 +54,12 @@ stages:
               id
               name
             }
-            moods @unordered {
-              id
-              name
-            }
           }
         }
+      }
+    auth: |
+      {
+        "role": "admin"
       }
     response: |
       {
@@ -69,15 +73,13 @@ stages:
                   "user": {
                     "id": $.u1_id,
                     "name": "u1"
-                  },
-                  "moods": []
+                  }
                 },
                 {
                   "user": {
-                    "id": $.u2_id,
-                    "name": "u2"
-                  },
-                  "moods": []
+                    "id": $.u4_id,
+                    "name": "u4"
+                  }
                 }
               ]
             },
@@ -89,20 +91,13 @@ stages:
                   "user": {
                     "id": $.u1_id,
                     "name": "u1"
-                  },
-                  "moods": [
-                    {
-                      "id": $.moods[0].id,
-                      "name": "happy"
-                    }
-                  ]
+                  }
                 },
                 {
                   "user": {
                     "id": $.u3_id,
                     "name": "u3"
-                  },
-                  "moods": []
+                  }
                 }
               ]
             },
@@ -114,22 +109,19 @@ stages:
                   "user": {
                     "id": $.u1_id,
                     "name": "u1"
-                  },
-                  "moods": []
-                },
-                {
-                  "user": {
-                    "id": $.u2_id,
-                    "name": "u2"
-                  },
-                  "moods": []
+                  }
                 },
                 {
                   "user": {
                     "id": $.u3_id,
                     "name": "u3"
-                  },
-                  "moods": []
+                  }
+                },
+                {
+                  "user": {
+                    "id": $.u4_id,
+                    "name": "u4"
+                  }
                 }
               ]
             }

@@ -234,6 +234,10 @@ async fn many_to_one_pk_against_context() {
 #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
 async fn many_to_one_non_pk_field_to_against_another_non_pk_field() {
     // Scenario: self.author.name == self.author.skill (self is an Publication)
+    // Example mutations:
+    // createPublication(data: { ..., author: { id: 5 } })
+    // updatePublication(id: 1, data: { author: { id: 5 } })
+    // updatePublications(where: {...}, data: { author: { id: 5 } })
     let test_system = TestSystem::new().await;
 
     let publication_author_name_path = || test_system.expr("Publication", "author.name", None);
@@ -378,6 +382,48 @@ async fn many_to_one_non_pk_match() {
 
 #[cfg_attr(not(target_family = "wasm"), tokio::test)]
 #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+async fn upspecifiable_field() {
+    // Scenario: self.article.title == AuthContext.name
+    // This is a reduced version of (self.article.publications.some(p => ...))
+    // In an update mutation, the input value will not have the article field, so there is no way to evaluate the expression, so it should be ignored
+    // (just like any unavalable field in an update mutation)
+    //
+    // Example mutation:
+    // updatePublications(where: ..., data: { author: { id: 5 } })
+    let test_system = TestSystem::new().await;
+
+    let article_title_path = || test_system.expr("Article", "title", None).into();
+    let auth_context_name_path = || context_selection_expr("AccessContext", "name");
+
+    let eq_expr = |expr1, expr2| {
+        AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(expr1, expr2))
+    };
+
+    let test_ae = || eq_expr(article_title_path(), auth_context_name_path());
+
+    let context_value = || json!({"name": "John"});
+    let input_value = || json!({"author": {"id": 5}}).into();
+
+    let input_value = input_value();
+    let input_value = Some(AccessInput {
+        value: &input_value,
+        ignore_missing_value: true,
+        aliases: HashMap::new(),
+    });
+
+    let solved_predicate = solve_access(
+        &test_ae(),
+        context_value(),
+        input_value,
+        &test_system.system,
+    )
+    .await;
+
+    assert_eq!(solved_predicate, true.into(),);
+}
+
+#[cfg_attr(not(target_family = "wasm"), tokio::test)]
+#[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
 async fn hof_call_with_equality() {
     // Scenario: self.publications.some(p => p.royalty == AuthContext.id) (where self is User)
     // This should lead to no database residue (publications and their royalty are available in the input context)
@@ -487,7 +533,7 @@ async fn hof_call_with_equality() {
 
 #[cfg_attr(not(target_family = "wasm"), tokio::test)]
 #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-async fn hof_call_no_residue() {
+async fn hof_no_residue() {
     // Scenario: self.publications.some(p => p.royalty == self.age) (where self is User)
     let test_system = TestSystem::new().await;
 
@@ -600,7 +646,7 @@ async fn hof_call_no_residue() {
 
 #[cfg_attr(not(target_family = "wasm"), tokio::test)]
 #[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
-async fn hof_call_with_residue() {
+async fn hof_with_residue() {
     // Scenario: self.article.publications.some(p => p.author.id == AuthContext.id) where self is a publication
     // Only a current author can invite (add) a new author to a publication
     // This should lead to a database residue (since publications are not in the input context)
@@ -644,7 +690,7 @@ async fn hof_call_with_residue() {
     // context: {id: 100}
 
     let expected_left = |op: fn(ColumnPath, ColumnPath) -> AbstractPredicate| {
-        ColumnPath::Predicate(Box::new(AbstractPredicate::And(
+        AbstractPredicate::And(
             Box::new(op(
                 test_system.column_path("Article", "publications.author.id"),
                 literal_column(Val::Number(100.into())),
@@ -653,7 +699,7 @@ async fn hof_call_with_residue() {
                 test_system.column_path("Article", "id"),
                 literal_column(Val::Number(50.into())),
             )),
-        )))
+        )
     };
 
     let matrix = [
@@ -662,28 +708,28 @@ async fn hof_call_with_residue() {
             true,
             user_100(),
             expected_left(AbstractPredicate::Eq),
-            literal_column(Val::Bool(true)),
+            true,
         ),
         (
             &neq_call,
             true,
             user_100(),
             expected_left(AbstractPredicate::Neq),
-            literal_column(Val::Bool(true)),
+            true,
         ),
         (
             &eq_call,
             false,
             user_100(),
             expected_left(AbstractPredicate::Eq),
-            literal_column(Val::Bool(false)),
+            false,
         ),
         (
             &neq_call,
             false,
             user_100(),
             expected_left(AbstractPredicate::Neq),
-            literal_column(Val::Bool(false)),
+            false,
         ),
     ];
 
@@ -708,7 +754,11 @@ async fn hof_call_with_residue() {
             })
         };
 
-        let expected_result = AbstractPredicate::Eq(expected_left.clone(), expected_right.clone());
+        let expected_result = if expected_right {
+            expected_left.clone()
+        } else {
+            AbstractPredicate::Not(Box::new(expected_left.clone()))
+        };
 
         let solved_predicate = solve_access(
             &test_ae,
@@ -720,7 +770,11 @@ async fn hof_call_with_residue() {
         assert_eq!(solved_predicate, expected_result, "Test case {i}");
 
         let commuted_test_ae = form_expr(rhs_expr(), Box::new(lhs()));
-        let expected_result = AbstractPredicate::Eq(expected_right, expected_left);
+        let expected_result = if expected_right {
+            expected_left.clone()
+        } else {
+            AbstractPredicate::Not(Box::new(expected_left))
+        };
         let solved_predicate = solve_access(
             &commuted_test_ae,
             context_value,
@@ -733,6 +787,61 @@ async fn hof_call_with_residue() {
             "Test case (commuted) {i}"
         );
     }
+}
+
+#[cfg_attr(not(target_family = "wasm"), tokio::test)]
+#[cfg_attr(target_family = "wasm", wasm_bindgen_test::wasm_bindgen_test)]
+async fn upspecifiable_field_with_hof() {
+    // Scenario: self.article.publications.some(p => p.royalty == AuthContext.id)
+    //
+    // Example mutation:
+    // updatePublications(where: ..., data: { author: { id: 5 } })
+    let test_system = TestSystem::new().await;
+
+    let function_call = |op: fn(
+        Box<PrecheckAccessPrimitiveExpression>,
+        Box<PrecheckAccessPrimitiveExpression>,
+    ) -> AccessRelationalOp<PrecheckAccessPrimitiveExpression>| {
+        PrecheckAccessPrimitiveExpression::Function(
+            test_system.path("Publication", "article.publications"),
+            FunctionCall {
+                name: "some".to_string(),
+                parameter_name: "p".to_string(),
+                expr: AccessPredicateExpression::RelationalOp(op(
+                    test_system.expr("Publication", "royalty", Some("p")).into(),
+                    context_selection_expr("AccessContext", "id"),
+                )),
+            },
+        )
+    };
+
+    let eq_call = || function_call(AccessRelationalOp::Eq);
+
+    let context_value = || json!({"id": 100});
+    let input_value = || json!({"author": {"id": 5}}).into();
+
+    let input_value = input_value();
+    let input_value = Some(AccessInput {
+        value: &input_value,
+        ignore_missing_value: true,
+        aliases: HashMap::new(),
+    });
+
+    let form_expr =
+        |lhs, rhs| AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(lhs, rhs));
+
+    let boolean_expr = || {
+        Box::new(PrecheckAccessPrimitiveExpression::Common(
+            CommonAccessPrimitiveExpression::BooleanLiteral(true),
+        ))
+    };
+
+    let test_ae = form_expr(eq_call().into(), boolean_expr());
+
+    let solved_predicate =
+        solve_access(&test_ae, context_value(), input_value, &test_system.system).await;
+
+    assert_eq!(solved_predicate, true.into(),);
 }
 
 async fn solve_access<'a>(
