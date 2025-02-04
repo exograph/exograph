@@ -21,6 +21,9 @@ enum EphemeralDatabaseLaunchPreference {
     DockerOnly,
 }
 
+pub const EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE: &str =
+    "EXO_SQL_EPHEMERAL_DATABASE_LAUNCH_PREFERENCE";
+
 /// Launcher for an ephemeral database server using either a local Postgres installation or Docker
 pub struct EphemeralDatabaseLauncher {
     preference: EphemeralDatabaseLaunchPreference,
