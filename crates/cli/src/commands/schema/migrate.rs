@@ -78,12 +78,10 @@ impl CommandDefinition for MigrateCommandDefinition {
                 .await?;
 
         if apply_to_database {
-            if migrations.has_destructive_changes() {
-                Err(anyhow!("Migration contains destructive changes"))
-            } else {
-                migrations.apply(&db_client, false).await?;
-                Ok(())
-            }
+            migrations
+                .apply(&db_client, allow_destructive_changes)
+                .await?;
+            Ok(())
         } else {
             let mut buffer: Box<dyn io::Write> = open_file_for_output(output.as_deref())?;
             migrations.write(&mut buffer, allow_destructive_changes)?;
