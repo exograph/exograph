@@ -62,6 +62,8 @@ pub(crate) async fn check_access<'a>(
                     )
                     .await?;
 
+                    println!("field_access_predicate: {:?}", field_access_predicate);
+
                     if field_access_predicate == AbstractPredicate::False {
                         Err(PostgresExecutionError::Authorization)
                     } else {
@@ -119,6 +121,7 @@ pub(crate) async fn check_access<'a>(
                         |field| field.access.update.precheck,
                     )
                     .await?;
+
                     if field_access_predicate == AbstractPredicate::False {
                         Err(PostgresExecutionError::Authorization)
                     } else {
@@ -303,7 +306,7 @@ async fn check_input_access<'a>(
             futures::stream::iter(elems.iter().map(Ok))
                 .try_fold(
                     AbstractPredicate::True,
-                    |access_predicate, (elem_name, elem_value)| async {
+                    |access_predicate, (elem_name, _)| async {
                         let postgres_field = return_type.field_by_name(elem_name);
 
                         let field_access_predicate = match postgres_field {
@@ -312,8 +315,8 @@ async fn check_input_access<'a>(
                                     .solve(
                                         request_context,
                                         Some(&AccessInput {
-                                            value: elem_value,
-                                            ignore_missing_value: false,
+                                            value: &Val::Object(elems.clone()),
+                                            ignore_missing_value: true,
                                             aliases: HashMap::new(),
                                         }),
                                         &subsystem.core_subsystem.precheck_expressions

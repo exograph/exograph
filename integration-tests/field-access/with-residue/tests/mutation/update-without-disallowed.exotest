@@ -1,4 +1,4 @@
-# self.person.id != auth.sub, but email is not specified, so it is allowed to create
+# self.person.id != auth.sub, but email is not specified, so it is allowed to update
 # However, the selection must not include email.
 operation: |
   mutation updatePerson($id: Int!) {
@@ -16,8 +16,6 @@ auth: |
   {
     "sub": $.p2id
   }
-invariant: |
-  - path: ../system-state.gql
 response: |
   {
     "data": {

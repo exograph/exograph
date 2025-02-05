@@ -474,6 +474,11 @@ fn process_path_common_expr(
     column_predicate: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
     value_predicate: impl Fn(&Val, &Val) -> bool,
 ) -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
+    let ignore_missing_value = input_value
+        .as_ref()
+        .map(|ctx| ctx.ignore_missing_value)
+        .unwrap_or(false);
+
     match &left_path.field_path {
         FieldPath::Normal(field_path) => {
             let left_value = resolve_value(input_value, field_path)?;
@@ -500,9 +505,23 @@ fn process_path_common_expr(
                             ),
                         )))
                     } else {
-                        Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
-                            AbstractPredicate::True,
-                        )))
+                        if ignore_missing_value {
+                            Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
+                                AbstractPredicate::True,
+                            )))
+                        } else {
+                            Ok(AccessSolution::Solved(AbstractPredicateWrapper(
+                                column_predicate(
+                                    ColumnPath::Physical(left_path.column_path.clone()),
+                                    literal_column_path(
+                                        &right_value,
+                                        column_type(&left_path.column_path, database),
+                                        false,
+                                    )
+                                    .unwrap(),
+                                ),
+                            )))
+                        }
                     }
                 }
             }

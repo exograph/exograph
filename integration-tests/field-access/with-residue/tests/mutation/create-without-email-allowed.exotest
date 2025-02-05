@@ -12,8 +12,6 @@ auth: |
   {
     "sub": 6
   }
-invariant: |
-  - path: ../system-state.gql
 response: |
   {
     "data": {

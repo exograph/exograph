@@ -6,17 +6,20 @@ operation: |
           name
           age
           email
+          authId
       }
   }
 auth: |
   {
     "sub": 6
   }
-invariant: |
+invariants:
   - path: ../system-state.gql
 response: |
   {
-    "data": {
-      "createPerson": null
-    }
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
   }

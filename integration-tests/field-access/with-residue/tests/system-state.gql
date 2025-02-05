@@ -1,10 +1,11 @@
 operation: |
     query {
-        people {
+        people @unordered {
             id
             name
             age
             email
+            authId
         }
     }
 auth: |
