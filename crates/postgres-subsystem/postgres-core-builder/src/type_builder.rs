@@ -332,9 +332,24 @@ fn expand_type_access(
         building,
     )?;
 
-    let existing_type = &mut building.entity_types[existing_type_id];
+    {
+        let existing_type = &mut building.entity_types[existing_type_id];
 
-    existing_type.access = expr;
+        existing_type.access = expr;
+    }
+
+    for field in resolved_type.fields.iter() {
+        let expr = compute_access(&field.access, existing_type_id, resolved_env, building)?;
+
+        let existing_type = &mut building.entity_types[existing_type_id];
+
+        existing_type
+            .fields
+            .iter_mut()
+            .find(|f| f.name == field.name)
+            .unwrap()
+            .access = expr;
+    }
 
     Ok(())
 }
@@ -511,7 +526,18 @@ fn create_persistent_field(
 
     let relation = create_relation(field, *type_id, building, env, expand_foreign_relations);
 
-    let access = compute_access(&field.access, *type_id, env, building)?;
+    // Use shallow access expressions for fields at this point. Later expand_type_access will set the real expressions
+    let access = Access {
+        creation: CreationAccessExpression {
+            precheck: SerializableSlabIndex::shallow(),
+        },
+        read: SerializableSlabIndex::shallow(),
+        update: UpdateAccessExpression {
+            precheck: SerializableSlabIndex::shallow(),
+            database: SerializableSlabIndex::shallow(),
+        },
+        delete: SerializableSlabIndex::shallow(),
+    };
 
     let type_validation = match &field.type_hint {
         Some(th) => th.get_type_validation(),

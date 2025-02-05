@@ -1,0 +1,26 @@
+# self.person.id != auth.sub, so all the email field is disallowed
+operation: |
+  mutation updatePerson($id: Int!) {
+      updatePerson(id: $id, data: {name: "P1-updated", age: 11, email: "p1-updated@example.com"}) {
+          id
+          name
+          age
+          email
+      }
+  }
+variable: |
+  {
+    "id": $.p1id
+  }
+auth: |
+  {
+    "sub": 2
+  }
+invariant: |
+  - path: ../system-state.gql
+response: |
+  {
+    "data": {
+      "updatePerson": null
+    }
+  }

@@ -1,0 +1,25 @@
+# self.person.id == auth.sub, so all fields are allowed
+operation: |
+  mutation createPerson {
+      createPerson(data: {name: "P5", age: 50, email: "p5@example.com", authId: 5}) {
+          id
+          name
+          age
+          email
+      }
+  }
+auth: |
+  {
+    "sub": 5
+  }
+response: |
+  {
+    "data": {
+      "createPerson": {
+        "id": 5,
+        "name": "P5",
+        "age": 50,
+        "email": "p5@example.com"
+      }
+    }
+  }

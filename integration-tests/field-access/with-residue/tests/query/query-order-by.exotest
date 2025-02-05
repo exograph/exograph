@@ -1,0 +1,21 @@
+operation: |
+  query {
+      people(orderBy: {email: ASC}) {
+          id
+          name
+          age
+          email
+      }
+  }
+auth: |
+  {
+    "sub": $.p1id
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Not authorized"
+      }
+    ]
+  }

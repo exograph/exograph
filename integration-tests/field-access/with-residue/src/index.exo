@@ -1,0 +1,19 @@
+context AuthContext {
+  @jwt("sub") id: Int
+  @jwt role: String
+}
+
+@postgres
+module PeopleDatabase {
+  @access(true)
+  @plural("People")
+  type Person {
+    @pk id: Int = autoIncrement()
+    name: String
+    age: Int
+    authId: Int
+
+    @access(self.authId == AuthContext.id || AuthContext.role == "admin")
+    email: String?
+  }
+}

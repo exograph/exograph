@@ -1,0 +1,28 @@
+# self.person.id == auth.sub, so all fields are allowed
+operation: |
+  query {
+      people(where: {email: {eq: "p1@example.com"}}) {
+          id
+          name
+          age
+          email
+      }
+  }
+auth: |
+  {
+    "sub": $.p1id
+  }
+response: |
+  {
+    "data": {
+      "people": [
+        {
+          "id": 1,
+          "name": "P1",
+          "age": 10,
+          "email": "p1@example.com"
+        }
+      ]
+    }
+  }
+
