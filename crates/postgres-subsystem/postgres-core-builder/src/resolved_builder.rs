@@ -920,9 +920,7 @@ fn compute_column_info(
                     }
 
                     let matching_field =
-                        get_matching_field(field, enclosing_type, &field_type, types)?;
-
-                    let matching_field_cardinality = field_cardinality(&matching_field.typ);
+                        get_matching_field(field, enclosing_type, &field_type, types);
 
                     match &field.typ {
                         AstFieldType::Optional(_) => {
@@ -954,6 +952,10 @@ fn compute_column_info(
                             //    ...
                             //    concerts: Set<Concert>
                             // }
+
+                            let matching_field = &matching_field?;
+
+                            let matching_field_cardinality = field_cardinality(&matching_field.typ);
 
                             match matching_field_cardinality {
                                 Cardinality::ZeroOrOne => Err(Diagnostic {
@@ -999,6 +1001,11 @@ fn compute_column_info(
                             }
                         }
                         AstFieldType::Plain(..) => {
+                            let matching_field_cardinality = match matching_field {
+                                Ok(matching_field) => field_cardinality(&matching_field.typ),
+                                Err(err) => Cardinality::Unbounded,
+                            };
+
                             let unique_constraints =
                                 if matches!(matching_field_cardinality, Cardinality::ZeroOrOne) {
                                     // Add an explicit unique constraint to enforce one-to-one constraint
