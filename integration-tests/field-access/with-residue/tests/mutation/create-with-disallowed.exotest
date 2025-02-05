@@ -1,0 +1,22 @@
+# self.person.id != auth.sub, so the email field is disallowed
+operation: |
+  mutation createPerson {
+      createPerson(data: {name: "P5", age: 50, email: "p5@example.com", authId: 5}) {
+          id
+          name
+          age
+          email
+      }
+  }
+auth: |
+  {
+    "sub": 6
+  }
+invariant: |
+  - path: ../system-state.gql
+response: |
+  {
+    "data": {
+      "createPerson": null
+    }
+  }

@@ -248,7 +248,7 @@ fn compute_column_selection<'a>(
     ) -> (ColumnPathLink, &'a FieldType<PostgresFieldType<EntityType>>) {
         let get_field = |field_name: &str| {
             self_type_info.field_by_name(field_name).unwrap_or_else(|| {
-                panic!("Field {field_name} not found while processing access rules")
+                panic!("Field '{field_name}' not found while processing access rules")
             })
         };
 

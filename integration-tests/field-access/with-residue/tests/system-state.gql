@@ -1,0 +1,13 @@
+operation: |
+    query {
+        people {
+            id
+            name
+            age
+            email
+        }
+    }
+auth: |
+    {
+        "role": "admin"
+    }

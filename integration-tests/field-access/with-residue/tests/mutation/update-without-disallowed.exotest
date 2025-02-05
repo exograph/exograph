@@ -1,0 +1,30 @@
+# self.person.id != auth.sub, but email is not specified, so it is allowed to create
+# However, the selection must not include email.
+operation: |
+  mutation updatePerson($id: Int!) {
+      updatePerson(id: $id, data: {name: "P1-updated", age: 11}) {
+          id
+          name
+          age
+      }
+  }
+variable: |
+  {
+    "id": $.p1id
+  }
+auth: |
+  {
+    "sub": $.p2id
+  }
+invariant: |
+  - path: ../system-state.gql
+response: |
+  {
+    "data": {
+      "updatePerson": {
+        "id": $.p1id,
+        "name": "P1-updated",
+        "age": 11,
+      }
+    }
+  }

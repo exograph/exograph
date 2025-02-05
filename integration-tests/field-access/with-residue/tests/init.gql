@@ -1,0 +1,19 @@
+operation: |
+    mutation {
+        p1: createPerson(data: {name: "P1", age: 10, email: "p1@example.com", authId: 1}) {
+            id @bind(name: "p1id")
+        }
+        p2: createPerson(data: {name: "P2", age: 20, email: "p2@example.com", authId: 2}) {
+            id @bind(name: "p2id")
+        }
+        p3: createPerson(data: {name: "P3", age: 30, email: "p3@example.com", authId: 3}) {
+            id @bind(name: "p3id")
+        }
+        p4: createPerson(data: {name: "P4", age: 40, email: "p4@example.com", authId: 4}) {
+            id @bind(name: "p4id")
+        }
+    }
+auth: |
+    {
+        "role": "admin"
+    }

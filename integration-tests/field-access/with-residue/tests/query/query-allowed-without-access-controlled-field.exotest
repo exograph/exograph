@@ -1,0 +1,27 @@
+# self.person.id != auth.sub, so all fields except email are allowed
+operation: |
+  query($id: Int!) {
+      person(id: $id) {
+          id
+          name
+          age
+      }
+  }
+variable: |
+  {
+    "id": $.p1id
+  }
+auth: |
+  {
+    "sub": $.p2id
+  }
+response: |
+  {
+    "data": {
+      "person": {
+        "id": $.p1id,
+        "name": "P1",
+        "age": 10
+      }
+    }
+  }

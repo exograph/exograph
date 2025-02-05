@@ -1,0 +1,29 @@
+# self.person.id == auth.sub, so all fields are allowed
+operation: |
+  mutation updatePerson($id: Int!) {
+      updatePerson(id: $id, data: {name: "P1-updated", age: 11, email: "p1-updated@example.com"}) {
+          id
+          name
+          age
+          email
+      }
+  }
+variable: |
+  {
+    "id": $.p1id
+  }
+auth: |
+  {
+    "sub": $.p1id
+  }
+response: |
+  {
+    "data": {
+      "updatePerson": {
+        "id": $.p1id,
+        "name": "P1-updated",
+        "age": 11,
+        "email": "p1-updated@example.com"
+      }
+    }
+  }
