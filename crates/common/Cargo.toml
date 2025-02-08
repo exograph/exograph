@@ -54,6 +54,8 @@ tower = { version = "0.5", features = ["util"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
+wasm-bindgen-test.workspace = true
+multiplatform_test.workspace = true
 
 [lib]
 doctest = false

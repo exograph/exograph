@@ -24,7 +24,7 @@ impl UnresolvedVal {
         match self {
             UnresolvedVal::Null => Ok(Val::Null),
             UnresolvedVal::Bool(b) => Ok(Val::Bool(b)),
-            UnresolvedVal::Number(n) => Ok(Val::Number(n)),
+            UnresolvedVal::Number(n) => Ok(Val::Number(n.try_into().unwrap())),
             UnresolvedVal::String(s) => Ok(Val::String(s)),
             UnresolvedVal::List(l) => Ok(Val::List(
                 l.into_iter()
@@ -38,7 +38,7 @@ impl UnresolvedVal {
             )),
             UnresolvedVal::Binary(b) => Ok(Val::Binary(b)),
             UnresolvedVal::Enum(e) => Ok(Val::Enum(e)),
-            UnresolvedVal::Variable(name) => Ok(resolve_variable(&name)?.into()),
+            UnresolvedVal::Variable(name) => Ok(resolve_variable(&name)?.try_into().unwrap()),
         }
     }
 }

@@ -149,12 +149,12 @@ pub async fn construct_arg_sequence<'a>(
     system: &'a DenoSubsystem,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {
-    let mapped_args = field_args
+    let mapped_args: HashMap<String, serde_json::Value> = field_args
         .iter()
         .map(|(module_name, module_value)| {
             (
                 module_name.as_str().to_owned(),
-                module_value.clone().into_json().unwrap(),
+                module_value.clone().try_into().unwrap(),
             )
         })
         .collect::<HashMap<_, _>>();
@@ -184,7 +184,7 @@ pub async fn construct_arg_sequence<'a>(
                                 &context.name
                             )
                         });
-                    Ok(Arg::Serde(context_value.into_json().unwrap()))
+                    Ok(Arg::Serde(context_value.try_into().unwrap()))
                 } else {
                     // not a context, assume it is a provided shim by the Deno executor
                     Ok(Arg::Shim(arg_type.name.clone()))

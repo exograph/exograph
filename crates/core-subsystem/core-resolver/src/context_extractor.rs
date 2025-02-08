@@ -22,7 +22,7 @@ use futures::StreamExt;
 
 use common::{
     context::{ContextExtractionError, RequestContext},
-    value::Val,
+    value::{val::ValNumber, Val},
 };
 
 /// Extract context objects from the request context.
@@ -225,14 +225,14 @@ fn coerce_primitive(value: Val, typ: &PrimitiveType) -> Result<Val, ContextExtra
         (Val::String(str), pt) => match pt {
             PrimitiveType::Int => str
                 .parse::<i64>()
-                .map(|i| Val::Number(i.into()))
+                .map(|i| Val::Number(ValNumber::I64(i)))
                 .map_err(|_| ContextExtractionError::TypeMismatch {
                     expected: typ.name(),
                     actual: str,
                 }),
             PrimitiveType::Float => str
                 .parse::<f64>()
-                .map(|f| Val::Number(serde_json::Number::from_f64(f).unwrap()))
+                .map(|f| Val::Number(ValNumber::F64(f)))
                 .map_err(|_| ContextExtractionError::TypeMismatch {
                     expected: typ.name(),
                     actual: str,

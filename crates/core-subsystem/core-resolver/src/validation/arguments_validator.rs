@@ -214,7 +214,16 @@ impl<'a> ArgumentValidator<'a> {
         self.validate_scalar_argument(
             "Number",
             &["Int", "Float"],
-            || Val::Number(number.clone()),
+            || {
+                Ok(Val::Number(number.clone().try_into().map_err(|_| {
+                    ValidationError::InvalidArgumentType {
+                        argument_name: argument_definition.name.node.to_string(),
+                        expected_type: "Number".to_string(),
+                        actual_type: "Number".to_string(),
+                        pos,
+                    }
+                })?))
+            },
             argument_definition,
             pos,
         )
@@ -230,7 +239,7 @@ impl<'a> ArgumentValidator<'a> {
         self.validate_scalar_argument(
             "Boolean",
             &["Boolean"],
-            || Val::Bool(*boolean),
+            || Ok(Val::Bool(*boolean)),
             argument_definition,
             pos,
         )
@@ -257,7 +266,7 @@ impl<'a> ArgumentValidator<'a> {
                 "Blob",
                 "Json",
             ],
-            || Val::String(string.to_string()),
+            || Ok(Val::String(string.to_string())),
             argument_definition,
             pos,
         )
@@ -272,7 +281,7 @@ impl<'a> ArgumentValidator<'a> {
         self.validate_scalar_argument(
             "Binary",
             &["Binary"],
-            || Val::Binary(bytes.clone()),
+            || Ok(Val::Binary(bytes.clone())),
             argument_definition,
             pos,
         )
@@ -284,7 +293,7 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         argument_typename: &str,
         acceptable_destination_types: &[&str; N],
-        to_val: impl FnOnce() -> Val,
+        to_val: impl FnOnce() -> Result<Val, ValidationError>,
         argument_definition: &InputValueDefinition,
         pos: Pos,
     ) -> Result<Val, ValidationError> {
@@ -292,7 +301,7 @@ impl<'a> ArgumentValidator<'a> {
         let underlying = underlying_type(ty);
 
         if acceptable_destination_types.contains(&underlying.as_str()) {
-            Ok(to_val())
+            to_val()
         } else {
             Err(ValidationError::InvalidArgumentType {
                 argument_name: argument_definition.name.node.to_string(),

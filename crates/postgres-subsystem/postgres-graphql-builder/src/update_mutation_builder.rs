@@ -260,8 +260,7 @@ impl DataParamBuilder<DataParameter> for UpdateMutationBuilder {
                         )))),
                         access: field.access.clone(),
                         relation: field.relation.clone(),
-                        has_default_value: field.has_default_value,
-                        dynamic_default_value: None,
+                        default_value: field.default_value.clone(),
                         readonly: field.readonly,
                         type_validation: None,
                     }

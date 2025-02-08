@@ -11,6 +11,7 @@ use super::relation::PostgresRelation;
 use crate::aggregate::AggregateField;
 use crate::vector_distance::VectorDistanceField;
 
+use common::value::Val;
 use core_plugin_interface::core_model::context_type::ContextSelection;
 use core_plugin_interface::core_model::types::TypeValidation;
 use core_plugin_interface::core_model::{
@@ -140,12 +141,19 @@ impl EntityType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum PostgresFieldDefaultValue {
+    Static(Val),
+    Dynamic(ContextSelection),
+    Function(String), // Postgres function name such as `now()`
+    AutoIncrement,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresField<CT> {
     pub name: String,
     pub typ: FieldType<PostgresFieldType<CT>>,
     pub relation: PostgresRelation,
-    pub has_default_value: bool, // does this field have a default value?
-    pub dynamic_default_value: Option<ContextSelection>,
+    pub default_value: Option<PostgresFieldDefaultValue>,
     pub readonly: bool,
     pub access: Access,
     pub type_validation: Option<TypeValidation>,
