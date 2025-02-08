@@ -21,7 +21,9 @@ use exo_sql::{
 };
 use futures::future::{join_all, try_join_all};
 use postgres_core_model::relation::{ManyToOneRelation, OneToManyRelation, PostgresRelation};
-use postgres_core_model::types::{base_type, PostgresField, PostgresType};
+use postgres_core_model::types::{
+    base_type, PostgresField, PostgresFieldDefaultValue, PostgresType,
+};
 use postgres_graphql_model::{
     mutation::DataParameter, subsystem::PostgresGraphQLSubsystem, types::MutationType,
 };
@@ -131,7 +133,9 @@ async fn map_single<'a>(
             let field_arg = match field_arg {
                 Some(_) => Ok(field_arg),
                 None => {
-                    if let Some(selection) = &field.dynamic_default_value {
+                    if let Some(PostgresFieldDefaultValue::Dynamic(selection)) =
+                        &field.default_value
+                    {
                         subsystem
                             .extract_context_selection(request_context, selection)
                             .await

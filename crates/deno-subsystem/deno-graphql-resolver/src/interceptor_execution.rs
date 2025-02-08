@@ -9,7 +9,8 @@
 
 use common::context::RequestContext;
 use core_plugin_interface::core_resolver::{
-    system_resolver::ExographExecuteQueryFn, InterceptedOperation,
+    system_resolver::ExographExecuteQueryFn, validation::field::ValidatedField,
+    InterceptedOperation,
 };
 use deno_graphql_model::interceptor::Interceptor;
 use exo_deno::{deno_executor_pool::DenoScriptDefn, Arg};
@@ -59,10 +60,46 @@ pub async fn execute_interceptor<'a>(
             arg_sequence,
             Some(InterceptedOperationInfo {
                 name: intercepted_operation.operation().name.to_string(),
-                query: serde_json::to_value(intercepted_operation.operation()).unwrap(),
+                query: operation_to_value(intercepted_operation.operation()),
             }),
             callback_processor,
         )
         .await
         .map_err(DenoExecutionError::Deno)
+}
+
+// We can't use Value::to_json, since the coversion from `Val` to `Value` doesn't map carries additional tags
+// that don't work from the Deno side.
+fn operation_to_value(operation: &ValidatedField) -> Value {
+    let mut map = serde_json::Map::new();
+    map.insert(
+        "alias".to_string(),
+        operation
+            .alias
+            .as_ref()
+            .map(|alias| alias.to_string())
+            .into(),
+    );
+    map.insert(
+        "name".to_string(),
+        Value::String(operation.name.to_string()),
+    );
+    map.insert(
+        "arguments".to_string(),
+        Value::Object(
+            operation
+                .arguments
+                .iter()
+                .map(|(key, value)| {
+                    let json_value: serde_json::Value = value.clone().try_into().unwrap();
+                    (key.to_string(), json_value)
+                })
+                .collect(),
+        ),
+    );
+    map.insert(
+        "subfields".to_string(),
+        Value::Array(operation.subfields.iter().map(operation_to_value).collect()),
+    );
+    Value::Object(map)
 }

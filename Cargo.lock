@@ -1424,6 +1424,7 @@ dependencies = [
  "http 1.1.0",
  "hyper-util",
  "jsonwebtoken",
+ "multiplatform_test",
  "oidc-jwt-validator",
  "opentelemetry",
  "opentelemetry-otlp",
@@ -1439,6 +1440,7 @@ dependencies = [
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -6811,6 +6813,7 @@ dependencies = [
  "builder",
  "codemap",
  "codemap-diagnostic",
+ "common",
  "core-model-builder",
  "core-plugin-interface",
  "deno-builder",
@@ -6834,6 +6837,7 @@ dependencies = [
  "bincode",
  "builder",
  "colored",
+ "common",
  "core-plugin-interface",
  "exo-sql",
  "postgres-builder",

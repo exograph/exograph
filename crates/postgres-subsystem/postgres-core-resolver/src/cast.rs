@@ -11,6 +11,7 @@ use base64::DecodeError;
 use base64::Engine;
 use chrono::prelude::*;
 use chrono::DateTime;
+use common::value::val::ValNumber;
 use common::value::Val;
 use exo_sql::database_error::DatabaseError;
 #[cfg(feature = "bigdecimal")]
@@ -153,7 +154,7 @@ pub fn cast_list(
 }
 
 fn cast_number(
-    number: &serde_json::Number,
+    number: &ValNumber,
     destination_type: &PhysicalColumnType,
 ) -> Result<SQLParamContainer, CastError> {
     let result: SQLParamContainer = match destination_type {
@@ -349,7 +350,7 @@ fn cast_object(
 ) -> Result<SQLParamContainer, CastError> {
     match destination_type {
         PhysicalColumnType::Json => {
-            let json_object = val.clone().into_json().map_err(|_| {
+            let json_object = val.clone().try_into().map_err(|_| {
                 CastError::Generic(format!("Failed to cast {val} to a JSON object"))
             })?;
             Ok(SQLParamContainer::json(json_object))
@@ -388,7 +389,7 @@ fn array_type(destination_type: &PhysicalColumnType) -> Result<Type, CastError> 
     }
 }
 
-fn cast_to_i64(val: &serde_json::Number) -> Result<i64, CastError> {
+fn cast_to_i64(val: &ValNumber) -> Result<i64, CastError> {
     let i64_value = val
         .as_i64()
         .ok_or_else(|| CastError::Generic(format!("Failed to cast {val} to an integer")))?;
@@ -396,7 +397,7 @@ fn cast_to_i64(val: &serde_json::Number) -> Result<i64, CastError> {
     Ok(i64_value)
 }
 
-fn cast_to_i32(val: &serde_json::Number) -> Result<i32, CastError> {
+fn cast_to_i32(val: &ValNumber) -> Result<i32, CastError> {
     let i64_value = cast_to_i64(val)?;
     if i64_value < i32::MIN as i64 || i64_value > i32::MAX as i64 {
         return Err(CastError::Generic(format!(
@@ -406,7 +407,7 @@ fn cast_to_i32(val: &serde_json::Number) -> Result<i32, CastError> {
     Ok(i64_value as i32)
 }
 
-fn cast_to_i16(val: &serde_json::Number) -> Result<i16, CastError> {
+fn cast_to_i16(val: &ValNumber) -> Result<i16, CastError> {
     let i32_value = cast_to_i32(val)?;
     if i32_value < i16::MIN as i32 || i32_value > i16::MAX as i32 {
         return Err(CastError::Generic(format!(
@@ -416,14 +417,14 @@ fn cast_to_i16(val: &serde_json::Number) -> Result<i16, CastError> {
     Ok(i32_value as i16)
 }
 
-fn cast_to_f64(val: &serde_json::Number) -> Result<f64, CastError> {
+fn cast_to_f64(val: &ValNumber) -> Result<f64, CastError> {
     let f64_value = val
         .as_f64()
         .ok_or_else(|| CastError::Generic(format!("Failed to cast {val} to a float")))?;
     Ok(f64_value)
 }
 
-fn cast_to_f32(val: &serde_json::Number) -> Result<f32, CastError> {
+fn cast_to_f32(val: &ValNumber) -> Result<f32, CastError> {
     let f64_value = cast_to_f64(val)?;
 
     if f64_value < f32::MIN.into() || f64_value > f32::MAX.into() {

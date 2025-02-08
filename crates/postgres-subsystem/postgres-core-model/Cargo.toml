@@ -11,6 +11,7 @@ anyhow.workspace = true
 
 exo-sql = { path = "../../../libs/exo-sql" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
+common = { path = "../../common" }
 
 [dev-dependencies]
 tokio.workspace = true

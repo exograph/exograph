@@ -257,7 +257,8 @@ pub trait DataParamBuilder<D> {
             None => false,
         };
 
-        let optional = !is_json_typed && (Self::mark_fields_optional() || field.has_default_value);
+        let optional =
+            !is_json_typed && (Self::mark_fields_optional() || field.default_value.is_some());
 
         let mutation_type_kind = if Self::data_param_role() == DataParamRole::Create {
             MutationTypeKind::Create
@@ -279,9 +280,8 @@ pub trait DataParamBuilder<D> {
                         name: field.name.clone(),
                         typ: to_mutation_type(&field.typ, mutation_type_kind, building).optional(),
                         relation: field.relation.clone(),
-                        has_default_value: field.has_default_value,
+                        default_value: field.default_value.clone(),
                         access: field.access.clone(),
-                        dynamic_default_value: field.dynamic_default_value.clone(),
                         readonly: field.readonly,
                         type_validation: field.type_validation.clone(),
                     })
@@ -310,8 +310,7 @@ pub trait DataParamBuilder<D> {
                             typ: mutation_type,
                             access: field.access.clone(),
                             relation: field.relation.clone(),
-                            has_default_value: field.has_default_value,
-                            dynamic_default_value: field.dynamic_default_value.clone(),
+                            default_value: field.default_value.clone(),
                             readonly: field.readonly,
                             type_validation: field.type_validation.clone(),
                         })
@@ -328,8 +327,7 @@ pub trait DataParamBuilder<D> {
                     },
                     access: field.access.clone(),
                     relation: field.relation.clone(),
-                    has_default_value: field.has_default_value,
-                    dynamic_default_value: field.dynamic_default_value.clone(),
+                    default_value: field.default_value.clone(),
                     readonly: field.readonly,
                     type_validation: field.type_validation.clone(),
                 })
@@ -363,8 +361,7 @@ pub trait DataParamBuilder<D> {
                         typ: field_type,
                         access: field.access.clone(),
                         relation: field.relation.clone(),
-                        has_default_value: field.has_default_value,
-                        dynamic_default_value: field.dynamic_default_value.clone(),
+                        default_value: field.default_value.clone(),
                         readonly: field.readonly,
                         type_validation: field.type_validation.clone(),
                     }),
@@ -408,8 +405,7 @@ pub trait DataParamBuilder<D> {
                         },
                         access: field.access.clone(),
                         relation: field.relation.clone(),
-                        has_default_value: field.has_default_value,
-                        dynamic_default_value: field.dynamic_default_value.clone(),
+                        default_value: field.default_value.clone(),
                         readonly: field.readonly,
                         type_validation: field.type_validation.clone(),
                     }),

@@ -10,6 +10,7 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use common::value::val::ValNumber;
 use core_model::access::{
     AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
     CommonAccessPrimitiveExpression,
@@ -19,7 +20,7 @@ use thiserror::Error;
 use common::context::{ContextExtractionError, RequestContext};
 use common::value::Val;
 
-use crate::{context_extractor::ContextExtractor, number_cmp::NumberWrapper};
+use crate::context_extractor::ContextExtractor;
 
 /// Access predicate that can be logically combined with other predicates.
 pub trait AccessPredicate: From<bool> + std::ops::Not<Output = Self> + Send + Sync {
@@ -351,7 +352,9 @@ pub async fn reduce_common_primitive_expression<'a>(
             .cloned(),
         CommonAccessPrimitiveExpression::StringLiteral(value) => Some(Val::String(value.clone())),
         CommonAccessPrimitiveExpression::BooleanLiteral(value) => Some(Val::Bool(*value)),
-        CommonAccessPrimitiveExpression::NumberLiteral(value) => Some(Val::Number((*value).into())),
+        CommonAccessPrimitiveExpression::NumberLiteral(value) => {
+            Some(Val::Number(ValNumber::I64(*value)))
+        }
         CommonAccessPrimitiveExpression::NullLiteral => Some(Val::Null),
     })
 }
@@ -361,8 +364,7 @@ pub fn eq_values(left_value: &Val, right_value: &Val) -> bool {
         (Val::Number(left_number), Val::Number(right_number)) => {
             // We have a more general implementation of `PartialEq` for `Val` that accounts for
             // different number types. So, we use that implementation here instead of using just `==`
-            NumberWrapper(left_number.clone()).partial_cmp(&NumberWrapper(right_number.clone()))
-                == Some(std::cmp::Ordering::Equal)
+            left_number.clone() == right_number.clone()
         }
         _ => left_value == right_value,
     }
@@ -382,7 +384,7 @@ pub fn in_values(left_value: &Val, right_value: &Val) -> bool {
 pub fn lt_values(left_value: &Val, right_value: &Val) -> bool {
     match (left_value, right_value) {
         (Val::Number(left_number), Val::Number(right_number)) => {
-            NumberWrapper(left_number.clone()) < NumberWrapper(right_number.clone())
+            left_number.clone() < right_number.clone()
         }
         _ => unreachable!("The operands of `<` operator must be numbers"),
     }
@@ -391,7 +393,7 @@ pub fn lt_values(left_value: &Val, right_value: &Val) -> bool {
 pub fn lte_values(left_value: &Val, right_value: &Val) -> bool {
     match (left_value, right_value) {
         (Val::Number(left_number), Val::Number(right_number)) => {
-            NumberWrapper(left_number.clone()) <= NumberWrapper(right_number.clone())
+            left_number.clone() <= right_number.clone()
         }
         _ => unreachable!("The operands of `<=` operator must be numbers"),
     }

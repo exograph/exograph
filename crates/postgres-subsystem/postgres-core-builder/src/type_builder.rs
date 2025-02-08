@@ -14,9 +14,11 @@ use crate::resolved_type::{
     ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedFieldType,
     ResolvedFieldTypeHelper, ResolvedType, ResolvedTypeEnv, ResolvedTypeHint,
 };
+use common::value::val::ValNumber;
+use common::value::Val;
 use core_plugin_interface::core_model::access::AccessPredicateExpression;
 use postgres_core_model::access::{CreationAccessExpression, PrecheckAccessPrimitiveExpression};
-use postgres_core_model::types::EntityRepresentation;
+use postgres_core_model::types::{EntityRepresentation, PostgresFieldDefaultValue};
 
 use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
 
@@ -228,7 +230,7 @@ fn expand_dynamic_default_values(
 
     let existing_type_id = building.get_entity_type_id(&resolved_type.name).unwrap();
 
-    let dynamic_default_values = {
+    let default_values = {
         let existing_type = &building.entity_types[existing_type_id];
 
         resolved_type
@@ -302,17 +304,17 @@ fn expand_dynamic_default_values(
             .collect::<Vec<_>>()
     };
 
-    dynamic_default_values
-        .into_iter()
-        .for_each(|(field_name, value)| {
-            let existing_type = &mut building.entity_types[existing_type_id];
-            let existing_field = existing_type
-                .fields
-                .iter_mut()
-                .find(|field| field.name == field_name)
-                .unwrap();
-            existing_field.dynamic_default_value = value;
-        });
+    default_values.into_iter().for_each(|(field_name, value)| {
+        let existing_type = &mut building.entity_types[existing_type_id];
+        let existing_field = existing_type
+            .fields
+            .iter_mut()
+            .find(|field| field.name == field_name)
+            .unwrap();
+        if let Some(value) = value {
+            existing_field.default_value = Some(PostgresFieldDefaultValue::Dynamic(value));
+        }
+    });
 
     Ok(())
 }
@@ -544,13 +546,41 @@ fn create_persistent_field(
         None => None,
     };
 
+    let default_value = field
+        .default_value
+        .as_ref()
+        .map(|value| match value {
+            ResolvedFieldDefault::Value(expr) => match expr.as_ref() {
+                AstExpr::StringLiteral(string, _) => Ok(PostgresFieldDefaultValue::Static(
+                    Val::String(string.to_string()),
+                )),
+                AstExpr::BooleanLiteral(boolean, _) => {
+                    Ok(PostgresFieldDefaultValue::Static(Val::Bool(*boolean)))
+                }
+                AstExpr::NumberLiteral(number, _) => Ok(PostgresFieldDefaultValue::Static(
+                    Val::Number(ValNumber::I64(*number)),
+                )),
+                AstExpr::FieldSelection(_) => {
+                    // Set some value. Will be overridden by expand_dynamic_default_values later
+                    Ok(PostgresFieldDefaultValue::Static(Val::Bool(false)))
+                }
+                _ => Err(ModelBuildingError::Generic(
+                    "Unsupported default value expression".to_string(),
+                )),
+            },
+            ResolvedFieldDefault::PostgresFunction(function) => {
+                Ok(PostgresFieldDefaultValue::Function(function.to_string()))
+            }
+            ResolvedFieldDefault::AutoIncrement => Ok(PostgresFieldDefaultValue::AutoIncrement),
+        })
+        .transpose()?;
+
     Ok(PostgresField {
         name: field.name.to_owned(),
         typ: field.typ.wrap(base_field_type),
         relation,
         access,
-        has_default_value: field.default_value.is_some(),
-        dynamic_default_value: None,
+        default_value,
         readonly: field.readonly || field.update_sync,
         type_validation,
     })
