@@ -108,9 +108,14 @@ impl TestSystem {
     pub fn path(&self, entity_name: &str, path: &str) -> AccessPrimitiveExpressionPath {
         let path_components = path.split('.').collect::<Vec<_>>();
 
-        let (_, acc_path, _) = path_components.into_iter().fold(
-            (entity_name, None::<AccessPrimitiveExpressionPath>, false),
-            |(acc_entity_name, acc_path, in_many_to_one), path_component| {
+        let (_, acc_path, _, _) = path_components.into_iter().fold(
+            (
+                entity_name,
+                None::<AccessPrimitiveExpressionPath>,
+                false,
+                None,
+            ),
+            |(acc_entity_name, acc_path, in_many_to_one, earlier_default_value), path_component| {
                 let field = self.get_field(acc_entity_name, path_component);
                 let link = self.get_link(field);
                 let is_many_to_one = matches!(field.relation, PostgresRelation::ManyToOne { .. });
@@ -125,13 +130,19 @@ impl TestSystem {
                             acc_path.field_path,
                             !in_many_to_one || field.relation.is_pk(),
                         ) {
-                            (FieldPath::Normal(a), true) => {
+                            (FieldPath::Normal(a, _), true) => {
                                 let mut field_path = a.clone();
                                 field_path.push(field.name.clone());
-                                FieldPath::Normal(field_path)
+
+                                if field.relation.is_pk() {
+                                    FieldPath::Normal(field_path, earlier_default_value)
+                                } else {
+                                    FieldPath::Normal(field_path, None)
+                                }
                             }
-                            (FieldPath::Normal(a), false) => FieldPath::Pk {
+                            (FieldPath::Normal(a, _), false) => FieldPath::Pk {
                                 lead: a.clone(),
+                                lead_default: None,
                                 pk_fields: entity_type
                                     .pk_fields()
                                     .iter()
@@ -151,11 +162,16 @@ impl TestSystem {
                     }
                     None => AccessPrimitiveExpressionPath::new(
                         PhysicalColumnPath::init(link),
-                        FieldPath::Normal(vec![field.name.clone()]),
+                        FieldPath::Normal(vec![field.name.clone()], None),
                     ),
                 };
 
-                (new_entity_name, Some(new_path), is_many_to_one)
+                (
+                    new_entity_name,
+                    Some(new_path),
+                    is_many_to_one,
+                    field.default_value.clone(),
+                )
             },
         );
 

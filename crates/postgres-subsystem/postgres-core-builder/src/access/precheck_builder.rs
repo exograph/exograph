@@ -337,14 +337,16 @@ fn compute_precheck_selection<'a>(
         ),
         ModelBuildingError,
     > {
-        let (lead_type, path, field_type, _) = selection_elems.iter().try_fold(
+        let (lead_type, path, field_type, _, _) = selection_elems.iter().try_fold(
             (
                 Some(lead_type),
                 None::<AccessPrimitiveExpressionPath>,
                 None,
                 false,
+                None,
             ),
-            |(lead_type, path, _field_type, in_many_to_one), selection_elem| {
+            |(lead_type, path, _field_type, in_many_to_one, earlier_field_default_value),
+             selection_elem| {
                 let lead_type = lead_type.expect("Type for the access selection is not defined");
 
                 match selection_elem {
@@ -374,19 +376,44 @@ fn compute_precheck_selection<'a>(
 
                                 let field_path =
                                     match (field_path, !in_many_to_one || field_relation.is_pk()) {
-                                        (FieldPath::Normal(a), true) => {
+                                        (FieldPath::Normal(a, _), true) => {
                                             let mut field_path = a.clone();
                                             field_path.push(field_name.clone());
-                                            FieldPath::Normal(field_path)
+
+                                            // We allow default value on many-to-one fields such as:
+                                            //
+                                            // type User {
+                                            //     @pk id: Int = autoIncrement()
+                                            //     name: String
+                                            // }
+                                            //
+                                            // type Todo {
+                                            //     ..
+                                            //     user: User = AuthContext.id
+                                            // }
+                                            //
+                                            // The default value of `AuthContext.id` is to be used for the `user.id` path and not the `user` path itself.
+                                            let effective_default_value = if field_relation.is_pk()
+                                            {
+                                                earlier_field_default_value
+                                                    .or(field.default_value.clone())
+                                            } else {
+                                                field.default_value.clone()
+                                            };
+
+                                            FieldPath::Normal(field_path, effective_default_value)
                                         }
-                                        (FieldPath::Normal(a), false) => FieldPath::Pk {
-                                            lead: a.clone(),
-                                            pk_fields: lead_type
-                                                .pk_fields()
-                                                .iter()
-                                                .map(|f| f.name.clone())
-                                                .collect(),
-                                        },
+                                        (FieldPath::Normal(a, lead_default), false) => {
+                                            FieldPath::Pk {
+                                                lead: a.clone(),
+                                                lead_default: lead_default.clone(),
+                                                pk_fields: lead_type
+                                                    .pk_fields()
+                                                    .iter()
+                                                    .map(|f| f.name.clone())
+                                                    .collect(),
+                                            }
+                                        }
                                         (field_path, _) => {
                                             // If the field path is already a pk, we leave it as is (will lead to a database residue)
                                             field_path
@@ -400,7 +427,10 @@ fn compute_precheck_selection<'a>(
                             }
                             None => AccessPrimitiveExpressionPath::new(
                                 PhysicalColumnPath::init(field_column_path),
-                                FieldPath::Normal(vec![field_name.clone()]),
+                                FieldPath::Normal(
+                                    vec![field_name.clone()],
+                                    field.default_value.clone(),
+                                ),
                             ),
                         };
 
@@ -410,6 +440,7 @@ fn compute_precheck_selection<'a>(
                             Some(field_type),
                             in_many_to_one
                                 || matches!(field_relation, PostgresRelation::ManyToOne { .. }),
+                            field.default_value.clone(),
                         ))
                     }
                     FieldSelectionElement::HofCall { .. }

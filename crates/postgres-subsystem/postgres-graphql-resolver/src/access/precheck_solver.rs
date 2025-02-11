@@ -25,11 +25,13 @@ use core_plugin_interface::{
 use exo_sql::{
     AbstractPredicate, ColumnPath, ColumnPathLink, Database, PhysicalColumnPath, PhysicalColumnType,
 };
+use maybe_owned::MaybeOwned;
 use postgres_core_resolver::cast::{self, literal_column_path};
 use postgres_graphql_model::subsystem::PostgresGraphQLSubsystem;
 
-use postgres_core_model::access::{
-    AccessPrimitiveExpressionPath, FieldPath, PrecheckAccessPrimitiveExpression,
+use postgres_core_model::{
+    access::{AccessPrimitiveExpressionPath, FieldPath, PrecheckAccessPrimitiveExpression},
+    types::PostgresFieldDefaultValue,
 };
 
 use super::access_op::AbstractPredicateWrapper;
@@ -79,31 +81,32 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
             .map(|ctx| ctx.ignore_missing_value)
             .unwrap_or(false);
 
-        let helper =
-            |column_predicate: ColumnPredicateFn,
-             value_predicate: ValuePredicateFn|
-             -> Result<AccessSolution<AbstractPredicateWrapper>, AccessSolverError> {
-                evaluate_relation(
-                    left,
-                    right,
-                    input_value,
-                    &self.core_subsystem.database,
-                    ignore_missing_value,
-                    column_predicate,
-                    value_predicate,
-                )
-            };
+        let helper = |column_predicate: ColumnPredicateFn, value_predicate: ValuePredicateFn| {
+            evaluate_relation(
+                self,
+                request_context,
+                left,
+                right,
+                input_value,
+                &self.core_subsystem.database,
+                ignore_missing_value,
+                column_predicate,
+                value_predicate,
+            )
+        };
 
         let access_predicate = match op {
             AccessRelationalOp::Eq(..) => {
                 helper(AbstractPredicate::eq, |left_value, right_value| {
                     eq_values(left_value, right_value)
                 })
+                .await
             }
             AccessRelationalOp::Neq(_, _) => {
                 helper(AbstractPredicate::neq, |left_value, right_value| {
                     neq_values(left_value, right_value)
                 })
+                .await
             }
             // For the next four, we could optimize cases where values are comparable, but
             // for now, we generate a predicate and let the database handle it
@@ -111,26 +114,31 @@ impl<'a> AccessSolver<'a, PrecheckAccessPrimitiveExpression, AbstractPredicateWr
                 helper(AbstractPredicate::Lt, |left_value, right_value| {
                     lt_values(left_value, right_value)
                 })
+                .await
             }
             AccessRelationalOp::Lte(_, _) => {
                 helper(AbstractPredicate::Lte, |left_value, right_value| {
                     lte_values(left_value, right_value)
                 })
+                .await
             }
             AccessRelationalOp::Gt(_, _) => {
                 helper(AbstractPredicate::Gt, |left_value, right_value| {
                     gt_values(left_value, right_value)
                 })
+                .await
             }
             AccessRelationalOp::Gte(_, _) => {
                 helper(AbstractPredicate::Gte, |left_value, right_value| {
                     gte_values(left_value, right_value)
                 })
+                .await
             }
             AccessRelationalOp::In(..) => {
                 helper(AbstractPredicate::In, |left_value, right_value| {
                     in_values(left_value, right_value)
                 })
+                .await
             }
         }?;
 
@@ -160,7 +168,7 @@ async fn reduce_primitive_expression<'a>(
                 None => vec![],
             };
             let field_path_strings = match &path.field_path {
-                FieldPath::Normal(field_path) => field_path,
+                FieldPath::Normal(field_path, _) => field_path,
                 FieldPath::Pk { .. } => {
                     return Ok(AccessSolution::Solved(
                         SolvedPrecheckPrimitiveExpression::Path(
@@ -203,14 +211,22 @@ async fn reduce_primitive_expression<'a>(
             }
 
             let field_path = match &lead.field_path {
-                FieldPath::Normal(field_path) => field_path,
+                FieldPath::Normal(field_path, _) => field_path,
                 FieldPath::Pk {
                     lead: lead_path,
                     pk_fields,
+                    lead_default,
                 } => {
                     let (head, tail) = lead.column_path.split_head();
 
-                    let lead_value = resolve_value(input_value, lead_path)?;
+                    let lead_value = resolve_value(
+                        solver,
+                        input_value,
+                        lead_path,
+                        lead_default,
+                        request_context,
+                    )
+                    .await?;
 
                     // If the lead value itself is unknown, return the value of `ignore_missing_value`.
                     // See the `upspecifiable_field_with_hof` test for more details
@@ -229,12 +245,16 @@ async fn reduce_primitive_expression<'a>(
                     }
 
                     let relational_predicate = compute_relational_predicate(
+                        solver,
                         head,
                         lead_path,
                         pk_fields,
                         input_value,
+                        lead_default,
+                        request_context,
                         &solver.core_subsystem.database,
-                    )?;
+                    )
+                    .await?;
 
                     let f_expr = compute_function_expr(
                         &AccessPrimitiveExpressionPath {
@@ -348,7 +368,10 @@ async fn reduce_primitive_expression<'a>(
     }
 }
 
-fn evaluate_relation(
+#[allow(clippy::too_many_arguments)]
+async fn evaluate_relation(
+    solver: &PostgresGraphQLSubsystem,
+    request_context: &RequestContext<'_>,
     left: SolvedPrecheckPrimitiveExpression,
     right: SolvedPrecheckPrimitiveExpression,
     input_value: Option<&AccessInput<'_>>,
@@ -368,10 +391,10 @@ fn evaluate_relation(
             SolvedPrecheckPrimitiveExpression::Path(right_path, _),
         ) => {
             let (left_column_path, left_predicate) =
-                resolve_path(&left_path, input_value, database)?;
+                resolve_path(solver, &left_path, input_value, request_context, database).await?;
 
             let (right_column_path, right_predicate) =
-                resolve_path(&right_path, input_value, database)?;
+                resolve_path(solver, &right_path, input_value, request_context, database).await?;
 
             let core_predicate = match (left_column_path, right_column_path) {
                 (Some(left_column_path), Some(right_column_path)) => {
@@ -399,28 +422,38 @@ fn evaluate_relation(
         (
             SolvedPrecheckPrimitiveExpression::Common(Some(left_value)),
             SolvedPrecheckPrimitiveExpression::Path(right_path, parameter_name),
-        ) => process_path_common_expr(
-            right_path,
-            parameter_name,
-            left_value,
-            input_value,
-            database,
-            |c1, c2| column_predicate(c2, c1),
-            |v1, v2| value_predicate(v2, v1),
-        ),
+        ) => {
+            process_path_common_expr(
+                solver,
+                right_path,
+                parameter_name,
+                left_value,
+                input_value,
+                request_context,
+                database,
+                |c1, c2| column_predicate(c2, c1),
+                |v1, v2| value_predicate(v2, v1),
+            )
+            .await
+        }
 
         (
             SolvedPrecheckPrimitiveExpression::Path(left_path, parameter_name),
             SolvedPrecheckPrimitiveExpression::Common(Some(right_value)),
-        ) => process_path_common_expr(
-            left_path,
-            parameter_name,
-            right_value,
-            input_value,
-            database,
-            column_predicate,
-            value_predicate,
-        ),
+        ) => {
+            process_path_common_expr(
+                solver,
+                left_path,
+                parameter_name,
+                right_value,
+                input_value,
+                request_context,
+                database,
+                column_predicate,
+                value_predicate,
+            )
+            .await
+        }
         (
             SolvedPrecheckPrimitiveExpression::Predicate(left_predicate),
             SolvedPrecheckPrimitiveExpression::Common(Some(right_value)),
@@ -433,29 +466,49 @@ fn evaluate_relation(
     }
 }
 
-fn resolve_path(
+async fn resolve_path(
+    solver: &PostgresGraphQLSubsystem,
     path: &AccessPrimitiveExpressionPath,
     input_value: Option<&AccessInput<'_>>,
+    request_context: &RequestContext<'_>,
     database: &Database,
 ) -> Result<(Option<ColumnPath>, AbstractPredicate), AccessSolverError> {
     let column_path = &path.column_path;
     let field_path = &path.field_path;
 
     match &field_path {
-        FieldPath::Normal(field_path) => {
+        FieldPath::Normal(field_path, default) => {
             let relational_predicate = AbstractPredicate::True;
 
-            let value = resolve_value(input_value, field_path)?;
+            let value =
+                resolve_value(solver, input_value, field_path, default, request_context).await?;
 
-            let literal_column_path = compute_literal_column_path(value, column_path, database)?;
+            let literal_column_path = compute_literal_column_path(
+                value.as_ref().map(|v| v.as_ref()),
+                column_path,
+                database,
+            )?;
 
             Ok((literal_column_path, relational_predicate))
         }
-        FieldPath::Pk { lead, pk_fields } => {
+        FieldPath::Pk {
+            lead,
+            pk_fields,
+            lead_default,
+        } => {
             let (head, ..) = column_path.split_head();
 
-            let relational_predicate =
-                compute_relational_predicate(head, lead, pk_fields, input_value, database)?;
+            let relational_predicate = compute_relational_predicate(
+                solver,
+                head,
+                lead,
+                pk_fields,
+                input_value,
+                lead_default,
+                request_context,
+                database,
+            )
+            .await?;
 
             Ok((
                 Some(ColumnPath::Physical(column_path.clone())),
@@ -465,11 +518,14 @@ fn resolve_path(
     }
 }
 
-fn process_path_common_expr(
+#[allow(clippy::too_many_arguments)]
+async fn process_path_common_expr(
+    solver: &PostgresGraphQLSubsystem,
     left_path: AccessPrimitiveExpressionPath,
     parameter_name: Option<String>,
     right_value: Val,
     input_value: Option<&AccessInput<'_>>,
+    request_context: &RequestContext<'_>,
     database: &Database,
     column_predicate: impl Fn(ColumnPath, ColumnPath) -> AbstractPredicate,
     value_predicate: impl Fn(&Val, &Val) -> bool,
@@ -480,12 +536,13 @@ fn process_path_common_expr(
         .unwrap_or(false);
 
     match &left_path.field_path {
-        FieldPath::Normal(field_path) => {
-            let left_value = resolve_value(input_value, field_path)?;
+        FieldPath::Normal(field_path, default) => {
+            let left_value =
+                resolve_value(solver, input_value, field_path, default, request_context).await?;
 
             match left_value {
                 Some(left_value) => Ok(AccessSolution::Solved(
-                    value_predicate(left_value, &right_value).into(),
+                    value_predicate(&left_value, &right_value).into(),
                 )),
                 None => {
                     if parameter_name
@@ -504,37 +561,48 @@ fn process_path_common_expr(
                                 .unwrap(),
                             ),
                         )))
+                    } else if ignore_missing_value {
+                        Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
+                            AbstractPredicate::True,
+                        )))
                     } else {
-                        if ignore_missing_value {
-                            Ok(AccessSolution::Unsolvable(AbstractPredicateWrapper(
-                                AbstractPredicate::True,
-                            )))
-                        } else {
-                            Ok(AccessSolution::Solved(AbstractPredicateWrapper(
-                                column_predicate(
-                                    ColumnPath::Physical(left_path.column_path.clone()),
-                                    literal_column_path(
-                                        &right_value,
-                                        column_type(&left_path.column_path, database),
-                                        false,
-                                    )
-                                    .unwrap(),
-                                ),
-                            )))
-                        }
+                        Ok(AccessSolution::Solved(AbstractPredicateWrapper(
+                            column_predicate(
+                                ColumnPath::Physical(left_path.column_path.clone()),
+                                literal_column_path(
+                                    &right_value,
+                                    column_type(&left_path.column_path, database),
+                                    false,
+                                )
+                                .unwrap(),
+                            ),
+                        )))
                     }
                 }
             }
         }
-        FieldPath::Pk { lead, pk_fields } => {
+        FieldPath::Pk {
+            lead,
+            pk_fields,
+            lead_default,
+        } => {
             let (left_head, left_tail_path) = left_path.column_path.split_head();
 
             let (left_column_path, right_column_path) =
                 compute_relational_sides(&left_tail_path.unwrap(), &right_value, database)?;
 
             let core_predicate = column_predicate(left_column_path, right_column_path);
-            let relational_predicate =
-                compute_relational_predicate(left_head, lead, pk_fields, input_value, database)?;
+            let relational_predicate = compute_relational_predicate(
+                solver,
+                left_head,
+                lead,
+                pk_fields,
+                input_value,
+                lead_default,
+                request_context,
+                database,
+            )
+            .await?;
             Ok(AccessSolution::Solved(AbstractPredicateWrapper(
                 AbstractPredicate::and(core_predicate, relational_predicate),
             )))
@@ -603,60 +671,86 @@ fn compute_literal_column_path(
         .map_err(|_| AccessSolverError::Generic("Invalid literal".into()))
 }
 
-fn compute_relational_predicate(
+#[allow(clippy::too_many_arguments)]
+async fn compute_relational_predicate(
+    solver: &PostgresGraphQLSubsystem,
     head_link: ColumnPathLink,
     lead: &[String],
     pk_fields: &[String],
     input_value: Option<&AccessInput<'_>>,
+    default: &Option<PostgresFieldDefaultValue>,
+    request_context: &RequestContext<'_>,
     database: &Database,
 ) -> Result<AbstractPredicate, AccessSolverError> {
-    let lead_value = resolve_value(input_value, lead)?;
+    let lead_value = resolve_value(solver, input_value, lead, default, request_context).await?;
+
+    let lead_value = lead_value.as_ref().map(|v| v.as_ref());
+
+    use futures::stream::{self, TryStreamExt};
 
     match head_link {
-        ColumnPathLink::Relation(relation) => relation.column_pairs.iter().zip(pk_fields).try_fold(
-            AbstractPredicate::True,
-            |acc, (pair, pk_field)| {
-                let pk_field_path = vec![pk_field.clone()];
-                let pk_value = lead_value.and_then(|lead_value| {
-                    resolve_value(
-                        Some(&AccessInput {
-                            value: lead_value,
-                            ignore_missing_value: false,
-                            aliases: input_value
-                                .map(|ctx| ctx.aliases.clone())
-                                .unwrap_or_default(),
-                        }),
-                        &pk_field_path,
-                    )
-                    .unwrap()
-                });
+        ColumnPathLink::Relation(relation) => {
+            stream::iter(
+                relation
+                    .column_pairs
+                    .iter()
+                    .zip(pk_fields)
+                    .map(Ok::<_, AccessSolverError>),
+            )
+            .try_fold(
+                AbstractPredicate::True,
+                |acc, (pair, pk_field)| async move {
+                    let pk_field_path = vec![pk_field.clone()];
 
-                match pk_value {
-                    Some(pk_value) => {
-                        let foreign_physical_column_path =
-                            PhysicalColumnPath::leaf(pair.foreign_column_id);
-                        let foreign_column_path =
-                            ColumnPath::Physical(foreign_physical_column_path.clone());
-                        let literal_column_path = compute_literal_column_path(
-                            Some(pk_value),
-                            &foreign_physical_column_path,
-                            database,
-                        )?;
+                    let pk_value = match lead_value {
+                        Some(lead_value) => {
+                            resolve_value(
+                                solver,
+                                Some(&AccessInput {
+                                    value: lead_value,
+                                    ignore_missing_value: false,
+                                    aliases: input_value
+                                        .map(|ctx| ctx.aliases.clone())
+                                        .unwrap_or_default(),
+                                }),
+                                &pk_field_path,
+                                default,
+                                request_context,
+                            )
+                            .await
+                        }
+                        None => Ok(None),
+                    }?;
 
-                        let literal_column_path = literal_column_path.unwrap_or(ColumnPath::Null);
+                    match pk_value {
+                        Some(pk_value) => {
+                            let foreign_physical_column_path =
+                                PhysicalColumnPath::leaf(pair.foreign_column_id);
+                            let foreign_column_path =
+                                ColumnPath::Physical(foreign_physical_column_path.clone());
+                            let literal_column_path = compute_literal_column_path(
+                                Some(pk_value.as_ref()),
+                                &foreign_physical_column_path,
+                                database,
+                            )?;
 
-                        Ok(AbstractPredicate::and(
-                            acc,
-                            AbstractPredicate::eq(foreign_column_path, literal_column_path),
-                        ))
+                            let literal_column_path =
+                                literal_column_path.unwrap_or(ColumnPath::Null);
+
+                            Ok(AbstractPredicate::and(
+                                acc,
+                                AbstractPredicate::eq(foreign_column_path, literal_column_path),
+                            ))
+                        }
+                        None => {
+                            // If the pk value is not found, it means we are performing a nested mutation (where the value would be from the parent mutation)
+                            Ok(AbstractPredicate::True)
+                        }
                     }
-                    None => {
-                        // If the pk value is not found, it means we are performing a nested mutation (where the value would be from the parent mutation)
-                        Ok(AbstractPredicate::True)
-                    }
-                }
-            },
-        ),
+                },
+            )
+            .await
+        }
         ColumnPathLink::Leaf(column_id) => Err(AccessSolverError::Generic(
             format!("Invalid column path: {:?}", column_id).into(),
         )),
@@ -670,10 +764,13 @@ fn column_type<'a>(
     &physical_column_path.leaf_column().get_column(database).typ
 }
 
-fn resolve_value<'a>(
+async fn resolve_value<'a>(
+    solver: &PostgresGraphQLSubsystem,
     input_value: Option<&AccessInput<'a>>,
     path: &'a [String],
-) -> Result<Option<&'a Val>, AccessSolverError> {
+    default: &'a Option<PostgresFieldDefaultValue>,
+    request_context: &'a RequestContext<'a>,
+) -> Result<Option<MaybeOwned<'a, Val>>, AccessSolverError> {
     let value: Option<Result<Option<&Val>, _>> = input_value.as_ref().map(|ctx| {
         ctx.resolve(AccessInputPath(
             path.iter()
@@ -684,7 +781,23 @@ fn resolve_value<'a>(
 
     let value = value.transpose()?.flatten();
 
-    Ok(value)
+    use core_plugin_interface::core_resolver::context_extractor::ContextExtractor;
+    match (value, default) {
+        (Some(value), _) => Ok(Some(MaybeOwned::Borrowed(value))),
+        (None, Some(default)) => match default {
+            PostgresFieldDefaultValue::Static(value) => Ok(Some(MaybeOwned::Borrowed(value))),
+            PostgresFieldDefaultValue::Dynamic(context_selection) => {
+                let value = solver
+                    .extract_context_selection(request_context, context_selection)
+                    .await?
+                    .cloned();
+                Ok(value.map(|v| v.into()))
+            }
+            PostgresFieldDefaultValue::Function(_) => Ok(None),
+            PostgresFieldDefaultValue::AutoIncrement => Ok(None),
+        },
+        _ => Ok(None),
+    }
 }
 
 fn compute_function_expr(

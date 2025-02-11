@@ -62,8 +62,6 @@ pub(crate) async fn check_access<'a>(
                     )
                     .await?;
 
-                    println!("field_access_predicate: {:?}", field_access_predicate);
-
                     if field_access_predicate == AbstractPredicate::False {
                         Err(PostgresExecutionError::Authorization)
                     } else {
@@ -108,7 +106,7 @@ pub(crate) async fn check_access<'a>(
                 .await?;
 
                 if precheck_predicate == AbstractPredicate::False
-                    || entity_predicate == Predicate::False
+                    || entity_predicate == AbstractPredicate::False
                 {
                     // Short circuit this common case
                     Err(PostgresExecutionError::Authorization)
@@ -311,14 +309,16 @@ async fn check_input_access<'a>(
 
                         let field_access_predicate = match postgres_field {
                             Some(postgres_field) => {
+                                let access_input = AccessInput {
+                                    value: &Val::Object(elems.clone()),
+                                    ignore_missing_value: false,
+                                    aliases: HashMap::new(),
+                                };
+
                                 let input_predicate = subsystem
                                     .solve(
                                         request_context,
-                                        Some(&AccessInput {
-                                            value: &Val::Object(elems.clone()),
-                                            ignore_missing_value: true,
-                                            aliases: HashMap::new(),
-                                        }),
+                                        Some(&access_input),
                                         &subsystem.core_subsystem.precheck_expressions
                                             [field_access(postgres_field)],
                                     )

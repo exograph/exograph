@@ -117,7 +117,7 @@ async fn map_single<'a>(
         request_context,
         Some(&AccessInput {
             value: argument,
-            ignore_missing_value: false,
+            ignore_missing_value: true,
             aliases: HashMap::new(),
         }),
     )

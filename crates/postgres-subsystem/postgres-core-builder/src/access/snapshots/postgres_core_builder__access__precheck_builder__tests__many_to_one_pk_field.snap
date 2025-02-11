@@ -31,8 +31,9 @@ Path:
           column_index: 0
     field_path:
       Normal:
-        - assignee
-        - id
+        - - assignee
+          - id
+        - AutoIncrement
   - Plain:
       type_id:
         Primitive:

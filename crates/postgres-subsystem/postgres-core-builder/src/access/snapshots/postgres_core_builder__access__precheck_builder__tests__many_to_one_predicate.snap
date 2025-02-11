@@ -35,6 +35,7 @@ RelationalOp:
             Pk:
               lead:
                 - assignee
+              lead_default: ~
               pk_fields:
                 - id
         - ~

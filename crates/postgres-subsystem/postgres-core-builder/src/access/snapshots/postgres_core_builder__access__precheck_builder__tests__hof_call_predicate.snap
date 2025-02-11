@@ -28,7 +28,8 @@ RelationalOp:
                 _phantom: ~
           field_path:
             Normal:
-              - issues
+              - - issues
+              - ~
         - name: some
           parameter_name: i
           expr:
@@ -43,7 +44,8 @@ RelationalOp:
                             column_index: 1
                       field_path:
                         Normal:
-                          - title
+                          - - title
+                          - ~
                     - i
                 - Common:
                     ContextSelection:

@@ -1,6 +1,5 @@
 ---
 source: crates/postgres-subsystem/postgres-core-builder/src/access/precheck_builder.rs
-assertion_line: 640
 expression: selection
 ---
 Path:
@@ -12,7 +11,8 @@ Path:
           column_index: 0
     field_path:
       Normal:
-        - id
+        - - id
+        - AutoIncrement
   - Plain:
       type_id:
         Primitive:
