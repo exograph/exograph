@@ -1,4 +1,3 @@
-exofile: "root.exo"
 operation: |
     mutation () {
         createMailingList(data: {
