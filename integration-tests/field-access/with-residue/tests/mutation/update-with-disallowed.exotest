@@ -14,9 +14,9 @@ variable: |
   }
 auth: |
   {
-    "sub": 2
+    "sub": $.p2id
   }
-invariant: |
+invariants:
   - path: ../system-state.gql
 response: |
   {

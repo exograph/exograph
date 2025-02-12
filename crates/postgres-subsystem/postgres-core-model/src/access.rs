@@ -17,6 +17,8 @@ use core_plugin_interface::{
 use exo_sql::PhysicalColumnPath;
 use serde::{Deserialize, Serialize};
 
+use crate::types::PostgresFieldDefaultValue;
+
 /// Access specification for a model
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Access {
@@ -66,11 +68,12 @@ pub struct AccessPrimitiveExpressionPath {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum FieldPath {
-    Normal(Vec<String>), // Non-pk field path such as self.title
+    Normal(Vec<String>, Option<PostgresFieldDefaultValue>), // Non-pk field path such as self.title
     Pk {
         // pk field path such as self.project.owner.id
-        lead: Vec<String>,      // project
-        pk_fields: Vec<String>, // id (pk fields of Project)
+        lead: Vec<String>,                               // project
+        lead_default: Option<PostgresFieldDefaultValue>, // default value for the lead field
+        pk_fields: Vec<String>,                          // id (pk fields of Project)
     },
 }
 
@@ -90,16 +93,21 @@ impl AccessPrimitiveExpressionPath {
         Ok(Self {
             column_path: self.column_path.join(other.column_path),
             field_path: match other.field_path {
-                FieldPath::Normal(b) => {
+                FieldPath::Normal(b, default) => {
                     let mut new_field_path = vec![parameter_name.to_string()];
                     new_field_path.extend(b);
-                    FieldPath::Normal(new_field_path)
+                    FieldPath::Normal(new_field_path, default)
                 }
-                FieldPath::Pk { lead, pk_fields } => {
+                FieldPath::Pk {
+                    lead,
+                    lead_default,
+                    pk_fields,
+                } => {
                     let mut new_field_path = vec![parameter_name.to_string()];
                     new_field_path.extend(lead);
                     FieldPath::Pk {
                         lead: new_field_path,
+                        lead_default,
                         pk_fields: pk_fields.clone(),
                     }
                 }
