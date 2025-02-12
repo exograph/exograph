@@ -128,18 +128,7 @@ async fn create_introspection_deno_module() -> Result<DenoModule> {
 }
 
 async fn create_introspection_request() -> Result<MemoryRequestPayload> {
-    let query = tokio::task::spawn_blocking({
-        move || {
-            tokio::runtime::Handle::current().block_on(async move {
-                let mut deno_module = create_introspection_deno_module().await?;
-                deno_module
-                    .execute_function("introspectionQuery", vec![])
-                    .await
-                    .map_err(|e| anyhow!("Error getting introspection query: {:?}", e))
-            })
-        }
-    })
-    .await??;
+    let query = execute_deno_function("introspectionQuery", vec![]).await?;
 
     let request_head = MemoryRequestHead::new(
         HashMap::new(),
@@ -199,25 +188,63 @@ pub async fn get_introspection_result(serialized_system: SerializableSystem) -> 
     .await?
 }
 
+pub async fn schema_sdl(schema_response: Value) -> Result<String> {
+    let sdl = execute_deno_function("schemaSDL", vec![Arg::Serde(schema_response)]).await?;
+
+    if let Value::String(s) = sdl {
+        Ok(s)
+    } else {
+        Err(anyhow!("expected string"))
+    }
+}
+
 async fn check_introspection(system_router: &SystemRouter) -> Result<Result<()>> {
     let mut deno_module = create_introspection_deno_module().await?;
 
     let request = create_introspection_request().await?;
 
-    let result = run_query(request, system_router, &mut HashMap::new()).await?;
+    let introspection_result = run_query(request, system_router, &mut HashMap::new()).await?;
 
-    let result = deno_module
+    let assert_schema_result = deno_module
         .execute_function(
             "assertSchema",
-            vec![Arg::Serde(Value::String(result.to_string()))],
+            vec![Arg::Serde(Value::String(introspection_result.to_string()))],
         )
         .await;
 
-    match result {
-        Ok(_) => Ok(Ok(())),
+    match assert_schema_result {
+        Ok(_) => {
+            // Make sure the SDL generation also works
+            let sdl = schema_sdl(introspection_result).await;
+
+            match sdl {
+                Ok(_) => {
+                    println!("SDL generation works");
+                    Ok(Ok(()))
+                }
+                Err(e) => Err(e.context("Error getting schema SDL")),
+            }
+        }
         Err(e) => match e {
-            DenoError::Explicit(e) => Ok(Err(anyhow!(e))),
-            e => Err(anyhow!(e)),
+            DenoError::Explicit(e) => Err(anyhow!(e)),
+            e => Err(e.into()),
         },
     }
+}
+
+async fn execute_deno_function(function_name: &str, args: Vec<Arg>) -> Result<Value> {
+    let function_name = function_name.to_string();
+
+    tokio::task::spawn_blocking({
+        move || {
+            tokio::runtime::Handle::current().block_on(async move {
+                let mut deno_module = create_introspection_deno_module().await?;
+                deno_module
+                    .execute_function(&function_name, args)
+                    .await
+                    .map_err(|e| anyhow!("Error executing function: {:?}", e))
+            })
+        }
+    })
+    .await?
 }

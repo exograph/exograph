@@ -9,10 +9,11 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use clap::Command;
+use clap::{builder::PossibleValue, Arg, Command, ValueEnum};
 
 use std::{
     fs::{self, File},
+    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -33,6 +34,14 @@ impl CommandDefinition for SchemaCommandDefinition {
             .arg(output_arg().long_help(
                 "Output file for the introspection result. Default: generated/schema.json",
             ))
+            .arg(
+                Arg::new("format")
+                    .long("format")
+                    .short('f')
+                    .value_parser(clap::builder::EnumValueParser::<SchemaFormat>::new())
+                    .help("Output format. Default: graphql (sdl)")
+                    .default_value("graphql"),
+            )
             .arg(use_ir_arg())
     }
 
@@ -42,21 +51,63 @@ impl CommandDefinition for SchemaCommandDefinition {
 
         let model_path: PathBuf = default_model_file();
 
-        let output: PathBuf = match get(matches, "output") {
-            Some(output) => output,
-            None => {
-                fs::create_dir_all("generated")?;
-                let output = Path::new("generated/schema.json").to_path_buf();
-                output
-            }
-        };
-
         let serialized_system = create_system(&model_path, None, use_ir).await?;
 
         let introspection_result = testing::get_introspection_result(serialized_system).await?;
 
-        serde_json::to_writer_pretty(&mut File::create(output)?, &introspection_result)?;
+        let format: SchemaFormat = match get(matches, "format") {
+            Some(format) => format,
+            None => SchemaFormat::Graphql,
+        };
+
+        match format {
+            SchemaFormat::Json => {
+                let output: PathBuf = match get(matches, "output") {
+                    Some(output) => output,
+                    None => {
+                        fs::create_dir_all("generated")?;
+                        let output = Path::new("generated/schema.json").to_path_buf();
+                        output
+                    }
+                };
+
+                serde_json::to_writer_pretty(&mut File::create(output)?, &introspection_result)?;
+            }
+            SchemaFormat::Graphql => {
+                let output: PathBuf = match get(matches, "output") {
+                    Some(output) => output,
+                    None => {
+                        fs::create_dir_all("generated")?;
+                        let output = Path::new("generated/schema.graphql").to_path_buf();
+                        output
+                    }
+                };
+
+                let schema_string = testing::schema_sdl(introspection_result).await?;
+
+                File::create(output)?.write_all(schema_string.as_bytes())?;
+            }
+        }
 
         Ok(())
+    }
+}
+
+#[derive(Clone, Debug)]
+enum SchemaFormat {
+    Json,
+    Graphql,
+}
+
+impl ValueEnum for SchemaFormat {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[Self::Json, Self::Graphql]
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        match self {
+            Self::Json => Some(PossibleValue::new("json")),
+            Self::Graphql => Some(PossibleValue::new("graphql")),
+        }
     }
 }
