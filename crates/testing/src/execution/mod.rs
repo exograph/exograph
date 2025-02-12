@@ -13,5 +13,5 @@ mod introspection_tests;
 mod result;
 mod test_suite;
 
-pub use introspection_tests::get_introspection_result;
+pub use introspection_tests::{get_introspection_result, schema_sdl};
 pub(crate) use result::{TestResult, TestResultKind};

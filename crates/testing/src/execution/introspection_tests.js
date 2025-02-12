@@ -9,6 +9,7 @@
 
 import { buildClientSchema } from "embedded://graphql/utilities/buildClientSchema.mjs"
 import { getIntrospectionQuery } from "embedded://graphql/utilities/getIntrospectionQuery.mjs"
+import { printSchema } from "embedded://graphql/utilities/printSchema.mjs"
 import { assertValidSchema } from "embedded://graphql/type/validate.mjs"
 
 export async function introspectionQuery() {
@@ -20,4 +21,10 @@ export async function assertSchema(response) {
     const clientSchema = buildClientSchema(schema)
 
     assertValidSchema(clientSchema)
+}
+
+export function schemaSDL(schemaResponseObject) {
+    const schemaData = buildClientSchema(schemaResponseObject.data)
+
+    return printSchema(schemaData)
 }
