@@ -1,5 +1,3 @@
-exofile: "comments.exo"
-
 # post a comment
 operation: |
     mutation($comment: String!) {

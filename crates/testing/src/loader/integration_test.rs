@@ -8,7 +8,7 @@
 // by the Apache License, Version 2.0.
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs::File,
     io::Read,
     path::{Path, PathBuf},
@@ -33,6 +33,8 @@ struct TestfileStage {
     pub auth: Option<String>,
     pub response: Option<String>,
     pub invariants: Option<Vec<TestfileStageInvariant>>,
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_yaml::Value>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -150,6 +152,19 @@ impl IntegrationTest {
                 multi_stage_error
             );
         };
+
+        let extra_keys = stages
+            .iter()
+            .flat_map(|stage| stage.extra.keys())
+            .collect::<HashSet<_>>();
+
+        if !extra_keys.is_empty() {
+            bail!(
+                "Unknown fields: {:?} defined in {}",
+                extra_keys.iter().collect::<Vec<_>>(),
+                testfile_path.to_str().unwrap()
+            );
+        }
 
         // validate GraphQL
         let test_operation_sequence = stages
