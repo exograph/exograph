@@ -218,10 +218,7 @@ async fn check_introspection(system_router: &SystemRouter) -> Result<Result<()>>
             let sdl = schema_sdl(introspection_result).await;
 
             match sdl {
-                Ok(_) => {
-                    println!("SDL generation works");
-                    Ok(Ok(()))
-                }
+                Ok(_) => Ok(Ok(())),
                 Err(e) => Err(e.context("Error getting schema SDL")),
             }
         }
