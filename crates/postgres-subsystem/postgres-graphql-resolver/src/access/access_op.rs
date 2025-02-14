@@ -27,4 +27,12 @@ impl AccessPredicate for AbstractPredicateWrapper {
     fn or(self, other: Self) -> Self {
         AbstractPredicateWrapper(AbstractPredicate::or(self.0, other.0))
     }
+
+    fn is_false(&self) -> bool {
+        self.0.is_false()
+    }
+
+    fn is_true(&self) -> bool {
+        self.0.is_true()
+    }
 }

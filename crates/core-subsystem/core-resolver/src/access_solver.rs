@@ -26,6 +26,9 @@ use crate::context_extractor::ContextExtractor;
 pub trait AccessPredicate: From<bool> + std::ops::Not<Output = Self> + Send + Sync {
     fn and(self, other: Self) -> Self;
     fn or(self, other: Self) -> Self;
+
+    fn is_true(&self) -> bool;
+    fn is_false(&self) -> bool;
 }
 
 #[derive(Error, Debug)]
@@ -324,12 +327,24 @@ where
             }
             AccessLogicalExpression::And(left, right) => {
                 let left_predicate = self.solve(request_context, input_value, left).await?;
+
+                // Short-circuit if the left predicate is false
+                if matches!(&left_predicate, AccessSolution::Solved(res) if res.is_false()) {
+                    return Ok(left_predicate);
+                }
+
                 let right_predicate = self.solve(request_context, input_value, right).await?;
 
                 left_predicate.and(right_predicate)
             }
             AccessLogicalExpression::Or(left, right) => {
                 let left_predicate = self.solve(request_context, input_value, left).await?;
+
+                // Short-circuit if the left predicate is true
+                if matches!(&left_predicate, AccessSolution::Solved(res) if res.is_true()) {
+                    return Ok(left_predicate);
+                }
+
                 let right_predicate = self.solve(request_context, input_value, right).await?;
 
                 left_predicate.or(right_predicate)

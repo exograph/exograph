@@ -158,6 +158,12 @@ You can use `in` to check if the value is in a set of values. This works for any
 
 You can combine expressions with the logical operators `&&`, `||`, and `!`. For example, you can use `AuthContext.role == "admin" || AuthContext.role == "manager"` to check if the user's role is either "admin" or "manager". Similarly, you can use`EnvContext.isDevelopment && CaptchaContext.isValid` to ascertain that the captcha has been validated and that the app is in development mode.
 
+:::tip
+Like most programming languages, Exograph's access control expressions use the short-circuit evaluation strategy. For example, if the left operand of an `&&` evaluates to `false`, the right operand is not evaluated. Similarly, if the left operand of an `||` evaluates to `true`, the right operand is not evaluated. If the left operand returns a residue (such as `self.published` or `self.owner.id == AuthContext.id`), the evaluator can't short-circuit the evaluation, since it can't definitively determine the result of the expression.
+
+Therefore, you can make the access control evaluation more efficient by ordering the operands such that you put the operands that do not return residues first. For example, you should put the rule that checks for a role first, and then check for other conditions. Within such expressions, you should put the fastest to evaluate operands first. Typically, context sourced from JWT, header, and cookies are the cheapest to evaluate. Context sourced from a [processed value](/core-concept/context#processed-value) may be more expensive to evaluate depending on the complexity of the processing logic.
+:::
+
 You may use parentheses to group expressions. For example, you can use `(AuthContext.role == "admin" || AuthContext.role == "manager") && CaptchaContext.isValid` to check if the user's role is either "admin" or "manager" and that the captcha is valid.
 
 ## Examples

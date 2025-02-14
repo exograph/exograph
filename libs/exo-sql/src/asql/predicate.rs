@@ -47,4 +47,12 @@ impl AbstractPredicate {
             AbstractPredicate::Not(p) => p.column_paths(),
         }
     }
+
+    pub fn is_true(&self) -> bool {
+        matches!(self, AbstractPredicate::True)
+    }
+
+    pub fn is_false(&self) -> bool {
+        matches!(self, AbstractPredicate::False)
+    }
 }
