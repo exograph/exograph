@@ -1,0 +1,14 @@
+@postgres
+module SocialDatabase {
+  @access(true)
+  type User {
+    @pk id: Int = autoIncrement()
+    name: String
+  }
+
+  @access(true)
+  type UserProfile {
+    @pk @oneToOne user: User
+    bio: String
+  }
+}

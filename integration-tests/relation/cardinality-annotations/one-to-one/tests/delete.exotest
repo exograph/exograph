@@ -1,0 +1,19 @@
+# Test that the unique constraint is enforced when deleting the one-to-one field
+operation: |
+  mutation($u1id: Int) {
+    deleteUser(id: $u1id) {
+      id
+    }
+  }
+variable: |
+  {
+    u1id: $.u1id
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Operation failed"
+      }
+    ]
+  }

@@ -1,4 +1,4 @@
-error[C000]: Could not find the matching field of the 'Concert' type 'mainVenue'. Ensure that there is only one field of that type or the '@relation' annotation specifies the matching field name.
+error[C000]: Cannot determine cardinality of field. Either specify @oneToOne or @manyToOne on the field, or add a matching field to the other type.
   --> src/index.exo:8:5
    |
 8  |     mainVenue: Venue 

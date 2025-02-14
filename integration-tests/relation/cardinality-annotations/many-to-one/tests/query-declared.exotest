@@ -1,0 +1,46 @@
+operation: |
+  query {
+    products @unordered {
+      name
+      department {
+        name
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "products": [
+        {
+          "name": "Product 1 (d1)",
+          "department": {
+            "name": "Department 1"
+          }
+        },
+        {
+          "name": "Product 2 (d1)",
+          "department": {
+            "name": "Department 1"
+          }
+        },
+        {
+          "name": "Product 3 (d2)",
+          "department": {
+            "name": "Department 2"
+          }
+        },
+        {
+          "name": "Product 4 (d2)",
+          "department": {
+            "name": "Department 2"
+          }
+        },
+        {
+          "name": "Product 5 (d2)",
+          "department": {
+            "name": "Department 2"
+          }
+        }
+      ]
+    }
+  }

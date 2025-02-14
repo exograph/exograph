@@ -1,0 +1,32 @@
+stages:
+    - operation: |
+        mutation {
+            u1: createUser(data: {name: "U1"}) {
+                id @bind(name: "u1id")
+            }
+            u2: createUser(data: {name: "U2"}) {
+                id @bind(name: "u2id")
+            }
+            u3: createUser(data: {name: "U3"}) {
+                id @bind(name: "u3id")
+            }
+        }
+    - operation: |
+        mutation($u1id: Int, $u2id: Int) {
+            up1: createUserProfile(data: {bio: "BIO1", user: {id: $u1id}}) {
+                user {
+                    id @bind(name: "up1userid")
+                }
+            }
+            up2: createUserProfile(data: {bio: "BIO2", user: {id: $u2id}}) {
+                user {
+                    id @bind(name: "up2userid")
+                }
+            }
+        }
+      variable: |
+        {
+            u1id: $.u1id,
+            u2id: $.u2id
+        }
+    
