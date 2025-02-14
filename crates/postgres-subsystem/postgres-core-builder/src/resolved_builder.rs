@@ -15,6 +15,7 @@
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use postgres_core_model::types::EntityRepresentation;
+use serde::{Deserialize, Serialize};
 
 use super::{
     access_builder::{build_access, ResolvedAccess},
@@ -281,6 +282,7 @@ fn resolve_composite_type_fields(
                     self_column,
                     unique_constraints,
                     indices,
+                    cardinality,
                 }) => {
                     let typ = resolve_field_type(
                         &field.typ.to_typ(&typechecked_system.types),
@@ -302,6 +304,7 @@ fn resolve_composite_type_fields(
                         type_hint: build_type_hint(field, &typechecked_system.types, errors),
                         unique_constraints,
                         indices,
+                        cardinality,
                         default_value,
                         update_sync,
                         readonly,
@@ -746,6 +749,7 @@ struct ColumnInfo {
     self_column: bool,
     unique_constraints: Vec<String>,
     indices: Vec<String>,
+    cardinality: Option<Cardinality>,
 }
 
 fn compute_unique_constraints(field: &AstField<Typed>) -> Result<Vec<String>, Diagnostic> {
@@ -916,6 +920,7 @@ fn compute_column_info(
                             self_column: true,
                             unique_constraints,
                             indices,
+                            cardinality: None,
                         });
                     }
 
@@ -953,9 +958,10 @@ fn compute_column_info(
                             //    concerts: Set<Concert>
                             // }
 
-                            let matching_field = &matching_field?;
-
-                            let matching_field_cardinality = field_cardinality(&matching_field.typ);
+                            let matching_field_cardinality = match matching_field {
+                                Ok(matching_field) => Ok(field_cardinality(&matching_field.typ)),
+                                Err(_) => annotation_cardinality(field),
+                            }?;
 
                             match matching_field_cardinality {
                                 Cardinality::ZeroOrOne => Err(Diagnostic {
@@ -973,22 +979,23 @@ fn compute_column_info(
                                 Cardinality::One => {
                                     if user_supplied_column_name.is_some() {
                                         Err(Diagnostic {
-                                            level: Level::Error,
-                                            message: "Cannot specify @column with the optional side of a one-to-one relationship"
-                                                .to_string(),
-                                            code: Some("C000".to_string()),
-                                            spans: vec![SpanLabel {
-                                                span: field.span,
-                                                style: SpanStyle::Primary,
-                                                label: None,
-                                            }],
-                                        })
+                                                    level: Level::Error,
+                                                    message: "Cannot specify @column with the optional side of a one-to-one relationship"
+                                                        .to_string(),
+                                                    code: Some("C000".to_string()),
+                                                    spans: vec![SpanLabel {
+                                                        span: field.span,
+                                                        style: SpanStyle::Primary,
+                                                        label: None,
+                                                    }],
+                                                })
                                     } else {
                                         Ok(ColumnInfo {
-                                            names: id_column_names(matching_field),
+                                            names: id_column_names(matching_field?),
                                             self_column: false,
                                             unique_constraints,
                                             indices,
+                                            cardinality: Some(matching_field_cardinality),
                                         })
                                     }
                                 }
@@ -997,14 +1004,15 @@ fn compute_column_info(
                                     self_column: true,
                                     unique_constraints,
                                     indices,
+                                    cardinality: Some(matching_field_cardinality),
                                 }),
                             }
                         }
                         AstFieldType::Plain(..) => {
                             let matching_field_cardinality = match matching_field {
-                                Ok(matching_field) => field_cardinality(&matching_field.typ),
-                                Err(err) => Cardinality::Unbounded,
-                            };
+                                Ok(matching_field) => Ok(field_cardinality(&matching_field.typ)),
+                                Err(_) => annotation_cardinality(field),
+                            }?;
 
                             let unique_constraints =
                                 if matches!(matching_field_cardinality, Cardinality::ZeroOrOne) {
@@ -1019,6 +1027,7 @@ fn compute_column_info(
                                 self_column: true,
                                 unique_constraints,
                                 indices,
+                                cardinality: Some(matching_field_cardinality),
                             })
                         }
                     }
@@ -1077,6 +1086,7 @@ fn compute_column_info(
                                 self_column: false,
                                 unique_constraints,
                                 indices,
+                                cardinality: Some(matching_field_cardinality),
                             })
                         }
                     } else {
@@ -1106,6 +1116,7 @@ fn compute_column_info(
                             self_column: true,
                             unique_constraints,
                             indices,
+                            cardinality: None,
                         })
                     } else {
                         Err(Diagnostic {
@@ -1125,6 +1136,7 @@ fn compute_column_info(
                     self_column: true,
                     unique_constraints,
                     indices,
+                    cardinality: None,
                 }),
             }
         }
@@ -1218,8 +1230,8 @@ fn get_matching_field<'a>(
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-enum Cardinality {
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum Cardinality {
     ZeroOrOne,
     One,
     Unbounded,
@@ -1242,6 +1254,53 @@ fn field_cardinality(field_type: &AstFieldType<Typed>) -> Cardinality {
                 Cardinality::One
             }
         }
+    }
+}
+
+fn annotation_cardinality(field: &AstField<Typed>) -> Result<Cardinality, Diagnostic> {
+    let many_to_one = field.annotations.contains("manyToOne");
+    let one_to_one = field.annotations.contains("oneToOne");
+
+    if one_to_one && many_to_one {
+        Err(Diagnostic {
+            level: Level::Error,
+            message: "Cannot specify both @oneToOne and @manyToOne on the same field".to_string(),
+            code: Some("C000".to_string()),
+            spans: vec![SpanLabel {
+                span: field.span,
+                style: SpanStyle::Primary,
+                label: None,
+            }],
+        })
+    } else if many_to_one {
+        Ok(Cardinality::Unbounded)
+    } else if one_to_one {
+        // The field itself is a plain type, so the other side's cardinality is optional (ZeroOrOne)
+        if matches!(field.typ, AstFieldType::Plain(..)) {
+            Ok(Cardinality::ZeroOrOne)
+        } else {
+            Err(Diagnostic {
+                level: Level::Error,
+                message: "Cannot specify @oneToOne on an optional field. Either specify @manyToOne or include a matching field in the other type.".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            })
+        }
+    } else {
+        Err(Diagnostic {
+                level: Level::Error,
+                message: "Cannot determine cardinality of field. Either specify @oneToOne or @manyToOne on the field, or add a matching field to the other type.".to_string(),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            })
     }
 }
 

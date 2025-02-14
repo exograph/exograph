@@ -19,7 +19,7 @@ use core_plugin_interface::{
     },
 };
 
-use crate::{access_builder::ResolvedAccess, naming::ToPlural};
+use crate::{access_builder::ResolvedAccess, naming::ToPlural, resolved_builder::Cardinality};
 
 #[derive(Debug, Clone)]
 pub struct ResolvedTypeEnv<'a> {
@@ -77,6 +77,7 @@ pub struct ResolvedField {
     pub type_hint: Option<ResolvedTypeHint>,
     pub unique_constraints: Vec<String>,
     pub indices: Vec<String>,
+    pub cardinality: Option<Cardinality>,
     pub default_value: Option<ResolvedFieldDefault>,
     pub update_sync: bool,
     pub readonly: bool,
@@ -161,10 +162,6 @@ impl TypeValidationProvider for ResolvedTypeHint {
 impl ResolvedCompositeType {
     pub fn pk_fields(&self) -> Vec<&ResolvedField> {
         self.fields.iter().filter(|f| f.is_pk).collect()
-    }
-
-    pub fn field_by_column_names(&self, column_names: &[String]) -> Option<&ResolvedField> {
-        self.fields.iter().find(|f| f.column_names == column_names)
     }
 
     pub fn unique_constraints(&self) -> HashMap<String, Vec<&ResolvedField>> {
