@@ -110,6 +110,23 @@ Exograph does support `Array` if you need the array semantics, as we have seen i
 
 Note also that the `concerts` field is optional since a venue may not have any concerts. This way, we are not forced to specify a value for the `concerts` field when creating a venue. We will explore more about this in the [mutations](operations/mutations.md) section.
 
+The above model allows querying a concert along with its venue and querying a venue along with its concerts. While this is often what you want, there are situations where you want the APIs to express only one direction of the relationship. For example, you may want to allow querying a concert along with its venue but not the other way around. You can use the `@manyToOne` annotation to express this intention.
+
+```exo
+type Concert {
+  ...
+  // highlight-next-line
+  @manyToOne venue: Venue?
+}
+
+type Venue {
+  ...
+  // no concerts field
+}
+```
+
+Since there is no `concerts` field in the `Venue` type, the return type of any `Venue` query will not include the `concerts` field.
+
 ### Many-to-many relationship
 
 A many-to-many relationship involves two types, each related to multiple instances of the other. For example, a concert may feature multiple artists, and an artist may perform in multiple concerts. In real-world scenarios, some data is almost always associated with the relationship. For example, the artist may be a concert's main or supporting artist. This calls for an intermediate type to hold the data associated with the relationship. Exograph supports many-to-many relationships indirectly by allowing you to define a relationship between two types through an intermediate type.
@@ -177,6 +194,26 @@ type Membership {
 ```
 
 Here, we have defined a one-to-one relationship between `User` and `Membership`. The `membership` field in `User` is optional, and the `user` field in `Membership` is required. This arrangement allows us to create a user first (without a membership) and then create a membership for the user by providing it with the user as the `user` field. So, while we can't solve the chicken-or-the-egg problem, we can solve the user-or-the-membership problem: the user always comes first!
+
+Like the `@manyToOne` annotation, you can use the `@oneToOne` annotation to express a one-way relationship. For example, if you want to express that the query of a `Membership` should allow getting the associated `User` but not the other way around, you can use the following definition:
+
+```exo
+type User {
+  @pk id: Int = autoIncrement()
+  ...
+  // highlight-next-line
+  // no membership field
+}
+
+type Membership {
+  @pk id: Int = autoIncrement()
+  // highlight-next-line
+  @oneToOne user: User
+  ...
+}
+```
+
+This way, the `User` type will not have a `membership` field in its return type, while still enforcing the one-to-one relationship.
 
 So far, we have explored how to create types with scalar fields and define relationships between types using Exograph's default mapping to the database. [In the next section](configuration.md), we will zoom into customizing the mapping.
 
