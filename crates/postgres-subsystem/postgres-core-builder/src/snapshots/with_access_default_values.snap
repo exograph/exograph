@@ -63,6 +63,7 @@ values:
             type_hint: ~
             unique_constraints: []
             indices: []
+            cardinality: ~
             default_value: AutoIncrement
             update_sync: false
             readonly: false
@@ -87,6 +88,7 @@ values:
             type_hint: ~
             unique_constraints: []
             indices: []
+            cardinality: ~
             default_value: ~
             update_sync: false
             readonly: false
@@ -111,6 +113,7 @@ values:
             type_hint: ~
             unique_constraints: []
             indices: []
+            cardinality: ~
             default_value: ~
             update_sync: false
             readonly: false
