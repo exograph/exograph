@@ -1,0 +1,25 @@
+stages:
+    - operation: |
+        mutation {
+            createDepartments(data: [{name: "Department 1"}, {name: "Department 2"}]) {
+                id @bind(name: "dIds")
+            }
+        }
+    - operation: |
+        mutation($d1Id: Int!, $d2Id: Int!) {
+            createProducts(data: [
+              {name: "Product 1 (d1)", department: {id: $d1Id}},
+              {name: "Product 2 (d1)", department: {id: $d1Id}},
+              {name: "Product 3 (d2)", department: {id: $d2Id}},
+              {name: "Product 4 (d2)", department: {id: $d2Id}},
+              {name: "Product 5 (d2)", department: {id: $d2Id}},
+            ]) {
+                id @bind(name: "pIds")
+            }
+        }
+      variable: |
+        {
+            "d1Id": $.dIds[0],
+            "d2Id": $.dIds[1]
+        }
+        

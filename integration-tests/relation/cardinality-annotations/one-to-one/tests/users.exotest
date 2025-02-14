@@ -1,0 +1,66 @@
+operation: |
+  query($u1id: Int, $u2id: Int) {
+      users {
+          id
+          name
+      }
+      userProfiles {
+          user {
+              id
+              name
+          }
+          bio
+      }
+      up1: userProfile(user: {id: $u1id}) {
+          bio
+      }
+      up2: userProfile(user: {id: $u2id}) {
+          bio
+      }
+  }
+variable: |
+  {
+    u1id: $.u1id,
+    u2id: $.u2id
+  }
+response: |
+  {
+    "data": {
+      "users": [
+        {
+          "id": 1,
+          "name": "U1"
+        },
+        {
+          "id": 2,
+          "name": "U2"
+        },
+        {
+          "id": 3,
+          "name": "U3"
+        }
+      ],
+      "userProfiles": [
+        {
+          "user": {
+            "id": 1,
+            "name": "U1"
+          },
+          "bio": "BIO1"
+        },
+        {
+          "user": {
+            "id": 2,
+            "name": "U2"
+          },
+          "bio": "BIO2"
+        }
+      ],
+      "up1": {
+        "bio": "BIO1"
+      },
+      "up2": {
+        "bio": "BIO2"
+      }
+    }
+  }

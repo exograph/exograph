@@ -797,10 +797,16 @@ fn create_relation(
                                     placeholder_relation()
                                 }
                             }
+                            (FieldType::Plain(_), Some(Cardinality::One)) => {
+                                panic!(
+                                    "When establishing a one-to-one relation, one side of the relation must be optional. Check the fields of the `{}` and `{}` types.",
+                                    self_type.name, field.typ.name()
+                                )
+                            }
                             _ => {
                                 panic!(
-                                    "Unexpected relation type for field `{}` of {:?} type. The matching field is {:?}",
-                                    field.name, field.typ, foreign_field_type
+                                    "Unexpected relation type for field `{}` of the `{}` type. The matching field is `{}`",
+                                    field.name, field.typ.name(), foreign_field_type.name
                                 )
                             }
                         }
