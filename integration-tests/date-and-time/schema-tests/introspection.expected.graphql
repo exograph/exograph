@@ -1,0 +1,171 @@
+type Book {
+  id: Int!
+  name: String!
+  published_on: LocalDate!
+  modified_time: Instant!
+  modified_time_stripped: LocalDateTime!
+  reading_club_time: LocalTime!
+}
+
+type BookAgg {
+  id: IntAgg
+  name: StringAgg
+  published_on: LocalDateAgg
+  modified_time: InstantAgg
+  modified_time_stripped: LocalDateTimeAgg
+  reading_club_time: LocalTimeAgg
+}
+
+input BookCreationInput {
+  name: String!
+  published_on: LocalDate!
+  modified_time: Instant!
+  modified_time_stripped: LocalDateTime!
+  reading_club_time: LocalTime!
+}
+
+input BookFilter {
+  id: IntFilter
+  name: StringFilter
+  published_on: LocalDateFilter
+  modified_time: InstantFilter
+  modified_time_stripped: LocalDateTimeFilter
+  reading_club_time: LocalTimeFilter
+  and: [BookFilter!]
+  or: [BookFilter!]
+  not: BookFilter
+}
+
+input BookOrdering {
+  id: Ordering
+  name: Ordering
+  published_on: Ordering
+  modified_time: Ordering
+  modified_time_stripped: Ordering
+  reading_club_time: Ordering
+}
+
+input BookUpdateInput {
+  id: Int
+  name: String
+  published_on: LocalDate
+  modified_time: Instant
+  modified_time_stripped: LocalDateTime
+  reading_club_time: LocalTime
+}
+
+scalar Instant
+
+type InstantAgg {
+  count: Int
+}
+
+input InstantFilter {
+  eq: Instant
+  neq: Instant
+  lt: Instant
+  lte: Instant
+  gt: Instant
+  gte: Instant
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+scalar LocalDate
+
+type LocalDateAgg {
+  count: Int
+}
+
+input LocalDateFilter {
+  eq: LocalDate
+  neq: LocalDate
+  lt: LocalDate
+  lte: LocalDate
+  gt: LocalDate
+  gte: LocalDate
+}
+
+scalar LocalDateTime
+
+type LocalDateTimeAgg {
+  count: Int
+}
+
+input LocalDateTimeFilter {
+  eq: LocalDateTime
+  neq: LocalDateTime
+  lt: LocalDateTime
+  lte: LocalDateTime
+  gt: LocalDateTime
+  gte: LocalDateTime
+}
+
+scalar LocalTime
+
+type LocalTimeAgg {
+  count: Int
+}
+
+input LocalTimeFilter {
+  eq: LocalTime
+  neq: LocalTime
+  lt: LocalTime
+  lte: LocalTime
+  gt: LocalTime
+  gte: LocalTime
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  book(id: Int!): Book
+  books(where: BookFilter, orderBy: [BookOrdering!], limit: Int, offset: Int): [Book!]!
+  booksAgg(where: BookFilter): BookAgg!
+}
+
+type Mutation {
+  createBook(data: BookCreationInput!): Book!
+  createBooks(data: [BookCreationInput!]!): [Book!]!
+  deleteBook(id: Int!): Book
+  deleteBooks(where: BookFilter): [Book!]!
+  updateBook(id: Int!, data: BookUpdateInput!): Book
+  updateBooks(where: BookFilter, data: BookUpdateInput!): [Book!]!
+}

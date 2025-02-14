@@ -1,0 +1,322 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type Chat {
+  id: Int!
+  title: String!
+  participants(where: ChatParticipationFilter, orderBy: [ChatParticipationOrdering!], limit: Int, offset: Int): [ChatParticipation!]
+  participantsAgg(where: ChatParticipationFilter): ChatParticipationAgg
+}
+
+type ChatAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+input ChatCreationInput {
+  title: String!
+  participants: [ChatParticipationCreationInputFromChat!]
+}
+
+input ChatFilter {
+  id: IntFilter
+  title: StringFilter
+  participants: ChatParticipationFilter
+  and: [ChatFilter!]
+  or: [ChatFilter!]
+  not: ChatFilter
+}
+
+input ChatOrdering {
+  id: Ordering
+  title: Ordering
+}
+
+type ChatParticipation {
+  chat: Chat!
+  user: User!
+  chatAdmin: Boolean
+  moods(where: MoodFilter, orderBy: [MoodOrdering!], limit: Int, offset: Int): [Mood!]
+  moodsAgg(where: MoodFilter): MoodAgg
+}
+
+type ChatParticipationAgg {
+  chat: ChatAgg
+  user: UserAgg
+  chatAdmin: BooleanAgg
+}
+
+input ChatParticipationCreationInput {
+  chat: ChatReferenceInput!
+  user: UserReferenceInput!
+  chatAdmin: Boolean
+  moods: [MoodCreationInputFromChatParticipation!]
+}
+
+input ChatParticipationCreationInputFromChat {
+  user: UserReferenceInput!
+  chatAdmin: Boolean
+  moods: [MoodCreationInputFromChatParticipation!]
+}
+
+input ChatParticipationCreationInputFromUser {
+  chat: ChatReferenceInput!
+  chatAdmin: Boolean
+  moods: [MoodCreationInputFromChatParticipation!]
+}
+
+input ChatParticipationFilter {
+  chat: ChatFilter
+  user: UserFilter
+  chatAdmin: BooleanFilter
+  moods: MoodFilter
+  and: [ChatParticipationFilter!]
+  or: [ChatParticipationFilter!]
+  not: ChatParticipationFilter
+}
+
+input ChatParticipationOrdering {
+  chat: [ChatOrdering!]
+  user: [UserOrdering!]
+  chatAdmin: Ordering
+}
+
+input ChatParticipationReferenceInput {
+  chat: ChatReferenceInput!
+  user: UserReferenceInput!
+}
+
+input ChatParticipationUpdateInput {
+  chat: ChatReferenceInput
+  user: UserReferenceInput
+  chatAdmin: Boolean
+  moods: MoodUpdateInputFromChatParticipation
+}
+
+input ChatParticipationUpdateInputFromChat {
+  create: [ChatParticipationCreationInputFromChat!]
+  update: [ChatParticipationUpdateInputFromChatNested!]
+  delete: [ChatParticipationReferenceInput!]
+}
+
+input ChatParticipationUpdateInputFromChatNested {
+  user: Int!
+  chatAdmin: Boolean
+  moods: MoodUpdateInputFromChatParticipation
+}
+
+input ChatParticipationUpdateInputFromUser {
+  create: [ChatParticipationCreationInputFromUser!]
+  update: [ChatParticipationUpdateInputFromUserNested!]
+  delete: [ChatParticipationReferenceInput!]
+}
+
+input ChatParticipationUpdateInputFromUserNested {
+  chat: Int!
+  chatAdmin: Boolean
+  moods: MoodUpdateInputFromChatParticipation
+}
+
+input ChatReferenceInput {
+  id: Int!
+}
+
+input ChatUniqueFilter {
+  id: Int!
+}
+
+input ChatUpdateInput {
+  id: Int
+  title: String
+  participants: ChatParticipationUpdateInputFromChat
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type Mood {
+  id: Int!
+  name: String!
+  chatParticipation: ChatParticipation!
+}
+
+type MoodAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input MoodCreationInput {
+  name: String!
+  chatParticipation: ChatParticipationReferenceInput!
+}
+
+input MoodCreationInputFromChatParticipation {
+  name: String!
+}
+
+input MoodFilter {
+  id: IntFilter
+  name: StringFilter
+  chatParticipation: ChatParticipationFilter
+  and: [MoodFilter!]
+  or: [MoodFilter!]
+  not: MoodFilter
+}
+
+input MoodOrdering {
+  id: Ordering
+  name: Ordering
+  chatParticipation: [ChatParticipationOrdering!]
+}
+
+input MoodReferenceInput {
+  id: Int!
+}
+
+input MoodUpdateInput {
+  id: Int
+  name: String
+  chatParticipation: ChatParticipationReferenceInput
+}
+
+input MoodUpdateInputFromChatParticipation {
+  create: [MoodCreationInputFromChatParticipation!]
+  update: [MoodUpdateInputFromChatParticipationNested!]
+  delete: [MoodReferenceInput!]
+}
+
+input MoodUpdateInputFromChatParticipationNested {
+  id: ChatUpdateInput!
+  name: String
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  name: String!
+  participatesIn(where: ChatParticipationFilter, orderBy: [ChatParticipationOrdering!], limit: Int, offset: Int): [ChatParticipation!]
+  participatesInAgg(where: ChatParticipationFilter): ChatParticipationAgg
+}
+
+type UserAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input UserCreationInput {
+  name: String!
+  participatesIn: [ChatParticipationCreationInputFromUser!]
+}
+
+input UserFilter {
+  id: IntFilter
+  name: StringFilter
+  participatesIn: ChatParticipationFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+input UserUniqueFilter {
+  id: Int!
+}
+
+input UserUpdateInput {
+  id: Int
+  name: String
+  participatesIn: ChatParticipationUpdateInputFromUser
+}
+
+type Query {
+  chat(id: Int!): Chat
+  chatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!): ChatParticipation
+  chatParticipations(where: ChatParticipationFilter, orderBy: [ChatParticipationOrdering!], limit: Int, offset: Int): [ChatParticipation!]!
+  chatParticipationsAgg(where: ChatParticipationFilter): ChatParticipationAgg!
+  chats(where: ChatFilter, orderBy: [ChatOrdering!], limit: Int, offset: Int): [Chat!]!
+  chatsAgg(where: ChatFilter): ChatAgg!
+  mood(id: Int!): Mood
+  moods(where: MoodFilter, orderBy: [MoodOrdering!], limit: Int, offset: Int): [Mood!]!
+  moodsAgg(where: MoodFilter): MoodAgg!
+  user(id: Int!): User
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createChat(data: ChatCreationInput!): Chat!
+  createChatParticipation(data: ChatParticipationCreationInput!): ChatParticipation!
+  createChatParticipations(data: [ChatParticipationCreationInput!]!): [ChatParticipation!]!
+  createChats(data: [ChatCreationInput!]!): [Chat!]!
+  createMood(data: MoodCreationInput!): Mood!
+  createMoods(data: [MoodCreationInput!]!): [Mood!]!
+  createUser(data: UserCreationInput!): User!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteChat(id: Int!): Chat
+  deleteChatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!): ChatParticipation
+  deleteChatParticipations(where: ChatParticipationFilter): [ChatParticipation!]!
+  deleteChats(where: ChatFilter): [Chat!]!
+  deleteMood(id: Int!): Mood
+  deleteMoods(where: MoodFilter): [Mood!]!
+  deleteUser(id: Int!): User
+  deleteUsers(where: UserFilter): [User!]!
+  updateChat(id: Int!, data: ChatUpdateInput!): Chat
+  updateChatParticipation(chat: ChatUniqueFilter!, user: UserUniqueFilter!, data: ChatParticipationUpdateInput!): ChatParticipation
+  updateChatParticipations(where: ChatParticipationFilter, data: ChatParticipationUpdateInput!): [ChatParticipation!]!
+  updateChats(where: ChatFilter, data: ChatUpdateInput!): [Chat!]!
+  updateMood(id: Int!, data: MoodUpdateInput!): Mood
+  updateMoods(where: MoodFilter, data: MoodUpdateInput!): [Mood!]!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

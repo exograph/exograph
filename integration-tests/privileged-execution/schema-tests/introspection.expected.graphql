@@ -1,0 +1,99 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Rsvp {
+  id: Int!
+  email: String!
+  count: Int!
+}
+
+type RsvpAgg {
+  id: IntAgg
+  email: StringAgg
+  count: IntAgg
+}
+
+type RsvpConfirmation {
+  email: String!
+  count: Int!
+}
+
+input RsvpCreationInput {
+  email: String!
+  count: Int!
+}
+
+input RsvpFilter {
+  id: IntFilter
+  email: StringFilter
+  count: IntFilter
+  and: [RsvpFilter!]
+  or: [RsvpFilter!]
+  not: RsvpFilter
+}
+
+input RsvpOrdering {
+  id: Ordering
+  email: Ordering
+  count: Ordering
+}
+
+input RsvpUpdateInput {
+  id: Int
+  email: String
+  count: Int
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  rsvp(id: Int!): Rsvp
+  rsvps(where: RsvpFilter, orderBy: [RsvpOrdering!], limit: Int, offset: Int): [Rsvp!]!
+  rsvpsAgg(where: RsvpFilter): RsvpAgg!
+}
+
+type Mutation {
+  createRsvp(data: RsvpCreationInput!): Rsvp!
+  createRsvps(data: [RsvpCreationInput!]!): [Rsvp!]!
+  deleteRsvp(id: Int!): Rsvp
+  deleteRsvps(where: RsvpFilter): [Rsvp!]!
+  processRsvp(email: String!, count: Int!): RsvpConfirmation!
+  updateRsvp(id: Int!, data: RsvpUpdateInput!): Rsvp
+  updateRsvps(where: RsvpFilter, data: RsvpUpdateInput!): [Rsvp!]!
+}

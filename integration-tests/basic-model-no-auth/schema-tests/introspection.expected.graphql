@@ -1,0 +1,234 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type Concert {
+  id: Int!
+  title: String!
+  venue: Venue!
+  published: Boolean!
+  price: Decimal!
+}
+
+type ConcertAgg {
+  id: IntAgg
+  title: StringAgg
+  published: BooleanAgg
+  price: DecimalAgg
+}
+
+input ConcertCreationInput {
+  title: String!
+  venue: VenueReferenceInput!
+  published: Boolean!
+  price: Decimal!
+}
+
+input ConcertCreationInputFromVenue {
+  title: String!
+  published: Boolean!
+  price: Decimal!
+}
+
+input ConcertFilter {
+  id: IntFilter
+  title: StringFilter
+  venue: VenueFilter
+  published: BooleanFilter
+  price: DecimalFilter
+  and: [ConcertFilter!]
+  or: [ConcertFilter!]
+  not: ConcertFilter
+}
+
+input ConcertOrdering {
+  id: Ordering
+  title: Ordering
+  venue: [VenueOrdering!]
+  published: Ordering
+  price: Ordering
+}
+
+input ConcertReferenceInput {
+  id: Int!
+}
+
+input ConcertUpdateInput {
+  id: Int
+  title: String
+  venue: VenueReferenceInput
+  published: Boolean
+  price: Decimal
+}
+
+input ConcertUpdateInputFromVenue {
+  create: [ConcertCreationInputFromVenue!]
+  update: [ConcertUpdateInputFromVenueNested!]
+  delete: [ConcertReferenceInput!]
+}
+
+input ConcertUpdateInputFromVenueNested {
+  id: Int!
+  title: String
+  published: Boolean
+  price: Decimal
+}
+
+scalar Decimal
+
+type DecimalAgg {
+  min: Decimal
+  max: Decimal
+  sum: Decimal
+  avg: Decimal
+  count: Int
+}
+
+input DecimalFilter {
+  eq: Decimal
+  neq: Decimal
+  lt: Decimal
+  lte: Decimal
+  gt: Decimal
+  gte: Decimal
+}
+
+type FloatAgg {
+  min: Float
+  max: Float
+  sum: Float
+  avg: Float
+  count: Int
+}
+
+input FloatFilter {
+  eq: Float
+  neq: Float
+  lt: Float
+  lte: Float
+  gt: Float
+  gte: Float
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Venue {
+  id: Int!
+  name: String!
+  concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]
+  published: Boolean!
+  latitude: Float!
+  concertsAgg(where: ConcertFilter): ConcertAgg
+}
+
+type VenueAgg {
+  id: IntAgg
+  name: StringAgg
+  published: BooleanAgg
+  latitude: FloatAgg
+}
+
+input VenueCreationInput {
+  name: String!
+  concerts: [ConcertCreationInputFromVenue!]
+  published: Boolean!
+  latitude: Float!
+}
+
+input VenueFilter {
+  id: IntFilter
+  name: StringFilter
+  concerts: ConcertFilter
+  published: BooleanFilter
+  latitude: FloatFilter
+  and: [VenueFilter!]
+  or: [VenueFilter!]
+  not: VenueFilter
+}
+
+input VenueOrdering {
+  id: Ordering
+  name: Ordering
+  published: Ordering
+  latitude: Ordering
+}
+
+input VenueReferenceInput {
+  id: Int!
+}
+
+input VenueUpdateInput {
+  id: Int
+  name: String
+  concerts: ConcertUpdateInputFromVenue
+  published: Boolean
+  latitude: Float
+}
+
+type Query {
+  concert(id: Int!): Concert
+  concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]!
+  concertsAgg(where: ConcertFilter): ConcertAgg!
+  venue(id: Int!): Venue
+  venues(where: VenueFilter, orderBy: [VenueOrdering!], limit: Int, offset: Int): [Venue!]!
+  venuesAgg(where: VenueFilter): VenueAgg!
+}
+
+type Mutation {
+  createConcert(data: ConcertCreationInput!): Concert!
+  createConcerts(data: [ConcertCreationInput!]!): [Concert!]!
+  createVenue(data: VenueCreationInput!): Venue!
+  createVenues(data: [VenueCreationInput!]!): [Venue!]!
+  deleteConcert(id: Int!): Concert
+  deleteConcerts(where: ConcertFilter): [Concert!]!
+  deleteVenue(id: Int!): Venue
+  deleteVenues(where: VenueFilter): [Venue!]!
+  updateConcert(id: Int!, data: ConcertUpdateInput!): Concert
+  updateConcerts(where: ConcertFilter, data: ConcertUpdateInput!): [Concert!]!
+  updateVenue(id: Int!, data: VenueUpdateInput!): Venue
+  updateVenues(where: VenueFilter, data: VenueUpdateInput!): [Venue!]!
+}

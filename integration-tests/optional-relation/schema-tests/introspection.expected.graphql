@@ -1,0 +1,169 @@
+type Event {
+  id: Int!
+  title: String!
+  notifications(where: NotificationFilter, orderBy: [NotificationOrdering!], limit: Int, offset: Int): [Notification!]
+  notificationsAgg(where: NotificationFilter): NotificationAgg
+}
+
+type EventAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+input EventCreationInput {
+  title: String!
+  notifications: [NotificationCreationInputFromEvent!]
+}
+
+input EventFilter {
+  id: IntFilter
+  title: StringFilter
+  notifications: NotificationFilter
+  and: [EventFilter!]
+  or: [EventFilter!]
+  not: EventFilter
+}
+
+input EventOrdering {
+  id: Ordering
+  title: Ordering
+}
+
+input EventReferenceInput {
+  id: Int!
+}
+
+input EventUpdateInput {
+  id: Int
+  title: String
+  notifications: NotificationUpdateInputFromEvent
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type Notification {
+  id: Int!
+  title: String!
+  description: String!
+  event: Event
+}
+
+type NotificationAgg {
+  id: IntAgg
+  title: StringAgg
+  description: StringAgg
+}
+
+input NotificationCreationInput {
+  title: String!
+  description: String!
+  event: EventReferenceInput
+}
+
+input NotificationCreationInputFromEvent {
+  title: String!
+  description: String!
+}
+
+input NotificationFilter {
+  id: IntFilter
+  title: StringFilter
+  description: StringFilter
+  event: EventFilter
+  and: [NotificationFilter!]
+  or: [NotificationFilter!]
+  not: NotificationFilter
+}
+
+input NotificationOrdering {
+  id: Ordering
+  title: Ordering
+  description: Ordering
+  event: [EventOrdering!]
+}
+
+input NotificationReferenceInput {
+  id: Int!
+}
+
+input NotificationUpdateInput {
+  id: Int
+  title: String
+  description: String
+  event: EventReferenceInput
+}
+
+input NotificationUpdateInputFromEvent {
+  create: [NotificationCreationInputFromEvent!]
+  update: [NotificationUpdateInputFromEventNested!]
+  delete: [NotificationReferenceInput!]
+}
+
+input NotificationUpdateInputFromEventNested {
+  id: Int!
+  title: String
+  description: String
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  event(id: Int!): Event
+  events(where: EventFilter, orderBy: [EventOrdering!], limit: Int, offset: Int): [Event!]!
+  eventsAgg(where: EventFilter): EventAgg!
+  notification(id: Int!): Notification
+  notifications(where: NotificationFilter, orderBy: [NotificationOrdering!], limit: Int, offset: Int): [Notification!]!
+  notificationsAgg(where: NotificationFilter): NotificationAgg!
+}
+
+type Mutation {
+  createEvent(data: EventCreationInput!): Event!
+  createEvents(data: [EventCreationInput!]!): [Event!]!
+  createNotification(data: NotificationCreationInput!): Notification!
+  createNotifications(data: [NotificationCreationInput!]!): [Notification!]!
+  deleteEvent(id: Int!): Event
+  deleteEvents(where: EventFilter): [Event!]!
+  deleteNotification(id: Int!): Notification
+  deleteNotifications(where: NotificationFilter): [Notification!]!
+  updateEvent(id: Int!, data: EventUpdateInput!): Event
+  updateEvents(where: EventFilter, data: EventUpdateInput!): [Event!]!
+  updateNotification(id: Int!, data: NotificationUpdateInput!): Notification
+  updateNotifications(where: NotificationFilter, data: NotificationUpdateInput!): [Notification!]!
+}

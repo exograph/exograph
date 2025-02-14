@@ -1,0 +1,162 @@
+type FloatAgg {
+  min: Float
+  max: Float
+  sum: Float
+  avg: Float
+  count: Int
+}
+
+input FloatFilter {
+  eq: Float
+  neq: Float
+  lt: Float
+  lte: Float
+  gt: Float
+  gte: Float
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type Numbers {
+  id: Int!
+  limit: Int
+  age: Int
+  float_limit: Float
+  price: Float
+}
+
+type NumbersAgg {
+  id: IntAgg
+  limit: IntAgg
+  age: IntAgg
+  float_limit: FloatAgg
+  price: FloatAgg
+}
+
+input NumbersCreationInput {
+  limit: Int
+  age: Int
+  float_limit: Float
+  price: Float
+}
+
+input NumbersFilter {
+  id: IntFilter
+  limit: IntFilter
+  age: IntFilter
+  float_limit: FloatFilter
+  price: FloatFilter
+  and: [NumbersFilter!]
+  or: [NumbersFilter!]
+  not: NumbersFilter
+}
+
+input NumbersOrdering {
+  id: Ordering
+  limit: Ordering
+  age: Ordering
+  float_limit: Ordering
+  price: Ordering
+}
+
+input NumbersUpdateInput {
+  id: Int
+  limit: Int
+  age: Int
+  float_limit: Float
+  price: Float
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type OtherNumbers {
+  id: Int!
+  limit: Int
+  age: Int
+  float_limit: Float
+  price: Float
+}
+
+type OtherNumbersAgg {
+  id: IntAgg
+  limit: IntAgg
+  age: IntAgg
+  float_limit: FloatAgg
+  price: FloatAgg
+}
+
+input OtherNumbersCreationInput {
+  limit: Int
+  age: Int
+  float_limit: Float
+  price: Float
+}
+
+input OtherNumbersFilter {
+  id: IntFilter
+  limit: IntFilter
+  age: IntFilter
+  float_limit: FloatFilter
+  price: FloatFilter
+  and: [OtherNumbersFilter!]
+  or: [OtherNumbersFilter!]
+  not: OtherNumbersFilter
+}
+
+input OtherNumbersOrdering {
+  id: Ordering
+  limit: Ordering
+  age: Ordering
+  float_limit: Ordering
+  price: Ordering
+}
+
+input OtherNumbersUpdateInput {
+  id: Int
+  limit: Int
+  age: Int
+  float_limit: Float
+  price: Float
+}
+
+type Query {
+  numbers(id: Int!): Numbers
+  numberss(where: NumbersFilter, orderBy: [NumbersOrdering!], limit: Int, offset: Int): [Numbers!]!
+  numberssAgg(where: NumbersFilter): NumbersAgg!
+  otherNumbers(id: Int!): OtherNumbers
+  otherNumberss(where: OtherNumbersFilter, orderBy: [OtherNumbersOrdering!], limit: Int, offset: Int): [OtherNumbers!]!
+  otherNumberssAgg(where: OtherNumbersFilter): OtherNumbersAgg!
+}
+
+type Mutation {
+  createNumbers(data: NumbersCreationInput!): Numbers!
+  createNumberss(data: [NumbersCreationInput!]!): [Numbers!]!
+  createOtherNumbers(data: OtherNumbersCreationInput!): OtherNumbers!
+  createOtherNumberss(data: [OtherNumbersCreationInput!]!): [OtherNumbers!]!
+  deleteNumbers(id: Int!): Numbers
+  deleteNumberss(where: NumbersFilter): [Numbers!]!
+  deleteOtherNumbers(id: Int!): OtherNumbers
+  deleteOtherNumberss(where: OtherNumbersFilter): [OtherNumbers!]!
+  updateNumbers(id: Int!, data: NumbersUpdateInput!): Numbers
+  updateNumberss(where: NumbersFilter, data: NumbersUpdateInput!): [Numbers!]!
+  updateOtherNumbers(id: Int!, data: OtherNumbersUpdateInput!): OtherNumbers
+  updateOtherNumberss(where: OtherNumbersFilter, data: OtherNumbersUpdateInput!): [OtherNumbers!]!
+}

@@ -1,0 +1,97 @@
+type FloatAgg {
+  min: Float
+  max: Float
+  sum: Float
+  avg: Float
+  count: Int
+}
+
+input FloatFilter {
+  eq: Float
+  neq: Float
+  lt: Float
+  lte: Float
+  gt: Float
+  gte: Float
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type Number {
+  id: Int!
+  int16: Int
+  int32: Int
+  singlePrecision: Float
+}
+
+type NumberAgg {
+  id: IntAgg
+  int16: IntAgg
+  int32: IntAgg
+  singlePrecision: FloatAgg
+}
+
+input NumberCreationInput {
+  int16: Int
+  int32: Int
+  singlePrecision: Float
+}
+
+input NumberFilter {
+  id: IntFilter
+  int16: IntFilter
+  int32: IntFilter
+  singlePrecision: FloatFilter
+  and: [NumberFilter!]
+  or: [NumberFilter!]
+  not: NumberFilter
+}
+
+input NumberOrdering {
+  id: Ordering
+  int16: Ordering
+  int32: Ordering
+  singlePrecision: Ordering
+}
+
+input NumberUpdateInput {
+  id: Int
+  int16: Int
+  int32: Int
+  singlePrecision: Float
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Query {
+  number(id: Int!): Number
+  numbers(where: NumberFilter, orderBy: [NumberOrdering!], limit: Int, offset: Int): [Number!]!
+  numbersAgg(where: NumberFilter): NumberAgg!
+}
+
+type Mutation {
+  createNumber(data: NumberCreationInput!): Number!
+  createNumbers(data: [NumberCreationInput!]!): [Number!]!
+  deleteNumber(id: Int!): Number
+  deleteNumbers(where: NumberFilter): [Number!]!
+  updateNumber(id: Int!, data: NumberUpdateInput!): Number
+  updateNumbers(where: NumberFilter, data: NumberUpdateInput!): [Number!]!
+}

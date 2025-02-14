@@ -44,8 +44,6 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
     let log_prefix = format!("(introspection: {})\n :: ", model_path.display()).purple();
     println!("{log_prefix} Running introspection tests...");
 
-    let exo_ir_file = format!("{}/target/index.exo_ir", model_path.display()).to_string();
-
     let router = {
         let static_loaders = server_common::create_static_loaders();
 
@@ -56,10 +54,12 @@ pub(super) async fn run_introspection_test(model_path: &Path) -> Result<TestResu
             (EXO_CHECK_CONNECTION_ON_STARTUP, "false"),
         ]);
 
+        let exo_ir_file = format!("{}/target/index.exo_ir", model_path.display()).to_string();
+
         create_system_router_from_file(&exo_ir_file, static_loaders, Arc::new(env)).await?
     };
 
-    let result = check_introspection(&router).await?;
+    let result = check_introspection(&router, model_path).await?;
 
     match result {
         Ok(()) => Ok(TestResult {
@@ -198,7 +198,10 @@ pub async fn schema_sdl(schema_response: Value) -> Result<String> {
     }
 }
 
-async fn check_introspection(system_router: &SystemRouter) -> Result<Result<()>> {
+async fn check_introspection(
+    system_router: &SystemRouter,
+    model_path: &Path,
+) -> Result<Result<()>> {
     let mut deno_module = create_introspection_deno_module().await?;
 
     let request = create_introspection_request().await?;
@@ -218,7 +221,63 @@ async fn check_introspection(system_router: &SystemRouter) -> Result<Result<()>>
             let sdl = schema_sdl(introspection_result).await;
 
             match sdl {
-                Ok(_) => Ok(Ok(())),
+                Ok(sdl) => {
+                    // We use a separate directory for schema tests (and not 'tests'), since in a few cases,
+                    // we soft-link the tests directory to run the same tests with different index.exo files.
+                    // In such situations, we may (correctly) get different SDLs for each index.exo file,
+                    // and we don't want to mix them up.
+                    let schema_tests_dir_str = format!("{}/schema-tests", model_path.display());
+                    let schema_tests_dir = Path::new(&schema_tests_dir_str);
+
+                    std::fs::create_dir_all(schema_tests_dir)?;
+
+                    let expected_sdl_path = schema_tests_dir.join("introspection.expected.graphql");
+                    let actual_sdl_path = schema_tests_dir.join("introspection.actual.graphql");
+
+                    if !std::fs::exists(&expected_sdl_path)? {
+                        // If the expected file does not exist (first time running the test), write the SDL to the file
+                        std::fs::write(&expected_sdl_path, &sdl)?;
+                    } else {
+                        let expected_sdl = std::fs::read_to_string(&expected_sdl_path)?;
+
+                        // Compare the SDLs line by line (to avoid Windows/Unix line ending issues)
+                        let sdl_line_count = sdl.lines().count();
+                        let expected_sdl_line_count = expected_sdl.lines().count();
+
+                        if sdl_line_count != expected_sdl_line_count {
+                            std::fs::write(&actual_sdl_path, &sdl)?;
+                            return Err(anyhow!(
+                                "SDL does not match the expected schema in {}. Expected {} lines, got {} lines",
+                                model_path.display(),
+                                expected_sdl_line_count,
+                                sdl_line_count
+                            ));
+                        }
+
+                        let sdl_lines = sdl.lines();
+                        let expected_sdl_lines = expected_sdl.lines();
+
+                        for (line_number, (sdl_line, expected_sdl_line)) in
+                            sdl_lines.zip(expected_sdl_lines).enumerate()
+                        {
+                            if sdl_line.trim() != expected_sdl_line.trim() {
+                                std::fs::write(&actual_sdl_path, &sdl)?;
+                                return Err(anyhow!(
+                                    "SDL does not match the expected schema in {}. Difference at line {}",
+                                    model_path.display(),
+                                    line_number + 1
+                                ));
+                            }
+                        }
+                    }
+
+                    // If the actual file exists (produced by the test in an earlier run), we should delete it
+                    if std::fs::exists(&actual_sdl_path)? {
+                        std::fs::remove_file(&actual_sdl_path)?;
+                    }
+
+                    Ok(Ok(()))
+                }
                 Err(e) => Err(e.context("Error getting schema SDL")),
             }
         }

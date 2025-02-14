@@ -1,0 +1,132 @@
+type Document {
+  id: Int!
+  title: String!
+  content: String!
+  contentVector: [Float!]
+  contentVectorDistance(to: [Float!]!): Float!
+}
+
+type DocumentAgg {
+  id: IntAgg
+  title: StringAgg
+  content: StringAgg
+  contentVector: VectorAgg
+}
+
+input DocumentCreationInput {
+  title: String!
+  content: String!
+  contentVector: [Float!]
+}
+
+input DocumentFilter {
+  id: IntFilter
+  title: StringFilter
+  content: StringFilter
+  contentVector: VectorFilter
+  and: [DocumentFilter!]
+  or: [DocumentFilter!]
+  not: DocumentFilter
+}
+
+input DocumentOrdering {
+  id: Ordering
+  title: Ordering
+  content: Ordering
+  contentVector: VectorOrdering
+}
+
+input DocumentUpdateInput {
+  id: Int
+  title: String
+  content: String
+  contentVector: [Float!]
+}
+
+input FloatFilter {
+  eq: Float
+  neq: Float
+  lt: Float
+  lte: Float
+  gt: Float
+  gte: Float
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+scalar Vector
+
+type VectorAgg {
+  avg: Vector
+  count: Int
+}
+
+input VectorFilter {
+  similar: VectorFilterArg
+  eq: [Float!]
+  neq: [Float!]
+}
+
+input VectorFilterArg {
+  distanceTo: [Float!]!
+  distance: FloatFilter
+}
+
+input VectorOrdering {
+  distanceTo: [Float!]!
+  order: Ordering
+}
+
+type Query {
+  document(id: Int!): Document
+  documents(where: DocumentFilter, orderBy: [DocumentOrdering!], limit: Int, offset: Int): [Document!]!
+  documentsAgg(where: DocumentFilter): DocumentAgg!
+}
+
+type Mutation {
+  createDocument(data: DocumentCreationInput!): Document!
+  createDocuments(data: [DocumentCreationInput!]!): [Document!]!
+  deleteDocument(id: Int!): Document
+  deleteDocuments(where: DocumentFilter): [Document!]!
+  updateDocument(id: Int!, data: DocumentUpdateInput!): Document
+  updateDocuments(where: DocumentFilter, data: DocumentUpdateInput!): [Document!]!
+}

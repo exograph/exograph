@@ -1,0 +1,141 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type Event {
+  id: Int!
+  timestamp: Instant!
+  category: String!
+  priority: Int!
+  message: String!
+  is_system: Boolean!
+  clientId: String!
+}
+
+type EventAgg {
+  id: IntAgg
+  timestamp: InstantAgg
+  category: StringAgg
+  priority: IntAgg
+  message: StringAgg
+  is_system: BooleanAgg
+  clientId: StringAgg
+}
+
+input EventCreationInput {
+  timestamp: Instant
+  category: String
+  priority: Int
+  message: String!
+  is_system: Boolean
+  clientId: String
+}
+
+input EventFilter {
+  id: IntFilter
+  timestamp: InstantFilter
+  category: StringFilter
+  priority: IntFilter
+  message: StringFilter
+  is_system: BooleanFilter
+  clientId: StringFilter
+  and: [EventFilter!]
+  or: [EventFilter!]
+  not: EventFilter
+}
+
+input EventOrdering {
+  id: Ordering
+  timestamp: Ordering
+  category: Ordering
+  priority: Ordering
+  message: Ordering
+  is_system: Ordering
+  clientId: Ordering
+}
+
+input EventUpdateInput {
+  id: Int
+  timestamp: Instant
+  category: String
+  priority: Int
+  message: String
+  is_system: Boolean
+  clientId: String
+}
+
+scalar Instant
+
+type InstantAgg {
+  count: Int
+}
+
+input InstantFilter {
+  eq: Instant
+  neq: Instant
+  lt: Instant
+  lte: Instant
+  gt: Instant
+  gte: Instant
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  event(id: Int!): Event
+  events(where: EventFilter, orderBy: [EventOrdering!], limit: Int, offset: Int): [Event!]!
+  eventsAgg(where: EventFilter): EventAgg!
+}
+
+type Mutation {
+  createEvent(data: EventCreationInput!): Event!
+  createEvents(data: [EventCreationInput!]!): [Event!]!
+  deleteEvent(id: Int!): Event
+  deleteEvents(where: EventFilter): [Event!]!
+  updateEvent(id: Int!, data: EventUpdateInput!): Event
+  updateEvents(where: EventFilter, data: EventUpdateInput!): [Event!]!
+}

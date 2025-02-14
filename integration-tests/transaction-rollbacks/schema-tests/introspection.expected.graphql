@@ -1,0 +1,95 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  username: String!
+  email: String
+}
+
+type UserAgg {
+  id: IntAgg
+  username: StringAgg
+  email: StringAgg
+}
+
+input UserCreationInput {
+  username: String!
+  email: String
+}
+
+input UserFilter {
+  id: IntFilter
+  username: StringFilter
+  email: StringFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  username: Ordering
+  email: Ordering
+}
+
+input UserUpdateInput {
+  id: Int
+  username: String
+  email: String
+}
+
+type Query {
+  user(id: Int!): User
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createUser(data: UserCreationInput!): User!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteUser(id: Int!): User
+  deleteUsers(where: UserFilter): [User!]!
+  fail: Boolean!
+  registerUser(username: String!, email: String!): Boolean!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

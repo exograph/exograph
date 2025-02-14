@@ -1,0 +1,82 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+scalar Json
+
+type JsonAgg {
+  count: Int
+}
+
+input JsonFilter {
+  contains: Json
+  containedBy: Json
+  matchKey: Json
+  matchAllKeys: Json
+  matchAnyKey: Json
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Todo {
+  id: Int!
+  data: Json!
+}
+
+type TodoAgg {
+  id: IntAgg
+  data: JsonAgg
+}
+
+input TodoCreationInput {
+  data: Json!
+}
+
+input TodoFilter {
+  id: IntFilter
+  data: JsonFilter
+  and: [TodoFilter!]
+  or: [TodoFilter!]
+  not: TodoFilter
+}
+
+input TodoOrdering {
+  id: Ordering
+  data: Ordering
+}
+
+input TodoUpdateInput {
+  id: Int
+  data: Json
+}
+
+type Query {
+  todo(id: Int!): Todo
+  todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+  todosAgg(where: TodoFilter): TodoAgg!
+}
+
+type Mutation {
+  createTodo(data: TodoCreationInput!): Todo!
+  createTodos(data: [TodoCreationInput!]!): [Todo!]!
+  deleteTodo(id: Int!): Todo
+  deleteTodos(where: TodoFilter): [Todo!]!
+  updateTodo(id: Int!, data: TodoUpdateInput!): Todo
+  updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
+}

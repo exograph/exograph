@@ -1,0 +1,87 @@
+scalar Decimal
+
+type DecimalAgg {
+  min: Decimal
+  max: Decimal
+  sum: Decimal
+  avg: Decimal
+  count: Int
+}
+
+input DecimalFilter {
+  eq: Decimal
+  neq: Decimal
+  lt: Decimal
+  lte: Decimal
+  gt: Decimal
+  gte: Decimal
+}
+
+type Foo {
+  id: Int!
+  verylong: Decimal!
+}
+
+type FooAgg {
+  id: IntAgg
+  verylong: DecimalAgg
+}
+
+input FooCreationInput {
+  verylong: Decimal!
+}
+
+input FooFilter {
+  id: IntFilter
+  verylong: DecimalFilter
+  and: [FooFilter!]
+  or: [FooFilter!]
+  not: FooFilter
+}
+
+input FooOrdering {
+  id: Ordering
+  verylong: Ordering
+}
+
+input FooUpdateInput {
+  id: Int
+  verylong: Decimal
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Query {
+  foo(id: Int!): Foo
+  foos(where: FooFilter, orderBy: [FooOrdering!], limit: Int, offset: Int): [Foo!]!
+  foosAgg(where: FooFilter): FooAgg!
+}
+
+type Mutation {
+  createFoo(data: FooCreationInput!): Foo!
+  createFoos(data: [FooCreationInput!]!): [Foo!]!
+  deleteFoo(id: Int!): Foo
+  deleteFoos(where: FooFilter): [Foo!]!
+  updateFoo(id: Int!, data: FooUpdateInput!): Foo
+  updateFoos(where: FooFilter, data: FooUpdateInput!): [Foo!]!
+}

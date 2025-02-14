@@ -1,0 +1,93 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type Log {
+  id: Int!
+  timestamp: Int!
+  text: String!
+}
+
+type LogAgg {
+  id: IntAgg
+  timestamp: IntAgg
+  text: StringAgg
+}
+
+input LogCreationInput {
+  timestamp: Int!
+  text: String!
+}
+
+input LogFilter {
+  id: IntFilter
+  timestamp: IntFilter
+  text: StringFilter
+  and: [LogFilter!]
+  or: [LogFilter!]
+  not: LogFilter
+}
+
+input LogOrdering {
+  id: Ordering
+  timestamp: Ordering
+  text: Ordering
+}
+
+input LogUpdateInput {
+  id: Int
+  timestamp: Int
+  text: String
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  log(id: Int!): Log
+  logs(where: LogFilter, orderBy: [LogOrdering!], limit: Int, offset: Int): [Log!]!
+  logsAgg(where: LogFilter): LogAgg!
+}
+
+type Mutation {
+  createLog(data: LogCreationInput!): Log!
+  createLogs(data: [LogCreationInput!]!): [Log!]!
+  deleteLog(id: Int!): Log
+  deleteLogs(where: LogFilter): [Log!]!
+  updateLog(id: Int!, data: LogUpdateInput!): Log
+  updateLogs(where: LogFilter, data: LogUpdateInput!): [Log!]!
+}

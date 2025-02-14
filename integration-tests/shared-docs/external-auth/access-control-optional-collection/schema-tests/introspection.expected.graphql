@@ -1,0 +1,186 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type Document {
+  id: Int!
+  content: String!
+  documentUsers(where: DocumentUserFilter, orderBy: [DocumentUserOrdering!], limit: Int, offset: Int): [DocumentUser!]
+  documentUsersAgg(where: DocumentUserFilter): DocumentUserAgg
+}
+
+type DocumentAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input DocumentCreationInput {
+  content: String!
+  documentUsers: [DocumentUserCreationInputFromDocument!]
+}
+
+input DocumentFilter {
+  id: IntFilter
+  content: StringFilter
+  documentUsers: DocumentUserFilter
+  and: [DocumentFilter!]
+  or: [DocumentFilter!]
+  not: DocumentFilter
+}
+
+input DocumentOrdering {
+  id: Ordering
+  content: Ordering
+}
+
+input DocumentReferenceInput {
+  id: Int!
+}
+
+input DocumentUpdateInput {
+  id: Int
+  content: String
+  documentUsers: DocumentUserUpdateInputFromDocument
+}
+
+type DocumentUser {
+  id: Int!
+  document: Document!
+  userId: String!
+  read: Boolean!
+  write: Boolean!
+}
+
+type DocumentUserAgg {
+  id: IntAgg
+  userId: StringAgg
+  read: BooleanAgg
+  write: BooleanAgg
+}
+
+input DocumentUserCreationInput {
+  document: DocumentReferenceInput!
+  userId: String!
+  read: Boolean!
+  write: Boolean!
+}
+
+input DocumentUserCreationInputFromDocument {
+  userId: String!
+  read: Boolean!
+  write: Boolean!
+}
+
+input DocumentUserFilter {
+  id: IntFilter
+  document: DocumentFilter
+  userId: StringFilter
+  read: BooleanFilter
+  write: BooleanFilter
+  and: [DocumentUserFilter!]
+  or: [DocumentUserFilter!]
+  not: DocumentUserFilter
+}
+
+input DocumentUserOrdering {
+  id: Ordering
+  document: [DocumentOrdering!]
+  userId: Ordering
+  read: Ordering
+  write: Ordering
+}
+
+input DocumentUserReferenceInput {
+  id: Int!
+}
+
+input DocumentUserUpdateInput {
+  id: Int
+  document: DocumentReferenceInput
+  userId: String
+  read: Boolean
+  write: Boolean
+}
+
+input DocumentUserUpdateInputFromDocument {
+  create: [DocumentUserCreationInputFromDocument!]
+  update: [DocumentUserUpdateInputFromDocumentNested!]
+  delete: [DocumentUserReferenceInput!]
+}
+
+input DocumentUserUpdateInputFromDocumentNested {
+  id: Int!
+  userId: String
+  read: Boolean
+  write: Boolean
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  document(id: Int!): Document
+  documentUser(id: Int!): DocumentUser
+  documentUsers(where: DocumentUserFilter, orderBy: [DocumentUserOrdering!], limit: Int, offset: Int): [DocumentUser!]!
+  documentUsersAgg(where: DocumentUserFilter): DocumentUserAgg!
+  documents(where: DocumentFilter, orderBy: [DocumentOrdering!], limit: Int, offset: Int): [Document!]!
+  documentsAgg(where: DocumentFilter): DocumentAgg!
+}
+
+type Mutation {
+  createDocument(data: DocumentCreationInput!): Document!
+  createDocumentUser(data: DocumentUserCreationInput!): DocumentUser!
+  createDocumentUsers(data: [DocumentUserCreationInput!]!): [DocumentUser!]!
+  createDocuments(data: [DocumentCreationInput!]!): [Document!]!
+  deleteDocument(id: Int!): Document
+  deleteDocumentUser(id: Int!): DocumentUser
+  deleteDocumentUsers(where: DocumentUserFilter): [DocumentUser!]!
+  deleteDocuments(where: DocumentFilter): [Document!]!
+  updateDocument(id: Int!, data: DocumentUpdateInput!): Document
+  updateDocumentUser(id: Int!, data: DocumentUserUpdateInput!): DocumentUser
+  updateDocumentUsers(where: DocumentUserFilter, data: DocumentUserUpdateInput!): [DocumentUser!]!
+  updateDocuments(where: DocumentFilter, data: DocumentUpdateInput!): [Document!]!
+}

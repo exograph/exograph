@@ -1,0 +1,93 @@
+type Info {
+  id: Int!
+  title: String!
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Todo {
+  id: Int!
+  title: String!
+}
+
+type TodoAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+input TodoCreationInput {
+  title: String!
+}
+
+input TodoFilter {
+  id: IntFilter
+  title: StringFilter
+  and: [TodoFilter!]
+  or: [TodoFilter!]
+  not: TodoFilter
+}
+
+input TodoOrdering {
+  id: Ordering
+  title: Ordering
+}
+
+input TodoUpdateInput {
+  id: Int
+  title: String
+}
+
+type Query {
+  getInfo: Info!
+  todo(id: Int!): Todo
+  todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+  todosAgg(where: TodoFilter): TodoAgg!
+}
+
+type Mutation {
+  createTodo(data: TodoCreationInput!): Todo!
+  createTodos(data: [TodoCreationInput!]!): [Todo!]!
+  deleteTodo(id: Int!): Todo
+  deleteTodos(where: TodoFilter): [Todo!]!
+  updateTodo(id: Int!, data: TodoUpdateInput!): Todo
+  updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
+}

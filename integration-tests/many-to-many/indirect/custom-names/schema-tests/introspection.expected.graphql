@@ -1,0 +1,311 @@
+type Artist {
+  id: Int!
+  name: String!
+  aristsConcerts(where: ConcertArtistFilter, orderBy: [ConcertArtistOrdering!], limit: Int, offset: Int): [ConcertArtist!]
+  aristsConcertsAgg(where: ConcertArtistFilter): ConcertArtistAgg
+}
+
+type ArtistAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input ArtistCreationInput {
+  name: String!
+  aristsConcerts: [ConcertArtistCreationInputFromArtist!]
+}
+
+input ArtistFilter {
+  id: IntFilter
+  name: StringFilter
+  aristsConcerts: ConcertArtistFilter
+  and: [ArtistFilter!]
+  or: [ArtistFilter!]
+  not: ArtistFilter
+}
+
+input ArtistOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input ArtistReferenceInput {
+  id: Int!
+}
+
+input ArtistUpdateInput {
+  id: Int
+  name: String
+  aristsConcerts: ConcertArtistUpdateInputFromArtist
+}
+
+type Concert {
+  id: Int!
+  title: String!
+  concertArtists(where: ConcertArtistFilter, orderBy: [ConcertArtistOrdering!], limit: Int, offset: Int): [ConcertArtist!]!
+  venue: Venue
+  concertArtistsAgg(where: ConcertArtistFilter): ConcertArtistAgg
+}
+
+type ConcertAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+type ConcertArtist {
+  id: Int!
+  concert: Concert!
+  artist: Artist!
+  rank: Int!
+  role: String!
+}
+
+type ConcertArtistAgg {
+  id: IntAgg
+  rank: IntAgg
+  role: StringAgg
+}
+
+input ConcertArtistCreationInput {
+  concert: ConcertReferenceInput!
+  artist: ArtistReferenceInput!
+  rank: Int
+  role: String!
+}
+
+input ConcertArtistCreationInputFromArtist {
+  concert: ConcertReferenceInput!
+  rank: Int
+  role: String!
+}
+
+input ConcertArtistCreationInputFromConcert {
+  artist: ArtistReferenceInput!
+  rank: Int
+  role: String!
+}
+
+input ConcertArtistFilter {
+  id: IntFilter
+  concert: ConcertFilter
+  artist: ArtistFilter
+  rank: IntFilter
+  role: StringFilter
+  and: [ConcertArtistFilter!]
+  or: [ConcertArtistFilter!]
+  not: ConcertArtistFilter
+}
+
+input ConcertArtistOrdering {
+  id: Ordering
+  concert: [ConcertOrdering!]
+  artist: [ArtistOrdering!]
+  rank: Ordering
+  role: Ordering
+}
+
+input ConcertArtistReferenceInput {
+  id: Int!
+}
+
+input ConcertArtistUpdateInput {
+  id: Int
+  concert: ConcertReferenceInput
+  artist: ArtistReferenceInput
+  rank: Int
+  role: String
+}
+
+input ConcertArtistUpdateInputFromArtist {
+  create: [ConcertArtistCreationInputFromArtist!]
+  update: [ConcertArtistUpdateInputFromArtistNested!]
+  delete: [ConcertArtistReferenceInput!]
+}
+
+input ConcertArtistUpdateInputFromArtistNested {
+  id: Int!
+  concert: ConcertReferenceInput
+  rank: Int
+  role: String
+}
+
+input ConcertArtistUpdateInputFromConcert {
+  create: [ConcertArtistCreationInputFromConcert!]
+  update: [ConcertArtistUpdateInputFromConcertNested!]
+  delete: [ConcertArtistReferenceInput!]
+}
+
+input ConcertArtistUpdateInputFromConcertNested {
+  id: Int!
+  artist: ArtistReferenceInput
+  rank: Int
+  role: String
+}
+
+input ConcertCreationInput {
+  title: String!
+  concertArtists: [ConcertArtistCreationInputFromConcert!]!
+  venue: VenueReferenceInput
+}
+
+input ConcertCreationInputFromVenue {
+  title: String!
+  concertArtists: [ConcertArtistCreationInputFromConcert!]!
+}
+
+input ConcertFilter {
+  id: IntFilter
+  title: StringFilter
+  concertArtists: ConcertArtistFilter
+  venue: VenueFilter
+  and: [ConcertFilter!]
+  or: [ConcertFilter!]
+  not: ConcertFilter
+}
+
+input ConcertOrdering {
+  id: Ordering
+  title: Ordering
+  venue: [VenueOrdering!]
+}
+
+input ConcertReferenceInput {
+  id: Int!
+}
+
+input ConcertUpdateInput {
+  id: Int
+  title: String
+  concertArtists: ConcertArtistUpdateInputFromConcert
+  venue: VenueReferenceInput
+}
+
+input ConcertUpdateInputFromVenue {
+  create: [ConcertCreationInputFromVenue!]
+  update: [ConcertUpdateInputFromVenueNested!]
+  delete: [ConcertReferenceInput!]
+}
+
+input ConcertUpdateInputFromVenueNested {
+  id: Int!
+  title: String
+  concertArtists: ConcertArtistUpdateInputFromConcert
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Venue {
+  id: Int!
+  concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]
+  concertsAgg(where: ConcertFilter): ConcertAgg
+}
+
+type VenueAgg {
+  id: IntAgg
+}
+
+input VenueCreationInput {
+  concerts: [ConcertCreationInputFromVenue!]
+}
+
+input VenueFilter {
+  id: IntFilter
+  concerts: ConcertFilter
+  and: [VenueFilter!]
+  or: [VenueFilter!]
+  not: VenueFilter
+}
+
+input VenueOrdering {
+  id: Ordering
+}
+
+input VenueReferenceInput {
+  id: Int!
+}
+
+input VenueUpdateInput {
+  id: Int
+  concerts: ConcertUpdateInputFromVenue
+}
+
+type Query {
+  artist(id: Int!): Artist
+  artists(where: ArtistFilter, orderBy: [ArtistOrdering!], limit: Int, offset: Int): [Artist!]!
+  artistsAgg(where: ArtistFilter): ArtistAgg!
+  concert(id: Int!): Concert
+  concertArtist(id: Int!): ConcertArtist
+  concertArtists(where: ConcertArtistFilter, orderBy: [ConcertArtistOrdering!], limit: Int, offset: Int): [ConcertArtist!]!
+  concertArtistsAgg(where: ConcertArtistFilter): ConcertArtistAgg!
+  concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]!
+  concertsAgg(where: ConcertFilter): ConcertAgg!
+  venue(id: Int!): Venue
+  venues(where: VenueFilter, orderBy: [VenueOrdering!], limit: Int, offset: Int): [Venue!]!
+  venuesAgg(where: VenueFilter): VenueAgg!
+}
+
+type Mutation {
+  createArtist(data: ArtistCreationInput!): Artist!
+  createArtists(data: [ArtistCreationInput!]!): [Artist!]!
+  createConcert(data: ConcertCreationInput!): Concert!
+  createConcertArtist(data: ConcertArtistCreationInput!): ConcertArtist!
+  createConcertArtists(data: [ConcertArtistCreationInput!]!): [ConcertArtist!]!
+  createConcerts(data: [ConcertCreationInput!]!): [Concert!]!
+  createVenue(data: VenueCreationInput!): Venue!
+  createVenues(data: [VenueCreationInput!]!): [Venue!]!
+  deleteArtist(id: Int!): Artist
+  deleteArtists(where: ArtistFilter): [Artist!]!
+  deleteConcert(id: Int!): Concert
+  deleteConcertArtist(id: Int!): ConcertArtist
+  deleteConcertArtists(where: ConcertArtistFilter): [ConcertArtist!]!
+  deleteConcerts(where: ConcertFilter): [Concert!]!
+  deleteVenue(id: Int!): Venue
+  deleteVenues(where: VenueFilter): [Venue!]!
+  updateArtist(id: Int!, data: ArtistUpdateInput!): Artist
+  updateArtists(where: ArtistFilter, data: ArtistUpdateInput!): [Artist!]!
+  updateConcert(id: Int!, data: ConcertUpdateInput!): Concert
+  updateConcertArtist(id: Int!, data: ConcertArtistUpdateInput!): ConcertArtist
+  updateConcertArtists(where: ConcertArtistFilter, data: ConcertArtistUpdateInput!): [ConcertArtist!]!
+  updateConcerts(where: ConcertFilter, data: ConcertUpdateInput!): [Concert!]!
+  updateVenue(id: Int!, data: VenueUpdateInput!): Venue
+  updateVenues(where: VenueFilter, data: VenueUpdateInput!): [Venue!]!
+}

@@ -1,0 +1,188 @@
+type Address {
+  street: String!
+  city: String!
+  state: String!
+  zip: Int!
+  people(where: PersonFilter, orderBy: [PersonOrdering!], limit: Int, offset: Int): [Person!]
+  peopleAgg(where: PersonFilter): PersonAgg
+}
+
+type AddressAgg {
+  street: StringAgg
+  city: StringAgg
+  state: StringAgg
+  zip: IntAgg
+}
+
+input AddressCreationInput {
+  street: String!
+  city: String!
+  state: String!
+  zip: Int!
+  people: [PersonCreationInputFromAddress!]
+}
+
+input AddressFilter {
+  street: StringFilter
+  city: StringFilter
+  state: StringFilter
+  zip: IntFilter
+  people: PersonFilter
+  and: [AddressFilter!]
+  or: [AddressFilter!]
+  not: AddressFilter
+}
+
+input AddressOrdering {
+  street: Ordering
+  city: Ordering
+  state: Ordering
+  zip: Ordering
+}
+
+input AddressReferenceInput {
+  street: String!
+  city: String!
+  state: String!
+  zip: Int!
+}
+
+input AddressUpdateInput {
+  street: String
+  city: String
+  state: String
+  zip: Int
+  people: PersonUpdateInputFromAddress
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Person {
+  firstName: String!
+  lastName: String!
+  age: Int!
+  address: Address
+}
+
+type PersonAgg {
+  firstName: StringAgg
+  lastName: StringAgg
+  age: IntAgg
+}
+
+input PersonCreationInput {
+  firstName: String!
+  lastName: String!
+  age: Int!
+  address: AddressReferenceInput
+}
+
+input PersonCreationInputFromAddress {
+  firstName: String!
+  lastName: String!
+  age: Int!
+}
+
+input PersonFilter {
+  firstName: StringFilter
+  lastName: StringFilter
+  age: IntFilter
+  address: AddressFilter
+  and: [PersonFilter!]
+  or: [PersonFilter!]
+  not: PersonFilter
+}
+
+input PersonOrdering {
+  firstName: Ordering
+  lastName: Ordering
+  age: Ordering
+  address: [AddressOrdering!]
+}
+
+input PersonReferenceInput {
+  firstName: String!
+  lastName: String!
+}
+
+input PersonUpdateInput {
+  firstName: String
+  lastName: String
+  age: Int
+  address: AddressReferenceInput
+}
+
+input PersonUpdateInputFromAddress {
+  create: [PersonCreationInputFromAddress!]
+  update: [PersonUpdateInputFromAddressNested!]
+  delete: [PersonReferenceInput!]
+}
+
+input PersonUpdateInputFromAddressNested {
+  firstName: String!
+  lastName: String!
+  age: Int
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  address(street: String!, city: String!, state: String!, zip: Int!): Address
+  addresses(where: AddressFilter, orderBy: [AddressOrdering!], limit: Int, offset: Int): [Address!]!
+  addressesAgg(where: AddressFilter): AddressAgg!
+  people(where: PersonFilter, orderBy: [PersonOrdering!], limit: Int, offset: Int): [Person!]!
+  peopleAgg(where: PersonFilter): PersonAgg!
+  person(firstName: String!, lastName: String!): Person
+}
+
+type Mutation {
+  createAddress(data: AddressCreationInput!): Address!
+  createAddresses(data: [AddressCreationInput!]!): [Address!]!
+  createPeople(data: [PersonCreationInput!]!): [Person!]!
+  createPerson(data: PersonCreationInput!): Person!
+  deleteAddress(street: String!, city: String!, state: String!, zip: Int!): Address
+  deleteAddresses(where: AddressFilter): [Address!]!
+  deletePeople(where: PersonFilter): [Person!]!
+  deletePerson(firstName: String!, lastName: String!): Person
+  updateAddress(street: String!, city: String!, state: String!, zip: Int!, data: AddressUpdateInput!): Address
+  updateAddresses(where: AddressFilter, data: AddressUpdateInput!): [Address!]!
+  updatePeople(where: PersonFilter, data: PersonUpdateInput!): [Person!]!
+  updatePerson(firstName: String!, lastName: String!, data: PersonUpdateInput!): Person
+}

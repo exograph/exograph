@@ -1,0 +1,99 @@
+type Customer {
+  id: Int!
+  name: String!
+  userId: Int!
+  internalTier: Int!
+}
+
+type CustomerAgg {
+  id: IntAgg
+  name: StringAgg
+  userId: IntAgg
+  internalTier: IntAgg
+}
+
+input CustomerCreationInput {
+  name: String!
+  userId: Int
+  internalTier: Int
+}
+
+input CustomerFilter {
+  id: IntFilter
+  name: StringFilter
+  userId: IntFilter
+  internalTier: IntFilter
+  and: [CustomerFilter!]
+  or: [CustomerFilter!]
+  not: CustomerFilter
+}
+
+input CustomerOrdering {
+  id: Ordering
+  name: Ordering
+  userId: Ordering
+  internalTier: Ordering
+}
+
+input CustomerUpdateInput {
+  id: Int
+  name: String
+  userId: Int
+  internalTier: Int
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  customer(id: Int!): Customer
+  customers(where: CustomerFilter, orderBy: [CustomerOrdering!], limit: Int, offset: Int): [Customer!]!
+  customersAgg(where: CustomerFilter): CustomerAgg!
+}
+
+type Mutation {
+  createCustomer(data: CustomerCreationInput!): Customer!
+  createCustomers(data: [CustomerCreationInput!]!): [Customer!]!
+  deleteCustomer(id: Int!): Customer
+  deleteCustomers(where: CustomerFilter): [Customer!]!
+  updateCustomer(id: Int!, data: CustomerUpdateInput!): Customer
+  updateCustomers(where: CustomerFilter, data: CustomerUpdateInput!): [Customer!]!
+}

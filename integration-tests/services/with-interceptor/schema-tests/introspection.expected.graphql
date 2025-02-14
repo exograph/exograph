@@ -1,0 +1,9 @@
+type DivisionResult {
+  quotient: Int!
+  remainder: Int!
+}
+
+type Query {
+  asyncDivide(x: Int!, y: Int!): DivisionResult!
+  divide(x: Int!, y: Int!): DivisionResult!
+}

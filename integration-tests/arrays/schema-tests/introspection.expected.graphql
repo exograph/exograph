@@ -1,0 +1,97 @@
+type ChessPiece {
+  id: Int!
+  name: String!
+  position_history: [String!]!
+  neighbor_info: [[String!]!]!
+}
+
+type ChessPieceAgg {
+  id: IntAgg
+  name: StringAgg
+  position_history: StringAgg
+  neighbor_info: StringAgg
+}
+
+input ChessPieceCreationInput {
+  name: String!
+  position_history: [String!]!
+  neighbor_info: [[String!]!]!
+}
+
+input ChessPieceFilter {
+  id: IntFilter
+  name: StringFilter
+  position_history: StringFilter
+  neighbor_info: StringFilter
+  and: [ChessPieceFilter!]
+  or: [ChessPieceFilter!]
+  not: ChessPieceFilter
+}
+
+input ChessPieceOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input ChessPieceUpdateInput {
+  id: Int
+  name: String
+  position_history: [String!]
+  neighbor_info: [[String!]!]
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  chessPiece(id: Int!): ChessPiece
+  chessPieces(where: ChessPieceFilter, orderBy: [ChessPieceOrdering!], limit: Int, offset: Int): [ChessPiece!]!
+  chessPiecesAgg(where: ChessPieceFilter): ChessPieceAgg!
+}
+
+type Mutation {
+  createChessPiece(data: ChessPieceCreationInput!): ChessPiece!
+  createChessPieces(data: [ChessPieceCreationInput!]!): [ChessPiece!]!
+  deleteChessPiece(id: Int!): ChessPiece
+  deleteChessPieces(where: ChessPieceFilter): [ChessPiece!]!
+  updateChessPiece(id: Int!, data: ChessPieceUpdateInput!): ChessPiece
+  updateChessPieces(where: ChessPieceFilter, data: ChessPieceUpdateInput!): [ChessPiece!]!
+}

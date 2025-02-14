@@ -1,0 +1,105 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Person {
+  id: Int!
+  name: String!
+  age: Int!
+  authId: Int!
+  email: String
+}
+
+type PersonAgg {
+  id: IntAgg
+  name: StringAgg
+  age: IntAgg
+  authId: IntAgg
+  email: StringAgg
+}
+
+input PersonCreationInput {
+  name: String!
+  age: Int!
+  authId: Int!
+  email: String
+}
+
+input PersonFilter {
+  id: IntFilter
+  name: StringFilter
+  age: IntFilter
+  authId: IntFilter
+  email: StringFilter
+  and: [PersonFilter!]
+  or: [PersonFilter!]
+  not: PersonFilter
+}
+
+input PersonOrdering {
+  id: Ordering
+  name: Ordering
+  age: Ordering
+  authId: Ordering
+  email: Ordering
+}
+
+input PersonUpdateInput {
+  id: Int
+  name: String
+  age: Int
+  authId: Int
+  email: String
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  people(where: PersonFilter, orderBy: [PersonOrdering!], limit: Int, offset: Int): [Person!]!
+  peopleAgg(where: PersonFilter): PersonAgg!
+  person(id: Int!): Person
+}
+
+type Mutation {
+  createPeople(data: [PersonCreationInput!]!): [Person!]!
+  createPerson(data: PersonCreationInput!): Person!
+  deletePeople(where: PersonFilter): [Person!]!
+  deletePerson(id: Int!): Person
+  updatePeople(where: PersonFilter, data: PersonUpdateInput!): [Person!]!
+  updatePerson(id: Int!, data: PersonUpdateInput!): Person
+}

@@ -1,0 +1,96 @@
+scalar Blob
+
+type BlobAgg {
+  count: Int
+}
+
+scalar BlobFilter
+
+type Image {
+  id: Uuid!
+  name: String!
+  data: Blob!
+}
+
+type ImageAgg {
+  id: UuidAgg
+  name: StringAgg
+  data: BlobAgg
+}
+
+input ImageCreationInput {
+  id: Uuid
+  name: String!
+  data: Blob!
+}
+
+input ImageFilter {
+  id: UuidFilter
+  name: StringFilter
+  data: BlobFilter
+  and: [ImageFilter!]
+  or: [ImageFilter!]
+  not: ImageFilter
+}
+
+input ImageOrdering {
+  id: Ordering
+  name: Ordering
+  data: Ordering
+}
+
+input ImageUpdateInput {
+  id: Uuid
+  name: String
+  data: Blob
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+scalar Uuid
+
+type UuidAgg {
+  count: Int
+}
+
+input UuidFilter {
+  eq: Uuid
+  neq: Uuid
+}
+
+type Query {
+  image(id: Uuid!): Image
+  images(where: ImageFilter, orderBy: [ImageOrdering!], limit: Int, offset: Int): [Image!]!
+  imagesAgg(where: ImageFilter): ImageAgg!
+}
+
+type Mutation {
+  createImage(data: ImageCreationInput!): Image!
+  createImages(data: [ImageCreationInput!]!): [Image!]!
+  deleteImage(id: Uuid!): Image
+  deleteImages(where: ImageFilter): [Image!]!
+  updateImage(id: Uuid!, data: ImageUpdateInput!): Image
+  updateImages(where: ImageFilter, data: ImageUpdateInput!): [Image!]!
+}

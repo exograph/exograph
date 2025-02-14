@@ -2,6 +2,7 @@
 contexts.d.ts
 exograph.d.ts
 generated
+introspection.actual.graphql
 
 .wrangler/
 node_modules

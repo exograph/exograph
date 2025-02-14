@@ -1,0 +1,274 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type InternalRsvp {
+  id: Int!
+  event: String!
+  user: User!
+  count: Int!
+}
+
+type InternalRsvpAgg {
+  id: IntAgg
+  event: StringAgg
+  count: IntAgg
+}
+
+input InternalRsvpCreationInput {
+  event: String!
+  user: UserReferenceInput!
+  count: Int
+}
+
+input InternalRsvpCreationInputFromUser {
+  event: String!
+  count: Int
+}
+
+input InternalRsvpFilter {
+  id: IntFilter
+  event: StringFilter
+  user: UserFilter
+  count: IntFilter
+  and: [InternalRsvpFilter!]
+  or: [InternalRsvpFilter!]
+  not: InternalRsvpFilter
+}
+
+input InternalRsvpOrdering {
+  id: Ordering
+  event: Ordering
+  user: [UserOrdering!]
+  count: Ordering
+}
+
+input InternalRsvpReferenceInput {
+  id: Int!
+}
+
+input InternalRsvpUpdateInput {
+  id: Int
+  event: String
+  user: UserReferenceInput
+  count: Int
+}
+
+input InternalRsvpUpdateInputFromUser {
+  create: [InternalRsvpCreationInputFromUser!]
+  update: [InternalRsvpUpdateInputFromUserNested!]
+  delete: [InternalRsvpReferenceInput!]
+}
+
+input InternalRsvpUpdateInputFromUserNested {
+  id: Int!
+  event: String
+  count: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Rsvp {
+  id: Int!
+  event: String!
+  user: User!
+  count: Int!
+}
+
+type RsvpAgg {
+  id: IntAgg
+  event: StringAgg
+  count: IntAgg
+}
+
+input RsvpCreationInput {
+  event: String!
+  user: UserReferenceInput!
+  count: Int
+}
+
+input RsvpCreationInputFromUser {
+  event: String!
+  count: Int
+}
+
+input RsvpFilter {
+  id: IntFilter
+  event: StringFilter
+  user: UserFilter
+  count: IntFilter
+  and: [RsvpFilter!]
+  or: [RsvpFilter!]
+  not: RsvpFilter
+}
+
+input RsvpOrdering {
+  id: Ordering
+  event: Ordering
+  user: [UserOrdering!]
+  count: Ordering
+}
+
+input RsvpReferenceInput {
+  id: Int!
+}
+
+input RsvpUpdateInput {
+  id: Int
+  event: String
+  user: UserReferenceInput
+  count: Int
+}
+
+input RsvpUpdateInputFromUser {
+  create: [RsvpCreationInputFromUser!]
+  update: [RsvpUpdateInputFromUserNested!]
+  delete: [RsvpReferenceInput!]
+}
+
+input RsvpUpdateInputFromUserNested {
+  id: Int!
+  event: String
+  count: Int
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  username: String!
+  primaryEmailId: String!
+  secondaryEmailId: String
+  emailDomain: String!
+  rsvps(where: RsvpFilter, orderBy: [RsvpOrdering!], limit: Int, offset: Int): [Rsvp!]
+  internalRsvps(where: InternalRsvpFilter, orderBy: [InternalRsvpOrdering!], limit: Int, offset: Int): [InternalRsvp!]
+  rsvpsAgg(where: RsvpFilter): RsvpAgg
+  internalRsvpsAgg(where: InternalRsvpFilter): InternalRsvpAgg
+}
+
+type UserAgg {
+  id: IntAgg
+  username: StringAgg
+  primaryEmailId: StringAgg
+  secondaryEmailId: StringAgg
+  emailDomain: StringAgg
+}
+
+input UserCreationInput {
+  username: String!
+  primaryEmailId: String!
+  secondaryEmailId: String
+  emailDomain: String!
+  rsvps: [RsvpCreationInputFromUser!]
+  internalRsvps: [InternalRsvpCreationInputFromUser!]
+}
+
+input UserFilter {
+  id: IntFilter
+  username: StringFilter
+  primaryEmailId: StringFilter
+  secondaryEmailId: StringFilter
+  emailDomain: StringFilter
+  rsvps: RsvpFilter
+  internalRsvps: InternalRsvpFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  username: Ordering
+  primaryEmailId: Ordering
+  secondaryEmailId: Ordering
+  emailDomain: Ordering
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+input UserUniqueFilter {
+  id: Int!
+}
+
+input UserUpdateInput {
+  id: Int
+  username: String
+  primaryEmailId: String
+  secondaryEmailId: String
+  emailDomain: String
+  rsvps: RsvpUpdateInputFromUser
+  internalRsvps: InternalRsvpUpdateInputFromUser
+}
+
+type Query {
+  internalRsvp(id: Int!): InternalRsvp
+  internalRsvpByEventRsvp(event: String!, user: UserUniqueFilter!): InternalRsvp
+  internalRsvps(where: InternalRsvpFilter, orderBy: [InternalRsvpOrdering!], limit: Int, offset: Int): [InternalRsvp!]!
+  internalRsvpsAgg(where: InternalRsvpFilter): InternalRsvpAgg!
+  rsvp(id: Int!): Rsvp
+  rsvpByEventRsvp(event: String!, user: UserUniqueFilter!): Rsvp
+  rsvps(where: RsvpFilter, orderBy: [RsvpOrdering!], limit: Int, offset: Int): [Rsvp!]!
+  rsvpsAgg(where: RsvpFilter): RsvpAgg!
+  user(id: Int!): User
+  userByPrimaryEmail(primaryEmailId: String!, emailDomain: String!): User
+  userBySecondaryEmail(secondaryEmailId: String!, emailDomain: String!): User
+  userByUsername(username: String!): User
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createInternalRsvp(data: InternalRsvpCreationInput!): InternalRsvp!
+  createInternalRsvps(data: [InternalRsvpCreationInput!]!): [InternalRsvp!]!
+  createRsvp(data: RsvpCreationInput!): Rsvp!
+  createRsvps(data: [RsvpCreationInput!]!): [Rsvp!]!
+  createUser(data: UserCreationInput!): User!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteInternalRsvp(id: Int!): InternalRsvp
+  deleteInternalRsvps(where: InternalRsvpFilter): [InternalRsvp!]!
+  deleteRsvp(id: Int!): Rsvp
+  deleteRsvps(where: RsvpFilter): [Rsvp!]!
+  deleteUser(id: Int!): User
+  deleteUsers(where: UserFilter): [User!]!
+  updateInternalRsvp(id: Int!, data: InternalRsvpUpdateInput!): InternalRsvp
+  updateInternalRsvps(where: InternalRsvpFilter, data: InternalRsvpUpdateInput!): [InternalRsvp!]!
+  updateRsvp(id: Int!, data: RsvpUpdateInput!): Rsvp
+  updateRsvps(where: RsvpFilter, data: RsvpUpdateInput!): [Rsvp!]!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

@@ -1,0 +1,147 @@
+type CaptchaChallenge {
+  uuid: Uuid!
+  challenge: String!
+}
+
+type CaptchaChallengeRecord {
+  uuid: Uuid!
+  properResponse: String!
+}
+
+type CaptchaChallengeRecordAgg {
+  uuid: UuidAgg
+  properResponse: StringAgg
+}
+
+input CaptchaChallengeRecordCreationInput {
+  uuid: Uuid
+  properResponse: String!
+}
+
+input CaptchaChallengeRecordFilter {
+  uuid: UuidFilter
+  properResponse: StringFilter
+  and: [CaptchaChallengeRecordFilter!]
+  or: [CaptchaChallengeRecordFilter!]
+  not: CaptchaChallengeRecordFilter
+}
+
+input CaptchaChallengeRecordOrdering {
+  uuid: Ordering
+  properResponse: Ordering
+}
+
+input CaptchaChallengeRecordUpdateInput {
+  uuid: Uuid
+  properResponse: String
+}
+
+type Comment {
+  id: Int!
+  text: String!
+}
+
+type CommentAgg {
+  id: IntAgg
+  text: StringAgg
+}
+
+input CommentCreationInput {
+  text: String!
+}
+
+input CommentFilter {
+  id: IntFilter
+  text: StringFilter
+  and: [CommentFilter!]
+  or: [CommentFilter!]
+  not: CommentFilter
+}
+
+input CommentOrdering {
+  id: Ordering
+  text: Ordering
+}
+
+input CommentUpdateInput {
+  id: Int
+  text: String
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+scalar Uuid
+
+type UuidAgg {
+  count: Int
+}
+
+input UuidFilter {
+  eq: Uuid
+  neq: Uuid
+}
+
+type Query {
+  captchaChallengeRecord(uuid: Uuid!): CaptchaChallengeRecord
+  captchaChallengeRecords(where: CaptchaChallengeRecordFilter, orderBy: [CaptchaChallengeRecordOrdering!], limit: Int, offset: Int): [CaptchaChallengeRecord!]!
+  captchaChallengeRecordsAgg(where: CaptchaChallengeRecordFilter): CaptchaChallengeRecordAgg!
+  comment(id: Int!): Comment
+  comments(where: CommentFilter, orderBy: [CommentOrdering!], limit: Int, offset: Int): [Comment!]!
+  commentsAgg(where: CommentFilter): CommentAgg!
+  getChallenge: CaptchaChallenge!
+  verifyCaptcha: Boolean!
+}
+
+type Mutation {
+  createCaptchaChallengeRecord(data: CaptchaChallengeRecordCreationInput!): CaptchaChallengeRecord!
+  createCaptchaChallengeRecords(data: [CaptchaChallengeRecordCreationInput!]!): [CaptchaChallengeRecord!]!
+  createComment(data: CommentCreationInput!): Comment!
+  createComments(data: [CommentCreationInput!]!): [Comment!]!
+  deleteCaptchaChallengeRecord(uuid: Uuid!): CaptchaChallengeRecord
+  deleteCaptchaChallengeRecords(where: CaptchaChallengeRecordFilter): [CaptchaChallengeRecord!]!
+  deleteComment(id: Int!): Comment
+  deleteComments(where: CommentFilter): [Comment!]!
+  updateCaptchaChallengeRecord(uuid: Uuid!, data: CaptchaChallengeRecordUpdateInput!): CaptchaChallengeRecord
+  updateCaptchaChallengeRecords(where: CaptchaChallengeRecordFilter, data: CaptchaChallengeRecordUpdateInput!): [CaptchaChallengeRecord!]!
+  updateComment(id: Int!, data: CommentUpdateInput!): Comment
+  updateComments(where: CommentFilter, data: CommentUpdateInput!): [Comment!]!
+}
