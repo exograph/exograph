@@ -1,0 +1,107 @@
+type DivisionResult {
+  quotient: Int!
+  remainder: Int!
+}
+
+type Foo {
+  id: Int!
+  bar: Int!
+  baz: Int!
+  qux: Int!
+}
+
+type FooAgg {
+  id: IntAgg
+  bar: IntAgg
+  baz: IntAgg
+  qux: IntAgg
+}
+
+input FooCreationInput {
+  bar: Int!
+  baz: Int!
+  qux: Int!
+}
+
+input FooFilter {
+  id: IntFilter
+  bar: IntFilter
+  baz: IntFilter
+  qux: IntFilter
+  and: [FooFilter!]
+  or: [FooFilter!]
+  not: FooFilter
+}
+
+input FooOrdering {
+  id: Ordering
+  bar: Ordering
+  baz: Ordering
+  qux: Ordering
+}
+
+input FooUpdateInput {
+  id: Int
+  bar: Int
+  baz: Int
+  qux: Int
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Todo {
+  id: Int!
+  userId: Int!
+  title: String!
+  completed: Boolean!
+}
+
+type Todos {
+  items: [Todo!]!
+  totalCount: Int!
+}
+
+type Query {
+  add(x: Int!, y: Int!): Int!
+  asyncDivide(x: Int!, y: Int!): DivisionResult!
+  currentUnixEpoch: Int!
+  divide(x: Int!, y: Int!): DivisionResult!
+  foo(id: Int!): Foo
+  foos(where: FooFilter, orderBy: [FooOrdering!], limit: Int, offset: Int): [Foo!]!
+  foosAgg(where: FooFilter): FooAgg!
+  shimQuery: Int!
+  todo(id: Int!): Todo!
+  todos: Todos!
+}
+
+type Mutation {
+  createFoo(data: FooCreationInput!): Foo!
+  createFoos(data: [FooCreationInput!]!): [Foo!]!
+  deleteFoo(id: Int!): Foo
+  deleteFoos(where: FooFilter): [Foo!]!
+  illegalFunction: String!
+  publishFoo: Foo!
+  testMutation: Float!
+  updateFoo(id: Int!, data: FooUpdateInput!): Foo
+  updateFoos(where: FooFilter, data: FooUpdateInput!): [Foo!]!
+}

@@ -1,0 +1,137 @@
+type Department {
+  id: Int!
+  name: String!
+}
+
+type DepartmentAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input DepartmentCreationInput {
+  name: String!
+}
+
+input DepartmentFilter {
+  id: IntFilter
+  name: StringFilter
+  and: [DepartmentFilter!]
+  or: [DepartmentFilter!]
+  not: DepartmentFilter
+}
+
+input DepartmentOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input DepartmentReferenceInput {
+  id: Int!
+}
+
+input DepartmentUpdateInput {
+  id: Int
+  name: String
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Product {
+  id: Int!
+  name: String!
+  department: Department!
+}
+
+type ProductAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input ProductCreationInput {
+  name: String!
+  department: DepartmentReferenceInput!
+}
+
+input ProductFilter {
+  id: IntFilter
+  name: StringFilter
+  department: DepartmentFilter
+  and: [ProductFilter!]
+  or: [ProductFilter!]
+  not: ProductFilter
+}
+
+input ProductOrdering {
+  id: Ordering
+  name: Ordering
+  department: [DepartmentOrdering!]
+}
+
+input ProductUpdateInput {
+  id: Int
+  name: String
+  department: DepartmentReferenceInput
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  department(id: Int!): Department
+  departments(where: DepartmentFilter, orderBy: [DepartmentOrdering!], limit: Int, offset: Int): [Department!]!
+  departmentsAgg(where: DepartmentFilter): DepartmentAgg!
+  product(id: Int!): Product
+  products(where: ProductFilter, orderBy: [ProductOrdering!], limit: Int, offset: Int): [Product!]!
+  productsAgg(where: ProductFilter): ProductAgg!
+}
+
+type Mutation {
+  createDepartment(data: DepartmentCreationInput!): Department!
+  createDepartments(data: [DepartmentCreationInput!]!): [Department!]!
+  createProduct(data: ProductCreationInput!): Product!
+  createProducts(data: [ProductCreationInput!]!): [Product!]!
+  deleteDepartment(id: Int!): Department
+  deleteDepartments(where: DepartmentFilter): [Department!]!
+  deleteProduct(id: Int!): Product
+  deleteProducts(where: ProductFilter): [Product!]!
+  updateDepartment(id: Int!, data: DepartmentUpdateInput!): Department
+  updateDepartments(where: DepartmentFilter, data: DepartmentUpdateInput!): [Department!]!
+  updateProduct(id: Int!, data: ProductUpdateInput!): Product
+  updateProducts(where: ProductFilter, data: ProductUpdateInput!): [Product!]!
+}

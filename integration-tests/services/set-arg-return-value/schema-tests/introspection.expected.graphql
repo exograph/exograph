@@ -1,0 +1,15 @@
+input Message {
+  text: String!
+}
+
+type Question {
+  content: String!
+}
+
+scalar Uuid
+
+type Query {
+  chat(messages: [Message!]!): String!
+  generateQuestions(projectId: Uuid!): [Question!]!
+  initialQuestion(projectId: Uuid!): Question!
+}

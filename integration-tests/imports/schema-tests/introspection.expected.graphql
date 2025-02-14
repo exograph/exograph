@@ -1,0 +1,225 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type MailingList {
+  id: Int!
+  email_address: String!
+  subscriptions(where: UserSubscriptionFilter, orderBy: [UserSubscriptionOrdering!], limit: Int, offset: Int): [UserSubscription!]
+  subscriptionsAgg(where: UserSubscriptionFilter): UserSubscriptionAgg
+}
+
+type MailingListAgg {
+  id: IntAgg
+  email_address: StringAgg
+}
+
+input MailingListCreationInput {
+  email_address: String!
+  subscriptions: [UserSubscriptionCreationInputFromMailingList!]
+}
+
+input MailingListFilter {
+  id: IntFilter
+  email_address: StringFilter
+  subscriptions: UserSubscriptionFilter
+  and: [MailingListFilter!]
+  or: [MailingListFilter!]
+  not: MailingListFilter
+}
+
+input MailingListOrdering {
+  id: Ordering
+  email_address: Ordering
+}
+
+input MailingListReferenceInput {
+  id: Int!
+}
+
+input MailingListUpdateInput {
+  id: Int
+  email_address: String
+  subscriptions: UserSubscriptionUpdateInputFromMailingList
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  username: String!
+  subscribed_lists(where: UserSubscriptionFilter, orderBy: [UserSubscriptionOrdering!], limit: Int, offset: Int): [UserSubscription!]
+  subscribed_listsAgg(where: UserSubscriptionFilter): UserSubscriptionAgg
+}
+
+type UserAgg {
+  id: IntAgg
+  username: StringAgg
+}
+
+input UserCreationInput {
+  username: String!
+  subscribed_lists: [UserSubscriptionCreationInputFromUser!]
+}
+
+input UserFilter {
+  id: IntFilter
+  username: StringFilter
+  subscribed_lists: UserSubscriptionFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  username: Ordering
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+type UserSubscription {
+  id: Int!
+  user: User!
+  mailing_list: MailingList!
+}
+
+type UserSubscriptionAgg {
+  id: IntAgg
+}
+
+input UserSubscriptionCreationInput {
+  user: UserReferenceInput!
+  mailing_list: MailingListReferenceInput!
+}
+
+input UserSubscriptionCreationInputFromMailingList {
+  user: UserReferenceInput!
+}
+
+input UserSubscriptionCreationInputFromUser {
+  mailing_list: MailingListReferenceInput!
+}
+
+input UserSubscriptionFilter {
+  id: IntFilter
+  user: UserFilter
+  mailing_list: MailingListFilter
+  and: [UserSubscriptionFilter!]
+  or: [UserSubscriptionFilter!]
+  not: UserSubscriptionFilter
+}
+
+input UserSubscriptionOrdering {
+  id: Ordering
+  user: [UserOrdering!]
+  mailing_list: [MailingListOrdering!]
+}
+
+input UserSubscriptionReferenceInput {
+  id: Int!
+}
+
+input UserSubscriptionUpdateInput {
+  id: Int
+  user: UserReferenceInput
+  mailing_list: MailingListReferenceInput
+}
+
+input UserSubscriptionUpdateInputFromMailingList {
+  create: [UserSubscriptionCreationInputFromMailingList!]
+  update: [UserSubscriptionUpdateInputFromMailingListNested!]
+  delete: [UserSubscriptionReferenceInput!]
+}
+
+input UserSubscriptionUpdateInputFromMailingListNested {
+  id: Int!
+  user: UserReferenceInput
+}
+
+input UserSubscriptionUpdateInputFromUser {
+  create: [UserSubscriptionCreationInputFromUser!]
+  update: [UserSubscriptionUpdateInputFromUserNested!]
+  delete: [UserSubscriptionReferenceInput!]
+}
+
+input UserSubscriptionUpdateInputFromUserNested {
+  id: Int!
+  mailing_list: MailingListReferenceInput
+}
+
+input UserUpdateInput {
+  id: Int
+  username: String
+  subscribed_lists: UserSubscriptionUpdateInputFromUser
+}
+
+type Query {
+  mailingList(id: Int!): MailingList
+  mailingLists(where: MailingListFilter, orderBy: [MailingListOrdering!], limit: Int, offset: Int): [MailingList!]!
+  mailingListsAgg(where: MailingListFilter): MailingListAgg!
+  user(id: Int!): User
+  userSubscription(id: Int!): UserSubscription
+  userSubscriptions(where: UserSubscriptionFilter, orderBy: [UserSubscriptionOrdering!], limit: Int, offset: Int): [UserSubscription!]!
+  userSubscriptionsAgg(where: UserSubscriptionFilter): UserSubscriptionAgg!
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createMailingList(data: MailingListCreationInput!): MailingList!
+  createMailingLists(data: [MailingListCreationInput!]!): [MailingList!]!
+  createUser(data: UserCreationInput!): User!
+  createUserSubscription(data: UserSubscriptionCreationInput!): UserSubscription!
+  createUserSubscriptions(data: [UserSubscriptionCreationInput!]!): [UserSubscription!]!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteMailingList(id: Int!): MailingList
+  deleteMailingLists(where: MailingListFilter): [MailingList!]!
+  deleteUser(id: Int!): User
+  deleteUserSubscription(id: Int!): UserSubscription
+  deleteUserSubscriptions(where: UserSubscriptionFilter): [UserSubscription!]!
+  deleteUsers(where: UserFilter): [User!]!
+  updateMailingList(id: Int!, data: MailingListUpdateInput!): MailingList
+  updateMailingLists(where: MailingListFilter, data: MailingListUpdateInput!): [MailingList!]!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUserSubscription(id: Int!, data: UserSubscriptionUpdateInput!): UserSubscription
+  updateUserSubscriptions(where: UserSubscriptionFilter, data: UserSubscriptionUpdateInput!): [UserSubscription!]!
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

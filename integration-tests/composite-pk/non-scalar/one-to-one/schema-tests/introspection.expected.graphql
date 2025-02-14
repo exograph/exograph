@@ -1,0 +1,170 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Profile {
+  user: User!
+  name: String!
+}
+
+type ProfileAgg {
+  user: UserAgg
+  name: StringAgg
+}
+
+input ProfileCreationInput {
+  user: UserReferenceInput!
+  name: String!
+}
+
+input ProfileCreationInputFromUser {
+  name: String!
+}
+
+input ProfileFilter {
+  user: UserFilter
+  name: StringFilter
+  and: [ProfileFilter!]
+  or: [ProfileFilter!]
+  not: ProfileFilter
+}
+
+input ProfileOrdering {
+  user: [UserOrdering!]
+  name: Ordering
+}
+
+input ProfileReferenceInput {
+  user: UserReferenceInput!
+}
+
+input ProfileUpdateInput {
+  user: UserReferenceInput
+  name: String
+}
+
+input ProfileUpdateInputFromUser {
+  create: [ProfileCreationInputFromUser!]
+  update: [ProfileUpdateInputFromUserNested!]
+  delete: [ProfileReferenceInput!]
+}
+
+input ProfileUpdateInputFromUserNested {
+  name: String
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  orgId: Int!
+  email: String!
+  phone: String
+  profile(where: ProfileFilter, orderBy: [ProfileOrdering!], limit: Int, offset: Int): Profile
+}
+
+type UserAgg {
+  orgId: IntAgg
+  email: StringAgg
+  phone: StringAgg
+}
+
+input UserCreationInput {
+  orgId: Int!
+  email: String!
+  phone: String
+  profile: [ProfileCreationInputFromUser!]
+}
+
+input UserFilter {
+  orgId: IntFilter
+  email: StringFilter
+  phone: StringFilter
+  profile: ProfileFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  orgId: Ordering
+  email: Ordering
+  phone: Ordering
+  profile: [ProfileOrdering!]
+}
+
+input UserReferenceInput {
+  orgId: Int!
+  email: String!
+}
+
+input UserUniqueFilter {
+  orgId: Int!
+  email: String!
+}
+
+input UserUpdateInput {
+  orgId: Int
+  email: String
+  phone: String
+  profile: ProfileUpdateInputFromUser
+}
+
+type Query {
+  profile(user: UserUniqueFilter!): Profile
+  profileByUser(user: UserUniqueFilter!): Profile
+  profiles(where: ProfileFilter, orderBy: [ProfileOrdering!], limit: Int, offset: Int): [Profile!]!
+  profilesAgg(where: ProfileFilter): ProfileAgg!
+  user(orgId: Int!, email: String!): User
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createProfile(data: ProfileCreationInput!): Profile!
+  createProfiles(data: [ProfileCreationInput!]!): [Profile!]!
+  createUser(data: UserCreationInput!): User!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteProfile(user: UserUniqueFilter!): Profile
+  deleteProfiles(where: ProfileFilter): [Profile!]!
+  deleteUser(orgId: Int!, email: String!): User
+  deleteUsers(where: UserFilter): [User!]!
+  updateProfile(user: UserUniqueFilter!, data: ProfileUpdateInput!): Profile
+  updateProfiles(where: ProfileFilter, data: ProfileUpdateInput!): [Profile!]!
+  updateUser(orgId: Int!, email: String!, data: UserUpdateInput!): User
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

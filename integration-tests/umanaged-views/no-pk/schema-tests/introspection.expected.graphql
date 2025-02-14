@@ -1,0 +1,162 @@
+type FloatAgg {
+  min: Float
+  max: Float
+  sum: Float
+  avg: Float
+  count: Int
+}
+
+input FloatFilter {
+  eq: Float
+  neq: Float
+  lt: Float
+  lte: Float
+  gt: Float
+  gte: Float
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Product {
+  id: Int!
+  name: String!
+  salePrice: Float!
+  purchasePrice: Float!
+}
+
+type ProductAgg {
+  id: IntAgg
+  name: StringAgg
+  salePrice: FloatAgg
+  purchasePrice: FloatAgg
+}
+
+input ProductCreationInput {
+  name: String!
+  salePrice: Float!
+  purchasePrice: Float!
+}
+
+input ProductFilter {
+  id: IntFilter
+  name: StringFilter
+  salePrice: FloatFilter
+  purchasePrice: FloatFilter
+  and: [ProductFilter!]
+  or: [ProductFilter!]
+  not: ProductFilter
+}
+
+input ProductOrdering {
+  id: Ordering
+  name: Ordering
+  salePrice: Ordering
+  purchasePrice: Ordering
+}
+
+type ProductProfit {
+  id: Int!
+  name: String!
+  salePrice: Float!
+  purchasePrice: Float!
+  profit: Float!
+}
+
+type ProductProfitAgg {
+  id: IntAgg
+  name: StringAgg
+  salePrice: FloatAgg
+  purchasePrice: FloatAgg
+  profit: FloatAgg
+}
+
+input ProductProfitFilter {
+  id: IntFilter
+  name: StringFilter
+  salePrice: FloatFilter
+  purchasePrice: FloatFilter
+  profit: FloatFilter
+  and: [ProductProfitFilter!]
+  or: [ProductProfitFilter!]
+  not: ProductProfitFilter
+}
+
+input ProductProfitOrdering {
+  id: Ordering
+  name: Ordering
+  salePrice: Ordering
+  purchasePrice: Ordering
+  profit: Ordering
+}
+
+input ProductProfitUpdateInput {
+  id: Int
+  name: String
+  salePrice: Float
+  purchasePrice: Float
+}
+
+input ProductUpdateInput {
+  id: Int
+  name: String
+  salePrice: Float
+  purchasePrice: Float
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  product(id: Int!): Product
+  productProfits(where: ProductProfitFilter, orderBy: [ProductProfitOrdering!], limit: Int, offset: Int): [ProductProfit!]!
+  productProfitsAgg(where: ProductProfitFilter): ProductProfitAgg!
+  products(where: ProductFilter, orderBy: [ProductOrdering!], limit: Int, offset: Int): [Product!]!
+  productsAgg(where: ProductFilter): ProductAgg!
+}
+
+type Mutation {
+  createProduct(data: ProductCreationInput!): Product!
+  createProducts(data: [ProductCreationInput!]!): [Product!]!
+  deleteProduct(id: Int!): Product
+  deleteProductProfits(where: ProductProfitFilter): [ProductProfit!]!
+  deleteProducts(where: ProductFilter): [Product!]!
+  updateProduct(id: Int!, data: ProductUpdateInput!): Product
+  updateProductProfits(where: ProductProfitFilter, data: ProductProfitUpdateInput!): [ProductProfit!]!
+  updateProducts(where: ProductFilter, data: ProductUpdateInput!): [Product!]!
+}

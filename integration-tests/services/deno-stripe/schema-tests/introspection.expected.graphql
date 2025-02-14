@@ -1,0 +1,7 @@
+type Query {
+  fake: String!
+}
+
+type Mutation {
+  create_customer(email: String!): String!
+}

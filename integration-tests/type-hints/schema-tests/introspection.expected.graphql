@@ -1,0 +1,111 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Video {
+  id: Int!
+  name: String!
+  slug: String!
+  nonce: Int!
+  views: Int!
+  filesize: Int!
+}
+
+type VideoAgg {
+  id: IntAgg
+  name: StringAgg
+  slug: StringAgg
+  nonce: IntAgg
+  views: IntAgg
+  filesize: IntAgg
+}
+
+input VideoCreationInput {
+  name: String!
+  slug: String!
+  nonce: Int!
+  views: Int!
+  filesize: Int!
+}
+
+input VideoFilter {
+  id: IntFilter
+  name: StringFilter
+  slug: StringFilter
+  nonce: IntFilter
+  views: IntFilter
+  filesize: IntFilter
+  and: [VideoFilter!]
+  or: [VideoFilter!]
+  not: VideoFilter
+}
+
+input VideoOrdering {
+  id: Ordering
+  name: Ordering
+  slug: Ordering
+  nonce: Ordering
+  views: Ordering
+  filesize: Ordering
+}
+
+input VideoUpdateInput {
+  id: Int
+  name: String
+  slug: String
+  nonce: Int
+  views: Int
+  filesize: Int
+}
+
+type Query {
+  video(id: Int!): Video
+  videos(where: VideoFilter, orderBy: [VideoOrdering!], limit: Int, offset: Int): [Video!]!
+  videosAgg(where: VideoFilter): VideoAgg!
+}
+
+type Mutation {
+  createVideo(data: VideoCreationInput!): Video!
+  createVideos(data: [VideoCreationInput!]!): [Video!]!
+  deleteVideo(id: Int!): Video
+  deleteVideos(where: VideoFilter): [Video!]!
+  updateVideo(id: Int!, data: VideoUpdateInput!): Video
+  updateVideos(where: VideoFilter, data: VideoUpdateInput!): [Video!]!
+}

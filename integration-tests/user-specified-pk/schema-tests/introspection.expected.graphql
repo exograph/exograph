@@ -1,0 +1,164 @@
+type Department {
+  id: String!
+  name: String!
+  products(where: ProductFilter, orderBy: [ProductOrdering!], limit: Int, offset: Int): [Product!]
+  productsAgg(where: ProductFilter): ProductAgg
+}
+
+type DepartmentAgg {
+  id: StringAgg
+  name: StringAgg
+}
+
+input DepartmentCreationInput {
+  id: String!
+  name: String!
+  products: [ProductCreationInputFromDepartment!]
+}
+
+input DepartmentFilter {
+  id: StringFilter
+  name: StringFilter
+  products: ProductFilter
+  and: [DepartmentFilter!]
+  or: [DepartmentFilter!]
+  not: DepartmentFilter
+}
+
+input DepartmentOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input DepartmentReferenceInput {
+  id: String!
+}
+
+input DepartmentUpdateInput {
+  id: String
+  name: String
+  products: ProductUpdateInputFromDepartment
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Product {
+  id: Int!
+  title: String!
+  department: Department!
+}
+
+type ProductAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+input ProductCreationInput {
+  id: Int!
+  title: String!
+  department: DepartmentReferenceInput!
+}
+
+input ProductCreationInputFromDepartment {
+  id: Int!
+  title: String!
+}
+
+input ProductFilter {
+  id: IntFilter
+  title: StringFilter
+  department: DepartmentFilter
+  and: [ProductFilter!]
+  or: [ProductFilter!]
+  not: ProductFilter
+}
+
+input ProductOrdering {
+  id: Ordering
+  title: Ordering
+  department: [DepartmentOrdering!]
+}
+
+input ProductReferenceInput {
+  id: Int!
+}
+
+input ProductUpdateInput {
+  id: Int
+  title: String
+  department: DepartmentReferenceInput
+}
+
+input ProductUpdateInputFromDepartment {
+  create: [ProductCreationInputFromDepartment!]
+  update: [ProductUpdateInputFromDepartmentNested!]
+  delete: [ProductReferenceInput!]
+}
+
+input ProductUpdateInputFromDepartmentNested {
+  id: String!
+  title: String
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  department(id: String!): Department
+  departments(where: DepartmentFilter, orderBy: [DepartmentOrdering!], limit: Int, offset: Int): [Department!]!
+  departmentsAgg(where: DepartmentFilter): DepartmentAgg!
+  product(id: Int!): Product
+  products(where: ProductFilter, orderBy: [ProductOrdering!], limit: Int, offset: Int): [Product!]!
+  productsAgg(where: ProductFilter): ProductAgg!
+}
+
+type Mutation {
+  createDepartment(data: DepartmentCreationInput!): Department!
+  createDepartments(data: [DepartmentCreationInput!]!): [Department!]!
+  createProduct(data: ProductCreationInput!): Product!
+  createProducts(data: [ProductCreationInput!]!): [Product!]!
+  deleteDepartment(id: String!): Department
+  deleteDepartments(where: DepartmentFilter): [Department!]!
+  deleteProduct(id: Int!): Product
+  deleteProducts(where: ProductFilter): [Product!]!
+  updateDepartment(id: String!, data: DepartmentUpdateInput!): Department
+  updateDepartments(where: DepartmentFilter, data: DepartmentUpdateInput!): [Department!]!
+  updateProduct(id: Int!, data: ProductUpdateInput!): Product
+  updateProducts(where: ProductFilter, data: ProductUpdateInput!): [Product!]!
+}

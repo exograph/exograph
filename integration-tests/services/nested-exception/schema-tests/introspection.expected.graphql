@@ -1,0 +1,5 @@
+type Query {
+  callThrowExographError: Int!
+  callThrowExographErrorPriv: Int!
+  throwExographError: Int!
+}

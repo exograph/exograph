@@ -1,0 +1,166 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type Document {
+  id: Int!
+  title: String!
+  ownerId: Int!
+}
+
+type DocumentAgg {
+  id: IntAgg
+  title: StringAgg
+  ownerId: IntAgg
+}
+
+input DocumentCreationInput {
+  title: String!
+}
+
+input DocumentFilter {
+  id: IntFilter
+  title: StringFilter
+  ownerId: IntFilter
+  and: [DocumentFilter!]
+  or: [DocumentFilter!]
+  not: DocumentFilter
+}
+
+input DocumentOrdering {
+  id: Ordering
+  title: Ordering
+  ownerId: Ordering
+}
+
+input DocumentUpdateInput {
+  id: Int
+  title: String
+}
+
+scalar Instant
+
+type InstantAgg {
+  count: Int
+}
+
+input InstantFilter {
+  eq: Instant
+  neq: Instant
+  lt: Instant
+  lte: Instant
+  gt: Instant
+  gte: Instant
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Todo {
+  id: Int!
+  title: String!
+  completed: Boolean!
+  createdAt: Instant!
+}
+
+type TodoAgg {
+  id: IntAgg
+  title: StringAgg
+  completed: BooleanAgg
+  createdAt: InstantAgg
+}
+
+input TodoCreationInput {
+  title: String!
+  completed: Boolean!
+}
+
+input TodoFilter {
+  id: IntFilter
+  title: StringFilter
+  completed: BooleanFilter
+  createdAt: InstantFilter
+  and: [TodoFilter!]
+  or: [TodoFilter!]
+  not: TodoFilter
+}
+
+input TodoOrdering {
+  id: Ordering
+  title: Ordering
+  completed: Ordering
+  createdAt: Ordering
+}
+
+input TodoUpdateInput {
+  id: Int
+  title: String
+  completed: Boolean
+}
+
+type Query {
+  document(id: Int!): Document
+  documents(where: DocumentFilter, orderBy: [DocumentOrdering!], limit: Int, offset: Int): [Document!]!
+  documentsAgg(where: DocumentFilter): DocumentAgg!
+  todo(id: Int!): Todo
+  todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+  todosAgg(where: TodoFilter): TodoAgg!
+}
+
+type Mutation {
+  createDocument(data: DocumentCreationInput!): Document!
+  createDocuments(data: [DocumentCreationInput!]!): [Document!]!
+  createTodo(data: TodoCreationInput!): Todo!
+  createTodos(data: [TodoCreationInput!]!): [Todo!]!
+  deleteDocument(id: Int!): Document
+  deleteDocuments(where: DocumentFilter): [Document!]!
+  deleteTodo(id: Int!): Todo
+  deleteTodos(where: TodoFilter): [Todo!]!
+  updateDocument(id: Int!, data: DocumentUpdateInput!): Document
+  updateDocuments(where: DocumentFilter, data: DocumentUpdateInput!): [Document!]!
+  updateTodo(id: Int!, data: TodoUpdateInput!): Todo
+  updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
+}

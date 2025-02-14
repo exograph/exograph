@@ -1,0 +1,88 @@
+type Concert {
+  id: Int!
+  title: String!
+}
+
+type ConcertAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+input ConcertFilter {
+  id: IntFilter
+  title: StringFilter
+  and: [ConcertFilter!]
+  or: [ConcertFilter!]
+  not: ConcertFilter
+}
+
+input ConcertOrdering {
+  id: Ordering
+  title: Ordering
+}
+
+type DivisionResultFullAccess {
+  quotient: Int!
+  remainder: Int!
+}
+
+type DivisionResultNoAccess {
+  quotient: Int!
+  remainder: Int!
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  concert(id: Int!): Concert
+  concerts(where: ConcertFilter, orderBy: [ConcertOrdering!], limit: Int, offset: Int): [Concert!]!
+  concertsAgg(where: ConcertFilter): ConcertAgg!
+  divide(a: Int!, b: Int!): DivisionResultFullAccess!
+  divideFullAccess(a: Int!, b: Int!): DivisionResultNoAccess!
+  divideNoAccess(a: Int!, b: Int!): DivisionResultFullAccess!
+}
+
+type Mutation {
+  divideFullAccessMutation(a: Int!, b: Int!): DivisionResultNoAccess!
+  divideMutation(a: Int!, b: Int!): DivisionResultFullAccess!
+  divideNoAccessMutation(a: Int!, b: Int!): DivisionResultFullAccess!
+}

@@ -1,0 +1,140 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+scalar Instant
+
+type InstantAgg {
+  count: Int
+}
+
+input InstantFilter {
+  eq: Instant
+  neq: Instant
+  lt: Instant
+  lte: Instant
+  gt: Instant
+  gte: Instant
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Todo {
+  id: Int!
+  title: String!
+  completed: Boolean!
+  modificationId: Uuid!
+  updatedAt: Instant!
+  updatedAt2: Instant!
+}
+
+type TodoAgg {
+  id: IntAgg
+  title: StringAgg
+  completed: BooleanAgg
+  modificationId: UuidAgg
+  updatedAt: InstantAgg
+  updatedAt2: InstantAgg
+}
+
+input TodoCreationInput {
+  title: String!
+  completed: Boolean!
+}
+
+input TodoFilter {
+  id: IntFilter
+  title: StringFilter
+  completed: BooleanFilter
+  modificationId: UuidFilter
+  updatedAt: InstantFilter
+  updatedAt2: InstantFilter
+  and: [TodoFilter!]
+  or: [TodoFilter!]
+  not: TodoFilter
+}
+
+input TodoOrdering {
+  id: Ordering
+  title: Ordering
+  completed: Ordering
+  modificationId: Ordering
+  updatedAt: Ordering
+  updatedAt2: Ordering
+}
+
+input TodoUpdateInput {
+  id: Int
+  title: String
+  completed: Boolean
+}
+
+scalar Uuid
+
+type UuidAgg {
+  count: Int
+}
+
+input UuidFilter {
+  eq: Uuid
+  neq: Uuid
+}
+
+type Query {
+  todo(id: Int!): Todo
+  todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+  todosAgg(where: TodoFilter): TodoAgg!
+}
+
+type Mutation {
+  createTodo(data: TodoCreationInput!): Todo!
+  createTodos(data: [TodoCreationInput!]!): [Todo!]!
+  deleteTodo(id: Int!): Todo
+  deleteTodos(where: TodoFilter): [Todo!]!
+  updateTodo(id: Int!, data: TodoUpdateInput!): Todo
+  updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
+}

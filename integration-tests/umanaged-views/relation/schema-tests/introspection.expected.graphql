@@ -1,0 +1,284 @@
+type Department {
+  id: Int!
+  name: String!
+  products(where: ProductFilter, orderBy: [ProductOrdering!], limit: Int, offset: Int): [Product!]
+  productProfits(where: ProductProfitFilter, orderBy: [ProductProfitOrdering!], limit: Int, offset: Int): [ProductProfit!]
+  productsAgg(where: ProductFilter): ProductAgg
+  productProfitsAgg(where: ProductProfitFilter): ProductProfitAgg
+}
+
+type DepartmentAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input DepartmentCreationInput {
+  name: String!
+  products: [ProductCreationInputFromDepartment!]
+  productProfits: [ProductProfitCreationInputFromDepartment!]
+}
+
+input DepartmentFilter {
+  id: IntFilter
+  name: StringFilter
+  products: ProductFilter
+  productProfits: ProductProfitFilter
+  and: [DepartmentFilter!]
+  or: [DepartmentFilter!]
+  not: DepartmentFilter
+}
+
+input DepartmentOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input DepartmentReferenceInput {
+  id: Int!
+}
+
+input DepartmentUpdateInput {
+  id: Int
+  name: String
+  products: ProductUpdateInputFromDepartment
+  productProfits: ProductProfitUpdateInputFromDepartment
+}
+
+type FloatAgg {
+  min: Float
+  max: Float
+  sum: Float
+  avg: Float
+  count: Int
+}
+
+input FloatFilter {
+  eq: Float
+  neq: Float
+  lt: Float
+  lte: Float
+  gt: Float
+  gte: Float
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Product {
+  id: Int!
+  name: String!
+  salePrice: Float!
+  purchasePrice: Float!
+  department: Department!
+}
+
+type ProductAgg {
+  id: IntAgg
+  name: StringAgg
+  salePrice: FloatAgg
+  purchasePrice: FloatAgg
+}
+
+input ProductCreationInput {
+  name: String!
+  salePrice: Float!
+  purchasePrice: Float!
+  department: DepartmentReferenceInput!
+}
+
+input ProductCreationInputFromDepartment {
+  name: String!
+  salePrice: Float!
+  purchasePrice: Float!
+}
+
+input ProductFilter {
+  id: IntFilter
+  name: StringFilter
+  salePrice: FloatFilter
+  purchasePrice: FloatFilter
+  department: DepartmentFilter
+  and: [ProductFilter!]
+  or: [ProductFilter!]
+  not: ProductFilter
+}
+
+input ProductOrdering {
+  id: Ordering
+  name: Ordering
+  salePrice: Ordering
+  purchasePrice: Ordering
+  department: [DepartmentOrdering!]
+}
+
+type ProductProfit {
+  id: Int!
+  name: String!
+  salePrice: Float!
+  purchasePrice: Float!
+  profit: Float!
+  department: Department!
+}
+
+type ProductProfitAgg {
+  id: IntAgg
+  name: StringAgg
+  salePrice: FloatAgg
+  purchasePrice: FloatAgg
+  profit: FloatAgg
+}
+
+input ProductProfitCreationInput {
+  name: String!
+  salePrice: Float!
+  purchasePrice: Float!
+  department: DepartmentReferenceInput!
+}
+
+input ProductProfitCreationInputFromDepartment {
+  name: String!
+  salePrice: Float!
+  purchasePrice: Float!
+}
+
+input ProductProfitFilter {
+  id: IntFilter
+  name: StringFilter
+  salePrice: FloatFilter
+  purchasePrice: FloatFilter
+  profit: FloatFilter
+  department: DepartmentFilter
+  and: [ProductProfitFilter!]
+  or: [ProductProfitFilter!]
+  not: ProductProfitFilter
+}
+
+input ProductProfitOrdering {
+  id: Ordering
+  name: Ordering
+  salePrice: Ordering
+  purchasePrice: Ordering
+  profit: Ordering
+  department: [DepartmentOrdering!]
+}
+
+input ProductProfitReferenceInput {
+  id: Int!
+}
+
+input ProductProfitUpdateInput {
+  id: Int
+  name: String
+  salePrice: Float
+  purchasePrice: Float
+  department: DepartmentReferenceInput
+}
+
+input ProductProfitUpdateInputFromDepartment {
+  create: [ProductProfitCreationInputFromDepartment!]
+  update: [ProductProfitUpdateInputFromDepartmentNested!]
+  delete: [ProductProfitReferenceInput!]
+}
+
+input ProductProfitUpdateInputFromDepartmentNested {
+  id: Int!
+  name: String
+  salePrice: Float
+  purchasePrice: Float
+}
+
+input ProductReferenceInput {
+  id: Int!
+}
+
+input ProductUpdateInput {
+  id: Int
+  name: String
+  salePrice: Float
+  purchasePrice: Float
+  department: DepartmentReferenceInput
+}
+
+input ProductUpdateInputFromDepartment {
+  create: [ProductCreationInputFromDepartment!]
+  update: [ProductUpdateInputFromDepartmentNested!]
+  delete: [ProductReferenceInput!]
+}
+
+input ProductUpdateInputFromDepartmentNested {
+  id: Int!
+  name: String
+  salePrice: Float
+  purchasePrice: Float
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  department(id: Int!): Department
+  departments(where: DepartmentFilter, orderBy: [DepartmentOrdering!], limit: Int, offset: Int): [Department!]!
+  departmentsAgg(where: DepartmentFilter): DepartmentAgg!
+  product(id: Int!): Product
+  productProfit(id: Int!): ProductProfit
+  productProfits(where: ProductProfitFilter, orderBy: [ProductProfitOrdering!], limit: Int, offset: Int): [ProductProfit!]!
+  productProfitsAgg(where: ProductProfitFilter): ProductProfitAgg!
+  products(where: ProductFilter, orderBy: [ProductOrdering!], limit: Int, offset: Int): [Product!]!
+  productsAgg(where: ProductFilter): ProductAgg!
+}
+
+type Mutation {
+  createDepartment(data: DepartmentCreationInput!): Department!
+  createDepartments(data: [DepartmentCreationInput!]!): [Department!]!
+  createProduct(data: ProductCreationInput!): Product!
+  createProductProfit(data: ProductProfitCreationInput!): ProductProfit!
+  createProductProfits(data: [ProductProfitCreationInput!]!): [ProductProfit!]!
+  createProducts(data: [ProductCreationInput!]!): [Product!]!
+  deleteDepartment(id: Int!): Department
+  deleteDepartments(where: DepartmentFilter): [Department!]!
+  deleteProduct(id: Int!): Product
+  deleteProductProfit(id: Int!): ProductProfit
+  deleteProductProfits(where: ProductProfitFilter): [ProductProfit!]!
+  deleteProducts(where: ProductFilter): [Product!]!
+  updateDepartment(id: Int!, data: DepartmentUpdateInput!): Department
+  updateDepartments(where: DepartmentFilter, data: DepartmentUpdateInput!): [Department!]!
+  updateProduct(id: Int!, data: ProductUpdateInput!): Product
+  updateProductProfit(id: Int!, data: ProductProfitUpdateInput!): ProductProfit
+  updateProductProfits(where: ProductProfitFilter, data: ProductProfitUpdateInput!): [ProductProfit!]!
+  updateProducts(where: ProductFilter, data: ProductUpdateInput!): [Product!]!
+}

@@ -1,0 +1,4 @@
+type Query {
+  gcd(a: Int!, b: Int!): Int!
+  lcm(a: Int!, b: Int!): Int!
+}

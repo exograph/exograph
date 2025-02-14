@@ -1,0 +1,94 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+input LogMessage {
+  level: String!
+  message: String!
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Person {
+  id: Int!
+  name: String!
+}
+
+type PersonAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input PersonCreationInput {
+  name: String!
+}
+
+input PersonFilter {
+  id: IntFilter
+  name: StringFilter
+  and: [PersonFilter!]
+  or: [PersonFilter!]
+  not: PersonFilter
+}
+
+input PersonOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input PersonUpdateInput {
+  id: Int
+  name: String
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  logger(input: LogMessage!): Boolean!
+  person(id: Int!): Person
+  persons(where: PersonFilter, orderBy: [PersonOrdering!], limit: Int, offset: Int): [Person!]!
+  personsAgg(where: PersonFilter): PersonAgg!
+}
+
+type Mutation {
+  createPerson(data: PersonCreationInput!): Person!
+  createPersons(data: [PersonCreationInput!]!): [Person!]!
+  debug(input: LogMessage!): Boolean!
+  deletePerson(id: Int!): Person
+  deletePersons(where: PersonFilter): [Person!]!
+  updatePerson(id: Int!, data: PersonUpdateInput!): Person
+  updatePersons(where: PersonFilter, data: PersonUpdateInput!): [Person!]!
+}

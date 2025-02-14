@@ -1,0 +1,88 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type ProfileMetric {
+  id: String!
+  cost: Int!
+}
+
+type ProfileMetricAgg {
+  id: StringAgg
+  cost: IntAgg
+}
+
+input ProfileMetricCreationInput {
+  id: String!
+  cost: Int!
+}
+
+input ProfileMetricFilter {
+  id: StringFilter
+  cost: IntFilter
+  and: [ProfileMetricFilter!]
+  or: [ProfileMetricFilter!]
+  not: ProfileMetricFilter
+}
+
+input ProfileMetricOrdering {
+  id: Ordering
+  cost: Ordering
+}
+
+input ProfileMetricUpdateInput {
+  id: String
+  cost: Int
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  profileMetric(id: String!): ProfileMetric
+  profileMetrics(where: ProfileMetricFilter, orderBy: [ProfileMetricOrdering!], limit: Int, offset: Int): [ProfileMetric!]!
+  profileMetricsAgg(where: ProfileMetricFilter): ProfileMetricAgg!
+}
+
+type Mutation {
+  createProfileMetric(data: ProfileMetricCreationInput!): ProfileMetric!
+  createProfileMetrics(data: [ProfileMetricCreationInput!]!): [ProfileMetric!]!
+  deleteProfileMetric(id: String!): ProfileMetric
+  deleteProfileMetrics(where: ProfileMetricFilter): [ProfileMetric!]!
+  updateProfileMetric(id: String!, data: ProfileMetricUpdateInput!): ProfileMetric
+  updateProfileMetrics(where: ProfileMetricFilter, data: ProfileMetricUpdateInput!): [ProfileMetric!]!
+}

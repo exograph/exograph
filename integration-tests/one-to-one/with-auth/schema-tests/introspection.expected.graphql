@@ -1,0 +1,166 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type Membership {
+  id: Int!
+  kind: String!
+  user: User!
+}
+
+type MembershipAgg {
+  id: IntAgg
+  kind: StringAgg
+}
+
+input MembershipCreationInput {
+  kind: String!
+  user: UserReferenceInput!
+}
+
+input MembershipCreationInputFromUser {
+  kind: String!
+}
+
+input MembershipFilter {
+  id: IntFilter
+  kind: StringFilter
+  user: UserFilter
+  and: [MembershipFilter!]
+  or: [MembershipFilter!]
+  not: MembershipFilter
+}
+
+input MembershipOrdering {
+  id: Ordering
+  kind: Ordering
+  user: [UserOrdering!]
+}
+
+input MembershipReferenceInput {
+  id: Int!
+}
+
+input MembershipUpdateInput {
+  id: Int
+  kind: String
+  user: UserReferenceInput
+}
+
+input MembershipUpdateInputFromUser {
+  create: [MembershipCreationInputFromUser!]
+  update: [MembershipUpdateInputFromUserNested!]
+  delete: [MembershipReferenceInput!]
+}
+
+input MembershipUpdateInputFromUserNested {
+  id: Int!
+  kind: String
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  name: String!
+  membership(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): Membership
+}
+
+type UserAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input UserCreationInput {
+  name: String!
+  membership: [MembershipCreationInputFromUser!]
+}
+
+input UserFilter {
+  id: IntFilter
+  name: StringFilter
+  membership: MembershipFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  name: Ordering
+  membership: [MembershipOrdering!]
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+input UserUniqueFilter {
+  id: Int!
+}
+
+input UserUpdateInput {
+  id: Int
+  name: String
+  membership: MembershipUpdateInputFromUser
+}
+
+type Query {
+  membership(id: Int!): Membership
+  membershipByUser(user: UserUniqueFilter!): Membership
+  memberships(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): [Membership!]!
+  membershipsAgg(where: MembershipFilter): MembershipAgg!
+  user(id: Int!): User
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createMembership(data: MembershipCreationInput!): Membership!
+  createMemberships(data: [MembershipCreationInput!]!): [Membership!]!
+  createUser(data: UserCreationInput!): User!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteMembership(id: Int!): Membership
+  deleteMemberships(where: MembershipFilter): [Membership!]!
+  deleteUser(id: Int!): User
+  deleteUsers(where: UserFilter): [User!]!
+  updateMembership(id: Int!, data: MembershipUpdateInput!): Membership
+  updateMemberships(where: MembershipFilter, data: MembershipUpdateInput!): [Membership!]!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

@@ -1,0 +1,254 @@
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type Document {
+  id: Int!
+  content: String!
+  permissions(where: PermissionFilter, orderBy: [PermissionOrdering!], limit: Int, offset: Int): [Permission!]
+  permissionsAgg(where: PermissionFilter): PermissionAgg
+}
+
+type DocumentAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input DocumentCreationInput {
+  content: String!
+  permissions: [PermissionCreationInputFromDocument!]
+}
+
+input DocumentFilter {
+  id: IntFilter
+  content: StringFilter
+  permissions: PermissionFilter
+  and: [DocumentFilter!]
+  or: [DocumentFilter!]
+  not: DocumentFilter
+}
+
+input DocumentOrdering {
+  id: Ordering
+  content: Ordering
+}
+
+input DocumentReferenceInput {
+  id: Int!
+}
+
+input DocumentUpdateInput {
+  id: Int
+  content: String
+  permissions: PermissionUpdateInputFromDocument
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Permission {
+  id: Int!
+  document: Document!
+  user: User!
+  read: Boolean!
+  write: Boolean!
+}
+
+type PermissionAgg {
+  id: IntAgg
+  read: BooleanAgg
+  write: BooleanAgg
+}
+
+input PermissionCreationInput {
+  document: DocumentReferenceInput!
+  user: UserReferenceInput!
+  read: Boolean!
+  write: Boolean!
+}
+
+input PermissionCreationInputFromDocument {
+  user: UserReferenceInput!
+  read: Boolean!
+  write: Boolean!
+}
+
+input PermissionCreationInputFromUser {
+  document: DocumentReferenceInput!
+  read: Boolean!
+  write: Boolean!
+}
+
+input PermissionFilter {
+  id: IntFilter
+  document: DocumentFilter
+  user: UserFilter
+  read: BooleanFilter
+  write: BooleanFilter
+  and: [PermissionFilter!]
+  or: [PermissionFilter!]
+  not: PermissionFilter
+}
+
+input PermissionOrdering {
+  id: Ordering
+  document: [DocumentOrdering!]
+  user: [UserOrdering!]
+  read: Ordering
+  write: Ordering
+}
+
+input PermissionReferenceInput {
+  id: Int!
+}
+
+input PermissionUpdateInput {
+  id: Int
+  document: DocumentReferenceInput
+  user: UserReferenceInput
+  read: Boolean
+  write: Boolean
+}
+
+input PermissionUpdateInputFromDocument {
+  create: [PermissionCreationInputFromDocument!]
+  update: [PermissionUpdateInputFromDocumentNested!]
+  delete: [PermissionReferenceInput!]
+}
+
+input PermissionUpdateInputFromDocumentNested {
+  id: Int!
+  user: UserReferenceInput
+  read: Boolean
+  write: Boolean
+}
+
+input PermissionUpdateInputFromUser {
+  create: [PermissionCreationInputFromUser!]
+  update: [PermissionUpdateInputFromUserNested!]
+  delete: [PermissionReferenceInput!]
+}
+
+input PermissionUpdateInputFromUserNested {
+  id: Int!
+  document: DocumentReferenceInput
+  read: Boolean
+  write: Boolean
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  name: String!
+  permissions(where: PermissionFilter, orderBy: [PermissionOrdering!], limit: Int, offset: Int): [Permission!]
+  permissionsAgg(where: PermissionFilter): PermissionAgg
+}
+
+type UserAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input UserCreationInput {
+  name: String!
+  permissions: [PermissionCreationInputFromUser!]
+}
+
+input UserFilter {
+  id: IntFilter
+  name: StringFilter
+  permissions: PermissionFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+input UserUpdateInput {
+  id: Int
+  name: String
+  permissions: PermissionUpdateInputFromUser
+}
+
+type Query {
+  document(id: Int!): Document
+  documents(where: DocumentFilter, orderBy: [DocumentOrdering!], limit: Int, offset: Int): [Document!]!
+  documentsAgg(where: DocumentFilter): DocumentAgg!
+  permission(id: Int!): Permission
+  permissions(where: PermissionFilter, orderBy: [PermissionOrdering!], limit: Int, offset: Int): [Permission!]!
+  permissionsAgg(where: PermissionFilter): PermissionAgg!
+  user(id: Int!): User
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createDocument(data: DocumentCreationInput!): Document!
+  createDocuments(data: [DocumentCreationInput!]!): [Document!]!
+  createPermission(data: PermissionCreationInput!): Permission!
+  createPermissions(data: [PermissionCreationInput!]!): [Permission!]!
+  createUser(data: UserCreationInput!): User!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteDocument(id: Int!): Document
+  deleteDocuments(where: DocumentFilter): [Document!]!
+  deletePermission(id: Int!): Permission
+  deletePermissions(where: PermissionFilter): [Permission!]!
+  deleteUser(id: Int!): User
+  deleteUsers(where: UserFilter): [User!]!
+  updateDocument(id: Int!, data: DocumentUpdateInput!): Document
+  updateDocuments(where: DocumentFilter, data: DocumentUpdateInput!): [Document!]!
+  updatePermission(id: Int!, data: PermissionUpdateInput!): Permission
+  updatePermissions(where: PermissionFilter, data: PermissionUpdateInput!): [Permission!]!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

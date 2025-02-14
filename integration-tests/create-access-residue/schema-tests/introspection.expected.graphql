@@ -1,0 +1,167 @@
+type Employee {
+  id: Int!
+  name: String!
+  position: String!
+  issues(where: IssueFilter, orderBy: [IssueOrdering!], limit: Int, offset: Int): [Issue!]
+  issuesAgg(where: IssueFilter): IssueAgg
+}
+
+type EmployeeAgg {
+  id: IntAgg
+  name: StringAgg
+  position: StringAgg
+}
+
+input EmployeeCreationInput {
+  name: String!
+  position: String!
+  issues: [IssueCreationInputFromEmployee!]
+}
+
+input EmployeeFilter {
+  id: IntFilter
+  name: StringFilter
+  position: StringFilter
+  issues: IssueFilter
+  and: [EmployeeFilter!]
+  or: [EmployeeFilter!]
+  not: EmployeeFilter
+}
+
+input EmployeeOrdering {
+  id: Ordering
+  name: Ordering
+  position: Ordering
+}
+
+input EmployeeReferenceInput {
+  id: Int!
+}
+
+input EmployeeUpdateInput {
+  id: Int
+  name: String
+  position: String
+  issues: IssueUpdateInputFromEmployee
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type Issue {
+  id: Int!
+  title: String!
+  assignee: Employee!
+}
+
+type IssueAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+input IssueCreationInput {
+  title: String!
+  assignee: EmployeeReferenceInput!
+}
+
+input IssueCreationInputFromEmployee {
+  title: String!
+}
+
+input IssueFilter {
+  id: IntFilter
+  title: StringFilter
+  assignee: EmployeeFilter
+  and: [IssueFilter!]
+  or: [IssueFilter!]
+  not: IssueFilter
+}
+
+input IssueOrdering {
+  id: Ordering
+  title: Ordering
+  assignee: [EmployeeOrdering!]
+}
+
+input IssueReferenceInput {
+  id: Int!
+}
+
+input IssueUpdateInput {
+  id: Int
+  title: String
+  assignee: EmployeeReferenceInput
+}
+
+input IssueUpdateInputFromEmployee {
+  create: [IssueCreationInputFromEmployee!]
+  update: [IssueUpdateInputFromEmployeeNested!]
+  delete: [IssueReferenceInput!]
+}
+
+input IssueUpdateInputFromEmployeeNested {
+  id: Int!
+  title: String
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  employee(id: Int!): Employee
+  employees(where: EmployeeFilter, orderBy: [EmployeeOrdering!], limit: Int, offset: Int): [Employee!]!
+  employeesAgg(where: EmployeeFilter): EmployeeAgg!
+  issue(id: Int!): Issue
+  issues(where: IssueFilter, orderBy: [IssueOrdering!], limit: Int, offset: Int): [Issue!]!
+  issuesAgg(where: IssueFilter): IssueAgg!
+}
+
+type Mutation {
+  createEmployee(data: EmployeeCreationInput!): Employee!
+  createEmployees(data: [EmployeeCreationInput!]!): [Employee!]!
+  createIssue(data: IssueCreationInput!): Issue!
+  createIssues(data: [IssueCreationInput!]!): [Issue!]!
+  deleteEmployee(id: Int!): Employee
+  deleteEmployees(where: EmployeeFilter): [Employee!]!
+  deleteIssue(id: Int!): Issue
+  deleteIssues(where: IssueFilter): [Issue!]!
+  updateEmployee(id: Int!, data: EmployeeUpdateInput!): Employee
+  updateEmployees(where: EmployeeFilter, data: EmployeeUpdateInput!): [Employee!]!
+  updateIssue(id: Int!, data: IssueUpdateInput!): Issue
+  updateIssues(where: IssueFilter, data: IssueUpdateInput!): [Issue!]!
+}

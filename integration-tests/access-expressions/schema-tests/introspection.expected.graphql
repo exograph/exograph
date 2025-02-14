@@ -1,0 +1,508 @@
+type AdminDoc {
+  id: Int!
+  content: String!
+}
+
+type AdminDocAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input AdminDocCreationInput {
+  content: String!
+}
+
+input AdminDocFilter {
+  id: IntFilter
+  content: StringFilter
+  and: [AdminDocFilter!]
+  or: [AdminDocFilter!]
+  not: AdminDocFilter
+}
+
+input AdminDocOrdering {
+  id: Ordering
+  content: Ordering
+}
+
+input AdminDocUpdateInput {
+  id: Int
+  content: String
+}
+
+type AdminDocWithContains {
+  id: Int!
+  content: String!
+}
+
+type AdminDocWithContainsAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input AdminDocWithContainsCreationInput {
+  content: String!
+}
+
+input AdminDocWithContainsFilter {
+  id: IntFilter
+  content: StringFilter
+  and: [AdminDocWithContainsFilter!]
+  or: [AdminDocWithContainsFilter!]
+  not: AdminDocWithContainsFilter
+}
+
+input AdminDocWithContainsOrdering {
+  id: Ordering
+  content: Ordering
+}
+
+input AdminDocWithContainsUpdateInput {
+  id: Int
+  content: String
+}
+
+type AdminNote {
+  id: Int!
+  content: String!
+  user: User!
+}
+
+type AdminNoteAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input AdminNoteCreationInput {
+  content: String!
+  user: UserReferenceInput!
+}
+
+input AdminNoteCreationInputFromUser {
+  content: String!
+}
+
+input AdminNoteFilter {
+  id: IntFilter
+  content: StringFilter
+  user: UserFilter
+  and: [AdminNoteFilter!]
+  or: [AdminNoteFilter!]
+  not: AdminNoteFilter
+}
+
+input AdminNoteOrdering {
+  id: Ordering
+  content: Ordering
+  user: [UserOrdering!]
+}
+
+input AdminNoteReferenceInput {
+  id: Int!
+}
+
+input AdminNoteUpdateInput {
+  id: Int
+  content: String
+  user: UserReferenceInput
+}
+
+input AdminNoteUpdateInputFromUser {
+  create: [AdminNoteCreationInputFromUser!]
+  update: [AdminNoteUpdateInputFromUserNested!]
+  delete: [AdminNoteReferenceInput!]
+}
+
+input AdminNoteUpdateInputFromUserNested {
+  id: Int!
+  content: String
+}
+
+type AuthenticatedDoc {
+  id: Int!
+  content: String!
+}
+
+type AuthenticatedDocAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input AuthenticatedDocCreationInput {
+  content: String!
+}
+
+input AuthenticatedDocFilter {
+  id: IntFilter
+  content: StringFilter
+  and: [AuthenticatedDocFilter!]
+  or: [AuthenticatedDocFilter!]
+  not: AuthenticatedDocFilter
+}
+
+input AuthenticatedDocOrdering {
+  id: Ordering
+  content: Ordering
+}
+
+input AuthenticatedDocUpdateInput {
+  id: Int
+  content: String
+}
+
+type BooleanAgg {
+  count: Int
+}
+
+input BooleanFilter {
+  eq: Boolean
+  neq: Boolean
+}
+
+type Doc {
+  id: Int!
+  content: String!
+  public: Boolean!
+}
+
+type DocAgg {
+  id: IntAgg
+  content: StringAgg
+  public: BooleanAgg
+}
+
+input DocCreationInput {
+  content: String!
+  public: Boolean!
+}
+
+input DocFilter {
+  id: IntFilter
+  content: StringFilter
+  public: BooleanFilter
+  and: [DocFilter!]
+  or: [DocFilter!]
+  not: DocFilter
+}
+
+input DocOrdering {
+  id: Ordering
+  content: Ordering
+  public: Ordering
+}
+
+input DocUpdateInput {
+  id: Int
+  content: String
+  public: Boolean
+}
+
+type ExternalDoc {
+  id: Int!
+  externalId: Int
+  content: String!
+}
+
+type ExternalDocAgg {
+  id: IntAgg
+  externalId: IntAgg
+  content: StringAgg
+}
+
+input ExternalDocCreationInput {
+  externalId: Int
+  content: String!
+}
+
+input ExternalDocFilter {
+  id: IntFilter
+  externalId: IntFilter
+  content: StringFilter
+  and: [ExternalDocFilter!]
+  or: [ExternalDocFilter!]
+  not: ExternalDocFilter
+}
+
+input ExternalDocOrdering {
+  id: Ordering
+  externalId: Ordering
+  content: Ordering
+}
+
+input ExternalDocUpdateInput {
+  id: Int
+  externalId: Int
+  content: String
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type Membership {
+  id: Int!
+  kind: String!
+  user: User!
+}
+
+type MembershipAgg {
+  id: IntAgg
+  kind: StringAgg
+}
+
+input MembershipCreationInput {
+  kind: String!
+  user: UserReferenceInput!
+}
+
+input MembershipCreationInputFromUser {
+  kind: String!
+}
+
+input MembershipFilter {
+  id: IntFilter
+  kind: StringFilter
+  user: UserFilter
+  and: [MembershipFilter!]
+  or: [MembershipFilter!]
+  not: MembershipFilter
+}
+
+input MembershipOrdering {
+  id: Ordering
+  kind: Ordering
+  user: [UserOrdering!]
+}
+
+input MembershipReferenceInput {
+  id: Int!
+}
+
+input MembershipUpdateInput {
+  id: Int
+  kind: String
+  user: UserReferenceInput
+}
+
+input MembershipUpdateInputFromUser {
+  create: [MembershipCreationInputFromUser!]
+  update: [MembershipUpdateInputFromUserNested!]
+  delete: [MembershipReferenceInput!]
+}
+
+input MembershipUpdateInputFromUserNested {
+  id: Int!
+  kind: String
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type UnauthenticatedDoc {
+  id: Int!
+  content: String!
+}
+
+type UnauthenticatedDocAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input UnauthenticatedDocCreationInput {
+  content: String!
+}
+
+input UnauthenticatedDocFilter {
+  id: IntFilter
+  content: StringFilter
+  and: [UnauthenticatedDocFilter!]
+  or: [UnauthenticatedDocFilter!]
+  not: UnauthenticatedDocFilter
+}
+
+input UnauthenticatedDocOrdering {
+  id: Ordering
+  content: Ordering
+}
+
+input UnauthenticatedDocUpdateInput {
+  id: Int
+  content: String
+}
+
+type User {
+  id: Int!
+  name: String!
+  membership(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): Membership
+  notes(where: AdminNoteFilter, orderBy: [AdminNoteOrdering!], limit: Int, offset: Int): [AdminNote!]
+  notesAgg(where: AdminNoteFilter): AdminNoteAgg
+}
+
+type UserAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input UserCreationInput {
+  name: String!
+  membership: [MembershipCreationInputFromUser!]
+  notes: [AdminNoteCreationInputFromUser!]
+}
+
+input UserFilter {
+  id: IntFilter
+  name: StringFilter
+  membership: MembershipFilter
+  notes: AdminNoteFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  name: Ordering
+  membership: [MembershipOrdering!]
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+input UserUniqueFilter {
+  id: Int!
+}
+
+input UserUpdateInput {
+  id: Int
+  name: String
+  membership: MembershipUpdateInputFromUser
+  notes: AdminNoteUpdateInputFromUser
+}
+
+type Query {
+  adminDoc(id: Int!): AdminDoc
+  adminDocWithContains(id: Int!): AdminDocWithContains
+  adminDocWithContainss(where: AdminDocWithContainsFilter, orderBy: [AdminDocWithContainsOrdering!], limit: Int, offset: Int): [AdminDocWithContains!]!
+  adminDocWithContainssAgg(where: AdminDocWithContainsFilter): AdminDocWithContainsAgg!
+  adminDocs(where: AdminDocFilter, orderBy: [AdminDocOrdering!], limit: Int, offset: Int): [AdminDoc!]!
+  adminDocsAgg(where: AdminDocFilter): AdminDocAgg!
+  adminNote(id: Int!): AdminNote
+  adminNotes(where: AdminNoteFilter, orderBy: [AdminNoteOrdering!], limit: Int, offset: Int): [AdminNote!]!
+  adminNotesAgg(where: AdminNoteFilter): AdminNoteAgg!
+  authenticatedDoc(id: Int!): AuthenticatedDoc
+  authenticatedDocs(where: AuthenticatedDocFilter, orderBy: [AuthenticatedDocOrdering!], limit: Int, offset: Int): [AuthenticatedDoc!]!
+  authenticatedDocsAgg(where: AuthenticatedDocFilter): AuthenticatedDocAgg!
+  doc(id: Int!): Doc
+  docs(where: DocFilter, orderBy: [DocOrdering!], limit: Int, offset: Int): [Doc!]!
+  docsAgg(where: DocFilter): DocAgg!
+  externalDoc(id: Int!): ExternalDoc
+  externalDocs(where: ExternalDocFilter, orderBy: [ExternalDocOrdering!], limit: Int, offset: Int): [ExternalDoc!]!
+  externalDocsAgg(where: ExternalDocFilter): ExternalDocAgg!
+  getAdminSecret: String!
+  getAuthenticatedSecret: String!
+  getUnauthenticatedSecret: String!
+  membership(id: Int!): Membership
+  membershipByUser(user: UserUniqueFilter!): Membership
+  memberships(where: MembershipFilter, orderBy: [MembershipOrdering!], limit: Int, offset: Int): [Membership!]!
+  membershipsAgg(where: MembershipFilter): MembershipAgg!
+  unauthenticatedDoc(id: Int!): UnauthenticatedDoc
+  unauthenticatedDocs(where: UnauthenticatedDocFilter, orderBy: [UnauthenticatedDocOrdering!], limit: Int, offset: Int): [UnauthenticatedDoc!]!
+  unauthenticatedDocsAgg(where: UnauthenticatedDocFilter): UnauthenticatedDocAgg!
+  user(id: Int!): User
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createAdminDoc(data: AdminDocCreationInput!): AdminDoc!
+  createAdminDocWithContains(data: AdminDocWithContainsCreationInput!): AdminDocWithContains!
+  createAdminDocWithContainss(data: [AdminDocWithContainsCreationInput!]!): [AdminDocWithContains!]!
+  createAdminDocs(data: [AdminDocCreationInput!]!): [AdminDoc!]!
+  createAdminNote(data: AdminNoteCreationInput!): AdminNote!
+  createAdminNotes(data: [AdminNoteCreationInput!]!): [AdminNote!]!
+  createAuthenticatedDoc(data: AuthenticatedDocCreationInput!): AuthenticatedDoc!
+  createAuthenticatedDocs(data: [AuthenticatedDocCreationInput!]!): [AuthenticatedDoc!]!
+  createDoc(data: DocCreationInput!): Doc!
+  createDocs(data: [DocCreationInput!]!): [Doc!]!
+  createExternalDoc(data: ExternalDocCreationInput!): ExternalDoc!
+  createExternalDocs(data: [ExternalDocCreationInput!]!): [ExternalDoc!]!
+  createMembership(data: MembershipCreationInput!): Membership!
+  createMemberships(data: [MembershipCreationInput!]!): [Membership!]!
+  createUnauthenticatedDoc(data: UnauthenticatedDocCreationInput!): UnauthenticatedDoc!
+  createUnauthenticatedDocs(data: [UnauthenticatedDocCreationInput!]!): [UnauthenticatedDoc!]!
+  createUser(data: UserCreationInput!): User!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteAdminDoc(id: Int!): AdminDoc
+  deleteAdminDocWithContains(id: Int!): AdminDocWithContains
+  deleteAdminDocWithContainss(where: AdminDocWithContainsFilter): [AdminDocWithContains!]!
+  deleteAdminDocs(where: AdminDocFilter): [AdminDoc!]!
+  deleteAdminNote(id: Int!): AdminNote
+  deleteAdminNotes(where: AdminNoteFilter): [AdminNote!]!
+  deleteAuthenticatedDoc(id: Int!): AuthenticatedDoc
+  deleteAuthenticatedDocs(where: AuthenticatedDocFilter): [AuthenticatedDoc!]!
+  deleteDoc(id: Int!): Doc
+  deleteDocs(where: DocFilter): [Doc!]!
+  deleteExternalDoc(id: Int!): ExternalDoc
+  deleteExternalDocs(where: ExternalDocFilter): [ExternalDoc!]!
+  deleteMembership(id: Int!): Membership
+  deleteMemberships(where: MembershipFilter): [Membership!]!
+  deleteUnauthenticatedDoc(id: Int!): UnauthenticatedDoc
+  deleteUnauthenticatedDocs(where: UnauthenticatedDocFilter): [UnauthenticatedDoc!]!
+  deleteUser(id: Int!): User
+  deleteUsers(where: UserFilter): [User!]!
+  setAuthenticatedSecret(secret: String!): String!
+  setUnauthenticatedSecret(secret: String!): String!
+  updateAdminDoc(id: Int!, data: AdminDocUpdateInput!): AdminDoc
+  updateAdminDocWithContains(id: Int!, data: AdminDocWithContainsUpdateInput!): AdminDocWithContains
+  updateAdminDocWithContainss(where: AdminDocWithContainsFilter, data: AdminDocWithContainsUpdateInput!): [AdminDocWithContains!]!
+  updateAdminDocs(where: AdminDocFilter, data: AdminDocUpdateInput!): [AdminDoc!]!
+  updateAdminNote(id: Int!, data: AdminNoteUpdateInput!): AdminNote
+  updateAdminNotes(where: AdminNoteFilter, data: AdminNoteUpdateInput!): [AdminNote!]!
+  updateAuthenticatedDoc(id: Int!, data: AuthenticatedDocUpdateInput!): AuthenticatedDoc
+  updateAuthenticatedDocs(where: AuthenticatedDocFilter, data: AuthenticatedDocUpdateInput!): [AuthenticatedDoc!]!
+  updateDoc(id: Int!, data: DocUpdateInput!): Doc
+  updateDocs(where: DocFilter, data: DocUpdateInput!): [Doc!]!
+  updateExternalDoc(id: Int!, data: ExternalDocUpdateInput!): ExternalDoc
+  updateExternalDocs(where: ExternalDocFilter, data: ExternalDocUpdateInput!): [ExternalDoc!]!
+  updateMembership(id: Int!, data: MembershipUpdateInput!): Membership
+  updateMemberships(where: MembershipFilter, data: MembershipUpdateInput!): [Membership!]!
+  updateUnauthenticatedDoc(id: Int!, data: UnauthenticatedDocUpdateInput!): UnauthenticatedDoc
+  updateUnauthenticatedDocs(where: UnauthenticatedDocFilter, data: UnauthenticatedDocUpdateInput!): [UnauthenticatedDoc!]!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

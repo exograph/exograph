@@ -1,0 +1,208 @@
+type Chunk {
+  id: Int!
+  todo: Todo!
+  chunk: String!
+  chunkVector: [Float!]
+  chunkVectorDistance(to: [Float!]!): Float!
+}
+
+type ChunkAgg {
+  id: IntAgg
+  chunk: StringAgg
+  chunkVector: VectorAgg
+}
+
+input ChunkCreationInput {
+  todo: TodoReferenceInput!
+  chunk: String!
+  chunkVector: [Float!]
+}
+
+input ChunkCreationInputFromTodo {
+  chunk: String!
+  chunkVector: [Float!]
+}
+
+input ChunkFilter {
+  id: IntFilter
+  todo: TodoFilter
+  chunk: StringFilter
+  chunkVector: VectorFilter
+  and: [ChunkFilter!]
+  or: [ChunkFilter!]
+  not: ChunkFilter
+}
+
+input ChunkOrdering {
+  id: Ordering
+  todo: [TodoOrdering!]
+  chunk: Ordering
+  chunkVector: VectorOrdering
+}
+
+input ChunkReferenceInput {
+  id: Int!
+}
+
+input ChunkUpdateInput {
+  id: Int
+  todo: TodoReferenceInput
+  chunk: String
+  chunkVector: [Float!]
+}
+
+input ChunkUpdateInputFromTodo {
+  create: [ChunkCreationInputFromTodo!]
+  update: [ChunkUpdateInputFromTodoNested!]
+  delete: [ChunkReferenceInput!]
+}
+
+input ChunkUpdateInputFromTodoNested {
+  id: Int!
+  chunk: String
+  chunkVector: [Float!]
+}
+
+input FloatFilter {
+  eq: Float
+  neq: Float
+  lt: Float
+  lte: Float
+  gt: Float
+  gte: Float
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Todo {
+  id: Int!
+  title: String!
+  description: String!
+  chunks(where: ChunkFilter, orderBy: [ChunkOrdering!], limit: Int, offset: Int): [Chunk!]
+  chunksAgg(where: ChunkFilter): ChunkAgg
+}
+
+type TodoAgg {
+  id: IntAgg
+  title: StringAgg
+  description: StringAgg
+}
+
+input TodoCreationInput {
+  title: String!
+  description: String!
+  chunks: [ChunkCreationInputFromTodo!]
+}
+
+input TodoFilter {
+  id: IntFilter
+  title: StringFilter
+  description: StringFilter
+  chunks: ChunkFilter
+  and: [TodoFilter!]
+  or: [TodoFilter!]
+  not: TodoFilter
+}
+
+input TodoOrdering {
+  id: Ordering
+  title: Ordering
+  description: Ordering
+}
+
+input TodoReferenceInput {
+  id: Int!
+}
+
+input TodoUpdateInput {
+  id: Int
+  title: String
+  description: String
+  chunks: ChunkUpdateInputFromTodo
+}
+
+scalar Vector
+
+type VectorAgg {
+  avg: Vector
+  count: Int
+}
+
+input VectorFilter {
+  similar: VectorFilterArg
+  eq: [Float!]
+  neq: [Float!]
+}
+
+input VectorFilterArg {
+  distanceTo: [Float!]!
+  distance: FloatFilter
+}
+
+input VectorOrdering {
+  distanceTo: [Float!]!
+  order: Ordering
+}
+
+type Query {
+  chunk(id: Int!): Chunk
+  chunks(where: ChunkFilter, orderBy: [ChunkOrdering!], limit: Int, offset: Int): [Chunk!]!
+  chunksAgg(where: ChunkFilter): ChunkAgg!
+  todo(id: Int!): Todo
+  todos(where: TodoFilter, orderBy: [TodoOrdering!], limit: Int, offset: Int): [Todo!]!
+  todosAgg(where: TodoFilter): TodoAgg!
+}
+
+type Mutation {
+  createChunk(data: ChunkCreationInput!): Chunk!
+  createChunks(data: [ChunkCreationInput!]!): [Chunk!]!
+  createTodo(data: TodoCreationInput!): Todo!
+  createTodos(data: [TodoCreationInput!]!): [Todo!]!
+  deleteChunk(id: Int!): Chunk
+  deleteChunks(where: ChunkFilter): [Chunk!]!
+  deleteTodo(id: Int!): Todo
+  deleteTodos(where: TodoFilter): [Todo!]!
+  updateChunk(id: Int!, data: ChunkUpdateInput!): Chunk
+  updateChunks(where: ChunkFilter, data: ChunkUpdateInput!): [Chunk!]!
+  updateTodo(id: Int!, data: TodoUpdateInput!): Todo
+  updateTodos(where: TodoFilter, data: TodoUpdateInput!): [Todo!]!
+}

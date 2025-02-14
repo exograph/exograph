@@ -1,0 +1,138 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  name: String!
+}
+
+type UserAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input UserCreationInput {
+  name: String!
+}
+
+input UserFilter {
+  id: IntFilter
+  name: StringFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+type UserProfile {
+  user: User!
+  bio: String!
+}
+
+type UserProfileAgg {
+  user: UserAgg
+  bio: StringAgg
+}
+
+input UserProfileCreationInput {
+  user: UserReferenceInput!
+  bio: String!
+}
+
+input UserProfileFilter {
+  user: UserFilter
+  bio: StringFilter
+  and: [UserProfileFilter!]
+  or: [UserProfileFilter!]
+  not: UserProfileFilter
+}
+
+input UserProfileOrdering {
+  user: [UserOrdering!]
+  bio: Ordering
+}
+
+input UserProfileUpdateInput {
+  user: UserReferenceInput
+  bio: String
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+input UserUniqueFilter {
+  id: Int!
+}
+
+input UserUpdateInput {
+  id: Int
+  name: String
+}
+
+type Query {
+  user(id: Int!): User
+  userProfile(user: UserUniqueFilter!): UserProfile
+  userProfileByUser(user: UserUniqueFilter!): UserProfile
+  userProfiles(where: UserProfileFilter, orderBy: [UserProfileOrdering!], limit: Int, offset: Int): [UserProfile!]!
+  userProfilesAgg(where: UserProfileFilter): UserProfileAgg!
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createUser(data: UserCreationInput!): User!
+  createUserProfile(data: UserProfileCreationInput!): UserProfile!
+  createUserProfiles(data: [UserProfileCreationInput!]!): [UserProfile!]!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteUser(id: Int!): User
+  deleteUserProfile(user: UserUniqueFilter!): UserProfile
+  deleteUserProfiles(where: UserProfileFilter): [UserProfile!]!
+  deleteUsers(where: UserFilter): [User!]!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUserProfile(user: UserUniqueFilter!, data: UserProfileUpdateInput!): UserProfile
+  updateUserProfiles(where: UserProfileFilter, data: UserProfileUpdateInput!): [UserProfile!]!
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

@@ -1,0 +1,95 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+type JournalEntry {
+  id: Int!
+  text: String!
+}
+
+type JournalEntryAgg {
+  id: IntAgg
+  text: StringAgg
+}
+
+input JournalEntryCreationInput {
+  text: String!
+}
+
+input JournalEntryFilter {
+  id: IntFilter
+  text: StringFilter
+  and: [JournalEntryFilter!]
+  or: [JournalEntryFilter!]
+  not: JournalEntryFilter
+}
+
+input JournalEntryOrdering {
+  id: Ordering
+  text: Ordering
+}
+
+input JournalEntryUpdateInput {
+  id: Int
+  text: String
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  getCookie: Boolean!
+  getDevModeEnabled: Boolean!
+  getIp: String!
+  getRole: String!
+  getRoleAndUid: String!
+  getSecretHeader: String!
+  isTrackingEnabled: Boolean!
+  journalEntry(id: Int!): JournalEntry
+  journalEntrys(where: JournalEntryFilter, orderBy: [JournalEntryOrdering!], limit: Int, offset: Int): [JournalEntry!]!
+  journalEntrysAgg(where: JournalEntryFilter): JournalEntryAgg!
+  shouldTrack: Boolean!
+}
+
+type Mutation {
+  createJournalEntry(data: JournalEntryCreationInput!): JournalEntry!
+  createJournalEntrys(data: [JournalEntryCreationInput!]!): [JournalEntry!]!
+  deleteJournalEntry(id: Int!): JournalEntry
+  deleteJournalEntrys(where: JournalEntryFilter): [JournalEntry!]!
+  updateJournalEntry(id: Int!, data: JournalEntryUpdateInput!): JournalEntry
+  updateJournalEntrys(where: JournalEntryFilter, data: JournalEntryUpdateInput!): [JournalEntry!]!
+}

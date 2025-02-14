@@ -1,0 +1,161 @@
+type Document {
+  id: Int!
+  content: String!
+  user: User!
+}
+
+type DocumentAgg {
+  id: IntAgg
+  content: StringAgg
+}
+
+input DocumentCreationInput {
+  content: String!
+  user: UserReferenceInput!
+}
+
+input DocumentCreationInputFromUser {
+  content: String!
+}
+
+input DocumentFilter {
+  id: IntFilter
+  content: StringFilter
+  user: UserFilter
+  and: [DocumentFilter!]
+  or: [DocumentFilter!]
+  not: DocumentFilter
+}
+
+input DocumentOrdering {
+  id: Ordering
+  content: Ordering
+  user: [UserOrdering!]
+}
+
+input DocumentReferenceInput {
+  id: Int!
+}
+
+input DocumentUpdateInput {
+  id: Int
+  content: String
+  user: UserReferenceInput
+}
+
+input DocumentUpdateInputFromUser {
+  create: [DocumentCreationInputFromUser!]
+  update: [DocumentUpdateInputFromUserNested!]
+  delete: [DocumentReferenceInput!]
+}
+
+input DocumentUpdateInputFromUserNested {
+  id: Int!
+  content: String
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  name: String!
+  documents(where: DocumentFilter, orderBy: [DocumentOrdering!], limit: Int, offset: Int): [Document!]
+  documentsAgg(where: DocumentFilter): DocumentAgg
+}
+
+type UserAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input UserCreationInput {
+  name: String!
+  documents: [DocumentCreationInputFromUser!]
+}
+
+input UserFilter {
+  id: IntFilter
+  name: StringFilter
+  documents: DocumentFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+input UserUpdateInput {
+  id: Int
+  name: String
+  documents: DocumentUpdateInputFromUser
+}
+
+type Query {
+  document(id: Int!): Document
+  documents(where: DocumentFilter, orderBy: [DocumentOrdering!], limit: Int, offset: Int): [Document!]!
+  documentsAgg(where: DocumentFilter): DocumentAgg!
+  user(id: Int!): User
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createDocument(data: DocumentCreationInput!): Document!
+  createDocuments(data: [DocumentCreationInput!]!): [Document!]!
+  createUser(data: UserCreationInput!): User!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteDocument(id: Int!): Document
+  deleteDocuments(where: DocumentFilter): [Document!]!
+  deleteUser(id: Int!): User
+  deleteUsers(where: UserFilter): [User!]!
+  updateDocument(id: Int!, data: DocumentUpdateInput!): Document
+  updateDocuments(where: DocumentFilter, data: DocumentUpdateInput!): [Document!]!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}

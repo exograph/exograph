@@ -1,0 +1,4 @@
+type Query {
+  color_by_name(name: String!): String!
+  lighten_color(color: String!): String!
+}

@@ -1,0 +1,161 @@
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type Project {
+  id: Int!
+  title: String!
+  owner: User!
+}
+
+type ProjectAgg {
+  id: IntAgg
+  title: StringAgg
+}
+
+input ProjectCreationInput {
+  title: String!
+  owner: UserReferenceInput!
+}
+
+input ProjectCreationInputFromUser {
+  title: String!
+}
+
+input ProjectFilter {
+  id: IntFilter
+  title: StringFilter
+  owner: UserFilter
+  and: [ProjectFilter!]
+  or: [ProjectFilter!]
+  not: ProjectFilter
+}
+
+input ProjectOrdering {
+  id: Ordering
+  title: Ordering
+  owner: [UserOrdering!]
+}
+
+input ProjectReferenceInput {
+  id: Int!
+}
+
+input ProjectUpdateInput {
+  id: Int
+  title: String
+  owner: UserReferenceInput
+}
+
+input ProjectUpdateInputFromUser {
+  create: [ProjectCreationInputFromUser!]
+  update: [ProjectUpdateInputFromUserNested!]
+  delete: [ProjectReferenceInput!]
+}
+
+input ProjectUpdateInputFromUserNested {
+  id: Int!
+  title: String
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type User {
+  id: Int!
+  name: String!
+  assignedProjects(where: ProjectFilter, orderBy: [ProjectOrdering!], limit: Int, offset: Int): [Project!]
+  assignedProjectsAgg(where: ProjectFilter): ProjectAgg
+}
+
+type UserAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input UserCreationInput {
+  name: String!
+  assignedProjects: [ProjectCreationInputFromUser!]
+}
+
+input UserFilter {
+  id: IntFilter
+  name: StringFilter
+  assignedProjects: ProjectFilter
+  and: [UserFilter!]
+  or: [UserFilter!]
+  not: UserFilter
+}
+
+input UserOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input UserReferenceInput {
+  id: Int!
+}
+
+input UserUpdateInput {
+  id: Int
+  name: String
+  assignedProjects: ProjectUpdateInputFromUser
+}
+
+type Query {
+  project(id: Int!): Project
+  projects(where: ProjectFilter, orderBy: [ProjectOrdering!], limit: Int, offset: Int): [Project!]!
+  projectsAgg(where: ProjectFilter): ProjectAgg!
+  user(id: Int!): User
+  users(where: UserFilter, orderBy: [UserOrdering!], limit: Int, offset: Int): [User!]!
+  usersAgg(where: UserFilter): UserAgg!
+}
+
+type Mutation {
+  createProject(data: ProjectCreationInput!): Project!
+  createProjects(data: [ProjectCreationInput!]!): [Project!]!
+  createUser(data: UserCreationInput!): User!
+  createUsers(data: [UserCreationInput!]!): [User!]!
+  deleteProject(id: Int!): Project
+  deleteProjects(where: ProjectFilter): [Project!]!
+  deleteUser(id: Int!): User
+  deleteUsers(where: UserFilter): [User!]!
+  updateProject(id: Int!, data: ProjectUpdateInput!): Project
+  updateProjects(where: ProjectFilter, data: ProjectUpdateInput!): [Project!]!
+  updateUser(id: Int!, data: UserUpdateInput!): User
+  updateUsers(where: UserFilter, data: UserUpdateInput!): [User!]!
+}
