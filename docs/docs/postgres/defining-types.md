@@ -147,20 +147,35 @@ type Artist {
 }
 
 type Performance {
-  @pk id: Int = autoIncrement()
   // highlight-next-line
-  artist: Artist
+  @pk artist: Artist
   // highlight-next-line
-  concert: Concert
+  @pk concert: Concert
   isMainArtist: Boolean
 }
 ```
 
 Effectively, we have defined two one-to-many relationships between `Concert` and `Performance` and between `Artist` and `Performance`.
 
-You may use the `@unique` annotation to mark the combination of the two fields that make a relationship unique. For example, in the above example, we may want to ensure that the performance uniquely identifies an artist and a concert. We can do so by marking the `artist` and `concert` fields with the `@unique` annotation.
+Note the use of the `@pk` annotation to designate the combination of the two fields that make a relationship unique. Since the combination of the `artist` and `concert`is marked as unique, the database will prevent you from having multiple performances for the same artist and concert.
+
+An alternative (and less common) approach is to designate a separate field as the primary key for the relationship and use the `@unique` annotation to mark the combination of the two fields that make a relationship unique.
 
 ```exo
+type Concert {
+  @pk id: Int = autoIncrement()
+  ...
+  // highlight-next-line
+  performances: Set<Performance>?
+}
+
+type Artist {
+  @pk id: Int = autoIncrement()
+  ...
+  // highlight-next-line
+  performances: Set<Performance>?
+}
+
 type Performance {
   @pk id: Int = autoIncrement()
   // highlight-next-line
@@ -170,6 +185,8 @@ type Performance {
   isMainArtist: Boolean
 }
 ```
+
+The `@unique` annotation marks the combination of the two fields as unique, like the way we did earlier using the `@pk` annotation.
 
 Please see the [uniqueness](customizing-types.md#constraining-uniqueness) section for more details on using the `@unique` annotation.
 
