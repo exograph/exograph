@@ -52,6 +52,14 @@ impl AccessPredicate for ModuleAccessPredicateWrapper {
     fn or(self, other: Self) -> Self {
         ModuleAccessPredicateWrapper((self.0.into() || other.0.into()).into())
     }
+
+    fn is_true(&self) -> bool {
+        matches!(self.0, ModuleAccessPredicate::True)
+    }
+
+    fn is_false(&self) -> bool {
+        matches!(self.0, ModuleAccessPredicate::False)
+    }
 }
 
 #[async_trait]
