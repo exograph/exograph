@@ -20,7 +20,7 @@ env:
 jobs:
   # Build and publish Docker image
   build-docker:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write

@@ -42,7 +42,7 @@ jobs:
       matrix:
         # For these target platforms
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             deps-script: |
               sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
               sudo apt-get install -y protobuf-compiler postgresql-14-pgvector
