@@ -84,10 +84,13 @@ impl Migration {
 
                 // Explicitly matching the other cases here to ensure that we have thought about each case
                 SchemaOp::CreateSchema { .. }
+                | SchemaOp::RenameSchema { .. }
                 | SchemaOp::CreateSequence { .. }
                 | SchemaOp::CreateTable { .. }
+                | SchemaOp::RenameTable { .. }
                 | SchemaOp::CreateEnum { .. }
                 | SchemaOp::CreateColumn { .. }
+                | SchemaOp::RenameColumn { .. }
                 | SchemaOp::CreateIndex { .. }
                 | SchemaOp::DeleteIndex { .. } // Creating and deleting index is not considered destructive (they affect performance but not data loss)
                 | SchemaOp::CreateExtension { .. }

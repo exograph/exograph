@@ -392,7 +392,6 @@ impl DatabaseSpec {
                     timing: TriggerTiming::Before,
                     orientation: TriggerOrientation::Row,
                     event: TriggerEvent::Update,
-                    table: table.name.clone(),
                 },
                 FunctionSpec {
                     name: function_name,
@@ -649,7 +648,6 @@ mod tests {
         assert_eq!(actual.timing, expected.timing);
         assert_eq!(actual.orientation, expected.orientation);
         assert_eq!(actual.event, expected.event);
-        assert_eq!(actual.table, expected.table);
     }
 
     fn assert_function_spec_eq(actual: &FunctionSpec, expected: &FunctionSpec) {

@@ -384,7 +384,10 @@ impl TableSpec {
         for trigger in self.triggers.iter() {
             if !new.triggers.iter().any(|t| t.name == trigger.name) {
                 // trigger deletion
-                changes.push(SchemaOp::DeleteTrigger { trigger });
+                changes.push(SchemaOp::DeleteTrigger {
+                    trigger,
+                    table_name: &self.name,
+                });
             }
         }
 
@@ -393,6 +396,7 @@ impl TableSpec {
                 // new trigger
                 changes.push(SchemaOp::CreateTrigger {
                     trigger: new_trigger,
+                    table_name: &self.name,
                 });
             }
         }
@@ -494,7 +498,7 @@ impl TableSpec {
         }
 
         for trigger in self.triggers.iter() {
-            post_statements.push(trigger.creation_sql());
+            post_statements.push(trigger.creation_sql(&self.name));
         }
 
         SchemaStatement {
