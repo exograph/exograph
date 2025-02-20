@@ -22,6 +22,7 @@ use super::{
     function_spec::FunctionSpec,
     index_spec::IndexSpec,
     issue::WithIssues,
+    op::{RenameTableOp, SchemaOp},
     spec::MigrationScopeMatches,
     table_spec::TableSpec,
     trigger_spec::{TriggerEvent, TriggerOrientation, TriggerSpec, TriggerTiming},
@@ -402,6 +403,40 @@ impl DatabaseSpec {
         } else {
             None
         }
+    }
+
+    pub fn with_table_renamed<'a>(
+        self,
+        old_name: &'a PhysicalTableName,
+        new_name: &'a PhysicalTableName,
+    ) -> (Self, Vec<SchemaOp<'a>>) {
+        let mut ops = vec![];
+
+        let renamed_tables = self
+            .tables
+            .into_iter()
+            .map(|mut table| {
+                if &table.name == old_name {
+                    table.name = new_name.clone();
+                    ops.push(SchemaOp::RenameTable(RenameTableOp {
+                        old_name: old_name.clone(),
+                        new_name: new_name.clone(),
+                    }));
+                }
+
+                let columns = table
+                    .columns
+                    .into_iter()
+                    .map(|column| column.with_table_renamed(old_name, new_name))
+                    .collect();
+
+                table.columns = columns;
+
+                table
+            })
+            .collect();
+
+        (DatabaseSpec::new(renamed_tables, self.functions), ops)
     }
 }
 

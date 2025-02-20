@@ -67,47 +67,23 @@ impl Migration {
         new_schema_spec: &DatabaseSpec,
         scope: &MigrationScope,
     ) -> Self {
+        let diffs = diff(old_schema_spec, new_schema_spec, scope);
+
+        let diffs = diffs
+            .into_iter()
+            .map(|diff| (diff, None))
+            .collect::<Vec<_>>();
+
+        Self::from_diffs(&diffs)
+    }
+
+    pub fn from_diffs(diffs: &[(SchemaOp, Option<bool>)]) -> Self {
         let mut pre_statements = vec![];
         let mut statements = vec![];
         let mut post_statements = vec![];
 
-        let diffs = diff(old_schema_spec, new_schema_spec, scope);
-
-        for diff in diffs.iter() {
-            let is_destructive = match diff {
-                SchemaOp::DeleteSchema { .. }
-                | SchemaOp::DeleteTable { .. }
-                | SchemaOp::DeleteColumn { .. }
-                | SchemaOp::RemoveExtension { .. }
-                | SchemaOp::DeleteEnum { .. }
-                | SchemaOp::DeleteSequence { .. } => true,
-
-                // Explicitly matching the other cases here to ensure that we have thought about each case
-                SchemaOp::CreateSchema { .. }
-                | SchemaOp::RenameSchema { .. }
-                | SchemaOp::CreateSequence { .. }
-                | SchemaOp::CreateTable { .. }
-                | SchemaOp::RenameTable { .. }
-                | SchemaOp::CreateEnum { .. }
-                | SchemaOp::CreateColumn { .. }
-                | SchemaOp::RenameColumn { .. }
-                | SchemaOp::CreateIndex { .. }
-                | SchemaOp::DeleteIndex { .. } // Creating and deleting index is not considered destructive (they affect performance but not data loss)
-                | SchemaOp::CreateExtension { .. }
-                | SchemaOp::CreateUniqueConstraint { .. }
-                | SchemaOp::RemoveUniqueConstraint { .. }
-                | SchemaOp::CreateForeignKeyReference { .. }
-                | SchemaOp::DeleteForeignKeyReference { .. }
-                | SchemaOp::SetColumnDefaultValue { .. }
-                | SchemaOp::UnsetColumnDefaultValue { .. }
-                | SchemaOp::SetNotNull { .. }
-                | SchemaOp::UnsetNotNull { .. }
-                | SchemaOp::CreateFunction { .. }
-                | SchemaOp::DeleteFunction { .. }
-                | SchemaOp::CreateOrReplaceFunction { .. }
-                | SchemaOp::CreateTrigger { .. }
-                | SchemaOp::DeleteTrigger { .. } => false,
-            };
+        for (diff, is_destructive_override) in diffs.iter() {
+            let is_destructive = is_destructive_override.unwrap_or(diff.is_destructive());
 
             let statement = diff.to_sql();
 
@@ -136,31 +112,35 @@ impl Migration {
         }
     }
 
+    pub async fn extract_schema_from_db(
+        client: &DatabaseClientManager,
+        database_spec: &DatabaseSpec,
+        scope: &MigrationScope,
+    ) -> Result<WithIssues<DatabaseSpec>, DatabaseError> {
+        let scope_matches = match scope {
+            MigrationScope::Specified(scope) => scope,
+            MigrationScope::FromNewSpec => {
+                &MigrationScopeMatches::from_specs_schemas(&[database_spec])
+            }
+        };
+
+        extract_db_schema(client, scope_matches).await
+    }
+
     pub async fn from_db_and_model(
         client: &DatabaseClient,
         database: &Database,
         scope: &MigrationScope,
     ) -> Result<Self, DatabaseError> {
-        let database_spec = DatabaseSpec::from_database(database);
+        let new_spec = DatabaseSpec::from_database(database);
 
-        let scope_matches = match scope {
-            MigrationScope::Specified(scope) => scope,
-            MigrationScope::FromNewSpec => {
-                &MigrationScopeMatches::from_specs_schemas(&[&database_spec])
-            }
-        };
-
-        let old_schema = extract_db_schema(client, scope_matches).await?;
+        let old_schema = Self::extract_schema_from_db(client, &new_spec, scope).await?;
 
         for issue in &old_schema.issues {
             eprintln!("{issue}");
         }
 
-        Ok(Migration::from_schemas(
-            &old_schema.value,
-            &database_spec,
-            scope,
-        ))
+        Ok(Migration::from_schemas(&old_schema.value, &new_spec, scope))
     }
 
     pub fn has_destructive_changes(&self) -> bool {

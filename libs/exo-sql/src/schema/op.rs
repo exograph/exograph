@@ -23,6 +23,24 @@ use super::{
     trigger_spec::TriggerSpec,
 };
 
+#[derive(Debug, Clone)]
+pub struct RenameTableOp {
+    pub old_name: SchemaObjectName,
+    pub new_name: SchemaObjectName,
+}
+
+impl RenameTableOp {
+    pub fn to_sql(&self) -> SchemaStatement {
+        SchemaStatement {
+            statement: format!(
+                "ALTER TABLE {} RENAME TO {};",
+                self.old_name.sql_name(),
+                self.new_name.sql_name()
+            ),
+            ..Default::default()
+        }
+    }
+}
 /// An execution unit of SQL, representing an operation that can create or destroy resources.
 #[derive(Debug)]
 pub enum SchemaOp<'a> {
@@ -50,10 +68,7 @@ pub enum SchemaOp<'a> {
     DeleteTable {
         table: &'a TableSpec,
     },
-    RenameTable {
-        table: &'a TableSpec,
-        new_name: SchemaObjectName,
-    },
+    RenameTable(RenameTableOp),
 
     CreateEnum {
         enum_: &'a EnumSpec,
@@ -176,14 +191,7 @@ impl SchemaOp<'_> {
 
             SchemaOp::CreateTable { table } => table.creation_sql(),
             SchemaOp::DeleteTable { table } => table.deletion_sql(),
-            SchemaOp::RenameTable { table, new_name } => SchemaStatement {
-                statement: format!(
-                    "ALTER TABLE {} RENAME TO {};",
-                    table.sql_name(),
-                    new_name.sql_name()
-                ),
-                ..Default::default()
-            },
+            SchemaOp::RenameTable(op) => op.to_sql(),
 
             SchemaOp::CreateEnum { enum_ } => enum_.creation_sql(),
             SchemaOp::DeleteEnum { enum_ } => enum_.deletion_sql(),
@@ -366,12 +374,12 @@ impl SchemaOp<'_> {
                 statement: function.creation_sql(false),
                 ..Default::default()
             },
-            SchemaOp::CreateOrReplaceFunction { function } => SchemaStatement {
-                statement: function.creation_sql(true),
-                ..Default::default()
-            },
             SchemaOp::DeleteFunction { name } => SchemaStatement {
                 statement: format!("DROP FUNCTION {name};"),
+                ..Default::default()
+            },
+            SchemaOp::CreateOrReplaceFunction { function } => SchemaStatement {
+                statement: function.creation_sql(true),
                 ..Default::default()
             },
 
@@ -393,6 +401,43 @@ impl SchemaOp<'_> {
                 ),
                 ..Default::default()
             },
+        }
+    }
+
+    pub fn is_destructive(&self) -> bool {
+        match self {
+            SchemaOp::DeleteSchema { .. }
+            | SchemaOp::DeleteTable { .. }
+            | SchemaOp::DeleteColumn { .. }
+            | SchemaOp::RemoveExtension { .. }
+            | SchemaOp::DeleteEnum { .. }
+            | SchemaOp::DeleteSequence { .. } => true,
+
+            // Explicitly matching the other cases here to ensure that we have thought about each case
+            SchemaOp::CreateSchema { .. }
+            | SchemaOp::RenameSchema { .. }
+            | SchemaOp::CreateSequence { .. }
+            | SchemaOp::CreateTable { .. }
+            | SchemaOp::RenameTable { .. }
+            | SchemaOp::CreateEnum { .. }
+            | SchemaOp::CreateColumn { .. }
+            | SchemaOp::RenameColumn { .. }
+            | SchemaOp::CreateIndex { .. }
+            | SchemaOp::DeleteIndex { .. } // Creating and deleting index is not considered destructive (they affect performance but not data loss)
+            | SchemaOp::CreateExtension { .. }
+            | SchemaOp::CreateUniqueConstraint { .. }
+            | SchemaOp::RemoveUniqueConstraint { .. }
+            | SchemaOp::CreateForeignKeyReference { .. }
+            | SchemaOp::DeleteForeignKeyReference { .. }
+            | SchemaOp::SetColumnDefaultValue { .. }
+            | SchemaOp::UnsetColumnDefaultValue { .. }
+            | SchemaOp::SetNotNull { .. }
+            | SchemaOp::UnsetNotNull { .. }
+            | SchemaOp::CreateFunction { .. }
+            | SchemaOp::DeleteFunction { .. }
+            | SchemaOp::CreateOrReplaceFunction { .. }
+            | SchemaOp::CreateTrigger { .. }
+            | SchemaOp::DeleteTrigger { .. } => false,
         }
     }
 
