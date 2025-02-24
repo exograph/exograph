@@ -25,6 +25,8 @@ use std::{fs::File, io::BufWriter};
 
 use crate::commands::command::default_model_file;
 use crate::config::Config;
+use crate::util::watcher::execute_after_scripts;
+use crate::util::watcher::execute_before_scripts;
 
 use super::command::default_trusted_documents_dir;
 use super::command::ensure_exo_project_dir;
@@ -39,8 +41,8 @@ impl CommandDefinition for BuildCommandDefinition {
     }
 
     /// Build exograph server binary
-    async fn execute(&self, _matches: &ArgMatches, _config: &Config) -> Result<()> {
-        build(true).await?;
+    async fn execute(&self, _matches: &ArgMatches, config: &Config) -> Result<()> {
+        build(true, config).await?;
 
         Ok(())
     }
@@ -85,8 +87,10 @@ pub(crate) async fn build_system_with_static_builders(
 /// * `print_message` - if true, it will print a message indicating the time it took to build the model. We need this
 ///                        to avoid printing the message when building the model through `exo dev`, where we don't want to print the message
 ///                        upon detecting changes
-pub(crate) async fn build(print_message: bool) -> Result<(), BuildError> {
+pub(crate) async fn build(print_message: bool, config: &Config) -> Result<(), BuildError> {
     ensure_exo_project_dir(&PathBuf::from("."))?;
+
+    execute_before_scripts(config).map_err(BuildError::UnrecoverableError)?;
 
     let model: PathBuf = default_model_file();
     let trusted_documents_dir = default_trusted_documents_dir();
@@ -104,6 +108,8 @@ pub(crate) async fn build(print_message: bool) -> Result<(), BuildError> {
     let serialized = SystemSerializer::serialize(&serialized_system)
         .map_err(|e| BuildError::ParserError(e.into()))?;
     out_file.write_all(&serialized).unwrap();
+
+    execute_after_scripts(config).map_err(BuildError::UnrecoverableError)?;
 
     if print_message {
         println!("Exograph IR file {} created", exo_ir_file_name.display());

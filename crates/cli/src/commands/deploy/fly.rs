@@ -65,13 +65,13 @@ impl CommandDefinition for FlyCommandDefinition {
 
     /// Create a fly.toml file, a Dockerfile, and build the docker image. Then provide instructions
     /// on how to deploy the app to Fly.io.
-    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, config: &Config) -> Result<()> {
         let app_name: String = app_name_from_args(matches);
         let envs: Option<Vec<String>> = matches.get_many("env").map(|env| env.cloned().collect());
         let env_file: Option<PathBuf> = get(matches, "env-file");
         let use_fly_db: bool = matches.get_flag("use-fly-db");
 
-        build(false).await?; // Build the exo_ir file
+        build(false, config).await?; // Build the exo_ir file
 
         let current_dir = std::env::current_dir()?;
 

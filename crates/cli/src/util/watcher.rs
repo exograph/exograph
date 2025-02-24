@@ -125,17 +125,14 @@ where
     // - if the return value is an Ok(None), this mean that we have encountered some error, but it is not necessarily
     //   unrecoverable (the watcher should not exit)
 
-    execute_before_scripts(config)?;
-
     // precompute exo-server path and exo_ir file name
     let mut server_binary = std::env::current_exe()?;
     server_binary.set_file_name("exo-server");
 
-    let build_result = build(false).await;
+    let build_result = build(false, config).await;
 
     match build_result {
         Ok(()) => {
-            execute_after_scripts(config)?;
             if let Err(e) = prestart_callback().await {
                 println!("{} {}", "Error:".red().bold(), e.to_string().red().bold());
             }

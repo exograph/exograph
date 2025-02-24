@@ -43,7 +43,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
             .arg(app_name_arg())
     }
 
-    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, config: &Config) -> Result<()> {
         let download_file_name = "exograph-aws-lambda-linux-2023-x86_64.zip";
         let download_url = format!("https://github.com/exograph/exograph/releases/download/v{CURRENT_VERSION}/{download_file_name}");
 
@@ -52,7 +52,7 @@ impl CommandDefinition for AwsLambdaCommandDefinition {
 
         let app_name: String = app_name_from_args(matches);
 
-        build(false).await?;
+        build(false, config).await?;
 
         let aws_lambda_dir = PathBuf::from("target/aws-lambda");
         create_dir_all(aws_lambda_dir)?;
