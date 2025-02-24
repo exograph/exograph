@@ -33,10 +33,10 @@ impl CommandDefinition for CfWorkerCommandDefinition {
             .arg(app_name_arg())
     }
 
-    async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
+    async fn execute(&self, matches: &clap::ArgMatches, config: &Config) -> Result<()> {
         let app_name: String = app_name_from_args(matches);
 
-        build(false).await?; // Build the exo_ir file
+        build(false, config).await?; // Build the exo_ir file
 
         let current_dir = std::env::current_dir()?;
         let cf_worker_dir = current_dir.join("target/cf-worker");
