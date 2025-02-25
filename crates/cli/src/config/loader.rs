@@ -48,11 +48,35 @@ impl TryFrom<ExographSer> for ExographConfig {
     type Error = anyhow::Error;
 
     fn try_from(config: ExographSer) -> Result<Self, Self::Error> {
+        let version_req_str = config.version;
+
+        let version_req = match version_req_str {
+            Some(version_req_str) => {
+                let version_req = VersionReq::parse(&version_req_str)
+                    .map_err(|_| anyhow!("Invalid version: {}", version_req_str))?;
+
+                let mut comparators = version_req.comparators;
+
+                // Match the behavior of npm/yarn/pnpm, where `1.2.3` is the same as `=1.2.3` (while the server crate treats `1.2.3` as `^1.2.3`)
+                // See, https://github.com/dtolnay/semver/issues/311 (and if that is fixed, remove this code)
+
+                comparators
+                    .iter_mut()
+                    .zip(version_req_str.split(','))
+                    .for_each(|(comparator, part)| {
+                        let part = part.trim();
+                        if !part.starts_with('^') && comparator.op == semver::Op::Caret {
+                            comparator.op = semver::Op::Exact;
+                        }
+                    });
+
+                Some(VersionReq { comparators })
+            }
+            None => None,
+        };
+
         Ok(ExographConfig {
-            version: config
-                .version
-                .map(|v| VersionReq::parse(&v).map_err(|_| anyhow!("Invalid version: {}", v)))
-                .transpose()?,
+            version: version_req,
         })
     }
 }
@@ -92,6 +116,10 @@ pub fn load_config() -> Result<Config> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use semver::Version;
+
     use crate::config::model::WatchConfig;
 
     use super::*;
@@ -157,5 +185,54 @@ mod tests {
                 yolo: None,
             }
         );
+    }
+
+    #[test]
+    fn version_req() {
+        // req_version -> (matching, not_matching)
+        let table = HashMap::from([
+            ("0.11.1", (vec!["0.11.1"], vec!["0.11.2"])),
+            ("=0.11.1", (vec!["0.11.1"], vec!["0.11.2"])),
+            (
+                "^0.11.1",
+                (vec!["0.11.1", "0.11.2"], vec!["0.11.0", "0.12.1"]),
+            ),
+            (
+                "^1.2.3",
+                (vec!["1.2.3", "1.2.4", "1.3.0"], vec!["1.2.2", "2.0.0"]),
+            ),
+            (
+                "~1.2.3",
+                (vec!["1.2.3", "1.2.4"], vec!["1.2.2", "1.3.0", "2.0.0"]),
+            ),
+        ]);
+
+        for (req_version_str, (matching, not_matching)) in table {
+            let exograph_config = ExographSer {
+                version: Some(req_version_str.to_string()),
+            };
+
+            let exograph_config = ExographConfig::try_from(exograph_config).unwrap();
+
+            let req_version = exograph_config.version.unwrap();
+
+            for version in matching {
+                assert!(
+                    req_version.matches(&Version::parse(version).unwrap()),
+                    "Should match version: {} for req_version: {}",
+                    version,
+                    req_version_str
+                );
+            }
+
+            for version in not_matching {
+                assert!(
+                    !req_version.matches(&Version::parse(version).unwrap()),
+                    "Should not match version: {} for req_version: {}",
+                    version,
+                    req_version_str
+                );
+            }
+        }
     }
 }

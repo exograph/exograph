@@ -28,13 +28,13 @@ build.after-model-change = [
 ]
 ```
 
-The configuration file supports the `exograph` and `build`, `dev`, and `yolo` tables.
+The configuration file supports the `exograph` and `build`, `dev`, and `yolo` configuration sections.
 
 ## `exograph`
 
-The `exograph` table supports the `version` key to specify the required version of the Exograph CLI. 
+You can specify the required version of the Exograph CLI using the `exograph.version` key.
 
-A typical `exograph` table looks like this:
+A typical `exograph` configuration looks like:
 
 ```toml
 [exograph]
@@ -45,27 +45,25 @@ You can specify the version using as much specificity as you want. Here are some
 
 | Specification                 | Description                           |
 |------------------------------|---------------------------------------|
-| `version = "0.11.1"`         | Higher than 0.11.1, lower than 0.12.0 |
-| `version = "1.2.3"`          | Higher than 1.2.3, lower than 2.0.0 |
-| `version = "1.2"`            | Higher than 1.2.0, lower than 1.3.0 |
+| `version = "0.11.1"`         | Exactly 0.11.1 |
+| `version = "=0.11.1"`        | Exactly 0.11.1 |
+| `version = "^1.2.3"`         | Higher than 1.2.3, lower than 2.0.0 |
+| `version = "~1.2.3"`         | Higher than 1.2.3, lower than 1.3.0 |
 | `version = "1"`              | Higher than 1.0.0, lower than 2.0.0 |
 | `version = ">=0.11.1"`       | Higher than or equal to 0.11.1 |
 | `version = "<0.11.1"`        | Lower than 0.11.1 |
-| `version = "=0.11.1"`        | Exactly 0.11.1 |
 
 :::note Differences from npm/yarn/pnpm
-Exograph enforces version constraints in the same way as [Rust's build tool, cargo, does](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#version-specifiers). For the most part, it matches the way npm/yarn/pnpm. However, there is a notable exception: By default, Exograph treats `1.2.3` the same way as npm would treat `~1.2.3`. Therefore, while `1.2.3` in a package.json would match only `1.2.3`, in an `exo.toml` file, it would match any semantically compatible version (>= `1.2.0` and < `1.3.0`).
-
-You may want to explicitly specify the `~` or `=` prefixes to get the exact behavior of npm/yarn/pnpm.
+Currently, Exograph does not support the `||` operator in the version specification.
 :::
 
 :::tip Recommendation
-Until Exograph reaches version 1.0, we recommend the exact version specification (e.g., `version = "=0.11.1"`) or the minimal version with a patch version (e.g., `version = "~0.11.1"`).
+Until Exograph reaches version 1.0, we recommend the exact version specification (e.g., `version = "=0.11.1"`) or the minimal version with a patch version (e.g., `version = "> 0.11.1"`).
 :::
 
 ## `build`, `dev`, and `yolo`
 
-The `build`, `dev`, and `yolo` tables support the `after-model-change` key, which specifies commands to run when the model changes.
+You can declare hooks to run during the lifecycle of the build, dev, and yolo commands.
 
 When the specified commands run as follows:
 
