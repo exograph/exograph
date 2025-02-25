@@ -185,11 +185,11 @@ impl SchemaOp<'_> {
             },
 
             SchemaOp::CreateExtension { extension } => SchemaStatement {
-                statement: format!("CREATE EXTENSION \"{extension}\";"),
+                statement: format!("CREATE EXTENSION IF NOT EXISTS \"{extension}\";"),
                 ..Default::default()
             },
             SchemaOp::RemoveExtension { extension } => SchemaStatement {
-                statement: format!("DROP EXTENSION \"{extension}\";"),
+                statement: format!("DROP EXTENSION IF EXISTS \"{extension}\";"),
                 ..Default::default()
             },
 
