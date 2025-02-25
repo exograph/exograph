@@ -178,7 +178,7 @@ mod tests {
             config,
             Config {
                 exograph: Some(ExographConfig {
-                    version: Some(VersionReq::parse("0.11.1").unwrap()),
+                    version: Some(VersionReq::parse("=0.11.1").unwrap()),
                 }),
                 build: None,
                 dev: None,
