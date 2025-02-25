@@ -26,7 +26,7 @@ use crate::{
         schema::{migrate::open_database, util},
         util::wait_for_enter,
     },
-    config::Config,
+    config::{Config, WatchStage},
     util::watcher,
 };
 use common::env_const::{EXO_JWT_SECRET, EXO_POSTGRES_URL};
@@ -104,13 +104,21 @@ async fn run(
         (None, None) => Ok(JWTSecret::Generated(super::util::generate_random_string())),
     }?;
 
-    let prestart_callback = || run_server(&model, &jwt_secret, db.as_ref(), seed.clone()).boxed();
+    let prestart_callback =
+        || setup_database(&model, &jwt_secret, db.as_ref(), seed.clone()).boxed();
 
-    watcher::start_watcher(root_path, port, config, prestart_callback).await
+    watcher::start_watcher(
+        root_path,
+        port,
+        config,
+        Some(&WatchStage::Yolo),
+        prestart_callback,
+    )
+    .await
 }
 
 #[async_recursion]
-async fn run_server(
+async fn setup_database(
     model: &PathBuf,
     jwt_secret: &JWTSecret,
     db: &(dyn EphemeralDatabase + Send + Sync),
@@ -160,14 +168,14 @@ async fn run_server(
 
     // execute migration
     println!("Applying migrations...");
-    let result = migrations.apply(&db_client, true).await;
+    let migration_result = migrations.apply(&db_client, true).await;
 
     const CONTINUE: &str = "Continue with old schema";
     const REBUILD: &str = "Rebuild Postgres schema (wipe out all data)";
     const PAUSE: &str = "Pause for manual repair";
     const EXIT: &str = "Exit";
 
-    if let Err(e) = result {
+    if let Err(e) = migration_result {
         println!("Error while applying migration: {e}");
         let options = vec![CONTINUE, REBUILD, PAUSE, EXIT];
         let ans = inquire::Select::new("Choose an option:", options).prompt()?;
@@ -179,7 +187,7 @@ async fn run_server(
             }
             REBUILD => {
                 migration::wipe_database(&db_client).await?;
-                run_server(model, jwt_secret, db, None).await?;
+                setup_database(model, jwt_secret, db, None).await?;
             }
             PAUSE => {
                 println!("Pausing for manual repair");

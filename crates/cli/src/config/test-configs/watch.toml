@@ -1,3 +1,16 @@
 [watch]
-before = ["echo 'before1'", "echo 'before2'"]
-after = ["echo 'after1'", "echo 'after2'"]
+
+[build]
+build.before = ["echo 'before build 1'", "echo 'before build 2'"]
+build.after = ["echo 'after build 1'", "echo 'after build 2'"]
+dev = ["echo 'dev1'", "echo 'dev2'"]
+yolo = ["echo 'yolo1'", "echo 'yolo2'"]
+
+
+#[watch.build]
+#before = ["echo 'before build 1'", "echo 'before build 2'"]
+#after = ["echo 'after build 1'", "echo 'after build 2'"]
+
+#[watch]
+#dev = ["echo 'dev1'", "echo 'dev2'"]
+#yolo = ["echo 'yolo1'", "echo 'yolo2'"]

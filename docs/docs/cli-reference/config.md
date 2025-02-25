@@ -4,14 +4,14 @@ sidebar_position: 3
 
 # Configuration
 
-Exograph developers tooling can be configured using an `exo.toml` file in the root directory of your project. Here is an example configuration file:
+Exograph tooling can be configured using an `exo.toml` file in the root directory of your project. Here is an example configuration file:
 
 ```toml
 [tool-version]
 version = "0.11.1"
 
-[watch]
-before = ["echo 'before1'", "echo 'before2'"]
+[watch.build]
+before = ["echo 'Starting build...'"]
 after = [
   "exo graphql schema --output ../web/.gen/graphql/schema.graphql", 
   "exo schema migrate --allow-destructive-changes -o migrations/current.sql"
@@ -23,12 +23,11 @@ You can express the content in an [alternative TOML format](https://toml.io/en/v
 ```toml
 tool-version = "0.11.1"
 
-watch.before = [
-  "echo 'before1'",
-  "echo 'before2'"
+watch.build.before = [
+  "echo 'Starting build...'"
 ]
 
-watch.after = [
+watch.build.after = [
   "exo graphql schema --output ../web/.gen/graphql/schema.graphql",
   "exo schema migrate --allow-destructive-changes -o migrations/current.sql"
 ]
@@ -51,9 +50,34 @@ The `tool-version` specifies the required version of the Exograph CLI using as m
 | `tool-version = "=0.11.1"`        | Exactly 0.11.1 |
 
 :::tip Recommendation
-Until Exograph reaches version 1.0, we recommend the exact version specification (e.g. `tool-version = "=0.11.1"`) or the minimal version with a patch version   (e.g. `tool-version = "0.11.1"`).
+Until Exograph reaches version 1.0, we recommend the exact version specification (e.g., `tool-version = "=0.11.1"`) or the minimal version with a patch version   (e.g., `tool-version = "0.11.1"`).
 :::
 
 ## `watch`
 
-The `watch` key is used to specify the commands to run when the configuration changes. The `before` key is a list of commands to run before building the model (through either the `exo build` command or as a part of the `exo dev` or `exo yolo` commands). The `after` key is a list of commands to run after the model has been built.
+The `watch` key specifies the commands to run when the model changes or when the server is restarted in the dev or yolo mode. 
+
+The following keys are supported:
+
+- `build.before`: A list of commands to run before building the model (through either the `exo build` command or as a part of the `exo dev` or `exo yolo` commands).
+- `build.after`: A list of commands to run after the model has been built.
+- `dev`: A list of commands to run before the server is restarted in the dev mode.
+- `yolo`: A list of commands to run before the server is restarted in the yolo mode.
+
+For example, if you want to automatically generate the GraphQL schema and migrate the database when the model changes, you can use the following configuration:
+
+```toml
+[watch.build]
+before = ["echo 'Starting build...'"]
+after = [
+  "exo graphql schema --output ../web/.gen/graphql/schema.graphql", 
+  "exo schema migrate --allow-destructive-changes -o migrations/current.sql"
+]
+```
+
+During development, you may want to keep track of migrations that you will eventually need to apply to your staging or production database. You can do this by adding the following configuration:
+
+```toml
+[watch]
+dev = ["EXO_POSTGRES_URL=<staging-or-production-database-url> exo schema migrate --allow-destructive-changes -o migrations/current.sql"]
+```

@@ -10,6 +10,7 @@ use serde::Deserialize;
 use super::model::WatchConfig;
 
 #[derive(Deserialize, Debug, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
 pub struct ConfigSer {
     #[serde(rename = "tool-version")]
     pub tool_version: Option<String>,
@@ -17,7 +18,16 @@ pub struct ConfigSer {
 }
 
 #[derive(Deserialize, Debug, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
 pub struct WatchConfigSer {
+    pub build: Option<WatchScriptsSer>,
+    pub dev: Option<Vec<String>>,
+    pub yolo: Option<Vec<String>>,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
+pub struct WatchScriptsSer {
     pub before: Option<Vec<String>>,
     pub after: Option<Vec<String>>,
 }
@@ -45,8 +55,18 @@ impl TryFrom<WatchConfigSer> for WatchConfig {
 
     fn try_from(config: WatchConfigSer) -> Result<Self, Self::Error> {
         Ok(WatchConfig {
-            before: config.before.unwrap_or_default(),
-            after: config.after.unwrap_or_default(),
+            before_build: config
+                .build
+                .as_ref()
+                .and_then(|b| b.before.clone())
+                .unwrap_or_default(),
+            after_build: config
+                .build
+                .as_ref()
+                .and_then(|b| b.after.clone())
+                .unwrap_or_default(),
+            dev: config.dev.unwrap_or_default(),
+            yolo: config.yolo.unwrap_or_default(),
         })
     }
 }
@@ -107,23 +127,16 @@ mod tests {
             Config {
                 tool_version: None,
                 watch: WatchConfig {
-                    before: vec!["echo 'before1'".to_string(), "echo 'before2'".to_string()],
-                    after: vec!["echo 'after1'".to_string(), "echo 'after2'".to_string()]
-                }
-            }
-        );
-    }
-
-    #[test]
-    fn test_load_watch_after_config() {
-        let config = load_test_config("watch-after").unwrap();
-        assert_eq!(
-            config,
-            Config {
-                tool_version: None,
-                watch: WatchConfig {
-                    before: vec![],
-                    after: vec!["echo 'after1'".to_string(), "echo 'after2'".to_string()]
+                    before_build: vec![
+                        "echo 'before build 1'".to_string(),
+                        "echo 'before build 2'".to_string()
+                    ],
+                    after_build: vec![
+                        "echo 'after build 1'".to_string(),
+                        "echo 'after build 2'".to_string()
+                    ],
+                    dev: vec!["echo 'dev1'".to_string(), "echo 'dev2'".to_string()],
+                    yolo: vec!["echo 'yolo1'".to_string(), "echo 'yolo2'".to_string()],
                 }
             }
         );

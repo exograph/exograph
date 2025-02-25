@@ -17,11 +17,14 @@ use futures::{future::BoxFuture, FutureExt};
 use notify_debouncer_mini::notify::RecursiveMode;
 use tokio::process::Child;
 
-use crate::commands::{
-    build::{build, BuildError},
-    command::default_trusted_documents_dir,
-};
 use crate::config::Config;
+use crate::{
+    commands::{
+        build::{build, BuildError},
+        command::default_trusted_documents_dir,
+    },
+    config::WatchStage,
+};
 
 /// Starts a watcher that will rebuild and serve model files with every change.
 /// Takes a callback that will be called before the start of each server.
@@ -29,6 +32,7 @@ pub async fn start_watcher<'a, F>(
     root_path: &Path,
     server_port: Option<u32>,
     config: &Config,
+    watch_stage: Option<&WatchStage>,
     prestart_callback: F,
 ) -> Result<()>
 where
@@ -66,7 +70,8 @@ where
             .unwrap_or(false)
     };
 
-    let mut server = build_and_start_server(server_port, config, &prestart_callback).await?;
+    let mut server =
+        build_and_start_server(server_port, config, watch_stage, &prestart_callback).await?;
 
     loop {
         let server_death_event = if let Some(child) = server.as_mut() {
@@ -90,7 +95,7 @@ where
                 if let Ok(events) = events {
                         if events.iter().map(|event| &event.path).any(|p| should_restart(p)) {
                             println!("\nChange detected, rebuilding and restarting...");
-                            server = build_and_start_server(server_port, config, &prestart_callback).await?;
+                            server = build_and_start_server(server_port, config, watch_stage, &prestart_callback).await?;
                         }
                     };
             }
@@ -113,6 +118,7 @@ where
 pub(crate) async fn build_and_start_server<'a, F>(
     server_port: Option<u32>,
     config: &Config,
+    watch_stage: Option<&WatchStage>,
     prestart_callback: &F,
 ) -> Result<Option<Child>>
 where
@@ -145,6 +151,10 @@ where
                 command.env(EXO_SERVER_PORT, port.to_string());
             }
 
+            if let Some(watch_stage) = watch_stage {
+                execute_scripts(config, watch_stage)?;
+            }
+
             let child = command
                 .spawn()
                 .context("Failed to start exo-server")
@@ -163,21 +173,10 @@ where
     }
 }
 
-pub fn execute_before_scripts(config: &Config) -> Result<()> {
-    execute_scripts(&config.watch.before)?;
-
-    Ok(())
-}
-
-pub fn execute_after_scripts(config: &Config) -> Result<()> {
-    execute_scripts(&config.watch.after)?;
-
-    Ok(())
-}
-
-pub fn execute_scripts(scripts: &[String]) -> Result<()> {
+pub fn execute_scripts(config: &Config, stage: &WatchStage) -> Result<()> {
+    let scripts = config.watch.scripts(stage);
     for script in scripts {
-        execute_script(script)?;
+        execute_script(&script)?;
     }
     Ok(())
 }

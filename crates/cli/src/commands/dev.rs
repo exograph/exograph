@@ -20,7 +20,7 @@ use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use super::command::{enforce_trusted_documents_arg, get, port_arg, CommandDefinition};
-use crate::config::Config;
+use crate::config::{Config, WatchStage};
 use crate::{
     commands::{
         command::{
@@ -73,7 +73,7 @@ impl CommandDefinition for DevCommandDefinition {
         const PAUSE: &str = "Pause for manual repair";
         const EXIT: &str = "Exit";
 
-        watcher::start_watcher(&root_path, port, config, || async {
+        watcher::start_watcher(&root_path, port, config, Some(&WatchStage::Dev), || async {
             println!("{}", "\nVerifying new model...".blue().bold());
             let db_client = open_database(None).await?;
 

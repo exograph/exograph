@@ -9,8 +9,35 @@ pub struct Config {
 
 #[derive(Debug, PartialEq, Default)]
 pub struct WatchConfig {
-    pub before: Vec<String>,
-    pub after: Vec<String>,
+    pub before_build: Vec<String>,
+    pub after_build: Vec<String>,
+
+    pub dev: Vec<String>,
+    pub yolo: Vec<String>,
+}
+
+impl WatchConfig {
+    pub fn scripts(&self, stage: &WatchStage) -> Vec<String> {
+        match stage {
+            WatchStage::Build(WatchStagePos::Before) => self.before_build.clone(),
+            WatchStage::Build(WatchStagePos::After) => self.after_build.clone(),
+            WatchStage::Dev => self.dev.clone(),
+            WatchStage::Yolo => self.yolo.clone(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum WatchStagePos {
+    Before,
+    After,
+}
+
+#[derive(Debug)]
+pub enum WatchStage {
+    Build(WatchStagePos),
+    Dev,
+    Yolo,
 }
 
 impl Config {
