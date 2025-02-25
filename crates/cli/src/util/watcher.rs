@@ -164,20 +164,14 @@ where
 }
 
 pub fn execute_before_scripts(config: &Config) -> Result<()> {
-    if let Some(watch) = &config.watch {
-        if let Some(before) = &watch.before {
-            execute_scripts(before)?;
-        }
-    }
+    execute_scripts(&config.watch.before)?;
+
     Ok(())
 }
 
 pub fn execute_after_scripts(config: &Config) -> Result<()> {
-    if let Some(watch) = &config.watch {
-        if let Some(after) = &watch.after {
-            execute_scripts(after)?;
-        }
-    }
+    execute_scripts(&config.watch.after)?;
+
     Ok(())
 }
 
