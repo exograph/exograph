@@ -1,4 +1,4 @@
-CREATE EXTENSION "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE "concerts" (
 	"id" SERIAL PRIMARY KEY,

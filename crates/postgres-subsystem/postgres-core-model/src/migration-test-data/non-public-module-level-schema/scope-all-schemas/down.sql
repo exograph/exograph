@@ -14,7 +14,7 @@ CREATE TABLE "users" (
 	"name" TEXT NOT NULL
 );
 
--- DROP SCHEMA "info" CASCADE;
+-- DROP SCHEMA IF EXISTS "info" CASCADE;
 
 ALTER TABLE "logs" ADD CONSTRAINT "logs_owner_fk" FOREIGN KEY ("owner_id") REFERENCES "users";
 

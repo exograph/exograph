@@ -13,9 +13,9 @@ CREATE TABLE "venues" (
 	"name" TEXT NOT NULL
 );
 
--- DROP SCHEMA "c" CASCADE;
+-- DROP SCHEMA IF EXISTS "c" CASCADE;
 
--- DROP SCHEMA "v" CASCADE;
+-- DROP SCHEMA IF EXISTS "v" CASCADE;
 
 ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";
 
