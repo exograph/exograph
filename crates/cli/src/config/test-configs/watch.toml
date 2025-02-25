@@ -1,3 +1,7 @@
-[watch]
-before = ["echo 'before1'", "echo 'before2'"]
-after = ["echo 'after1'", "echo 'after2'"]
+build.after-model-change = ["echo 'after build 1'", "echo 'after build 2'"]
+
+[dev]
+after-model-change = ["echo 'dev1'", "echo 'dev2'"]
+
+[yolo]
+after-model-change = ["echo 'yolo1'", "echo 'yolo2'"]

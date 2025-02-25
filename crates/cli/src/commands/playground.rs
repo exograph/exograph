@@ -60,9 +60,10 @@ impl CommandDefinition for PlaygroundCommandDefinition {
         std::env::set_var(_EXO_DEPLOYMENT_MODE, "playground");
         std::env::set_var(_EXO_UPSTREAM_ENDPOINT_URL, &endpoint_url);
 
-        let mut server =
-            watcher::build_and_start_server(port, &Config::default(), &|| async { Ok(()) }.boxed())
-                .await?;
+        let mut server = watcher::build_and_start_server(port, &Config::default(), None, &|| {
+            async { Ok(()) }.boxed()
+        })
+        .await?;
 
         if let Some(child) = server.as_mut() {
             println!(
