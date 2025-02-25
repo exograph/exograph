@@ -7,29 +7,28 @@ use crate::config::model::Config;
 
 use serde::Deserialize;
 
-use super::model::WatchConfig;
+use super::model::{ExographConfig, WatchConfig};
 
 #[derive(Deserialize, Debug, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigSer {
-    #[serde(rename = "tool-version")]
-    pub tool_version: Option<String>,
-    pub watch: Option<WatchConfigSer>,
+    pub exograph: Option<ExographSer>,
+    pub build: Option<WatchCommandSer>,
+    pub dev: Option<WatchCommandSer>,
+    pub yolo: Option<WatchCommandSer>,
 }
 
 #[derive(Deserialize, Debug, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
-pub struct WatchConfigSer {
-    pub build: Option<WatchScriptsSer>,
-    pub dev: Option<Vec<String>>,
-    pub yolo: Option<Vec<String>>,
+pub struct ExographSer {
+    pub version: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
-pub struct WatchScriptsSer {
-    pub before: Option<Vec<String>>,
-    pub after: Option<Vec<String>>,
+pub struct WatchCommandSer {
+    #[serde(rename = "after-model-change")]
+    pub after_model_change: Option<Vec<String>>,
 }
 
 impl TryFrom<ConfigSer> for Config {
@@ -37,36 +36,33 @@ impl TryFrom<ConfigSer> for Config {
 
     fn try_from(config: ConfigSer) -> Result<Self, Self::Error> {
         Ok(Config {
-            tool_version: config
-                .tool_version
-                .map(|v| VersionReq::parse(&v).map_err(|_| anyhow!("Invalid version: {}", v)))
-                .transpose()?,
-            watch: config
-                .watch
-                .map(WatchConfig::try_from)
-                .transpose()?
-                .unwrap_or_default(),
+            exograph: config.exograph.map(ExographConfig::try_from).transpose()?,
+            build: config.build.map(WatchConfig::try_from).transpose()?,
+            dev: config.dev.map(WatchConfig::try_from).transpose()?,
+            yolo: config.yolo.map(WatchConfig::try_from).transpose()?,
         })
     }
 }
 
-impl TryFrom<WatchConfigSer> for WatchConfig {
+impl TryFrom<ExographSer> for ExographConfig {
     type Error = anyhow::Error;
 
-    fn try_from(config: WatchConfigSer) -> Result<Self, Self::Error> {
+    fn try_from(config: ExographSer) -> Result<Self, Self::Error> {
+        Ok(ExographConfig {
+            version: config
+                .version
+                .map(|v| VersionReq::parse(&v).map_err(|_| anyhow!("Invalid version: {}", v)))
+                .transpose()?,
+        })
+    }
+}
+
+impl TryFrom<WatchCommandSer> for WatchConfig {
+    type Error = anyhow::Error;
+
+    fn try_from(config: WatchCommandSer) -> Result<Self, Self::Error> {
         Ok(WatchConfig {
-            before_build: config
-                .build
-                .as_ref()
-                .and_then(|b| b.before.clone())
-                .unwrap_or_default(),
-            after_build: config
-                .build
-                .as_ref()
-                .and_then(|b| b.after.clone())
-                .unwrap_or_default(),
-            dev: config.dev.unwrap_or_default(),
-            yolo: config.yolo.unwrap_or_default(),
+            after_model_change: config.after_model_change.unwrap_or_default(),
         })
     }
 }
@@ -106,8 +102,10 @@ mod tests {
         assert_eq!(
             config,
             Config {
-                tool_version: None,
-                watch: WatchConfig::default()
+                exograph: None,
+                build: None,
+                dev: None,
+                yolo: None,
             }
         );
     }
@@ -125,19 +123,22 @@ mod tests {
         assert_eq!(
             config,
             Config {
-                tool_version: None,
-                watch: WatchConfig {
-                    before_build: vec![
-                        "echo 'before build 1'".to_string(),
-                        "echo 'before build 2'".to_string()
-                    ],
-                    after_build: vec![
+                exograph: None,
+                build: Some(WatchConfig {
+                    after_model_change: vec![
                         "echo 'after build 1'".to_string(),
                         "echo 'after build 2'".to_string()
                     ],
-                    dev: vec!["echo 'dev1'".to_string(), "echo 'dev2'".to_string()],
-                    yolo: vec!["echo 'yolo1'".to_string(), "echo 'yolo2'".to_string()],
-                }
+                }),
+                dev: Some(WatchConfig {
+                    after_model_change: vec!["echo 'dev1'".to_string(), "echo 'dev2'".to_string()],
+                }),
+                yolo: Some(WatchConfig {
+                    after_model_change: vec![
+                        "echo 'yolo1'".to_string(),
+                        "echo 'yolo2'".to_string()
+                    ],
+                }),
             }
         );
     }
@@ -148,8 +149,12 @@ mod tests {
         assert_eq!(
             config,
             Config {
-                tool_version: Some(VersionReq::parse("0.11.1").unwrap()),
-                watch: WatchConfig::default()
+                exograph: Some(ExographConfig {
+                    version: Some(VersionReq::parse("0.11.1").unwrap()),
+                }),
+                build: None,
+                dev: None,
+                yolo: None,
             }
         );
     }

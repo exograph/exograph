@@ -1,1 +1,2 @@
-tool-version = "0.11.1"
+[exograph]
+version = "0.11.1"

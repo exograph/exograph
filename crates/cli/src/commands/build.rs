@@ -26,7 +26,6 @@ use std::{fs::File, io::BufWriter};
 use crate::commands::command::default_model_file;
 use crate::config::Config;
 use crate::config::WatchStage;
-use crate::config::WatchStagePos;
 use crate::util::watcher::execute_scripts;
 
 use super::command::default_trusted_documents_dir;
@@ -91,9 +90,6 @@ pub(crate) async fn build_system_with_static_builders(
 pub(crate) async fn build(print_message: bool, config: &Config) -> Result<(), BuildError> {
     ensure_exo_project_dir(&PathBuf::from("."))?;
 
-    execute_scripts(config, &WatchStage::Build(WatchStagePos::Before))
-        .map_err(BuildError::UnrecoverableError)?;
-
     let model: PathBuf = default_model_file();
     let trusted_documents_dir = default_trusted_documents_dir();
 
@@ -111,8 +107,7 @@ pub(crate) async fn build(print_message: bool, config: &Config) -> Result<(), Bu
         .map_err(|e| BuildError::ParserError(e.into()))?;
     out_file.write_all(&serialized).unwrap();
 
-    execute_scripts(config, &WatchStage::Build(WatchStagePos::After))
-        .map_err(BuildError::UnrecoverableError)?;
+    execute_scripts(config, &WatchStage::Build).map_err(BuildError::UnrecoverableError)?;
 
     if print_message {
         println!("Exograph IR file {} created", exo_ir_file_name.display());

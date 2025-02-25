@@ -174,7 +174,7 @@ where
 }
 
 pub fn execute_scripts(config: &Config, stage: &WatchStage) -> Result<()> {
-    let scripts = config.watch.scripts(stage);
+    let scripts = config.scripts(stage);
     for script in scripts {
         execute_script(&script)?;
     }

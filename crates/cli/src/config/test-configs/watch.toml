@@ -1,15 +1,7 @@
-[watch]
+build.after-model-change = ["echo 'after build 1'", "echo 'after build 2'"]
 
-build.before = ["echo 'before build 1'", "echo 'before build 2'"]
-build.after = ["echo 'after build 1'", "echo 'after build 2'"]
-dev = ["echo 'dev1'", "echo 'dev2'"]
-yolo = ["echo 'yolo1'", "echo 'yolo2'"]
+[dev]
+after-model-change = ["echo 'dev1'", "echo 'dev2'"]
 
-
-#[watch.build]
-#before = ["echo 'before build 1'", "echo 'before build 2'"]
-#after = ["echo 'after build 1'", "echo 'after build 2'"]
-
-#[watch]
-#dev = ["echo 'dev1'", "echo 'dev2'"]
-#yolo = ["echo 'yolo1'", "echo 'yolo2'"]
+[yolo]
+after-model-change = ["echo 'yolo1'", "echo 'yolo2'"]
