@@ -1,6 +1,5 @@
 [watch]
 
-[build]
 build.before = ["echo 'before build 1'", "echo 'before build 2'"]
 build.after = ["echo 'after build 1'", "echo 'after build 2'"]
 dev = ["echo 'dev1'", "echo 'dev2'"]
