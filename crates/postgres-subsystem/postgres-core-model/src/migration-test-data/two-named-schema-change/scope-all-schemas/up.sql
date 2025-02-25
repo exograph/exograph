@@ -1,4 +1,4 @@
-CREATE SCHEMA "auth";
+CREATE SCHEMA IF NOT EXISTS "auth";
 
 -- DROP TABLE "log"."users" CASCADE;
 
@@ -7,5 +7,5 @@ CREATE TABLE "auth"."users" (
 	"name" TEXT NOT NULL
 );
 
--- DROP SCHEMA "log" CASCADE;
+-- DROP SCHEMA IF EXISTS "log" CASCADE;
 

@@ -120,11 +120,11 @@ impl SchemaOp<'_> {
     pub fn to_sql(&self) -> SchemaStatement {
         match self {
             SchemaOp::CreateSchema { schema } => SchemaStatement {
-                statement: format!("CREATE SCHEMA \"{schema}\";"),
+                statement: format!("CREATE SCHEMA IF NOT EXISTS \"{schema}\";"),
                 ..Default::default()
             },
             SchemaOp::DeleteSchema { schema } => SchemaStatement {
-                statement: format!("DROP SCHEMA \"{schema}\" CASCADE;"),
+                statement: format!("DROP SCHEMA IF EXISTS \"{schema}\" CASCADE;"),
                 ..Default::default()
             },
 

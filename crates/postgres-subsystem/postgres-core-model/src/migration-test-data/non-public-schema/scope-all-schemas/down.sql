@@ -5,5 +5,5 @@ CREATE TABLE "users" (
 	"name" TEXT NOT NULL
 );
 
--- DROP SCHEMA "auth" CASCADE;
+-- DROP SCHEMA IF EXISTS "auth" CASCADE;
 

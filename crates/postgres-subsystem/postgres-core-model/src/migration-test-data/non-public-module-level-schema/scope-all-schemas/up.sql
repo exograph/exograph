@@ -1,4 +1,4 @@
-CREATE SCHEMA "info";
+CREATE SCHEMA IF NOT EXISTS "info";
 
 -- DROP TABLE "logs" CASCADE;
 

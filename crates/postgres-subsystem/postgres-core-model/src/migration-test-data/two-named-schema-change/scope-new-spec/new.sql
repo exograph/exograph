@@ -1,4 +1,4 @@
-CREATE SCHEMA "auth";
+CREATE SCHEMA IF NOT EXISTS "auth";
 
 CREATE TABLE "auth"."users" (
 	"id" INT PRIMARY KEY,
