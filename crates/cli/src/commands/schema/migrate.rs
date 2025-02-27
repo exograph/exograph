@@ -12,12 +12,11 @@ use std::{io, path::PathBuf};
 use anyhow::anyhow;
 use colored::Colorize;
 use exo_sql::schema::database_spec::DatabaseSpec;
-use exo_sql::schema::op::SchemaOp;
-use exo_sql::schema::spec::diff;
-use exo_sql::schema::table_spec::TableSpec;
+use exo_sql::schema::migration::{
+    migrate_interactively, Migration, MigrationError, MigrationInteraction, TableAction,
+};
 use exo_sql::SchemaObjectName;
 use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
-use postgres_core_model::migration::{Migration, MigrationInteraction, TableAction};
 
 use crate::commands::command::{
     database_value, migration_scope_arg, migration_scope_value, yes_arg, yes_value,
@@ -122,52 +121,13 @@ pub async fn migrate_interactively_from_db_and_model(
         Migration::extract_schema_from_db(db_client, &new_db_spec, &compute_migration_scope(None))
             .await?;
 
-    migrate_interactively(old_db_spec.value, new_db_spec).await
-}
-
-pub async fn migrate_interactively(
-    mut old_db_spec: DatabaseSpec,
-    new_db_spec: DatabaseSpec,
-) -> Result<Migration> {
-    let table_actions = Migration::migrate_interactively(
-        &old_db_spec,
-        &new_db_spec,
+    Ok(migrate_interactively(
+        old_db_spec.value,
+        new_db_spec,
         &compute_migration_scope(None),
         &UserMigrationInteraction,
     )
-    .await?;
-
-    let mut all_ops: Vec<SchemaOp> = vec![];
-
-    for table_action in table_actions.iter() {
-        if let TableAction::Rename(old_table, new_table) = table_action {
-            let (renamed_db_spec, rename_ops) =
-                old_db_spec.with_table_renamed(old_table, new_table);
-            all_ops.extend(rename_ops);
-            old_db_spec = renamed_db_spec;
-        }
-    }
-
-    let diffs = diff(&old_db_spec, &new_db_spec, &compute_migration_scope(None));
-
-    let diffs = diffs
-        .into_iter()
-        .map(|diff| {
-            let allow_destructive = table_actions.iter().any(|action|
-                matches!((&diff, action), (SchemaOp::DeleteTable { table }, TableAction::Delete(table_name)) if table_name == &table.name)
-            );
-
-            (diff, if allow_destructive { Some(false) } else { None })
-        })
-        .collect::<Vec<_>>();
-
-    let all_ops = all_ops
-        .into_iter()
-        .map(|op| (op, None))
-        .chain(diffs.into_iter())
-        .collect::<Vec<_>>();
-
-    Ok(Migration::from_diffs(&all_ops))
+    .await?)
 }
 
 const MANUAL_HANDLE: &str = "Let me handle this manually";
@@ -181,7 +141,7 @@ impl MigrationInteraction for UserMigrationInteraction {
         &self,
         deleted_table: &SchemaObjectName,
         create_tables: Vec<&SchemaObjectName>,
-    ) -> Result<TableAction> {
+    ) -> Result<TableAction, MigrationError> {
         let options = if create_tables.is_empty() {
             vec![MANUAL_HANDLE, DELETE_HANDLE]
         } else {
@@ -192,8 +152,9 @@ impl MigrationInteraction for UserMigrationInteraction {
             "\nThe database has the {} table that doesn't exist in the new schema.",
             deleted_table.fully_qualified_name_with_sep(".").red()
         );
-        let ans =
-            inquire::Select::new("How would you like to handle this table?", options).prompt()?;
+        let ans = inquire::Select::new("How would you like to handle this table?", options)
+            .prompt()
+            .map_err(|e| MigrationError::Generic(e.to_string()))?;
 
         match ans {
             MANUAL_HANDLE => Ok(TableAction::Manual(deleted_table.clone())),
@@ -204,7 +165,8 @@ impl MigrationInteraction for UserMigrationInteraction {
                     .collect::<Vec<_>>();
                 let new_name =
                     inquire::Select::new("What should the new name be?", create_table_displays)
-                        .prompt()?;
+                        .prompt()
+                        .map_err(|e| MigrationError::Generic(e.to_string()))?;
                 Ok(TableAction::Rename(
                     deleted_table.clone(),
                     new_name.0.clone(),

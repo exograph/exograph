@@ -14,9 +14,9 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
-use exo_sql::DatabaseClient;
+use exo_sql::schema::migration::{Migration, VerificationErrors};
+use exo_sql::DatabaseClientManager;
 use futures::FutureExt;
-use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
 use super::command::{
@@ -165,7 +165,7 @@ impl CommandDefinition for DevCommandDefinition {
 }
 
 async fn apply_migration(
-    db_client: &mut DatabaseClient,
+    db_client: &mut DatabaseClientManager,
     migrations: &Migration,
     ignore_migration_errors: bool,
 ) -> Result<bool> {

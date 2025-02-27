@@ -10,7 +10,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Command;
-use postgres_core_model::migration::Migration;
+use exo_sql::schema::migration::Migration;
 use std::{io::Write, path::PathBuf};
 
 use exo_sql::schema::database_spec::DatabaseSpec;

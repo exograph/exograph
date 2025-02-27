@@ -15,7 +15,7 @@ use colored::Colorize;
 use common::env_const::{
     EXO_CORS_DOMAINS, EXO_INTROSPECTION, EXO_INTROSPECTION_LIVE_UPDATE, _EXO_DEPLOYMENT_MODE,
 };
-use postgres_core_model::migration::{self, Migration};
+use exo_sql::schema::migration::Migration;
 use std::{
     path::{Path, PathBuf},
     sync::atomic::Ordering,
@@ -186,7 +186,7 @@ async fn setup_database(
                 println!("Continuing with old incompatible schema...");
             }
             REBUILD => {
-                migration::wipe_database(&mut db_client).await?;
+                exo_sql::schema::migration::wipe_database(&db_client).await?;
                 setup_database(model, jwt_secret, db, None).await?;
             }
             PAUSE => {

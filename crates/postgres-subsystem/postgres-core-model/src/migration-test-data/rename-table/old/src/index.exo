@@ -1,0 +1,17 @@
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    title: String
+    completed: Boolean
+    user: User
+  }
+
+  @access(true)
+  type User {
+    @pk id: Int = autoIncrement()
+    @unique email: String
+    todos: Set<Todo>?
+  }
+}
