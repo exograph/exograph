@@ -17,7 +17,7 @@ use exo_sql::{
         op::SchemaOp,
         spec::{diff, MigrationScope, MigrationScopeMatches},
     },
-    Database, DatabaseClient,
+    Database, DatabaseClient, DatabaseClientManager, SchemaObjectName,
 };
 use serde::Serialize;
 
@@ -57,6 +57,23 @@ impl Display for VerificationErrors {
 
                 Ok(())
             }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum TableAction {
+    Manual(SchemaObjectName),
+    Rename(SchemaObjectName, SchemaObjectName),
+    Delete(SchemaObjectName),
+}
+
+impl TableAction {
+    pub fn target_table(&self) -> &SchemaObjectName {
+        match self {
+            TableAction::Manual(table) => table,
+            TableAction::Rename(old_table, _) => old_table,
+            TableAction::Delete(table) => table,
         }
     }
 }
@@ -143,6 +160,63 @@ impl Migration {
         Ok(Migration::from_schemas(&old_schema.value, &new_spec, scope))
     }
 
+    pub async fn migrate_interactively(
+        old_db_spec: &DatabaseSpec,
+        new_db_spec: &DatabaseSpec,
+        scope: &MigrationScope,
+        interactions: &dyn MigrationInteraction,
+    ) -> Result<Vec<TableAction>, anyhow::Error> {
+        let mut table_actions: Vec<TableAction> = vec![];
+
+        loop {
+            let diffs = diff(old_db_spec, new_db_spec, scope);
+
+            let create_tables = diffs
+                .iter()
+                .filter_map(|diff| match diff {
+                    SchemaOp::CreateTable { table } => Some(*table),
+                    _ => None,
+                })
+                .filter(|table| {
+                    table_actions.iter().all(|action| {
+                        if let TableAction::Rename(_, new_table) = action {
+                            new_table != &table.name
+                        } else {
+                            true
+                        }
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            let delete_tables = diffs
+                .iter()
+                .filter_map(|diff| match diff {
+                    SchemaOp::DeleteTable { table } => Some(table),
+                    _ => None,
+                })
+                .filter(|table| {
+                    !table_actions
+                        .iter()
+                        .any(|action| action.target_table() == &table.name)
+                })
+                .collect::<Vec<_>>();
+
+            if delete_tables.is_empty() {
+                return Ok(table_actions);
+            } else {
+                println!("The database has a few tables that the new schema doesn't need. Please choose how to handle them.");
+
+                // let table_action = migrate_table_interactively(delete_tables[0], create_tables)?;
+                let table_action = interactions.handle_table_delete(
+                    &delete_tables[0].name,
+                    create_tables.iter().map(|table| &table.name).collect(),
+                )?;
+
+                table_actions.push(table_action);
+            }
+        }
+    }
+
     pub fn has_destructive_changes(&self) -> bool {
         self.statements
             .iter()
@@ -220,6 +294,14 @@ impl Migration {
         }
         Ok(())
     }
+}
+
+pub trait MigrationInteraction: Send + Sync {
+    fn handle_table_delete(
+        &self,
+        deleted_table: &SchemaObjectName,
+        create_tables: Vec<&SchemaObjectName>,
+    ) -> Result<TableAction, anyhow::Error>;
 }
 
 impl MigrationStatement {

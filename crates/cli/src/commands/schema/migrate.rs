@@ -17,7 +17,7 @@ use exo_sql::schema::spec::diff;
 use exo_sql::schema::table_spec::TableSpec;
 use exo_sql::SchemaObjectName;
 use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
-use postgres_core_model::migration::Migration;
+use postgres_core_model::migration::{Migration, MigrationInteraction, TableAction};
 
 use crate::commands::command::{
     database_value, migration_scope_arg, migration_scope_value, yes_arg, yes_value,
@@ -129,7 +129,13 @@ pub async fn migrate_interactively(
     mut old_db_spec: DatabaseSpec,
     new_db_spec: DatabaseSpec,
 ) -> Result<Migration> {
-    let table_actions = migrate_tables_interactively(&old_db_spec, &new_db_spec).await?;
+    let table_actions = Migration::migrate_interactively(
+        &old_db_spec,
+        &new_db_spec,
+        &compute_migration_scope(None),
+        &UserMigrationInteraction,
+    )
+    .await?;
 
     let mut all_ops: Vec<SchemaOp> = vec![];
 
@@ -168,53 +174,44 @@ const MANUAL_HANDLE: &str = "Let me handle this manually";
 const RENAME_HANDLE: &str = "Rename it";
 const DELETE_HANDLE: &str = "Delete it";
 
-async fn migrate_tables_interactively(
-    old_db_spec: &DatabaseSpec,
-    new_db_spec: &DatabaseSpec,
-) -> Result<Vec<TableAction>> {
-    let mut table_actions: Vec<TableAction> = vec![];
+struct UserMigrationInteraction;
 
-    loop {
-        let diffs = diff(old_db_spec, new_db_spec, &compute_migration_scope(None));
-
-        let create_tables = diffs
-            .iter()
-            .filter_map(|diff| match diff {
-                SchemaOp::CreateTable { table } => Some(*table),
-                _ => None,
-            })
-            .filter(|table| {
-                table_actions.iter().all(|action| {
-                    if let TableAction::Rename(_, new_table) = action {
-                        new_table != &table.name
-                    } else {
-                        true
-                    }
-                })
-            })
-            .collect::<Vec<_>>();
-
-        let delete_tables = diffs
-            .iter()
-            .filter_map(|diff| match diff {
-                SchemaOp::DeleteTable { table } => Some(table),
-                _ => None,
-            })
-            .filter(|table| {
-                !table_actions
-                    .iter()
-                    .any(|action| action.target_table() == &table.name)
-            })
-            .collect::<Vec<_>>();
-
-        if delete_tables.is_empty() {
-            return Ok(table_actions);
+impl MigrationInteraction for UserMigrationInteraction {
+    fn handle_table_delete(
+        &self,
+        deleted_table: &SchemaObjectName,
+        create_tables: Vec<&SchemaObjectName>,
+    ) -> Result<TableAction> {
+        let options = if create_tables.is_empty() {
+            vec![MANUAL_HANDLE, DELETE_HANDLE]
         } else {
-            println!("The database has a few tables that the new schema doesn't need. Please choose how to handle them.");
+            vec![MANUAL_HANDLE, RENAME_HANDLE, DELETE_HANDLE]
+        };
 
-            let table_action = migrate_table_interactively(delete_tables[0], create_tables)?;
+        println!(
+            "\nThe database has the {} table that doesn't exist in the new schema.",
+            deleted_table.fully_qualified_name_with_sep(".").red()
+        );
+        let ans =
+            inquire::Select::new("How would you like to handle this table?", options).prompt()?;
 
-            table_actions.push(table_action);
+        match ans {
+            MANUAL_HANDLE => Ok(TableAction::Manual(deleted_table.clone())),
+            RENAME_HANDLE => {
+                let create_table_displays = create_tables
+                    .iter()
+                    .map(|table| TableDisplay(table))
+                    .collect::<Vec<_>>();
+                let new_name =
+                    inquire::Select::new("What should the new name be?", create_table_displays)
+                        .prompt()?;
+                Ok(TableAction::Rename(
+                    deleted_table.clone(),
+                    new_name.0.clone(),
+                ))
+            }
+            DELETE_HANDLE => Ok(TableAction::Delete(deleted_table.clone())),
+            _ => unreachable!(),
         }
     }
 }
@@ -224,54 +221,5 @@ struct TableDisplay<'a>(&'a SchemaObjectName);
 impl<'a> std::fmt::Display for TableDisplay<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.fully_qualified_name_with_sep("."))
-    }
-}
-
-#[derive(Debug)]
-enum TableAction {
-    Manual(SchemaObjectName),
-    Rename(SchemaObjectName, SchemaObjectName),
-    Delete(SchemaObjectName),
-}
-
-impl TableAction {
-    fn target_table(&self) -> &SchemaObjectName {
-        match self {
-            TableAction::Manual(table) => table,
-            TableAction::Rename(old_table, _) => old_table,
-            TableAction::Delete(table) => table,
-        }
-    }
-}
-
-fn migrate_table_interactively<'a>(
-    deleted_table: &'a TableSpec,
-    create_tables: Vec<&'a TableSpec>,
-) -> Result<TableAction> {
-    let options = vec![MANUAL_HANDLE, RENAME_HANDLE, DELETE_HANDLE];
-    println!(
-        "\nThe database has the {} table that doesn't exist in the new schema.",
-        deleted_table.name.fully_qualified_name_with_sep(".").red()
-    );
-    let ans = inquire::Select::new("How would you like to handle this table?", options).prompt()?;
-
-    let create_table_displays = create_tables
-        .iter()
-        .map(|table| TableDisplay(&table.name))
-        .collect::<Vec<_>>();
-
-    match ans {
-        MANUAL_HANDLE => Ok(TableAction::Manual(deleted_table.name.clone())),
-        RENAME_HANDLE => {
-            let new_name =
-                inquire::Select::new("What should the new name be?", create_table_displays)
-                    .prompt()?;
-            Ok(TableAction::Rename(
-                deleted_table.name.clone(),
-                new_name.0.clone(),
-            ))
-        }
-        DELETE_HANDLE => Ok(TableAction::Delete(deleted_table.name.clone())),
-        _ => unreachable!(),
     }
 }
