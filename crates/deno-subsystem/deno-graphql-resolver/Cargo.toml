@@ -17,7 +17,7 @@ futures.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 thiserror.workspace = true
 tokio.workspace = true
-
+tracing.workspace = true
 exo-deno = { path = "../../../libs/exo-deno" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 deno-graphql-model = { path = "../deno-graphql-model" }

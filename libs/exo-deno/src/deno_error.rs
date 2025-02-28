@@ -37,9 +37,9 @@ pub enum DenoError {
 
 #[derive(Error, Debug)]
 pub enum DenoDiagnosticError {
-    #[error("Missing shim {0}")]
+    #[error("Missing shim `{0}`")]
     MissingShim(String),
-    #[error("No function named {0} exported from {1}")]
+    #[error("No function named `{0}` exported from {1}")]
     MissingFunction(String, String), // (function name, module name)
 
     #[error("{0}")]
