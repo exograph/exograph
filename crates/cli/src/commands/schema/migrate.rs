@@ -163,10 +163,22 @@ impl MigrationInteraction for UserMigrationInteraction {
         match ans {
             MANUAL_HANDLE => Ok(TableAction::Defer(deleted_table.clone())),
             RENAME_HANDLE => {
-                let create_table_displays = create_tables
+                let mut create_table_displays = create_tables
                     .iter()
                     .map(|table| TableDisplay(table))
                     .collect::<Vec<_>>();
+
+                let deleted_table_name = deleted_table.fully_qualified_name_with_sep(".");
+
+                create_table_displays.sort_by_key(|table| {
+                    // f64 doesn't implement Ord, so we can't sort by the Jaro distance directly.
+                    // But the distance is between 0 and 1, so scale it to fix i32 (and negate it to sort in descending order)
+                    -(strsim::jaro(
+                        &table.0.fully_qualified_name_with_sep("."),
+                        &deleted_table_name,
+                    ) * i32::MAX as f64) as i32
+                });
+
                 let new_name =
                     inquire::Select::new("What should the new name be?", create_table_displays)
                         .prompt()

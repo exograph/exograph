@@ -36,6 +36,7 @@ semver = "1.0.26"
 pluralizer.workspace = true
 wildmatch.workspace = true
 tracing.workspace = true
+strsim = "0.11.1"
 
 exo-sql = { path = "../../libs/exo-sql", features = ["pool"] }
 builder = { path = "../builder" }
