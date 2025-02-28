@@ -1,21 +1,24 @@
 stages:
     - operation: |
         mutation {
-            createEvent(data: {message: "m1", clientId: "explicit-client1"}) {
+            createEvent(data: {message: "m1", clientId: "explicit-client1", orgId: "explicit-org1"}) {
                 message
                 clientId
+                orgId
             }
         }
       headers: |
         {
-            "client_id": "test-client1"
+            "client_id": "test-client1",
+            "client_org": "test-org1"
         }
       response: |
         {
         "data": {
             "createEvent": {
                     "message": "m1",
-                    "clientId": "explicit-client1"
+                    "clientId": "explicit-client1",
+                    "orgId": "explicit-org1"
                 }
             }
         }
@@ -25,18 +28,21 @@ stages:
             createEvent(data: {message: "m2"}) {
                 message
                 clientId
+                orgId
             }
         }
       headers: |
         {
-            "client_id": "test-client1"
+            "client_id": "test-client1",
+            "client_org": "test-org1"
         }
       response: |
         {
             "data": {
                 "createEvent": {
                     "message": "m2",
-                    "clientId": "test-client1"
+                    "clientId": "test-client1",
+                    "orgId": "test-org1"
                 }
             }
         }

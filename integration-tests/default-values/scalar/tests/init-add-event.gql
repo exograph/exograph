@@ -13,4 +13,5 @@ variable: |
 headers: |
     {
         "client_id": "test-client1",
+        "client_org": "test-org1"
     }    
