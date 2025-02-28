@@ -137,6 +137,10 @@ const DELETE_HANDLE: &str = "Delete it";
 struct UserMigrationInteraction;
 
 impl MigrationInteraction for UserMigrationInteraction {
+    fn handle_start(&self) {
+        println!("The database has a few tables that the new schema doesn't need. Please choose how to handle them.");
+    }
+
     fn handle_table_delete(
         &self,
         deleted_table: &SchemaObjectName,
@@ -157,7 +161,7 @@ impl MigrationInteraction for UserMigrationInteraction {
             .map_err(|e| MigrationError::Generic(e.to_string()))?;
 
         match ans {
-            MANUAL_HANDLE => Ok(TableAction::Manual(deleted_table.clone())),
+            MANUAL_HANDLE => Ok(TableAction::Defer(deleted_table.clone())),
             RENAME_HANDLE => {
                 let create_table_displays = create_tables
                     .iter()

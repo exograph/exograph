@@ -1,0 +1,11 @@
+[[rename-table]]
+old-table = "todos"
+new-table = "t_todos"
+
+[[rename-table]]
+old-table = "users"
+new-table = "t_users"
+
+
+# [[defer-table]]
+# table = "todo_new"

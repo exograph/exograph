@@ -1,0 +1,5 @@
+delete-table = ["users"]
+
+[[rename-table]]
+old-table = "todos"
+new-table = "t_todos"

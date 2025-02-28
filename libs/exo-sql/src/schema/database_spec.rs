@@ -406,37 +406,28 @@ impl DatabaseSpec {
     }
 
     pub fn with_table_renamed<'a>(
-        self,
+        &mut self,
         old_name: &'a PhysicalTableName,
         new_name: &'a PhysicalTableName,
-    ) -> (Self, Vec<SchemaOp<'a>>) {
+    ) -> Vec<SchemaOp<'a>> {
         let mut ops = vec![];
 
-        let renamed_tables = self
-            .tables
-            .into_iter()
-            .map(|mut table| {
-                if &table.name == old_name {
-                    table.name = new_name.clone();
-                    ops.push(SchemaOp::RenameTable(RenameTableOp {
-                        old_name: old_name.clone(),
-                        new_name: new_name.clone(),
-                    }));
-                }
+        self.tables.iter_mut().for_each(|table| {
+            if &table.name == old_name {
+                table.name = new_name.clone();
+                ops.push(SchemaOp::RenameTable(RenameTableOp {
+                    old_name: old_name.clone(),
+                    new_name: new_name.clone(),
+                }));
+            }
 
-                let columns = table
-                    .columns
-                    .into_iter()
-                    .map(|column| column.with_table_renamed(old_name, new_name))
-                    .collect();
+            table
+                .columns
+                .iter_mut()
+                .for_each(|column| column.with_table_renamed(old_name, new_name));
+        });
 
-                table.columns = columns;
-
-                table
-            })
-            .collect();
-
-        (DatabaseSpec::new(renamed_tables, self.functions), ops)
+        ops
     }
 }
 

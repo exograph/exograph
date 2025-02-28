@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Mutex};
+use std::sync::Mutex;
 
 use crate::{
     schema::{
@@ -13,7 +13,7 @@ use super::core::{Migration, MigrationError};
 
 #[derive(Debug)]
 pub enum TableAction {
-    Manual(SchemaObjectName),
+    Defer(SchemaObjectName),
     Rename(SchemaObjectName, SchemaObjectName),
     Delete(SchemaObjectName),
 }
@@ -21,13 +21,16 @@ pub enum TableAction {
 impl TableAction {
     pub fn target_table(&self) -> &SchemaObjectName {
         match self {
-            TableAction::Manual(table) => table,
+            TableAction::Defer(table) => table,
             TableAction::Rename(old_table, _) => old_table,
             TableAction::Delete(table) => table,
         }
     }
 }
 pub trait MigrationInteraction: Send + Sync {
+    // Print a message to the user, for example to explain that we are starting the migration.
+    fn handle_start(&self);
+
     fn handle_table_delete(
         &self,
         deleted_table: &SchemaObjectName,
@@ -79,9 +82,8 @@ async fn get_table_actions(
         if delete_tables.is_empty() {
             return Ok(table_actions);
         } else {
-            println!("The database has a few tables that the new schema doesn't need. Please choose how to handle them.");
+            interactions.handle_start();
 
-            // let table_action = migrate_table_interactively(delete_tables[0], create_tables)?;
             let table_action = interactions.handle_table_delete(
                 &delete_tables[0].name,
                 create_tables.iter().map(|table| &table.name).collect(),
@@ -93,18 +95,18 @@ async fn get_table_actions(
 }
 
 pub async fn migrate_interactively(
-    old_db_spec: DatabaseSpec,
+    mut old_db_spec: DatabaseSpec,
     new_db_spec: DatabaseSpec,
     scope: &MigrationScope,
     interactions: &dyn MigrationInteraction,
 ) -> Result<Migration, MigrationError> {
     let table_actions = get_table_actions(&old_db_spec, &new_db_spec, scope, interactions).await?;
 
-    apply_table_actions(old_db_spec, new_db_spec, table_actions, scope)
+    apply_table_actions(&mut old_db_spec, new_db_spec, table_actions, scope)
 }
 
 fn apply_table_actions(
-    mut old_db_spec: DatabaseSpec,
+    old_db_spec: &mut DatabaseSpec,
     new_db_spec: DatabaseSpec,
     table_actions: Vec<TableAction>,
     scope: &MigrationScope,
@@ -113,14 +115,12 @@ fn apply_table_actions(
 
     for table_action in table_actions.iter() {
         if let TableAction::Rename(old_table, new_table) = table_action {
-            let (renamed_db_spec, rename_ops) =
-                old_db_spec.with_table_renamed(old_table, new_table);
+            let rename_ops = old_db_spec.with_table_renamed(old_table, new_table);
             all_ops.extend(rename_ops);
-            old_db_spec = renamed_db_spec;
         }
     }
 
-    let diffs = diff(&old_db_spec, &new_db_spec, scope);
+    let diffs = diff(old_db_spec, &new_db_spec, scope);
 
     let diffs = diffs
         .into_iter()
@@ -142,19 +142,41 @@ fn apply_table_actions(
     Ok(Migration::from_diffs(&all_ops))
 }
 
+#[derive(Debug)]
 pub struct PredefinedMigrationInteraction {
-    map: Mutex<HashMap<SchemaObjectName, TableAction>>,
+    actions: Mutex<Vec<TableAction>>,
+}
+
+impl PredefinedMigrationInteraction {
+    pub fn new(actions: Vec<TableAction>) -> Self {
+        Self {
+            actions: Mutex::new(actions),
+        }
+    }
 }
 
 impl MigrationInteraction for PredefinedMigrationInteraction {
+    fn handle_start(&self) {}
+
     fn handle_table_delete(
         &self,
         deleted_table: &SchemaObjectName,
         _create_tables: Vec<&SchemaObjectName>,
     ) -> Result<TableAction, MigrationError> {
-        // Find the table action for the deleted table and remove it from the map. This ensures that we don't handle the same table twice.
-        let mut map = self.map.lock().unwrap();
-        let table_action = map.remove(deleted_table).unwrap();
+        // Find the table action for the deleted table and remove it from the list. This ensures that we don't handle the same table twice.
+        let mut actions = self.actions.lock().unwrap();
+        let action_index = actions
+            .iter()
+            .enumerate()
+            .find_map(|(index, action)| {
+                if action.target_table() == deleted_table {
+                    Some(index)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        let table_action = actions.remove(action_index);
         Ok(table_action)
     }
 }
