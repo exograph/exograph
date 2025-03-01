@@ -228,6 +228,9 @@ fn expand_dynamic_default_values(
             (FieldType::Optional(field_type), FieldType::Optional(context_type)) => {
                 matches(field_type.as_ref(), context_type.as_ref())
             }
+            (FieldType::Optional(field_type), FieldType::Plain(context_type)) => {
+                field_type.name() == context_type.name()
+            }
             _ => false,
         }
     }

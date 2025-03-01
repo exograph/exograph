@@ -8,6 +8,7 @@ operation: |
             message
             is_system
             clientId
+            orgId
         }
     }
 variable: |
@@ -37,7 +38,8 @@ response: |
           "priority": 0,
           "message": "Corrected error, no actions required.",
           "is_system": true,
-          "clientId": "test-client1"
+          "clientId": "test-client1",
+          "orgId": "test-org1"
         }
       }
     }

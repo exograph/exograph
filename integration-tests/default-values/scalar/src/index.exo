@@ -1,5 +1,6 @@
 context ClientContext {
     @header("client_id") id: String
+    @header("client_org") org: String
 }
 
 @postgres
@@ -14,5 +15,6 @@ module EventModule {
         message: String
         is_system: Boolean = true
         clientId: String = ClientContext.id
+        orgId: String? = ClientContext.org
     }
 }
