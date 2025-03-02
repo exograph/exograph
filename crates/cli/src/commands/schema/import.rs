@@ -15,7 +15,6 @@ use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
 use exo_sql::schema::table_spec::TableSpec;
-use std::fmt::Write;
 use std::path::PathBuf;
 
 use heck::ToUpperCamelCase;
@@ -46,14 +45,13 @@ impl CommandDefinition for ImportCommandDefinition {
         let database_url: Option<String> = get(matches, "database");
         let mut issues = Vec::new();
 
+        let mut writer = open_file_for_output(output.as_deref())?;
+
         let mut schema = import_schema(database_url, &migration_scope_from_env()).await?;
-        let mut model = schema.value.to_model();
+        let mut model = schema.value.to_model(&mut writer)?;
 
         issues.append(&mut schema.issues);
         issues.append(&mut model.issues);
-
-        let mut buffer: Box<dyn std::io::Write> = open_file_for_output(output.as_deref())?;
-        buffer.write_all(schema.value.to_model().value.as_bytes())?;
 
         for issue in &issues {
             eprintln!("{issue}");
@@ -84,7 +82,7 @@ async fn import_schema(
 }
 
 pub trait ToModel {
-    fn to_model(&self) -> WithIssues<String>;
+    fn to_model(&self, writer: &mut (dyn std::io::Write + Send)) -> Result<WithIssues<()>>;
 }
 
 /// Converts the name of a SQL table to a exograph model name (for example, concert_artist -> ConcertArtist).
@@ -94,37 +92,45 @@ fn to_model_name(name: &str) -> String {
 
 impl ToModel for DatabaseSpec {
     /// Converts the schema specification to a exograph file.
-    fn to_model(&self) -> WithIssues<String> {
+    fn to_model(&self, writer: &mut (dyn std::io::Write + Send)) -> Result<WithIssues<()>> {
         let mut issues = Vec::new();
-        let stmt = self.tables.iter().fold(String::new(), |mut acc, table| {
-            let mut model = table.to_model();
-            issues.append(&mut model.issues);
-            let _ = write!(acc, "{}\n\n", model.value);
-            acc
-        });
 
-        WithIssues {
-            value: stmt,
-            issues,
+        writeln!(writer, "@postgres")?;
+        writeln!(writer, "module Database {{")?;
+
+        for table in &self.tables {
+            let mut model = table.to_model(writer)?;
+            issues.append(&mut model.issues);
+            writeln!(writer)?;
         }
+
+        writeln!(writer, "}}")?;
+
+        Ok(WithIssues { value: (), issues })
     }
 }
 
 impl ToModel for TableSpec {
-    /// Converts the table specification to a exograph model.
-    fn to_model(&self) -> WithIssues<String> {
+    fn to_model(&self, writer: &mut (dyn std::io::Write + Send)) -> Result<WithIssues<()>> {
         let mut issues = Vec::new();
 
-        let table_annot = match &self.name.schema {
-            Some(schema) => format!("@table(name=\"{}\", schema=\"{}\")", self.name.name, schema),
-            None => format!("@table(\"{}\")", self.name.name),
+        match &self.name.schema {
+            Some(schema) => writeln!(
+                writer,
+                "\t@table(name=\"{}\", schema=\"{}\")",
+                self.name.name, schema
+            )?,
+            None => writeln!(writer, "\t@table(\"{}\")", self.name.name)?,
         };
-        let column_stmts = self.columns.iter().fold(String::new(), |mut acc, c| {
-            let mut model = c.to_model();
+
+        writeln!(writer, "\ttype {} {{", to_model_name(&self.name.name))?;
+
+        for column in &self.columns {
+            let mut model = column.to_model(writer)?;
             issues.append(&mut model.issues);
-            let _ = writeln!(acc, "  {}", model.value);
-            acc
-        });
+        }
+
+        writeln!(writer, "\t}}")?;
 
         // not a robust check
         if self.name.name.ends_with('s') {
@@ -134,31 +140,25 @@ impl ToModel for TableSpec {
             )));
         }
 
-        WithIssues {
-            value: format!(
-                "{}\nmodel {} {{\n{}}}",
-                table_annot,
-                to_model_name(&self.name.name),
-                column_stmts
-            ),
-            issues,
-        }
+        Ok(WithIssues { value: (), issues })
     }
 }
 
 impl ToModel for ColumnSpec {
     /// Converts the column specification to a exograph model.
-    fn to_model(&self) -> WithIssues<String> {
+    fn to_model(&self, writer: &mut (dyn std::io::Write + Send)) -> Result<WithIssues<()>> {
         let mut issues = Vec::new();
 
-        let pk_str = if self.is_pk { " @pk" } else { "" };
-        let autoinc_str = if self.is_auto_increment {
-            " = autoIncrement()"
-        } else {
-            ""
-        };
+        // [@pk] [type-annotations] [name]: [data-type] = [default-value]
 
+        let pk_str = if self.is_pk { "@pk " } else { "" };
+        write!(writer, "\t\t{}", pk_str)?;
         let (mut data_type, annots) = self.typ.to_model();
+
+        write!(writer, "{}", &annots)?;
+
+        write!(writer, "{}: ", self.name)?;
+
         if let ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
             foreign_table_name, ..
         }) = &self.typ
@@ -175,12 +175,14 @@ impl ToModel for ColumnSpec {
             data_type += "?"
         }
 
-        WithIssues {
-            value: format!(
-                "{}: {}{}{}{}",
-                self.name, data_type, &annots, autoinc_str, pk_str,
-            ),
-            issues: Vec::new(),
-        }
+        let autoinc_str = if self.is_auto_increment {
+            " = autoIncrement()"
+        } else {
+            ""
+        };
+
+        writeln!(writer, "{}{}{}", data_type, &annots, autoinc_str)?;
+
+        Ok(WithIssues { value: (), issues })
     }
 }

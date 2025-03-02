@@ -16,7 +16,7 @@ use std::{
 
 pub(crate) mod watcher;
 
-pub fn open_file_for_output(output: Option<&Path>) -> Result<Box<dyn Write>> {
+pub fn open_file_for_output(output: Option<&Path>) -> Result<Box<dyn Write + Send>> {
     if let Some(output) = output {
         if output.exists() {
             print!(
