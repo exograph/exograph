@@ -5,7 +5,6 @@ use exo_sql::schema::database_spec::DatabaseSpec;
 use super::{ImportContext, ModelProcessor};
 
 impl ModelProcessor for DatabaseSpec {
-    /// Converts the schema specification to a exograph file.
     fn process(
         &self,
         context: &mut ImportContext,

@@ -9,7 +9,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use clap::Command;
+use clap::{Arg, Command};
 use exo_sql::schema::database_spec::DatabaseSpec;
 use exo_sql::schema::issue::WithIssues;
 use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
@@ -41,17 +41,24 @@ impl CommandDefinition for ImportCommandDefinition {
             .about("Create exograph model file based on a database schema")
             .arg(database_arg())
             .arg(output_arg())
+            .arg(
+                Arg::new("access")
+                    .help("Access expression to apply to all tables (default: false)")
+                    .long("access")
+                    .required(false)
+                    .num_args(0),
+            )
     }
 
     /// Create a exograph model file based on a database schema
     async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let output: Option<PathBuf> = get(matches, "output");
         let database_url: Option<String> = get(matches, "database");
-
+        let access: bool = get(matches, "access").unwrap_or(false);
         let mut writer = open_file_for_output(output.as_deref())?;
 
-        let mut context = ImportContext::new();
         let mut schema = import_schema(database_url, &migration_scope_from_env()).await?;
+        let mut context = ImportContext::new(&schema.value, access);
         schema.value.process(&mut context, &mut writer)?;
 
         context.add_issues(&mut schema.issues);

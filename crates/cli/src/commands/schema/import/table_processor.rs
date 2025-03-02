@@ -9,6 +9,8 @@ impl ModelProcessor for TableSpec {
         context: &mut ImportContext,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
+        writeln!(writer, "\t@access({})", context.access)?;
+
         if !context.has_standard_mapping(&self.name) {
             match &self.name.schema {
                 Some(schema) => writeln!(

@@ -1,19 +1,23 @@
 use std::collections::HashMap;
 
-use exo_sql::{schema::issue::Issue, PhysicalTableName};
+use exo_sql::{schema::database_spec::DatabaseSpec, schema::issue::Issue, PhysicalTableName};
 
 use heck::ToUpperCamelCase;
 
-pub(super) struct ImportContext {
+pub(super) struct ImportContext<'a> {
     table_name_to_model_name: HashMap<PhysicalTableName, String>,
     pub(super) issues: Vec<Issue>,
+    pub(super) database_spec: &'a DatabaseSpec,
+    pub(super) access: bool,
 }
 
-impl ImportContext {
-    pub(super) fn new() -> Self {
+impl<'a> ImportContext<'a> {
+    pub(super) fn new(database_spec: &'a DatabaseSpec, access: bool) -> Self {
         Self {
             table_name_to_model_name: HashMap::new(),
             issues: Vec::new(),
+            database_spec,
+            access,
         }
     }
 
