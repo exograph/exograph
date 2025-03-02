@@ -17,7 +17,7 @@ use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
 use exo_sql::schema::table_spec::TableSpec;
 use std::path::PathBuf;
 
-use heck::ToUpperCamelCase;
+use heck::{ToLowerCamelCase, ToUpperCamelCase};
 
 use exo_sql::schema::issue::Issue;
 
@@ -157,7 +157,7 @@ impl ToModel for ColumnSpec {
 
         write!(writer, "{}", &annots)?;
 
-        write!(writer, "{}: ", self.name)?;
+        write!(writer, "{}: ", self.name.to_lower_camel_case())?;
 
         if let ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
             foreign_table_name, ..
