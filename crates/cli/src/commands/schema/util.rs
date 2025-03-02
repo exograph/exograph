@@ -26,6 +26,16 @@ use common::env_const::{
     DATABASE_URL, EXO_CHECK_CONNECTION_ON_STARTUP, EXO_CONNECTION_POOL_SIZE, EXO_POSTGRES_URL,
 };
 
+pub(crate) async fn open_database(
+    database: Option<&str>,
+) -> Result<DatabaseClientManager, DatabaseError> {
+    if let Some(database) = database {
+        Ok(DatabaseClientManager::from_url(database, true, None).await?)
+    } else {
+        Ok(database_manager_from_env().await?)
+    }
+}
+
 pub(crate) async fn database_manager_from_env() -> Result<DatabaseClientManager, DatabaseError> {
     let url = std::env::var(EXO_POSTGRES_URL)
         .or(std::env::var(DATABASE_URL))

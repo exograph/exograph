@@ -27,7 +27,7 @@ use crate::commands::util::migration_scope_from_env;
 use crate::config::Config;
 use crate::util::open_file_for_output;
 
-use super::util;
+use super::util::open_database;
 
 pub(super) struct ImportCommandDefinition {}
 
@@ -43,9 +43,10 @@ impl CommandDefinition for ImportCommandDefinition {
     /// Create a exograph model file based on a database schema
     async fn execute(&self, matches: &clap::ArgMatches, _config: &Config) -> Result<()> {
         let output: Option<PathBuf> = get(matches, "output");
+        let database_url: Option<String> = get(matches, "database");
         let mut issues = Vec::new();
 
-        let mut schema = import_schema(&migration_scope_from_env()).await?;
+        let mut schema = import_schema(database_url, &migration_scope_from_env()).await?;
         let mut model = schema.value.to_model();
 
         issues.append(&mut schema.issues);
@@ -66,9 +67,12 @@ impl CommandDefinition for ImportCommandDefinition {
     }
 }
 
-async fn import_schema(scope: &MigrationScope) -> Result<WithIssues<DatabaseSpec>> {
-    let database_client = util::database_manager_from_env().await?;
-    let client = database_client.get_client().await?;
+async fn import_schema(
+    database_url: Option<String>,
+    scope: &MigrationScope,
+) -> Result<WithIssues<DatabaseSpec>> {
+    let db_client = open_database(database_url.as_deref()).await?;
+    let client = db_client.get_client().await?;
 
     let scope_matches = match scope {
         MigrationScope::Specified(scope) => scope,

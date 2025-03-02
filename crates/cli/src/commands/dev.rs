@@ -26,7 +26,7 @@ use crate::{
         command::{
             default_model_file, ensure_exo_project_dir, setup_trusted_documents_enforcement,
         },
-        schema::{migrate::open_database, util},
+        schema::util,
         util::wait_for_enter,
     },
     util::watcher,
@@ -75,7 +75,7 @@ impl CommandDefinition for DevCommandDefinition {
 
         watcher::start_watcher(&root_path, port, config, Some(&WatchStage::Dev), || async {
             println!("{}", "\nVerifying new model...".blue().bold());
-            let db_client = open_database(None).await?;
+            let db_client = util::open_database(None).await?;
 
             loop {
                 let database = util::extract_postgres_database(&model, None, false).await?;
