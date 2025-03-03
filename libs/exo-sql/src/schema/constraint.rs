@@ -60,8 +60,8 @@ impl Constraints {
         // Query to get a list of constraints in the table (primary key and foreign key constraints)
         let constraints_query = format!(
             "
-            SELECT contype, conname, pg_get_constraintdef(oid, true) as condef
-            FROM pg_constraint
+            SELECT contype, conname, pg_get_constraintdef(pg_constraint.oid, true) as condef, pg_class.relname as foreign_table, pg_namespace.nspname as foreign_schema
+            FROM pg_constraint left join pg_class on pg_constraint.confrelid = pg_class.oid left join pg_namespace on pg_class.relnamespace = pg_namespace.oid
             WHERE conrelid = '{}'::regclass AND conparentid = 0",
             table_name.fully_qualified_name()
         );
@@ -75,16 +75,23 @@ impl Constraints {
                 let contype: i8 = row.get("contype");
                 let conname: String = row.get("conname");
                 let condef: String = row.get("condef");
-
-                (contype as u8 as char, conname, condef)
+                let foreign_table: Option<String> = row.get("foreign_table");
+                let foreign_schema: Option<String> = row.get("foreign_schema");
+                (
+                    contype as u8 as char,
+                    conname,
+                    condef,
+                    foreign_table,
+                    foreign_schema,
+                )
             })
             .collect::<Vec<_>>();
 
         // Filter out primary key constraints to find which columns are primary keys
         let primary_key = constraints
             .iter()
-            .filter(|(contype, _, _)| *contype == 'p')
-            .map(|(_, conname, condef)| {
+            .filter(|(contype, _, _, _, _)| *contype == 'p')
+            .map(|(_, conname, condef, _, _)| {
                 let matches = PRIMARY_KEY_RE.captures_iter(condef).next().unwrap();
                 let columns = Self::parse_column_list(&matches[1]);
                 PrimaryKeyConstraint {
@@ -97,11 +104,18 @@ impl Constraints {
         // Filter out foreign key constraints to find which columns require foreign key constraints
         let foreign_constraints = constraints
             .iter()
-            .filter(|(contype, _, _)| *contype == 'f')
-            .map(|(_, conname, condef)| {
+            .filter(|(contype, _, _, _, _)| *contype == 'f')
+            .map(|(_, conname, condef, foreign_table, foreign_schema)| {
+                let foreign_table = PhysicalTableName {
+                    name: foreign_table.clone().unwrap(),
+                    schema: match foreign_schema {
+                        Some(schema) if schema != "public" => Some(schema.to_string()),
+                        _ => None,
+                    },
+                };
+
                 let matches = FOREIGN_KEY_RE.captures_iter(condef).next().unwrap();
                 let self_columns = Self::parse_column_list(&matches[1]); // name of the column
-                let foreign_table = matches[2].to_owned(); // name of the table the column refers to
                 let foreign_columns = Self::parse_column_list(&matches[3]); // name of the column in the referenced table
 
                 ForeignKeyConstraint {
@@ -116,18 +130,15 @@ impl Constraints {
                             },
                         )
                         .collect(),
-                    foreign_table: PhysicalTableName {
-                        name: foreign_table,
-                        schema: None,
-                    },
+                    foreign_table,
                 }
             })
             .collect::<Vec<_>>();
 
         let uniques = constraints
             .iter()
-            .filter(|(contype, _, _)| *contype == 'u')
-            .map(|(_, conname, condef)| {
+            .filter(|(contype, _, _, _, _)| *contype == 'u')
+            .map(|(_, conname, condef, _, _)| {
                 let matches = UNIQUE_RE.captures_iter(condef).next().unwrap();
                 let columns = Self::parse_column_list(&matches[1]);
                 UniqueConstraint {
