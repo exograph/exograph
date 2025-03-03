@@ -20,15 +20,20 @@ impl ModelProcessor for ColumnSpec {
     ) -> Result<()> {
         // [@pk] [type-annotations] [name]: [data-type] = [default-value]
 
-        let pk_str = if self.is_pk { "@pk " } else { "" };
-        write!(writer, "{INDENT}{pk_str}")?;
+        write!(writer, "{INDENT}")?;
+
+        if self.is_pk {
+            write!(writer, "@pk ")?;
+        }
 
         if !self.unique_constraints.is_empty() {
             write!(writer, "@unique ")?;
         }
 
         let (data_type, annots) = to_model(&self.typ, context);
-        write!(writer, "{}", &annots)?;
+        if !annots.is_empty() {
+            write!(writer, "{} ", &annots)?;
+        }
 
         if let ColumnTypeSpec::ColumnReference(ref reference) = &self.typ {
             write!(writer, "{}: ", reference_field_name(self, reference))?;
@@ -59,9 +64,9 @@ fn to_model(column_type: &ColumnTypeSpec, context: &mut ImportContext) -> (Strin
         ColumnTypeSpec::Int { bits } => (
             "Int".to_string(),
             match bits {
-                IntBits::_16 => " @bits16",
+                IntBits::_16 => "@bits16",
                 IntBits::_32 => "",
-                IntBits::_64 => " @bits64",
+                IntBits::_64 => "@bits64",
             }
             .to_string(),
         ),
@@ -69,26 +74,29 @@ fn to_model(column_type: &ColumnTypeSpec, context: &mut ImportContext) -> (Strin
         ColumnTypeSpec::Float { bits } => (
             "Float".to_string(),
             match bits {
-                FloatBits::_24 => " @singlePrecision",
-                FloatBits::_53 => " @doublePrecision",
+                FloatBits::_24 => "@singlePrecision",
+                FloatBits::_53 => "@doublePrecision",
             }
             .to_owned(),
         ),
 
         ColumnTypeSpec::Numeric { precision, scale } => ("Numeric".to_string(), {
-            let precision_part = precision
-                .map(|p| format!("@precision({p})"))
-                .unwrap_or_default();
+            let precision_part = precision.map(|p| format!("@precision({p})"));
 
-            let scale_part = scale.map(|s| format!("@scale({s})")).unwrap_or_default();
+            let scale_part = scale.map(|s| format!("@scale({s})"));
 
-            format!(" {precision_part} {scale_part}")
+            match (precision_part, scale_part) {
+                (Some(precision), Some(scale)) => format!("{precision} {scale}"),
+                (Some(precision), None) => precision,
+                (None, Some(scale)) => scale,
+                (None, None) => "".to_string(),
+            }
         }),
 
         ColumnTypeSpec::String { max_length } => (
             "String".to_string(),
             match max_length {
-                Some(max_length) => format!(" @maxLength({max_length})"),
+                Some(max_length) => format!("@maxLength({max_length})"),
                 None => "".to_string(),
             },
         ),
@@ -106,7 +114,7 @@ fn to_model(column_type: &ColumnTypeSpec, context: &mut ImportContext) -> (Strin
             }
             .to_string(),
             match precision {
-                Some(precision) => format!(" @precision({precision})"),
+                Some(precision) => format!("@precision({precision})"),
                 None => "".to_string(),
             },
         ),
@@ -114,7 +122,7 @@ fn to_model(column_type: &ColumnTypeSpec, context: &mut ImportContext) -> (Strin
         ColumnTypeSpec::Time { precision } => (
             "LocalTime".to_string(),
             match precision {
-                Some(precision) => format!(" @precision({precision})"),
+                Some(precision) => format!("@precision({precision})"),
                 None => "".to_string(),
             },
         ),

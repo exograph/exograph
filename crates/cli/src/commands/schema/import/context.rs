@@ -29,7 +29,9 @@ impl<'a> ImportContext<'a> {
     }
 
     pub(super) fn model_name(&self, table_name: &PhysicalTableName) -> &str {
-        self.table_name_to_model_name.get(table_name).unwrap()
+        self.table_name_to_model_name
+            .get(table_name)
+            .unwrap_or_else(|| panic!("No model name found for table: {}", table_name.name))
     }
 
     pub(super) fn has_standard_mapping(&self, table_name: &PhysicalTableName) -> bool {
