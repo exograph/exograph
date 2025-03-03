@@ -17,9 +17,13 @@ impl ModelProcessor for DatabaseSpec {
             context.add_table(&table.name);
         }
 
-        for table in &self.tables {
+        let table_len = self.tables.len();
+
+        for (i, table) in self.tables.iter().enumerate() {
             table.process(context, writer)?;
-            writeln!(writer)?;
+            if i < table_len - 1 {
+                writeln!(writer)?;
+            }
         }
 
         writeln!(writer, "}}")?;

@@ -9,6 +9,8 @@ use heck::ToLowerCamelCase;
 use super::context::reference_field_name;
 use super::{ImportContext, ModelProcessor};
 
+const INDENT: &str = "    ";
+
 impl ModelProcessor for ColumnSpec {
     /// Converts the column specification to a exograph model.
     fn process(
@@ -19,7 +21,7 @@ impl ModelProcessor for ColumnSpec {
         // [@pk] [type-annotations] [name]: [data-type] = [default-value]
 
         let pk_str = if self.is_pk { "@pk " } else { "" };
-        write!(writer, "\t\t{}", pk_str)?;
+        write!(writer, "{INDENT}{pk_str}")?;
 
         if !self.unique_constraints.is_empty() {
             write!(writer, "@unique ")?;

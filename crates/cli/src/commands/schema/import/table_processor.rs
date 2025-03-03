@@ -3,26 +3,27 @@ use exo_sql::{schema::table_spec::TableSpec, PhysicalTableName};
 
 use super::{ImportContext, ModelProcessor};
 
+const INDENT: &str = "  ";
 impl ModelProcessor for TableSpec {
     fn process(
         &self,
         context: &mut ImportContext,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
-        writeln!(writer, "\t@access({})", context.access)?;
+        writeln!(writer, "{INDENT}@access({})", context.access)?;
 
         if !context.has_standard_mapping(&self.name) {
             match &self.name.schema {
                 Some(schema) => writeln!(
                     writer,
-                    "\t@table(name=\"{}\", schema=\"{}\")",
+                    "{INDENT}@table(name=\"{}\", schema=\"{}\")",
                     self.name.name, schema
                 )?,
-                None => writeln!(writer, "\t@table(\"{}\")", self.name.name)?,
+                None => writeln!(writer, "{INDENT}@table(\"{}\")", self.name.name)?,
             };
         }
 
-        writeln!(writer, "\ttype {} {{", context.model_name(&self.name))?;
+        writeln!(writer, "{INDENT}type {} {{", context.model_name(&self.name))?;
 
         for column in &self.columns {
             column.process(context, writer)?;
@@ -30,7 +31,7 @@ impl ModelProcessor for TableSpec {
 
         write_references(writer, context, &self.name)?;
 
-        writeln!(writer, "\t}}")?;
+        writeln!(writer, "{INDENT}}}")?;
 
         Ok(())
     }
@@ -49,7 +50,7 @@ fn write_references(
             pluralizer::pluralize(&table_name.name, 1, false)
         };
 
-        write!(writer, "\t\t{}: ", field_name)?;
+        write!(writer, "{INDENT}{INDENT}{field_name}: ")?;
 
         if is_many {
             write!(writer, "Set<")?;
