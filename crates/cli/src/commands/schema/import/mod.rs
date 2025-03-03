@@ -46,7 +46,8 @@ impl CommandDefinition for ImportCommandDefinition {
                     .help("Access expression to apply to all tables (default: false)")
                     .long("access")
                     .required(false)
-                    .num_args(0),
+                    .value_parser(clap::value_parser!(bool))
+                    .num_args(1),
             )
     }
 

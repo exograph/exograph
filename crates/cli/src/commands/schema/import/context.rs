@@ -1,6 +1,13 @@
 use std::collections::HashMap;
 
-use exo_sql::{schema::database_spec::DatabaseSpec, schema::issue::Issue, PhysicalTableName};
+use exo_sql::{
+    schema::{
+        column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec},
+        database_spec::DatabaseSpec,
+        issue::Issue,
+    },
+    PhysicalTableName,
+};
 
 use heck::ToUpperCamelCase;
 
@@ -44,11 +51,46 @@ impl<'a> ImportContext<'a> {
             .insert(table_name.clone(), model_name.clone());
     }
 
-    pub(super) fn add_issue(&mut self, issue: Issue) {
-        self.issues.push(issue);
+    pub(super) fn referenced_columns(
+        &self,
+        table_name: &PhysicalTableName,
+    ) -> Vec<(PhysicalTableName, &ColumnSpec, &ColumnReferenceSpec)> {
+        let other_tables = self
+            .database_spec
+            .tables
+            .iter()
+            .filter(|table| &table.name != table_name);
+
+        other_tables
+            .map(|other_table| (other_table.name.clone(), &other_table.columns))
+            .flat_map(|(other_table_name, other_table_columns)| {
+                other_table_columns
+                    .iter()
+                    .filter_map(move |other_table_column| match &other_table_column.typ {
+                        ColumnTypeSpec::ColumnReference(foreign_key)
+                            if &foreign_key.foreign_table_name == table_name =>
+                        {
+                            Some((other_table_name.clone(), other_table_column, foreign_key))
+                        }
+                        _ => None,
+                    })
+            })
+            .collect()
     }
 
     pub(super) fn add_issues(&mut self, issues: &mut Vec<Issue>) {
         self.issues.append(issues);
+    }
+}
+
+pub(super) fn reference_field_name(column: &ColumnSpec, reference: &ColumnReferenceSpec) -> String {
+    if column
+        .name
+        .ends_with(&format!("_{}", reference.foreign_pk_column_name))
+    {
+        // Drop the trailing underscore and the foreign key column name
+        column.name[..column.name.len() - reference.foreign_pk_column_name.len() - 1].to_string()
+    } else {
+        column.name.to_string()
     }
 }

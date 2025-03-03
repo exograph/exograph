@@ -6,8 +6,7 @@ use exo_sql::{FloatBits, IntBits};
 
 use heck::ToLowerCamelCase;
 
-use exo_sql::schema::issue::Issue;
-
+use super::context::reference_field_name;
 use super::{ImportContext, ModelProcessor};
 
 impl ModelProcessor for ColumnSpec {
@@ -21,35 +20,33 @@ impl ModelProcessor for ColumnSpec {
 
         let pk_str = if self.is_pk { "@pk " } else { "" };
         write!(writer, "\t\t{}", pk_str)?;
-        let (mut data_type, annots) = to_model(&self.typ, context);
 
+        if !self.unique_constraints.is_empty() {
+            write!(writer, "@unique ")?;
+        }
+
+        let (data_type, annots) = to_model(&self.typ, context);
         write!(writer, "{}", &annots)?;
 
-        write!(writer, "{}: ", self.name.to_lower_camel_case())?;
-
-        if let ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
-            foreign_table_name, ..
-        }) = &self.typ
-        {
-            // data_type = context.model_name(foreign_table_name);
-
-            context.add_issue(Issue::Hint(format!(
-                "consider adding a field to `{}` of type `[{}]` to create a one-to-many relationship",
-                foreign_table_name.fully_qualified_name(), data_type,
-            )));
+        if let ColumnTypeSpec::ColumnReference(ref reference) = &self.typ {
+            write!(writer, "{}: ", reference_field_name(self, reference))?;
+        } else {
+            write!(writer, "{}: ", self.name.to_lower_camel_case())?;
         }
+
+        write!(writer, "{}", data_type)?;
 
         if self.is_nullable {
-            data_type += "?"
+            write!(writer, "?")?;
         }
 
-        let autoinc_str = if self.is_auto_increment {
-            " = autoIncrement()"
-        } else {
-            ""
-        };
+        if self.is_auto_increment {
+            write!(writer, " = autoIncrement()")?
+        } else if let Some(default_value) = &self.model_default_value() {
+            write!(writer, " = {default_value}")?;
+        }
 
-        writeln!(writer, "{}{}{}", data_type, &annots, autoinc_str)?;
+        writeln!(writer)?;
 
         Ok(())
     }

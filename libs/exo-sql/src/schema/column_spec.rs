@@ -383,6 +383,31 @@ impl ColumnSpec {
             _ => false,
         }
     }
+
+    // The default value that should be used in the model.
+    // For text, the default value from the database is a string with a type cast to text (such as `'foo'::text`),
+    // so we need to remove the type cast.
+    pub fn model_default_value(&self) -> Option<String> {
+        self.default_value.as_ref().map(|default_value| {
+            if matches!(self.typ, ColumnTypeSpec::String { .. }) {
+                // The default value from the database is a string with a type cast to text.
+                let mut processed_default_value = default_value.clone();
+
+                if processed_default_value.ends_with("'::text") {
+                    processed_default_value =
+                        processed_default_value[..processed_default_value.len() - 7].to_string();
+                };
+
+                if processed_default_value.starts_with("'") {
+                    processed_default_value.remove(0);
+                }
+
+                format!("\"{}\"", processed_default_value)
+            } else {
+                default_value.clone()
+            }
+        })
+    }
 }
 
 impl ColumnTypeSpec {
