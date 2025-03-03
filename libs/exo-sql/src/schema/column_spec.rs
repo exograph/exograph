@@ -476,6 +476,7 @@ impl ColumnTypeSpec {
                 "TEXT" => ColumnTypeSpec::String { max_length: None },
                 "BOOLEAN" => ColumnTypeSpec::Boolean,
                 "JSONB" => ColumnTypeSpec::Json,
+                "JSON" => ColumnTypeSpec::Json,
                 "BYTEA" => ColumnTypeSpec::Blob,
                 s => {
                     // parse types with arguments

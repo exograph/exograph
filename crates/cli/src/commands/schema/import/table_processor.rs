@@ -12,15 +12,15 @@ impl ModelProcessor for TableSpec {
     ) -> Result<()> {
         writeln!(writer, "{INDENT}@access({})", context.access)?;
 
-        if !context.has_standard_mapping(&self.name) {
-            match &self.name.schema {
-                Some(schema) => writeln!(
-                    writer,
-                    "{INDENT}@table(name=\"{}\", schema=\"{}\")",
-                    self.name.name, schema
-                )?,
-                None => writeln!(writer, "{INDENT}@table(\"{}\")", self.name.name)?,
-            };
+        match (&self.name.schema, context.has_standard_mapping(&self.name)) {
+            (Some(schema), true) => writeln!(writer, "{INDENT}@table(schema=\"{}\")", schema)?,
+            (Some(schema), false) => writeln!(
+                writer,
+                "{INDENT}@table(name=\"{}\", schema=\"{}\")",
+                self.name.name, schema
+            )?,
+            (None, false) => writeln!(writer, "{INDENT}@table(\"{}\")", self.name.name)?,
+            (None, true) => {}
         }
 
         writeln!(writer, "{INDENT}type {} {{", context.model_name(&self.name))?;

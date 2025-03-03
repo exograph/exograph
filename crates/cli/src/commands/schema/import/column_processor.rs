@@ -136,7 +136,7 @@ fn to_model(column_type: &ColumnTypeSpec, context: &mut ImportContext) -> (Strin
 
         ColumnTypeSpec::Array { typ } => {
             let (data_type, annotations) = to_model(typ, context);
-            (format!("[{data_type}]"), annotations)
+            (format!("Array<{data_type}>"), annotations)
         }
 
         ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
