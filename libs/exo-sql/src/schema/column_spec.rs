@@ -383,6 +383,31 @@ impl ColumnSpec {
             _ => false,
         }
     }
+
+    // The default value that should be used in the model.
+    // For text, the default value from the database is a string with a type cast to text (such as `'foo'::text`),
+    // so we need to remove the type cast.
+    pub fn model_default_value(&self) -> Option<String> {
+        self.default_value.as_ref().map(|default_value| {
+            if matches!(self.typ, ColumnTypeSpec::String { .. }) {
+                // The default value from the database is a string with a type cast to text.
+                let mut processed_default_value = default_value.clone();
+
+                if processed_default_value.ends_with("'::text") {
+                    processed_default_value =
+                        processed_default_value[..processed_default_value.len() - 7].to_string();
+                };
+
+                if processed_default_value.starts_with("'") {
+                    processed_default_value.remove(0);
+                }
+
+                format!("\"{}\"", processed_default_value)
+            } else {
+                default_value.clone()
+            }
+        })
+    }
 }
 
 impl ColumnTypeSpec {
@@ -545,89 +570,6 @@ impl ColumnTypeSpec {
                 precision: *precision,
                 scale: *scale,
             },
-        }
-    }
-
-    pub fn to_model(&self) -> (String, String) {
-        match self {
-            ColumnTypeSpec::Int { bits } => (
-                "Int".to_string(),
-                match bits {
-                    IntBits::_16 => " @bits16",
-                    IntBits::_32 => "",
-                    IntBits::_64 => " @bits64",
-                }
-                .to_string(),
-            ),
-
-            ColumnTypeSpec::Float { bits } => (
-                "Float".to_string(),
-                match bits {
-                    FloatBits::_24 => " @singlePrecision",
-                    FloatBits::_53 => " @doublePrecision",
-                }
-                .to_owned(),
-            ),
-
-            ColumnTypeSpec::Numeric { precision, scale } => ("Numeric".to_string(), {
-                let precision_part = precision
-                    .map(|p| format!("@precision({p})"))
-                    .unwrap_or_default();
-
-                let scale_part = scale.map(|s| format!("@scale({s})")).unwrap_or_default();
-
-                format!(" {precision_part} {scale_part}")
-            }),
-
-            ColumnTypeSpec::String { max_length } => (
-                "String".to_string(),
-                match max_length {
-                    Some(max_length) => format!(" @maxLength({max_length})"),
-                    None => "".to_string(),
-                },
-            ),
-
-            ColumnTypeSpec::Boolean => ("Boolean".to_string(), "".to_string()),
-
-            ColumnTypeSpec::Timestamp {
-                timezone,
-                precision,
-            } => (
-                if *timezone {
-                    "Instant"
-                } else {
-                    "LocalDateTime"
-                }
-                .to_string(),
-                match precision {
-                    Some(precision) => format!(" @precision({precision})"),
-                    None => "".to_string(),
-                },
-            ),
-
-            ColumnTypeSpec::Time { precision } => (
-                "LocalTime".to_string(),
-                match precision {
-                    Some(precision) => format!(" @precision({precision})"),
-                    None => "".to_string(),
-                },
-            ),
-
-            ColumnTypeSpec::Date => ("LocalDate".to_string(), "".to_string()),
-
-            ColumnTypeSpec::Json => ("Json".to_string(), "".to_string()),
-            ColumnTypeSpec::Blob => ("Blob".to_string(), "".to_string()),
-            ColumnTypeSpec::Uuid => ("Uuid".to_string(), "".to_string()),
-            ColumnTypeSpec::Vector { size } => ("Vector".to_string(), format!("@size({size})",)),
-
-            ColumnTypeSpec::Array { typ } => {
-                let (data_type, annotations) = typ.to_model();
-                (format!("[{data_type}]"), annotations)
-            }
-
-            ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
-                foreign_table_name, ..
-            }) => (foreign_table_name.name.clone(), "".to_string()),
         }
     }
 

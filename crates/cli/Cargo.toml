@@ -33,6 +33,7 @@ tempfile.workspace = true
 which.workspace = true
 toml = { version = "0.8.19", features = ["parse"] }
 semver = "1.0.25"
+pluralizer = "0.5.0"
 
 exo-sql = { path = "../../libs/exo-sql", features = ["pool"] }
 builder = { path = "../builder" }

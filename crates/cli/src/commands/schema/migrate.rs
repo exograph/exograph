@@ -10,7 +10,6 @@
 use std::{io, path::PathBuf};
 
 use anyhow::anyhow;
-use exo_sql::{database_error::DatabaseError, DatabaseClientManager};
 use postgres_core_model::migration::Migration;
 
 use crate::config::Config;
@@ -22,7 +21,7 @@ use crate::{
     util::open_file_for_output,
 };
 
-use super::util;
+use super::util::{self, open_database};
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::{Arg, Command};
@@ -87,13 +86,5 @@ impl CommandDefinition for MigrateCommandDefinition {
             migrations.write(&mut buffer, allow_destructive_changes)?;
             Ok(())
         }
-    }
-}
-
-pub async fn open_database(database: Option<&str>) -> Result<DatabaseClientManager, DatabaseError> {
-    if let Some(database) = database {
-        Ok(DatabaseClientManager::from_url(database, true, None).await?)
-    } else {
-        Ok(util::database_manager_from_env().await?)
     }
 }

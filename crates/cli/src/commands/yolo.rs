@@ -22,10 +22,7 @@ use std::{
 };
 
 use crate::{
-    commands::{
-        schema::{migrate::open_database, util},
-        util::wait_for_enter,
-    },
+    commands::{schema::util, util::wait_for_enter},
     config::{Config, WatchStage},
     util::watcher,
 };
@@ -159,7 +156,7 @@ async fn setup_database(
         }
     };
 
-    let db_client = open_database(None).await?;
+    let db_client = util::open_database(None).await?;
 
     // generate migrations for current database
     let database = util::extract_postgres_database(model, None, false).await?;
@@ -179,7 +176,7 @@ async fn setup_database(
         println!("Error while applying migration: {e}");
         let options = vec![CONTINUE, REBUILD, PAUSE, EXIT];
         let ans = inquire::Select::new("Choose an option:", options).prompt()?;
-        let db_client = open_database(None).await?;
+        let db_client = util::open_database(None).await?;
 
         match ans {
             CONTINUE => {

@@ -17,7 +17,7 @@ use crate::commands::command::{database_arg, default_model_file, get, CommandDef
 use crate::commands::util::{migration_scope_from_env, use_ir_arg};
 use crate::config::Config;
 
-use super::{migrate::open_database, util};
+use super::util;
 
 pub(super) struct VerifyCommandDefinition {}
 
@@ -37,7 +37,7 @@ impl CommandDefinition for VerifyCommandDefinition {
         let database: Option<String> = get(matches, "database");
         let use_ir: bool = matches.get_flag("use-ir");
 
-        let db_client = open_database(database.as_deref()).await?;
+        let db_client = util::open_database(database.as_deref()).await?;
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
         let verification_result =
             Migration::verify(&db_client, &database, &migration_scope_from_env()).await;
