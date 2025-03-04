@@ -403,6 +403,8 @@ impl ColumnSpec {
                 }
 
                 format!("\"{}\"", processed_default_value)
+            } else if default_value == "gen_random_uuid()" {
+                "generate_uuid()".to_string()
             } else {
                 default_value.clone()
             }
@@ -476,6 +478,7 @@ impl ColumnTypeSpec {
                 "TEXT" => ColumnTypeSpec::String { max_length: None },
                 "BOOLEAN" => ColumnTypeSpec::Boolean,
                 "JSONB" => ColumnTypeSpec::Json,
+                "JSON" => ColumnTypeSpec::Json,
                 "BYTEA" => ColumnTypeSpec::Blob,
                 s => {
                     // parse types with arguments

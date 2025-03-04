@@ -5,7 +5,7 @@ use super::ImportContext;
 pub(super) trait ModelProcessor {
     fn process(
         &self,
-        context: &mut ImportContext,
+        context: &ImportContext,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()>;
 }

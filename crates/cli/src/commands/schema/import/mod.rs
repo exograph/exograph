@@ -58,13 +58,14 @@ impl CommandDefinition for ImportCommandDefinition {
         let access: bool = get(matches, "access").unwrap_or(false);
         let mut writer = open_file_for_output(output.as_deref())?;
 
-        let mut schema = import_schema(database_url, &migration_scope_from_env()).await?;
+        let schema = import_schema(database_url, &migration_scope_from_env()).await?;
         let mut context = ImportContext::new(&schema.value, access);
-        schema.value.process(&mut context, &mut writer)?;
+        for table in &schema.value.tables {
+            context.add_table(&table.name);
+        }
+        schema.value.process(&context, &mut writer)?;
 
-        context.add_issues(&mut schema.issues);
-
-        for issue in &context.issues {
+        for issue in &schema.issues {
             eprintln!("{issue}");
         }
 
