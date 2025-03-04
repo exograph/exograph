@@ -77,8 +77,7 @@ impl TableSpec {
         })
     }
 
-    /// Creates a new table specification from an SQL table.
-    pub(super) async fn from_live_db(
+    pub(super) async fn from_live_db_table(
         client: &DatabaseClient,
         table_name: PhysicalTableName,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
@@ -193,6 +192,55 @@ impl TableSpec {
                 triggers,
                 managed: true,
             },
+            issues,
+        })
+    }
+
+    pub(super) async fn from_live_db_materialized_view(
+        client: &DatabaseClient,
+        table_name: PhysicalTableName,
+    ) -> Result<WithIssues<TableSpec>, DatabaseError> {
+        let issues = Vec::new();
+
+        let query = r#"
+          SELECT attribute.attname as column_name, pg_catalog.format_type(attribute.atttypid, attribute.atttypmod) as column_type, attribute.attnotnull as not_null 
+            FROM pg_attribute attribute JOIN pg_class t on attribute.attrelid = t.oid JOIN pg_namespace schema on t.relnamespace = schema.oid 
+            WHERE attribute.attnum > 0 AND NOT attribute.attisdropped AND t.relname = $1 AND schema.nspname = $2"#;
+
+        let rows = client
+            .query(
+                query,
+                &[
+                    &table_name.name,
+                    &table_name.schema.as_ref().unwrap_or(&"public".to_string()),
+                ],
+            )
+            .await?;
+
+        let columns = rows
+            .iter()
+            .map(|row| {
+                let name: String = row.get("column_name");
+                let typ: String = row.get("column_type");
+                let not_null: bool = row.get("not_null");
+
+                let column_type = ColumnTypeSpec::from_string(&typ).unwrap();
+
+                ColumnSpec {
+                    name,
+                    typ: column_type,
+                    is_pk: false,
+                    is_auto_increment: false,
+                    is_nullable: !not_null,
+                    unique_constraints: vec![],
+                    default_value: None,
+                    group_name: None,
+                }
+            })
+            .collect();
+
+        Ok(WithIssues {
+            value: TableSpec::new(table_name, columns, vec![], vec![], true),
             issues,
         })
     }
