@@ -4,23 +4,17 @@ use exo_sql::{schema::table_spec::TableSpec, PhysicalTableName};
 use super::{ImportContext, ModelProcessor};
 
 const INDENT: &str = "  ";
+
 impl ModelProcessor for TableSpec {
     fn process(
         &self,
-        context: &mut ImportContext,
+        context: &ImportContext,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
         writeln!(writer, "{INDENT}@access({})", context.access)?;
 
-        match (&self.name.schema, context.has_standard_mapping(&self.name)) {
-            (Some(schema), true) => writeln!(writer, "{INDENT}@table(schema=\"{}\")", schema)?,
-            (Some(schema), false) => writeln!(
-                writer,
-                "{INDENT}@table(name=\"{}\", schema=\"{}\")",
-                self.name.name, schema
-            )?,
-            (None, false) => writeln!(writer, "{INDENT}@table(\"{}\")", self.name.name)?,
-            (None, true) => {}
+        if !context.has_standard_mapping(&self.name) {
+            writeln!(writer, "{INDENT}@table(name=\"{}\")", self.name.name)?;
         }
 
         writeln!(writer, "{INDENT}type {} {{", context.model_name(&self.name))?;

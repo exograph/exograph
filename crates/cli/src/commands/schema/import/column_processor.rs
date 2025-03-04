@@ -15,7 +15,7 @@ impl ModelProcessor for ColumnSpec {
     /// Converts the column specification to a exograph model.
     fn process(
         &self,
-        context: &mut ImportContext,
+        context: &ImportContext,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
         // [@pk] [type-annotations] [name]: [data-type] = [default-value]
@@ -59,7 +59,7 @@ impl ModelProcessor for ColumnSpec {
     }
 }
 
-fn to_model(column_type: &ColumnTypeSpec, context: &mut ImportContext) -> (String, String) {
+fn to_model(column_type: &ColumnTypeSpec, context: &ImportContext) -> (String, String) {
     match column_type {
         ColumnTypeSpec::Int { bits } => (
             "Int".to_string(),
@@ -80,7 +80,7 @@ fn to_model(column_type: &ColumnTypeSpec, context: &mut ImportContext) -> (Strin
             .to_owned(),
         ),
 
-        ColumnTypeSpec::Numeric { precision, scale } => ("Numeric".to_string(), {
+        ColumnTypeSpec::Numeric { precision, scale } => ("Decimal".to_string(), {
             let precision_part = precision.map(|p| format!("@precision({p})"));
 
             let scale_part = scale.map(|s| format!("@scale({s})"));

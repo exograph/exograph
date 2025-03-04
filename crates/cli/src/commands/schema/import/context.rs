@@ -1,10 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use exo_sql::{
     schema::{
         column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec},
         database_spec::DatabaseSpec,
-        issue::Issue,
     },
     PhysicalTableName,
 };
@@ -13,7 +12,7 @@ use heck::ToUpperCamelCase;
 
 pub(super) struct ImportContext<'a> {
     table_name_to_model_name: HashMap<PhysicalTableName, String>,
-    pub(super) issues: Vec<Issue>,
+    pub(super) schemas: HashSet<String>,
     pub(super) database_spec: &'a DatabaseSpec,
     pub(super) access: bool,
 }
@@ -22,7 +21,7 @@ impl<'a> ImportContext<'a> {
     pub(super) fn new(database_spec: &'a DatabaseSpec, access: bool) -> Self {
         Self {
             table_name_to_model_name: HashMap::new(),
-            issues: Vec::new(),
+            schemas: HashSet::new(),
             database_spec,
             access,
         }
@@ -51,6 +50,12 @@ impl<'a> ImportContext<'a> {
 
     /// Converts the name of a SQL table to a exograph model name (for example, concert_artist -> ConcertArtist).
     pub(super) fn add_table(&mut self, table_name: &PhysicalTableName) {
+        if let Some(schema) = &table_name.schema {
+            self.schemas.insert(schema.clone());
+        } else {
+            self.schemas.insert("public".to_string());
+        }
+
         let model_name = self.standard_model_name(table_name);
 
         // If the model name is already taken, try adding a number to the end.
@@ -106,10 +111,6 @@ impl<'a> ImportContext<'a> {
                     })
             })
             .collect()
-    }
-
-    pub(super) fn add_issues(&mut self, issues: &mut Vec<Issue>) {
-        self.issues.append(issues);
     }
 }
 
