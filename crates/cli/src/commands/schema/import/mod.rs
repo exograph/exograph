@@ -49,6 +49,13 @@ impl CommandDefinition for ImportCommandDefinition {
                     .value_parser(clap::value_parser!(bool))
                     .num_args(1),
             )
+            .arg(
+                Arg::new("generate-fragments")
+                    .help("Generate fragments for tables")
+                    .long("generate-fragments")
+                    .required(false)
+                    .num_args(0),
+            )
     }
 
     /// Create a exograph model file based on a database schema
@@ -56,13 +63,18 @@ impl CommandDefinition for ImportCommandDefinition {
         let output: Option<PathBuf> = get(matches, "output");
         let database_url: Option<String> = get(matches, "database");
         let access: bool = get(matches, "access").unwrap_or(false);
+        let generate_fragments: bool = matches.get_flag("generate-fragments");
+
         let mut writer = open_file_for_output(output.as_deref())?;
 
         let schema = import_schema(database_url, &migration_scope_from_env()).await?;
-        let mut context = ImportContext::new(&schema.value, access);
+
+        let mut context = ImportContext::new(&schema.value, access, generate_fragments);
+
         for table in &schema.value.tables {
             context.add_table(&table.name);
         }
+
         schema.value.process(&context, &mut writer)?;
 
         for issue in &schema.issues {

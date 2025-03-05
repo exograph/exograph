@@ -15,26 +15,32 @@ pub(super) struct ImportContext<'a> {
     pub(super) schemas: HashSet<String>,
     pub(super) database_spec: &'a DatabaseSpec,
     pub(super) access: bool,
+    pub(super) generate_fragments: bool,
 }
 
 impl<'a> ImportContext<'a> {
-    pub(super) fn new(database_spec: &'a DatabaseSpec, access: bool) -> Self {
+    pub(super) fn new(
+        database_spec: &'a DatabaseSpec,
+        access: bool,
+        generate_fragments: bool,
+    ) -> Self {
         Self {
             table_name_to_model_name: HashMap::new(),
             schemas: HashSet::new(),
             database_spec,
             access,
+            generate_fragments,
         }
     }
 
-    pub(super) fn model_name(&self, table_name: &PhysicalTableName) -> &str {
+    pub(super) fn model_name(&self, table_name: &PhysicalTableName) -> Option<&str> {
         self.table_name_to_model_name
             .get(table_name)
-            .unwrap_or_else(|| panic!("No model name found for table: {}", table_name.name))
+            .map(|name| name.as_str())
     }
 
     pub(super) fn has_standard_mapping(&self, table_name: &PhysicalTableName) -> bool {
-        self.model_name(table_name) == self.standard_model_name(table_name)
+        self.model_name(table_name) == Some(&self.standard_model_name(table_name))
     }
 
     pub(super) fn standard_model_name(&self, table_name: &PhysicalTableName) -> String {

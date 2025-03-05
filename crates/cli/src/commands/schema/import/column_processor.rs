@@ -20,6 +20,21 @@ impl ModelProcessor for ColumnSpec {
     ) -> Result<()> {
         // [@pk] [type-annotations] [name]: [data-type] = [default-value]
 
+        let column_type_name = type_name(&self.typ, context);
+        let is_column_type_name_reference =
+            matches!(column_type_name, ColumnTypeName::ReferenceType(_));
+
+        if let ColumnTypeSpec::ColumnReference(ref reference) = &self.typ {
+            // The column was referring to a table, but that table is not in the context
+            if !is_column_type_name_reference {
+                writeln!(
+                    writer,
+                    "{INDENT}// NOTE: The table `{}` referenced by this column is not in the provided scope",
+                    reference.foreign_table_name.fully_qualified_name()
+                )?;
+            }
+        }
+
         write!(writer, "{INDENT}")?;
 
         if self.is_pk {
@@ -30,18 +45,26 @@ impl ModelProcessor for ColumnSpec {
             write!(writer, "@unique ")?;
         }
 
-        let (data_type, annots) = to_model(&self.typ, context);
+        let annots = type_annotation(&self.typ);
+
         if !annots.is_empty() {
-            write!(writer, "{} ", &annots)?;
+            write!(writer, "{} ", annots)?;
         }
 
-        if let ColumnTypeSpec::ColumnReference(ref reference) = &self.typ {
-            write!(writer, "{}: ", reference_field_name(self, reference))?;
-        } else {
-            write!(writer, "{}: ", self.name.to_lower_camel_case())?;
+        match &self.typ {
+            // If the column references to a table and that table is in the context, we use the reference field name (for example `venue_id` -> `venue`)
+            ColumnTypeSpec::ColumnReference(ref reference) if is_column_type_name_reference => {
+                write!(writer, "{}: ", reference_field_name(self, reference))?;
+            }
+            _ => {
+                write!(writer, "{}: ", self.name.to_lower_camel_case())?;
+            }
         }
 
-        write!(writer, "{}", data_type)?;
+        match column_type_name {
+            ColumnTypeName::SelfType(data_type) => write!(writer, "{}", data_type)?,
+            ColumnTypeName::ReferenceType(data_type) => write!(writer, "{}", data_type)?,
+        }
 
         if self.is_nullable {
             write!(writer, "?")?;
@@ -59,91 +82,91 @@ impl ModelProcessor for ColumnSpec {
     }
 }
 
-fn to_model(column_type: &ColumnTypeSpec, context: &ImportContext) -> (String, String) {
+enum ColumnTypeName {
+    SelfType(String),
+    ReferenceType(String),
+}
+
+fn type_name(column_type: &ColumnTypeSpec, context: &ImportContext) -> ColumnTypeName {
     match column_type {
-        ColumnTypeSpec::Int { bits } => (
-            "Int".to_string(),
-            match bits {
-                IntBits::_16 => "@bits16",
-                IntBits::_32 => "",
-                IntBits::_64 => "@bits64",
-            }
-            .to_string(),
-        ),
-
-        ColumnTypeSpec::Float { bits } => (
-            "Float".to_string(),
-            match bits {
-                FloatBits::_24 => "@singlePrecision",
-                FloatBits::_53 => "@doublePrecision",
-            }
-            .to_owned(),
-        ),
-
-        ColumnTypeSpec::Numeric { precision, scale } => ("Decimal".to_string(), {
-            let precision_part = precision.map(|p| format!("@precision({p})"));
-
-            let scale_part = scale.map(|s| format!("@scale({s})"));
-
-            match (precision_part, scale_part) {
-                (Some(precision), Some(scale)) => format!("{precision} {scale}"),
-                (Some(precision), None) => precision,
-                (None, Some(scale)) => scale,
-                (None, None) => "".to_string(),
-            }
-        }),
-
-        ColumnTypeSpec::String { max_length } => (
-            "String".to_string(),
-            match max_length {
-                Some(max_length) => format!("@maxLength({max_length})"),
-                None => "".to_string(),
-            },
-        ),
-
-        ColumnTypeSpec::Boolean => ("Boolean".to_string(), "".to_string()),
-
-        ColumnTypeSpec::Timestamp {
-            timezone,
-            precision,
-        } => (
+        ColumnTypeSpec::Int { .. } => ColumnTypeName::SelfType("Int".to_string()),
+        ColumnTypeSpec::Float { .. } => ColumnTypeName::SelfType("Float".to_string()),
+        ColumnTypeSpec::Numeric { .. } => ColumnTypeName::SelfType("Decimal".to_string()),
+        ColumnTypeSpec::String { .. } => ColumnTypeName::SelfType("String".to_string()),
+        ColumnTypeSpec::Boolean => ColumnTypeName::SelfType("Boolean".to_string()),
+        ColumnTypeSpec::Timestamp { timezone, .. } => ColumnTypeName::SelfType(
             if *timezone {
                 "Instant"
             } else {
                 "LocalDateTime"
             }
             .to_string(),
-            match precision {
-                Some(precision) => format!("@precision({precision})"),
-                None => "".to_string(),
-            },
         ),
-
-        ColumnTypeSpec::Time { precision } => (
-            "LocalTime".to_string(),
-            match precision {
-                Some(precision) => format!("@precision({precision})"),
-                None => "".to_string(),
-            },
-        ),
-
-        ColumnTypeSpec::Date => ("LocalDate".to_string(), "".to_string()),
-
-        ColumnTypeSpec::Json => ("Json".to_string(), "".to_string()),
-        ColumnTypeSpec::Blob => ("Blob".to_string(), "".to_string()),
-        ColumnTypeSpec::Uuid => ("Uuid".to_string(), "".to_string()),
-        ColumnTypeSpec::Vector { size } => ("Vector".to_string(), format!("@size({size})",)),
-
-        ColumnTypeSpec::Array { typ } => {
-            let (data_type, annotations) = to_model(typ, context);
-            (format!("Array<{data_type}>"), annotations)
-        }
-
+        ColumnTypeSpec::Time { .. } => ColumnTypeName::SelfType("LocalTime".to_string()),
+        ColumnTypeSpec::Date => ColumnTypeName::SelfType("LocalDate".to_string()),
+        ColumnTypeSpec::Json => ColumnTypeName::SelfType("Json".to_string()),
+        ColumnTypeSpec::Blob => ColumnTypeName::SelfType("Blob".to_string()),
+        ColumnTypeSpec::Uuid => ColumnTypeName::SelfType("Uuid".to_string()),
+        ColumnTypeSpec::Vector { .. } => ColumnTypeName::SelfType("Vector".to_string()),
+        ColumnTypeSpec::Array { typ } => match type_name(typ, context) {
+            ColumnTypeName::SelfType(data_type) => {
+                ColumnTypeName::SelfType(format!("Array<{data_type}>"))
+            }
+            ColumnTypeName::ReferenceType(data_type) => {
+                ColumnTypeName::ReferenceType(format!("Array<{data_type}>"))
+            }
+        },
         ColumnTypeSpec::ColumnReference(ColumnReferenceSpec {
-            foreign_table_name, ..
-        }) => (
-            context.model_name(foreign_table_name).to_string(),
-            "".to_string(),
-        ),
+            foreign_table_name,
+            foreign_pk_type,
+            ..
+        }) => {
+            let model_name = context.model_name(foreign_table_name);
+            match model_name {
+                Some(model_name) => ColumnTypeName::ReferenceType(model_name.to_string()),
+                None => type_name(foreign_pk_type, context),
+            }
+        }
+    }
+}
+
+fn type_annotation(column_type: &ColumnTypeSpec) -> String {
+    match column_type {
+        ColumnTypeSpec::Int { bits } => match bits {
+            IntBits::_16 => "@bits16".to_string(),
+            IntBits::_32 => "".to_string(),
+            IntBits::_64 => "@bits64".to_string(),
+        },
+        ColumnTypeSpec::Float { bits } => match bits {
+            FloatBits::_24 => "@singlePrecision".to_string(),
+            FloatBits::_53 => "@doublePrecision".to_string(),
+        },
+        ColumnTypeSpec::Numeric { precision, scale } => {
+            let precision_part = precision.map(|p| format!("@precision({p})"));
+            let scale_part = scale.map(|s| format!("@scale({s})"));
+            match (precision_part, scale_part) {
+                (Some(precision), Some(scale)) => format!("{precision} {scale}"),
+                (Some(precision), None) => precision,
+                (None, Some(scale)) => scale,
+                (None, None) => "".to_string(),
+            }
+        }
+        ColumnTypeSpec::String {
+            max_length: Some(max_length),
+        } => format!("@maxLength({max_length})"),
+        ColumnTypeSpec::String { max_length: None } => "".to_string(),
+        ColumnTypeSpec::Timestamp {
+            precision: Some(precision),
+            ..
+        } => format!("@precision({precision})"),
+        ColumnTypeSpec::Timestamp {
+            precision: None, ..
+        } => "".to_string(),
+        ColumnTypeSpec::Time {
+            precision: Some(precision),
+            ..
+        } => format!("@precision({precision})"),
+        ColumnTypeSpec::Vector { size } => format!("@size({size})"),
+        _ => "".to_string(),
     }
 }
