@@ -1,6 +1,6 @@
 ---
 source: crates/builder/src/typechecker/mod.rs
-expression: build(src).unwrap()
+expression: built
 ---
 types:
   values:
@@ -71,6 +71,7 @@ types:
                     name: jwt
                     params: None
               default_value: ~
+          fragment_references: []
           annotations:
             annotations: {}
     - - ~
@@ -119,6 +120,7 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+          fragment_references: []
           annotations:
             annotations:
               access:
@@ -409,6 +411,7 @@ types:
               annotations:
                 annotations: {}
               default_value: ~
+          fragment_references: []
           annotations:
             annotations: {}
     - ~
@@ -536,6 +539,7 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+            fragment_references: []
             annotations:
               annotations:
                 access:
@@ -824,6 +828,7 @@ modules:
                 annotations:
                   annotations: {}
                 default_value: ~
+            fragment_references: []
             annotations:
               annotations: {}
         methods: []
