@@ -1,0 +1,13 @@
+@postgres
+module TodoDatabase {
+  @access(true)
+  type Todo {
+    @pk id: Int = autoIncrement()
+    ...TodoFragment
+  }
+
+  fragment TodoFragment {
+    completed: Boolean
+    title: String
+  }
+}

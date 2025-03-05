@@ -69,6 +69,7 @@ pub struct AstModel<T: NodeTypedness> {
     pub name: String,
     pub kind: AstModelKind,
     pub fields: Vec<AstField<T>>,
+    pub fragment_references: Vec<AstFragmentReference<T>>,
     pub annotations: T::Annotations,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -77,6 +78,22 @@ pub struct AstModel<T: NodeTypedness> {
 }
 
 impl<T: NodeTypedness> Display for AstModel<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name.as_str())
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstFragmentReference<T: NodeTypedness> {
+    pub name: String,
+    pub typ: T::Type,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
+}
+
+impl<T: NodeTypedness> Display for AstFragmentReference<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.name.as_str())
     }
@@ -140,8 +157,9 @@ pub struct AstInterceptor<T: NodeTypedness> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum AstModelKind {
-    Type,    // a type in a module (with semantics assigned by each module plugin)
-    Context, // defines contextual type some information extracted from the request
+    Type,     // a type in a module (with semantics assigned by each module plugin)
+    Context,  // defines contextual type some information extracted from the request
+    Fragment, // a fragment in a module
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

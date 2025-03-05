@@ -16,7 +16,7 @@ use std::{collections::HashMap, path::Path};
 use codemap::Span;
 #[cfg(not(target_family = "wasm"))]
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model_builder::ast::ast_types::{FieldSelectionElement, Identifier};
+use core_model_builder::ast::ast_types::{AstFragmentReference, FieldSelectionElement, Identifier};
 use tree_sitter_c2rust::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
@@ -191,18 +191,21 @@ fn convert_model(
     source_span: Span,
     kind: AstModelKind,
 ) -> AstModel<Untyped> {
-    assert!(node.kind() == "type" || node.kind() == "context");
+    assert!(node.kind() == "type" || node.kind() == "context" || node.kind() == "fragment");
 
     let mut cursor = node.walk();
+
+    let (fields, fragment_references) = convert_fields_and_fragments(
+        node.child_by_field_name("body").unwrap(),
+        source,
+        source_span,
+    );
 
     AstModel {
         name: text_child(node, source, "name"),
         kind,
-        fields: convert_fields(
-            node.child_by_field_name("body").unwrap(),
-            source,
-            source_span,
-        ),
+        fields,
+        fragment_references,
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
@@ -234,11 +237,18 @@ fn convert_module(
         .map(|c| convert_annotation(c, source, source_span))
         .collect::<Vec<_>>();
 
+    let mut types: Vec<_> = matching_nodes(node, &mut node.walk(), "type")
+        .map(|n| convert_model(n, source, source_span, AstModelKind::Type))
+        .collect();
+    let fragments: Vec<_> = matching_nodes(node, &mut node.walk(), "fragment")
+        .map(|n| convert_model(n, source, source_span, AstModelKind::Fragment))
+        .collect();
+
+    types.extend(fragments);
+
     AstModule {
         name: text_child(node, source, "name"),
-        types: matching_nodes(node, &mut node.walk(), "type")
-            .map(|n| convert_model(n, source, source_span, AstModelKind::Type))
-            .collect(),
+        types,
         methods: matching_nodes(node, &mut node.walk(), "module_method")
             .map(|n| convert_module_method(n, source, source_span))
             .collect(),
@@ -297,11 +307,27 @@ fn convert_interceptor(node: Node, source: &[u8], source_span: Span) -> AstInter
     }
 }
 
-fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
+fn convert_fields_and_fragments(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> (Vec<AstField<Untyped>>, Vec<AstFragmentReference<Untyped>>) {
     let mut cursor = node.walk();
-    node.children_by_field_name("field", &mut cursor)
+
+    let fields = node
+        .children_by_field_name("field", &mut cursor)
         .map(|c| convert_field(c, source, source_span))
-        .collect()
+        .collect();
+    let fragment_references = node
+        .children_by_field_name("fragment_reference", &mut cursor)
+        .map(|c| AstFragmentReference {
+            name: text_child(c, source, "name"),
+            typ: (),
+            span: span_from_node(source_span, c),
+        })
+        .collect();
+
+    (fields, fragment_references)
 }
 
 fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
