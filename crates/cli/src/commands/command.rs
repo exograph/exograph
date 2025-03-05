@@ -134,6 +134,15 @@ pub fn output_arg() -> Arg {
         .num_args(1)
 }
 
+pub fn migration_scope_arg() -> Arg {
+    Arg::new("scope")
+        .help("The migration/import scope")
+        .long("scope")
+        .required(false)
+        .value_parser(clap::value_parser!(String))
+        .num_args(1)
+}
+
 pub fn port_arg() -> Arg {
     Arg::new("port")
         .help("Listen port")

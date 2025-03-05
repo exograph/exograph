@@ -39,14 +39,12 @@ pub(crate) fn use_ir_arg() -> Arg {
         .num_args(0)
 }
 
-pub(crate) fn migration_scope_from_env() -> MigrationScope {
-    // The env of the form "schema1.table1, schema2.table2, schema3".
+pub(crate) fn compute_migration_scope(scope_value: Option<String>) -> MigrationScope {
+    // The value of the form "schema1.table1, schema2.table2, schema3".
     // - wildcards allowed for schema and table names (e.g. "*.table1" or "schema1.*")
     // - table names defaults to '*' (e.g. "schema1" is equivalent to "schema1.*")
-    let scope_env = std::env::var("EXO_POSTGRES_MIGRATION_SCOPE").ok();
-
-    if let Some(scope_env) = scope_env {
-        let schema_and_table_names = scope_env
+    if let Some(scope_value) = scope_value {
+        let schema_and_table_names = scope_value
             .trim()
             .split(',')
             .map(|s| {
@@ -72,18 +70,12 @@ mod tests {
 
     #[test]
     fn test_migration_scope_from_env() {
-        // Separating the non-env and env cases into separate tests makes the test
-        // flaky (since the test run parallelly and we one test may set the env
-        // variable and the other test may read it).
-        std::env::remove_var("EXO_POSTGRES_MIGRATION_SCOPE");
-        assert_eq!(migration_scope_from_env(), MigrationScope::FromNewSpec);
+        assert_eq!(compute_migration_scope(None), MigrationScope::FromNewSpec);
 
-        std::env::set_var(
-            "EXO_POSTGRES_MIGRATION_SCOPE",
-            "schema1.table1,*.table2,schema3.*, schema4",
-        );
         assert_eq!(
-            migration_scope_from_env(),
+            compute_migration_scope(Some(
+                "schema1.table1,*.table2,schema3.*, schema4".to_string()
+            )),
             MigrationScope::Specified(MigrationScopeMatches(vec![
                 (NameMatching::new("schema1"), NameMatching::new("table1")),
                 (NameMatching::new("*"), NameMatching::new("table2")),

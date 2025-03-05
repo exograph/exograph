@@ -19,7 +19,9 @@ use futures::FutureExt;
 use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
-use super::command::{enforce_trusted_documents_arg, get, port_arg, CommandDefinition};
+use super::command::{
+    enforce_trusted_documents_arg, get, migration_scope_arg, port_arg, CommandDefinition,
+};
 use crate::config::{Config, WatchStage};
 use crate::{
     commands::{
@@ -32,7 +34,7 @@ use crate::{
     util::watcher,
 };
 
-use crate::commands::util::migration_scope_from_env;
+use crate::commands::util::compute_migration_scope;
 
 pub struct DevCommandDefinition {}
 
@@ -43,6 +45,7 @@ impl CommandDefinition for DevCommandDefinition {
             .about("Run exograph server in development mode")
             .arg(port_arg())
             .arg(enforce_trusted_documents_arg())
+            .arg(migration_scope_arg())
     }
 
     /// Run local exograph server
@@ -66,7 +69,7 @@ impl CommandDefinition for DevCommandDefinition {
 
         std::env::set_var(EXO_CORS_DOMAINS, "*");
 
-        let migration_scope = migration_scope_from_env();
+        let migration_scope = compute_migration_scope(get(matches, "scope"));
 
         const MIGRATE: &str = "Attempt migration";
         const CONTINUE: &str = "Continue with old schema";

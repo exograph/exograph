@@ -15,11 +15,12 @@ use std::{io::Write, path::PathBuf};
 
 use exo_sql::schema::database_spec::DatabaseSpec;
 
+use crate::commands::command::migration_scope_arg;
 use crate::config::Config;
 use crate::{
     commands::{
         command::{default_model_file, get, output_arg, CommandDefinition},
-        util::{migration_scope_from_env, use_ir_arg},
+        util::{compute_migration_scope, use_ir_arg},
     },
     util::open_file_for_output,
 };
@@ -35,6 +36,7 @@ impl CommandDefinition for CreateCommandDefinition {
             .about("Create a database schema from a Exograph model")
             .arg(output_arg())
             .arg(use_ir_arg())
+            .arg(migration_scope_arg())
     }
 
     /// Create a database schema from a exograph model
@@ -43,7 +45,7 @@ impl CommandDefinition for CreateCommandDefinition {
 
         let model: PathBuf = default_model_file();
         let output: Option<PathBuf> = get(matches, "output");
-
+        let scope: Option<String> = get(matches, "scope");
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
 
         let mut buffer: Box<dyn Write> = open_file_for_output(output.as_deref())?;
@@ -52,7 +54,7 @@ impl CommandDefinition for CreateCommandDefinition {
         let migrations = Migration::from_schemas(
             &DatabaseSpec::new(vec![], vec![]),
             &DatabaseSpec::from_database(&database),
-            &migration_scope_from_env(),
+            &compute_migration_scope(scope),
         );
         migrations.write(&mut buffer, true)?;
 

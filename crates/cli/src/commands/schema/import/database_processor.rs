@@ -18,16 +18,26 @@ impl ModelProcessor for DatabaseSpec {
                 Some(schema.clone())
             };
 
-            let module_name = match &schema {
-                Some(schema) => format!("{}Database", schema.to_upper_camel_case()),
-                None => "Database".to_string(),
-            };
-
             write!(writer, "@postgres")?;
             if let Some(schema) = &schema {
-                write!(writer, "(schema=\"{schema}\")")?;
+                if !context.generate_fragments {
+                    write!(writer, "(schema=\"{schema}\")")?;
+                }
             }
             writeln!(writer)?;
+
+            write!(writer, "module ")?;
+
+            let module_suffix = if context.generate_fragments {
+                "Fragments"
+            } else {
+                "Database"
+            };
+
+            let module_name = match &schema {
+                Some(schema) => format!("{}{}", schema.to_upper_camel_case(), module_suffix),
+                None => module_suffix.to_string(),
+            };
             writeln!(writer, "module {module_name} {{")?;
 
             let matching_tables = self

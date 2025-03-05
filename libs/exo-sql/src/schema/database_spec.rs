@@ -252,6 +252,10 @@ impl DatabaseSpec {
                     schema: schema_name.clone(),
                 };
 
+                if !scope.matches(&table_name) {
+                    continue;
+                }
+
                 let mut table = TableSpec::from_live_db_table(client, table_name).await?;
                 issues.append(&mut table.issues);
                 tables.push(table.value);
@@ -268,6 +272,10 @@ impl DatabaseSpec {
                     name: view_name,
                     schema: schema_name.clone(),
                 };
+
+                if !scope.matches(&table_name) {
+                    continue;
+                }
 
                 let mut table =
                     TableSpec::from_live_db_materialized_view(client, table_name).await?;

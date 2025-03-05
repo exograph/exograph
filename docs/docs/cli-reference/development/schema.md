@@ -79,7 +79,7 @@ The `exo schema migrate` command offers a couple of options:
 
 By default, the `schema` subcommand operates on all tables of schemas used in your project (specified using either `@postgres(schema="...")` or `@table(schema="...")` in your exo files). This works well for brownfield projects where you want to create a new Exograph project that works with an existing database but skip migrating other schemas (which would suggest deleting any tables not referenced in your exo files). 
 
-The default behavior works for most projects. However, you can specify a different migration scope using the `EXO_POSTGRES_MIGRATION_SCOPE` environment variable, which is a comma-separated list in the form: `<schema-wildcard>[.<table-wildcard>]?` with `table-wildcard` being set to `*` by default. For example, to migrate only the `public` and `concerts` schemas, you can set the `EXO_POSTGRES_MIGRATION_SCOPE` environment variable to `public.*,concerts.*`, or simply `public,concerts`. You may also specify a specific schema and table, for example, `public.concerts*` or even `*.concerts*`, etc.
+The default behavior works for most projects. However, you can specify a different migration scope using the `--scope` command line option, which is a comma-separated list in the form: `<schema-wildcard>[.<table-wildcard>]?` with `table-wildcard` being set to `*` by default. For example, to migrate only the `public` and `concerts` schemas, you can set the `--scope` option to `public.*,concerts.*`, or simply `public,concerts`. You may also specify a specific schema and table, for example, `public.concerts*` or even `*.concerts*`, etc.
 
 # Creating an Exograph model from an existing database
 
