@@ -541,6 +541,7 @@ mod tests {
                     span,
                 },
             ],
+            fragment_references: vec![],
             annotations: Default::default(),
             span,
         }
@@ -580,6 +581,7 @@ mod tests {
                     span,
                 },
             ],
+            fragment_references: vec![],
             annotations: Default::default(),
             span,
         }

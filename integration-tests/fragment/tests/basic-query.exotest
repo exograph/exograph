@@ -1,0 +1,35 @@
+operation: |
+  query {
+      todos(orderBy: {title: ASC}) {
+          id
+          title
+          completed
+      }
+  }
+response: |
+  {
+    "data": {
+      "todos": [
+        {
+          "id": $.t1id,
+          "title": "T1",
+          "completed": true
+        },
+        {
+          "id": $.t2id,
+          "title": "T2",
+          "completed": false
+        },
+        {
+          "id": $.t3id,
+          "title": "T3",
+          "completed": true
+        },
+        {
+          "id": $.t4id,
+          "title": "T4",
+          "completed": false
+        }
+      ]
+    }
+  }

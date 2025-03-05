@@ -240,8 +240,51 @@ fn resolve_composite_type_fields(
     typechecked_system: &TypecheckedSystem,
     errors: &mut Vec<Diagnostic>,
 ) -> Vec<ResolvedField> {
+    let fragment_fields = ct
+        .fragment_references
+        .iter()
+        .flat_map(|fragment_reference| {
+            let fragment_type = typechecked_system
+                .types
+                .get_by_key(&fragment_reference.name);
+            match &fragment_type {
+                Some(Type::Composite(ft)) => ft.fields.clone(),
+                Some(_) => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!(
+                            "Fragment type {} is not a composite type",
+                            fragment_reference.name
+                        ),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: fragment_reference.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                    vec![]
+                }
+                None => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!("Fragment type {} not found", fragment_reference.name),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: fragment_reference.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                    vec![]
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
     ct.fields
         .iter()
+        .chain(fragment_fields.iter())
         .flat_map(|field| {
             let update_sync = field.annotations.contains("update");
             let readonly = field.annotations.contains("readonly");

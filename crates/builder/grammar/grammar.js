@@ -43,6 +43,7 @@ module.exports = grammar({
     ),
     module_field: $ => choice(
       $.type,
+      $.fragment,
       $.module_method,
       $.interceptor
     ),
@@ -76,7 +77,15 @@ module.exports = grammar({
       field("name", $.term),
       field("body", $.type_body)
     ),
-    type_body: $ => seq("{", repeat(field("field", $.field)), "}"),
+    fragment: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      "fragment",
+      field("name", $.term),
+      field("body", $.fragment_body)
+    ),
+    type_body: $ => seq("{", repeat(choice(field("field", $.field), field("fragment_reference", $.fragment_reference))), "}"),
+    fragment_body: $ => seq("{", repeat(field("field", $.field)), "}"),
+    fragment_reference: $ => seq("...", field("name", $.term)),
     annotation: $ => seq(
       "@",
       field("name", $.term),

@@ -11,10 +11,13 @@ use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::mapped_arena::MappedArena;
-use core_model_builder::typechecker::{
-    annotation::{AnnotationSpec, AnnotationTarget},
-    annotation_map::AnnotationMap,
-    Typed,
+use core_model_builder::{
+    ast::ast_types::AstFragmentReference,
+    typechecker::{
+        annotation::{AnnotationSpec, AnnotationTarget},
+        annotation_map::AnnotationMap,
+        Typed,
+    },
 };
 
 use crate::ast::ast_types::{AstField, AstFieldDefault, AstModel, AstModelKind, Untyped};
@@ -29,6 +32,11 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             name: untyped.name.clone(),
             kind: untyped.kind.clone(),
             fields: untyped.fields.iter().map(AstField::shallow).collect(),
+            fragment_references: untyped
+                .fragment_references
+                .iter()
+                .map(AstFragmentReference::shallow)
+                .collect(),
             annotations: annotation_map,
             span: untyped.span,
         }
@@ -47,6 +55,14 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             .fields
             .iter_mut()
             .map(|tf| tf.pass(type_env, annotation_env, &model_scope, errors))
+            .filter(|v| *v)
+            .count()
+            > 0;
+
+        let fragment_references_changed = self
+            .fragment_references
+            .iter_mut()
+            .map(|fr| fr.pass(type_env, annotation_env, &model_scope, errors))
             .filter(|v| *v)
             .count()
             > 0;
@@ -76,6 +92,36 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             errors,
         );
 
-        fields_changed || annot_changed
+        fields_changed || annot_changed || fragment_references_changed
+    }
+}
+
+impl TypecheckFrom<AstFragmentReference<Untyped>> for AstFragmentReference<Typed> {
+    fn shallow(untyped: &AstFragmentReference<Untyped>) -> AstFragmentReference<Typed> {
+        AstFragmentReference {
+            name: untyped.name.clone(),
+            typ: false,
+            span: untyped.span,
+        }
+    }
+    fn pass(
+        &mut self,
+        type_env: &MappedArena<Type>,
+        _annotation_env: &HashMap<String, AnnotationSpec>,
+        _scope: &Scope,
+        _errors: &mut Vec<Diagnostic>,
+    ) -> bool {
+        if self.typ {
+            return false;
+        }
+
+        let fragment_type = type_env.get_by_key(&self.name);
+
+        if let Some(Type::Composite(_)) = fragment_type {
+            self.typ = true;
+            true
+        } else {
+            false
+        }
     }
 }
