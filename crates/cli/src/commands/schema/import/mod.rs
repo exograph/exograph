@@ -16,8 +16,10 @@ use exo_sql::schema::spec::{MigrationScope, MigrationScopeMatches};
 
 use std::path::PathBuf;
 
-use crate::commands::command::{database_arg, get, output_arg, CommandDefinition};
-use crate::commands::util::migration_scope_from_env;
+use crate::commands::command::{
+    database_arg, get, migration_scope_arg, output_arg, CommandDefinition,
+};
+use crate::commands::util::compute_migration_scope;
 use crate::config::Config;
 use crate::util::open_file_for_output;
 
@@ -41,6 +43,7 @@ impl CommandDefinition for ImportCommandDefinition {
             .about("Create exograph model file based on a database schema")
             .arg(database_arg())
             .arg(output_arg())
+            .arg(migration_scope_arg())
             .arg(
                 Arg::new("access")
                     .help("Access expression to apply to all tables (default: false)")
@@ -64,10 +67,11 @@ impl CommandDefinition for ImportCommandDefinition {
         let database_url: Option<String> = get(matches, "database");
         let access: bool = get(matches, "access").unwrap_or(false);
         let generate_fragments: bool = matches.get_flag("generate-fragments");
+        let scope: Option<String> = get(matches, "scope");
 
         let mut writer = open_file_for_output(output.as_deref())?;
 
-        let schema = import_schema(database_url, &migration_scope_from_env()).await?;
+        let schema = import_schema(database_url, &compute_migration_scope(scope)).await?;
 
         let mut context = ImportContext::new(&schema.value, access, generate_fragments);
 

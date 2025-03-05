@@ -12,11 +12,12 @@ use std::{io, path::PathBuf};
 use anyhow::anyhow;
 use postgres_core_model::migration::Migration;
 
+use crate::commands::command::migration_scope_arg;
 use crate::config::Config;
 use crate::{
     commands::{
         command::{database_arg, default_model_file, get, output_arg, CommandDefinition},
-        util::{migration_scope_from_env, use_ir_arg},
+        util::{compute_migration_scope, use_ir_arg},
     },
     util::open_file_for_output,
 };
@@ -35,6 +36,7 @@ impl CommandDefinition for MigrateCommandDefinition {
         .about("Produces a SQL migration script for a Exograph model and the specified database")
         .arg(database_arg())
         .arg(output_arg())
+        .arg(migration_scope_arg())
         .arg(
             Arg::new("apply-to-database")
                 .help("Apply non-destructive migration to the database specified by the --database flag or the environment variable EXO_POSTGRES_URL")
@@ -62,7 +64,7 @@ impl CommandDefinition for MigrateCommandDefinition {
         let apply_to_database: bool = matches.get_flag("apply-to-database");
         let allow_destructive_changes: bool = matches.get_flag("allow-destructive-changes");
         let use_ir: bool = matches.get_flag("use-ir");
-
+        let scope: Option<String> = get(matches, "scope");
         if output.is_some() && apply_to_database {
             return Err(anyhow!(
                 "Cannot specify both --output and --apply-to-database"
@@ -73,7 +75,7 @@ impl CommandDefinition for MigrateCommandDefinition {
 
         let db_client = open_database(database_url.as_deref()).await?;
         let migrations =
-            Migration::from_db_and_model(&db_client, &database, &migration_scope_from_env())
+            Migration::from_db_and_model(&db_client, &database, &compute_migration_scope(scope))
                 .await?;
 
         if apply_to_database {

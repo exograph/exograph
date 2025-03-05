@@ -13,8 +13,10 @@ use clap::Command;
 use postgres_core_model::migration::{Migration, VerificationErrors};
 use std::path::PathBuf;
 
-use crate::commands::command::{database_arg, default_model_file, get, CommandDefinition};
-use crate::commands::util::{migration_scope_from_env, use_ir_arg};
+use crate::commands::command::{
+    database_arg, default_model_file, get, migration_scope_arg, CommandDefinition,
+};
+use crate::commands::util::{compute_migration_scope, use_ir_arg};
 use crate::config::Config;
 
 use super::util;
@@ -28,6 +30,7 @@ impl CommandDefinition for VerifyCommandDefinition {
             .about("Verify that the database schema is compatible with a Exograph model")
             .arg(database_arg())
             .arg(use_ir_arg())
+            .arg(migration_scope_arg())
     }
 
     /// Verify that a schema is compatible with a exograph model
@@ -36,11 +39,12 @@ impl CommandDefinition for VerifyCommandDefinition {
         let model: PathBuf = default_model_file();
         let database: Option<String> = get(matches, "database");
         let use_ir: bool = matches.get_flag("use-ir");
-
+        let scope: Option<String> = get(matches, "scope");
         let db_client = util::open_database(database.as_deref()).await?;
+
         let database = util::extract_postgres_database(&model, None, use_ir).await?;
         let verification_result =
-            Migration::verify(&db_client, &database, &migration_scope_from_env()).await;
+            Migration::verify(&db_client, &database, &compute_migration_scope(scope)).await;
 
         match &verification_result {
             Ok(()) => eprintln!("This model is compatible with the database schema!"),
