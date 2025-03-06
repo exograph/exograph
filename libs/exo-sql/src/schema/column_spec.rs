@@ -78,6 +78,24 @@ pub enum ColumnTypeSpec {
     },
 }
 
+const DB_TYPE_QUERY: &str = "
+  SELECT format_type(atttypid, atttypmod), attndims FROM pg_attribute LEFT JOIN pg_class ON pg_attribute.attrelid = pg_class.oid 
+    LEFT JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+  WHERE pg_class.relname = $1 AND pg_namespace.nspname = $2 AND attname = $3";
+
+const DB_NOT_NULL_QUERY: &str = "
+  SELECT attnotnull FROM pg_attribute 
+    LEFT JOIN pg_class ON pg_attribute.attrelid = pg_class.oid 
+    LEFT JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+  WHERE pg_class.relname = $1 AND pg_namespace.nspname = $2 AND attname = $3";
+
+const SERIAL_COLUMNS_QUERY: &str = "
+  SELECT relname FROM pg_class LEFT JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid WHERE relkind = 'S' and pg_namespace.nspname = $1";
+
+const COLUMN_DEFAULT_QUERY: &str = "
+  SELECT column_default FROM information_schema.columns
+  WHERE table_schema = $1 AND table_name = $2 and column_name = $3";
+
 impl ColumnSpec {
     /// Creates a new column specification from an SQL column.
     ///
@@ -97,16 +115,13 @@ impl ColumnSpec {
         let db_type = match explicit_type {
             Some(t) => Some(t),
             None => {
-                // Query to find the type of the column and the # of dimensions if the type is an array
-                let db_type_query = format!(
-                    "
-                    SELECT format_type(atttypid, atttypmod), attndims
-                    FROM pg_attribute
-                    WHERE attrelid = '{}'::regclass AND attname = $1",
-                    table_name.sql_name()
-                );
-
-                let rows = client.query(&db_type_query, &[&column_name]).await?;
+                // Find the type of the column and the # of dimensions if the type is an array
+                let rows = client
+                    .query(
+                        DB_TYPE_QUERY,
+                        &[&table_name.name, &table_name.schema_name(), &column_name],
+                    )
+                    .await?;
 
                 let row = rows.first().unwrap();
 
@@ -144,16 +159,11 @@ impl ColumnSpec {
             }
         };
 
-        let db_not_null_query = format!(
-            "
-            SELECT attnotnull
-            FROM pg_attribute
-            WHERE attrelid = '{}'::regclass AND attname = $1",
-            table_name.sql_name()
-        );
-
         let not_null: bool = client
-            .query(&db_not_null_query, &[&column_name])
+            .query(
+                DB_NOT_NULL_QUERY,
+                &[&table_name.name, &table_name.schema_name(), &column_name],
+            )
             .await?
             .first()
             .map(|row| row.get("attnotnull"))
@@ -162,14 +172,9 @@ impl ColumnSpec {
         // Find all sequences in the database that are used for SERIAL (autoIncrement) columns
         // e.g. an autoIncrement column `id` in the table `users` will create a sequence called
         // `users_id_seq`
-        let serial_columns_query =
-            format!(
-                "SELECT relname FROM pg_class WHERE relkind = 'S' and relnamespace = '{}'::regnamespace", 
-                table_name.schema.clone().unwrap_or("public".to_string())
-            );
 
         let serial_columns = client
-            .query(&serial_columns_query, &[])
+            .query(SERIAL_COLUMNS_QUERY, &[&table_name.schema_name()])
             .await?
             .iter()
             .map(|row| -> String { row.get("relname") })
@@ -187,18 +192,10 @@ impl ColumnSpec {
             // clear it to normalize the column
             None
         } else {
-            let db_query = "
-                SELECT column_default FROM information_schema.columns
-                WHERE table_schema = $1 AND table_name = $2 and column_name = $3";
-
             let rows = client
                 .query(
-                    db_query,
-                    &[
-                        &table_name.schema.clone().unwrap_or("public".to_string()),
-                        &table_name.name,
-                        &column_name,
-                    ],
+                    COLUMN_DEFAULT_QUERY,
+                    &[&table_name.schema_name(), &table_name.name, &column_name],
                 )
                 .await?;
 

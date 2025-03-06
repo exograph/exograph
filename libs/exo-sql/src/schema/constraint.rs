@@ -52,23 +52,36 @@ lazy_static! {
     static ref LIST_RE: Regex = Regex::new(r"(\w+)").unwrap();
 }
 
+const CONSTRAINT_QUERY: &str = "
+SELECT 
+    contype, 
+    conname, 
+    pg_get_constraintdef(pg_constraint.oid, true) AS condef, 
+    pg_class.relname AS foreign_table, 
+    pg_namespace.nspname AS foreign_schema
+FROM 
+    pg_constraint 
+    LEFT JOIN pg_class AS self_table ON pg_constraint.conrelid = self_table.oid 
+    LEFT JOIN pg_namespace AS self_schema ON self_table.relnamespace = self_schema.oid
+    LEFT JOIN pg_class ON pg_constraint.confrelid = pg_class.oid 
+    LEFT JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+WHERE 
+    self_table.relname = $1 
+    AND self_schema.nspname = $2 
+    AND conparentid = 0;
+";
+
 impl Constraints {
     pub(super) async fn from_live_db(
         client: &DatabaseClient,
         table_name: &PhysicalTableName,
     ) -> Result<Constraints, DatabaseError> {
-        // Query to get a list of constraints in the table (primary key and foreign key constraints)
-        let constraints_query = format!(
-            "
-            SELECT contype, conname, pg_get_constraintdef(pg_constraint.oid, true) as condef, pg_class.relname as foreign_table, pg_namespace.nspname as foreign_schema
-            FROM pg_constraint left join pg_class on pg_constraint.confrelid = pg_class.oid left join pg_namespace on pg_class.relnamespace = pg_namespace.oid
-            WHERE conrelid = '{}'::regclass AND conparentid = 0",
-            table_name.sql_name()
-        );
-
-        // Get all the constraints in the table
+        // Get a list of constraints in the table (primary key and foreign key constraints)
         let constraints = client
-            .query(&constraints_query, &[])
+            .query(
+                CONSTRAINT_QUERY,
+                &[&table_name.name, &table_name.schema_name()],
+            )
             .await?
             .iter()
             .map(|row| {

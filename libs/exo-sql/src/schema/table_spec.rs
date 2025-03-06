@@ -22,6 +22,13 @@ use super::op::SchemaOp;
 use super::statement::SchemaStatement;
 use super::trigger_spec::TriggerSpec;
 
+const PHYSICAL_TABLE_COLUMNS_QUERY: &str = "SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2";
+
+const MATERIALIZED_VIEW_COLUMNS_QUERY: &str = r#"
+  SELECT attribute.attname as column_name, pg_catalog.format_type(attribute.atttypid, attribute.atttypmod) as column_type, attribute.attnotnull as not_null 
+    FROM pg_attribute attribute JOIN pg_class t on attribute.attrelid = t.oid JOIN pg_namespace schema on t.relnamespace = schema.oid 
+  WHERE attribute.attnum > 0 AND NOT attribute.attisdropped AND t.relname = $1 AND schema.nspname = $2"#;
+
 #[derive(Debug)]
 pub struct TableSpec {
     pub name: PhysicalTableName,
@@ -82,7 +89,6 @@ impl TableSpec {
         table_name: PhysicalTableName,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         // Query to get a list of columns in the table
-        let columns_query = "SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2";
 
         let mut issues = Vec::new();
 
@@ -129,11 +135,8 @@ impl TableSpec {
         let mut columns = Vec::new();
         for row in client
             .query(
-                columns_query,
-                &[
-                    &table_name.name,
-                    &table_name.schema.as_ref().unwrap_or(&"public".to_string()),
-                ],
+                PHYSICAL_TABLE_COLUMNS_QUERY,
+                &[&table_name.name, &table_name.schema_name()],
             )
             .await?
         {
@@ -208,18 +211,10 @@ impl TableSpec {
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         let issues = Vec::new();
 
-        let query = r#"
-          SELECT attribute.attname as column_name, pg_catalog.format_type(attribute.atttypid, attribute.atttypmod) as column_type, attribute.attnotnull as not_null 
-            FROM pg_attribute attribute JOIN pg_class t on attribute.attrelid = t.oid JOIN pg_namespace schema on t.relnamespace = schema.oid 
-            WHERE attribute.attnum > 0 AND NOT attribute.attisdropped AND t.relname = $1 AND schema.nspname = $2"#;
-
         let rows = client
             .query(
-                query,
-                &[
-                    &table_name.name,
-                    &table_name.schema.as_ref().unwrap_or(&"public".to_string()),
-                ],
+                MATERIALIZED_VIEW_COLUMNS_QUERY,
+                &[&table_name.name, &table_name.schema_name()],
             )
             .await?;
 
