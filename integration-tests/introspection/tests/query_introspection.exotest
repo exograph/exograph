@@ -30,7 +30,7 @@ operation: |
     }
 
     fragment fields_info on __Type {
-      fields {
+      fields @unordered {
         __typename
         name
         args {
@@ -77,7 +77,7 @@ response: |
             },
             {
               "__typename": "__Field",
-              "name": "persons",
+              "name": "people",
               "args": [
                 {
                   "name": "where",
@@ -99,7 +99,7 @@ response: |
             },
             {
               "__typename": "__Field",
-              "name": "personsAgg",
+              "name": "peopleAgg",
               "args": [
                 {
                   "name": "where",

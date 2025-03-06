@@ -57,7 +57,7 @@ pub struct ResolvedCompositeType {
 }
 
 impl ToPlural for ResolvedCompositeType {
-    fn to_singular(&self) -> String {
+    fn self_name(&self) -> String {
         self.name.clone()
     }
 

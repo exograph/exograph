@@ -57,21 +57,21 @@ impl ToPostgresTypeNames for str {
 
 impl<T: ToPlural> ToPostgresTypeNames for T {
     fn creation_type(&self) -> String {
-        to_creation_type(&self.to_singular())
+        to_creation_type(&self.self_name())
     }
 
     fn update_type(&self) -> String {
-        to_update_type(&self.to_singular())
+        to_update_type(&self.self_name())
     }
 
     fn reference_type(&self) -> String {
-        to_reference_type(&self.to_singular())
+        to_reference_type(&self.self_name())
     }
 }
 
 impl<T: ToPlural> ToPostgresQueryName for T {
     fn pk_query(&self) -> String {
-        to_query(&self.to_singular())
+        to_query(&self.self_name())
     }
 
     fn collection_query(&self) -> String {
@@ -121,15 +121,15 @@ pub trait ToPostgresMutationNames {
 
 impl<T: ToPlural> ToPostgresMutationNames for T {
     fn pk_create(&self) -> String {
-        to_create(&self.to_singular())
+        to_create(&self.self_name())
     }
 
     fn pk_delete(&self) -> String {
-        to_delete(&self.to_singular())
+        to_delete(&self.self_name())
     }
 
     fn pk_update(&self) -> String {
-        to_update(&self.to_singular())
+        to_update(&self.self_name())
     }
 
     fn collection_create(&self) -> String {
