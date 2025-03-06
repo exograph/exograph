@@ -37,7 +37,7 @@ impl MigrationScopeMatches {
 
     pub fn matches(&self, table_name: &PhysicalTableName) -> bool {
         self.0.iter().any(|(schema_pattern, table_pattern)| {
-            schema_pattern.matches(table_name.schema.as_deref().unwrap_or("public"))
+            schema_pattern.matches(&table_name.schema_name())
                 && table_pattern.matches(&table_name.name)
         })
     }

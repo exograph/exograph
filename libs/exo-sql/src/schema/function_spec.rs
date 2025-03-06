@@ -12,7 +12,7 @@ pub struct FunctionSpec {
 }
 
 const FUNCTIONS_QUERY: &str = r#"
-select routine_name, routine_definition, external_language from information_schema.routines where routine_name like 'exograph%'
+SELECT routine_name, routine_definition, external_language FROM information_schema.routines WHERE routine_name like 'exograph%'
 "#;
 
 impl FunctionSpec {
