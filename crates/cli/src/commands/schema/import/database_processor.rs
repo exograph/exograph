@@ -26,8 +26,6 @@ impl ModelProcessor for DatabaseSpec {
             }
             writeln!(writer)?;
 
-            write!(writer, "module ")?;
-
             let module_suffix = if context.generate_fragments {
                 "Fragments"
             } else {
