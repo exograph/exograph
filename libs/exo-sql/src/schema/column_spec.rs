@@ -102,11 +102,12 @@ impl ColumnSpec {
                     "
                     SELECT format_type(atttypid, atttypmod), attndims
                     FROM pg_attribute
-                    WHERE attrelid = '{}'::regclass AND attname = '{column_name}'",
-                    table_name.fully_qualified_name()
+                    WHERE attrelid = '{}'::regclass AND attname = $1",
+                    table_name.sql_name()
                 );
 
-                let rows = client.query(db_type_query.as_str(), &[]).await?;
+                let rows = client.query(&db_type_query, &[&column_name]).await?;
+
                 let row = rows.first().unwrap();
 
                 let mut sql_type: String = row.get("format_type");
@@ -147,12 +148,12 @@ impl ColumnSpec {
             "
             SELECT attnotnull
             FROM pg_attribute
-            WHERE attrelid = '{}'::regclass AND attname = '{column_name}'",
-            table_name.fully_qualified_name()
+            WHERE attrelid = '{}'::regclass AND attname = $1",
+            table_name.sql_name()
         );
 
         let not_null: bool = client
-            .query::<str>(db_not_null_query.as_str(), &[])
+            .query(&db_not_null_query, &[&column_name])
             .await?
             .first()
             .map(|row| row.get("attnotnull"))
@@ -186,21 +187,20 @@ impl ColumnSpec {
             // clear it to normalize the column
             None
         } else {
-            let table_predicate = match table_name.schema {
-                Some(ref schema) => format!(
-                    "table_schema = '{}' AND table_name = '{}'",
-                    schema, table_name.name
-                ),
-                None => format!("table_name = '{}'", table_name.name),
-            };
-
-            let db_query = format!(
-                "
+            let db_query = "
                 SELECT column_default FROM information_schema.columns
-                WHERE {table_predicate} and column_name = '{column_name}'"
-            );
+                WHERE table_schema = $1 AND table_name = $2 and column_name = $3";
 
-            let rows = client.query(db_query.as_str(), &[]).await?;
+            let rows = client
+                .query(
+                    db_query,
+                    &[
+                        &table_name.schema.clone().unwrap_or("public".to_string()),
+                        &table_name.name,
+                        &column_name,
+                    ],
+                )
+                .await?;
 
             rows.first()
                 .and_then(|row| row.try_get("column_default").ok())

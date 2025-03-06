@@ -63,12 +63,12 @@ impl Constraints {
             SELECT contype, conname, pg_get_constraintdef(pg_constraint.oid, true) as condef, pg_class.relname as foreign_table, pg_namespace.nspname as foreign_schema
             FROM pg_constraint left join pg_class on pg_constraint.confrelid = pg_class.oid left join pg_namespace on pg_class.relnamespace = pg_namespace.oid
             WHERE conrelid = '{}'::regclass AND conparentid = 0",
-            table_name.fully_qualified_name()
+            table_name.sql_name()
         );
 
         // Get all the constraints in the table
         let constraints = client
-            .query(constraints_query.as_str(), &[])
+            .query(&constraints_query, &[])
             .await?
             .iter()
             .map(|row| {

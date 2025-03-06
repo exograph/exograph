@@ -82,10 +82,7 @@ impl TableSpec {
         table_name: PhysicalTableName,
     ) -> Result<WithIssues<TableSpec>, DatabaseError> {
         // Query to get a list of columns in the table
-        let columns_query = format!(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = '{}'",
-            table_name.name, table_name.schema.as_ref().unwrap_or(&"public".to_string())
-        );
+        let columns_query = "SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2";
 
         let mut issues = Vec::new();
 
@@ -130,7 +127,16 @@ impl TableSpec {
         }
 
         let mut columns = Vec::new();
-        for row in client.query(columns_query.as_str(), &[]).await? {
+        for row in client
+            .query(
+                columns_query,
+                &[
+                    &table_name.name,
+                    &table_name.schema.as_ref().unwrap_or(&"public".to_string()),
+                ],
+            )
+            .await?
+        {
             let name: String = row.get("column_name");
 
             let unique_constraint_names: Vec<_> = constraints
