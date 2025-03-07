@@ -116,7 +116,7 @@ input ProductUpdateInputFromDepartment {
 }
 
 input ProductUpdateInputFromDepartmentNested {
-  id: String!
+  id: Int!
   title: String
 }
 

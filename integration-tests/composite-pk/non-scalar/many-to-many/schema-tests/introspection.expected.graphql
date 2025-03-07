@@ -106,7 +106,7 @@ input ChatParticipationUpdateInputFromChat {
 }
 
 input ChatParticipationUpdateInputFromChatNested {
-  user: Int!
+  user: ChatUpdateInput!
   chatAdmin: Boolean
   moods: MoodUpdateInputFromChatParticipation
 }
@@ -118,7 +118,7 @@ input ChatParticipationUpdateInputFromUser {
 }
 
 input ChatParticipationUpdateInputFromUserNested {
-  chat: Int!
+  chat: ChatUpdateInput!
   chatAdmin: Boolean
   moods: MoodUpdateInputFromChatParticipation
 }
@@ -206,7 +206,7 @@ input MoodUpdateInputFromChatParticipation {
 }
 
 input MoodUpdateInputFromChatParticipationNested {
-  id: ChatUpdateInput!
+  id: Int!
   name: String
 }
 
