@@ -78,17 +78,17 @@ input StringFilter {
 
 type Query {
   logger(input: LogMessage!): Boolean!
+  people(where: PersonFilter, orderBy: [PersonOrdering!], limit: Int, offset: Int): [Person!]!
+  peopleAgg(where: PersonFilter): PersonAgg!
   person(id: Int!): Person
-  persons(where: PersonFilter, orderBy: [PersonOrdering!], limit: Int, offset: Int): [Person!]!
-  personsAgg(where: PersonFilter): PersonAgg!
 }
 
 type Mutation {
+  createPeople(data: [PersonCreationInput!]!): [Person!]!
   createPerson(data: PersonCreationInput!): Person!
-  createPersons(data: [PersonCreationInput!]!): [Person!]!
   debug(input: LogMessage!): Boolean!
+  deletePeople(where: PersonFilter): [Person!]!
   deletePerson(id: Int!): Person
-  deletePersons(where: PersonFilter): [Person!]!
+  updatePeople(where: PersonFilter, data: PersonUpdateInput!): [Person!]!
   updatePerson(id: Int!, data: PersonUpdateInput!): Person
-  updatePersons(where: PersonFilter, data: PersonUpdateInput!): [Person!]!
 }

@@ -79,17 +79,17 @@ type Query {
   getRoleAndUid: String!
   getSecretHeader: String!
   isTrackingEnabled: Boolean!
+  journalEntries(where: JournalEntryFilter, orderBy: [JournalEntryOrdering!], limit: Int, offset: Int): [JournalEntry!]!
+  journalEntriesAgg(where: JournalEntryFilter): JournalEntryAgg!
   journalEntry(id: Int!): JournalEntry
-  journalEntrys(where: JournalEntryFilter, orderBy: [JournalEntryOrdering!], limit: Int, offset: Int): [JournalEntry!]!
-  journalEntrysAgg(where: JournalEntryFilter): JournalEntryAgg!
   shouldTrack: Boolean!
 }
 
 type Mutation {
+  createJournalEntries(data: [JournalEntryCreationInput!]!): [JournalEntry!]!
   createJournalEntry(data: JournalEntryCreationInput!): JournalEntry!
-  createJournalEntrys(data: [JournalEntryCreationInput!]!): [JournalEntry!]!
+  deleteJournalEntries(where: JournalEntryFilter): [JournalEntry!]!
   deleteJournalEntry(id: Int!): JournalEntry
-  deleteJournalEntrys(where: JournalEntryFilter): [JournalEntry!]!
+  updateJournalEntries(where: JournalEntryFilter, data: JournalEntryUpdateInput!): [JournalEntry!]!
   updateJournalEntry(id: Int!, data: JournalEntryUpdateInput!): JournalEntry
-  updateJournalEntrys(where: JournalEntryFilter, data: JournalEntryUpdateInput!): [JournalEntry!]!
 }
