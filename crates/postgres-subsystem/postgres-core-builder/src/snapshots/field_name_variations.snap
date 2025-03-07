@@ -39,7 +39,7 @@ values:
   - - ~
     - Composite:
         name: Entity
-        plural_name: Entitys
+        plural_name: Entities
         representation: Managed
         fields:
           - name: _id
@@ -193,7 +193,7 @@ values:
             update_sync: false
             readonly: false
         table_name:
-          name: entitys
+          name: entities
           schema: ~
         access:
           default: ~

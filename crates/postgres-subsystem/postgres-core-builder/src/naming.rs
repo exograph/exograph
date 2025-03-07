@@ -12,22 +12,28 @@ use postgres_core_model::types::EntityType;
 
 /// A type with both singular and plural versions of itself.
 pub trait ToPlural {
-    fn to_singular(&self) -> String;
+    fn self_name(&self) -> String;
     fn to_plural(&self) -> String;
 }
 
 impl ToPlural for str {
-    fn to_singular(&self) -> String {
+    fn self_name(&self) -> String {
         self.to_owned()
     }
 
     fn to_plural(&self) -> String {
-        format!("{self}s")
+        let plural_name = pluralizer::pluralize(self, 2, false);
+        if plural_name == self {
+            // Force pluralization if the pluralizer returns the same string
+            format!("{self}s")
+        } else {
+            plural_name
+        }
     }
 }
 
 impl ToPlural for EntityType {
-    fn to_singular(&self) -> String {
+    fn self_name(&self) -> String {
         self.name.clone()
     }
 
@@ -36,7 +42,7 @@ impl ToPlural for EntityType {
     }
 }
 
-pub(crate) trait ToTableName {
+pub trait ToTableName {
     fn table_name(&self, plural_name: Option<String>) -> String;
 }
 

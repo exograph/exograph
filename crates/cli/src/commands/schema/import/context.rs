@@ -8,7 +8,7 @@ use exo_sql::{
     PhysicalTableName,
 };
 
-use heck::ToUpperCamelCase;
+use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
 
 pub(super) struct ImportContext<'a> {
     table_name_to_model_name: HashMap<PhysicalTableName, String>,
@@ -40,18 +40,37 @@ impl<'a> ImportContext<'a> {
     }
 
     pub(super) fn has_standard_mapping(&self, table_name: &PhysicalTableName) -> bool {
-        self.model_name(table_name) == Some(&self.standard_model_name(table_name))
+        let model_name = self.model_name(table_name);
+
+        let standard_table_name = model_name.map(|model_name| {
+            postgres_core_builder::naming::ToTableName::table_name(model_name, None)
+        });
+
+        standard_table_name == Some(table_name.name.clone())
     }
 
+    /// Given a table name, returns the standard model name.
+    ///
+    /// todos -> Todo
+    /// news -> News
     pub(super) fn standard_model_name(&self, table_name: &PhysicalTableName) -> String {
         let singular_name = pluralizer::pluralize(&table_name.name, 1, false);
+        let model_name = singular_name.to_upper_camel_case();
 
-        // If the singular name is the same (for example, uncountable nouns such as 'news'), use the original name.
-        if singular_name == table_name.name {
-            table_name.name.to_upper_camel_case()
+        // If the model name starts with a digit, prefix it with "m" (since we don't allow model names to start with a digit)
+        if model_name.chars().next().unwrap().is_ascii_digit() {
+            format!("m{}", model_name)
         } else {
-            singular_name.to_upper_camel_case()
+            model_name
         }
+    }
+
+    pub(super) fn standard_field_name(&self, column_name: &str) -> String {
+        column_name.to_lower_camel_case()
+    }
+
+    pub(super) fn standard_column_name(&self, field_name: &str) -> String {
+        field_name.to_snake_case()
     }
 
     /// Converts the name of a SQL table to a exograph model name (for example, concert_artist -> ConcertArtist).

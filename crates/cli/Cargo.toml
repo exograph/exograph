@@ -33,7 +33,7 @@ tempfile.workspace = true
 which.workspace = true
 toml = { version = "0.8.19", features = ["parse"] }
 semver = "1.0.25"
-pluralizer = "0.5.0"
+pluralizer.workspace = true
 
 exo-sql = { path = "../../libs/exo-sql", features = ["pool"] }
 builder = { path = "../builder" }
@@ -41,6 +41,7 @@ testing = { path = "../testing" }
 common = { path = "../common" }
 core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 postgres-core-model = { path = "../postgres-subsystem/postgres-core-model" }
+postgres-core-builder = { path = "../postgres-subsystem/postgres-core-builder" }
 core-plugin-interface = { path = "../core-subsystem/core-plugin-interface" }
 postgres-builder = { path = "../postgres-subsystem/postgres-builder" }
 deno-builder = { path = "../deno-subsystem/deno-builder" }

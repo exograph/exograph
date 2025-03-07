@@ -4,8 +4,6 @@ use exo_sql::schema::column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSp
 
 use exo_sql::{FloatBits, IntBits};
 
-use heck::ToLowerCamelCase;
-
 use super::context::reference_field_name;
 use super::{ImportContext, ModelProcessor};
 
@@ -51,13 +49,20 @@ impl ModelProcessor for ColumnSpec {
             write!(writer, "{} ", annots)?;
         }
 
+        let standard_field_name = context.standard_field_name(&self.name);
+        let standard_column_name = context.standard_column_name(&standard_field_name);
+
+        if standard_column_name != self.name {
+            write!(writer, "@column(\"{}\") ", self.name)?;
+        }
+
         match &self.typ {
             // If the column references to a table and that table is in the context, we use the reference field name (for example `venue_id` -> `venue`)
             ColumnTypeSpec::ColumnReference(ref reference) if is_column_type_name_reference => {
                 write!(writer, "{}: ", reference_field_name(self, reference))?;
             }
             _ => {
-                write!(writer, "{}: ", self.name.to_lower_camel_case())?;
+                write!(writer, "{}: ", standard_field_name)?;
             }
         }
 
