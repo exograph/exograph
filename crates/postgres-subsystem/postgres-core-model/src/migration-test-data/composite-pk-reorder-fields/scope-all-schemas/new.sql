@@ -1,4 +1,4 @@
-CREATE TABLE "persons" (
+CREATE TABLE "people" (
 	"name" TEXT PRIMARY KEY,
 	"age" INT NOT NULL,
 	"address_street" TEXT,
@@ -7,7 +7,7 @@ CREATE TABLE "persons" (
 	"address_zip" INT
 );
 
-CREATE TABLE "addresss" (
+CREATE TABLE "addresses" (
 	"street" TEXT,
 	"city" TEXT,
 	"state" TEXT,
@@ -15,5 +15,5 @@ CREATE TABLE "addresss" (
 	PRIMARY KEY ("street", "city", "state", "zip")
 );
 
-ALTER TABLE "persons" ADD CONSTRAINT "persons_address_fk" FOREIGN KEY ("address_city", "address_state", "address_street", "address_zip") REFERENCES "addresss" ("city", "state", "street", "zip");
+ALTER TABLE "people" ADD CONSTRAINT "people_address_fk" FOREIGN KEY ("address_city", "address_state", "address_street", "address_zip") REFERENCES "addresses" ("city", "state", "street", "zip");
 
