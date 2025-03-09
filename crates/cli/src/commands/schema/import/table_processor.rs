@@ -3,6 +3,8 @@ use exo_sql::{schema::table_spec::TableSpec, PhysicalTableName};
 
 use super::{ImportContext, ModelProcessor};
 
+use heck::ToLowerCamelCase;
+
 const INDENT: &str = "  ";
 
 impl ModelProcessor for TableSpec {
@@ -62,10 +64,11 @@ fn write_references(
         if let Some(model_name) = model_name {
             let is_many = column.unique_constraints.is_empty();
             let field_name = if is_many {
-                table_name.name.to_string()
+                pluralizer::pluralize(model_name, 2, false)
             } else {
-                pluralizer::pluralize(&table_name.name, 1, false)
-            };
+                pluralizer::pluralize(model_name, 1, false)
+            }
+            .to_lower_camel_case();
 
             write!(writer, "{INDENT}{INDENT}{field_name}: ")?;
 

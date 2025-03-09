@@ -146,7 +146,12 @@ pub(super) fn reference_field_name(column: &ColumnSpec, reference: &ColumnRefere
     {
         // Drop the trailing underscore and the foreign key column name
         column.name[..column.name.len() - reference.foreign_pk_column_name.len() - 1].to_string()
+    } else if column.name.ends_with("id") || column.name.ends_with("Id") {
+        // Some databases (for example, a version of "chinook") uses `ArtistId` as the primary key column name and `ArtistId` to refer to this column.
+        // Drop the trailing "id" or "Id"
+        column.name[..column.name.len() - 2].to_string()
     } else {
         column.name.to_string()
     }
+    .to_lower_camel_case()
 }
