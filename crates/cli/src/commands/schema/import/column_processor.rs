@@ -2,6 +2,7 @@ use anyhow::Result;
 
 use exo_sql::schema::column_spec::{ColumnReferenceSpec, ColumnSpec, ColumnTypeSpec};
 
+use exo_sql::schema::table_spec::TableSpec;
 use exo_sql::{FloatBits, IntBits};
 
 use super::context::reference_field_name;
@@ -9,10 +10,11 @@ use super::{ImportContext, ModelProcessor};
 
 const INDENT: &str = "    ";
 
-impl ModelProcessor for ColumnSpec {
+impl ModelProcessor<TableSpec> for ColumnSpec {
     /// Converts the column specification to a exograph model.
     fn process(
         &self,
+        parent: &TableSpec,
         context: &ImportContext,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
@@ -37,6 +39,18 @@ impl ModelProcessor for ColumnSpec {
 
         if self.is_pk {
             write!(writer, "@pk ")?;
+        }
+
+        if let ColumnTypeSpec::ColumnReference(ref reference) = &self.typ {
+            if parent.name == reference.foreign_table_name {
+                let cardinality_annotation =
+                    if self.unique_constraints.is_empty() || self.is_nullable {
+                        "@manyToOne"
+                    } else {
+                        "@oneToOne"
+                    };
+                write!(writer, "{cardinality_annotation} ")?;
+            }
         }
 
         if !self.unique_constraints.is_empty() {
