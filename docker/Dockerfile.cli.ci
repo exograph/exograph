@@ -1,7 +1,7 @@
-# We must use "debian:bullseye*" (and not "debian:buster") as the base runtime image to match the libc version used while building the binaries
+# We must use "debian:bookworm*" (and not "debian:buster") as the base runtime image to match the libc version used while building the binaries
 
 ## Create a builder image with exograph release binaries
-FROM debian:bullseye-slim as builder
+FROM debian:bookworm-slim as builder
 
 RUN apt-get update && apt-get -y install unzip
 
@@ -11,7 +11,7 @@ RUN unzip ./exograph-x86_64-unknown-linux-gnu.zip
 
 
 ## Build the runtime image with just the binary we need for the cli
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 ### Install ca-certificates and tzdata (needed to establish TLS connections and set the timezone)
 RUN apt-get update \
