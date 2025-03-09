@@ -1,0 +1,19 @@
+@postgres
+module CompanyDatabase {
+
+  @access(true)
+  type Company {
+    @pk id: Int = autoIncrement()
+    name: String
+    employees: Set<Employee>?
+  }
+
+  @access(true)
+  type Employee {
+    @pk id: Int = autoIncrement()
+    name: String
+    company: Company
+    manager: Employee?
+    reports: Set<Employee>?
+  }
+}

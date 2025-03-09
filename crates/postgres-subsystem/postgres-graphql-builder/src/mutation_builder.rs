@@ -205,23 +205,30 @@ pub trait DataParamBuilder<D> {
                     if let FieldType::List(_) = field.typ {
                         // If it is a list, we need to create a nested input type (one-to-many)
                         Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
-                    } else if let FieldType::Optional(_) = field.typ {
-                        // Let's determine if it is one-to-zero_or_one (where we need to create a nested input type)
-                        // Or many-to-one_optional (Think Concert with an optional Venue, and Venue with multiple (possibly optional) concerts)
-                        match get_matching_field(field, resolved_types) {
-                            Some(matching_field) => {
-                                let inner_type = matching_field.typ.inner();
-                                if let Some(FieldType::List(_)) = inner_type {
-                                    vec![]
-                                } else {
-                                    Self::data_param_field_one_to_many_type_names(
-                                        name,
-                                        resolved_composite_type,
-                                    )
+                    } else if let FieldType::Optional(inner_type) = &field.typ {
+                        if matches!(inner_type.as_ref(), FieldType::List(_)) {
+                            Self::data_param_field_one_to_many_type_names(
+                                name,
+                                resolved_composite_type,
+                            )
+                        } else {
+                            // Let's determine if it is one-to-zero_or_one (where we need to create a nested input type)
+                            // Or many-to-one_optional (Think Concert with an optional Venue, and Venue with multiple (possibly optional) concerts)
+                            match get_matching_field(field, resolved_types) {
+                                Some(matching_field) => {
+                                    let inner_type = matching_field.typ.inner();
+                                    if let Some(FieldType::List(_)) = inner_type {
+                                        vec![]
+                                    } else {
+                                        Self::data_param_field_one_to_many_type_names(
+                                            name,
+                                            resolved_composite_type,
+                                        )
+                                    }
                                 }
-                            }
-                            None => {
-                                vec![]
+                                None => {
+                                    vec![]
+                                }
                             }
                         }
                     } else {
@@ -355,7 +362,13 @@ pub trait DataParamBuilder<D> {
                 };
 
                 match &top_level_type {
-                    Some(value) if value.name == field.typ.name() => None,
+                    Some(top_level_type)
+                        // The condition extempts direct self-referencing fields (e.g. Employee.manager of the Employee type)
+                        if top_level_type.name == field.typ.name()
+                            && container_type != Some(field.typ.name()) =>
+                    {
+                        None
+                    }
                     _ => Some(PostgresField {
                         name: field.name.clone(),
                         typ: field_type,
@@ -520,7 +533,7 @@ pub trait DataParamBuilder<D> {
         let existing = building
             .mutation_types
             .get_by_key(&existing_type_name)
-            .unwrap_or_else(|| panic!("Could not find type {existing_type_name} to expand"));
+            .unwrap_or_else(|| panic!("Could not find type `{existing_type_name}` to expand"));
 
         if existing.fields.is_empty() {
             // If not already expanded

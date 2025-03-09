@@ -1,0 +1,168 @@
+type Company {
+  id: Int!
+  name: String!
+  employees(where: EmployeeFilter, orderBy: [EmployeeOrdering!], limit: Int, offset: Int): [Employee!]
+  employeesAgg(where: EmployeeFilter): EmployeeAgg
+}
+
+type CompanyAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input CompanyCreationInput {
+  name: String!
+  employees: [EmployeeCreationInputFromCompany!]
+}
+
+input CompanyFilter {
+  id: IntFilter
+  name: StringFilter
+  employees: EmployeeFilter
+  and: [CompanyFilter!]
+  or: [CompanyFilter!]
+  not: CompanyFilter
+}
+
+input CompanyOrdering {
+  id: Ordering
+  name: Ordering
+}
+
+input CompanyReferenceInput {
+  id: Int!
+}
+
+input CompanyUpdateInput {
+  id: Int
+  name: String
+  employees: EmployeeUpdateInputFromCompany
+}
+
+type Employee {
+  id: Int!
+  name: String!
+  company: Company!
+  manager: Employee
+}
+
+type EmployeeAgg {
+  id: IntAgg
+  name: StringAgg
+}
+
+input EmployeeCreationInput {
+  name: String!
+  company: CompanyReferenceInput!
+  manager: EmployeeReferenceInput
+}
+
+input EmployeeCreationInputFromCompany {
+  name: String!
+  manager: EmployeeReferenceInput
+}
+
+input EmployeeFilter {
+  id: IntFilter
+  name: StringFilter
+  company: CompanyFilter
+  manager: EmployeeFilter
+  and: [EmployeeFilter!]
+  or: [EmployeeFilter!]
+  not: EmployeeFilter
+}
+
+input EmployeeOrdering {
+  id: Ordering
+  name: Ordering
+  company: [CompanyOrdering!]
+  manager: [EmployeeOrdering!]
+}
+
+input EmployeeReferenceInput {
+  id: Int!
+}
+
+input EmployeeUpdateInput {
+  id: Int
+  name: String
+  company: CompanyReferenceInput
+  manager: EmployeeReferenceInput
+}
+
+input EmployeeUpdateInputFromCompany {
+  create: [EmployeeCreationInputFromCompany!]
+  update: [EmployeeUpdateInputFromCompanyNested!]
+  delete: [EmployeeReferenceInput!]
+}
+
+input EmployeeUpdateInputFromCompanyNested {
+  id: Int!
+  name: String
+  manager: EmployeeReferenceInput
+}
+
+type IntAgg {
+  min: Int
+  max: Int
+  sum: Int
+  avg: Float
+  count: Int
+}
+
+input IntFilter {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+}
+
+enum Ordering {
+  ASC
+  DESC
+}
+
+type StringAgg {
+  min: String
+  max: String
+  count: Int
+}
+
+input StringFilter {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  ilike: String
+  startsWith: String
+  endsWith: String
+}
+
+type Query {
+  companies(where: CompanyFilter, orderBy: [CompanyOrdering!], limit: Int, offset: Int): [Company!]!
+  companiesAgg(where: CompanyFilter): CompanyAgg!
+  company(id: Int!): Company
+  employee(id: Int!): Employee
+  employees(where: EmployeeFilter, orderBy: [EmployeeOrdering!], limit: Int, offset: Int): [Employee!]!
+  employeesAgg(where: EmployeeFilter): EmployeeAgg!
+}
+
+type Mutation {
+  createCompanies(data: [CompanyCreationInput!]!): [Company!]!
+  createCompany(data: CompanyCreationInput!): Company!
+  createEmployee(data: EmployeeCreationInput!): Employee!
+  createEmployees(data: [EmployeeCreationInput!]!): [Employee!]!
+  deleteCompanies(where: CompanyFilter): [Company!]!
+  deleteCompany(id: Int!): Company
+  deleteEmployee(id: Int!): Employee
+  deleteEmployees(where: EmployeeFilter): [Employee!]!
+  updateCompanies(where: CompanyFilter, data: CompanyUpdateInput!): [Company!]!
+  updateCompany(id: Int!, data: CompanyUpdateInput!): Company
+  updateEmployee(id: Int!, data: EmployeeUpdateInput!): Employee
+  updateEmployees(where: EmployeeFilter, data: EmployeeUpdateInput!): [Employee!]!
+}

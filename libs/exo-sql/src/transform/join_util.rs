@@ -36,7 +36,7 @@ pub fn compute_join(
             Table::physical(
                 dependency.table_id,
                 if top_level {
-                    None
+                    selection_level.self_referencing_table_alias(dependency.table_id, database)
                 } else {
                     Some(selection_level.alias((dependency.table_id, None), database))
                 },

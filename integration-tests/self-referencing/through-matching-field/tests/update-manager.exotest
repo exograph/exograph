@@ -1,0 +1,54 @@
+stages:
+  - operation: |
+      mutation($ceoId: Int!, $eng1Id: Int!) {
+        # Eng1 got promoted to report to the CEO
+        updateEmployee(id: $eng1Id, data: {manager: {id: $ceoId}}) {
+          id
+          name
+        }
+      }
+    variable: |
+      {
+        "ceoId": $.ceoId,
+        "eng1Id": $.eng1Id
+      }
+    response: |
+      {
+        "data": {
+          "updateEmployee": {
+            "id": $.eng1Id,
+            "name": "Engineer 1"
+          }
+        }
+      }
+
+  - operation: |
+      query($employeeId: Int!) {
+        employee(id: $employeeId) {
+          id
+          name
+          manager {
+            id
+            name
+          }
+        }
+      }
+    variable: |
+      {
+        "employeeId": $.eng1Id
+      }
+    response: |
+      {
+        "data": {
+          "employee": {
+            "id": $.eng1Id,
+            "name": "Engineer 1",
+            "manager": {
+              "id": $.ceoId,
+              "name": "CEO"
+            }
+          }
+        }
+      }
+  
+         

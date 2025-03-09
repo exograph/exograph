@@ -85,7 +85,13 @@ impl SelectionElement {
         database: &Database,
     ) -> Column {
         match self {
-            SelectionElement::Physical(column_id) => Column::physical(column_id, None),
+            SelectionElement::Physical(column_id) => {
+                let column = column_id.get_column(database);
+                let foreign_table_alias =
+                    selection_level.self_referencing_table_alias(column.table_id, database);
+
+                Column::physical(column_id, foreign_table_alias)
+            }
             SelectionElement::Function(function) => Column::Function(function.clone()),
             SelectionElement::Constant(s) => Column::Constant(s.clone()),
             SelectionElement::Object(elements) => {

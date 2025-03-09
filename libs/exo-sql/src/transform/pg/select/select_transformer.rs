@@ -635,4 +635,64 @@ mod tests {
             },
         );
     }
+
+    #[multiplatform_test]
+    fn self_referencing_nested_json() {
+        TestSetup::with_setup(
+            |TestSetup {
+                 database,
+                 venues_table,
+                 venues_id_column,
+                 venues_parent_venue_id_column,
+                 ..
+             }| {
+                let aselect = AbstractSelect {
+                    table_id: venues_table,
+                    selection: Selection::Json(
+                        vec![
+                            AliasedSelectionElement::new(
+                                "id".to_string(),
+                                SelectionElement::Physical(venues_id_column),
+                            ),
+                            AliasedSelectionElement::new(
+                                "parent_venue".to_string(),
+                                SelectionElement::SubSelect(
+                                    RelationId::ManyToOne(
+                                        venues_parent_venue_id_column
+                                            .get_mto_relation(&database)
+                                            .unwrap(),
+                                    ),
+                                    AbstractSelect {
+                                        table_id: venues_table,
+                                        selection: Selection::Json(
+                                            vec![AliasedSelectionElement::new(
+                                                "id".to_string(),
+                                                SelectionElement::Physical(venues_id_column),
+                                            )],
+                                            SelectionCardinality::One,
+                                        ),
+                                        predicate: Predicate::True,
+                                        order_by: None,
+                                        offset: None,
+                                        limit: None,
+                                    },
+                                ),
+                            ),
+                        ],
+                        SelectionCardinality::Many,
+                    ),
+                    predicate: Predicate::True,
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                };
+
+                let select = Postgres {}.to_select(aselect, &database);
+                assert_binding!(
+                    select.to_sql(&database),
+                    r#"SELECT COALESCE(json_agg(json_build_object('id', "venues"."id", 'parent_venue', (SELECT json_build_object('id', "venues$1"."id") FROM "venues" AS "venues$1" WHERE "venues"."parent_venue_id" = "venues$1"."id"))), '[]'::json)::text FROM "venues""#
+                );
+            },
+        );
+    }
 }

@@ -92,16 +92,16 @@ const COLUMN_DEFAULT_QUERY: &str = "
   SELECT column_default FROM information_schema.columns
   WHERE table_schema = $1 AND table_name = $2 and column_name = $3";
 
-const IS_AUTO_INCREMENT_QUERY: &str = "
+const IS_AUTO_INCREMENT_QUERY: &str = r#"
     SELECT 
-        pg_get_serial_sequence($1 || '.' || $2, $3) IS NOT NULL AS is_auto_increment
+        pg_get_serial_sequence('"' || $1 || '"."' || $2 || '"', $3) IS NOT NULL AS is_auto_increment
     FROM 
         information_schema.columns
     WHERE 
         table_schema = $1
         AND table_name = $2
         AND column_name = $3;
-";
+"#;
 
 impl ColumnSpec {
     /// Creates a new column specification from an SQL column.

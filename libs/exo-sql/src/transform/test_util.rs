@@ -44,6 +44,7 @@ pub struct TestSetup {
 
     pub venues_id_column: ColumnId,
     pub venues_name_column: ColumnId,
+    pub venues_parent_venue_id_column: ColumnId,
 }
 
 impl TestSetup {
@@ -63,7 +64,11 @@ impl TestSetup {
                 ),
                 TableSpec::new(
                     PhysicalTableName::new("venues", None),
-                    vec![pk_column("id"), string_column("name")],
+                    vec![
+                        pk_column("id"),
+                        string_column("name"),
+                        pk_reference_column("parent_venue_id", "venues", None),
+                    ],
                     vec![],
                     vec![],
                     true,
@@ -117,6 +122,9 @@ impl TestSetup {
             .unwrap();
         let venues_id_column = database.get_column_id(venues_table_id, "id").unwrap();
         let venues_name_column = database.get_column_id(venues_table_id, "name").unwrap();
+        let venues_parent_venue_id_column = database
+            .get_column_id(venues_table_id, "parent_venue_id")
+            .unwrap();
 
         let concert_artists_table_id = database
             .get_table_id(&PhysicalTableName::new("concert_artists", None))
@@ -170,6 +178,7 @@ impl TestSetup {
 
             venues_id_column,
             venues_name_column,
+            venues_parent_venue_id_column,
         };
 
         test_fn(test_setup)

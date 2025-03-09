@@ -1,0 +1,79 @@
+operation: |
+  query {
+      employees @unordered {
+          id
+          name
+          manager {
+            id
+            name
+          }
+      }
+  }
+response: |
+  {
+    "data": {
+      "employees": [
+        {
+          "id": $.ceoId,
+          "name": "CEO",
+          "manager": null
+        },
+        {
+          "id": $.vpEngId,
+          "name": "VP of Engineering",
+          "manager": {
+            "id": $.ceoId,
+            "name": "CEO"
+          }
+        },
+        {
+          "id": $.vpSalesId,
+          "name": "VP of Sales",
+          "manager": {
+            "id": $.ceoId,
+            "name": "CEO"
+          }
+        },
+        {
+          "id": $.eng1Id,
+          "name": "Engineer 1",
+          "manager": {
+            "id": $.vpEngId,
+            "name": "VP of Engineering"
+          }
+        },
+        {
+          "id": $.eng2Id,
+          "name": "Engineer 2",
+          "manager": {
+            "id": $.vpEngId,
+            "name": "VP of Engineering"
+          }
+        },
+        {
+          "id": $.eng3Id,
+          "name": "Engineer 3",
+          "manager": {
+            "id": $.vpEngId,
+            "name": "VP of Engineering"
+          }
+        },
+        {
+          "id": $.sales1Id,
+          "name": "Sales 1",
+          "manager": {
+            "id": $.vpSalesId,
+            "name": "VP of Sales"
+          }
+        },
+        {
+          "id": $.sales2Id,
+          "name": "Sales 2",
+          "manager": {
+            "id": $.vpSalesId,
+            "name": "VP of Sales"
+          }
+        }
+      ]
+    }
+  }

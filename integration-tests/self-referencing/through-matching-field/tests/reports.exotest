@@ -1,0 +1,59 @@
+operation: |
+  fragment OrgChart on Employee {
+    id
+    name
+    reports @unordered {
+      id
+      name
+    }
+  }
+  query($ceoId: Int!, $vpEngId: Int!) {
+    ceoReports: employee(id: $ceoId) {
+      ...OrgChart
+    }
+    vpEngReports: employee(id: $vpEngId) {
+      ...OrgChart
+    }
+  }
+variable: |
+  {
+    "ceoId": $.ceoId,
+    "vpEngId": $.vpEngId
+  }
+response: |
+  {
+    "data": {
+      "ceoReports": {
+        "id": $.ceoId,
+        "name": "CEO",
+        "reports": [
+          {
+            "id": $.vpEngId,
+            "name": "VP of Engineering"
+          },
+          {
+            "id": $.vpSalesId,
+            "name": "VP of Sales"
+          }
+        ]
+      },
+      "vpEngReports": {
+        "id": $.vpEngId,
+        "name": "VP of Engineering",
+        "reports": [
+          {
+            "id": $.eng1Id,
+            "name": "Engineer 1"
+          },
+          {
+            "id": $.eng2Id,
+            "name": "Engineer 2"
+          },
+          {
+            "id": $.eng3Id,
+            "name": "Engineer 3"
+          }
+        ]
+      }
+    }
+  }
