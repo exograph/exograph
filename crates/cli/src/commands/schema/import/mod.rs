@@ -79,7 +79,7 @@ impl CommandDefinition for ImportCommandDefinition {
             context.add_table(&table.name);
         }
 
-        schema.value.process(&context, &mut writer)?;
+        schema.value.process(&(), &context, &mut writer)?;
 
         for issue in &schema.issues {
             eprintln!("{issue}");

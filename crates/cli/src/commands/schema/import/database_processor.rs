@@ -5,9 +5,10 @@ use heck::ToUpperCamelCase;
 
 use super::{ImportContext, ModelProcessor};
 
-impl ModelProcessor for DatabaseSpec {
+impl ModelProcessor<()> for DatabaseSpec {
     fn process(
         &self,
+        _parent: &(),
         context: &ImportContext,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
@@ -47,7 +48,7 @@ impl ModelProcessor for DatabaseSpec {
             let table_len = matching_tables.len();
 
             for (i, table) in matching_tables.iter().enumerate() {
-                table.process(context, writer)?;
+                table.process(self, context, writer)?;
                 if i < table_len - 1 {
                     writeln!(writer)?;
                 }

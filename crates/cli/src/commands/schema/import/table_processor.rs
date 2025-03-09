@@ -1,5 +1,8 @@
 use anyhow::Result;
-use exo_sql::{schema::table_spec::TableSpec, PhysicalTableName};
+use exo_sql::{
+    schema::{database_spec::DatabaseSpec, table_spec::TableSpec},
+    PhysicalTableName,
+};
 
 use super::{ImportContext, ModelProcessor};
 
@@ -7,9 +10,10 @@ use heck::ToLowerCamelCase;
 
 const INDENT: &str = "  ";
 
-impl ModelProcessor for TableSpec {
+impl ModelProcessor<DatabaseSpec> for TableSpec {
     fn process(
         &self,
+        _parent: &DatabaseSpec,
         context: &ImportContext,
         writer: &mut (dyn std::io::Write + Send),
     ) -> Result<()> {
@@ -42,7 +46,7 @@ impl ModelProcessor for TableSpec {
         writeln!(writer, "{INDENT}{keyword} {type_name} {{")?;
 
         for column in &self.columns {
-            column.process(context, writer)?;
+            column.process(self, context, writer)?;
         }
 
         write_references(writer, context, &self.name)?;
